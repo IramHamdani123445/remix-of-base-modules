@@ -469,6 +469,57 @@ export default function GoLivePage() {
     !!session.controlledLiveFinalOperatingMode &&
     !!session.controlledLiveCertificationId;
 
+  // Stage 6 authoritative context — loaded from the server RPC
+  // get_comm_hub_one_real_email_context. The browser must not synthesise
+  // any Stage 6 field: recipient, hash, versions, sender, or provider.
+  const [stage6Context, setStage6Context] = useState<
+    import("@/platform/communication-hub/oneRealEmailContextService").OneRealEmailContext | null
+  >(null);
+  const [stage6ContextError, setStage6ContextError] = useState<string | null>(null);
+  const [stage6ContextLoading, setStage6ContextLoading] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setStage6Context(null);
+    setStage6ContextError(null);
+    if (
+      !controlledLiveDone ||
+      !session.moduleCode ||
+      !session.eventCode ||
+      !session.controlledLiveCertificationId
+    ) {
+      return;
+    }
+    setStage6ContextLoading(true);
+    import("@/platform/communication-hub/oneRealEmailContextService")
+      .then(({ fetchOneRealEmailContext }) =>
+        fetchOneRealEmailContext({
+          moduleCode: session.moduleCode!,
+          eventCode: session.eventCode!,
+          channel: session.channel,
+          controlledStubCertificationId: session.controlledLiveCertificationId!,
+        }),
+      )
+      .then((ctx) => {
+        if (!cancelled) setStage6Context(ctx);
+      })
+      .catch((e) => {
+        if (!cancelled) setStage6ContextError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        if (!cancelled) setStage6ContextLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    controlledLiveDone,
+    session.moduleCode,
+    session.eventCode,
+    session.channel,
+    session.controlledLiveCertificationId,
+  ]);
+
+
   const recipientBlocked =
     !!recipientResolution && recipientResolution.resolved === false;
   const stepStatus = useMemo(() => ({
