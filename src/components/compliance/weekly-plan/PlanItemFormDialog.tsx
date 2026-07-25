@@ -46,9 +46,32 @@ export function PlanItemFormDialog({ open, onOpenChange, onSubmit, weekDays }: P
   const [purpose, setPurpose] = useState('');
   const [notes, setNotes] = useState('');
 
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const isPastDay = (name: DayOfWeek) => {
+    const info = weekDays.find(d => d.name === name);
+    return !!info?.date && info.date < todayStr;
+  };
+
+  const selectedDayInfo = weekDays.find(d => d.name === dayOfWeek);
+  const selectedDayIsPast = !!selectedDayInfo?.date && selectedDayInfo.date < todayStr;
+
   const handleSubmit = () => {
     if (!dayOfWeek) return;
     const dayInfo = weekDays.find(d => d.name === dayOfWeek);
+
+    if (dayInfo?.date && dayInfo.date < todayStr) {
+      toast.error('Past dates are not allowed.', {
+        description: 'Please select a day on or after today for this exception item.',
+      });
+      return;
+    }
 
     onSubmit({
       item_type: itemType,
