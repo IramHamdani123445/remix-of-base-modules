@@ -124,6 +124,11 @@ function normalizeEnvelope(body: any): DryRunEnvelope {
   const ambiguous = has("ambiguous_outcome")
     ? !!b.ambiguous_outcome
     : (retrySafe === "UNKNOWN" && mutationStarted);
+  const cleanupProven: boolean | "UNKNOWN" =
+    isAuth ? true
+    : has("cleanup_proven") ? !!b.cleanup_proven
+    : (retrySafe === true && !ambiguous) ? true
+    : "UNKNOWN";
 
   return {
     status: b.status,
@@ -159,6 +164,7 @@ function normalizeEnvelope(body: any): DryRunEnvelope {
       : !!b.dry_run_execution_id,
     request_created: has("request_created") ? !!b.request_created : !!b.request_id,
     message_created: has("message_created") ? !!b.message_created : !!b.message_id,
+    cleanup_proven: cleanupProven,
     simulator_call_attempted: has("simulator_call_attempted")
       ? !!b.simulator_call_attempted
       : false,
@@ -172,6 +178,7 @@ function normalizeEnvelope(body: any): DryRunEnvelope {
     service_role_probe: b.service_role_probe ?? b.probe ?? null,
   };
 }
+
 
 /**
  * Invoke the canonical dry-run edge function. The server is authoritative;
