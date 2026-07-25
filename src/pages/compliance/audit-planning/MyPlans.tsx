@@ -566,6 +566,7 @@ export default function MyPlans() {
       {/* Phase 3 — Approved-plan revision flow */}
       <PlanRevisionDialog plan={revisionPlan} onClose={() => setRevisionPlan(null)} />
       <PlanVersionHistoryDialog plan={historyPlan} onClose={() => setHistoryPlan(null)} />
+      <AssignInspectorDialog plan={assignPlan} onClose={() => setAssignPlan(null)} />
     </div>
   );
 }
