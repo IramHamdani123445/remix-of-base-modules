@@ -80,6 +80,56 @@ const AUTH_CATALOGUE: Record<string, AuthErrorDetails> = {
       "We could not read your current session. No Dry Run was started.",
     fix: "Refresh the page. If the problem persists, sign in again.",
   },
+  OPERATOR_ACCESS_TOKEN_EXPIRED: {
+    ...SESSION_EXPIRED,
+    code: "OPERATOR_ACCESS_TOKEN_EXPIRED",
+    message: "The operator access token has expired. No Dry Run was started.",
+    fix: "Sign in again, then revalidate the selected Preview and approval.",
+  },
+  OPERATOR_TOKEN_TOO_CLOSE_TO_EXPIRY: {
+    ...SESSION_EXPIRED,
+    code: "OPERATOR_TOKEN_TOO_CLOSE_TO_EXPIRY",
+    title: "Session refresh required",
+    message: "The access token does not have the five minutes required for this action.",
+    fix: "Refresh the session before running the Dry Test.",
+  },
+  OPERATOR_REFRESH_REQUIRED: {
+    ...SESSION_EXPIRED,
+    code: "OPERATOR_REFRESH_REQUIRED",
+    title: "Session refresh required",
+  },
+  OPERATOR_REFRESH_FAILED: {
+    ...SESSION_EXPIRED,
+    code: "OPERATOR_REFRESH_FAILED",
+    title: "Session could not be refreshed",
+    message: "The refresh token could not restore an action-ready session.",
+    fix: "Sign in again.",
+  },
+  OPERATOR_JWT_NOT_PROPAGATED_TO_POSTGREST: {
+    ...SESSION_EXPIRED,
+    code: "OPERATOR_JWT_NOT_PROPAGATED_TO_POSTGREST",
+    title: "Platform JWT propagation fix required",
+    message: "The Auth server confirmed the operator, but the database request did not receive that identity.",
+    fix: "Do not retry the Dry Test. Platform support must repair JWT propagation.",
+    retrySafe: false,
+    severity: "high",
+  },
+  OPERATOR_IDENTITY_MISMATCH: {
+    ...SESSION_EXPIRED,
+    code: "OPERATOR_IDENTITY_MISMATCH",
+    title: "Operator identity mismatch",
+    message: "The authenticated account changed across the action boundary.",
+    fix: "Sign in again with the intended operator account.",
+  },
+  OPERATOR_AUTH_CLAIMS_MISSING: {
+    ...SESSION_EXPIRED,
+    code: "OPERATOR_AUTH_CLAIMS_MISSING",
+    title: "Operator claims missing",
+    message: "The database request did not contain authoritative operator claims.",
+    fix: "Do not retry the Dry Test. Platform support must repair the authentication boundary.",
+    retrySafe: false,
+    severity: "high",
+  },
 };
 
 export interface EnvelopeLike {

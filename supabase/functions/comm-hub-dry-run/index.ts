@@ -40,7 +40,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const EDGE_VERSION = "comm-hub-dry-run/v1.5.0-service-role-positive-probe";
+const EDGE_VERSION = "comm-hub-dry-run/v1.6.0-operator-jwt-continuity";
 const CONTRACT_VERSION = "comm-hub-dry-run-contract/v1";
 const EVALUATOR_VERSION = "comm-hub-dry-run-preflight/v1";
 
@@ -133,6 +133,33 @@ function preMutationEvidence(): Json {
     ambiguous_outcome: false,
     retry_safe: true,
   };
+}
+
+function decodeJwtPayload(token: string): Json | null {
+  try {
+    const part = token.split(".")[1];
+    if (!part) return null;
+    const normalized = part.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=")));
+  } catch {
+    return null;
+  }
+}
+
+/** Direct PostgREST transport that pins the exact verified operator JWT. */
+async function operatorRpc(token: string, functionName: string, body: Json = {}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${functionName}`, {
+    method: "POST",
+    headers: {
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  let data: unknown = null;
+  try { data = await response.json(); } catch { data = null; }
+  return { ok: response.ok, status: response.status, data };
 }
 
 function blockedResponse(
@@ -237,6 +264,40 @@ serve(async (req) => {
     );
   }
 
+  const jwt = decodeJwtPayload(accessToken);
+  const tokenExp = typeof jwt?.exp === "number" ? jwt.exp : Number(jwt?.exp ?? 0);
+  const tokenRemainingSeconds = tokenExp > 0
+    ? Math.max(0, Math.floor(tokenExp - Date.now() / 1000))
+    : null;
+  if (tokenRemainingSeconds !== null && tokenRemainingSeconds <= 0) {
+    return blockedResponse({
+      failure_stage: "AUTH",
+      blockers: [{ code: "OPERATOR_ACCESS_TOKEN_EXPIRED", stage: "AUTH" }],
+      retry_reason: "OPERATOR_REFRESH_REQUIRED",
+      auth_evidence: {
+        auth_stage: "EDGE_TOKEN_EXPIRY",
+        token_remaining_seconds: tokenRemainingSeconds,
+        auth_server_user_confirmed: false,
+        postgrest_actor_confirmed: false,
+        actor_match: false,
+      },
+    }, {}, 401);
+  }
+  if (tokenRemainingSeconds !== null && tokenRemainingSeconds < 300) {
+    return blockedResponse({
+      failure_stage: "AUTH",
+      blockers: [{ code: "OPERATOR_TOKEN_TOO_CLOSE_TO_EXPIRY", stage: "AUTH" }],
+      retry_reason: "OPERATOR_REFRESH_REQUIRED",
+      auth_evidence: {
+        auth_stage: "EDGE_TOKEN_EXPIRY",
+        token_remaining_seconds: tokenRemainingSeconds,
+        auth_server_user_confirmed: false,
+        postgrest_actor_confirmed: false,
+        actor_match: false,
+      },
+    }, {}, 401);
+  }
+
   let payload: Json = {};
   try {
     payload = ((await req.json()) as Json) ?? {};
@@ -332,8 +393,48 @@ serve(async (req) => {
     );
   }
 
+
+  // Prove the same operator identity reaches PostgREST before preflight.
+  const operatorProbeCall = await operatorRpc(accessToken, "probe_comm_hub_operator_identity");
+  const operatorProbe = (operatorProbeCall.data ?? {}) as any;
+  const postgrestActor = operatorProbe?.actor_id ?? null;
+  const authEvidence = {
+    auth_stage: "POSTGREST_OPERATOR_PROBE",
+    token_remaining_seconds: tokenRemainingSeconds,
+    auth_server_user_confirmed: true,
+    postgrest_actor_confirmed: Boolean(operatorProbeCall.ok && operatorProbe?.allowed && postgrestActor),
+    actor_match: postgrestActor === actualActorId,
+    actor_id: postgrestActor,
+    actor_source: operatorProbe?.actor_source ?? null,
+    resolved_role: operatorProbe?.resolved_role ?? null,
+    role_source: operatorProbe?.role_source ?? null,
+    claims_present: Boolean(operatorProbe?.claims_present),
+    token_expires_at: operatorProbe?.token_expires_at ?? null,
+  };
+  if (!operatorProbeCall.ok || !operatorProbe?.allowed || !postgrestActor) {
+    const code = operatorProbe?.claims_present === false
+      ? "OPERATOR_AUTH_CLAIMS_MISSING"
+      : "OPERATOR_JWT_NOT_PROPAGATED_TO_POSTGREST";
+    return blockedResponse({
+      failure_stage: "AUTH",
+      blockers: [{ code, stage: "POSTGREST_OPERATOR_PROBE" }],
+      retry_reason: "OPERATOR_JWT_PROPAGATION_FIX_REQUIRED",
+      retry_safe: false,
+      auth_evidence: authEvidence,
+    });
+  }
+  if (postgrestActor !== actualActorId) {
+    return blockedResponse({
+      failure_stage: "AUTH",
+      blockers: [{ code: "OPERATOR_IDENTITY_MISMATCH", stage: "POSTGREST_OPERATOR_PROBE" }],
+      retry_reason: "OPERATOR_REAUTHENTICATION_REQUIRED",
+      auth_evidence: authEvidence,
+    });
+  }
+
   // ---------- Step 1: pure preflight (owner of correlation) ---------------
-  const { data: preflightData, error: preflightErr } = await userClient.rpc(
+  const preflightCall = await operatorRpc(
+    accessToken,
     "inspect_comm_hub_dry_run_preflight",
     {
       p_preview_snapshot_id: previewSnapshotId,
@@ -343,6 +444,8 @@ serve(async (req) => {
       p_channel: channel,
     },
   );
+  const preflightData = preflightCall.data;
+  const preflightErr = preflightCall.ok ? null : preflightData as any;
   if (preflightErr) {
     return blockedResponse(
       {
@@ -371,6 +474,7 @@ serve(async (req) => {
     return json(200, {
       ...preflight,
       edge_version: EDGE_VERSION,
+      auth_evidence: authEvidence,
       failure_stage: preflight?.failure_stage ?? "PREFLIGHT",
       // Ensure retry contract is truthful and pre-mutation.
       ...preMutationEvidence(),
@@ -428,6 +532,7 @@ serve(async (req) => {
         process_allowlist_match: Boolean(probe.process_allowlist_match),
         certify_allowlist_match: Boolean(probe.certify_allowlist_match),
       },
+      auth_evidence: authEvidence,
       blockers: [
         {
           code: "SERVICE_ROLE_REQUIRED",
@@ -463,10 +568,13 @@ serve(async (req) => {
     beginPayload["expected_recipient_set_hash"] = expectedRecipientSetHash;
   }
 
-  const { data: beginData, error: beginErr } = await userClient.rpc(
+  const beginCall = await operatorRpc(
+    accessToken,
     "begin_comm_hub_dry_run_v1",
     { p_payload: beginPayload },
   );
+  const beginData = beginCall.data;
+  const beginErr = beginCall.ok ? null : beginData as any;
   if (beginErr) {
     return blockedResponse(
       {
@@ -499,6 +607,8 @@ serve(async (req) => {
     return json(200, {
       ...begin,
       edge_version: EDGE_VERSION,
+      auth_evidence: authEvidence,
+      service_role_probe: probeData,
       failure_stage: begin?.failure_stage ?? "BEGIN",
     });
   }
@@ -525,25 +635,36 @@ serve(async (req) => {
   }
   if (beginCorrelation !== authoritativeCorrelation) {
     // Server must never disagree with itself. Refuse to proceed.
-    return blockedResponse(
-      {
-        failure_stage: "CORRELATION",
-        preview_snapshot_id: previewSnapshotId ?? null,
-        preview_approval_id: previewApprovalId ?? null,
-        correlation_id: authoritativeCorrelation,
-        blockers: [
-          {
-            code: "CORRELATION_ID_MISMATCH",
-            stage: "CORRELATION",
-            message:
-              "begin_comm_hub_dry_run_v1 returned a correlation that does not match preflight.",
-          },
-        ],
-        retry_reason: "PRE_MUTATION_CORRELATION_MISMATCH",
-      },
-      {},
-      200,
-    );
+    return json(200, {
+      contract_version: CONTRACT_VERSION,
+      edge_version: EDGE_VERSION,
+      status: "BLOCKED",
+      state: "BLOCKED",
+      failure_stage: "CORRELATION",
+      preview_snapshot_id: previewSnapshotId ?? null,
+      preview_approval_id: previewApprovalId ?? null,
+      correlation_id: authoritativeCorrelation,
+      dry_run_execution_id: executionId,
+      request_id: beginRequestId,
+      message_id: beginMessageId,
+      auth_evidence: authEvidence,
+      service_role_probe: probeData,
+      blockers: [{
+        code: "CORRELATION_ID_MISMATCH",
+        stage: "CORRELATION",
+        message: "begin_comm_hub_dry_run_v1 returned a correlation that does not match preflight.",
+      }],
+      mutation_started: true,
+      execution_created: true,
+      request_created: Boolean(beginRequestId),
+      message_created: Boolean(beginMessageId),
+      cleanup_proven: false,
+      provider_call_attempted: false,
+      simulator_call_attempted: false,
+      ambiguous_outcome: false,
+      retry_safe: false,
+      retry_reason: "POST_BEGIN_CORRELATION_MISMATCH",
+    });
   }
 
   // ---------- Step 3: process (service role) ------------------------------
@@ -568,6 +689,8 @@ serve(async (req) => {
       trace_id: beginTraceId,
       preview_snapshot_id: previewSnapshotId ?? null,
       preview_approval_id: previewApprovalId ?? null,
+      auth_evidence: authEvidence,
+      service_role_probe: probeData,
       blockers: [
         {
           code: "PROCESS_DRY_RUN_ERROR",
@@ -610,6 +733,8 @@ serve(async (req) => {
       trace_id: proc?.trace_id ?? beginTraceId,
       preview_snapshot_id: previewSnapshotId ?? null,
       preview_approval_id: previewApprovalId ?? null,
+      auth_evidence: authEvidence,
+      service_role_probe: probeData,
       resolved_role: proc?.resolved_role ?? null,
       role_source: proc?.role_source ?? null,
       blockers: toBlockers(proc?.blockers ?? []),
@@ -653,6 +778,8 @@ serve(async (req) => {
       trace_id: proc?.trace_id ?? null,
       preview_snapshot_id: previewSnapshotId ?? null,
       preview_approval_id: previewApprovalId ?? null,
+      auth_evidence: authEvidence,
+      service_role_probe: probeData,
       blockers: [
         {
           code: "CERTIFY_DRY_RUN_ERROR",
@@ -690,6 +817,8 @@ serve(async (req) => {
       trace_id: proc?.trace_id ?? null,
       preview_snapshot_id: previewSnapshotId ?? null,
       preview_approval_id: previewApprovalId ?? null,
+      auth_evidence: authEvidence,
+      service_role_probe: probeData,
       blockers: toBlockers(
         cert?.blockers ?? [{ code: "CERTIFICATION_NOT_ISSUED" }],
       ),
@@ -714,6 +843,11 @@ serve(async (req) => {
     trace_id: proc?.trace_id ?? null,
     preview_snapshot_id: previewSnapshotId ?? null,
     preview_approval_id: previewApprovalId ?? null,
+    auth_evidence: {
+      ...authEvidence,
+      continuity_proof: "PHASE_4B3_OPERATOR_JWT_CONTINUITY_PROVEN",
+    },
+    service_role_probe: probeData,
     idempotent_replay: Boolean(
       proc?.idempotent_replay ??
         begin?.idempotent_replay ??

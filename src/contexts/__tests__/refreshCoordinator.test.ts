@@ -44,6 +44,17 @@ describe('refreshCoordinator', () => {
     expect(refreshSessionMock).not.toHaveBeenCalled();
   });
 
+  it('force refresh never returns the accepted old token', async () => {
+    const oldSession = okSession();
+    const newSession = { ...okSession(), access_token: 'new-token' };
+    getSessionMock.mockResolvedValueOnce({ data: { session: oldSession }, error: null });
+    getUserMock.mockResolvedValueOnce({ data: { user: oldSession.user }, error: null });
+    refreshSessionMock.mockResolvedValueOnce({ data: { session: newSession }, error: null });
+    const result = await runRefreshOnce({ forceRefresh: true });
+    expect(result.session?.access_token).toBe('new-token');
+    expect(refreshSessionMock).toHaveBeenCalledTimes(1);
+  });
+
   it('single caller — one refresh request produces one supabase call', async () => {
     refreshSessionMock.mockResolvedValueOnce({ data: { session: okSession() }, error: null });
     const result = await runRefreshOnce();

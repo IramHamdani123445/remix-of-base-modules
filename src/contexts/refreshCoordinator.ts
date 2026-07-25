@@ -11,7 +11,7 @@
  *   - Errors are surfaced (no silent swallow).
  */
 import { supabase } from '@/integrations/supabase/client';
-import { getPersistedSessionSnapshot } from '@/platform/communication-hub/authSession';
+import { getPersistedSessionSnapshot } from '@/contexts/authStorage';
 import type { Session } from '@supabase/supabase-js';
 
 export interface RefreshResult {
@@ -24,7 +24,7 @@ export interface RefreshResult {
 
 let inflight: Promise<RefreshResult> | null = null;
 
-async function performRefresh(): Promise<RefreshResult> {
+async function performRefresh(forceRefresh: boolean): Promise<RefreshResult> {
   try {
     // Never refresh destructively while the Auth server still accepts the
     // current access token. In restored tabs/preview iframes the refresh token
@@ -35,7 +35,7 @@ async function performRefresh(): Promise<RefreshResult> {
       const current = await supabase.auth.getSession();
       currentSession = current.data.session;
     }
-    if (currentSession?.access_token) {
+    if (!forceRefresh && currentSession?.access_token) {
       const validated = await supabase.auth.getUser(currentSession.access_token);
       if (!validated.error && validated.data.user) {
         return { session: currentSession };
@@ -66,9 +66,9 @@ async function performRefresh(): Promise<RefreshResult> {
  * @param generation caller's captured auth generation; caller must re-check
  *                   it against the current generation before applying results.
  */
-export function runRefreshOnce(): Promise<RefreshResult> {
+export function runRefreshOnce(options: { forceRefresh?: boolean } = {}): Promise<RefreshResult> {
   if (inflight) return inflight;
-  inflight = performRefresh().finally(() => {
+  inflight = performRefresh(options.forceRefresh === true).finally(() => {
     inflight = null;
   });
   return inflight;
