@@ -39563,9 +39563,11 @@ export type Database = {
           provider_invocation_key: string | null
           provider_invocation_started_at: string | null
           provider_message_id: string | null
+          provider_mode: string | null
           provider_name: string | null
           provider_response_safe: Json | null
           provider_status: string | null
+          real_email_authorised: boolean
           reason: string
           recipient: string
           recipient_policy_version: number | null
@@ -39576,6 +39578,7 @@ export type Database = {
             | Database["public"]["Enums"]["communication_operating_mode"]
             | null
           scope_hash: string
+          send_context: string
           started_at: string
           state: Database["public"]["Enums"]["communication_controlled_live_state"]
           trace_id: string | null
@@ -39617,9 +39620,11 @@ export type Database = {
           provider_invocation_key?: string | null
           provider_invocation_started_at?: string | null
           provider_message_id?: string | null
+          provider_mode?: string | null
           provider_name?: string | null
           provider_response_safe?: Json | null
           provider_status?: string | null
+          real_email_authorised?: boolean
           reason: string
           recipient: string
           recipient_policy_version?: number | null
@@ -39630,6 +39635,7 @@ export type Database = {
             | Database["public"]["Enums"]["communication_operating_mode"]
             | null
           scope_hash: string
+          send_context?: string
           started_at?: string
           state?: Database["public"]["Enums"]["communication_controlled_live_state"]
           trace_id?: string | null
@@ -39671,9 +39677,11 @@ export type Database = {
           provider_invocation_key?: string | null
           provider_invocation_started_at?: string | null
           provider_message_id?: string | null
+          provider_mode?: string | null
           provider_name?: string | null
           provider_response_safe?: Json | null
           provider_status?: string | null
+          real_email_authorised?: boolean
           reason?: string
           recipient?: string
           recipient_policy_version?: number | null
@@ -39684,6 +39692,7 @@ export type Database = {
             | Database["public"]["Enums"]["communication_operating_mode"]
             | null
           scope_hash?: string
+          send_context?: string
           started_at?: string
           state?: Database["public"]["Enums"]["communication_controlled_live_state"]
           trace_id?: string | null
@@ -39714,6 +39723,7 @@ export type Database = {
           revocation_reason: string | null
           revoked_at: string | null
           scope_hash: string
+          send_context: string
           status: Database["public"]["Enums"]["communication_controlled_live_grant_status"]
           updated_at: string
         }
@@ -39738,6 +39748,7 @@ export type Database = {
           revocation_reason?: string | null
           revoked_at?: string | null
           scope_hash: string
+          send_context?: string
           status?: Database["public"]["Enums"]["communication_controlled_live_grant_status"]
           updated_at?: string
         }
@@ -39762,6 +39773,7 @@ export type Database = {
           revocation_reason?: string | null
           revoked_at?: string | null
           scope_hash?: string
+          send_context?: string
           status?: Database["public"]["Enums"]["communication_controlled_live_grant_status"]
           updated_at?: string
         }
@@ -40216,6 +40228,114 @@ export type Database = {
           },
         ]
       }
+      communication_hub_automation_readiness: {
+        Row: {
+          alerting_monitoring_checked_at: string | null
+          alerting_monitoring_checked_by: string | null
+          alerting_monitoring_ok: boolean
+          automatic_triggers_checked_at: string | null
+          automatic_triggers_checked_by: string | null
+          automatic_triggers_ok: boolean
+          batch_limits_checked_at: string | null
+          batch_limits_checked_by: string | null
+          batch_limits_ok: boolean
+          channel: string
+          created_at: string
+          dead_letter_checked_at: string | null
+          dead_letter_checked_by: string | null
+          dead_letter_ok: boolean
+          emergency_stop_checked_at: string | null
+          emergency_stop_checked_by: string | null
+          emergency_stop_ok: boolean
+          event_code: string
+          id: string
+          module_code: string
+          provider_circuit_breaker_checked_at: string | null
+          provider_circuit_breaker_checked_by: string | null
+          provider_circuit_breaker_ok: boolean
+          rate_limits_checked_at: string | null
+          rate_limits_checked_by: string | null
+          rate_limits_ok: boolean
+          retry_worker_checked_at: string | null
+          retry_worker_checked_by: string | null
+          retry_worker_ok: boolean
+          scheduler_checked_at: string | null
+          scheduler_checked_by: string | null
+          scheduler_ok: boolean
+          updated_at: string
+        }
+        Insert: {
+          alerting_monitoring_checked_at?: string | null
+          alerting_monitoring_checked_by?: string | null
+          alerting_monitoring_ok?: boolean
+          automatic_triggers_checked_at?: string | null
+          automatic_triggers_checked_by?: string | null
+          automatic_triggers_ok?: boolean
+          batch_limits_checked_at?: string | null
+          batch_limits_checked_by?: string | null
+          batch_limits_ok?: boolean
+          channel?: string
+          created_at?: string
+          dead_letter_checked_at?: string | null
+          dead_letter_checked_by?: string | null
+          dead_letter_ok?: boolean
+          emergency_stop_checked_at?: string | null
+          emergency_stop_checked_by?: string | null
+          emergency_stop_ok?: boolean
+          event_code: string
+          id?: string
+          module_code: string
+          provider_circuit_breaker_checked_at?: string | null
+          provider_circuit_breaker_checked_by?: string | null
+          provider_circuit_breaker_ok?: boolean
+          rate_limits_checked_at?: string | null
+          rate_limits_checked_by?: string | null
+          rate_limits_ok?: boolean
+          retry_worker_checked_at?: string | null
+          retry_worker_checked_by?: string | null
+          retry_worker_ok?: boolean
+          scheduler_checked_at?: string | null
+          scheduler_checked_by?: string | null
+          scheduler_ok?: boolean
+          updated_at?: string
+        }
+        Update: {
+          alerting_monitoring_checked_at?: string | null
+          alerting_monitoring_checked_by?: string | null
+          alerting_monitoring_ok?: boolean
+          automatic_triggers_checked_at?: string | null
+          automatic_triggers_checked_by?: string | null
+          automatic_triggers_ok?: boolean
+          batch_limits_checked_at?: string | null
+          batch_limits_checked_by?: string | null
+          batch_limits_ok?: boolean
+          channel?: string
+          created_at?: string
+          dead_letter_checked_at?: string | null
+          dead_letter_checked_by?: string | null
+          dead_letter_ok?: boolean
+          emergency_stop_checked_at?: string | null
+          emergency_stop_checked_by?: string | null
+          emergency_stop_ok?: boolean
+          event_code?: string
+          id?: string
+          module_code?: string
+          provider_circuit_breaker_checked_at?: string | null
+          provider_circuit_breaker_checked_by?: string | null
+          provider_circuit_breaker_ok?: boolean
+          rate_limits_checked_at?: string | null
+          rate_limits_checked_by?: string | null
+          rate_limits_ok?: boolean
+          retry_worker_checked_at?: string | null
+          retry_worker_checked_by?: string | null
+          retry_worker_ok?: boolean
+          scheduler_checked_at?: string | null
+          scheduler_checked_by?: string | null
+          scheduler_ok?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       communication_hub_control_audit: {
         Row: {
           changed_at: string
@@ -40447,6 +40567,99 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_communication_message_full"
             referencedColumns: ["message_id"]
+          },
+        ]
+      }
+      communication_hub_event_certification: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          automation_certified_at: string | null
+          automation_certified_by: string | null
+          channel: string
+          configuration_version: number | null
+          controlled_stub_certification_id: string
+          created_at: string
+          drift_detected_at: string | null
+          drift_reason: string | null
+          event_code: string
+          id: string
+          module_code: string
+          one_real_email_certification_id: string
+          reason: string
+          recipient_policy_version: number | null
+          recipient_set_hash: string | null
+          sender_profile_id: string | null
+          status: string
+          suspended_at: string | null
+          template_manifest_hash: string | null
+          template_version_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          automation_certified_at?: string | null
+          automation_certified_by?: string | null
+          channel?: string
+          configuration_version?: number | null
+          controlled_stub_certification_id: string
+          created_at?: string
+          drift_detected_at?: string | null
+          drift_reason?: string | null
+          event_code: string
+          id?: string
+          module_code: string
+          one_real_email_certification_id: string
+          reason: string
+          recipient_policy_version?: number | null
+          recipient_set_hash?: string | null
+          sender_profile_id?: string | null
+          status: string
+          suspended_at?: string | null
+          template_manifest_hash?: string | null
+          template_version_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          automation_certified_at?: string | null
+          automation_certified_by?: string | null
+          channel?: string
+          configuration_version?: number | null
+          controlled_stub_certification_id?: string
+          created_at?: string
+          drift_detected_at?: string | null
+          drift_reason?: string | null
+          event_code?: string
+          id?: string
+          module_code?: string
+          one_real_email_certification_id?: string
+          reason?: string
+          recipient_policy_version?: number | null
+          recipient_set_hash?: string | null
+          sender_profile_id?: string | null
+          status?: string
+          suspended_at?: string | null
+          template_manifest_hash?: string | null
+          template_version_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_hub_event_certi_controlled_stub_certificatio_fkey"
+            columns: ["controlled_stub_certification_id"]
+            isOneToOne: false
+            referencedRelation: "communication_controlled_live_certification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_hub_event_certi_one_real_email_certification_fkey"
+            columns: ["one_real_email_certification_id"]
+            isOneToOne: false
+            referencedRelation: "communication_controlled_live_certification"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -41209,6 +41422,51 @@ export type Database = {
             | null
           reason?: string | null
           settings_snapshot?: Json
+        }
+        Relationships: []
+      }
+      communication_hub_real_email_gate: {
+        Row: {
+          channel: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          enabled: boolean
+          event_code: string
+          id: string
+          module_code: string
+          opened_at: string | null
+          opened_by: string | null
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          enabled?: boolean
+          event_code: string
+          id?: string
+          module_code: string
+          opened_at?: string | null
+          opened_by?: string | null
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          enabled?: boolean
+          event_code?: string
+          id?: string
+          module_code?: string
+          opened_at?: string | null
+          opened_by?: string | null
+          reason?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -95141,6 +95399,7 @@ export type Database = {
           revocation_reason: string | null
           revoked_at: string | null
           scope_hash: string
+          send_context: string
           status: Database["public"]["Enums"]["communication_controlled_live_grant_status"]
           updated_at: string
         }
@@ -95278,6 +95537,10 @@ export type Database = {
       }
       begin_comm_hub_dry_run: { Args: { p_payload: Json }; Returns: Json }
       begin_comm_hub_dry_run_v1: { Args: { p_payload: Json }; Returns: Json }
+      begin_comm_hub_one_real_email: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
       bn_actor_has_capability: {
         Args: { p_capability: string; p_user_id: string }
         Returns: boolean
@@ -95979,6 +96242,14 @@ export type Database = {
         Args: { p_execution_id: string }
         Returns: Json
       }
+      certify_comm_hub_event_automated_production: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
+      certify_comm_hub_event_manual_production: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
       certify_comm_hub_template_version: {
         Args: { p_template_version_id: string }
         Returns: Json
@@ -96407,6 +96678,19 @@ export type Database = {
           p_operator: string
           p_preview_approval: string
           p_recipient_hash: string
+        }
+        Returns: string
+      }
+      comm_hub_controlled_live_scope_hash_v2: {
+        Args: {
+          p_channel: string
+          p_dryrun_cert: string
+          p_event: string
+          p_module: string
+          p_operator: string
+          p_preview_approval: string
+          p_recipient_hash: string
+          p_send_context: string
         }
         Returns: string
       }
@@ -97392,6 +97676,10 @@ export type Database = {
         Returns: Json
       }
       finalize_comm_hub_dry_run: { Args: { p_payload: Json }; Returns: Json }
+      finalize_comm_hub_one_real_email: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
       find_eligible_approver: {
         Args: {
           _exclude_users?: string[]
@@ -97829,9 +98117,11 @@ export type Database = {
           provider_invocation_key: string | null
           provider_invocation_started_at: string | null
           provider_message_id: string | null
+          provider_mode: string | null
           provider_name: string | null
           provider_response_safe: Json | null
           provider_status: string | null
+          real_email_authorised: boolean
           reason: string
           recipient: string
           recipient_policy_version: number | null
@@ -97842,6 +98132,7 @@ export type Database = {
             | Database["public"]["Enums"]["communication_operating_mode"]
             | null
           scope_hash: string
+          send_context: string
           started_at: string
           state: Database["public"]["Enums"]["communication_controlled_live_state"]
           trace_id: string | null
@@ -98090,9 +98381,11 @@ export type Database = {
           provider_invocation_key: string | null
           provider_invocation_started_at: string | null
           provider_message_id: string | null
+          provider_mode: string | null
           provider_name: string | null
           provider_response_safe: Json | null
           provider_status: string | null
+          real_email_authorised: boolean
           reason: string
           recipient: string
           recipient_policy_version: number | null
@@ -98103,6 +98396,7 @@ export type Database = {
             | Database["public"]["Enums"]["communication_operating_mode"]
             | null
           scope_hash: string
+          send_context: string
           started_at: string
           state: Database["public"]["Enums"]["communication_controlled_live_state"]
           trace_id: string | null
@@ -99155,6 +99449,16 @@ export type Database = {
         }
         Returns: Json
       }
+      record_comm_hub_automation_readiness_check: {
+        Args: {
+          p_channel: string
+          p_check: string
+          p_event: string
+          p_module: string
+          p_ok: boolean
+        }
+        Returns: Json
+      }
       record_comm_hub_controlled_live_provider_attempt: {
         Args: {
           p_execution_id: string
@@ -99469,6 +99773,10 @@ export type Database = {
         Returns: Json
       }
       revoke_expired_head_cashier: { Args: never; Returns: undefined }
+      rollback_comm_hub_event_production: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
       run_ch_p3_recipient_policy_runtime_tests: { Args: never; Returns: Json }
       run_ch_p3b_r_runtime_tests: { Args: never; Returns: Json }
       run_ch_p3d_b2c_runtime_tests: { Args: never; Returns: Json }
@@ -99527,6 +99835,16 @@ export type Database = {
           p_setting_key: string
           p_setting_value: string
           p_typed_confirmation: string
+        }
+        Returns: Json
+      }
+      set_comm_hub_real_email_gate: {
+        Args: {
+          p_channel: string
+          p_enabled: boolean
+          p_event: string
+          p_module: string
+          p_reason: string
         }
         Returns: Json
       }
@@ -99629,6 +99947,15 @@ export type Database = {
         | { Args: { p_temp_regno: string }; Returns: Json }
         | { Args: { p_temp_regno: string; p_user_id?: string }; Returns: Json }
       submit_ip_registration: { Args: { p_unique_uuid: string }; Returns: Json }
+      suspend_comm_hub_event_certification_on_drift: {
+        Args: {
+          p_channel: string
+          p_event: string
+          p_module: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       test_data_policy: {
         Args: { _action: string; _module_name: string; _test_user_id: string }
         Returns: Json
