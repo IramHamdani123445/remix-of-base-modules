@@ -2528,7 +2528,7 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
     env.provider_call_attempted = true;
     env.status = "DELIVERY_PENDING";
     env.warnings.push({ code: "provider_outcome_unconfirmed" });
-    await admin.from("communication_delivery_attempt").update({
+    const { error: ambEvidenceErr } = await admin.from("communication_delivery_attempt").update({
       provider_call_attempted: true,
       provider_status: "DELIVERY_PENDING",
       provider_response_safe: { error: "provider_exception" },
@@ -2545,6 +2545,20 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
       p_provider_response_safe: { error: "provider_exception" },
       p_warnings: [{ code: "provider_outcome_unconfirmed", message: String(e?.message ?? e).slice(0, 200) }],
     });
+    if (ambEvidenceErr) {
+      // Evidence write failed AFTER provider was invoked — ambiguous.
+      // Do NOT consume the grant; require manual reconciliation.
+      env.blockers.push({
+        code: "provider_evidence_persist_failed",
+        stage: "provider_evidence",
+        message: String(ambEvidenceErr.message).slice(0, 240),
+      });
+      (env as any).requires_new_execution = true;
+      (env as any).requires_new_grant = true;
+      (env as any).retry_safe = false;
+      (env as any).reconciliation_required = true;
+      return json(env, 200);
+    }
     const { data: consumeAmbRaw } = await admin.rpc("consume_comm_hub_controlled_live_grant", {
       p_grant_id: grantId,
       p_execution_id: executionId,
