@@ -145,8 +145,29 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
 
   const [certification, setCertification] =
     useState<ControlledLiveCertification | null>(null);
+  const [certLoading, setCertLoading] = useState(false);
+  const [certError, setCertError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyNote, setVerifyNote] = useState("");
+
+  async function loadCertification(certId: string) {
+    setCertLoading(true);
+    setCertError(null);
+    try {
+      const cert = await getControlledLiveCertification(certId);
+      setCertification(cert);
+      if (!cert) {
+        setCertError(
+          `Certification ${certId} was created by the server but could not be read back. Verify your role has access.`,
+        );
+      }
+    } catch (e: any) {
+      setCertError(e?.message ?? "Failed to load certification record.");
+    } finally {
+      setCertLoading(false);
+    }
+  }
+
 
   useEffect(() => {
     let mounted = true;
@@ -311,15 +332,10 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
       const authMsg = resolveAuthErrorMessage(r as any);
       if (authMsg) toast.error(authMsg);
 
-      // If the orchestrator recorded a certification, load it.
+      // If the orchestrator recorded a certification, load it (surface errors).
       const certId = (r as any).certification_id ?? (r as any).certificationId ?? null;
       if (certId) {
-        try {
-          const cert = await getControlledLiveCertification(certId);
-          setCertification(cert);
-        } catch {
-          // best-effort read
-        }
+        await loadCertification(certId);
       }
     } catch (e: any) {
       const authMsg = resolveAuthErrorMessage(e);
@@ -336,11 +352,13 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
     idempotencyRef.current = mintIdempotencyKey();
     setResult(null);
     setCertification(null);
+    setCertError(null);
     setConfirmationPhrase("");
     setAcknowledged(false);
     setReason("");
     setPhase("idle");
   }
+
 
   const ambiguous = result?.status === "DELIVERY_PENDING";
   const resetBlocked =
@@ -563,17 +581,49 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
       {/* E. Result */}
       {phase === "final" && result && <FinalResult result={result} />}
 
+      {/* E.1 Stub-run notice — a stub is a simulator, no real email is sent. */}
+      {phase === "final" &&
+        result &&
+        result.providerMode === "stub" &&
+        (result.status === "PROVIDER_ACCEPTED" ||
+          result.status === "DELIVERED" ||
+          result.status === "DELIVERY_PENDING") && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Controlled Stub completed successfully</AlertTitle>
+            <AlertDescription>
+              This was a simulation; no real email was sent and inbox
+              verification is not required.
+            </AlertDescription>
+          </Alert>
+        )}
+
       {/* F. Evidence + Manual verification */}
       {phase === "final" && result && (
         <EvidenceCard
           result={result}
           certification={certification}
+          certLoading={certLoading}
+          certError={certError}
+          onRetryCertLoad={() => {
+            const certId =
+              (result as any).certification_id ??
+              (result as any).certificationId ??
+              null;
+            if (certId) loadCertification(certId);
+          }}
           technicalOpen={technicalOpen}
           setTechnicalOpen={setTechnicalOpen}
         />
       )}
+
+      {/* Manual inbox verification — ONLY for real-provider sends that were
+          authorised and accepted. Stub simulations must never show this. */}
       {phase === "final" &&
         result &&
+        result.action === "SEND_ONE_REAL_EMAIL" &&
+        result.providerMode === "real" &&
+        result.realEmailAuthorised === true &&
         (result.status === "PROVIDER_ACCEPTED" ||
           result.status === "DELIVERY_PENDING") && (
           <ManualVerificationCard
@@ -616,6 +666,7 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
     </div>
   );
 }
+
 
 function FinalResult({ result }: { result: ControlledLiveTestResult }) {
   const s = result.status;
@@ -697,14 +748,28 @@ function FinalResult({ result }: { result: ControlledLiveTestResult }) {
 function EvidenceCard({
   result,
   certification,
+  certLoading,
+  certError,
+  onRetryCertLoad,
   technicalOpen,
   setTechnicalOpen,
 }: {
   result: ControlledLiveTestResult;
   certification: ControlledLiveCertification | null;
+  certLoading: boolean;
+  certError: string | null;
+  onRetryCertLoad: () => void;
   technicalOpen: boolean;
   setTechnicalOpen: (v: boolean) => void;
 }) {
+  const resultCertId =
+    (result as any).certification_id ??
+    (result as any).certificationId ??
+    null;
+  const resultCertStatus =
+    (result as any).certification_status ??
+    (result as any).certificationStatus ??
+    null;
   return (
     <div className="rounded-md border p-3 space-y-2">
       <div className="text-sm font-medium">Operator evidence</div>
@@ -744,13 +809,16 @@ function EvidenceCard({
         <Row label="Started at" value={result.startedAt} />
         <Row label="Completed at" value={result.completedAt} />
         <Row label="Retry-safe" value={result.retrySafe ? "Yes" : "No"} />
+        {/* Server-issued certification evidence — show immediately from
+            the result, even before the detailed RPC read completes. */}
+        {resultCertId && (
+          <Row label="Certification ID" value={resultCertId} mono />
+        )}
+        {resultCertStatus && (
+          <Row label="Certification status (from result)" value={resultCertStatus} />
+        )}
         {certification && (
           <>
-            <Row
-              label="Certification ID"
-              value={certification.id}
-              mono
-            />
             <Row label="Certification status" value={certification.status} />
             <Row
               label="Manual verification"
@@ -759,6 +827,29 @@ function EvidenceCard({
           </>
         )}
       </dl>
+      {resultCertId && certLoading && (
+        <div className="text-xs text-muted-foreground">
+          Loading certification record…
+        </div>
+      )}
+      {certError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Certification load failed</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <div>{certError}</div>
+            {resultCertId && (
+              <div className="font-mono text-xs break-all">
+                certification_id: {resultCertId}
+              </div>
+            )}
+            <Button size="sm" variant="outline" onClick={onRetryCertLoad}>
+              Retry certification load
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Collapsible open={technicalOpen} onOpenChange={setTechnicalOpen}>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="mt-2">
