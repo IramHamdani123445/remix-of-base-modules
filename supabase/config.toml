@@ -43,3 +43,5 @@ project_id = "xynceskeiiisiefqlgxo"
     verify_jwt = true
   [functions.comm-hub-controlled-live-test]
     verify_jwt = true
+  [functions.comm-hub-send-one-real-email]
+    verify_jwt = true

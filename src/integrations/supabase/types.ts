@@ -96802,6 +96802,14 @@ export type Database = {
             }
             Returns: Json
           }
+      consume_comm_hub_one_real_email_grant: {
+        Args: {
+          p_execution_id: string
+          p_grant_id: string
+          p_message_id: string
+        }
+        Returns: Json
+      }
       consume_comm_hub_preview_approval: {
         Args: { p_payload: Json }
         Returns: Json
@@ -97347,6 +97355,10 @@ export type Database = {
         Returns: Json
       }
       create_comm_hub_controlled_stub_message: {
+        Args: { p_execution_id: string; p_grant_id: string }
+        Returns: Json
+      }
+      create_comm_hub_one_real_email_message: {
         Args: { p_execution_id: string; p_grant_id: string }
         Returns: Json
       }
@@ -99449,6 +99461,10 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_comm_hub_one_real_email_pre_provider: {
+        Args: { p_execution_id: string; p_grant_id: string; p_reason: string }
+        Returns: Json
+      }
       record_comm_hub_automation_readiness_check: {
         Args: {
           p_channel: string
@@ -99608,6 +99624,10 @@ export type Database = {
             Returns: Json
           }
         | { Args: { p_grant_id: string; p_reserved_by: string }; Returns: Json }
+      reserve_comm_hub_one_real_email_grant: {
+        Args: { p_execution_id: string; p_grant_id: string }
+        Returns: Json
+      }
       reserve_comm_hub_preview_approval: {
         Args: { p_payload: Json }
         Returns: Json
@@ -99766,6 +99786,10 @@ export type Database = {
           }
       revoke_comm_hub_dry_run_certification: {
         Args: { p_payload: Json }
+        Returns: Json
+      }
+      revoke_comm_hub_one_real_email_grant: {
+        Args: { p_execution_id: string; p_grant_id: string; p_reason: string }
         Returns: Json
       }
       revoke_comm_hub_preview_approval: {
