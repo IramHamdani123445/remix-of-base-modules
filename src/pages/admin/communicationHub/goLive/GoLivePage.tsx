@@ -1086,6 +1086,7 @@ export default function GoLivePage() {
               stage6ManualVerificationStatus: "DELIVERY_CONFIRMED_MANUALLY",
             }))
           }
+          onReloadContext={() => setStage6ContextReloadNonce((n) => n + 1)}
         />
       </CommunicationHubSectionCard>
 
