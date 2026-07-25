@@ -652,7 +652,14 @@ export function OneRealEmailPanel({
         eventCode={lineage.eventCode}
         channel={lineage.channel}
         currentlyEnabled={!!gate?.enabled}
-        onChanged={(next) => setGate(next)}
+        onChanged={(next) => {
+          // 1) trust the authoritative gate row returned by the RPC
+          setGate(next);
+          // 2) refresh authoritative sources so downstream checks re-evaluate
+          void reloadGate();
+          void reloadReadiness();
+          onReloadContext?.();
+        }}
       />
     </div>
   );
