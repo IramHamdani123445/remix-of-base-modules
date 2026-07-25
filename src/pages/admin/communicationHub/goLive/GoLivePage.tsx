@@ -109,6 +109,21 @@ interface GoLiveSession {
   controlledLiveProviderCallAttempted: boolean;
   controlledLiveCleanupSucceeded: boolean | null;
   controlledLiveFinalOperatingMode: string | null;
+  // Stage 6 (Send One Real Email) evidence — kept strictly separate from
+  // Controlled-Stub evidence. Stage 5 fields above are never overwritten.
+  stage6ExecutionId: string | null;
+  stage6CertificationId: string | null;
+  stage6Status: string | null;
+  stage6ProviderCallAttempted: boolean;
+  stage6ProviderStatus: string | null;
+  stage6ProviderMessageId: string | null;
+  stage6DeliveryAttemptId: string | null;
+  stage6TraceId: string | null;
+  stage6RetrySafe: boolean | null;
+  stage6ReconciliationRequired: boolean | null;
+  stage6CleanupProven: boolean | null;
+  stage6ManualVerificationStatus: string | null;
+  stage6CompletedAt: string | null;
 }
 
 const EMPTY_SESSION: GoLiveSession = {
@@ -128,6 +143,19 @@ const EMPTY_SESSION: GoLiveSession = {
   controlledLiveProviderCallAttempted: false,
   controlledLiveCleanupSucceeded: null,
   controlledLiveFinalOperatingMode: null,
+  stage6ExecutionId: null,
+  stage6CertificationId: null,
+  stage6Status: null,
+  stage6ProviderCallAttempted: false,
+  stage6ProviderStatus: null,
+  stage6ProviderMessageId: null,
+  stage6DeliveryAttemptId: null,
+  stage6TraceId: null,
+  stage6RetrySafe: null,
+  stage6ReconciliationRequired: null,
+  stage6CleanupProven: null,
+  stage6ManualVerificationStatus: null,
+  stage6CompletedAt: null,
 };
 
 /** Map server-side fix hints to concrete admin routes (kept explicit; no
@@ -931,6 +959,57 @@ export default function GoLivePage() {
         <OneRealEmailPanel
           controlledStubCertified={controlledLiveDone}
           lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
+          lineage={
+            controlledLiveDone &&
+            session.moduleCode &&
+            session.eventCode &&
+            session.previewApprovalId &&
+            session.dryRunCertificationId &&
+            session.controlledLiveCertificationId &&
+            resolvedRecipient
+              ? {
+                  moduleCode: session.moduleCode,
+                  eventCode: session.eventCode,
+                  channel: session.channel,
+                  previewSnapshotId: session.previewSnapshotId,
+                  previewApprovalId: session.previewApprovalId,
+                  dryRunCertificationId: session.dryRunCertificationId,
+                  controlledStubCertificationId: session.controlledLiveCertificationId,
+                  // Hash/versions are resolved server-side from the certified
+                  // lineage; the panel forwards them opaquely.
+                  recipientSetHash: "",
+                  configurationVersion: null,
+                  recipientPolicyVersion: null,
+                  recipient: resolvedRecipient,
+                  senderName: null,
+                  senderAddress: null,
+                  providerName: null,
+                }
+              : null
+          }
+          onEnvelope={(env) =>
+            setSession((s) => ({
+              ...s,
+              stage6ExecutionId: env.executionId,
+              stage6CertificationId: env.certificationId,
+              stage6Status: env.status,
+              stage6ProviderCallAttempted: env.providerCallAttempted,
+              stage6ProviderStatus: env.providerStatus,
+              stage6ProviderMessageId: env.providerMessageId,
+              stage6DeliveryAttemptId: env.deliveryAttemptId,
+              stage6TraceId: env.traceId,
+              stage6RetrySafe: env.retrySafe,
+              stage6ReconciliationRequired: env.reconciliationRequired,
+              stage6CleanupProven: env.cleanupProven,
+              stage6CompletedAt: env.completedAt,
+            }))
+          }
+          onVerified={() =>
+            setSession((s) => ({
+              ...s,
+              stage6ManualVerificationStatus: "DELIVERY_CONFIRMED_MANUALLY",
+            }))
+          }
         />
       </CommunicationHubSectionCard>
 
