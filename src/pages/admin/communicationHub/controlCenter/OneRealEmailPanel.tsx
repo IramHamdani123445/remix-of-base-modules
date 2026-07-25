@@ -654,13 +654,17 @@ export function OneRealEmailPanel({
         eventCode={lineage.eventCode}
         channel={lineage.channel}
         currentlyEnabled={!!gate?.enabled}
-        onChanged={(next) => {
-          // 1) trust the authoritative gate row returned by the RPC
+        onChanged={async (next) => {
           setGate(next);
-          // 2) refresh authoritative sources so downstream checks re-evaluate
-          void reloadGate();
-          void reloadReadiness();
-          onReloadContext?.();
+          const confirmed = await reloadGate();
+          if (!confirmed?.enabled && next.enabled) {
+            toast.error(
+              "Gate update succeeded but authoritative read-back did not confirm it.",
+            );
+            return;
+          }
+          await reloadReadiness();
+          await onReloadContext?.();
         }}
       />
     </div>
