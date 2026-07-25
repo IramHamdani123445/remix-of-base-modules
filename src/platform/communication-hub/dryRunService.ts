@@ -12,7 +12,7 @@
  * The service must only call the public edge function.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { getFreshAuthenticatedSession, CommHubAuthError } from "./authSession";
+import { getActionReadySession, CommHubAuthError } from "./authSession";
 
 export type DryRunFinalStatus = "DRY_RUN_PASSED" | "DRY_RUN_FAILED" | "BLOCKED";
 
@@ -70,6 +70,9 @@ export interface DryRunEnvelope {
   ambiguous_outcome: boolean;
   can_retry_after_reauthentication: boolean;
   transition_log_id: string | null;
+  edge_version: string | null;
+  auth_evidence: Record<string, unknown> | null;
+  service_role_probe: Record<string, unknown> | null;
 }
 
 export interface RunDryTestInput {
@@ -155,6 +158,9 @@ function normalizeEnvelope(body: any): DryRunEnvelope {
       ? true
       : !!b.can_retry_after_reauthentication,
     transition_log_id: b.transition_log_id ?? null,
+    edge_version: b.edge_version ?? null,
+    auth_evidence: b.auth_evidence ?? null,
+    service_role_probe: b.service_role_probe ?? b.probe ?? null,
   };
 }
 
@@ -170,7 +176,7 @@ export async function runDryTest(input: RunDryTestInput): Promise<DryRunEnvelope
   // manifest as a generic "Failed to send a request to the Edge Function".
   let authenticatedSession;
   try {
-    authenticatedSession = await getFreshAuthenticatedSession();
+    authenticatedSession = (await getActionReadySession({ minValiditySeconds: 300 })).session;
   } catch (err) {
     if (err instanceof CommHubAuthError) throw err;
     throw new CommHubAuthError("authentication_required", (err as Error)?.message);

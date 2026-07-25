@@ -94,12 +94,12 @@ describe("Comm Hub authentication race regression", () => {
 
   it("validates the current access token before any refresh attempt", () => {
     const runtime = authSource.slice(
-      authSource.indexOf("export async function getFreshAuthenticatedSession"),
+      authSource.indexOf("export async function getActionReadySession"),
     );
     expect(runtime.indexOf("getPersistedSessionSnapshot()"))
       .toBeLessThan(runtime.indexOf("auth.getSession()"));
     expect(runtime.indexOf("auth.getUser(current.access_token)")).toBeGreaterThan(-1);
-    expect(runtime.indexOf("auth.refreshSession()"))
+    expect(runtime.indexOf("runRefreshOnce({ forceRefresh: true })"))
       .toBeGreaterThan(runtime.indexOf("auth.getUser(current.access_token)"));
   });
 

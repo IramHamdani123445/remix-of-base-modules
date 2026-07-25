@@ -47,8 +47,9 @@ import {
 } from "@/platform/communication-hub/sendDecisionService";
 import {
   CommHubAuthError,
-  getFreshAuthenticatedSession,
+  type ActionReadySessionEvidence,
 } from "@/platform/communication-hub/authSession";
+import { refreshAndProbeOperator } from "@/platform/communication-hub/operatorAuthDiagnostics";
 import {
   getAuthErrorDetails,
   type AuthErrorDetails,
@@ -200,6 +201,8 @@ export default function GoLivePage() {
   // A `not_authenticated` failure MUST NOT be stored as a send-policy blocker.
   const [authError, setAuthError] = useState<AuthErrorDetails | null>(null);
   const [refreshingAuth, setRefreshingAuth] = useState(false);
+  const [authEvidence, setAuthEvidence] = useState<ActionReadySessionEvidence | null>(null);
+  const [postgrestConfirmed, setPostgrestConfirmed] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => () => { mountedRef.current = false; }, []);
@@ -246,7 +249,7 @@ export default function GoLivePage() {
   }, [session.moduleCode, session.eventCode, session.channel]);
 
   async function refreshDecision(overrideRecipient?: string | null) {
-    if (!eventChosen) return;
+    if (!eventChosen) return false;
     setDecisionLoading(true);
     // Clear any stale authentication alert while we re-evaluate.
     setAuthError(null);
@@ -262,7 +265,7 @@ export default function GoLivePage() {
       if (!resolution.resolved) {
         setDecision(null);
         setRecipientCtx(buildRecipientContext(policy, null));
-        return;
+        return false;
       }
 
       const env = await evaluateCanonicalSendDecision({
@@ -274,6 +277,7 @@ export default function GoLivePage() {
       });
       setDecision(env);
       setRecipientCtx(buildRecipientContext(policy, resolution.recipient));
+      return env.allowed;
     } catch (e: any) {
       // Auth failure: track as a dedicated state; DO NOT populate canonical
       // readiness with a fake `not_authenticated` business blocker.
@@ -288,9 +292,10 @@ export default function GoLivePage() {
         };
         setAuthError(d);
         setDecision(null);
-        return;
+        return false;
       }
       toast.error(e?.message ?? "Readiness check failed");
+      return false;
     } finally {
       setDecisionLoading(false);
     }
@@ -299,10 +304,16 @@ export default function GoLivePage() {
   async function handleRefreshSession() {
     setRefreshingAuth(true);
     try {
-      await getFreshAuthenticatedSession();
+      const diagnostic = await refreshAndProbeOperator();
+      setAuthEvidence(diagnostic.session);
+      setPostgrestConfirmed(diagnostic.actorMatch);
+      const ready = eventChosen ? await refreshDecision() : false;
+      if (!ready) {
+        toast.error("Session restored, but readiness or Preview approval is no longer valid.");
+        return;
+      }
       setAuthError(null);
-      toast.success("Session refreshed.");
-      if (eventChosen) await refreshDecision();
+      toast.success(`Session refreshed · valid for ${Math.floor(diagnostic.session.tokenRemainingSeconds / 60)} minutes.`);
     } catch (err) {
       const d = getAuthErrorDetails(err) ?? {
         code: "session_lookup_failed",
@@ -603,9 +614,15 @@ export default function GoLivePage() {
               records or provider calls were created.
             </div>
             <div className="text-xs text-muted-foreground">{authError.fix}</div>
-            <div className="text-xs">
-              Readiness completed: No · Dry Run started: No · Execution created: No · Provider called: No · Simulator called: No · Safe to retry after sign-in: Yes
-            </div>
+            <dl className="grid gap-1 text-xs sm:grid-cols-2">
+              <div><dt className="text-muted-foreground">Authentication stage</dt><dd>Refresh / operator probe</dd></div>
+              <div><dt className="text-muted-foreground">Access token</dt><dd>{authEvidence ? `Valid for ${Math.floor(authEvidence.tokenRemainingSeconds / 60)} minutes` : "Not action-ready"}</dd></div>
+              <div><dt className="text-muted-foreground">Auth server user</dt><dd>{authEvidence?.authServerUserConfirmed ? "Confirmed" : "Not confirmed"}</dd></div>
+              <div><dt className="text-muted-foreground">PostgREST operator identity</dt><dd>{postgrestConfirmed ? "Confirmed" : "Not confirmed"}</dd></div>
+              <div><dt className="text-muted-foreground">Selected Preview</dt><dd>{session.previewSnapshotId ? "Selected — revalidation required" : "Not selected"}</dd></div>
+              <div><dt className="text-muted-foreground">Selected approval</dt><dd>{previewApproved ? "Selected — revalidation required" : "Not active"}</dd></div>
+            </dl>
+            <div className="text-xs">No runtime rows · Provider calls: 0 · Simulator calls: 0 · Delivery attempts: 0</div>
             <div className="pt-1">
               <Button size="sm" onClick={handleRefreshSession} disabled={refreshingAuth}>
                 {refreshingAuth ? (
@@ -802,6 +819,7 @@ export default function GoLivePage() {
                   }
                 : null
             }
+            onSessionRestored={() => refreshDecision()}
             onFinal={(env, _v) =>
               setSession((s) => {
                 const passed =

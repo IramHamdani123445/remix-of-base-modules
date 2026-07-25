@@ -37,7 +37,8 @@ import {
   isAuthFailure,
   type AuthErrorDetails,
 } from "@/platform/communication-hub/authErrorMessages";
-import { getFreshAuthenticatedSession, CommHubAuthError } from "@/platform/communication-hub/authSession";
+import { CommHubAuthError, type ActionReadySessionEvidence } from "@/platform/communication-hub/authSession";
+import { refreshAndProbeOperator } from "@/platform/communication-hub/operatorAuthDiagnostics";
 import BlockersList from "@/pages/admin/communicationHub/safety/BlockersList";
 import {
   runDryTest,
@@ -78,6 +79,8 @@ export interface DryRunPanelProps {
   /** CH-SIMPLE-P3F: notified when the run reaches a final state so parent
    *  wizards (Go Live) can lift the certification id into step-lock state. */
   onFinal?: (envelope: DryRunEnvelope, validation: DryRunCertificationValidation | null) => void;
+  /** Parent re-runs readiness and server-side Preview/approval validation. */
+  onSessionRestored?: () => Promise<boolean>;
 }
 
 type Phase = "idle" | "running" | "final";
@@ -94,6 +97,7 @@ export function DryRunPanel(props: DryRunPanelProps) {
     previewApproved = false,
     defaultReason = "",
     onFinal,
+    onSessionRestored,
   } = props;
 
   // Idempotency: one key per intentional attempt. A ref persists across
@@ -112,6 +116,8 @@ export function DryRunPanel(props: DryRunPanelProps) {
   // execution envelope. An auth failure must not populate a "final result".
   const [authError, setAuthError] = useState<AuthErrorDetails | null>(null);
   const [refreshingAuth, setRefreshingAuth] = useState(false);
+  const [authEvidence, setAuthEvidence] = useState<ActionReadySessionEvidence | null>(null);
+  const [postgrestConfirmed, setPostgrestConfirmed] = useState(false);
 
   // Phase 4B3 — resolver readiness of the currently selected Preview.
   // Fetched read-only from the frozen snapshot. If a required unresolved
@@ -254,9 +260,16 @@ export function DryRunPanel(props: DryRunPanelProps) {
   async function handleRefreshSession() {
     setRefreshingAuth(true);
     try {
-      await getFreshAuthenticatedSession();
+      const diagnostic = await refreshAndProbeOperator();
+      setAuthEvidence(diagnostic.session);
+      setPostgrestConfirmed(diagnostic.actorMatch);
+      const contextStillValid = onSessionRestored ? await onSessionRestored() : true;
+      if (!contextStillValid) {
+        toast.error("Preview or approval is no longer active. Create a fresh Preview.");
+        return;
+      }
       setAuthError(null);
-      toast.success("Session refreshed. You can retry the Dry Run.");
+      toast.success(`Session refreshed · valid for ${Math.floor(diagnostic.session.tokenRemainingSeconds / 60)} minutes.`);
     } catch (err) {
       const d = getAuthErrorDetails(err) ?? {
         code: "session_lookup_failed",
@@ -301,12 +314,18 @@ export function DryRunPanel(props: DryRunPanelProps) {
         <Alert>
           <KeyRound className="h-4 w-4" />
           <AlertTitle>{authError.title}</AlertTitle>
-          <AlertDescription className="space-y-2">
+          <AlertDescription className="space-y-3">
             <div>{authError.message}</div>
             <div className="text-xs text-muted-foreground">{authError.fix}</div>
-            <div className="text-xs">
-              Evidence: No Dry Run runtime rows were created · Provider called: No · Simulator called: No · Safe to retry after sign-in: Yes
-            </div>
+            <dl className="grid gap-1 text-xs sm:grid-cols-2">
+              <div><dt className="text-muted-foreground">Authentication stage</dt><dd>Refresh / operator probe</dd></div>
+              <div><dt className="text-muted-foreground">Access token</dt><dd>{authEvidence ? `Valid for ${Math.floor(authEvidence.tokenRemainingSeconds / 60)} minutes` : "Not action-ready"}</dd></div>
+              <div><dt className="text-muted-foreground">Auth server user</dt><dd>{authEvidence?.authServerUserConfirmed ? "Confirmed" : "Not confirmed"}</dd></div>
+              <div><dt className="text-muted-foreground">PostgREST operator identity</dt><dd>{postgrestConfirmed ? "Confirmed" : "Not confirmed"}</dd></div>
+              <div><dt className="text-muted-foreground">Selected Preview</dt><dd>{previewSnapshotId ? "Selected — revalidation required" : "Not selected"}</dd></div>
+              <div><dt className="text-muted-foreground">Selected approval</dt><dd>{previewApproved ? "Selected — revalidation required" : "Not active"}</dd></div>
+            </dl>
+            <div className="text-xs">No runtime rows · Provider calls: 0 · Simulator calls: 0 · Delivery attempts: 0</div>
             <div className="flex gap-2 pt-1">
               <Button size="sm" onClick={handleRefreshSession} disabled={refreshingAuth}>
                 {refreshingAuth ? (
