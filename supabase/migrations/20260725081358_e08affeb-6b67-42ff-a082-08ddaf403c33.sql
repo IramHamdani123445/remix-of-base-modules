@@ -1,0 +1,2 @@
+ALTER TABLE public.communication_delivery_attempt DROP CONSTRAINT IF EXISTS communication_delivery_attempt_status_chk;
+ALTER TABLE public.communication_delivery_attempt ADD CONSTRAINT communication_delivery_attempt_status_chk CHECK (status = ANY (ARRAY['pending'::text, 'success'::text, 'failure'::text, 'timeout'::text, 'throttled'::text, 'skipped'::text]));
