@@ -677,6 +677,17 @@ export default function GoLivePage() {
         </div>
       )}
 
+      {/* Phase 4B3 — Compact whole-journey Gate Monitor. Server-authoritative,
+          read-only. Creates zero runtime rows. */}
+      <GoLiveGateMonitor
+        moduleCode={session.moduleCode || null}
+        eventCode={session.eventCode || null}
+        channel={session.channel || null}
+        previewSnapshotId={session.previewSnapshotId}
+        previewApprovalId={session.previewApprovalId}
+        dryRunExecutionId={session.dryRunExecutionId}
+      />
+
       {/* STEP 1 — SELECT EVENT */}
       <CommunicationHubSectionCard
         title={<StepHeader index={1} title="Select Event" status={stepStatus.s1} /> as any}
