@@ -808,11 +808,12 @@ serve(async (req) => {
       status: "DRY_RUN_FAILED",
       failure_stage: "CERTIFY",
       dry_run_execution_id: executionId,
+      execution_no: beginExecutionNo,
       execution_state: procState,
       correlation_id: beginCorrelation,
-      request_id: proc?.request_id ?? null,
-      message_id: proc?.message_id ?? null,
-      trace_id: proc?.trace_id ?? null,
+      request_id: proc?.request_id ?? beginRequestId,
+      message_id: proc?.message_id ?? beginMessageId,
+      trace_id: proc?.trace_id ?? beginTraceId,
       preview_snapshot_id: previewSnapshotId ?? null,
       preview_approval_id: previewApprovalId ?? null,
       auth_evidence: authEvidence,
@@ -824,8 +825,13 @@ serve(async (req) => {
           message: certErr.message,
         },
       ],
-      provider_call_attempted: false,
-      simulator_call_attempted: false,
+      ...postMutationEvidence({
+        requestId: proc?.request_id ?? beginRequestId,
+        messageId: proc?.message_id ?? beginMessageId,
+        retrySafe: false,
+        cleanupProven: false,
+        retryReason: "POST_BEGIN_CERTIFICATION_FAILURE",
+      }),
     });
   }
   const cert = (certData ?? {}) as any;
@@ -847,11 +853,12 @@ serve(async (req) => {
       status: certStatus === "BLOCKED" ? "BLOCKED" : "DRY_RUN_FAILED",
       failure_stage: "CERTIFY",
       dry_run_execution_id: executionId,
+      execution_no: beginExecutionNo,
       execution_state: procState,
       correlation_id: beginCorrelation,
-      request_id: proc?.request_id ?? null,
-      message_id: proc?.message_id ?? null,
-      trace_id: proc?.trace_id ?? null,
+      request_id: proc?.request_id ?? beginRequestId,
+      message_id: proc?.message_id ?? beginMessageId,
+      trace_id: proc?.trace_id ?? beginTraceId,
       preview_snapshot_id: previewSnapshotId ?? null,
       preview_approval_id: previewApprovalId ?? null,
       auth_evidence: authEvidence,
@@ -859,25 +866,45 @@ serve(async (req) => {
       blockers: toBlockers(
         cert?.blockers ?? [{ code: "CERTIFICATION_NOT_ISSUED" }],
       ),
-      provider_call_attempted: false,
-      simulator_call_attempted: false,
+      ...postMutationEvidence({
+        requestId: proc?.request_id ?? beginRequestId,
+        messageId: proc?.message_id ?? beginMessageId,
+        retrySafe: false,
+        cleanupProven: false,
+        retryReason: "POST_BEGIN_CERTIFICATION_NOT_ISSUED",
+      }),
     });
   }
+
+  const idempotentReplay = Boolean(
+    proc?.idempotent_replay ??
+      begin?.idempotent_replay ??
+      beginReplay ??
+      certAcceptedIdempotent,
+  );
 
   return json(200, {
     contract_version: CONTRACT_VERSION,
     edge_version: EDGE_VERSION,
     status: "DRY_RUN_PASSED",
+    state: "CERTIFIED",
+    stage_succeeded: true,
+    terminal: true,
     passed: true,
     message: SUCCESS_MESSAGE,
     dry_run_execution_id: executionId,
+    execution_no: beginExecutionNo,
     execution_state: procState,
     correlation_id: beginCorrelation,
     dry_run_certification_id: certId,
     certification_expires_at: cert?.expires_at ?? cert?.certification_expires_at ?? null,
-    request_id: proc?.request_id ?? null,
-    message_id: proc?.message_id ?? null,
-    trace_id: proc?.trace_id ?? null,
+    request_id: proc?.request_id ?? beginRequestId,
+    message_id: proc?.message_id ?? beginMessageId,
+    trace_id: proc?.trace_id ?? beginTraceId,
+    transition_log_id:
+      proc?.transition_log_id ?? cert?.transition_log_id ?? begin?.transition_log_id ?? null,
+    final_operating_mode:
+      proc?.final_operating_mode ?? cert?.final_operating_mode ?? begin?.final_operating_mode ?? null,
     preview_snapshot_id: previewSnapshotId ?? null,
     preview_approval_id: previewApprovalId ?? null,
     auth_evidence: {
@@ -885,15 +912,21 @@ serve(async (req) => {
       continuity_proof: "PHASE_4B3_OPERATOR_JWT_CONTINUITY_PROVEN",
     },
     service_role_probe: probeData,
-    idempotent_replay: Boolean(
-      proc?.idempotent_replay ??
-        begin?.idempotent_replay ??
-        beginReplay ??
-        certAcceptedIdempotent,
-    ),
+    idempotent_replay: idempotentReplay,
     blockers: [],
     warnings: [],
-    provider_call_attempted: false,
-    simulator_call_attempted: false,
+    // Canonical retry-safety contract for the successful terminal branch.
+    // The Dry Run reached CERTIFIED, no partial rows remain to reconcile,
+    // and no provider/simulator call was attempted. Operators may safely
+    // Run Again (fresh key) or replay the same idempotency key.
+    ...postMutationEvidence({
+      requestId: proc?.request_id ?? beginRequestId,
+      messageId: proc?.message_id ?? beginMessageId,
+      retrySafe: true,
+      cleanupProven: true,
+      retryReason: idempotentReplay ? "IDEMPOTENT_REPLAY" : "SAFE_TO_RETRY",
+      ambiguousOutcome: false,
+    }),
   });
 });
+
