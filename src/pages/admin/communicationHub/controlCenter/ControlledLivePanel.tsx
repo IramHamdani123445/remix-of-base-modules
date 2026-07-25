@@ -581,17 +581,49 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
       {/* E. Result */}
       {phase === "final" && result && <FinalResult result={result} />}
 
+      {/* E.1 Stub-run notice — a stub is a simulator, no real email is sent. */}
+      {phase === "final" &&
+        result &&
+        result.providerMode === "stub" &&
+        (result.status === "PROVIDER_ACCEPTED" ||
+          result.status === "DELIVERED" ||
+          result.status === "DELIVERY_PENDING") && (
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Controlled Stub completed successfully</AlertTitle>
+            <AlertDescription>
+              This was a simulation; no real email was sent and inbox
+              verification is not required.
+            </AlertDescription>
+          </Alert>
+        )}
+
       {/* F. Evidence + Manual verification */}
       {phase === "final" && result && (
         <EvidenceCard
           result={result}
           certification={certification}
+          certLoading={certLoading}
+          certError={certError}
+          onRetryCertLoad={() => {
+            const certId =
+              (result as any).certification_id ??
+              (result as any).certificationId ??
+              null;
+            if (certId) loadCertification(certId);
+          }}
           technicalOpen={technicalOpen}
           setTechnicalOpen={setTechnicalOpen}
         />
       )}
+
+      {/* Manual inbox verification — ONLY for real-provider sends that were
+          authorised and accepted. Stub simulations must never show this. */}
       {phase === "final" &&
         result &&
+        result.action === "SEND_ONE_REAL_EMAIL" &&
+        result.providerMode === "real" &&
+        result.realEmailAuthorised === true &&
         (result.status === "PROVIDER_ACCEPTED" ||
           result.status === "DELIVERY_PENDING") && (
           <ManualVerificationCard
@@ -634,6 +666,7 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
     </div>
   );
 }
+
 
 function FinalResult({ result }: { result: ControlledLiveTestResult }) {
   const s = result.status;
