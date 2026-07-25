@@ -27046,7 +27046,7 @@ export type Database = {
           created_by: string | null
           documents_collected: Json | null
           employees_interviewed: number | null
-          employer_id: string
+          employer_id: string | null
           employer_name: string | null
           employer_signature_data: string | null
           execution_mode: string | null
@@ -27093,7 +27093,7 @@ export type Database = {
           created_by?: string | null
           documents_collected?: Json | null
           employees_interviewed?: number | null
-          employer_id: string
+          employer_id?: string | null
           employer_name?: string | null
           employer_signature_data?: string | null
           execution_mode?: string | null
@@ -27140,7 +27140,7 @@ export type Database = {
           created_by?: string | null
           documents_collected?: Json | null
           employees_interviewed?: number | null
-          employer_id?: string
+          employer_id?: string | null
           employer_name?: string | null
           employer_signature_data?: string | null
           execution_mode?: string | null

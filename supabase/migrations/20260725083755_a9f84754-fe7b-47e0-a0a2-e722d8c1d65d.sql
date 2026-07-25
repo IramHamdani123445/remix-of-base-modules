@@ -1,0 +1,1 @@
+ALTER TABLE public.ce_inspections ALTER COLUMN employer_id DROP NOT NULL;
