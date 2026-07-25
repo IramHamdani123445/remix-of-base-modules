@@ -2496,12 +2496,8 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
       blockers: [{ code: "execution_attempt_record_failed", stage: "provider_preflight", message: detail }],
       finished_at: new Date().toISOString(),
     }).eq("id", env.delivery_attempt_id);
-    await admin.rpc("revoke_comm_hub_controlled_live_grant", {
-      p_grant_id: grantId, p_execution_id: executionId,
-      p_reason: "execution_attempt_record_failed",
-    });
-    env.grant_status = "REVOKED";
-    return block("provider_preflight", "execution_attempt_record_failed", detail, "DISPATCH_FAILED", 500);
+    return preProviderReconcile("provider_preflight", "execution_attempt_record_failed",
+      detail, "DISPATCH_FAILED", 500);
   }
 
   // 11. Invoke provider. Adapter selection is driven exclusively by the
