@@ -786,10 +786,18 @@ Deno.serve(async (req) => {
     // Prefer specific blocker context when an execution exists.
     const primaryBlockerCode = env.blockers[0]?.code ?? null;
     const primaryBlockerMsg = env.blockers[0]?.message ?? null;
-    env.message = env.message
-      || (executionId && primaryBlockerCode
-            ? `Controlled Live blocked at ${env.failure_stage ?? "orchestration"}: ${primaryBlockerCode}${primaryBlockerMsg ? ` — ${primaryBlockerMsg}` : ""}`
-            : "Controlled Live could not proceed before request creation.");
+    // Replace the default "Controlled Live has not started." sentinel when
+    // we have precise blocker context OR when an execution row exists.
+    const messageIsDefault = !env.message
+      || env.message === "Controlled Live has not started."
+      || env.message === "Controlled Live could not proceed before request creation.";
+    if (executionId && primaryBlockerCode) {
+      env.message = `Controlled Live blocked at ${env.failure_stage ?? "orchestration"}: ${primaryBlockerCode}${primaryBlockerMsg ? ` — ${primaryBlockerMsg}` : ""}`;
+    } else if (messageIsDefault && primaryBlockerCode) {
+      env.message = `Controlled Live blocked at ${env.failure_stage ?? "orchestration"}: ${primaryBlockerCode}${primaryBlockerMsg ? ` — ${primaryBlockerMsg}` : ""}`;
+    } else if (messageIsDefault) {
+      env.message = "Controlled Live could not proceed before request creation.";
+    }
 
     // Classify retry-safety for any orchestration failure caught here.
     // Pre-provider failures with successful cleanup remain retry-safe.
