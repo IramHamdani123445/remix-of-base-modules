@@ -59,6 +59,8 @@ export default function MyPlans() {
   const [withdrawReason, setWithdrawReason] = useState('');
   const [revisionPlan, setRevisionPlan] = useState<WeeklyPlan | null>(null);
   const [historyPlan, setHistoryPlan] = useState<WeeklyPlan | null>(null);
+  const [assignPlan, setAssignPlan] = useState<WeeklyPlan | null>(null);
+  const canAssign = useHasCapability(COMPLIANCE_CAPABILITIES.FIELD_APPROVE_PLANS);
 
   const plansQuery = useQuery({
     queryKey: ['my-weekly-plans'],
