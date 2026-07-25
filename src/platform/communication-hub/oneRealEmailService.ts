@@ -301,34 +301,39 @@ export interface OneRealEmailCertificationRow {
   manualVerificationNote: string | null;
 }
 
+/**
+ * Reads a ONE_REAL_EMAIL certification via the security-definer RPC
+ * `get_controlled_live_certification`. Direct table access is not used so
+ * that RLS + role-scope stay authoritative on the server. Returns null when
+ * the certification does not exist OR is not of kind ONE_REAL_EMAIL.
+ */
 export async function fetchOneRealEmailCertification(
   certificationId: string,
 ): Promise<OneRealEmailCertificationRow | null> {
-  const { data, error } = await (supabase as any)
-    .from("communication_controlled_live_certification")
-    .select(
-      "id,status,certification_kind,provider_status,provider_message_id,provider_outcome,trace_id,request_id,message_id,delivery_attempt_id,manual_verification_status,manual_verified_recipient,manual_verified_by,manual_verified_at,manual_verification_note",
-    )
-    .eq("id", certificationId)
-    .maybeSingle();
+  const { data, error } = await (supabase as any).rpc(
+    "get_controlled_live_certification",
+    { p_certification_id: certificationId },
+  );
   if (error) throw new Error(error.message ?? "certification lookup failed");
-  if (!data) return null;
-  if (data.certification_kind !== "ONE_REAL_EMAIL") return null;
+  const rows = Array.isArray(data) ? data : [];
+  if (rows.length === 0) return null;
+  const r = rows[0] as any;
+  if (r.certification_kind !== "ONE_REAL_EMAIL") return null;
   return {
-    id: data.id,
-    status: data.status,
-    certificationKind: data.certification_kind,
-    providerStatus: data.provider_status ?? null,
-    providerMessageId: data.provider_message_id ?? null,
-    providerOutcome: data.provider_outcome ?? null,
-    traceId: data.trace_id ?? null,
-    requestId: data.request_id ?? null,
-    messageId: data.message_id ?? null,
-    deliveryAttemptId: data.delivery_attempt_id ?? null,
-    manualVerificationStatus: data.manual_verification_status ?? null,
-    manualVerifiedRecipient: data.manual_verified_recipient ?? null,
-    manualVerifiedBy: data.manual_verified_by ?? null,
-    manualVerifiedAt: data.manual_verified_at ?? null,
-    manualVerificationNote: data.manual_verification_note ?? null,
+    id: r.id,
+    status: r.status,
+    certificationKind: r.certification_kind,
+    providerStatus: r.provider_status ?? null,
+    providerMessageId: r.provider_message_id ?? null,
+    providerOutcome: r.provider_outcome ?? null,
+    traceId: r.trace_id ?? null,
+    requestId: r.request_id ?? null,
+    messageId: r.message_id ?? null,
+    deliveryAttemptId: r.delivery_attempt_id ?? null,
+    manualVerificationStatus: r.manual_verification_status ?? null,
+    manualVerifiedRecipient: r.manual_verification_recipient ?? null,
+    manualVerifiedBy: r.manual_verified_by ?? null,
+    manualVerifiedAt: r.manual_verified_at ?? null,
+    manualVerificationNote: r.manual_verification_note ?? null,
   };
 }

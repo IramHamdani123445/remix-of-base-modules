@@ -98201,6 +98201,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_comm_hub_one_real_email_context: {
+        Args: {
+          p_channel: string
+          p_controlled_stub_certification_id: string
+          p_event_code: string
+          p_module_code: string
+        }
+        Returns: Json
+      }
       get_comm_hub_safety_counts: {
         Args: { window_minutes?: number }
         Returns: Json
@@ -99257,6 +99266,7 @@ export type Database = {
         Returns: Json
       }
       probe_comm_hub_dry_run_service_identity: { Args: never; Returns: Json }
+      probe_comm_hub_one_real_email_contracts: { Args: never; Returns: Json }
       probe_comm_hub_operator_identity: { Args: never; Returns: Json }
       process_comm_hub_dry_run_execution: {
         Args: { p_correlation_id: string; p_execution_id: string }
