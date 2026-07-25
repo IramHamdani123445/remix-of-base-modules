@@ -143,7 +143,7 @@ export function OneRealEmailPanel({
   ]);
 
   const reloadGate = useCallback(async () => {
-    if (!lineage) return;
+    if (!lineage) return null;
     setGateLoading(true);
     try {
       const g = await fetchRealEmailGate({
@@ -152,9 +152,11 @@ export function OneRealEmailPanel({
         channel: lineage.channel,
       });
       setGate(g);
+      return g;
     } catch (e: any) {
       toast.error(e?.message ?? "Failed to load real-email gate");
       setGate(null);
+      return null;
     } finally {
       setGateLoading(false);
     }
