@@ -783,8 +783,13 @@ Deno.serve(async (req) => {
       addBlocker("controlled_live_orchestration_exception", env.failure_stage,
         errorMessage(error));
     }
+    // Prefer specific blocker context when an execution exists.
+    const primaryBlockerCode = env.blockers[0]?.code ?? null;
+    const primaryBlockerMsg = env.blockers[0]?.message ?? null;
     env.message = env.message
-      || "Controlled Live could not proceed before request creation.";
+      || (executionId && primaryBlockerCode
+            ? `Controlled Live blocked at ${env.failure_stage ?? "orchestration"}: ${primaryBlockerCode}${primaryBlockerMsg ? ` — ${primaryBlockerMsg}` : ""}`
+            : "Controlled Live could not proceed before request creation.");
 
     // Classify retry-safety for any orchestration failure caught here.
     // Pre-provider failures with successful cleanup remain retry-safe.
@@ -803,12 +808,19 @@ Deno.serve(async (req) => {
           p_grant_id: grantId,
           p_execution_id: executionId,
           p_reason: ("pre_provider_" + (preRequestFailureCode ?? env.failure_stage ?? "orchestration_failure")).slice(0, 120),
+          p_service_operation: "REVOKE_GRANT",
         });
-        if (revokeError || !(revokeResult as any)?.ok) {
-          addBlocker("grant_reconciliation_failed", "grant_reconciliation",
-            errorMessage(revokeError ?? (revokeResult as any)?.code));
+        const rr: any = revokeResult ?? {};
+        if (revokeError || rr.allowed !== true) {
+          const revokeBlockers = Array.isArray(rr.blockers) ? rr.blockers : [];
+          const detail = revokeError
+            ? errorMessage(revokeError)
+            : (revokeBlockers[0]?.code
+                ? `${revokeBlockers[0].code}${revokeBlockers[0].message ? ": " + revokeBlockers[0].message : ""}`
+                : "revoke_rpc_denied");
+          addBlocker("grant_reconciliation_failed", "grant_reconciliation", detail);
         } else {
-          env.grant_status = (revokeResult as any)?.status ?? "REVOKED";
+          env.grant_status = rr.status ?? "REVOKED";
         }
       } catch (revokeException) {
         addBlocker("grant_reconciliation_exception", "grant_reconciliation",
