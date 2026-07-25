@@ -477,6 +477,7 @@ export default function GoLivePage() {
   >(null);
   const [stage6ContextError, setStage6ContextError] = useState<string | null>(null);
   const [stage6ContextLoading, setStage6ContextLoading] = useState(false);
+  const [stage6ContextReloadNonce, setStage6ContextReloadNonce] = useState(0);
   useEffect(() => {
     let cancelled = false;
     setStage6Context(null);
