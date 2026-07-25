@@ -2477,12 +2477,7 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
       env.grant_status = r.provider_call_attempted ? "CONSUMED" : "RESERVED";
       return json(env, 200);
     }
-    await admin.rpc("revoke_comm_hub_controlled_live_grant", {
-      p_grant_id: grantId, p_execution_id: executionId,
-      p_reason: "attempt_insert_failed",
-    });
-    env.grant_status = "REVOKED";
-    return block("attempt_creation", "attempt_insert_failed",
+    return preProviderReconcile("attempt_creation", "attempt_insert_failed",
       String(attemptErr?.message ?? "unknown"), "DISPATCH_FAILED", 500);
   }
   env.delivery_attempt_id = (attempt as any).id;
