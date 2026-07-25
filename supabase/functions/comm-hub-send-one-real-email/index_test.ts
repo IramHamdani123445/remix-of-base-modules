@@ -43,10 +43,19 @@ const anon = () => createClient(SUPABASE_URL, ANON_KEY, {
 });
 
 // ------------------------------------------------------------------------
-// 1. Authorization: missing Bearer is BLOCKED at stage=auth (retry-safe).
+// 1. Authorization: verify_jwt=true rejects an entirely missing Bearer at
+//    the gateway (HTTP 401 with no envelope). With the anon key supplied
+//    as the Bearer, the gateway forwards; the function then refuses at
+//    stage=auth because `getUser()` cannot resolve a real user.
 // ------------------------------------------------------------------------
-Deno.test("Stage 6 — Edge Function refuses unauthenticated calls", async () => {
+Deno.test("Stage 6 — gateway refuses calls without any Bearer token", async () => {
   const r = await callFn({ action: "SEND_ONE_REAL_EMAIL" });
+  assertEquals(r.status, 401);
+});
+
+Deno.test("Stage 6 — function refuses anon-key Bearer at stage=auth (retry-safe envelope)", async () => {
+  const r = await callFn({ action: "SEND_ONE_REAL_EMAIL" },
+    { auth: `Bearer ${ANON_KEY}` });
   assertEquals(r.status, 401);
   assertEquals(r.body?.schema_version, "one-real-email.v1");
   assertEquals(r.body?.status, "BLOCKED");
@@ -59,8 +68,8 @@ Deno.test("Stage 6 — Edge Function refuses unauthenticated calls", async () =>
 // ------------------------------------------------------------------------
 // 2. Envelope contract: schema_version + terminal fields present on refusal.
 // ------------------------------------------------------------------------
-Deno.test("Stage 6 — Refusal envelope preserves the one-real-email.v1 contract", async () => {
-  const r = await callFn({});
+Deno.test("Stage 6 — refusal envelope preserves the one-real-email.v1 contract", async () => {
+  const r = await callFn({}, { auth: `Bearer ${ANON_KEY}` });
   assert(r.body, "response body must be JSON");
   const required = [
     "schema_version", "action", "status", "passed", "idempotent_replay",
