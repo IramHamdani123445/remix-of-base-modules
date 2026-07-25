@@ -145,8 +145,29 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
 
   const [certification, setCertification] =
     useState<ControlledLiveCertification | null>(null);
+  const [certLoading, setCertLoading] = useState(false);
+  const [certError, setCertError] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyNote, setVerifyNote] = useState("");
+
+  async function loadCertification(certId: string) {
+    setCertLoading(true);
+    setCertError(null);
+    try {
+      const cert = await getControlledLiveCertification(certId);
+      setCertification(cert);
+      if (!cert) {
+        setCertError(
+          `Certification ${certId} was created by the server but could not be read back. Verify your role has access.`,
+        );
+      }
+    } catch (e: any) {
+      setCertError(e?.message ?? "Failed to load certification record.");
+    } finally {
+      setCertLoading(false);
+    }
+  }
+
 
   useEffect(() => {
     let mounted = true;
