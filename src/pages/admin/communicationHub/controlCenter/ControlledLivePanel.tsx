@@ -332,15 +332,10 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
       const authMsg = resolveAuthErrorMessage(r as any);
       if (authMsg) toast.error(authMsg);
 
-      // If the orchestrator recorded a certification, load it.
+      // If the orchestrator recorded a certification, load it (surface errors).
       const certId = (r as any).certification_id ?? (r as any).certificationId ?? null;
       if (certId) {
-        try {
-          const cert = await getControlledLiveCertification(certId);
-          setCertification(cert);
-        } catch {
-          // best-effort read
-        }
+        await loadCertification(certId);
       }
     } catch (e: any) {
       const authMsg = resolveAuthErrorMessage(e);
@@ -357,11 +352,13 @@ export function ControlledLivePanel(props: ControlledLivePanelProps) {
     idempotencyRef.current = mintIdempotencyKey();
     setResult(null);
     setCertification(null);
+    setCertError(null);
     setConfirmationPhrase("");
     setAcknowledged(false);
     setReason("");
     setPhase("idle");
   }
+
 
   const ambiguous = result?.status === "DELIVERY_PENDING";
   const resetBlocked =
