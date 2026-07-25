@@ -450,6 +450,17 @@ export default function MyPlans() {
                                   Revise
                                 </Button>
                               )}
+                              {canAssign && plan.status !== WeeklyPlanStatus.COMPLETED && plan.status !== WeeklyPlanStatus.SUPERSEDED && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setAssignPlan(plan)}
+                                  title="Assign or reassign this inspection to an officer"
+                                >
+                                  <UserPlus className="h-4 w-4 mr-1" />
+                                  {plan.inspector_id ? 'Reassign' : 'Assign'}
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
