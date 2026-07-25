@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,9 +46,32 @@ export function PlanItemFormDialog({ open, onOpenChange, onSubmit, weekDays }: P
   const [purpose, setPurpose] = useState('');
   const [notes, setNotes] = useState('');
 
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }, []);
+
+  const isPastDay = (name: DayOfWeek) => {
+    const info = weekDays.find(d => d.name === name);
+    return !!info?.date && info.date < todayStr;
+  };
+
+  const selectedDayInfo = weekDays.find(d => d.name === dayOfWeek);
+  const selectedDayIsPast = !!selectedDayInfo?.date && selectedDayInfo.date < todayStr;
+
   const handleSubmit = () => {
     if (!dayOfWeek) return;
     const dayInfo = weekDays.find(d => d.name === dayOfWeek);
+
+    if (dayInfo?.date && dayInfo.date < todayStr) {
+      toast.error('Past dates are not allowed.', {
+        description: 'Please select a day on or after today for this exception item.',
+      });
+      return;
+    }
 
     onSubmit({
       item_type: itemType,
@@ -105,11 +129,24 @@ export function PlanItemFormDialog({ open, onOpenChange, onSubmit, weekDays }: P
               <Select value={dayOfWeek} onValueChange={v => setDayOfWeek(v as DayOfWeek)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  {DAYS.map(d => {
+                    const info = weekDays.find(w => w.name === d);
+                    const past = isPastDay(d);
+                    return (
+                      <SelectItem key={d} value={d} disabled={past}>
+                        {d}{info?.date ? ` (${info.date})` : ''}{past ? ' — past' : ''}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
+              {selectedDayIsPast && (
+                <p className="text-xs text-destructive">Past dates are not allowed.</p>
+              )}
             </div>
           </div>
+
+
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
@@ -188,7 +225,7 @@ export function PlanItemFormDialog({ open, onOpenChange, onSubmit, weekDays }: P
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit}>Add to Plan</Button>
+          <Button onClick={handleSubmit} disabled={selectedDayIsPast}>Add to Plan</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
