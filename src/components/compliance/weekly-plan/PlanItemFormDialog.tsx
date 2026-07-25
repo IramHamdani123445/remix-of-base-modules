@@ -139,6 +139,14 @@ export function PlanItemFormDialog({ open, onOpenChange, onSubmit, weekDays }: P
                     );
                   })}
                 </SelectContent>
+              </Select>
+              {selectedDayIsPast && (
+                <p className="text-xs text-destructive">Past dates are not allowed.</p>
+              )}
+            </div>
+          </div>
+
+
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
