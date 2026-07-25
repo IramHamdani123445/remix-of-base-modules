@@ -101,6 +101,7 @@ export function OneRealEmailPanel({
   lineage,
   onEnvelope,
   onVerified,
+  onReloadContext,
 }: OneRealEmailPanelProps) {
   const [gate, setGate] = useState<RealEmailGateState | null>(null);
   const [gateLoading, setGateLoading] = useState(false);
