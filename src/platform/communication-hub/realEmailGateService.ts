@@ -26,15 +26,17 @@ export async function fetchRealEmailGate(input: {
   eventCode: string;
   channel: string;
 }): Promise<RealEmailGateState> {
-  const { data, error } = await (supabase as any)
-    .from("communication_hub_real_email_gate")
-    .select("module_code,event_code,channel,enabled,opened_at,opened_by,reason,closed_at,closed_by")
-    .eq("module_code", input.moduleCode)
-    .eq("event_code", input.eventCode)
-    .eq("channel", input.channel)
-    .maybeSingle();
-  if (error && (error as any).code !== "PGRST116") throw new Error(error.message);
-  if (!data) {
+  const { data, error } = await (supabase as any).rpc("get_comm_hub_real_email_gate", {
+    p_module: input.moduleCode,
+    p_event: input.eventCode,
+    p_channel: input.channel,
+  });
+  if (error) throw new Error(error.message ?? "get_comm_hub_real_email_gate failed");
+  const payload = (data ?? {}) as { ok?: boolean; present?: boolean; gate?: any };
+  if (payload.ok !== true) {
+    throw new Error("get_comm_hub_real_email_gate returned an unexpected envelope");
+  }
+  if (!payload.present || !payload.gate) {
     return {
       moduleCode: input.moduleCode,
       eventCode: input.eventCode,
@@ -48,16 +50,17 @@ export async function fetchRealEmailGate(input: {
       present: false,
     };
   }
+  const g = payload.gate;
   return {
-    moduleCode: data.module_code,
-    eventCode: data.event_code,
-    channel: data.channel,
-    enabled: !!data.enabled,
-    openedAt: data.opened_at ?? null,
-    openedBy: data.opened_by ?? null,
-    reason: data.reason ?? null,
-    closedAt: data.closed_at ?? null,
-    closedBy: data.closed_by ?? null,
+    moduleCode: g.module_code,
+    eventCode: g.event_code,
+    channel: g.channel,
+    enabled: !!g.enabled,
+    openedAt: g.opened_at ?? null,
+    openedBy: g.opened_by ?? null,
+    reason: g.reason ?? null,
+    closedAt: g.closed_at ?? null,
+    closedBy: g.closed_by ?? null,
     present: true,
   };
 }

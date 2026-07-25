@@ -96749,6 +96749,10 @@ export type Database = {
         Args: { p_schema: Json }
         Returns: Json
       }
+      comm_hub_normalize_gate_key: {
+        Args: { p_value: string }
+        Returns: string
+      }
       comm_hub_normalize_recipient_set: {
         Args: { p_bcc: Json; p_cc: Json; p_to: Json }
         Returns: Json
@@ -98208,6 +98212,10 @@ export type Database = {
           p_event_code: string
           p_module_code: string
         }
+        Returns: Json
+      }
+      get_comm_hub_real_email_gate: {
+        Args: { p_channel: string; p_event: string; p_module: string }
         Returns: Json
       }
       get_comm_hub_safety_counts: {
