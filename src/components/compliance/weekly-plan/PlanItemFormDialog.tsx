@@ -225,7 +225,7 @@ export function PlanItemFormDialog({ open, onOpenChange, onSubmit, weekDays }: P
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit}>Add to Plan</Button>
+          <Button onClick={handleSubmit} disabled={selectedDayIsPast}>Add to Plan</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
