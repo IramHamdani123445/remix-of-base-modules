@@ -170,6 +170,7 @@ export function OneRealEmailPanel({
         eventCode: lineage.eventCode,
         channel: lineage.channel,
         targetStage: "ONE_REAL_EMAIL",
+        controlledStubCertificationId: lineage.controlledStubCertificationId ?? null,
       });
       setReadinessBlockers(
         env.ready ? [] : env.blockers.map((b) => b.title || b.message || b.code),
@@ -179,11 +180,22 @@ export function OneRealEmailPanel({
     } finally {
       setReadinessLoading(false);
     }
-  }, [lineage?.moduleCode, lineage?.eventCode, lineage?.channel]);
+  }, [
+    lineage?.moduleCode,
+    lineage?.eventCode,
+    lineage?.channel,
+    lineage?.controlledStubCertificationId,
+  ]);
 
   useEffect(() => {
     void reloadReadiness();
   }, [reloadReadiness]);
+
+  // Re-evaluate readiness whenever the real-email gate flips or the
+  // Stage 6 authoritative context refreshes (probe / gate / context changes).
+  useEffect(() => {
+    void reloadReadiness();
+  }, [gate?.enabled, gate?.openedAt, reloadReadiness]);
 
   const authoritativeChecks: ReadinessCheck[] = useMemo(() => {
     const checks: ReadinessCheck[] = [
