@@ -99144,6 +99144,17 @@ export type Database = {
         Args: { p_request_id: string }
         Returns: string
       }
+      reconcile_comm_hub_controlled_live_pre_provider: {
+        Args: {
+          p_execution_id: string
+          p_failure_code: string
+          p_failure_stage: string
+          p_grant_id: string
+          p_message_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       record_comm_hub_controlled_live_provider_attempt: {
         Args: {
           p_execution_id: string
