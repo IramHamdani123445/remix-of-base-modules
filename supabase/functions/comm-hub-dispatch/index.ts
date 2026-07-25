@@ -2521,22 +2521,13 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
 
   } catch (e: any) {
     // Provider transport threw before response — treat as ambiguous.
-    await admin.rpc("record_comm_hub_controlled_live_provider_outcome", {
-      p_execution_id: executionId,
-      p_provider_status: "DELIVERY_PENDING",
-      p_provider_message_id: null,
-      p_provider_response_safe: { error: "provider_exception" },
-      p_warnings: [{ code: "provider_outcome_unconfirmed", message: String(e?.message ?? e).slice(0, 200) }],
-    });
-    await admin.rpc("consume_comm_hub_controlled_live_grant", {
-      p_grant_id: grantId, p_execution_id: executionId,
-      p_provider_invocation_key: providerInvocationKey,
-    });
-    env.grant_status = "CONSUMED";
+    // Order matters: attempt row MUST reflect provider evidence BEFORE we
+    // call consume, because consume's canonical evidence check requires a
+    // durable provider_call_attempted attempt on the message.
+    env.completed_at = new Date().toISOString();
     env.provider_call_attempted = true;
     env.status = "DELIVERY_PENDING";
     env.warnings.push({ code: "provider_outcome_unconfirmed" });
-    env.completed_at = new Date().toISOString();
     await admin.from("communication_delivery_attempt").update({
       provider_call_attempted: true,
       provider_status: "DELIVERY_PENDING",
@@ -2547,6 +2538,22 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
       warnings: env.warnings,
       finished_at: env.completed_at,
     }).eq("id", env.delivery_attempt_id);
+    await admin.rpc("record_comm_hub_controlled_live_provider_outcome", {
+      p_execution_id: executionId,
+      p_provider_status: "DELIVERY_PENDING",
+      p_provider_message_id: null,
+      p_provider_response_safe: { error: "provider_exception" },
+      p_warnings: [{ code: "provider_outcome_unconfirmed", message: String(e?.message ?? e).slice(0, 200) }],
+    });
+    const { data: consumeAmbRaw } = await admin.rpc("consume_comm_hub_controlled_live_grant", {
+      p_grant_id: grantId,
+      p_execution_id: executionId,
+      p_message_id: messageId,
+      p_expected_correlation_id: null,
+      p_service_operation: "DISPATCH_CONTROLLED_STUB",
+    });
+    env.grant_status = (consumeAmbRaw as any)?.allowed
+      ? ((consumeAmbRaw as any).status ?? "CONSUMED") : env.grant_status;
     return json(env, 200);
   }
 
