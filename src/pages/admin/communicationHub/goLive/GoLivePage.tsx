@@ -1007,34 +1007,57 @@ export default function GoLivePage() {
         }
         description="Reserved single real send with a one-use server grant. Enabled only when platform administrators explicitly unlock the real-provider gate."
       >
+        {stage6ContextLoading && (
+          <Alert className="mb-3">
+            <AlertTitle>Loading authoritative Stage 6 context…</AlertTitle>
+            <AlertDescription>
+              Fetching recipient, sender, provider and gate evidence from the server.
+              The send button remains disabled until this evidence is complete.
+            </AlertDescription>
+          </Alert>
+        )}
+        {stage6ContextError && (
+          <Alert variant="destructive" className="mb-3">
+            <AlertTitle>Stage 6 context failed to load</AlertTitle>
+            <AlertDescription>{stage6ContextError}</AlertDescription>
+          </Alert>
+        )}
+        {stage6Context && stage6Context.blockers.length > 0 && (
+          <Alert variant="destructive" className="mb-3">
+            <AlertTitle>Stage 6 lineage incomplete</AlertTitle>
+            <AlertDescription>
+              <ul className="list-disc pl-5">
+                {stage6Context.blockers.map((b) => (
+                  <li key={b.code}><strong>{b.code}</strong> — {b.message}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
         <OneRealEmailPanel
           controlledStubCertified={controlledLiveDone}
           lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
           lineage={
-            controlledLiveDone &&
-            session.moduleCode &&
-            session.eventCode &&
-            session.previewApprovalId &&
-            session.dryRunCertificationId &&
-            session.controlledLiveCertificationId &&
-            resolvedRecipient
+            controlledLiveDone && stage6Context && stage6Context.ok &&
+            stage6Context.recipient && stage6Context.recipientSetHash &&
+            stage6Context.previewApprovalId && stage6Context.dryRunCertificationId &&
+            stage6Context.senderName && stage6Context.senderAddress &&
+            stage6Context.providerName && stage6Context.providerHealth === "READY"
               ? {
-                  moduleCode: session.moduleCode,
-                  eventCode: session.eventCode,
-                  channel: session.channel,
-                  previewSnapshotId: session.previewSnapshotId,
-                  previewApprovalId: session.previewApprovalId,
-                  dryRunCertificationId: session.dryRunCertificationId,
-                  controlledStubCertificationId: session.controlledLiveCertificationId,
-                  // Hash/versions are resolved server-side from the certified
-                  // lineage; the panel forwards them opaquely.
-                  recipientSetHash: "",
-                  configurationVersion: null,
-                  recipientPolicyVersion: null,
-                  recipient: resolvedRecipient,
-                  senderName: null,
-                  senderAddress: null,
-                  providerName: null,
+                  moduleCode: stage6Context.moduleCode,
+                  eventCode: stage6Context.eventCode,
+                  channel: stage6Context.channel,
+                  previewSnapshotId: stage6Context.previewSnapshotId,
+                  previewApprovalId: stage6Context.previewApprovalId!,
+                  dryRunCertificationId: stage6Context.dryRunCertificationId!,
+                  controlledStubCertificationId: stage6Context.controlledStubCertificationId,
+                  recipientSetHash: stage6Context.recipientSetHash!,
+                  configurationVersion: stage6Context.configurationVersion,
+                  recipientPolicyVersion: stage6Context.recipientPolicyVersion,
+                  recipient: stage6Context.recipient!,
+                  senderName: stage6Context.senderName,
+                  senderAddress: stage6Context.senderAddress,
+                  providerName: stage6Context.providerName,
                 }
               : null
           }
