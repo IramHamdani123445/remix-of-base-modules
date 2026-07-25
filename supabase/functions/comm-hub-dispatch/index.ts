@@ -2644,7 +2644,7 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
   env.provider_response_safe = outcome.providerResponseSafe;
   env.warnings.push(...outcome.warnings);
   env.status = outcome.status;
-  env.grant_status = "CONSUMED";
+  // env.grant_status set above from consume result; do not force-overwrite.
   env.completed_at = providerCompletedAt;
   env.failure_stage = outcome.status === "PROVIDER_REJECTED" ? "provider_rejection" : null;
   return json(env, 200);
