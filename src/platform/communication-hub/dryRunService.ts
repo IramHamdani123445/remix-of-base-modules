@@ -60,12 +60,20 @@ export interface DryRunEnvelope {
     | "BEGIN_ROLLED_BACK"
     | "AMBIGUOUS_RUNTIME_OUTCOME"
     | "SAFE_TO_RETRY"
+    | "IDEMPOTENT_REPLAY"
     | "UNKNOWN"
     | string;
   mutation_started: boolean;
   execution_created: boolean;
   request_created: boolean;
   message_created: boolean;
+  /**
+   * Phase 4B3 — server-verified cleanup proof. Only set to `true` when the
+   * server has verified terminal runtime state (CERTIFIED with no partial
+   * rows). Missing OR `false` on a mutation-started outcome must block
+   * "Run Again" until the operator investigates.
+   */
+  cleanup_proven: boolean | "UNKNOWN";
   simulator_call_attempted: boolean;
   ambiguous_outcome: boolean;
   can_retry_after_reauthentication: boolean;
@@ -74,6 +82,7 @@ export interface DryRunEnvelope {
   auth_evidence: Record<string, unknown> | null;
   service_role_probe: Record<string, unknown> | null;
 }
+
 
 export interface RunDryTestInput {
   moduleCode: string;
