@@ -614,9 +614,11 @@ function EvidenceCard({
         <Row label="Retry-safe" value={envelope.retry_safe === "UNKNOWN" ? "Unknown" : envelope.retry_safe ? "Yes" : "No"} />
         <Row label="Retry reason" value={envelope.retry_reason} />
         <Row label="Mutation started" value={envelope.mutation_started ? "Yes" : "No"} />
+        <Row label="Cleanup proven" value={envelope.cleanup_proven === "UNKNOWN" ? "Unknown" : envelope.cleanup_proven ? "Yes" : "No"} />
         <Row label="Ambiguous outcome" value={envelope.ambiguous_outcome ? "Yes" : "No"} />
         <Row label="Simulator call attempted" value={envelope.simulator_call_attempted ? "Yes" : "No"} />
         <Row label="Transition log ID" value={envelope.transition_log_id} mono />
+
       </dl>
       <Collapsible>
         <CollapsibleTrigger asChild>
