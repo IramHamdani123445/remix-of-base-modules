@@ -297,24 +297,47 @@ export function OneRealEmailPanel({
     postProviderAmbiguous ||
     (envelope !== null && envelope.passed === true);
 
-  const runProbe = useCallback(async () => {
-    if (!lineage) return;
-    setProbeBusy(true);
-    try {
-      const r = await runStage6ContractProbe({
-        moduleCode: lineage.moduleCode,
-        eventCode: lineage.eventCode,
-        channel: lineage.channel,
-      });
-      setProbe(r);
-      if (!r.ok) toast.error("Contract probe reported failures — see checklist below.");
-      else toast.success("Contract probe passed.");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Contract probe failed to run");
-    } finally {
-      setProbeBusy(false);
+  const runProbe = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!lineage) return;
+      setProbeBusy(true);
+      try {
+        const r = await runStage6ContractProbe({
+          moduleCode: lineage.moduleCode,
+          eventCode: lineage.eventCode,
+          channel: lineage.channel,
+        });
+        setProbe(r);
+        if (!opts?.silent) {
+          if (!r.ok) toast.error("Contract probe reported failures — see checklist below.");
+          else toast.success("Contract probe passed.");
+        }
+      } catch (e: any) {
+        if (!opts?.silent) toast.error(e?.message ?? "Contract probe failed to run");
+      } finally {
+        setProbeBusy(false);
+      }
+    },
+    [lineage?.moduleCode, lineage?.eventCode, lineage?.channel],
+  );
+
+  // Auto-run the read-only contract probe once whenever the authoritative
+  // Stage 6 lineage becomes available or changes. It creates no runtime or
+  // provider rows. Users can still trigger a manual retry via the button.
+  useEffect(() => {
+    if (!lineage) {
+      setProbe(null);
+      return;
     }
-  }, [lineage]);
+    setProbe(null);
+    void runProbe({ silent: true });
+  }, [
+    lineage?.moduleCode,
+    lineage?.eventCode,
+    lineage?.channel,
+    lineage?.controlledStubCertificationId,
+    runProbe,
+  ]);
 
   const newRun = useCallback(() => {
     if (!lineage) return;
