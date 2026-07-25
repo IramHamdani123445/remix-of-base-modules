@@ -520,25 +520,60 @@ export function OneRealEmailPanel({
         Send One Real Email
       </Button>
 
-      {/* Full failing-condition checklist below the button (never silently disabled) */}
-      {(!allAuthoritativeOk || !allInputsOk) && (
-        <div className="rounded-md border border-border/60 p-3">
-          <div className="text-xs font-semibold mb-2">Not ready — every failing condition:</div>
-          <ul className="text-xs space-y-1">
-            {[...authoritativeChecks, ...inputChecks].map((c) => (
+      {/* Stage 6 readiness checklist — always visible; only failed checks
+          render in red. Inline actions appear beside actionable blockers. */}
+      <div className="rounded-md border border-border/60 p-3">
+        <div className="text-xs font-semibold mb-2">Stage 6 readiness checklist</div>
+        <ul className="text-xs space-y-1">
+          {[...authoritativeChecks, ...inputChecks].map((c) => {
+            const inlineAction =
+              !c.ok && c.id === "gate" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-2 h-6 px-2 text-[11px]"
+                  onClick={() => setGateOpenerOpen(true)}
+                >
+                  <KeyRound className="h-3 w-3 mr-1" /> Open real-email gate
+                </Button>
+              ) : !c.ok && c.id === "contract_probe" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-2 h-6 px-2 text-[11px]"
+                  onClick={() => runProbe()}
+                  disabled={probeBusy}
+                >
+                  {probeBusy ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <ShieldCheck className="h-3 w-3 mr-1" />
+                  )}
+                  Run contract probe
+                </Button>
+              ) : null;
+            return (
               <li key={c.id} className="flex items-start gap-2">
-                {c.ok
-                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5" />
-                  : <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5" />}
-                <span>
+                {c.ok ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5" />
+                ) : (
+                  <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5" />
+                )}
+                <span className={c.ok ? "" : "text-destructive"}>
                   <strong>{c.label}</strong>
-                  {c.detail && <span className="text-muted-foreground"> — {c.detail}</span>}
+                  {c.detail && (
+                    <span className={c.ok ? "text-muted-foreground" : "text-destructive/80"}>
+                      {" "}
+                      — {c.detail}
+                    </span>
+                  )}
+                  {inlineAction}
                 </span>
               </li>
-            ))}
-          </ul>
-        </div>
-      )}
+            );
+          })}
+        </ul>
+      </div>
 
       {/* Result / retry UX */}
       {envelope && (
