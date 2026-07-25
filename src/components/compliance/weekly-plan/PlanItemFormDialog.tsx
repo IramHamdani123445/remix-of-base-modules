@@ -129,11 +129,16 @@ export function PlanItemFormDialog({ open, onOpenChange, onSubmit, weekDays }: P
               <Select value={dayOfWeek} onValueChange={v => setDayOfWeek(v as DayOfWeek)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {DAYS.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  {DAYS.map(d => {
+                    const info = weekDays.find(w => w.name === d);
+                    const past = isPastDay(d);
+                    return (
+                      <SelectItem key={d} value={d} disabled={past}>
+                        {d}{info?.date ? ` (${info.date})` : ''}{past ? ' — past' : ''}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
-              </Select>
-            </div>
-          </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
