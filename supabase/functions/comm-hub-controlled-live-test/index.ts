@@ -455,6 +455,7 @@ Deno.serve(async (req) => {
     await admin.rpc("revoke_comm_hub_controlled_live_grant", {
       p_grant_id: grantId, p_execution_id: executionId,
       p_reason: "prior_mode_persistence_failed",
+      p_service_operation: "REVOKE_GRANT",
     });
     return fail("BLOCKED", "pre_transition_evidence", "prior_mode_persistence_failed",
       errorMessage(priorModeWriteError));
