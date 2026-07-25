@@ -36,6 +36,7 @@ import {
   Loader2,
   GitBranch,
   History,
+  UserPlus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -45,6 +46,9 @@ import { useNavigate } from 'react-router-dom';
 import { useUserCode } from '@/hooks/useUserCode';
 import { PlanRevisionDialog } from '@/components/compliance/weekly-plan/PlanRevisionDialog';
 import { PlanVersionHistoryDialog } from '@/components/compliance/weekly-plan/PlanVersionHistoryDialog';
+import { AssignInspectorDialog } from '@/components/compliance/weekly-plan/AssignInspectorDialog';
+import { useHasCapability } from '@/hooks/useHasCapability';
+import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
 
 export default function MyPlans() {
   const { toast } = useToast();
