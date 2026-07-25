@@ -288,12 +288,12 @@ export function DryRunPanel(props: DryRunPanelProps) {
 
   function handleRunAgain() {
     // Retry-safe contract (Phase 4B3):
-    //   Block "Run Again" ONLY when the server EXPLICITLY set retry_safe=false
-    //   AND the outcome is ambiguous or mutation cleanup is unproven.
-    //   Missing retry_safe (=== "UNKNOWN") also blocks a fresh key mint.
+    //   Allow "Run Again" ONLY when the server EXPLICITLY reports
+    //   retry_safe=true. For any mutation-started outcome, cleanup_proven
+    //   must ALSO be explicitly true. Missing fields ("UNKNOWN") fail closed.
     if (phase !== "final" || !envelope) return;
-    if (envelope.retry_safe === false && envelope.ambiguous_outcome) return;
-    if (envelope.retry_safe === "UNKNOWN" && envelope.mutation_started) return;
+    if (envelope.retry_safe !== true) return;
+    if (envelope.mutation_started && envelope.cleanup_proven !== true) return;
     idempotencyRef.current = generateIdempotencyKey();
     setEnvelope(null);
     setCertValidation(null);
@@ -304,8 +304,9 @@ export function DryRunPanel(props: DryRunPanelProps) {
   const runAgainBlocked =
     phase === "final" &&
     !!envelope &&
-    ((envelope.retry_safe === false && envelope.ambiguous_outcome) ||
-      (envelope.retry_safe === "UNKNOWN" && envelope.mutation_started));
+    (envelope.retry_safe !== true ||
+      (envelope.mutation_started && envelope.cleanup_proven !== true));
+
 
   return (
     <div className="space-y-4">
