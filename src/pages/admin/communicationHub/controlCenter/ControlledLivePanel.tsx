@@ -748,14 +748,28 @@ function FinalResult({ result }: { result: ControlledLiveTestResult }) {
 function EvidenceCard({
   result,
   certification,
+  certLoading,
+  certError,
+  onRetryCertLoad,
   technicalOpen,
   setTechnicalOpen,
 }: {
   result: ControlledLiveTestResult;
   certification: ControlledLiveCertification | null;
+  certLoading: boolean;
+  certError: string | null;
+  onRetryCertLoad: () => void;
   technicalOpen: boolean;
   setTechnicalOpen: (v: boolean) => void;
 }) {
+  const resultCertId =
+    (result as any).certification_id ??
+    (result as any).certificationId ??
+    null;
+  const resultCertStatus =
+    (result as any).certification_status ??
+    (result as any).certificationStatus ??
+    null;
   return (
     <div className="rounded-md border p-3 space-y-2">
       <div className="text-sm font-medium">Operator evidence</div>
@@ -795,13 +809,16 @@ function EvidenceCard({
         <Row label="Started at" value={result.startedAt} />
         <Row label="Completed at" value={result.completedAt} />
         <Row label="Retry-safe" value={result.retrySafe ? "Yes" : "No"} />
+        {/* Server-issued certification evidence — show immediately from
+            the result, even before the detailed RPC read completes. */}
+        {resultCertId && (
+          <Row label="Certification ID" value={resultCertId} mono />
+        )}
+        {resultCertStatus && (
+          <Row label="Certification status (from result)" value={resultCertStatus} />
+        )}
         {certification && (
           <>
-            <Row
-              label="Certification ID"
-              value={certification.id}
-              mono
-            />
             <Row label="Certification status" value={certification.status} />
             <Row
               label="Manual verification"
@@ -810,6 +827,29 @@ function EvidenceCard({
           </>
         )}
       </dl>
+      {resultCertId && certLoading && (
+        <div className="text-xs text-muted-foreground">
+          Loading certification record…
+        </div>
+      )}
+      {certError && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Certification load failed</AlertTitle>
+          <AlertDescription className="space-y-2">
+            <div>{certError}</div>
+            {resultCertId && (
+              <div className="font-mono text-xs break-all">
+                certification_id: {resultCertId}
+              </div>
+            )}
+            <Button size="sm" variant="outline" onClick={onRetryCertLoad}>
+              Retry certification load
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Collapsible open={technicalOpen} onOpenChange={setTechnicalOpen}>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="mt-2">
