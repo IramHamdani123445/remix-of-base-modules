@@ -518,6 +518,7 @@ export default function GoLivePage() {
     session.eventCode,
     session.channel,
     session.controlledLiveCertificationId,
+    stage6ContextReloadNonce,
   ]);
 
 
