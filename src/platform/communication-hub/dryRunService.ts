@@ -179,6 +179,10 @@ function normalizeEnvelope(body: any): DryRunEnvelope {
   };
 }
 
+/** Test-only side door for the private normalizer. Do NOT use in app code. */
+export const __normalizeEnvelopeForTest = normalizeEnvelope;
+
+
 
 /**
  * Invoke the canonical dry-run edge function. The server is authoritative;
