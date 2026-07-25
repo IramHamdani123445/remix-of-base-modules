@@ -2419,9 +2419,9 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
   const providerInvocationKey =
     (await sha256Hex(`${executionId}:${messageId}:${attemptNo}`)).slice(0, 40);
 
-  // 9. Insert authoritative delivery attempt (unique on provider_invocation_key
-  //    protects against duplicate provider calls even under concurrency).
-  const finishedAtEarly = new Date().toISOString();
+  // 9. Insert authoritative pre-provider delivery attempt. Status stays
+  //    'pending' with finished_at=NULL until the provider outcome lands;
+  //    the check constraint now permits 'pending' explicitly.
   const { data: attempt, error: attemptErr } = await admin
     .from("communication_delivery_attempt")
     .insert({
@@ -2444,7 +2444,7 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
       body_hash: bodyHash,
       blockers: [],
       warnings: env.warnings,
-      finished_at: finishedAtEarly,
+      finished_at: null,
     })
     .select("id").maybeSingle();
   if (attemptErr || !attempt) {
