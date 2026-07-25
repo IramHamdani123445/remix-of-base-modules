@@ -69,16 +69,38 @@ export async function setRealEmailGate(input: {
   enabled: boolean;
   reason: string;
 }): Promise<RealEmailGateState> {
-  if (!input.reason || input.reason.trim().length < 8) {
+  const reason = (input.reason ?? "").trim();
+  if (reason.length < 8) {
     throw new Error("A reason of at least 8 characters is required to change the real-email gate.");
   }
-  const { error } = await (supabase as any).rpc("set_comm_hub_real_email_gate", {
-    p_module: input.moduleCode,
-    p_event: input.eventCode,
-    p_channel: input.channel,
+  const moduleCode = input.moduleCode.trim().toLowerCase();
+  const eventCode = input.eventCode.trim().toLowerCase();
+  const channel = (input.channel ?? "email").trim().toLowerCase() || "email";
+
+  const { data, error } = await (supabase as any).rpc("set_comm_hub_real_email_gate", {
+    p_module: moduleCode,
+    p_event: eventCode,
+    p_channel: channel,
     p_enabled: input.enabled,
-    p_reason: input.reason.trim(),
+    p_reason: reason,
   });
   if (error) throw new Error(error.message ?? "set_comm_hub_real_email_gate failed");
-  return fetchRealEmailGate(input);
+
+  const payload = (data ?? {}) as { ok?: boolean; gate?: any };
+  if (payload.ok !== true || !payload.gate) {
+    throw new Error("set_comm_hub_real_email_gate returned an unexpected envelope");
+  }
+  const g = payload.gate;
+  return {
+    moduleCode: g.module_code,
+    eventCode: g.event_code,
+    channel: g.channel,
+    enabled: !!g.enabled,
+    openedAt: g.opened_at ?? null,
+    openedBy: g.opened_by ?? null,
+    reason: g.reason ?? null,
+    closedAt: g.closed_at ?? null,
+    closedBy: g.closed_by ?? null,
+    present: true,
+  };
 }
