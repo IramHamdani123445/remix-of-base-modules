@@ -1,89 +1,90 @@
-## Goal
+# Comm Hub Go-Live — Stages 6 / 7 / 8
 
-Deliver a single planning workbook that catalogues every screen, tab and user operation across the SSB platform, with cross-cutting integration status (Workflow, Audit, DMS, Notifications/Communication) so we can drive final closure.
+Sequenced per user decision: **all three stages, migrations first, then code**.
 
-## Deliverable
+## Migration 1 (this turn) — Schema + core RPCs for Stages 6, 7, 8
 
-`/mnt/documents/SSB_Platform_Screen_Inventory.xlsx`
+Additive only. Does NOT alter existing controlled-stub RPCs. Existing Stage 5
+flow remains unchanged.
 
-### Sheets
+### Stage 6 — Send One Real Email
+- `communication_controlled_live_execution`
+  - `send_context text NOT NULL DEFAULT 'STUB'`  CHECK IN ('STUB','REAL_EMAIL')
+  - `provider_mode text` CHECK IN ('stub','real')
+  - `real_email_authorised boolean NOT NULL DEFAULT false`
+- `communication_controlled_live_grant`
+  - `send_context text NOT NULL DEFAULT 'STUB'`  CHECK IN ('STUB','REAL_EMAIL')
+- `comm_hub_controlled_live_scope_hash_v2(...)` — includes `send_context` so
+  STAGE_5 grant hash ≠ STAGE_6 grant hash for same event/recipient.
+- `communication_hub_real_email_gate` — event-level feature gate row required
+  before a real send is authorised (platform-admin only).
+- `begin_comm_hub_one_real_email(p_payload jsonb)` — SECURITY DEFINER:
+  1. Require CONTROLLED_LIVE operating mode & no EMERGENCY_STOP.
+  2. Require one **valid, non-invalidated** CONTROLLED_STUB certification
+     for (module, event, channel) whose
+     (preview_approval_id, dry_run_certification_id, recipient_set_hash,
+     configuration_version, recipient_policy_version) exactly match input.
+  3. Require exactly one To recipient, no cc/bcc.
+  4. Require active sender profile + active real provider + open feature gate.
+  5. Require canonical `evaluate_comm_hub_send_decision` = allowed for
+     `send_context='REAL_EMAIL'`.
+  6. Create execution (`send_context='REAL_EMAIL'`, `provider_mode='real'`,
+     `real_email_authorised=true`) and grant with the v2 scope hash.
+- `record_comm_hub_one_real_email_provider_attempt(payload)` — same evidence
+  shape as controlled-stub variant but tagged `send_context='REAL_EMAIL'`.
+- `finalize_comm_hub_one_real_email(payload)` — issues certification with
+  `certification_kind='ONE_REAL_EMAIL'`.
 
-1. **Legend** — status vocabulary: `YES` (implemented), `MANAGED` (toggle/setting driven), `AUTO` (applied by default), `PLANNED` (designed but not built), blank (not applicable). Column definitions.
-2. **All Screens** — master flat table (filterable, frozen header). One row per (Route × Tab/Action × Operation). Every artifact-producing operation (notice generated, case created, email sent, upload, cheque printed, referral packet) explicitly listed so DMS + Notification columns are meaningful.
-3. **Pivot — Module × Status** — count of YES / MANAGED / AUTO / PLANNED / blank per module, split by the four integration columns.
-4. **Gaps** — auto-filtered rows where any of Workflow / Audit / DMS / Notification = `PLANNED` — the closure worklist.
-5. **Per-module sheets** — one sheet per module (same schema as All Screens) for focused review: Admin & Master Data, SSB Setup, Configuration Governance, Identity & Organisation, Employer, Insured Person, C3 Contributions, Benefits (BN) — Product/Award360/Claims/Payments/Servicing/Suspension/Mortality/Appeals/Overpayments/Means-Test/Risk/Uprating, Compliance & Enforcement, Legal, BeMA (legacy), Communication Hub, Workflow Engine, Audit, DMS, Portals (Employer / Doctor / External Task), Reports & Analytics, Public API.
+### Stage 7 — Activate Manual Production
+- `communication_hub_event_certification` — frozen manifest per (module,event,channel):
+  - `status text` CHECK IN ('live_manual_only','live_cron_allowed','SUSPENDED','REVOKED')
+  - Frozen: `controlled_stub_certification_id`, `one_real_email_certification_id`,
+    `configuration_version`, `recipient_policy_version`,
+    `template_version_id`, `template_manifest_hash`, `sender_profile_id`,
+    `recipient_set_hash`.
+  - Approval: `approved_by`, `approved_at`, `reason`.
+  - Drift: `drift_detected_at`, `drift_reason`, `suspended_at`.
+- `certify_comm_hub_event_manual_production(p_payload jsonb)` —
+  requires ONE_REAL_EMAIL certification + inbox confirmation
+  (`manual_verification_status='CONFIRMED'` OR provider
+  `DELIVERED`). Writes frozen row, upserts
+  `communication_hub_event_live_control.status='live_manual_only'`.
+- Drift trigger — on `communication_hub_control_settings.configuration_version`
+  bump OR `communication_hub_recipient_policy.version` bump for scope, sets
+  drift_detected_at + status='SUSPENDED'; sends to
+  `communication_hub_event_live_control.status='dry_run_only'`.
 
-### Columns (All Screens and per-module sheets)
+### Stage 8 — Activate Automated Production
+- `communication_hub_automation_readiness` — one row per (module,event,channel),
+  boolean+timestamp+by columns for:
+  scheduler, automatic_triggers, retry_worker, dead_letter, rate_limits,
+  batch_limits, provider_circuit_breaker, emergency_stop, alerting_monitoring.
+- `certify_comm_hub_event_automated_production(p_payload)` —
+  1. Require existing `live_manual_only` certification.
+  2. Require ≥N successful manual sends observed since certification.
+  3. Require all readiness columns TRUE + recent.
+  4. Promotes certification `status='live_cron_allowed'` and updates
+     `event_live_control.status='live_cron_allowed'`.
+- `rollback_comm_hub_event_production(p_payload)` — moves certification back
+  to `live_manual_only` or SUSPENDED, records reason.
 
+## Migration 2 (follow-up) — Automation readiness bootstrap rows
 
-| #      | Column                  | Notes                                                                    | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| ------ | ----------------------- | ------------------------------------------------------------------------ | ------ | ------ | ------ | ------ |
-| 1      | Module                  | e.g. Benefits, Compliance, Comm Hub                                      | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 2      | Sub-Module              | e.g. Award360, Weekly Planning                                           | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 3      | Route                   | e.g. `/compliance/weekly-plan`                                           | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 4      | Main Task               | Business purpose of the screen                                           | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 5      | Page Level Task         | Tab or major section                                                     | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 6      | User Action / Operation | Button, dialog, wizard step                                              | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 7      | Produces Artifact       | e.g. Notice PDF, Case, Referral packet, Cheque, Email, blank if none     | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 8      | Workflow Implementation | YES / MANAGED / AUTO / PLANNED / blank                                   | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 9      | Audit Logs              | YES / MANAGED / AUTO / PLANNED / blank                                   | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 10     | DMS Integration         | YES / MANAGED / AUTO / PLANNED / blank (mandatory whenever col 7 is set) | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| 11     | Notification / Comm Hub | YES / MANAGED / AUTO / PLANNED / blank                                   | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| &nbsp; | &nbsp;                  | &nbsp;                                                                   | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| &nbsp; | &nbsp;                  | &nbsp;                                                                   | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| &nbsp; | &nbsp;                  | &nbsp;                                                                   | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
-| &nbsp; | &nbsp;                  | &nbsp;                                                                   | &nbsp; | &nbsp; | &nbsp; | &nbsp; |
+Only after Migration 1 approved: seed catalog rows / defaults where safe.
 
+## Frontend code (post-migration)
+- Replace `OneRealEmailPanel` placeholder with real Stage 6 panel wired to
+  `send-one-real-email` edge function.
+- New `ManualProductionPanel` (Stage 7) — certify + freeze manifest.
+- New `AutomatedProductionPanel` (Stage 8) — 9-check readiness board +
+  certify.
+- `useStageReadiness` extended to consume server evidence.
 
-Rule I will follow while filling column 10: any row whose column 7 is non-blank must have column 10 set to `YES` or `PLANNED` — never blank — because every artifact must land in DMS.
+## Edge functions (post-migration)
+- New `comm-hub-send-one-real-email` — reuses controlled-live dispatcher
+  scaffold with `send_context='REAL_EMAIL'`, provider = Resend (only), no
+  stub fallback, one-use grant consume after provider evidence persisted.
 
-## Source strategy
-
-Docs first, code second:
-
-1. **Docs sweep** — read the module-level docs already in the repo: `docs/social-security/*`, `docs/enterprise/*`, `docs/communication-hub/*`, `docs/compliance/*`, `docs/modernisation/benefits-gap/*`, `docs/organization/*`, `docs/architecture/*`, `docs/business-modules/*`, `docs/platform/*`, plus the memory index files under `mem://` referenced in the project memory.
-2. **Menu & routes** — walk `src/components/sidebar/menuItems/*`, `src/App.tsx` router, `src/config/routes.ts`, satellite `docs/satellite-templates/*` for the route spine.
-3. **Screens & operations** — for each route, open the page component under `src/pages/**` (and its major child components) to enumerate tabs, dialogs, wizard steps, and mutation calls.
-4. **Cross-cutting enrichment** — for each operation, decide the four status cells by checking:
-  - Workflow: usage of `workflow_*` tables, `workflow-service`, `useWorkflowInstance`, or a documented workflow template.
-  - Audit: call to `audit_logs` / `bn_*_audit` / `ce_*_audit` / `_comm_hub_*_audit` insert or trigger.
-  - DMS: `generated_documents` / `core_generated_document` / `documentsAdapter` / storage bucket upload.
-  - Notification: call to `sendCommunication` façade, `communication_*`, `notification_*`, or `notificationsAdapter`.
-5. **Governance labels** — treat toggle-gated behaviour (feature flags, `app_lockdown_state`, module settings) as `MANAGED`; trigger-driven or middleware-applied behaviour (audit triggers, RLS-linked logs) as `AUTO`; documented-but-not-landed items as `PLANNED`.
-
-## Build steps
-
-1. Read docs and memory files listed above; extract module → screen map.
-2. Walk sidebar menu + `src/App.tsx` router; produce the authoritative route list.
-3. For each route, open the page file and its major sub-components; enumerate tabs, dialogs, wizard steps and mutations into a JSON intermediate.
-4. Enrich each operation with the four status columns using the checks above; mark artifacts and force DMS column accordingly.
-5. Generate the XLSX with `openpyxl`:
-  - Legend sheet with coloured status swatches and column definitions.
-  - All Screens sheet with frozen header, autofilter, conditional colouring per status.
-  - Pivot sheet built with `COUNTIFS` formulas (kept dynamic).
-  - Gaps sheet as a filtered view (formulas referencing All Screens).
-  - Per-module sheets sliced from All Screens.
-6. Run the recalculate_formulas skill script and fix any errors.
-7. Save workbook to `/mnt/documents/SSB_Platform_Screen_Inventory.xlsx` and drop a short `SSB_Platform_Screen_Inventory_README.md` next to it summarising sheet layout and how to use the Gaps sheet for closure planning.
-
-## Scope confirmation
-
-- All modules (internal admin + Employer/Doctor/External portals + Public API + Reports).
-- Every route × major tab/action × user operation gets a row.
-- Docs are the primary source; code fills gaps and validates.
-- Output: XLSX with legend, pivot, gaps and per-module sheets — no separate MD except a short README.
-
-## Out of scope
-
-- Design/UX critique.
-- Any code changes to the app.
-- Estimating effort or timeline per gap (can be added later in the Notes column if you want).
-
-## Verification
-
-- Every module in the sidebar menu appears as its own sheet and in the pivot.
-- Every row with a value in `Produces Artifact` has `DMS Integration` set.
-- Pivot totals match row counts on All Screens.
-- Legend covers all status values used; no stray values.
-- Workbook opens cleanly; formulas recalculate with zero errors.
+## Tests (post-migration)
+- SQL harness `run_ch_stage_678_runtime_tests()` mirroring existing
+  P3E-B pattern. Covers all Stage 6/7/8 assertions listed in the request.
