@@ -43,8 +43,8 @@ describe("controlled stub — evidence-gated grant consumption", () => {
     expect(guardIdx).toBeGreaterThan(0);
     const guardBlock = targeted.slice(guardIdx, guardIdx + 1600);
     expect(guardBlock).toContain("provider_evidence_persist_failed");
-    expect(guardBlock).toMatch(/retry_safe:\s*false/);
-    expect(guardBlock).toMatch(/reconciliation_required:\s*true/);
+    expect(guardBlock).toMatch(/retry_safe\s*[:=]\s*false/);
+    expect(guardBlock).toMatch(/reconciliation_required\s*[:=]\s*true/);
     expect(guardBlock).toMatch(/return\s+json\(env,\s*200\)/);
   });
 
@@ -62,7 +62,7 @@ describe("controlled stub — evidence-gated grant consumption", () => {
     expect(guardIdx).toBeGreaterThan(0);
     const guardBlock = targeted.slice(guardIdx, guardIdx + 1600);
     expect(guardBlock).toContain("provider_evidence_persist_failed");
-    expect(guardBlock).toMatch(/retry_safe:\s*false/);
-    expect(guardBlock).toMatch(/reconciliation_required:\s*true/);
+    expect(guardBlock).toMatch(/retry_safe\s*[:=]\s*false/);
+    expect(guardBlock).toMatch(/reconciliation_required\s*[:=]\s*true/);
   });
 });
