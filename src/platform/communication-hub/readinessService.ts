@@ -48,6 +48,12 @@ export interface CheckReadinessInput {
   eventCode?: string | null;
   channel?: string;
   targetStage: ReleaseStageTarget;
+  /**
+   * Stage 6 (ONE_REAL_EMAIL) authoritative lineage anchor. When supplied,
+   * the RPC derives the approved recipient and Dry Run certification id
+   * from durable server rows; any browser-supplied recipient is ignored.
+   */
+  controlledStubCertificationId?: string | null;
 }
 
 export async function checkCommHubReadiness(
@@ -59,6 +65,7 @@ export async function checkCommHubReadiness(
       event_code: input.eventCode ?? null,
       channel: input.channel ?? "email",
       target_stage: input.targetStage,
+      controlled_stub_certification_id: input.controlledStubCertificationId ?? null,
     },
   });
   if (error) throw new Error(error.message ?? "check_comm_hub_readiness failed");
