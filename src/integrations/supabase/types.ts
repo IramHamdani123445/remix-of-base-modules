@@ -97856,6 +97856,17 @@ export type Database = {
         }
       }
       get_comm_hub_cron_status: { Args: never; Returns: Json }
+      get_comm_hub_go_live_gate_snapshot: {
+        Args: {
+          p_channel: string
+          p_dry_run_execution_id?: string
+          p_event_code: string
+          p_module_code: string
+          p_preview_approval_id?: string
+          p_preview_snapshot_id?: string
+        }
+        Returns: Json
+      }
       get_comm_hub_live_window_status: { Args: never; Returns: Json }
       get_comm_hub_module_automation_setting: {
         Args: {

@@ -41,6 +41,7 @@ import DryRunPanel from "../controlCenter/DryRunPanel";
 import ControlledStubPanel from "../controlCenter/ControlledStubPanel";
 import OneRealEmailPanel from "../controlCenter/OneRealEmailPanel";
 import ReadinessSummary from "./ReadinessSummary";
+import GoLiveGateMonitor from "./GoLiveGateMonitor";
 import {
   evaluateCanonicalSendDecision,
   type SendDecisionEnvelope,
@@ -676,6 +677,17 @@ export default function GoLivePage() {
           <span>{recipientSummary}</span>
         </div>
       )}
+
+      {/* Phase 4B3 — Compact whole-journey Gate Monitor. Server-authoritative,
+          read-only. Creates zero runtime rows. */}
+      <GoLiveGateMonitor
+        moduleCode={session.moduleCode || null}
+        eventCode={session.eventCode || null}
+        channel={session.channel || null}
+        previewSnapshotId={session.previewSnapshotId}
+        previewApprovalId={session.previewApprovalId}
+        dryRunExecutionId={session.dryRunExecutionId}
+      />
 
       {/* STEP 1 — SELECT EVENT */}
       <CommunicationHubSectionCard
