@@ -214,7 +214,7 @@ export function OneRealEmailPanel({
         ok: !!gate?.enabled,
         detail: gate?.enabled
           ? `opened ${gate.openedAt}`
-          : "closed (open via the audited action below)",
+          : "gate is closed",
       },
       {
         id: "recipient",
@@ -247,15 +247,17 @@ export function OneRealEmailPanel({
         id: "contract_probe",
         label: "Contract probe passed (no execution/grant created)",
         ok: probe?.ok === true,
-        detail: probe
-          ? probe.ok
-            ? "all backend contracts verified"
-            : `${probe.checks.filter((c) => !c.ok).length} contract failures`
-          : "run the probe before sending",
+        detail: probeBusy
+          ? "probe running…"
+          : probe
+            ? probe.ok
+              ? "all backend contracts verified"
+              : `${probe.checks.filter((c) => !c.ok).length} contract failures`
+            : "probe has not run yet",
       },
     ];
     return checks;
-  }, [controlledStubCertified, lineage, gate, readinessBlockers, readinessLoading, probe]);
+  }, [controlledStubCertified, lineage, gate, readinessBlockers, readinessLoading, probe, probeBusy]);
 
   const inputChecks: ReadinessCheck[] = useMemo(
     () => [
