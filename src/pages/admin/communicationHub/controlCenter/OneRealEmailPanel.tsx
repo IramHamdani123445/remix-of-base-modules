@@ -84,6 +84,8 @@ export interface OneRealEmailPanelProps {
   onEnvelope?: (envelope: OneRealEmailEnvelope) => void;
   /** Fired after manual verification succeeds so the parent can mark Stage 6 done. */
   onVerified?: (certificationId: string) => void;
+  /** Optional: request the parent re-load the authoritative Stage 6 context. */
+  onReloadContext?: () => void;
 }
 
 interface ReadinessCheck {
