@@ -2491,7 +2491,7 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
   if (attemptRecordError || !(attemptRecordRaw as any)?.ok) {
     const detail = String(attemptRecordError?.message ?? (attemptRecordRaw as any)?.code ?? "unknown");
     await admin.from("communication_delivery_attempt").update({
-      status: "failed",
+      status: "failure",
       result: "DISPATCH_FAILED",
       blockers: [{ code: "execution_attempt_record_failed", stage: "provider_preflight", message: detail }],
       finished_at: new Date().toISOString(),
