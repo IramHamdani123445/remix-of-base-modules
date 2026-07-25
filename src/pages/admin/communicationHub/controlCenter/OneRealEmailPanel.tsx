@@ -1,65 +1,583 @@
 /**
- * CH-GL-01 Slice C — OneRealEmailPanel.
+ * Stage 6 — Send One Real Email panel (Slice 2).
  *
- * Dedicated Go Live surface for the SEND_ONE_REAL_EMAIL action.
+ * Actionable Stage 6 surface. Replaces the Slice C locked placeholder.
  *
- * Slice C ships this as a LOCKED placeholder. The action is defined in
- * the server contract (`certification_kind = 'ONE_REAL_EMAIL'`, Slice A)
- * and the client type (`ControlledLiveAction = 'SEND_ONE_REAL_EMAIL'`,
- * Slice B), but the orchestrator wiring, one-use grant flow, and
- * operator UI for a real provider send are intentionally NOT enabled
- * from this page.
- *
- * Unlocking real email requires:
- *   - A passing Controlled Stub certification for this event.
- *   - Platform administrators explicitly opening the real-provider gate.
- *   - Event certification for `live_manual_only` / `live_cron_allowed`.
- *
- * None of those toggles are exposed here; this panel exists so the Go
- * Live journey renders a truthful Stage 6 rather than reusing the
- * Controlled Stub panel.
+ * Contract:
+ *   - Every authoritative condition is loaded fresh; sessionStorage is never
+ *     used to unlock the button.
+ *   - The button may be enabled only when every check passes; failed checks
+ *     are ALWAYS listed below the button — never silently disabled.
+ *   - HTTP 200 is not success. Business outcome is derived from the returned
+ *     `one-real-email.v1` envelope only.
+ *   - Pre-provider failure with `cleanupProven=true` permits a new run with a
+ *     fresh idempotency key; post-provider ambiguity locks resend.
+ *   - Manual verification renders only when the strict 7-condition combo is
+ *     true after a real provider acceptance.
  */
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Lock, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+import {
+  AlertCircle,
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  Lock,
+  MailWarning,
+  RefreshCw,
+  Send,
+  ShieldAlert,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  fetchRealEmailGate,
+  type RealEmailGateState,
+} from "@/platform/communication-hub/realEmailGateService";
+import { checkCommHubReadiness } from "@/platform/communication-hub/readinessService";
+import {
+  generateOneRealEmailIdempotencyKey,
+  invokeSendOneRealEmail,
+  ONE_REAL_EMAIL_CONFIRMATION_PHRASE,
+  type OneRealEmailEnvelope,
+} from "@/platform/communication-hub/oneRealEmailService";
+import {
+  runStage6ContractProbe,
+  type ContractProbeResult,
+} from "@/platform/communication-hub/stage6ContractProbe";
+import ManualInboxVerificationPanel from "./ManualInboxVerificationPanel";
+import RealEmailGateOpenerDialog from "./RealEmailGateOpenerDialog";
+
+export interface OneRealEmailLineage {
+  moduleCode: string;
+  eventCode: string;
+  channel: string;
+  previewSnapshotId: string | null;
+  previewApprovalId: string;
+  dryRunCertificationId: string;
+  controlledStubCertificationId: string;
+  recipientSetHash: string;
+  configurationVersion: number | null;
+  recipientPolicyVersion: number | null;
+  recipient: string;
+  senderName?: string | null;
+  senderAddress?: string | null;
+  providerName?: string | null;
+}
 
 export interface OneRealEmailPanelProps {
   /** True when the Controlled Stub stage has been certified for this event. */
   controlledStubCertified: boolean;
   /** Server-side stage lock reason from `useStageReadiness`, if any. */
   lockReason?: string | null;
+  /** Full Stage-6-ready lineage — null when Stage 5 has not completed. */
+  lineage: OneRealEmailLineage | null;
+  /** Fired every time an execution completes so GoLivePage can persist state. */
+  onEnvelope?: (envelope: OneRealEmailEnvelope) => void;
+  /** Fired after manual verification succeeds so the parent can mark Stage 6 done. */
+  onVerified?: (certificationId: string) => void;
+}
+
+interface ReadinessCheck {
+  id: string;
+  label: string;
+  ok: boolean;
+  detail?: string;
 }
 
 export function OneRealEmailPanel({
   controlledStubCertified,
   lockReason,
+  lineage,
+  onEnvelope,
+  onVerified,
 }: OneRealEmailPanelProps) {
-  const primaryReason = controlledStubCertified
-    ? (lockReason ??
-      "Prerequisites for a real email send have not been satisfied.")
-    : "Complete the Controlled Stub certification first. The real-provider gate is not opened from this page.";
+  const [gate, setGate] = useState<RealEmailGateState | null>(null);
+  const [gateLoading, setGateLoading] = useState(false);
+  const [gateOpenerOpen, setGateOpenerOpen] = useState(false);
+  const [readinessBlockers, setReadinessBlockers] = useState<string[]>([]);
+  const [readinessLoading, setReadinessLoading] = useState(false);
+  const [probe, setProbe] = useState<ContractProbeResult | null>(null);
+  const [probeBusy, setProbeBusy] = useState(false);
+  const [reason, setReason] = useState("");
+  const [phrase, setPhrase] = useState("");
+  const [ack, setAck] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [idempotencyKey, setIdempotencyKey] = useState<string>("");
+  const [envelope, setEnvelope] = useState<OneRealEmailEnvelope | null>(null);
 
-  return (
-    <div className="space-y-3">
+  // (Re)initialise an idempotency key whenever the lineage changes.
+  useEffect(() => {
+    if (!lineage) {
+      setIdempotencyKey("");
+      setEnvelope(null);
+      return;
+    }
+    setIdempotencyKey(
+      generateOneRealEmailIdempotencyKey(
+        lineage.moduleCode,
+        lineage.eventCode,
+        lineage.channel,
+      ),
+    );
+    setEnvelope(null);
+  }, [
+    lineage?.moduleCode,
+    lineage?.eventCode,
+    lineage?.channel,
+    lineage?.recipient,
+    lineage?.previewApprovalId,
+    lineage?.dryRunCertificationId,
+    lineage?.controlledStubCertificationId,
+  ]);
+
+  const reloadGate = useCallback(async () => {
+    if (!lineage) return;
+    setGateLoading(true);
+    try {
+      const g = await fetchRealEmailGate({
+        moduleCode: lineage.moduleCode,
+        eventCode: lineage.eventCode,
+        channel: lineage.channel,
+      });
+      setGate(g);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to load real-email gate");
+      setGate(null);
+    } finally {
+      setGateLoading(false);
+    }
+  }, [lineage?.moduleCode, lineage?.eventCode, lineage?.channel]);
+
+  useEffect(() => {
+    void reloadGate();
+  }, [reloadGate]);
+
+  const reloadReadiness = useCallback(async () => {
+    if (!lineage) return;
+    setReadinessLoading(true);
+    try {
+      const env = await checkCommHubReadiness({
+        moduleCode: lineage.moduleCode,
+        eventCode: lineage.eventCode,
+        channel: lineage.channel,
+        targetStage: "ONE_REAL_EMAIL",
+      });
+      setReadinessBlockers(
+        env.ready ? [] : env.blockers.map((b) => b.title || b.message || b.code),
+      );
+    } catch (e: any) {
+      setReadinessBlockers([e?.message ?? "readiness lookup failed"]);
+    } finally {
+      setReadinessLoading(false);
+    }
+  }, [lineage?.moduleCode, lineage?.eventCode, lineage?.channel]);
+
+  useEffect(() => {
+    void reloadReadiness();
+  }, [reloadReadiness]);
+
+  const authoritativeChecks: ReadinessCheck[] = useMemo(() => {
+    const checks: ReadinessCheck[] = [
+      {
+        id: "stage5",
+        label: "Controlled Stub (Stage 5) certified for this lineage",
+        ok: controlledStubCertified && !!lineage?.controlledStubCertificationId,
+        detail: lineage?.controlledStubCertificationId ?? "no active certification",
+      },
+      {
+        id: "gate",
+        label: "Real-email feature gate is OPEN for this module/event/channel",
+        ok: !!gate?.enabled,
+        detail: gate?.enabled
+          ? `opened ${gate.openedAt}`
+          : "closed (open via the audited action below)",
+      },
+      {
+        id: "recipient",
+        label: "Exactly one approved recipient · no CC · no BCC",
+        ok: !!lineage?.recipient && lineage.recipient.trim().length > 0,
+        detail: lineage?.recipient ?? "unresolved",
+      },
+      {
+        id: "provider",
+        label: "Active real provider bound (never provider_stub)",
+        ok: !!lineage?.providerName && lineage.providerName !== "provider_stub",
+        detail: lineage?.providerName ?? "not resolved",
+      },
+      {
+        id: "sender",
+        label: "Active sender profile bound",
+        ok: !!lineage?.senderAddress,
+        detail: lineage?.senderAddress ?? "not resolved",
+      },
+      {
+        id: "canonical_readiness",
+        label: "Canonical ONE_REAL_EMAIL readiness is clean",
+        ok: readinessBlockers.length === 0 && !readinessLoading,
+        detail:
+          readinessBlockers.length === 0
+            ? "no blockers"
+            : readinessBlockers.slice(0, 3).join(" · "),
+      },
+      {
+        id: "contract_probe",
+        label: "Contract probe passed (no execution/grant created)",
+        ok: probe?.ok === true,
+        detail: probe
+          ? probe.ok
+            ? "all backend contracts verified"
+            : `${probe.checks.filter((c) => !c.ok).length} contract failures`
+          : "run the probe before sending",
+      },
+    ];
+    return checks;
+  }, [controlledStubCertified, lineage, gate, readinessBlockers, readinessLoading, probe]);
+
+  const inputChecks: ReadinessCheck[] = useMemo(
+    () => [
+      { id: "reason", label: "Reason (min 8 characters)", ok: reason.trim().length >= 8 },
+      {
+        id: "phrase",
+        label: `Confirmation phrase matches "${ONE_REAL_EMAIL_CONFIRMATION_PHRASE}"`,
+        ok: phrase === ONE_REAL_EMAIL_CONFIRMATION_PHRASE,
+      },
+      { id: "ack", label: "Explicit acknowledgement checked", ok: ack },
+    ],
+    [reason, phrase, ack],
+  );
+
+  const allAuthoritativeOk = authoritativeChecks.every((c) => c.ok);
+  const allInputsOk = inputChecks.every((c) => c.ok);
+
+  // Post-execution state: pre-provider cleanup allows a new run; post-provider
+  // ambiguity locks resend permanently for the same idempotency key.
+  const postProviderAmbiguous =
+    envelope !== null &&
+    envelope.passed === false &&
+    envelope.providerCallAttempted === true &&
+    (envelope.reconciliationRequired || envelope.retrySafe === false);
+  const preProviderRetryable =
+    envelope !== null &&
+    envelope.passed === false &&
+    envelope.providerCallAttempted === false &&
+    envelope.cleanupProven === true;
+
+  const buttonDisabled =
+    !controlledStubCertified ||
+    !allAuthoritativeOk ||
+    !allInputsOk ||
+    !lineage ||
+    sending ||
+    postProviderAmbiguous ||
+    (envelope !== null && envelope.passed === true);
+
+  const runProbe = useCallback(async () => {
+    if (!lineage) return;
+    setProbeBusy(true);
+    try {
+      const r = await runStage6ContractProbe({
+        moduleCode: lineage.moduleCode,
+        eventCode: lineage.eventCode,
+        channel: lineage.channel,
+      });
+      setProbe(r);
+      if (!r.ok) toast.error("Contract probe reported failures — see checklist below.");
+      else toast.success("Contract probe passed.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Contract probe failed to run");
+    } finally {
+      setProbeBusy(false);
+    }
+  }, [lineage]);
+
+  const newRun = useCallback(() => {
+    if (!lineage) return;
+    setIdempotencyKey(
+      generateOneRealEmailIdempotencyKey(
+        lineage.moduleCode,
+        lineage.eventCode,
+        lineage.channel,
+      ),
+    );
+    setEnvelope(null);
+    setReason("");
+    setPhrase("");
+    setAck(false);
+  }, [lineage]);
+
+  const send = useCallback(async () => {
+    if (!lineage || buttonDisabled) return;
+    setSending(true);
+    try {
+      const env = await invokeSendOneRealEmail({
+        moduleCode: lineage.moduleCode,
+        eventCode: lineage.eventCode,
+        channel: lineage.channel,
+        recipient: lineage.recipient,
+        previewSnapshotId: lineage.previewSnapshotId,
+        previewApprovalId: lineage.previewApprovalId,
+        dryRunCertificationId: lineage.dryRunCertificationId,
+        controlledStubCertificationId: lineage.controlledStubCertificationId,
+        recipientSetHash: lineage.recipientSetHash,
+        configurationVersion: lineage.configurationVersion,
+        recipientPolicyVersion: lineage.recipientPolicyVersion,
+        idempotencyKey,
+        reason: reason.trim(),
+      });
+      setEnvelope(env);
+      onEnvelope?.(env);
+      if (env.passed) toast.success("Provider accepted the send. Verify inbox receipt.");
+      else toast.error(env.blockers[0]?.message ?? env.message ?? "Send was blocked.");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Send failed");
+    } finally {
+      setSending(false);
+    }
+  }, [lineage, buttonDisabled, idempotencyKey, reason, onEnvelope]);
+
+  // -------------- rendering --------------
+
+  if (!controlledStubCertified) {
+    return (
       <Alert>
         <Lock className="h-4 w-4" />
         <AlertTitle className="flex items-center gap-2">
           Locked
           <Badge variant="outline">SEND_ONE_REAL_EMAIL</Badge>
         </AlertTitle>
-        <AlertDescription>{primaryReason}</AlertDescription>
-      </Alert>
-
-      <Alert>
-        <ShieldAlert className="h-4 w-4" />
-        <AlertTitle>Why this stage is separated</AlertTitle>
         <AlertDescription>
-          Send One Real Email is a distinct, audited action from Run
-          Controlled Stub. It requires a fresh one-use server grant, a
-          real-provider transport, and a passing Controlled Stub
-          certification. Real sending is never inferred from a stub result.
+          {lockReason ??
+            "Complete the Controlled Stub certification first. The real-provider gate is not opened from this page."}
         </AlertDescription>
       </Alert>
+    );
+  }
+
+  if (!lineage) {
+    return (
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Lineage not resolved</AlertTitle>
+        <AlertDescription>
+          Stage 5 certification is present but the panel could not receive the
+          full lineage (module/event/channel/recipient/preview/dry-run/stub ids).
+          Refresh the page.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const showManualVerification =
+    envelope !== null &&
+    envelope.action === "SEND_ONE_REAL_EMAIL" &&
+    envelope.providerMode === "real" &&
+    envelope.sendContext === "REAL_EMAIL" &&
+    envelope.realEmailAuthorised === true &&
+    envelope.providerCallAttempted === true &&
+    envelope.certificationKind === "ONE_REAL_EMAIL" &&
+    (envelope.status === "PROVIDER_ACCEPTED" || envelope.status === "DELIVERY_PENDING") &&
+    !!envelope.certificationId;
+
+  return (
+    <div className="space-y-4">
+      {/* Context (read-only) */}
+      <div className="grid gap-2 rounded-md border border-border/60 p-3 text-xs md:grid-cols-2">
+        <div><span className="text-muted-foreground">Module / Event:</span> <code>{lineage.moduleCode}</code> / <code>{lineage.eventCode}</code></div>
+        <div><span className="text-muted-foreground">Channel:</span> <code>{lineage.channel}</code></div>
+        <div><span className="text-muted-foreground">Recipient:</span> <code>{lineage.recipient}</code></div>
+        <div><span className="text-muted-foreground">CC / BCC:</span> none · none</div>
+        <div><span className="text-muted-foreground">Sender:</span> {lineage.senderName ?? "—"} &lt;{lineage.senderAddress ?? "—"}&gt;</div>
+        <div><span className="text-muted-foreground">Provider:</span> {lineage.providerName ?? "—"}</div>
+        <div><span className="text-muted-foreground">Controlled Stub cert:</span> <code className="font-mono text-[10px]">{lineage.controlledStubCertificationId}</code></div>
+        <div><span className="text-muted-foreground">Preview approval:</span> <code className="font-mono text-[10px]">{lineage.previewApprovalId}</code></div>
+        <div><span className="text-muted-foreground">Dry Run cert:</span> <code className="font-mono text-[10px]">{lineage.dryRunCertificationId}</code></div>
+        <div><span className="text-muted-foreground">Idempotency key:</span> <code className="font-mono text-[10px]">…{idempotencyKey.slice(-16)}</code></div>
+      </div>
+
+      {/* Gate state */}
+      <div className="flex items-center gap-2">
+        <Badge variant={gate?.enabled ? "default" : "outline"}>
+          {gate?.enabled ? "Real-email gate OPEN" : "Real-email gate CLOSED"}
+        </Badge>
+        <Button size="sm" variant="ghost" onClick={reloadGate} disabled={gateLoading}>
+          {gateLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+        </Button>
+        <Button
+          size="sm"
+          variant={gate?.enabled ? "outline" : "default"}
+          onClick={() => setGateOpenerOpen(true)}
+        >
+          <KeyRound className="h-4 w-4 mr-1" />
+          {gate?.enabled ? "Close gate" : "Open real-email gate"}
+        </Button>
+      </div>
+
+      {/* Contract probe */}
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={runProbe} disabled={probeBusy}>
+          {probeBusy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
+          Run contract probe
+        </Button>
+        {probe && (
+          <Badge variant={probe.ok ? "default" : "destructive"}>
+            {probe.ok ? "Contract OK" : `${probe.checks.filter((c) => !c.ok).length} failures`}
+          </Badge>
+        )}
+      </div>
+      {probe && !probe.ok && (
+        <Alert variant="destructive">
+          <XCircle className="h-4 w-4" />
+          <AlertTitle>Contract probe failures</AlertTitle>
+          <AlertDescription>
+            <ul className="text-xs list-disc pl-4 space-y-1">
+              {probe.checks
+                .filter((c) => !c.ok)
+                .map((c) => (
+                  <li key={c.id}>
+                    <strong>{c.label}</strong>: {c.detail}
+                  </li>
+                ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Separator />
+
+      {/* Operator inputs */}
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Reason for the real send (min 8 characters)</Label>
+          <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">
+            Type <code>{ONE_REAL_EMAIL_CONFIRMATION_PHRASE}</code> to confirm
+          </Label>
+          <Input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder={ONE_REAL_EMAIL_CONFIRMATION_PHRASE} />
+        </div>
+        <label className="flex items-start gap-2 text-xs">
+          <Checkbox checked={ack} onCheckedChange={(v) => setAck(v === true)} />
+          <span>
+            I understand that this action will invoke the configured real email
+            provider once for the displayed recipient.
+          </span>
+        </label>
+      </div>
+
+      <Button onClick={send} disabled={buttonDisabled}>
+        {sending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+        Send One Real Email
+      </Button>
+
+      {/* Full failing-condition checklist below the button (never silently disabled) */}
+      {(!allAuthoritativeOk || !allInputsOk) && (
+        <div className="rounded-md border border-border/60 p-3">
+          <div className="text-xs font-semibold mb-2">Not ready — every failing condition:</div>
+          <ul className="text-xs space-y-1">
+            {[...authoritativeChecks, ...inputChecks].map((c) => (
+              <li key={c.id} className="flex items-start gap-2">
+                {c.ok
+                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5" />
+                  : <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5" />}
+                <span>
+                  <strong>{c.label}</strong>
+                  {c.detail && <span className="text-muted-foreground"> — {c.detail}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Result / retry UX */}
+      {envelope && (
+        <div className="space-y-3">
+          <Separator />
+          <div className="text-sm font-semibold">Execution result</div>
+          <div className="grid gap-1 text-xs md:grid-cols-2">
+            <div>Status: <Badge variant={envelope.passed ? "default" : "destructive"}>{envelope.status}</Badge></div>
+            <div>Failure stage: <code>{envelope.failureStage ?? "—"}</code></div>
+            <div>Provider called: <code>{String(envelope.providerCallAttempted)}</code></div>
+            <div>Provider status: <code>{envelope.providerStatus ?? "—"}</code></div>
+            <div>Provider msg id: <code className="font-mono">{envelope.providerMessageId ?? "—"}</code></div>
+            <div>Grant status: <code>{envelope.grantStatus ?? "—"}</code></div>
+            <div>Execution id: <code className="font-mono text-[10px]">{envelope.executionId ?? "—"}</code></div>
+            <div>Delivery attempt id: <code className="font-mono text-[10px]">{envelope.deliveryAttemptId ?? "—"}</code></div>
+            <div>Trace id: <code className="font-mono text-[10px]">{envelope.traceId ?? "—"}</code></div>
+            <div>Certification: <code className="font-mono text-[10px]">{envelope.certificationId ?? "—"}</code> ({envelope.certificationStatus ?? "—"})</div>
+          </div>
+
+          {preProviderRetryable && (
+            <Alert>
+              <ShieldAlert className="h-4 w-4" />
+              <AlertTitle>Pre-provider failure — cleanup proven</AlertTitle>
+              <AlertDescription>
+                No provider call occurred and the grant was safely revoked. You
+                may start a new Stage 6 run with a fresh idempotency key. The
+                failed execution is preserved as audit evidence.
+                <div className="mt-2">
+                  <Button size="sm" onClick={newRun}>Start New Stage 6 Run</Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {postProviderAmbiguous && (
+            <Alert variant="destructive">
+              <MailWarning className="h-4 w-4" />
+              <AlertTitle>Provider operation may have occurred</AlertTitle>
+              <AlertDescription>
+                Reconciliation is required (<code>reconciliation_required=true</code>).
+                Automatic retry is disabled. Do not click New Run. Preserve the
+                execution, message, attempt, and trace ids for reconciliation.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {envelope.status === "PROVIDER_REJECTED" && (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>Provider rejected the send</AlertTitle>
+              <AlertDescription>
+                The provider was invoked but rejected the message. The grant
+                remains consumed. Do not attempt a second automatic send.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {showManualVerification && envelope.certificationId && (
+            <ManualInboxVerificationPanel
+              certificationId={envelope.certificationId}
+              expectedRecipient={lineage.recipient}
+              onVerified={(row) => {
+                if (row.manualVerificationStatus === "DELIVERY_CONFIRMED_MANUALLY") {
+                  onVerified?.(row.id);
+                }
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      <RealEmailGateOpenerDialog
+        open={gateOpenerOpen}
+        onOpenChange={setGateOpenerOpen}
+        moduleCode={lineage.moduleCode}
+        eventCode={lineage.eventCode}
+        channel={lineage.channel}
+        currentlyEnabled={!!gate?.enabled}
+        onChanged={(next) => setGate(next)}
+      />
     </div>
   );
 }
