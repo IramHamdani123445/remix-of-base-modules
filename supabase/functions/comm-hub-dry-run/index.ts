@@ -135,6 +135,43 @@ function preMutationEvidence(): Json {
   };
 }
 
+/**
+ * Canonical retry-safety envelope for terminal responses issued AFTER
+ * `begin_comm_hub_dry_run_v1` has (or may have) created durable state.
+ *
+ * Rules:
+ *  • Never classify a post-begin branch as pre-mutation.
+ *  • `cleanup_proven` is TRUE only when the terminal state of the
+ *    execution is verified (PROCESSED/CERTIFIED with no partial rows to
+ *    reconcile). Post-begin failures set it to FALSE so operators cannot
+ *    silently retry an unproven mutation.
+ *  • Missing retry_safe surfaces as UNKNOWN in the frontend contract, so
+ *    every post-mutation branch MUST populate it explicitly.
+ */
+function postMutationEvidence(opts: {
+  requestId: string | null;
+  messageId: string | null;
+  retrySafe: boolean;
+  cleanupProven: boolean;
+  retryReason: string;
+  ambiguousOutcome?: boolean;
+}): Json {
+  return {
+    mutation_started: true,
+    execution_created: true,
+    request_created: Boolean(opts.requestId),
+    message_created: Boolean(opts.messageId),
+    created_this_call: true,
+    cleanup_proven: opts.cleanupProven,
+    provider_call_attempted: false,
+    simulator_call_attempted: false,
+    ambiguous_outcome: opts.ambiguousOutcome ?? false,
+    retry_safe: opts.retrySafe,
+    retry_reason: opts.retryReason,
+  };
+}
+
+
 function decodeJwtPayload(token: string): Json | null {
   try {
     const part = token.split(".")[1];
