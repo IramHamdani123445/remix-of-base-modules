@@ -36,6 +36,7 @@ import {
   Loader2,
   GitBranch,
   History,
+  UserPlus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -45,6 +46,9 @@ import { useNavigate } from 'react-router-dom';
 import { useUserCode } from '@/hooks/useUserCode';
 import { PlanRevisionDialog } from '@/components/compliance/weekly-plan/PlanRevisionDialog';
 import { PlanVersionHistoryDialog } from '@/components/compliance/weekly-plan/PlanVersionHistoryDialog';
+import { AssignInspectorDialog } from '@/components/compliance/weekly-plan/AssignInspectorDialog';
+import { useHasCapability } from '@/hooks/useHasCapability';
+import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
 
 export default function MyPlans() {
   const { toast } = useToast();
@@ -55,6 +59,8 @@ export default function MyPlans() {
   const [withdrawReason, setWithdrawReason] = useState('');
   const [revisionPlan, setRevisionPlan] = useState<WeeklyPlan | null>(null);
   const [historyPlan, setHistoryPlan] = useState<WeeklyPlan | null>(null);
+  const [assignPlan, setAssignPlan] = useState<WeeklyPlan | null>(null);
+  const canAssign = useHasCapability(COMPLIANCE_CAPABILITIES.FIELD_APPROVE_PLANS);
 
   const plansQuery = useQuery({
     queryKey: ['my-weekly-plans'],
@@ -444,6 +450,17 @@ export default function MyPlans() {
                                   Revise
                                 </Button>
                               )}
+                              {canAssign && plan.status !== WeeklyPlanStatus.COMPLETED && plan.status !== WeeklyPlanStatus.SUPERSEDED && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setAssignPlan(plan)}
+                                  title="Assign or reassign this inspection to an officer"
+                                >
+                                  <UserPlus className="h-4 w-4 mr-1" />
+                                  {plan.inspector_id ? 'Reassign' : 'Assign'}
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -549,6 +566,7 @@ export default function MyPlans() {
       {/* Phase 3 — Approved-plan revision flow */}
       <PlanRevisionDialog plan={revisionPlan} onClose={() => setRevisionPlan(null)} />
       <PlanVersionHistoryDialog plan={historyPlan} onClose={() => setHistoryPlan(null)} />
+      <AssignInspectorDialog plan={assignPlan} onClose={() => setAssignPlan(null)} />
     </div>
   );
 }
