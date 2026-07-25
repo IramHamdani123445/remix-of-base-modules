@@ -2272,48 +2272,83 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
     return json(env, 200);
   }
 
-  // 4. Canonical revalidation.
+  // Pre-provider reconciliation helper: canonical atomic path that revokes
+  // an ISSUED/RESERVED grant, marks the claimed message failed, clears the
+  // lock, and returns a structured envelope. Every failure between claim
+  // and provider invocation MUST route through this helper.
+  const preProviderReconcile = async (
+    stage: string, code: string, message: string | undefined,
+    status: string, http: number,
+  ) => {
+    try {
+      const { data: rec } = await admin.rpc(
+        "reconcile_comm_hub_controlled_live_pre_provider",
+        {
+          p_grant_id: grantId, p_execution_id: executionId, p_message_id: messageId,
+          p_failure_stage: stage, p_failure_code: code,
+          p_reason: (message ?? code).slice(0, 300),
+        },
+      );
+      const r: any = rec ?? {};
+      env.grant_status = (r.grant_status as string) ?? "REVOKED";
+      env.requires_new_execution = r.requires_new_execution === true;
+      env.requires_new_grant = r.requires_new_grant === true;
+    } catch (_) {
+      env.grant_status = "REVOKED";
+    }
+    return block(stage, code, message, status, http,
+      { requires_new_execution: true, requires_new_grant: true, retry_safe: true });
+  };
+
+  // 4. Canonical revalidation — canonical 2-arg signature (p_prior_decision_id, p_payload).
+  //    Mirrors processTargetedDryRun exactly.
   let revalDecisionId: string | null = null;
+  const originalDecisionId = env.original_decision_id;
+  if (!originalDecisionId) {
+    return preProviderReconcile(
+      "canonical_revalidation", "original_decision_missing",
+      "message has no original_decision_id to revalidate against",
+      "BLOCKED", 409);
+  }
   try {
+    const { data: priorDecision, error: priorErr } = await admin
+      .from("communication_hub_send_decision_log")
+      .select("payload")
+      .eq("decision_id", originalDecisionId)
+      .maybeSingle();
+    if (priorErr || !priorDecision) {
+      throw new Error(priorErr?.message ?? "prior_decision_not_found");
+    }
     const { data: reval, error: rvErr } = await admin.rpc(
       "revalidate_comm_hub_send_decision",
-      { p_message_id: messageId },
+      { p_prior_decision_id: originalDecisionId, p_payload: (priorDecision as any).payload },
     );
     if (rvErr) throw new Error(rvErr.message);
     const r: any = reval ?? {};
-    revalDecisionId = r.decision_id ?? r.revalidation_decision_id ?? null;
+    const fresh: any = r.fresh_decision ?? {};
+    revalDecisionId = r.fresh_decision_id ?? fresh.decision_id ?? null;
     env.revalidation_decision_id = revalDecisionId;
-    const allowed = r.allowed === true || r.status === "allowed" || r.revalidation_result === "passed";
+    const freshBlockers = Array.isArray(fresh.blockers) ? fresh.blockers : [];
+    const freshWarnings = Array.isArray(fresh.warnings) ? fresh.warnings : [];
+    const allowed = r.fresh_allowed === true && r.stale !== true;
     if (!allowed) {
-      // Pre-provider block — revoke grant.
-      await admin.rpc("revoke_comm_hub_controlled_live_grant", {
-        p_grant_id: grantId, p_execution_id: executionId,
-        p_reason: "canonical_revalidation_denied",
-      });
-      env.grant_status = "REVOKED";
-      const revalBlockers = Array.isArray(r.blockers) ? r.blockers : [];
-      for (const b of revalBlockers) {
+      for (const b of freshBlockers) {
         if (b && typeof b === "object" && typeof b.code === "string") {
           env.blockers.push({
-            code: b.code,
-            stage: b.stage ?? "canonical_revalidation",
-            message: b.message,
+            code: b.code, stage: b.stage ?? "canonical_revalidation", message: b.message,
           });
         }
       }
-      return block("canonical_revalidation", "revalidation_denied",
-        undefined, "BLOCKED",
-        200);
-      // NB: env.blockers already appended by block(); revalidator specifics captured server-side.
+      return preProviderReconcile(
+        "canonical_revalidation",
+        r.stale === true ? "send_decision_stale" : "revalidation_denied",
+        Array.isArray(r.staleness_reasons) ? r.staleness_reasons.join(", ") : undefined,
+        "BLOCKED", 200);
     }
-    if (Array.isArray(r.warnings)) env.warnings.push(...r.warnings);
+    if (freshWarnings.length) env.warnings.push(...freshWarnings);
   } catch (e: any) {
-    await admin.rpc("revoke_comm_hub_controlled_live_grant", {
-      p_grant_id: grantId, p_execution_id: executionId,
-      p_reason: "revalidation_exception",
-    });
-    env.grant_status = "REVOKED";
-    return block("canonical_revalidation", "revalidation_exception",
+    return preProviderReconcile(
+      "canonical_revalidation", "revalidation_exception",
       String(e?.message ?? e).slice(0, 300), "DISPATCH_FAILED", 500);
   }
 
@@ -2323,21 +2358,12 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
     .select("operating_mode")
     .eq("singleton_guard", "primary").maybeSingle();
   if (settingsNowError || !settingsNow) {
-    await admin.rpc("revoke_comm_hub_controlled_live_grant", {
-      p_grant_id: grantId, p_execution_id: executionId,
-      p_reason: "control_settings_unavailable",
-    });
-    env.grant_status = "REVOKED";
-    return block("control_gates", "control_settings_unavailable",
+    return preProviderReconcile("control_gates", "control_settings_unavailable",
       settingsNowError?.message, "DISPATCH_FAILED", 500);
   }
   if ((settingsNow as any)?.operating_mode === "EMERGENCY_STOP") {
-    await admin.rpc("revoke_comm_hub_controlled_live_grant", {
-      p_grant_id: grantId, p_execution_id: executionId,
-      p_reason: "emergency_stop_pre_provider",
-    });
-    env.grant_status = "REVOKED";
-    return block("emergency_stop", "emergency_stop_active", undefined, "BLOCKED", 200);
+    return preProviderReconcile("emergency_stop", "emergency_stop_active",
+      undefined, "BLOCKED", 200);
   }
 
   // 6. Load recipient; compute hashes.
@@ -2346,26 +2372,17 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
     const { data: rec, error: recError } = await admin.from("communication_recipient")
       .select("email").eq("id", (msg as any).recipient_id).maybeSingle();
     if (recError) {
-      await admin.rpc("revoke_comm_hub_controlled_live_grant", {
-        p_grant_id: grantId, p_execution_id: executionId,
-        p_reason: "recipient_read_failed",
-      });
-      env.grant_status = "REVOKED";
-      return block("recipient_load", "recipient_read_failed", recError.message, "DISPATCH_FAILED", 500);
+      return preProviderReconcile("recipient_load", "recipient_read_failed",
+        recError.message, "DISPATCH_FAILED", 500);
     }
     toEmail = (rec as any)?.email ?? null;
   }
   if (!toEmail) {
-    await admin.rpc("revoke_comm_hub_controlled_live_grant", {
-      p_grant_id: grantId, p_execution_id: executionId,
-      p_reason: "recipient_missing",
-    });
-    env.grant_status = "REVOKED";
-    return block("recipient_load", "recipient_missing", undefined, "BLOCKED", 500);
+    return preProviderReconcile("recipient_load", "recipient_missing",
+      undefined, "BLOCKED", 500);
   }
 
-  // Must match begin_comm_hub_controlled_live exactly. This is the canonical
-  // one-To/no-CC/no-BCC controlled-live recipient binding.
+  // Must match begin_comm_hub_controlled_live exactly.
   const recipientSetHash = await sha256Hex(`to:${toEmail.trim().toLowerCase()}|cc:|bcc:`);
   const subjectHash = await sha256Hex((msg as any).subject ?? "");
   const bodyHash = await sha256Hex(`${(msg as any).body_text ?? ""}\u241E${(msg as any).body_html ?? ""}`);
@@ -2373,31 +2390,32 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
   env.subject_hash = subjectHash;
   env.body_hash = bodyHash;
 
-  // 7. Reserve grant with these hashes (idempotent if already RESERVED).
+  // 7. Reserve grant using the hardened service-bound signature. The grant
+  // reservation is bound to comm-hub-dispatch / DISPATCH_CONTROLLED_STUB
+  // and the caller's declared action. Correlation is left unchecked here
+  // (message-level binding is enforced at consume-time).
   const { data: reserveRaw, error: reserveErr } = await admin.rpc(
     "reserve_comm_hub_controlled_live_grant",
     {
       p_grant_id: grantId,
       p_execution_id: executionId,
-      p_recipient_set_hash: recipientSetHash,
-      p_subject_hash: subjectHash,
-      p_body_hash: bodyHash,
+      p_expected_action: action,
+      p_expected_correlation_id: null,
+      p_service_operation: "DISPATCH_CONTROLLED_STUB",
     },
   );
-  if (reserveErr || !(reserveRaw as any)?.ok) {
-    const reserveCode = String((reserveRaw as any)?.code ?? reserveErr?.message ?? "unknown");
-    await admin.rpc("revoke_comm_hub_controlled_live_grant", {
-      p_grant_id: grantId, p_execution_id: executionId,
-      p_reason: `grant_reservation_failed:${reserveCode}`.slice(0, 120),
-    });
-    env.grant_status = "REVOKED";
-    return block("grant_reservation", "grant_reservation_failed",
-      reserveCode, "BLOCKED", 200);
+  if (reserveErr || !(reserveRaw as any)?.allowed) {
+    const detail = Array.isArray((reserveRaw as any)?.blockers)
+      ? JSON.stringify((reserveRaw as any).blockers).slice(0, 240)
+      : String(reserveErr?.message ?? "unknown");
+    return preProviderReconcile("grant_reservation", "grant_reservation_failed",
+      detail, "BLOCKED", 200);
   }
-  env.grant_status = "RESERVED";
+  env.grant_status = (reserveRaw as any).status ?? "RESERVED";
 
-  // 8. Provider invocation key: stable across replays.
-  const attemptNo = ((msg as any).attempt_count ?? 0) + 1;
+  // 8. Provider invocation key: use claim.attempt_count directly (already
+  //    incremented by claim_comm_hub_targeted_message; do NOT +1 again).
+  const attemptNo = (claim.attempt_count as number) ?? ((msg as any).attempt_count ?? 1);
   const providerInvocationKey =
     (await sha256Hex(`${executionId}:${messageId}:${attemptNo}`)).slice(0, 40);
 
