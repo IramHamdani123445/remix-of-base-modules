@@ -2573,26 +2573,30 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
 
   const providerCompletedAt = new Date().toISOString();
 
-  // 12. Update attempt row with provider outcome.
-  await admin.from("communication_delivery_attempt").update({
+  // 12. Update attempt row with provider outcome. Attempt-status vocabulary
+  //     is {pending,success,failure,timeout,throttled,skipped}; provider
+  //     outcome codes are preserved verbatim in provider_status/result.
+  const mappedStatus = outcome.status === "PROVIDER_ACCEPTED" ? "success"
+                    : outcome.status === "PROVIDER_REJECTED" ? "failure"
+                    : outcome.status === "DELIVERY_PENDING"  ? "pending"
+                    : "pending";
+  const { error: evidenceErr } = await admin.from("communication_delivery_attempt").update({
     provider_call_attempted: true,
     provider_call_completed_at: providerCompletedAt,
     provider_status: outcome.status,
     provider_message_id: outcome.providerMessageId,
     provider_response_safe: outcome.providerResponseSafe,
     provider_id: null,
-    status: outcome.status === "PROVIDER_REJECTED" ? "failed"
-          : outcome.status === "DELIVERY_PENDING" ? "pending"
-          : "sent",
+    status: mappedStatus,
     result: outcome.status,
     warnings: [...env.warnings, ...outcome.warnings],
     finished_at: providerCompletedAt,
   }).eq("id", env.delivery_attempt_id);
 
   // 13. Record provider outcome on execution + consume grant (hardened
-  //     service-bound signature). The attempt row above already carries
-  //     provider_call_attempted=true and provider_status; consume's
-  //     canonical evidence check will match exactly one such attempt.
+  //     service-bound signature). Consume's canonical evidence check
+  //     requires the durable attempt row updated above — if that write
+  //     failed, the send is ambiguous and MUST NOT be consumed.
   await admin.rpc("record_comm_hub_controlled_live_provider_outcome", {
     p_execution_id: executionId,
     p_provider_status: outcome.status,
@@ -2600,6 +2604,26 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
     p_provider_response_safe: outcome.providerResponseSafe,
     p_warnings: outcome.warnings,
   });
+  if (evidenceErr) {
+    env.provider_call_attempted = true;
+    env.provider_name = outcome.providerName;
+    env.provider_status = outcome.status;
+    env.provider_message_id = outcome.providerMessageId;
+    env.provider_response_safe = outcome.providerResponseSafe;
+    env.status = "DELIVERY_PENDING";
+    env.warnings.push({ code: "provider_outcome_unconfirmed" });
+    env.blockers.push({
+      code: "provider_evidence_persist_failed",
+      stage: "provider_evidence",
+      message: String(evidenceErr.message).slice(0, 240),
+    });
+    (env as any).requires_new_execution = true;
+    (env as any).requires_new_grant = true;
+    (env as any).retry_safe = false;
+    (env as any).reconciliation_required = true;
+    env.completed_at = providerCompletedAt;
+    return json(env, 200);
+  }
   const { data: consumeRaw, error: consumeErr } = await admin.rpc(
     "consume_comm_hub_controlled_live_grant",
     {
