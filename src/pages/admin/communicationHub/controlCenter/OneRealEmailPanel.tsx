@@ -463,8 +463,9 @@ export function OneRealEmailPanel({
 
       {/* Contract probe */}
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={runProbe} disabled={probeBusy}>
-          {probeBusy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
+        <Button size="sm" variant="outline" onClick={() => runProbe()} disabled={probeBusy}>
+          {probeBusy && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+          {!probeBusy && <ShieldCheck className="h-4 w-4 mr-1" />}
           Run contract probe
         </Button>
         {probe && (
