@@ -41,6 +41,7 @@ import DryRunPanel from "../controlCenter/DryRunPanel";
 import ControlledStubPanel from "../controlCenter/ControlledStubPanel";
 import OneRealEmailPanel from "../controlCenter/OneRealEmailPanel";
 import ReadinessSummary from "./ReadinessSummary";
+import GoLiveGateMonitor from "./GoLiveGateMonitor";
 import {
   evaluateCanonicalSendDecision,
   type SendDecisionEnvelope,
