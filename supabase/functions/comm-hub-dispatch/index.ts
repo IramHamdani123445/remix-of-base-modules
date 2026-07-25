@@ -2575,8 +2575,10 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
     finished_at: providerCompletedAt,
   }).eq("id", env.delivery_attempt_id);
 
-  // 13. Record provider outcome on execution + consume grant (any outcome
-  //     past this point makes the grant permanently unavailable).
+  // 13. Record provider outcome on execution + consume grant (hardened
+  //     service-bound signature). The attempt row above already carries
+  //     provider_call_attempted=true and provider_status; consume's
+  //     canonical evidence check will match exactly one such attempt.
   await admin.rpc("record_comm_hub_controlled_live_provider_outcome", {
     p_execution_id: executionId,
     p_provider_status: outcome.status,
@@ -2584,10 +2586,28 @@ async function processTargetedControlledLive(admin: any, body: TargetedControlle
     p_provider_response_safe: outcome.providerResponseSafe,
     p_warnings: outcome.warnings,
   });
-  await admin.rpc("consume_comm_hub_controlled_live_grant", {
-    p_grant_id: grantId, p_execution_id: executionId,
-    p_provider_invocation_key: providerInvocationKey,
-  });
+  const { data: consumeRaw, error: consumeErr } = await admin.rpc(
+    "consume_comm_hub_controlled_live_grant",
+    {
+      p_grant_id: grantId,
+      p_execution_id: executionId,
+      p_message_id: messageId,
+      p_expected_correlation_id: null,
+      p_service_operation: "DISPATCH_CONTROLLED_STUB",
+    },
+  );
+  const consumedOk = !consumeErr && (consumeRaw as any)?.allowed === true;
+  if (consumedOk) {
+    env.grant_status = (consumeRaw as any).status ?? "CONSUMED";
+  } else {
+    // Provider outcome already confirmed; surface the reconciliation gap
+    // but never mask a successful send.
+    env.warnings.push({
+      code: "grant_consume_failed_post_provider",
+      message: JSON.stringify(
+        (consumeRaw as any)?.blockers ?? consumeErr?.message ?? null).slice(0, 240),
+    });
+  }
 
   // 14. Trace + event log evidence.
   try {
