@@ -84,6 +84,8 @@ export interface OneRealEmailPanelProps {
   onEnvelope?: (envelope: OneRealEmailEnvelope) => void;
   /** Fired after manual verification succeeds so the parent can mark Stage 6 done. */
   onVerified?: (certificationId: string) => void;
+  /** Optional: request the parent re-load the authoritative Stage 6 context. */
+  onReloadContext?: () => void;
 }
 
 interface ReadinessCheck {
@@ -99,6 +101,7 @@ export function OneRealEmailPanel({
   lineage,
   onEnvelope,
   onVerified,
+  onReloadContext,
 }: OneRealEmailPanelProps) {
   const [gate, setGate] = useState<RealEmailGateState | null>(null);
   const [gateLoading, setGateLoading] = useState(false);
@@ -211,7 +214,7 @@ export function OneRealEmailPanel({
         ok: !!gate?.enabled,
         detail: gate?.enabled
           ? `opened ${gate.openedAt}`
-          : "closed (open via the audited action below)",
+          : "gate is closed",
       },
       {
         id: "recipient",
@@ -244,15 +247,17 @@ export function OneRealEmailPanel({
         id: "contract_probe",
         label: "Contract probe passed (no execution/grant created)",
         ok: probe?.ok === true,
-        detail: probe
-          ? probe.ok
-            ? "all backend contracts verified"
-            : `${probe.checks.filter((c) => !c.ok).length} contract failures`
-          : "run the probe before sending",
+        detail: probeBusy
+          ? "probe running…"
+          : probe
+            ? probe.ok
+              ? "all backend contracts verified"
+              : `${probe.checks.filter((c) => !c.ok).length} contract failures`
+            : "probe has not run yet",
       },
     ];
     return checks;
-  }, [controlledStubCertified, lineage, gate, readinessBlockers, readinessLoading, probe]);
+  }, [controlledStubCertified, lineage, gate, readinessBlockers, readinessLoading, probe, probeBusy]);
 
   const inputChecks: ReadinessCheck[] = useMemo(
     () => [
@@ -292,24 +297,47 @@ export function OneRealEmailPanel({
     postProviderAmbiguous ||
     (envelope !== null && envelope.passed === true);
 
-  const runProbe = useCallback(async () => {
-    if (!lineage) return;
-    setProbeBusy(true);
-    try {
-      const r = await runStage6ContractProbe({
-        moduleCode: lineage.moduleCode,
-        eventCode: lineage.eventCode,
-        channel: lineage.channel,
-      });
-      setProbe(r);
-      if (!r.ok) toast.error("Contract probe reported failures — see checklist below.");
-      else toast.success("Contract probe passed.");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Contract probe failed to run");
-    } finally {
-      setProbeBusy(false);
+  const runProbe = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (!lineage) return;
+      setProbeBusy(true);
+      try {
+        const r = await runStage6ContractProbe({
+          moduleCode: lineage.moduleCode,
+          eventCode: lineage.eventCode,
+          channel: lineage.channel,
+        });
+        setProbe(r);
+        if (!opts?.silent) {
+          if (!r.ok) toast.error("Contract probe reported failures — see checklist below.");
+          else toast.success("Contract probe passed.");
+        }
+      } catch (e: any) {
+        if (!opts?.silent) toast.error(e?.message ?? "Contract probe failed to run");
+      } finally {
+        setProbeBusy(false);
+      }
+    },
+    [lineage?.moduleCode, lineage?.eventCode, lineage?.channel],
+  );
+
+  // Auto-run the read-only contract probe once whenever the authoritative
+  // Stage 6 lineage becomes available or changes. It creates no runtime or
+  // provider rows. Users can still trigger a manual retry via the button.
+  useEffect(() => {
+    if (!lineage) {
+      setProbe(null);
+      return;
     }
-  }, [lineage]);
+    setProbe(null);
+    void runProbe({ silent: true });
+  }, [
+    lineage?.moduleCode,
+    lineage?.eventCode,
+    lineage?.channel,
+    lineage?.controlledStubCertificationId,
+    runProbe,
+  ]);
 
   const newRun = useCallback(() => {
     if (!lineage) return;
@@ -435,8 +463,9 @@ export function OneRealEmailPanel({
 
       {/* Contract probe */}
       <div className="flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={runProbe} disabled={probeBusy}>
-          {probeBusy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
+        <Button size="sm" variant="outline" onClick={() => runProbe()} disabled={probeBusy}>
+          {probeBusy && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+          {!probeBusy && <ShieldCheck className="h-4 w-4 mr-1" />}
           Run contract probe
         </Button>
         {probe && (
@@ -491,25 +520,60 @@ export function OneRealEmailPanel({
         Send One Real Email
       </Button>
 
-      {/* Full failing-condition checklist below the button (never silently disabled) */}
-      {(!allAuthoritativeOk || !allInputsOk) && (
-        <div className="rounded-md border border-border/60 p-3">
-          <div className="text-xs font-semibold mb-2">Not ready — every failing condition:</div>
-          <ul className="text-xs space-y-1">
-            {[...authoritativeChecks, ...inputChecks].map((c) => (
+      {/* Stage 6 readiness checklist — always visible; only failed checks
+          render in red. Inline actions appear beside actionable blockers. */}
+      <div className="rounded-md border border-border/60 p-3">
+        <div className="text-xs font-semibold mb-2">Stage 6 readiness checklist</div>
+        <ul className="text-xs space-y-1">
+          {[...authoritativeChecks, ...inputChecks].map((c) => {
+            const inlineAction =
+              !c.ok && c.id === "gate" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-2 h-6 px-2 text-[11px]"
+                  onClick={() => setGateOpenerOpen(true)}
+                >
+                  <KeyRound className="h-3 w-3 mr-1" /> Open real-email gate
+                </Button>
+              ) : !c.ok && c.id === "contract_probe" ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-2 h-6 px-2 text-[11px]"
+                  onClick={() => runProbe()}
+                  disabled={probeBusy}
+                >
+                  {probeBusy ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <ShieldCheck className="h-3 w-3 mr-1" />
+                  )}
+                  Run contract probe
+                </Button>
+              ) : null;
+            return (
               <li key={c.id} className="flex items-start gap-2">
-                {c.ok
-                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5" />
-                  : <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5" />}
-                <span>
+                {c.ok ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 mt-0.5" />
+                ) : (
+                  <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5" />
+                )}
+                <span className={c.ok ? "" : "text-destructive"}>
                   <strong>{c.label}</strong>
-                  {c.detail && <span className="text-muted-foreground"> — {c.detail}</span>}
+                  {c.detail && (
+                    <span className={c.ok ? "text-muted-foreground" : "text-destructive/80"}>
+                      {" "}
+                      — {c.detail}
+                    </span>
+                  )}
+                  {inlineAction}
                 </span>
               </li>
-            ))}
-          </ul>
-        </div>
-      )}
+            );
+          })}
+        </ul>
+      </div>
 
       {/* Result / retry UX */}
       {envelope && (
@@ -588,7 +652,14 @@ export function OneRealEmailPanel({
         eventCode={lineage.eventCode}
         channel={lineage.channel}
         currentlyEnabled={!!gate?.enabled}
-        onChanged={(next) => setGate(next)}
+        onChanged={(next) => {
+          // 1) trust the authoritative gate row returned by the RPC
+          setGate(next);
+          // 2) refresh authoritative sources so downstream checks re-evaluate
+          void reloadGate();
+          void reloadReadiness();
+          onReloadContext?.();
+        }}
       />
     </div>
   );
