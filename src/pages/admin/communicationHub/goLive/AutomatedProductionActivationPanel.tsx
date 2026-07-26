@@ -100,17 +100,24 @@ export function AutomatedProductionActivationPanel({
     }
     setSwitching(true);
     try {
-      const { error } = await (supabase as any).rpc("set_communication_operating_mode", {
-        p_new_mode: "AUTOMATED_PRODUCTION",
-        p_reason: activateReason.trim(),
+      const result = await applyReleaseMode({
+        newMode: "AUTOMATED_PRODUCTION",
+        reason: activateReason.trim(),
+        expectedVersion: platform?.configuration_version ?? undefined,
+        moduleCode,
+        eventCode,
+        channel,
       });
-      if (error) throw new Error(error.message ?? "mode switch failed");
+      if (!result?.ok || result.new_mode !== "AUTOMATED_PRODUCTION") {
+        throw new Error("Mode switch did not confirm AUTOMATED_PRODUCTION");
+      }
       toast.success("Platform mode switched to AUTOMATED_PRODUCTION (STANDBY)");
       setActivateReason("");
       setActivatePhrase("");
       onChanged();
     } catch (e: any) {
       toast.error(e?.message ?? "Mode switch failed");
+      onChanged();
     } finally {
       setSwitching(false);
     }
