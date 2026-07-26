@@ -54,6 +54,7 @@ export function ManualProductionObservationPanel({
   eventCode,
   channel,
   status,
+  reloadNonce,
   onChanged,
 }: Props) {
   const [recipient, setRecipient] = useState(status?.stage6?.manual_verified_recipient ?? "");
@@ -65,6 +66,7 @@ export function ManualProductionObservationPanel({
   const [phase, setPhase] = useState<ObservationPhase>("IDLE");
   const [idem, setIdem] = useState<string | null>(null);
   const [recovering, setRecovering] = useState(true);
+  const [recovery, setRecovery] = useState<Awaited<ReturnType<typeof getObservationRecovery>> | null>(null);
   const [evidence, setEvidence] = useState<ManualProductionEvidence | null>(null);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
@@ -82,34 +84,45 @@ export function ManualProductionObservationPanel({
 
   useEffect(() => {
     let cancelled = false;
+    setRecovering(true);
     (async () => {
       try {
         const rec = await getObservationRecovery({ moduleCode, eventCode, channel });
-        if (cancelled || !rec.hasPending) return;
-        setIdem(rec.idempotencyKey ?? null);
-        setRecipient(rec.recipientEmail ?? "");
-        setPhase(rec.phase ?? "AWAITING_PROVIDER");
-        setResult({
-          ok: true,
-          phase: rec.phase ?? "AWAITING_PROVIDER",
-          observation_id: rec.observationId,
-          message_id: rec.messageId,
-          request_id: rec.requestId,
-          inbox_confirmation_status: rec.inboxConfirmationStatus ?? null,
-        });
-        toast.info(`Recovered pending observation (${rec.phase}) — no new message will be sent.`);
+        if (cancelled) return;
+        setRecovery(rec);
+        if (rec.hasPending) {
+          setIdem(rec.idempotencyKey ?? null);
+          setRecipient(rec.recipientEmail ?? "");
+          setPhase(rec.phase ?? "AWAITING_PROVIDER");
+          setResult({
+            ok: true,
+            phase: rec.phase ?? "AWAITING_PROVIDER",
+            observation_id: rec.observationId,
+            message_id: rec.messageId,
+            request_id: rec.requestId,
+            inbox_confirmation_status: rec.inboxConfirmationStatus ?? null,
+          });
+        } else {
+          // No pending intent — clear stale in-flight result so the UI can
+          // offer a fresh Dispatch action (e.g. after a Void).
+          if (phase !== "CONFIRMED") {
+            setResult(null);
+            setPhase("IDLE");
+            setIdem(null);
+          }
+        }
       } finally {
         if (!cancelled) setRecovering(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [moduleCode, eventCode, channel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moduleCode, eventCode, channel, reloadNonce]);
 
 
   const stage7 = status?.stage7;
-  const canDispatch =
-    stage7?.manual_event_status === "live_manual_only" ||
-    stage7?.manual_event_status === "live_cron_allowed";
+  const derived: ObservationDerived = deriveObservation(status, recovery, recovering, result);
+  const canDispatch = derived.state === "ACTION_REQUIRED_DISPATCH" || derived.state === "TRANSPORT_UNRESOLVED";
 
   async function run() {
     if (!canDispatch || !recipient.trim()) return;
