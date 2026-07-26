@@ -497,15 +497,20 @@ Deno.serve(async (req) => {
       .from("communication_delivery_attempt")
       .insert({
         message_id: env.message_id,
-        request_id: env.request_id,
         attempt_no: 1,
         status: "pending",
         provider_id: providerId,
-        provider_name: env.provider_name,
         provider_call_attempted: false,
+        send_context: "controlled_live",
+        attempt_type: "controlled_live",
         controlled_live_execution_id: env.execution_id,
-        controlled_live_grant_id: env.grant_id,
-        origin_function: "comm-hub-send-one-real-email",
+        grant_id: env.grant_id,
+        preview_approval_id: (env as any).preview_approval_id ?? null,
+        dry_run_certification_id: (env as any).dry_run_certification_id ?? null,
+        recipient_set_hash: (env as any).recipient_set_hash ?? null,
+        subject_hash: (env as any).subject_hash ?? null,
+        body_hash: (env as any).body_hash ?? null,
+        original_decision_id: (env as any).original_decision_id ?? null,
       })
       .select("id")
       .single();
