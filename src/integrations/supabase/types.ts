@@ -38040,6 +38040,68 @@ export type Database = {
         }
         Relationships: []
       }
+      comm_hub_automation_readiness_results: {
+        Row: {
+          channel: string
+          check_code: string
+          checked_at: string
+          checked_by: string | null
+          configuration_version: number
+          created_at: string
+          event_certification_id: string | null
+          event_code: string
+          evidence: Json
+          expires_at: string
+          id: string
+          module_code: string
+          result: boolean
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          check_code: string
+          checked_at?: string
+          checked_by?: string | null
+          configuration_version: number
+          created_at?: string
+          event_certification_id?: string | null
+          event_code: string
+          evidence?: Json
+          expires_at?: string
+          id?: string
+          module_code: string
+          result: boolean
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          check_code?: string
+          checked_at?: string
+          checked_by?: string | null
+          configuration_version?: number
+          created_at?: string
+          event_certification_id?: string | null
+          event_code?: string
+          evidence?: Json
+          expires_at?: string
+          id?: string
+          module_code?: string
+          result?: boolean
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comm_hub_automation_readiness_resul_event_certification_id_fkey"
+            columns: ["event_certification_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_event_certification"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comm_hub_certification: {
         Row: {
           canonicalization_version: string | null
@@ -40584,8 +40646,15 @@ export type Database = {
           drift_reason: string | null
           event_code: string
           id: string
+          manual_verification_status: string | null
+          manual_verified_at: string | null
+          manual_verified_by: string | null
+          manual_verified_recipient: string | null
           module_code: string
           one_real_email_certification_id: string
+          real_email_gate_closed_at: string | null
+          real_email_gate_closed_by: string | null
+          real_email_gate_closed_reason: string | null
           reason: string
           recipient_policy_version: number | null
           recipient_set_hash: string | null
@@ -40609,8 +40678,15 @@ export type Database = {
           drift_reason?: string | null
           event_code: string
           id?: string
+          manual_verification_status?: string | null
+          manual_verified_at?: string | null
+          manual_verified_by?: string | null
+          manual_verified_recipient?: string | null
           module_code: string
           one_real_email_certification_id: string
+          real_email_gate_closed_at?: string | null
+          real_email_gate_closed_by?: string | null
+          real_email_gate_closed_reason?: string | null
           reason: string
           recipient_policy_version?: number | null
           recipient_set_hash?: string | null
@@ -40634,8 +40710,15 @@ export type Database = {
           drift_reason?: string | null
           event_code?: string
           id?: string
+          manual_verification_status?: string | null
+          manual_verified_at?: string | null
+          manual_verified_by?: string | null
+          manual_verified_recipient?: string | null
           module_code?: string
           one_real_email_certification_id?: string
+          real_email_gate_closed_at?: string | null
+          real_email_gate_closed_by?: string | null
+          real_email_gate_closed_reason?: string | null
           reason?: string
           recipient_policy_version?: number | null
           recipient_set_hash?: string | null
@@ -42081,6 +42164,113 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      communication_manual_production_observation: {
+        Row: {
+          channel: string
+          configuration_version: number
+          created_at: string
+          delivery_attempt_id: string | null
+          dispatched_at: string
+          dispatched_by: string | null
+          event_certification_id: string
+          event_code: string
+          id: string
+          idempotency_key: string
+          inbox_confirmation_note: string | null
+          inbox_confirmation_status: string | null
+          inbox_confirmed_at: string | null
+          inbox_confirmed_by: string | null
+          message_id: string | null
+          module_code: string
+          provider_call_attempted: boolean
+          provider_id: string | null
+          provider_message_id: string | null
+          provider_name: string | null
+          provider_outcome: string | null
+          recipient_email: string
+          recipient_set_hash: string | null
+          request_id: string | null
+          send_context: string
+          sender_profile_id: string | null
+          status: string
+          template_version_id: string | null
+          trace_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          configuration_version: number
+          created_at?: string
+          delivery_attempt_id?: string | null
+          dispatched_at?: string
+          dispatched_by?: string | null
+          event_certification_id: string
+          event_code: string
+          id?: string
+          idempotency_key: string
+          inbox_confirmation_note?: string | null
+          inbox_confirmation_status?: string | null
+          inbox_confirmed_at?: string | null
+          inbox_confirmed_by?: string | null
+          message_id?: string | null
+          module_code: string
+          provider_call_attempted?: boolean
+          provider_id?: string | null
+          provider_message_id?: string | null
+          provider_name?: string | null
+          provider_outcome?: string | null
+          recipient_email: string
+          recipient_set_hash?: string | null
+          request_id?: string | null
+          send_context?: string
+          sender_profile_id?: string | null
+          status?: string
+          template_version_id?: string | null
+          trace_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          configuration_version?: number
+          created_at?: string
+          delivery_attempt_id?: string | null
+          dispatched_at?: string
+          dispatched_by?: string | null
+          event_certification_id?: string
+          event_code?: string
+          id?: string
+          idempotency_key?: string
+          inbox_confirmation_note?: string | null
+          inbox_confirmation_status?: string | null
+          inbox_confirmed_at?: string | null
+          inbox_confirmed_by?: string | null
+          message_id?: string | null
+          module_code?: string
+          provider_call_attempted?: boolean
+          provider_id?: string | null
+          provider_message_id?: string | null
+          provider_name?: string | null
+          provider_outcome?: string | null
+          recipient_email?: string
+          recipient_set_hash?: string | null
+          request_id?: string | null
+          send_context?: string
+          sender_profile_id?: string | null
+          status?: string
+          template_version_id?: string | null
+          trace_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_manual_production_obs_event_certification_id_fkey"
+            columns: ["event_certification_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_event_certification"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       communication_message: {
         Row: {
@@ -96656,6 +96846,15 @@ export type Database = {
         Args: { p_emergency?: boolean; p_reason: string }
         Returns: Json
       }
+      close_comm_hub_one_real_email_gate_after_stage6: {
+        Args: {
+          p_channel: string
+          p_event_code: string
+          p_module_code: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       comm_asset_where_used: {
         Args: { p_asset_id: string }
         Returns: {
@@ -96786,6 +96985,10 @@ export type Database = {
       }
       compute_comm_hub_sender_readiness: {
         Args: { p_readiness_kind?: string; p_sender_profile_id: string }
+        Returns: Json
+      }
+      confirm_comm_hub_manual_production_observation: {
+        Args: { p_note: string; p_observation_id: string; p_status: string }
         Returns: Json
       }
       consume_comm_hub_controlled_live_grant:
@@ -98172,6 +98375,14 @@ export type Database = {
         }
       }
       get_comm_hub_cron_status: { Args: never; Returns: Json }
+      get_comm_hub_event_go_live_status: {
+        Args: { p_channel: string; p_event_code: string; p_module_code: string }
+        Returns: Json
+      }
+      get_comm_hub_go_live_completion: {
+        Args: { p_channel: string; p_event_code: string; p_module_code: string }
+        Returns: Json
+      }
       get_comm_hub_go_live_gate_snapshot: {
         Args: {
           p_channel: string
@@ -99537,6 +99748,10 @@ export type Database = {
         }
         Returns: Json
       }
+      record_comm_hub_manual_production_observation: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
       record_comm_hub_template_version_certification: {
         Args: { p_reason?: string; p_template_version_id: string }
         Returns: Json
@@ -99843,6 +100058,10 @@ export type Database = {
       run_ch_p3d_b2c_runtime_tests: { Args: never; Returns: Json }
       run_ch_p3e_a_runtime_tests: { Args: never; Returns: Json }
       run_ch_p3e_b_runtime_tests: { Args: never; Returns: Json }
+      run_comm_hub_automation_readiness_probe: {
+        Args: { p_channel: string; p_event_code: string; p_module_code: string }
+        Returns: Json
+      }
       run_comm_hub_go_live_certification: {
         Args: {
           p_channel?: string
