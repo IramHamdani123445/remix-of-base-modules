@@ -279,16 +279,26 @@ export async function getManualProductionEvidence(
 
 /**
  * Checkpoint 0 remediation — void a Manual Production observation that has
- * no provider linkage. The server RPC refuses to void an observation with
- * any real provider evidence (message/request/attempt/trace/provider/
- * provider_message/dispatched_at). Requires the confirmation phrase
- * `VOID EMPTY OBSERVATION`.
+ * NO real provider linkage. The server enforces the authoritative predicate:
+ * `dispatched_at` alone (which is NOT NULL DEFAULT now()) is NOT provider
+ * evidence. Any linked pending intent is atomically moved to VOIDED in the
+ * same transaction. Requires the confirmation phrase `VOID EMPTY OBSERVATION`.
  */
 export async function voidManualProductionObservation(input: {
   observationId: string;
   reason: string;
   confirmation: string;
-}): Promise<{ ok: boolean; status?: string; idempotent?: boolean; error?: string }> {
+}): Promise<{
+  ok: boolean;
+  observationId?: string;
+  observationStatus?: string;
+  intentIdempotencyKey?: string | null;
+  intentPhase?: string | null;
+  providerEvidenceFound?: boolean;
+  auditId?: string | null;
+  idempotent?: boolean;
+  error?: string;
+}> {
   const { data, error } = await (supabase as any).rpc(
     "void_comm_hub_manual_production_observation",
     {
@@ -298,7 +308,16 @@ export async function voidManualProductionObservation(input: {
     },
   );
   if (error) return { ok: false, error: error.message };
-  const row = data as any;
-  return { ok: !!row?.ok, status: row?.status, idempotent: !!row?.idempotent };
+  const row = (data ?? {}) as any;
+  return {
+    ok: !!row.ok,
+    observationId: row.observation_id ?? undefined,
+    observationStatus: row.observation_status ?? row.status,
+    intentIdempotencyKey: row.intent_idempotency_key ?? null,
+    intentPhase: row.intent_phase ?? null,
+    providerEvidenceFound: !!row.provider_evidence_found,
+    auditId: row.audit_id ?? null,
+    idempotent: !!row.idempotent,
+  };
 }
 
