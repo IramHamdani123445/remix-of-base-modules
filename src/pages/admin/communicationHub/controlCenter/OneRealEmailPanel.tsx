@@ -806,6 +806,47 @@ export function OneRealEmailPanel({
                     ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Resuming…</>
                     : <><RefreshCw className="h-4 w-4 mr-1" /> Resume finalization — no email will be sent</>}
                 </Button>
+                {resumeResult && !resumeResult.certificationId && (
+                  <div className="mt-2 rounded-sm bg-muted p-2 text-[11px] space-y-1">
+                    <div>
+                      Recovery runtime: <code className="font-mono text-[10px] break-all">{resumeResult.runtimeBuild}</code>
+                    </div>
+                    <div>
+                      HTTP: <code>{resumeResult.httpStatus || "—"}</code>
+                      {resumeResult.timedOut ? " · timed out (20s)" : ""}
+                    </div>
+                    {resumeResult.error && (
+                      <div>Error: <code>{resumeResult.error}</code></div>
+                    )}
+                    {resumeResult.detail && (
+                      <div className="whitespace-pre-wrap break-all">Detail: {resumeResult.detail}</div>
+                    )}
+                    {resumeResult.safeDetail && (
+                      <div className="whitespace-pre-wrap break-all">Safe detail: {resumeResult.safeDetail}</div>
+                    )}
+                    {recoveryStatus && (
+                      <div>
+                        Status probe · trace: <code>{recoveryStatus.traceId ?? "—"}</code>
+                        {" · cert: "}<code>{recoveryStatus.certificationId ?? "—"}</code>
+                        {" · can_resume: "}<code>{String(recoveryStatus.canResume)}</code>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {recoverySucceeded && envelope.certificationId && (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertTitle>Finalization recovered successfully</AlertTitle>
+              <AlertDescription className="space-y-1 text-xs">
+                <div>Finalization recovered successfully. No additional email was sent.</div>
+                {resumeResult?.runtimeBuild && (
+                  <div>Recovery runtime: <code className="font-mono text-[10px] break-all">{resumeResult.runtimeBuild}</code></div>
+                )}
+                <div>Certification: <code className="font-mono text-[10px]">{envelope.certificationId}</code> ({envelope.certificationStatus ?? "—"})</div>
               </AlertDescription>
             </Alert>
           )}
