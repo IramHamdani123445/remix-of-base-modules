@@ -137,17 +137,28 @@ export interface OperatingModeTransitionResult {
  */
 export async function setOperatingMode(
   newMode: CommunicationOperatingMode,
-  reason?: string
+  reason?: string,
+  options?: { expectedVersion?: number; moduleCode?: string; eventCode?: string; channel?: string }
 ): Promise<OperatingModeTransitionResult> {
   if (BLOCKED_OPERATING_MODES.includes(newMode)) {
     throw new Error(`operating mode ${newMode} is not available`);
   }
   const { data, error } = await (supabase.rpc as any)(
-    "set_communication_operating_mode",
-    { p_new_mode: newMode, p_reason: reason ?? null }
+    "apply_communication_release_mode",
+    {
+      p_new_mode: newMode,
+      p_reason: reason ?? null,
+      p_expected_version: options?.expectedVersion ?? null,
+      p_module_code: options?.moduleCode ?? null,
+      p_event_code: options?.eventCode ?? null,
+      p_channel: options?.channel ?? null,
+    }
   );
   if (error) throw error;
   const row = data as any;
+  if (!row?.ok || row?.new_mode !== newMode) {
+    throw new Error(`apply_communication_release_mode did not confirm ${newMode}`);
+  }
   return {
     previousMode: (row?.previous_mode ?? null) as CommunicationOperatingMode | null,
     newMode: row?.new_mode as CommunicationOperatingMode,
