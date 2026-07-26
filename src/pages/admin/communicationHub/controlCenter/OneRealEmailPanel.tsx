@@ -117,6 +117,53 @@ export function OneRealEmailPanel({
   const [sending, setSending] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
   const [envelope, setEnvelope] = useState<OneRealEmailEnvelope | null>(null);
+  const [resumeBusy, setResumeBusy] = useState(false);
+
+  const showResumeFinalization = !!envelope
+    && envelope.providerCallAttempted === true
+    && envelope.reconciliationRequired === true
+    && envelope.failureStage === "finalization"
+    && !envelope.certificationId;
+
+  const handleResumeFinalization = useCallback(async () => {
+    if (!envelope?.executionId) {
+      toast.error("Execution id missing — cannot resume finalization.");
+      return;
+    }
+    setResumeBusy(true);
+    try {
+      const res = await resumeOneRealEmailFinalization(envelope.executionId);
+      if (!res.ok || !res.certificationId) {
+        toast.error(
+          res.detail ?? res.error ?? "Resume finalization refused by server.",
+        );
+        return;
+      }
+      setEnvelope((prev) => prev ? ({
+        ...prev,
+        certificationId: res.certificationId,
+        certificationKind: "ONE_REAL_EMAIL",
+        certificationStatus: res.certificationStatus,
+        providerStatus: res.providerStatus ?? prev.providerStatus,
+        reconciliationRequired: false,
+        failureStage: null,
+        status: "PROVIDER_ACCEPTED",
+        passed: true,
+        message: res.idempotent
+          ? "Certification already existed — no changes made."
+          : "Finalization resumed successfully. No email was sent.",
+      }) : prev);
+      toast.success(
+        res.idempotent
+          ? "Certification already recorded."
+          : "Finalization resumed — certification recorded.",
+      );
+    } catch (e: any) {
+      toast.error(e?.message ?? "Resume finalization failed.");
+    } finally {
+      setResumeBusy(false);
+    }
+  }, [envelope?.executionId]);
 
   // (Re)initialise an idempotency key whenever the lineage changes.
   useEffect(() => {
