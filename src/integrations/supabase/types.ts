@@ -97904,6 +97904,10 @@ export type Database = {
         Returns: Json
       }
       finalize_comm_hub_dry_run: { Args: { p_payload: Json }; Returns: Json }
+      finalize_comm_hub_manual_production_observation: {
+        Args: { p_idempotency_key: string; p_message_id: string }
+        Returns: Json
+      }
       finalize_comm_hub_one_real_email: {
         Args: { p_payload: Json }
         Returns: Json
@@ -99308,6 +99312,12 @@ export type Database = {
       link_comm_hub_trace_request: {
         Args: { p_request_id: string; p_request_no: string; p_trace_id: string }
         Returns: Json
+      }
+      list_comm_hub_approved_recipients: {
+        Args: { p_channel: string; p_event_code: string; p_module_code: string }
+        Returns: {
+          email: string
+        }[]
       }
       list_comm_hub_transition_log: {
         Args: { p_correlation_id?: string; p_limit?: number; p_offset?: number }
