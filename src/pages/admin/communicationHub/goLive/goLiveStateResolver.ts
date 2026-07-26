@@ -1,37 +1,25 @@
 /**
  * Server-authoritative lifecycle derivation for Go-Live Steps 6–9.
  *
- * These are PURE functions over EventGoLiveStatus + (client) observation
- * recovery + transport state. No sessionStorage; no "trust the browser".
- *
- * Blocker codes are the canonical strings the user asked to see verbatim.
+ * Pure functions over EventGoLiveStatus + a composed PendingObservationState
+ * (server recovery RPC + client transport outcome) + optional Stage 9
+ * completion RPC result. No sessionStorage; no browser-inferred production
+ * authority; heartbeat-fresh readiness alone can never yield LIVE_AUTOMATED_ARMED.
  */
-import type {
-  EventGoLiveStatus,
-} from "@/platform/communication-hub/eventGoLiveStatusService";
+import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLiveStatusService";
+import type { GoLiveCompletion } from "@/platform/communication-hub/goLiveCompletionService";
 import type {
   ObservationPhase,
   ObservationRecovery,
   RunObservationResult,
+  TransportErrorClass,
 } from "@/platform/communication-hub/manualProductionObservationService";
 
-export type Step6State =
-  | "LOCKED"
-  | "ACTION_REQUIRED"
-  | "COMPLETED";
-
+/** Steps 6/7 mode. */
+export type Step6State = "ACTION_REQUIRED" | "COMPLETED";
 export type Step7ModeState = "PENDING" | "COMPLETED";
 
-export type ObservationActionState =
-  | "LOCKED"
-  | "RECOVERY_CHECK_IN_PROGRESS"
-  | "ACTION_REQUIRED_DISPATCH"
-  | "PROCESSING"
-  | "RECOVERY_REQUIRED_RETRY_FINALIZE"
-  | "ACTION_REQUIRED_CONFIRM_INBOX"
-  | "TRANSPORT_UNRESOLVED"
-  | "COMPLETED";
-
+/** Local Step 8 states — LIVE_AUTOMATED_ARMED is NEVER derived locally. */
 export type Step8State =
   | "WAITING_FOR_MANUAL_OBSERVATION"
   | "READY_FOR_READINESS_PROBES"
@@ -39,8 +27,37 @@ export type Step8State =
   | "READY_TO_CERTIFY"
   | "AUTOMATED_CERTIFIED"
   | "AUTOMATED_STANDBY"
-  | "ARMED_PENDING_HEARTBEAT"
-  | "LIVE_AUTOMATED_ARMED";
+  | "ARMED_PENDING_HEARTBEAT";
+
+/** Observation states — pure server-authoritative view. */
+export type ObservationActionState =
+  | "LOCKED"
+  | "RECOVERY_CHECK_IN_PROGRESS"
+  | "ACTION_REQUIRED_DISPATCH"
+  | "PROCESSING"
+  | "TRANSPORT_UNRESOLVED"
+  | "RECOVERY_REQUIRED_RETRY_FINALIZE"
+  | "ACTION_REQUIRED_CONFIRM_INBOX"
+  | "COMPLETED";
+
+/** Explicit operator action mapped from state. */
+export type ObservationAction =
+  | "DISPATCH"
+  | "CHECK_RECOVERY"
+  | "FINALIZE"
+  | "CONFIRM_INBOX"
+  | "NONE";
+
+export const OBSERVATION_STATE_TO_ACTION: Record<ObservationActionState, ObservationAction> = {
+  LOCKED: "NONE",
+  RECOVERY_CHECK_IN_PROGRESS: "NONE",
+  ACTION_REQUIRED_DISPATCH: "DISPATCH",
+  PROCESSING: "CHECK_RECOVERY",
+  TRANSPORT_UNRESOLVED: "CHECK_RECOVERY",
+  RECOVERY_REQUIRED_RETRY_FINALIZE: "FINALIZE",
+  ACTION_REQUIRED_CONFIRM_INBOX: "CONFIRM_INBOX",
+  COMPLETED: "NONE",
+};
 
 export type BlockerCode =
   | "EVENT_NOT_MANUALLY_CERTIFIED"
@@ -55,29 +72,128 @@ export type BlockerCode =
 
 export interface ObservationDerived {
   state: ObservationActionState;
-  /** The single most specific blocker to display next to the primary button. */
+  action: ObservationAction;
   blocker: BlockerCode | null;
-  /** Label for the primary button visible to the operator. */
   primaryLabel: string;
-  /** Whether the primary button should be enabled at all. */
   primaryEnabled: boolean;
 }
 
-export function deriveStep6(status: EventGoLiveStatus | null, controlledLiveDone: boolean): Step6State {
-  if (!controlledLiveDone) return "LOCKED";
-  const s6 = status?.stage6;
-  if (!s6) return "ACTION_REQUIRED";
-  const confirmed =
-    s6.manual_verification_status === "CONFIRMED" ||
-    s6.one_real_email_certification_status === "DELIVERY_CONFIRMED_MANUALLY" ||
-    s6.stage6_ready_for_manual_production === true;
-  return confirmed ? "COMPLETED" : "ACTION_REQUIRED";
+/**
+ * Composed server-authoritative pending-observation state.
+ *
+ * `has_pending`, `phase`, `idempotency_key`, `intent_id`, `observation_id`,
+ * `request_id`, `message_id`, `inbox_confirmation_status`, `recipient_email`,
+ * `created_at` come from `get_comm_hub_observation_recovery` (server RPC).
+ *
+ * `transport_unresolved` and `last_transport_error_class` are contributed by
+ * the client wrapper when a dispatch invocation could not confirm whether the
+ * request reached the server. The same key is reused on retry.
+ */
+export interface PendingObservationState {
+  has_pending: boolean;
+  phase: ObservationPhase | null;
+  idempotency_key: string | null;
+  /** Recovery RPC returns observation_id — treat that as the durable intent id. */
+  intent_id: string | null;
+  observation_id: string | null;
+  request_id: string | null;
+  message_id: string | null;
+  inbox_confirmation_status: "CONFIRMED" | "NOT_RECEIVED" | null;
+  recipient_email: string | null;
+  created_at: string | null;
+  transport_unresolved: boolean;
+  last_transport_error_class: TransportErrorClass | null;
+  recovering: boolean;
 }
 
+export const EMPTY_PENDING_OBSERVATION_STATE: PendingObservationState = {
+  has_pending: false,
+  phase: null,
+  idempotency_key: null,
+  intent_id: null,
+  observation_id: null,
+  request_id: null,
+  message_id: null,
+  inbox_confirmation_status: null,
+  recipient_email: null,
+  created_at: null,
+  transport_unresolved: false,
+  last_transport_error_class: null,
+  recovering: false,
+};
+
+/** Compose the shared pending-observation state from recovery + last transport. */
+export function composePendingObservationState(input: {
+  recovery: ObservationRecovery | null;
+  recovering: boolean;
+  lastResult: RunObservationResult | null;
+  lastIdempotencyKey?: string | null;
+}): PendingObservationState {
+  const { recovery, recovering, lastResult, lastIdempotencyKey } = input;
+  const transportUnresolved = !!(lastResult?.transport && !lastResult.transport.resolved);
+  if (recovery?.hasPending) {
+    return {
+      has_pending: true,
+      phase: (recovery.phase ?? null) as ObservationPhase | null,
+      idempotency_key: recovery.idempotencyKey ?? lastIdempotencyKey ?? null,
+      intent_id: recovery.observationId ?? null,
+      observation_id: recovery.observationId ?? null,
+      request_id: recovery.requestId ?? null,
+      message_id: recovery.messageId ?? null,
+      inbox_confirmation_status: recovery.inboxConfirmationStatus ?? null,
+      recipient_email: recovery.recipientEmail ?? null,
+      created_at: recovery.createdAt ?? null,
+      transport_unresolved: transportUnresolved,
+      last_transport_error_class: lastResult?.transport?.errorClass ?? null,
+      recovering,
+    };
+  }
+  return {
+    has_pending: false,
+    phase: (lastResult?.phase && lastResult.phase !== "IDLE" ? lastResult.phase : null) as ObservationPhase | null,
+    idempotency_key: lastIdempotencyKey ?? null,
+    intent_id: lastResult?.observation_id ?? null,
+    observation_id: lastResult?.observation_id ?? null,
+    request_id: lastResult?.request_id ?? null,
+    message_id: lastResult?.message_id ?? null,
+    inbox_confirmation_status: (lastResult?.inbox_confirmation_status ?? null) as
+      | "CONFIRMED"
+      | "NOT_RECEIVED"
+      | null,
+    recipient_email: null,
+    created_at: null,
+    transport_unresolved: transportUnresolved,
+    last_transport_error_class: lastResult?.transport?.errorClass ?? null,
+    recovering,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Step 6 — server-authoritative ONLY. `controlledLiveDone` is intentionally
+// NOT a parameter here. Session state must not relock a server-complete Step 6.
+// ---------------------------------------------------------------------------
+export function deriveStep6(status: EventGoLiveStatus | null): Step6State {
+  const s6 = status?.stage6;
+  if (!s6) return "ACTION_REQUIRED";
+  const confirmed = s6.manual_verification_status === "CONFIRMED";
+  const eligibleCert =
+    !!s6.eligible_one_real_email_certification_id ||
+    s6.one_real_email_certification_status === "DELIVERY_CONFIRMED_MANUALLY";
+  const hasProvider = !!s6.provider_message_id;
+  const hasAttempt = !!s6.delivery_attempt_id;
+  const hasTrace = !!s6.trace_id;
+  const noReconciliation = s6.reconciliation_required !== true;
+  return confirmed && eligibleCert && hasProvider && hasAttempt && hasTrace && noReconciliation
+    ? "COMPLETED"
+    : "ACTION_REQUIRED";
+}
+
+// ---------------------------------------------------------------------------
+// Step 7 helpers — mode + event certification derived from server state.
+// ---------------------------------------------------------------------------
 export function deriveStep7Mode(status: EventGoLiveStatus | null): Step7ModeState {
   const mode = status?.platform?.current_operating_mode;
-  if (mode === "MANUAL_PRODUCTION" || mode === "AUTOMATED_PRODUCTION") return "COMPLETED";
-  return "PENDING";
+  return mode === "MANUAL_PRODUCTION" || mode === "AUTOMATED_PRODUCTION" ? "COMPLETED" : "PENDING";
 }
 
 export function deriveStep7EventCertified(status: EventGoLiveStatus | null): boolean {
@@ -85,95 +201,86 @@ export function deriveStep7EventCertified(status: EventGoLiveStatus | null): boo
   return es === "live_manual_only" || es === "live_cron_allowed";
 }
 
+// ---------------------------------------------------------------------------
+// Observation state derivation — pure over server state + pending state.
+// ---------------------------------------------------------------------------
 export function deriveObservation(
   status: EventGoLiveStatus | null,
-  recovery: ObservationRecovery | null,
-  recovering: boolean,
-  lastResult: RunObservationResult | null,
+  pending: PendingObservationState,
 ): ObservationDerived {
-  if (!deriveStep7EventCertified(status)) {
-    return {
-      state: "LOCKED",
-      blocker: "EVENT_NOT_MANUALLY_CERTIFIED",
-      primaryLabel: "Dispatch observation",
-      primaryEnabled: false,
-    };
-  }
-  if (recovering) {
-    return {
-      state: "RECOVERY_CHECK_IN_PROGRESS",
-      blocker: "RECOVERY_CHECK_IN_PROGRESS",
-      primaryLabel: "Checking pending…",
-      primaryEnabled: false,
-    };
-  }
-  // Transport unresolved wins over server phase — same idem key must be reused.
-  if (lastResult?.transport && !lastResult.transport.resolved) {
-    return {
-      state: "TRANSPORT_UNRESOLVED",
-      blocker: "TRANSPORT_OUTCOME_UNRESOLVED",
-      primaryLabel: "Retry dispatch (same key)",
-      primaryEnabled: true,
-    };
-  }
-  // Server-authoritative pending intent takes precedence.
-  const phase: ObservationPhase | undefined = recovery?.hasPending
-    ? (recovery.phase ?? undefined)
-    : (lastResult?.phase && lastResult.phase !== "IDLE" ? lastResult.phase : undefined);
+  const shell = (
+    state: ObservationActionState,
+    blocker: BlockerCode | null,
+    primaryLabel: string,
+    primaryEnabled: boolean,
+  ): ObservationDerived => ({
+    state,
+    action: OBSERVATION_STATE_TO_ACTION[state],
+    blocker,
+    primaryLabel,
+    primaryEnabled,
+  });
 
+  if (!deriveStep7EventCertified(status)) {
+    return shell("LOCKED", "EVENT_NOT_MANUALLY_CERTIFIED", "Dispatch observation", false);
+  }
+  if (pending.recovering) {
+    return shell("RECOVERY_CHECK_IN_PROGRESS", "RECOVERY_CHECK_IN_PROGRESS", "Checking pending…", false);
+  }
+
+  // Transport-unresolved dispatches must NEVER re-invoke the edge function
+  // until recovery proves the original operation never reached the server.
+  if (pending.transport_unresolved) {
+    return shell(
+      "TRANSPORT_UNRESOLVED",
+      "TRANSPORT_OUTCOME_UNRESOLVED",
+      "Check recovery status",
+      true,
+    );
+  }
+
+  const phase = pending.phase;
   if (phase === "AWAITING_PROVIDER") {
-    return {
-      state: "RECOVERY_REQUIRED_RETRY_FINALIZE",
-      blocker: "AWAITING_PROVIDER",
-      primaryLabel: "Retry finalize",
-      primaryEnabled: true,
-    };
+    return shell(
+      "RECOVERY_REQUIRED_RETRY_FINALIZE",
+      "AWAITING_PROVIDER",
+      "Finalize pending observation",
+      true,
+    );
   }
   if (phase === "AWAITING_INBOX_CONFIRMATION") {
-    return {
-      state: "ACTION_REQUIRED_CONFIRM_INBOX",
-      blocker: "AWAITING_INBOX_CONFIRMATION",
-      primaryLabel: "Confirm inbox receipt",
-      primaryEnabled: true,
-    };
+    return shell(
+      "ACTION_REQUIRED_CONFIRM_INBOX",
+      "AWAITING_INBOX_CONFIRMATION",
+      "Confirm inbox receipt",
+      true,
+    );
   }
   if (phase === "ENQUEUED" || phase === "DISPATCHED") {
-    return {
-      state: "PROCESSING",
-      blocker: "EXISTING_INTENT_PENDING",
-      primaryLabel: "Processing…",
-      primaryEnabled: false,
-    };
+    return shell("PROCESSING", "EXISTING_INTENT_PENDING", "Check recovery", true);
   }
 
   const inbox = status?.stage7?.latest_manual_observation_inbox;
-  if (inbox === "CONFIRMED") {
-    return {
-      state: "COMPLETED",
-      blocker: "ALREADY_CONFIRMED",
-      primaryLabel: "Confirmed",
-      primaryEnabled: false,
-    };
+  if (inbox === "CONFIRMED" || pending.inbox_confirmation_status === "CONFIRMED") {
+    return shell("COMPLETED", "ALREADY_CONFIRMED", "Confirmed", false);
   }
 
-  return {
-    state: "ACTION_REQUIRED_DISPATCH",
-    blocker: null,
-    primaryLabel: "Dispatch observation",
-    primaryEnabled: true,
-  };
+  return shell("ACTION_REQUIRED_DISPATCH", null, "Dispatch observation", true);
 }
 
+// ---------------------------------------------------------------------------
+// Step 8 — local derivation NEVER returns LIVE_AUTOMATED_ARMED. Heartbeat
+// evidence is NOT inferred from readiness. Only the completion RPC can
+// promote the lifecycle to LIVE_AUTOMATED_ARMED.
+// ---------------------------------------------------------------------------
 export function deriveStep8(status: EventGoLiveStatus | null): Step8State {
   const s7 = status?.stage7;
   const s8 = status?.stage8;
   const p = status?.platform;
   const armed = p?.automation_state === "ARMED";
-  const heartbeatFresh = s8?.readiness_all_ok_and_fresh === true; // best proxy the RPC exposes here
   const cronEvent = s8?.automation_event_certification_status === "live_cron_allowed";
   const automatedMode = p?.current_operating_mode === "AUTOMATED_PRODUCTION";
 
-  if (armed && automatedMode && cronEvent && heartbeatFresh) return "LIVE_AUTOMATED_ARMED";
   if (armed && automatedMode) return "ARMED_PENDING_HEARTBEAT";
   if (automatedMode && cronEvent) return "AUTOMATED_STANDBY";
   if (cronEvent) return "AUTOMATED_CERTIFIED";
@@ -187,6 +294,9 @@ export function deriveStep8(status: EventGoLiveStatus | null): Step8State {
   return "READY_TO_CERTIFY";
 }
 
+// ---------------------------------------------------------------------------
+// Lifecycle summary — LIVE_AUTOMATED_ARMED comes ONLY from completion RPC.
+// ---------------------------------------------------------------------------
 export interface LifecycleSummary {
   lifecycle: string;
   nextAction: string;
@@ -198,12 +308,13 @@ export interface LifecycleSummary {
   automationState: string;
 }
 
-export function deriveLifecycle(
-  status: EventGoLiveStatus | null,
-  controlledLiveDone: boolean,
-  observation: ObservationDerived,
-): LifecycleSummary {
-  const step6 = deriveStep6(status, controlledLiveDone);
+export function deriveLifecycle(input: {
+  status: EventGoLiveStatus | null;
+  observation: ObservationDerived;
+  completion: GoLiveCompletion | null;
+}): LifecycleSummary {
+  const { status, observation, completion } = input;
+  const step6 = deriveStep6(status);
   const step7Mode = deriveStep7Mode(status);
   const step7Cert = deriveStep7EventCertified(status);
   const step8 = deriveStep8(status);
@@ -212,10 +323,20 @@ export function deriveLifecycle(
   let nextAction = "Complete earlier steps first";
   let blocker: string | null = null;
 
-  if (step6 !== "COMPLETED") {
+  // Authoritative Stage 9 completion trumps any local derivation for the
+  // fully-live outcomes. Only the completion RPC may report LIVE_AUTOMATED_ARMED.
+  if (completion?.is_stage9_complete && completion.outcome === "LIVE_AUTOMATED_ARMED") {
+    lifecycle = "LIVE_AUTOMATED_ARMED";
+    nextAction = "None — automation live";
+    blocker = null;
+  } else if (completion?.is_stage9_complete && completion.outcome === "LIVE_MANUAL") {
+    lifecycle = "LIVE_MANUAL";
+    nextAction = "None — event live under Manual Production";
+    blocker = null;
+  } else if (step6 !== "COMPLETED") {
     lifecycle = "STAGE_6_PENDING";
-    nextAction = step6 === "LOCKED" ? "Complete Controlled Stub (Step 5)" : "Send & verify one real email";
-    blocker = step6 === "LOCKED" ? "STAGE_5_NOT_COMPLETE" : "STAGE_6_NOT_VERIFIED";
+    nextAction = "Send & verify one real email";
+    blocker = "STAGE_6_NOT_VERIFIED";
   } else if (!step7Cert) {
     lifecycle = "STAGE_7_PENDING_CERTIFICATION";
     nextAction = "Certify event for Manual Production";
@@ -228,10 +349,6 @@ export function deriveLifecycle(
     lifecycle = "STAGE_7_PENDING_OBSERVATION";
     nextAction = observation.primaryLabel;
     blocker = observation.blocker;
-  } else if (step8 === "LIVE_AUTOMATED_ARMED") {
-    lifecycle = "LIVE_AUTOMATED_ARMED";
-    nextAction = "None — automation live";
-    blocker = null;
   } else if (step8 === "ARMED_PENDING_HEARTBEAT") {
     lifecycle = "ARMED_PENDING_HEARTBEAT";
     nextAction = "Wait for scheduler heartbeat";
@@ -266,5 +383,4 @@ export const STEP8_STATE_LABELS: Record<Step8State, string> = {
   AUTOMATED_CERTIFIED: "Event certified · mode not yet AUTOMATED",
   AUTOMATED_STANDBY: "AUTOMATED_PRODUCTION · STANDBY (not armed)",
   ARMED_PENDING_HEARTBEAT: "ARMED · waiting for fresh scheduler heartbeat",
-  LIVE_AUTOMATED_ARMED: "LIVE_AUTOMATED_ARMED",
 };

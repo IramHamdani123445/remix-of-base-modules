@@ -101,7 +101,19 @@ import {
   deriveLifecycle,
   deriveObservation,
   deriveStep6,
+  composePendingObservationState,
+  EMPTY_PENDING_OBSERVATION_STATE,
+  type PendingObservationState,
 } from "./goLiveStateResolver";
+import {
+  getObservationRecovery,
+  type ObservationRecovery,
+  type RunObservationResult,
+} from "@/platform/communication-hub/manualProductionObservationService";
+import {
+  getGoLiveCompletion,
+  type GoLiveCompletion,
+} from "@/platform/communication-hub/goLiveCompletionService";
 
 
 const SESSION_KEY = "commHub.goLive.v1";
@@ -499,6 +511,66 @@ export default function GoLivePage() {
   const [goLiveReloadNonce, setGoLiveReloadNonce] = useState(0);
   const reloadGoLive = () => setGoLiveReloadNonce((n) => n + 1);
 
+  // Server-authoritative pending-observation state — hoisted so LifecycleBanner
+  // and ManualProductionObservationPanel consume the SAME state.
+  const [observationRecovery, setObservationRecovery] = useState<ObservationRecovery | null>(null);
+  const [observationRecovering, setObservationRecovering] = useState(false);
+  const [observationLastResult, setObservationLastResult] = useState<RunObservationResult | null>(null);
+  const [observationLastKey, setObservationLastKey] = useState<string | null>(null);
+  const pendingObservation: PendingObservationState = session.moduleCode && session.eventCode
+    ? composePendingObservationState({
+        recovery: observationRecovery,
+        recovering: observationRecovering,
+        lastResult: observationLastResult,
+        lastIdempotencyKey: observationLastKey,
+      })
+    : EMPTY_PENDING_OBSERVATION_STATE;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!session.moduleCode || !session.eventCode) {
+      setObservationRecovery(null);
+      return;
+    }
+    setObservationRecovering(true);
+    (async () => {
+      try {
+        const rec = await getObservationRecovery({
+          moduleCode: session.moduleCode,
+          eventCode: session.eventCode,
+          channel: session.channel ?? "email",
+        });
+        if (!cancelled) setObservationRecovery(rec);
+      } finally {
+        if (!cancelled) setObservationRecovering(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session.moduleCode, session.eventCode, session.channel, goLiveReloadNonce]);
+
+  // Stage 9 completion RPC — the ONLY authority for LIVE_AUTOMATED_ARMED.
+  const [goLiveCompletion, setGoLiveCompletion] = useState<GoLiveCompletion | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!session.moduleCode || !session.eventCode) {
+      setGoLiveCompletion(null);
+      return;
+    }
+    (async () => {
+      try {
+        const c = await getGoLiveCompletion({
+          moduleCode: session.moduleCode,
+          eventCode: session.eventCode,
+          channel: session.channel ?? "email",
+        });
+        if (!cancelled) setGoLiveCompletion(c);
+      } catch {
+        if (!cancelled) setGoLiveCompletion(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session.moduleCode, session.eventCode, session.channel, goLiveReloadNonce]);
+
   useEffect(() => {
     let cancelled = false;
     if (!session.moduleCode || !session.eventCode) {
@@ -813,11 +885,11 @@ export default function GoLivePage() {
 
       {/* Top-level lifecycle banner — server-authoritative snapshot. */}
       <LifecycleBanner
-        summary={deriveLifecycle(
-          goLiveStatus,
-          controlledLiveDone,
-          deriveObservation(goLiveStatus, null, false, null),
-        )}
+        summary={deriveLifecycle({
+          status: goLiveStatus,
+          observation: deriveObservation(goLiveStatus, pendingObservation),
+          completion: goLiveCompletion,
+        })}
       />
 
       {/* Phase 4B3 — Compact whole-journey Gate Monitor. Server-authoritative,
@@ -1097,7 +1169,7 @@ export default function GoLivePage() {
             </AlertDescription>
           </Alert>
         )}
-        {deriveStep6(goLiveStatus, controlledLiveDone) === "COMPLETED" ? (
+        {deriveStep6(goLiveStatus) === "COMPLETED" ? (
           <Alert>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             <AlertTitle className="flex items-center gap-2">
@@ -1238,7 +1310,12 @@ export default function GoLivePage() {
               eventCode={session.eventCode}
               channel={session.channel ?? "email"}
               status={goLiveStatus}
+              pendingObservation={pendingObservation}
               reloadNonce={goLiveReloadNonce}
+              onLastResult={(res, key) => {
+                setObservationLastResult(res);
+                if (key !== undefined) setObservationLastKey(key);
+              }}
               onChanged={reloadGoLive}
             />
           </div>

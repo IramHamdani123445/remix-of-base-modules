@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import {
 import {
   deriveObservation,
   type ObservationDerived,
+  type PendingObservationState,
 } from "./goLiveStateResolver";
 
 interface Props {
@@ -29,7 +30,14 @@ interface Props {
   eventCode: string;
   channel: string;
   status: EventGoLiveStatus | null;
+  /** Shared server-authoritative pending-observation state (from GoLivePage). */
+  pendingObservation: PendingObservationState;
   reloadNonce?: number;
+  /**
+   * Report the latest dispatch/finalize/confirm result (and its idempotency
+   * key) back to the parent so both banner and panel stay in sync.
+   */
+  onLastResult: (result: RunObservationResult | null, idempotencyKey?: string | null) => void;
   onChanged: () => void;
 }
 
@@ -54,123 +62,137 @@ export function ManualProductionObservationPanel({
   eventCode,
   channel,
   status,
+  pendingObservation,
   reloadNonce,
+  onLastResult,
   onChanged,
 }: Props) {
-  const [recipient, setRecipient] = useState(status?.stage6?.manual_verified_recipient ?? "");
+  const [recipient, setRecipient] = useState(
+    pendingObservation.recipient_email ?? status?.stage6?.manual_verified_recipient ?? "",
+  );
   const [running, setRunning] = useState(false);
+  const [checkingRecovery, setCheckingRecovery] = useState(false);
   const [resuming, setResuming] = useState(false);
   const [confirming, setConfirming] = useState<null | "CONFIRMED" | "NOT_RECEIVED">(null);
   const [note, setNote] = useState("");
-  const [result, setResult] = useState<RunObservationResult | null>(null);
-  const [phase, setPhase] = useState<ObservationPhase>("IDLE");
-  const [idem, setIdem] = useState<string | null>(null);
-  const [recovering, setRecovering] = useState(true);
-  const [recovery, setRecovery] = useState<Awaited<ReturnType<typeof getObservationRecovery>> | null>(null);
   const [evidence, setEvidence] = useState<ManualProductionEvidence | null>(null);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const confirmSectionRef = useRef<HTMLDivElement>(null);
+
+  const derived: ObservationDerived = deriveObservation(status, pendingObservation);
+  const phase: ObservationPhase =
+    (pendingObservation.phase as ObservationPhase | null) ??
+    (derived.state === "COMPLETED" ? "CONFIRMED" : "IDLE");
 
   useEffect(() => {
-    if (phase !== "CONFIRMED" || !result?.observation_id) return;
+    // Reset recipient default when pending state carries one.
+    if (pendingObservation.recipient_email && !recipient) {
+      setRecipient(pendingObservation.recipient_email);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingObservation.recipient_email]);
+
+  useEffect(() => {
+    if (phase !== "CONFIRMED" || !pendingObservation.observation_id) return;
     let cancelled = false;
     (async () => {
-      const r = await getManualProductionEvidence(result.observation_id!);
+      const r = await getManualProductionEvidence(pendingObservation.observation_id!);
       if (cancelled) return;
       if (r.ok && r.evidence) { setEvidence(r.evidence); setEvidenceError(null); }
       else setEvidenceError(r.error ?? "evidence_unavailable");
     })();
     return () => { cancelled = true; };
-  }, [phase, result?.observation_id]);
+  }, [phase, pendingObservation.observation_id]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setRecovering(true);
-    (async () => {
-      try {
-        const rec = await getObservationRecovery({ moduleCode, eventCode, channel });
-        if (cancelled) return;
-        setRecovery(rec);
-        if (rec.hasPending) {
-          setIdem(rec.idempotencyKey ?? null);
-          setRecipient(rec.recipientEmail ?? "");
-          setPhase(rec.phase ?? "AWAITING_PROVIDER");
-          setResult({
-            ok: true,
-            phase: rec.phase ?? "AWAITING_PROVIDER",
-            observation_id: rec.observationId,
-            message_id: rec.messageId,
-            request_id: rec.requestId,
-            inbox_confirmation_status: rec.inboxConfirmationStatus ?? null,
-          });
-        } else {
-          // No pending intent — clear stale in-flight result so the UI can
-          // offer a fresh Dispatch action (e.g. after a Void).
-          if (phase !== "CONFIRMED") {
-            setResult(null);
-            setPhase("IDLE");
-            setIdem(null);
-          }
-        }
-      } finally {
-        if (!cancelled) setRecovering(false);
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moduleCode, eventCode, channel, reloadNonce]);
+  // ---------------------------------------------------------------------------
+  // Action handlers — invoked by the single primary button based on derived.action.
+  // ---------------------------------------------------------------------------
 
-
-  const stage7 = status?.stage7;
-  const derived: ObservationDerived = deriveObservation(status, recovery, recovering, result);
-  const canDispatch = derived.state === "ACTION_REQUIRED_DISPATCH" || derived.state === "TRANSPORT_UNRESOLVED";
-
-  async function run() {
-    if (!canDispatch || !recipient.trim()) return;
+  async function doDispatch() {
+    if (!recipient.trim()) return;
     setRunning(true);
-    setResult(null);
-    setPhase("ENQUEUED");
-    // Reuse the existing key if the last attempt's transport is unresolved.
-    const key = idem && result?.transport && !result.transport.resolved
-      ? idem
-      : `mprod-obs-${crypto.randomUUID()}`;
-    setIdem(key);
+    const key = `mprod-obs-${crypto.randomUUID()}`;
+    // Reserve the key locally so a transport-unresolved retry can reuse it.
+    onLastResult(null, key);
     try {
       const res = await runManualProductionObservation({
         moduleCode, eventCode, channel,
         recipientEmail: recipient.trim(),
         idempotencyKey: key,
       });
-      setResult(res);
-      setPhase(res.phase);
+      onLastResult(res, key);
       if (res.transport && !res.transport.resolved) {
-        toast.error(`Transport unresolved (${res.transport.errorClass}) — will retry with same idempotency key.`);
+        toast.error(`Transport unresolved (${res.transport.errorClass}) — running recovery.`);
       } else if (res.phase === "AWAITING_INBOX_CONFIRMATION") {
         toast.success(res.recovered ? "Recovered pending observation" : "Provider evidence captured — confirm inbox receipt to proceed");
       } else if (res.phase === "AWAITING_PROVIDER") {
-        toast.warning("Awaiting provider evidence — retry finalize shortly");
+        toast.warning("Awaiting provider evidence — finalize once ready");
       } else if (res.phase === "CONFIRMED") {
         toast.success("Observation confirmed");
-      } else {
+      } else if (!res.ok) {
         toast.error(res.blockers?.[0]?.code ?? "Observation failed");
       }
       onChanged();
     } catch (e: any) {
-      setPhase("FAILED");
       toast.error(e?.message ?? "Observation failed");
     } finally {
       setRunning(false);
     }
   }
 
+  /**
+   * TRANSPORT_UNRESOLVED / PROCESSING — never invoke dispatch again. Only ask
+   * the server whether the original operation reached it (same idempotency key).
+   */
+  async function doCheckRecovery() {
+    setCheckingRecovery(true);
+    try {
+      const rec = await getObservationRecovery({ moduleCode, eventCode, channel });
+      if (rec.hasPending) {
+        toast.success(`Recovered pending intent · phase ${rec.phase ?? "AWAITING_PROVIDER"}`);
+      } else {
+        toast.info("Server has no pending intent — safe to dispatch again");
+        // Clear the unresolved-transport marker so the DISPATCH state re-appears.
+        onLastResult(null, null);
+      }
+      onChanged();
+    } finally {
+      setCheckingRecovery(false);
+    }
+  }
+
+  async function doFinalize() {
+    const key = pendingObservation.idempotency_key;
+    const messageId = pendingObservation.message_id;
+    if (!key || !messageId) {
+      toast.error("Missing idempotency key or message id for finalize");
+      return;
+    }
+    setResuming(true);
+    try {
+      const res = await finalizeManualProductionObservation({ messageId, idempotencyKey: key });
+      onLastResult(res, key);
+      if (res.ok) toast.success("Finalized");
+      else toast.error(res.blockers?.[0]?.code ?? "Finalize failed");
+      onChanged();
+    } finally {
+      setResuming(false);
+    }
+  }
+
+  function doConfirmInbox() {
+    confirmSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   async function decideInbox(decision: "CONFIRMED" | "NOT_RECEIVED") {
-    if (!result?.observation_id) return;
+    const observationId = pendingObservation.observation_id;
+    if (!observationId) return;
     setConfirming(decision);
     try {
       const res = await confirmManualProductionObservation({
-        observationId: result.observation_id, decision, note: note.trim() || undefined,
+        observationId, decision, note: note.trim() || undefined,
       });
-      setResult((prev) => ({ ...(prev ?? {} as any), ...res }));
-      setPhase(res.phase);
+      onLastResult(res, pendingObservation.idempotency_key ?? undefined);
       if (res.phase === "CONFIRMED") toast.success("Inbox receipt confirmed");
       else if (res.phase === "NOT_RECEIVED") toast.warning("Recorded as not received");
       else toast.error(res.blockers?.[0]?.code ?? "Confirmation failed");
@@ -180,22 +202,29 @@ export function ManualProductionObservationPanel({
     }
   }
 
-  async function resumeFinalize() {
-    if (!result?.message_id || !idem) return;
-    setResuming(true);
-    try {
-      const res = await finalizeManualProductionObservation({
-        messageId: result.message_id, idempotencyKey: idem,
-      });
-      setResult((prev) => ({ ...(prev ?? {} as any), ...res }));
-      setPhase(res.phase);
-      if (res.ok) toast.success("Finalized");
-      else toast.error(res.blockers?.[0]?.code ?? "Finalize failed");
-      onChanged();
-    } finally {
-      setResuming(false);
+  // Single dispatcher — the primary button always runs the derived action.
+  async function runPrimaryAction() {
+    switch (derived.action) {
+      case "DISPATCH": return doDispatch();
+      case "CHECK_RECOVERY": return doCheckRecovery();
+      case "FINALIZE": return doFinalize();
+      case "CONFIRM_INBOX": return doConfirmInbox();
+      case "NONE":
+      default:
+        return;
     }
   }
+
+  const busy = running || checkingRecovery || resuming;
+  const primaryLoading = (derived.action === "DISPATCH" && running)
+    || (derived.action === "CHECK_RECOVERY" && checkingRecovery)
+    || (derived.action === "FINALIZE" && resuming);
+  const stage7 = status?.stage7;
+  const showRecipientInput = derived.action === "DISPATCH";
+  const primaryDisabled =
+    !derived.primaryEnabled ||
+    busy ||
+    (derived.action === "DISPATCH" && !recipient.trim());
 
   return (
     <div className="rounded-md border p-4 space-y-3">
@@ -208,13 +237,16 @@ export function ManualProductionObservationPanel({
       </div>
 
       {/* Server-authoritative state banner */}
-      <Alert variant={derived.state === "COMPLETED" ? "default" : derived.blocker ? "default" : "default"}>
+      <Alert>
         <AlertDescription className="text-xs space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground">Observation state:</span>
             <Badge variant={derived.state === "COMPLETED" ? "default" : "secondary"} className="font-mono">
               {derived.state}
             </Badge>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-muted-foreground">Action:</span>
+            <Badge variant="outline" className="font-mono">{derived.action}</Badge>
             {derived.blocker && (
               <>
                 <span className="text-muted-foreground">Blocker:</span>
@@ -240,44 +272,45 @@ export function ManualProductionObservationPanel({
         </Alert>
       ) : (
         <>
-          <Input
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            placeholder="approved recipient email (must match recipient policy)"
-            disabled={running || !canDispatch}
-          />
+          {showRecipientInput && (
+            <Input
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              placeholder="approved recipient email (must match recipient policy)"
+              disabled={busy}
+            />
+          )}
 
-          {result?.transport && !result.transport.resolved && (
+          {pendingObservation.transport_unresolved && (
             <Alert variant="destructive">
               <AlertDescription className="space-y-1 text-xs">
-                <div>Checking whether the previous request reached the server…</div>
-                <div><span className="text-muted-foreground">Class:</span> {result.transport.errorClass}
-                  {result.transport.httpStatus ? <> · HTTP {result.transport.httpStatus}</> : null}
-                  {result.transport.runtimeBuild ? <> · build {result.transport.runtimeBuild}</> : null}
-                  {result.transport.correlationId ? <> · req {result.transport.correlationId}</> : null}
+                <div>Previous request's outcome is unresolved — a retry would not send another email.</div>
+                <div>
+                  <span className="text-muted-foreground">Error class:</span>{" "}
+                  {pendingObservation.last_transport_error_class ?? "unknown"} · idempotency key{" "}
+                  <code className="font-mono">{pendingObservation.idempotency_key ?? "—"}</code>
                 </div>
-                {result.transport.responseBody && (
-                  <pre className="max-h-32 overflow-auto rounded bg-muted p-2 font-mono text-[10px]">{result.transport.responseBody}</pre>
-                )}
+                <div>Use <strong>Check recovery status</strong> to ask the server whether the operation reached it.</div>
               </AlertDescription>
             </Alert>
           )}
 
           <div className="flex items-center gap-2">
             <Button
-              onClick={run}
-              disabled={running || !canDispatch || !recipient.trim()}
+              onClick={runPrimaryAction}
+              disabled={primaryDisabled}
               title={derived.blocker ?? undefined}
+              data-testid="observation-primary-action"
+              data-action={derived.action}
+              data-state={derived.state}
             >
-              {(running || recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {(primaryLoading || pendingObservation.recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {derived.action === "FINALIZE" && !primaryLoading && <RefreshCcw className="h-4 w-4 mr-2" />}
+              {derived.action === "CHECK_RECOVERY" && !primaryLoading && <RefreshCcw className="h-4 w-4 mr-2" />}
+              {derived.action === "DISPATCH" && !primaryLoading && <Send className="h-4 w-4 mr-2" />}
+              {derived.action === "CONFIRM_INBOX" && <Inbox className="h-4 w-4 mr-2" />}
               {derived.primaryLabel}
             </Button>
-            {derived.state === "RECOVERY_REQUIRED_RETRY_FINALIZE" && result?.message_id && (
-              <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
-                {resuming ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCcw className="h-4 w-4 mr-2" />}
-                Retry finalize
-              </Button>
-            )}
             {!derived.primaryEnabled && derived.blocker && (
               <span className="text-xs text-muted-foreground">
                 Blocked by <code className="font-mono">{derived.blocker}</code>
@@ -287,8 +320,8 @@ export function ManualProductionObservationPanel({
         </>
       )}
 
-      {phase === "AWAITING_INBOX_CONFIRMATION" && result?.observation_id && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+      {phase === "AWAITING_INBOX_CONFIRMATION" && pendingObservation.observation_id && (
+        <div ref={confirmSectionRef} className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Inbox className="h-4 w-4" />
             Confirm inbox receipt
@@ -349,31 +382,17 @@ export function ManualProductionObservationPanel({
             <div className="ml-auto">{phaseBadge(phase)}</div>
           </div>
 
-          {result?.message_id && (
-            <div><span className="text-muted-foreground">Message id:</span> <code className="font-mono text-xs">{result.message_id}</code></div>
+          {pendingObservation.message_id && (
+            <div><span className="text-muted-foreground">Message id:</span> <code className="font-mono text-xs">{pendingObservation.message_id}</code></div>
           )}
-          {result?.request_id && (
-            <div><span className="text-muted-foreground">Request id:</span> <code className="font-mono text-xs">{result.request_id}</code></div>
+          {pendingObservation.request_id && (
+            <div><span className="text-muted-foreground">Request id:</span> <code className="font-mono text-xs">{pendingObservation.request_id}</code></div>
           )}
-          {result?.trace_id && (
-            <div><span className="text-muted-foreground">Trace id:</span> <code className="font-mono text-xs">{result.trace_id}</code></div>
+          {pendingObservation.observation_id && (
+            <div><span className="text-muted-foreground">Observation id:</span> <code className="font-mono text-xs">{pendingObservation.observation_id}</code></div>
           )}
-          {result?.provider_message_id && (
-            <div><span className="text-muted-foreground">Provider message id:</span> <code className="font-mono text-xs">{result.provider_message_id}</code></div>
-          )}
-          {result?.observation_id && (
-            <div><span className="text-muted-foreground">Observation id:</span> <code className="font-mono text-xs">{result.observation_id}</code></div>
-          )}
-          {(result?.blockers ?? []).length > 0 && (
-            <Alert variant="destructive">
-              <AlertDescription>
-                <ul className="list-disc pl-5">
-                  {result!.blockers!.map((b, i) => (
-                    <li key={i}><code>{b.code}</code>{b.detail ? <> — {String(b.detail)}</> : null}</li>
-                  ))}
-                </ul>
-              </AlertDescription>
-            </Alert>
+          {pendingObservation.idempotency_key && (
+            <div><span className="text-muted-foreground">Idempotency key:</span> <code className="font-mono text-xs">{pendingObservation.idempotency_key}</code></div>
           )}
 
           {phase === "CONFIRMED" && (

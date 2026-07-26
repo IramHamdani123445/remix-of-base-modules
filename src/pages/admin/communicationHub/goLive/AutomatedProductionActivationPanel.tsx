@@ -176,7 +176,7 @@ export function AutomatedProductionActivationPanel({
       <Alert>
         <AlertDescription className="text-xs flex flex-wrap items-center gap-2">
           <span className="text-muted-foreground">Stage 8 state:</span>
-          <Badge variant={step8State === "LIVE_AUTOMATED_ARMED" ? "default" : "secondary"} className="font-mono">
+          <Badge variant={step8State === "ARMED_PENDING_HEARTBEAT" ? "default" : "secondary"} className="font-mono">
             {step8State}
           </Badge>
           <span className="text-muted-foreground">·</span>
