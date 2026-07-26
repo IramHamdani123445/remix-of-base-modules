@@ -222,30 +222,48 @@ export function ManualProductionActivationPanel({
         </Alert>
       )}
 
-      {/* Action 1 — Certify */}
-      <div className="rounded-md border p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4" />
-          <div className="font-medium">1. Certify this event for Manual Production</div>
-          {eventCertified && <Badge className="ml-auto">CERTIFIED</Badge>}
+      {/* Action 1 — Certify event (collapsed to a COMPLETED card when done) */}
+      {eventCertified ? (
+        <Alert>
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <AlertTitle className="flex items-center gap-2">
+            1. Event certified for Manual Production
+            <Badge>{stage7?.manual_event_status ?? "—"}</Badge>
+            {stage7?.manual_approved_at && (
+              <span className="text-xs text-muted-foreground">
+                approved {new Date(stage7.manual_approved_at).toLocaleString()}
+              </span>
+            )}
+          </AlertTitle>
+          <AlertDescription className="text-xs">
+            Certification id:{" "}
+            <code className="font-mono">{stage7?.manual_event_certification_id ?? "—"}</code>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <div className="rounded-md border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            <div className="font-medium">1. Certify this event for Manual Production</div>
+          </div>
+          <Textarea
+            value={certifyReason}
+            onChange={(e) => setCertifyReason(e.target.value)}
+            placeholder="Audit reason (min 6 chars)"
+            disabled={certifying}
+          />
+          <Input
+            value={certifyPhrase}
+            onChange={(e) => setCertifyPhrase(e.target.value)}
+            placeholder={`Type: ${MANUAL_PRODUCTION_TYPED_PHRASE}`}
+            disabled={certifying}
+          />
+          <Button onClick={handleCertify} disabled={!canCertify}>
+            {certifying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Certify for Manual Production
+          </Button>
         </div>
-        <Textarea
-          value={certifyReason}
-          onChange={(e) => setCertifyReason(e.target.value)}
-          placeholder="Audit reason (min 6 chars)"
-          disabled={certifying || eventCertified}
-        />
-        <Input
-          value={certifyPhrase}
-          onChange={(e) => setCertifyPhrase(e.target.value)}
-          placeholder={`Type: ${MANUAL_PRODUCTION_TYPED_PHRASE}`}
-          disabled={certifying || eventCertified}
-        />
-        <Button onClick={handleCertify} disabled={!canCertify || eventCertified}>
-          {certifying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Certify for Manual Production
-        </Button>
-      </div>
+      )}
 
       {/* Action 2 — Close gate */}
       {gateStillOpen && (
@@ -273,50 +291,60 @@ export function ManualProductionActivationPanel({
         </div>
       )}
 
-      {/* Action 3 — Global mode impact preview */}
-      <div className="rounded-md border p-4 space-y-2">
-        <div className="flex items-center gap-2">
-          <AlertTriangle className="h-4 w-4 text-amber-600" />
-          <div className="font-medium">3. Global Manual Production impact preview</div>
-        </div>
+      {/* Action 3+4 — Mode switch (collapsed to COMPLETED when already active) */}
+      {globalManualActive ? (
         <Alert>
-          <AlertTitle>Switching to MANUAL_PRODUCTION is a global change</AlertTitle>
-          <AlertDescription>
-            All <strong>{platform?.eligible_manual_event_count ?? 0}</strong> currently
-            certified events (across every module and channel) will become
-            eligible for manual operator sends. This is a platform-wide
-            state, not a per-event switch.
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <AlertTitle className="flex items-center gap-2">
+            Platform operating mode active
+            <Badge>{platform?.current_operating_mode}</Badge>
+          </AlertTitle>
+          <AlertDescription className="text-xs">
+            Configuration version{" "}
+            <code className="font-mono">{platform?.configuration_version ?? "—"}</code>.
+            No further mode action is required for Step 7.
           </AlertDescription>
         </Alert>
-      </div>
+      ) : (
+        <>
+          <div className="rounded-md border p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600" />
+              <div className="font-medium">3. Global Manual Production impact preview</div>
+            </div>
+            <Alert>
+              <AlertTitle>Switching to MANUAL_PRODUCTION is a global change</AlertTitle>
+              <AlertDescription>
+                All <strong>{platform?.eligible_manual_event_count ?? 0}</strong> currently
+                certified events will become eligible for manual operator sends.
+              </AlertDescription>
+            </Alert>
+          </div>
 
-      {/* Action 4 — Switch mode */}
-      <div className="rounded-md border p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-primary" />
-          <div className="font-medium">4. Switch platform mode to MANUAL_PRODUCTION</div>
-          {globalManualActive && <Badge className="ml-auto">{platform?.current_operating_mode}</Badge>}
-        </div>
-        <Textarea
-          value={activateReason}
-          onChange={(e) => setActivateReason(e.target.value)}
-          placeholder="Audit reason (min 6 chars)"
-          disabled={switching || !eventCertified || globalManualActive}
-        />
-        <Input
-          value={activatePhrase}
-          onChange={(e) => setActivatePhrase(e.target.value)}
-          placeholder={`Type: ${ACTIVATE_TYPED_PHRASE}`}
-          disabled={switching || !eventCertified || globalManualActive}
-        />
-        <Button
-          onClick={handleSwitchMode}
-          disabled={!canSwitchMode || globalManualActive}
-        >
-          {switching && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Activate MANUAL_PRODUCTION mode
-        </Button>
-      </div>
+          <div className="rounded-md border p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+              <div className="font-medium">4. Switch platform mode to MANUAL_PRODUCTION</div>
+            </div>
+            <Textarea
+              value={activateReason}
+              onChange={(e) => setActivateReason(e.target.value)}
+              placeholder="Audit reason (min 6 chars)"
+              disabled={switching || !eventCertified}
+            />
+            <Input
+              value={activatePhrase}
+              onChange={(e) => setActivatePhrase(e.target.value)}
+              placeholder={`Type: ${ACTIVATE_TYPED_PHRASE}`}
+              disabled={switching || !eventCertified}
+            />
+            <Button onClick={handleSwitchMode} disabled={!canSwitchMode}>
+              {switching && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Activate MANUAL_PRODUCTION mode
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
