@@ -1141,6 +1141,19 @@ export default function GoLivePage() {
 
       <Separator />
 
+      {goLiveStatusError && (
+        <Alert variant="destructive">
+          <AlertDescription className="space-y-2">
+            <div className="font-semibold">Authoritative Go Live status failed to load</div>
+            <div className="text-xs font-mono break-all">{goLiveStatusError}</div>
+            <Button size="sm" variant="outline" onClick={reloadGoLive} disabled={goLiveStatusLoading}>
+              {goLiveStatusLoading ? "Retrying…" : "Retry status check"}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+
       {/* STEP 7 — ACTIVATE MANUAL PRODUCTION */}
       <CommunicationHubSectionCard
         title={
