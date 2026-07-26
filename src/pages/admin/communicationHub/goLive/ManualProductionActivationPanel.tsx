@@ -13,6 +13,10 @@ import {
   MANUAL_PRODUCTION_TYPED_PHRASE,
 } from "@/platform/communication-hub/manualProductionCertificationService";
 import { applyReleaseMode } from "@/platform/communication-hub/releaseModeService";
+import {
+  reconcileManualProductionEntry,
+  promoteEventToManualProduction,
+} from "@/platform/communication-hub/manualProductionContinuityService";
 
 const ACTIVATE_TYPED_PHRASE = "ACTIVATE MANUAL PRODUCTION";
 
