@@ -47,3 +47,5 @@ project_id = "xynceskeiiisiefqlgxo"
     verify_jwt = true
   [functions.comm-hub-resume-one-real-email-finalization]
     verify_jwt = true
+  [functions.comm-hub-run-manual-production-observation]
+    verify_jwt = true
