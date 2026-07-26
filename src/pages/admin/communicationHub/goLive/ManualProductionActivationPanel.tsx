@@ -56,12 +56,10 @@ export function ManualProductionActivationPanel({
   const stage7 = status?.stage7;
   const platform = status?.platform;
 
-  const stage6ReadyForCert =
-    !!stage6?.one_real_email_certification_id &&
-    !!stage6?.trace_id &&
-    stage6?.provider_call_attempted === true &&
-    stage6?.manual_verification_status === "CONFIRMED" &&
-    !stage6?.reconciliation_required;
+  // Server-authoritative eligibility (do NOT infer from browser booleans)
+  const eligibleCertId = stage6?.eligible_one_real_email_certification_id ?? null;
+  const stage6ReadyForCert = stage6?.stage6_ready_for_manual_production === true && !!eligibleCertId;
+  const stage6Blockers = stage6?.stage6_manual_production_blockers ?? [];
 
   const eventCertified =
     stage7?.manual_event_status === "live_manual_only" ||
@@ -86,17 +84,24 @@ export function ManualProductionActivationPanel({
     activatePhrase === ACTIVATE_TYPED_PHRASE;
 
   async function handleCertify() {
-    if (!stage6?.one_real_email_certification_id) return;
+    if (!eligibleCertId) return;
     setCertifying(true);
     try {
-      await certifyEventManualProduction({
+      const result = await certifyEventManualProduction({
         moduleCode,
         eventCode,
         channel,
-        oneRealEmailCertificationId: stage6.one_real_email_certification_id,
+        oneRealEmailCertificationId: eligibleCertId,
         reason: certifyReason.trim(),
         typedConfirmation: certifyPhrase,
       });
+      if ((result as any)?.ok === false) {
+        const blockers = ((result as any).blockers ?? []) as Stage6Blocker[];
+        const summary = blockers.map((b) => b.code).join(", ") || (result as any).error || "prerequisites_not_met";
+        toast.error(`Certification blocked: ${summary}`);
+        onChanged();
+        return;
+      }
       toast.success("Event certified for Manual Production");
       setCertifyReason("");
       setCertifyPhrase("");
