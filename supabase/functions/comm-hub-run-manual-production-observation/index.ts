@@ -1,14 +1,15 @@
 // deno-lint-ignore-file no-explicit-any
 // Server-coordinated Manual Production observation.
 //
-// - Authenticates operator JWT and platform-admin capability.
-// - Validates authoritative go-live state via get_comm_hub_event_go_live_status.
-// - Validates the recipient against list_comm_hub_approved_recipients.
-// - Enqueues exactly one manual-production message via send-communication-v1
-//   with send_context='manual_production' and test_mode=false.
-// - Invokes comm-hub-dispatch with targetMessageId for a single delivery.
-// - Waits until durable message + delivery_attempt rows resolve (bounded poll).
-// - Calls finalize_comm_hub_manual_production_observation to bind lineage.
+// Guarantees:
+// - Requires operator auth + Communication Hub administrator authority checked
+//   through the operator-authenticated client BEFORE any service-role action.
+// - Fails closed when the recipient policy returns zero approved recipients or
+//   the supplied recipient is not on the approved list.
+// - Persists an observation intent (idempotency key + recipient + module/event)
+//   before any enqueue, so a browser refresh can recover without sending twice.
+// - Finalize recovery accepts message_id alone; on recovery, no new message is
+//   enqueued or dispatched — only durable evidence is bound.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -21,11 +22,9 @@ const cors = {
   "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
   "access-control-allow-methods": "POST, OPTIONS",
 };
-
 function json(status: number, body: any) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "content-type": "application/json" } });
 }
-
 async function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
 
 Deno.serve(async (req) => {
@@ -52,12 +51,24 @@ Deno.serve(async (req) => {
   const asOperator = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: auth } } });
   const asService = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-  // 1) Verify caller
+  // 1) Verify operator identity
   const { data: claims, error: claimErr } = await asOperator.auth.getClaims(auth.slice(7));
   if (claimErr || !claims?.claims?.sub) return json(401, { ok: false, blockers: [{ code: "unauthorised" }] });
   const operatorId = claims.claims.sub as string;
 
-  // 2) Authoritative go-live status
+  // 2) REQUIRE Communication Hub admin using the operator-authenticated client.
+  //    is_comm_hub_admin is SECURITY DEFINER but relies on auth.uid() from the
+  //    JWT — running it via asOperator ensures it evaluates the operator, not
+  //    the service role. This must succeed BEFORE any service-role RPC.
+  const { data: adminOk, error: adminErr } = await asOperator.rpc("is_comm_hub_admin", { _user_id: operatorId });
+  if (adminErr) {
+    return json(403, { ok: false, blockers: [{ code: "admin_check_failed", detail: adminErr.message }] });
+  }
+  if (adminOk !== true) {
+    return json(403, { ok: false, blockers: [{ code: "not_comm_hub_admin" }] });
+  }
+
+  // 3) Authoritative go-live status
   const { data: status, error: statErr } = await asService.rpc("get_comm_hub_event_go_live_status", {
     p_module_code: moduleCode, p_event_code: eventCode, p_channel: channel,
   });
@@ -71,62 +82,107 @@ Deno.serve(async (req) => {
     return json(409, { ok: false, blockers: [{ code: "operating_mode_not_production", detail: platform?.current_operating_mode ?? null }] });
   }
 
-  // 3) Validate recipient against policy
+  // 4) Validate recipient against approved list — FAIL CLOSED on empty list.
   const { data: approved, error: apprErr } = await asService.rpc("list_comm_hub_approved_recipients", {
     p_module_code: moduleCode, p_event_code: eventCode, p_channel: channel,
   });
   if (apprErr) return json(500, { ok: false, blockers: [{ code: "recipient_policy_lookup_failed", detail: apprErr.message }] });
-  const approvedList = ((approved as any[]) ?? []).map((r) => String(r.email ?? "").toLowerCase());
-  if (approvedList.length > 0 && !approvedList.includes(recipientEmail)) {
+  const approvedList = ((approved as any[]) ?? []).map((r) => String(r.email ?? "").toLowerCase()).filter((s) => s.length > 0);
+  if (approvedList.length === 0) {
+    return json(409, { ok: false, blockers: [{ code: "recipient_policy_empty", detail: "No approved recipients are configured for this event/channel." }] });
+  }
+  if (!approvedList.includes(recipientEmail)) {
     return json(409, { ok: false, blockers: [{ code: "recipient_not_approved", detail: recipientEmail }] });
   }
 
-  // 4) Enqueue via send-communication-v1 (canonical façade)
-  const enqueueRes = await fetch(`${SUPABASE_URL}/functions/v1/send-communication-v1`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      Authorization: auth,
-      apikey: ANON,
-      "x-comm-hub-idempotency-key": idempotencyKey,
-    },
-    body: JSON.stringify({
-      moduleCode,
-      eventCode,
-      channels: [channel.toUpperCase()],
-      recipient: { email: recipientEmail, role: "to" },
-      data,
-      idempotencyKey,
-      sendContext: "manual_production",
-      testMode: false,
-      metadata: { context: "manual_production_observation", operatorId },
-    }),
+  // 5) Persist observation intent BEFORE enqueue (admin-only RPC via operator client)
+  const { data: intentRec, error: intentErr } = await asOperator.rpc("record_comm_hub_observation_intent", {
+    p_idempotency_key: idempotencyKey,
+    p_module_code: moduleCode,
+    p_event_code: eventCode,
+    p_channel: channel,
+    p_recipient_email: recipientEmail,
   });
-  const enqueueText = await enqueueRes.text();
-  let enqueueBody: any = {};
-  try { enqueueBody = JSON.parse(enqueueText); } catch {}
-  if (!enqueueRes.ok) {
-    return json(502, { ok: false, blockers: [{ code: "enqueue_failed", detail: enqueueBody?.error ?? enqueueText.slice(0, 500) }] });
+  if (intentErr) {
+    return json(403, { ok: false, blockers: [{ code: "intent_record_failed", detail: intentErr.message }] });
   }
-  const messageId: string | undefined =
-    enqueueBody?.messages?.[0]?.id ?? enqueueBody?.messageIds?.[0] ?? enqueueBody?.messageId;
-  const requestId: string | undefined = enqueueBody?.requestId ?? enqueueBody?.request_id;
-  if (!messageId) return json(502, { ok: false, blockers: [{ code: "enqueue_no_message_id" }] });
+  const intent = (intentRec as any) ?? {};
 
-  // 5) Targeted dispatch
-  const dispatchRes = await fetch(`${SUPABASE_URL}/functions/v1/comm-hub-dispatch`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-comm-hub-dispatch-secret": DISPATCH_SECRET,
-      apikey: SERVICE_ROLE,
-      Authorization: `Bearer ${SERVICE_ROLE}`,
-    },
-    body: JSON.stringify({ targetMessageId: messageId, manual: true, initiatedBy: operatorId }),
-  });
-  const dispatchText = await dispatchRes.text();
+  // 6) Recovery paths
+  if (intent.finalized_observation_id) {
+    // Already finalized on a prior invocation — do not send again.
+    return json(200, {
+      ok: true,
+      phase: "AWAITING_INBOX_CONFIRMATION",
+      recovered: true,
+      request_id: intent.request_id,
+      message_id: intent.message_id,
+      observation_id: intent.finalized_observation_id,
+    });
+  }
 
-  // 6) Bounded poll for durable delivery evidence (up to ~12s)
+  let messageId: string | undefined = intent.message_id ?? undefined;
+  let requestId: string | undefined = intent.request_id ?? undefined;
+
+  if (!messageId) {
+    // 7) Enqueue exactly once via canonical façade
+    const enqueueRes = await fetch(`${SUPABASE_URL}/functions/v1/send-communication-v1`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: auth,
+        apikey: ANON,
+        "x-comm-hub-idempotency-key": idempotencyKey,
+      },
+      body: JSON.stringify({
+        moduleCode, eventCode,
+        channels: [channel.toUpperCase()],
+        recipient: { email: recipientEmail, role: "to" },
+        data, idempotencyKey,
+        sendContext: "manual_production",
+        testMode: false,
+        metadata: { context: "manual_production_observation", operatorId },
+      }),
+    });
+    const enqueueText = await enqueueRes.text();
+    let enqueueBody: any = {};
+    try { enqueueBody = JSON.parse(enqueueText); } catch {}
+    if (!enqueueRes.ok) {
+      await asService.rpc("update_comm_hub_observation_intent", {
+        p_idempotency_key: idempotencyKey, p_phase: "FAILED",
+        p_last_error: `enqueue_failed: ${enqueueBody?.error ?? enqueueText.slice(0, 200)}`,
+      });
+      return json(502, { ok: false, blockers: [{ code: "enqueue_failed", detail: enqueueBody?.error ?? enqueueText.slice(0, 500) }] });
+    }
+    messageId = enqueueBody?.messages?.[0]?.id ?? enqueueBody?.messageIds?.[0] ?? enqueueBody?.messageId;
+    requestId = enqueueBody?.requestId ?? enqueueBody?.request_id;
+    if (!messageId) {
+      await asService.rpc("update_comm_hub_observation_intent", {
+        p_idempotency_key: idempotencyKey, p_phase: "FAILED", p_last_error: "enqueue_no_message_id",
+      });
+      return json(502, { ok: false, blockers: [{ code: "enqueue_no_message_id" }] });
+    }
+    await asService.rpc("update_comm_hub_observation_intent", {
+      p_idempotency_key: idempotencyKey,
+      p_message_id: messageId, p_request_id: requestId ?? null,
+      p_phase: "AWAITING_PROVIDER",
+    });
+
+    // 8) Targeted dispatch — only for a freshly enqueued message.
+    await fetch(`${SUPABASE_URL}/functions/v1/comm-hub-dispatch`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-comm-hub-dispatch-secret": DISPATCH_SECRET,
+        apikey: SERVICE_ROLE,
+        Authorization: `Bearer ${SERVICE_ROLE}`,
+      },
+      body: JSON.stringify({ targetMessageId: messageId, manual: true, initiatedBy: operatorId }),
+    });
+  }
+  // else: recovery — messageId already exists, do NOT dispatch again.
+
+  // 9) Bounded poll for durable delivery evidence (~12s)
   let attempt: any = null;
   let message: any = null;
   for (let i = 0; i < 12; i++) {
@@ -147,23 +203,29 @@ Deno.serve(async (req) => {
       message_id: messageId,
       message_status: message?.status ?? null,
       attempt_status: attempt?.status ?? null,
-      dispatch_http: dispatchRes.status,
-      dispatch_body: dispatchText.slice(0, 800),
       blockers: [{ code: "provider_evidence_pending", detail: "Provider evidence not durable yet — retry finalize when message is sent." }],
     });
   }
 
-  // 7) Finalize server-side (service-role)
+  // 10) Finalize (service-role RPC)
   const { data: finalized, error: finErr } = await asService.rpc("finalize_comm_hub_manual_production_observation", {
     p_message_id: messageId, p_idempotency_key: idempotencyKey,
   });
   if (finErr) {
+    await asService.rpc("update_comm_hub_observation_intent", {
+      p_idempotency_key: idempotencyKey, p_phase: "AWAITING_PROVIDER", p_last_error: finErr.message,
+    });
     return json(500, { ok: false, blockers: [{ code: "finalize_failed", detail: finErr.message }] });
   }
-
-  // Finalizer proves provider evidence only; explicit inbox confirmation
-  // is a separate operator action (confirm_comm_hub_manual_production_observation).
   const fin: any = finalized ?? {};
+  if (fin.observation_id) {
+    await asService.rpc("update_comm_hub_observation_intent", {
+      p_idempotency_key: idempotencyKey,
+      p_finalized_observation_id: fin.observation_id,
+      p_phase: "AWAITING_INBOX_CONFIRMATION",
+    });
+  }
+
   return json(200, {
     ok: true,
     phase: fin.phase ?? "AWAITING_INBOX_CONFIRMATION",
