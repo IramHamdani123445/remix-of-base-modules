@@ -75,6 +75,7 @@ interface Envelope {
   certification_status: string | null;
   failure_stage: string | null;
   retry_safe: boolean;
+  automatic_retry_allowed: boolean;
   reconciliation_required: boolean;
   cleanup_proven: boolean;
   blockers: Array<{ code: string; stage: string; message?: string; detail?: unknown }>;
