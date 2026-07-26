@@ -12,8 +12,10 @@ import {
   finalizeManualProductionObservation,
   confirmManualProductionObservation,
   getObservationRecovery,
+  getManualProductionEvidence,
   type ObservationPhase,
   type RunObservationResult,
+  type ManualProductionEvidence,
 } from "@/platform/communication-hub/manualProductionObservationService";
 
 interface Props {
