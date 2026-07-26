@@ -788,7 +788,8 @@ Deno.serve(async (req) => {
     : attemptStatus === "pending" ? "DELIVERY_PENDING"
     : "PROVIDER_REJECTED";
 
-  const retrySafeFinal = finalStatus === "DELIVERY_PENDING";
+  // Every post-provider outcome — accepted, pending, rejected — is retry-unsafe.
+  const retrySafeFinal = false;
 
   env.message = finalStatus === "PROVIDER_ACCEPTED"
     ? "Provider accepted the one real email."
