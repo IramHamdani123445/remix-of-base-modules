@@ -40608,6 +40608,7 @@ export type Database = {
           retry_base_seconds: number
           retry_max_seconds: number
           retry_worker_enabled: boolean
+          runtime_mode_version: number
           scheduler_enabled: boolean
           scheduler_worker_version: string | null
           singleton_guard: string
@@ -40667,6 +40668,7 @@ export type Database = {
           retry_base_seconds?: number
           retry_max_seconds?: number
           retry_worker_enabled?: boolean
+          runtime_mode_version?: number
           scheduler_enabled?: boolean
           scheduler_worker_version?: string | null
           singleton_guard?: string
@@ -40726,6 +40728,7 @@ export type Database = {
           retry_base_seconds?: number
           retry_max_seconds?: number
           retry_worker_enabled?: boolean
+          runtime_mode_version?: number
           scheduler_enabled?: boolean
           scheduler_worker_version?: string | null
           singleton_guard?: string
@@ -95765,6 +95768,23 @@ export type Database = {
         }
         Returns: string
       }
+      _comm_hub_evidence_fingerprint_v2: {
+        Args: {
+          p_channel: string
+          p_event: string
+          p_module: string
+          p_payload_schema_hash: string
+          p_provider_key: string
+          p_recipient_policy_version: string
+          p_recipient_set_hash: string
+          p_review_policy_hash: string
+          p_send_policy_hash: string
+          p_sender_profile_id: string
+          p_template_manifest_hash: string
+          p_template_version_id: string
+        }
+        Returns: string
+      }
       _comm_hub_get_request_actor: { Args: never; Returns: Json }
       _comm_hub_get_request_role: { Args: never; Returns: Json }
       _comm_hub_governance_transition_core: {
@@ -96825,6 +96845,14 @@ export type Database = {
           p_platform_test_context_id?: string
           p_scenario_id?: string
           p_template_version_id?: string
+        }
+        Returns: Json
+      }
+      check_comm_hub_manual_observation_eligibility: {
+        Args: {
+          p_channel?: string
+          p_event_code: string
+          p_module_code: string
         }
         Returns: Json
       }
