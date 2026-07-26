@@ -100879,6 +100879,14 @@ export type Database = {
         Args: { p_c3_id: string; p_user_id?: string }
         Returns: Json
       }
+      void_comm_hub_manual_production_observation: {
+        Args: {
+          p_confirmation: string
+          p_observation_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       write_comm_hub_operating_mode_audit: {
         Args: {
           p_actor: string
