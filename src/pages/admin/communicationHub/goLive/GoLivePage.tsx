@@ -487,6 +487,31 @@ export default function GoLivePage() {
   const [stage6ContextError, setStage6ContextError] = useState<string | null>(null);
   const [stage6ContextLoading, setStage6ContextLoading] = useState(false);
   const [stage6ContextReloadNonce, setStage6ContextReloadNonce] = useState(0);
+  const [goLiveStatus, setGoLiveStatus] = useState<EventGoLiveStatus | null>(null);
+  const [goLiveReloadNonce, setGoLiveReloadNonce] = useState(0);
+  const reloadGoLive = () => setGoLiveReloadNonce((n) => n + 1);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!session.moduleCode || !session.eventCode) {
+      setGoLiveStatus(null);
+      return;
+    }
+    (async () => {
+      try {
+        const s = await getEventGoLiveStatus({
+          moduleCode: session.moduleCode,
+          eventCode: session.eventCode,
+          channel: session.channel ?? "email",
+        });
+        if (!cancelled) setGoLiveStatus(s);
+      } catch {
+        if (!cancelled) setGoLiveStatus(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session.moduleCode, session.eventCode, session.channel, goLiveReloadNonce, stage6ContextReloadNonce]);
+
   useEffect(() => {
     let cancelled = false;
     setStage6Context(null);
