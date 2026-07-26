@@ -163,7 +163,14 @@ Deno.serve(async (req) => {
     env.failure_stage = stage;
     env.passed = status === "PROVIDER_ACCEPTED"
       || status === "DELIVERY_PENDING";
-    env.retry_safe = opts.retrySafe;
+    // Any post-provider outcome (provider was invoked, evidence persisted or
+    // otherwise) MUST forbid automatic retry regardless of caller intent.
+    const postProvider = env.provider_call_attempted
+      || status === "PROVIDER_ACCEPTED"
+      || status === "DELIVERY_PENDING"
+      || status === "PROVIDER_REJECTED";
+    env.retry_safe = postProvider ? false : !!opts.retrySafe;
+    env.automatic_retry_allowed = env.retry_safe;
     env.reconciliation_required = !!opts.reconciliationRequired;
     env.cleanup_proven = !!opts.cleanupProven;
     if (opts.message) env.message = opts.message;
