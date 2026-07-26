@@ -632,10 +632,15 @@ Deno.serve(async (req) => {
   const providerOk = transportResult.ok;
   const providerMsgId = transportResult.providerMessageId ?? null;
   const rawStatus = transportResult.rawStatus ?? (providerOk ? "success" : "failure");
-  let attemptStatus: "success" | "failure" | "pending" = "failure";
+  // Attempt status must satisfy communication_delivery_attempt_status_chk:
+  //   pending | success | failure | timeout | throttled | skipped
+  let attemptStatus: "success" | "failure" | "pending" | "timeout" | "throttled" | "skipped" = "failure";
   if (providerOk) attemptStatus = "success";
   else if (transportResult.retryable) attemptStatus = "pending";
+  else if ((transportResult.errorCode ?? "").toLowerCase().includes("timeout")) attemptStatus = "timeout";
+  else if ((transportResult.errorCode ?? "").toLowerCase().includes("throttl")) attemptStatus = "throttled";
 
+  const nowIso = new Date().toISOString();
   let evidenceOk = true;
   try {
     const { error: attemptUpdErr } = await admin
@@ -644,13 +649,14 @@ Deno.serve(async (req) => {
         status: attemptStatus,
         provider_call_attempted: true,
         provider_message_id: providerMsgId,
-        provider_status_raw: rawStatus,
-        provider_response_status_code: transportResult.statusCode,
+        provider_status: rawStatus,
+        provider_response_safe: transportResult.providerResponseSafe ?? null,
+        provider_response: transportResult.providerResponseSafe ?? null,
         error_code: transportResult.errorCode ?? null,
         error_message: transportResult.errorMessage ?? null,
-        provider_response: transportResult.providerResponseSafe ?? null,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        finished_at: nowIso,
+        provider_call_completed_at: nowIso,
+        updated_at: nowIso,
       })
       .eq("id", attemptId);
     if (attemptUpdErr) throw attemptUpdErr;
@@ -659,7 +665,8 @@ Deno.serve(async (req) => {
       provider_message_id: providerMsgId,
       provider_status: rawStatus,
       provider_name: env.provider_name,
-      updated_at: new Date().toISOString(),
+      provider_call_attempted: true,
+      updated_at: nowIso,
     }).eq("id", env.execution_id);
   } catch (e) {
     evidenceOk = false;
@@ -670,7 +677,6 @@ Deno.serve(async (req) => {
   env.provider_status = rawStatus;
 
   if (!evidenceOk) {
-    // Evidence is missing — grant MUST NOT be consumed. Reconciliation is required.
     addBlocker("post_provider_evidence_incomplete", "provider_invocation",
       "Provider invocation completed but evidence could not be persisted; operator reconciliation required.");
     return finalize("BLOCKED", "provider_invocation",
@@ -678,6 +684,7 @@ Deno.serve(async (req) => {
   }
 
   // Consume the one-use grant — evidence is durable at this point.
+  // Rejection MUST also consume the grant so the same session cannot re-send.
   {
     const { data, error } = await admin.rpc(
       "consume_comm_hub_one_real_email_grant",
@@ -690,6 +697,25 @@ Deno.serve(async (req) => {
       });
     } else {
       env.grant_status = "CONSUMED";
+    }
+  }
+
+  // Drive targeted-message lifecycle to a terminal state.
+  {
+    const target = providerOk ? "sent" : "failed";
+    const { data: lc, error: lcErr } = await admin.rpc(
+      "set_comm_hub_one_real_email_message_status", {
+        p_message_id: env.message_id,
+        p_target_status: target,
+        p_provider_message_id: providerMsgId,
+        p_error_code: providerOk ? null : (transportResult.errorCode ?? null),
+        p_error_message: providerOk ? null : (transportResult.errorMessage ?? null),
+      });
+    if (lcErr || !(lc && (lc as any).ok === true)) {
+      env.warnings.push({
+        code: "message_lifecycle_terminal_failed",
+        message: lcErr?.message ?? JSON.stringify(lc),
+      });
     }
   }
 
@@ -718,11 +744,16 @@ Deno.serve(async (req) => {
     : attemptStatus === "pending" ? "DELIVERY_PENDING"
     : "PROVIDER_REJECTED";
 
+  const retrySafeFinal = finalStatus === "DELIVERY_PENDING";
+
   env.message = finalStatus === "PROVIDER_ACCEPTED"
     ? "Provider accepted the one real email."
     : finalStatus === "DELIVERY_PENDING"
       ? "Provider outcome pending; delivery evidence will surface asynchronously."
       : "Provider rejected the one real email.";
+
+  return finalize(finalStatus, null, { retrySafe: retrySafeFinal, cleanupProven: true });
+});
 
   return finalize(finalStatus, null, { retrySafe: false, cleanupProven: true });
 });
