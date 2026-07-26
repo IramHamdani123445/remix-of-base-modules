@@ -436,6 +436,12 @@ Deno.serve(async (req) => {
   env.request_number = created.request_no ?? null;
   env.message_id = created.message_id ?? null;
   env.provider_name = created.provider_name ?? env.provider_name;
+  (env as any).preview_approval_id = created.preview_approval_id ?? null;
+  (env as any).dry_run_certification_id = created.dry_run_certification_id ?? null;
+  (env as any).original_decision_id = created.original_decision_id ?? null;
+  (env as any).recipient_set_hash = created.recipient_set_hash ?? null;
+  (env as any).subject_hash = created.subject_hash ?? null;
+  (env as any).body_hash = created.body_hash ?? null;
 
   if (!env.request_id || !env.message_id) {
     addBlocker("message_creation_contract_invalid", "request_creation");
