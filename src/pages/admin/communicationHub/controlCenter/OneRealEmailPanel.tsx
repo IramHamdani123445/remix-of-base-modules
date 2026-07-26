@@ -49,7 +49,12 @@ import {
   ONE_REAL_EMAIL_CONFIRMATION_PHRASE,
   type OneRealEmailEnvelope,
 } from "@/platform/communication-hub/oneRealEmailService";
-import { resumeOneRealEmailFinalization } from "@/platform/communication-hub/resumeOneRealEmailFinalizationService";
+import {
+  resumeOneRealEmailFinalization,
+  fetchOneRealEmailRecoveryStatus,
+  type OneRealEmailRecoveryStatus,
+  type ResumeOneRealEmailResult,
+} from "@/platform/communication-hub/resumeOneRealEmailFinalizationService";
 import {
   runStage6ContractProbe,
   type ContractProbeResult,
@@ -118,52 +123,111 @@ export function OneRealEmailPanel({
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
   const [envelope, setEnvelope] = useState<OneRealEmailEnvelope | null>(null);
   const [resumeBusy, setResumeBusy] = useState(false);
+  const [resumeResult, setResumeResult] = useState<ResumeOneRealEmailResult | null>(null);
+  const [recoveryStatus, setRecoveryStatus] = useState<OneRealEmailRecoveryStatus | null>(null);
+  const [recoverySucceeded, setRecoverySucceeded] = useState(false);
 
   const showResumeFinalization = !!envelope
     && envelope.providerCallAttempted === true
     && envelope.reconciliationRequired === true
     && envelope.failureStage === "finalization"
-    && !envelope.certificationId;
+    && !envelope.certificationId
+    && !recoverySucceeded;
+
+  const hydrateEnvelopeFromCertification = useCallback(
+    (
+      certId: string,
+      certStatus: string | null,
+      providerStatus: string | null,
+      cert: ResumeOneRealEmailResult["certification"] | null,
+      recoveredRuntimeBuild: string,
+      message: string,
+    ) => {
+      setEnvelope((prev) => prev ? ({
+        ...prev,
+        certificationId: certId,
+        certificationKind: "ONE_REAL_EMAIL",
+        certificationStatus: certStatus,
+        providerStatus: providerStatus ?? prev.providerStatus,
+        traceId: cert?.traceId ?? prev.traceId,
+        requestId: cert?.requestId ?? prev.requestId,
+        messageId: cert?.messageId ?? prev.messageId,
+        deliveryAttemptId: cert?.deliveryAttemptId ?? prev.deliveryAttemptId,
+        reconciliationRequired: false,
+        failureStage: null,
+        status: "PROVIDER_ACCEPTED",
+        passed: true,
+        blockers: [],
+        runtimeBuild: `${prev.runtimeBuild} · recovery:${recoveredRuntimeBuild}`,
+        message,
+      }) : prev);
+    },
+    [],
+  );
 
   const handleResumeFinalization = useCallback(async () => {
     if (!envelope?.executionId) {
       toast.error("Execution id missing — cannot resume finalization.");
       return;
     }
+    const executionId = envelope.executionId;
     setResumeBusy(true);
+    let res: ResumeOneRealEmailResult | null = null;
     try {
-      const res = await resumeOneRealEmailFinalization(envelope.executionId);
-      if (!res.ok || !res.certificationId) {
-        toast.error(
-          res.detail ?? res.error ?? "Resume finalization refused by server.",
-        );
-        return;
-      }
-      setEnvelope((prev) => prev ? ({
-        ...prev,
-        certificationId: res.certificationId,
-        certificationKind: "ONE_REAL_EMAIL",
-        certificationStatus: res.certificationStatus,
-        providerStatus: res.providerStatus ?? prev.providerStatus,
-        reconciliationRequired: false,
-        failureStage: null,
-        status: "PROVIDER_ACCEPTED",
-        passed: true,
-        message: res.idempotent
-          ? "Certification already existed — no changes made."
-          : "Finalization resumed successfully. No email was sent.",
-      }) : prev);
-      toast.success(
-        res.idempotent
-          ? "Certification already recorded."
-          : "Finalization resumed — certification recorded.",
-      );
+      res = await resumeOneRealEmailFinalization(executionId);
+      setResumeResult(res);
     } catch (e: any) {
       toast.error(e?.message ?? "Resume finalization failed.");
     } finally {
       setResumeBusy(false);
     }
-  }, [envelope?.executionId]);
+
+    // Always poll authoritative recovery status — even on timeout / non-2xx.
+    let status: OneRealEmailRecoveryStatus | null = null;
+    try {
+      status = await fetchOneRealEmailRecoveryStatus(executionId);
+      setRecoveryStatus(status);
+    } catch {
+      /* status probe is best-effort */
+    }
+
+    const runtimeBuild = res?.runtimeBuild ?? "unavailable";
+    const certId = res?.certificationId ?? status?.certificationId ?? null;
+    const certStatus = res?.certificationStatus ?? status?.certificationStatus ?? null;
+    const providerStatus = res?.providerStatus ?? null;
+    const cert = res?.certification ?? null;
+
+    if (certId) {
+      hydrateEnvelopeFromCertification(
+        certId,
+        certStatus,
+        providerStatus,
+        cert,
+        runtimeBuild,
+        res?.idempotent
+          ? "Certification already existed — no changes made."
+          : "Finalization recovered successfully. No additional email was sent.",
+      );
+      setRecoverySucceeded(true);
+      toast.success(
+        res?.idempotent
+          ? "Certification already recorded."
+          : "Finalization recovered — no additional email was sent.",
+      );
+      return;
+    }
+
+    // No certification yet — surface the actual failure state inline.
+    if (res?.timedOut) {
+      toast.error(
+        "Resume request timed out after 20s. Status probe shows no certification yet.",
+      );
+    } else if (res && !res.ok) {
+      toast.error(
+        res.detail ?? res.safeDetail ?? res.error ?? "Resume refused by server.",
+      );
+    }
+  }, [envelope?.executionId, hydrateEnvelopeFromCertification]);
 
   // (Re)initialise an idempotency key whenever the lineage changes.
   useEffect(() => {
@@ -742,6 +806,47 @@ export function OneRealEmailPanel({
                     ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Resuming…</>
                     : <><RefreshCw className="h-4 w-4 mr-1" /> Resume finalization — no email will be sent</>}
                 </Button>
+                {resumeResult && !resumeResult.certificationId && (
+                  <div className="mt-2 rounded-sm bg-muted p-2 text-[11px] space-y-1">
+                    <div>
+                      Recovery runtime: <code className="font-mono text-[10px] break-all">{resumeResult.runtimeBuild}</code>
+                    </div>
+                    <div>
+                      HTTP: <code>{resumeResult.httpStatus || "—"}</code>
+                      {resumeResult.timedOut ? " · timed out (20s)" : ""}
+                    </div>
+                    {resumeResult.error && (
+                      <div>Error: <code>{resumeResult.error}</code></div>
+                    )}
+                    {resumeResult.detail && (
+                      <div className="whitespace-pre-wrap break-all">Detail: {resumeResult.detail}</div>
+                    )}
+                    {resumeResult.safeDetail && (
+                      <div className="whitespace-pre-wrap break-all">Safe detail: {resumeResult.safeDetail}</div>
+                    )}
+                    {recoveryStatus && (
+                      <div>
+                        Status probe · trace: <code>{recoveryStatus.traceId ?? "—"}</code>
+                        {" · cert: "}<code>{recoveryStatus.certificationId ?? "—"}</code>
+                        {" · can_resume: "}<code>{String(recoveryStatus.canResume)}</code>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {recoverySucceeded && envelope.certificationId && (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertTitle>Finalization recovered successfully</AlertTitle>
+              <AlertDescription className="space-y-1 text-xs">
+                <div>Finalization recovered successfully. No additional email was sent.</div>
+                {resumeResult?.runtimeBuild && (
+                  <div>Recovery runtime: <code className="font-mono text-[10px] break-all">{resumeResult.runtimeBuild}</code></div>
+                )}
+                <div>Certification: <code className="font-mono text-[10px]">{envelope.certificationId}</code> ({envelope.certificationStatus ?? "—"})</div>
               </AlertDescription>
             </Alert>
           )}

@@ -98223,6 +98223,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_comm_hub_one_real_email_recovery_status: {
+        Args: { p_execution_id: string }
+        Returns: Json
+      }
       get_comm_hub_real_email_gate: {
         Args: { p_channel: string; p_event: string; p_module: string }
         Returns: Json
