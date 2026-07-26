@@ -60,6 +60,7 @@ export interface OneRealEmailEnvelope {
   certificationKind: "ONE_REAL_EMAIL" | null;
   certificationStatus: string | null;
   retrySafe: boolean;
+  automaticRetryAllowed: boolean;
   reconciliationRequired: boolean;
   cleanupProven: boolean;
   failureStage: string | null;
