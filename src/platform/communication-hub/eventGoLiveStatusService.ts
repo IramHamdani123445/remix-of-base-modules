@@ -5,6 +5,12 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
+export interface Stage6Blocker {
+  code: string;
+  message?: string;
+  status?: string | null;
+}
+
 export interface Stage6Status {
   one_real_email_execution_id: string | null;
   one_real_email_certification_id: string | null;
@@ -19,6 +25,13 @@ export interface Stage6Status {
   reconciliation_required: boolean;
   real_email_gate_enabled: boolean;
   real_email_gate_id: string | null;
+  // Authoritative Stage 7 gating fields (server-derived)
+  latest_one_real_email_certification_id: string | null;
+  latest_one_real_email_certification_status: string | null;
+  eligible_one_real_email_certification_id: string | null;
+  eligible_one_real_email_certification_status: string | null;
+  stage6_ready_for_manual_production: boolean;
+  stage6_manual_production_blockers: Stage6Blocker[];
 }
 
 export interface Stage7Status {
