@@ -19,6 +19,7 @@ import {
 } from "@/platform/communication-hub/automatedProductionCertificationService";
 import { supabase } from "@/integrations/supabase/client";
 import { applyReleaseMode } from "@/platform/communication-hub/releaseModeService";
+import { deriveStep8, STEP8_STATE_LABELS } from "./goLiveStateResolver";
 
 interface Props {
   moduleCode: string;
