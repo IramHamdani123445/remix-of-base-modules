@@ -184,9 +184,9 @@ export function ManualProductionObservationPanel({
       />
 
       <div className="flex items-center gap-2">
-        <Button onClick={run} disabled={running || !canDispatch || !recipient.trim()}>
-          {running && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Dispatch observation
+        <Button onClick={run} disabled={running || recovering || !canDispatch || !recipient.trim() || (phase !== "IDLE" && phase !== "FAILED" && phase !== "NOT_RECEIVED")}>
+          {(running || recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {recovering ? "Checking pending…" : "Dispatch observation"}
         </Button>
         {phase === "AWAITING_PROVIDER" && result?.message_id && (
           <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
