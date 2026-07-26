@@ -14,7 +14,7 @@
 
 // deno-lint-ignore-file no-explicit-any
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "npm:@supabase/supabase-js@2.58.0";
 import {
   lookupActiveEmailProvider,
   redactProviderForLog,
@@ -37,6 +37,8 @@ const CORS: Record<string, string> = {
 
 const CONFIRMATION_PHRASE = "SEND ONE REAL EMAIL";
 const ACTION = "SEND_ONE_REAL_EMAIL";
+const RUNTIME_BUILD =
+  "comm-hub-send-one-real-email@a0a9275fb6852527763708cd67af157604619eb3";
 
 type Status =
   | "BLOCKED"
@@ -47,6 +49,7 @@ type Status =
 
 interface Envelope {
   schema_version: "one-real-email.v1";
+  runtime_build: typeof RUNTIME_BUILD;
   action: "SEND_ONE_REAL_EMAIL";
   status: Status;
   passed: boolean;
@@ -91,6 +94,7 @@ function json(body: unknown, status = 200): Response {
 function emptyEnvelope(started: string): Envelope {
   return {
     schema_version: "one-real-email.v1",
+    runtime_build: RUNTIME_BUILD,
     action: "SEND_ONE_REAL_EMAIL",
     status: "BLOCKED",
     passed: false,
@@ -173,13 +177,26 @@ Deno.serve(async (req) => {
     return finalize("BLOCKED", "auth", { retrySafe: true, http: 401 });
   }
   const bearer = authHeader.slice("Bearer ".length).trim();
+  const authClient = createClient(SUPABASE_URL, ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${bearer}` } },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
   const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${bearer}` } },
+    accessToken: async () => bearer,
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
   });
   let operatorId: string | null = null;
   try {
-    const { data, error } = await userClient.auth.getUser(bearer);
+    const { data, error } = await authClient.auth.getUser(bearer);
     if (error || !data?.user?.id) {
       addBlocker("authentication_token_invalid", "auth",
         error?.message ?? "Login session could not be verified.");
@@ -194,33 +211,6 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-
-  // Admin authority
-  try {
-    const { data, error } = await admin.rpc("is_comm_hub_admin", { _uid: operatorId });
-    if (error) {
-      addBlocker("authorisation_check_failed", "auth", error.message);
-      return finalize("BLOCKED", "auth", { retrySafe: true, http: 500 });
-    }
-    if (data !== true) {
-      addBlocker("not_authorised", "auth",
-        "Communication Hub administrator authority is required.");
-      return finalize("BLOCKED", "auth", { retrySafe: false, http: 403 });
-    }
-  } catch (e) {
-    // Some deployments expose is_comm_hub_admin without a named argument;
-    // fall back to attempting the alternate signature before failing.
-    try {
-      const { data } = await admin.rpc("is_comm_hub_admin", { p_user_id: operatorId } as any);
-      if (data !== true) {
-        addBlocker("not_authorised", "auth", "Administrator authority required.");
-        return finalize("BLOCKED", "auth", { retrySafe: false, http: 403 });
-      }
-    } catch (e2) {
-      addBlocker("authorisation_check_failed", "auth", errStr(e2));
-      return finalize("BLOCKED", "auth", { retrySafe: true, http: 500 });
-    }
-  }
 
   // ---- Input validation ----
   const body = await req.json().catch(() => ({} as any));
@@ -276,6 +266,53 @@ Deno.serve(async (req) => {
   };
   let begin: any = null;
   {
+    // Prove that PostgREST sees the same operator identity as Auth before any
+    // execution/grant/message/provider state can be created.
+    const { data: authContext, error: authContextError } = await userClient.rpc(
+      "get_comm_hub_request_auth_context",
+    );
+    const rpcAuthUid = typeof authContext?.auth_uid === "string"
+      ? authContext.auth_uid
+      : null;
+    const authenticated = authContext?.authenticated === true;
+    const commHubAdmin = authContext?.comm_hub_admin === true;
+    if (
+      authContextError ||
+      !authenticated ||
+      rpcAuthUid !== operatorId ||
+      !commHubAdmin
+    ) {
+      const code = authContextError
+        ? "auth_context_rpc_failed"
+        : !authenticated || !rpcAuthUid
+          ? "authentication_required"
+          : rpcAuthUid !== operatorId
+            ? "operator_identity_mismatch"
+            : "not_authorised";
+      addBlocker(
+        code,
+        "authorisation",
+        authContextError?.message ??
+          (code === "not_authorised"
+            ? "Communication Hub administrator authority is required."
+            : "Operator JWT was not propagated to the database auth context."),
+        {
+          runtime_build: RUNTIME_BUILD,
+          expected_operator_id: operatorId,
+          rpc_auth_uid: rpcAuthUid,
+          authenticated,
+          comm_hub_admin: commHubAdmin,
+          supabase_error_code: authContextError?.code ?? null,
+          supabase_error_message: authContextError?.message ?? null,
+        },
+      );
+      return finalize("BLOCKED", "authorisation", {
+        retrySafe: true,
+        cleanupProven: true,
+        http: code === "not_authorised" ? 403 : 400,
+      });
+    }
+
     // Call PostgREST directly with the operator's bearer token so auth.uid()
     // resolves inside the SECURITY DEFINER RPC. supabase-js v2 can override
     // global.headers.Authorization with its own (anon) token when no session
@@ -294,7 +331,16 @@ Deno.serve(async (req) => {
     try { parsed = raw ? JSON.parse(raw) : null; } catch { parsed = { message: raw }; }
     if (!resp.ok) {
       addBlocker(parsed?.code || "authorisation_failed", "authorisation",
-        parsed?.message ?? `begin_comm_hub_one_real_email failed (HTTP ${resp.status})`);
+        parsed?.message ?? `begin_comm_hub_one_real_email failed (HTTP ${resp.status})`,
+        {
+          runtime_build: RUNTIME_BUILD,
+          expected_operator_id: operatorId,
+          rpc_auth_uid: rpcAuthUid,
+          authenticated,
+          comm_hub_admin: commHubAdmin,
+          supabase_error_code: parsed?.code ?? null,
+          supabase_error_message: parsed?.message ?? null,
+        });
       return finalize("BLOCKED", "authorisation", { retrySafe: true, http: 400 });
     }
     begin = parsed ?? {};
