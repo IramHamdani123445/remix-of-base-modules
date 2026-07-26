@@ -174,6 +174,7 @@ export function normaliseOneRealEmailEnvelope(
     certificationKind: raw.certification_kind ?? null,
     certificationStatus: raw.certification_status ?? null,
     retrySafe: raw.retry_safe === true,
+    automaticRetryAllowed: raw.automatic_retry_allowed === true,
     reconciliationRequired: raw.reconciliation_required === true,
     cleanupProven: raw.cleanup_proven === true,
     failureStage: raw.failure_stage ?? null,
