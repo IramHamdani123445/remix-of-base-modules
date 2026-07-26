@@ -177,6 +177,14 @@ Deno.serve(async (req) => {
     return finalize("BLOCKED", "auth", { retrySafe: true, http: 401 });
   }
   const bearer = authHeader.slice("Bearer ".length).trim();
+  const authClient = createClient(SUPABASE_URL, ANON_KEY, {
+    global: { headers: { Authorization: `Bearer ${bearer}` } },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false,
+    },
+  });
   const userClient = createClient(SUPABASE_URL, ANON_KEY, {
     global: { headers: { Authorization: `Bearer ${bearer}` } },
     accessToken: async () => bearer,
@@ -188,7 +196,7 @@ Deno.serve(async (req) => {
   });
   let operatorId: string | null = null;
   try {
-    const { data, error } = await userClient.auth.getUser(bearer);
+    const { data, error } = await authClient.auth.getUser(bearer);
     if (error || !data?.user?.id) {
       addBlocker("authentication_token_invalid", "auth",
         error?.message ?? "Login session could not be verified.");
