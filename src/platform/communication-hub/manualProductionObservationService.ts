@@ -1,143 +1,90 @@
 /**
- * Client for the manual-production observation lifecycle.
+ * Client for the server-coordinated Manual Production observation.
  *
- * Observations are dispatched by the app via the standard business-module
- * façade `sendCommunication({...})` and then recorded here so the server
- * can bind lineage (request/message/attempt/trace) to the event
- * certification. Inbox confirmation is a separate RPC.
+ * The browser only kicks off the observation and (optionally) polls for
+ * finalisation. Every evidence field — request, message, delivery attempt,
+ * trace, provider — is derived on the server from durable rows.
+ *
+ * Legacy browser-side `record_comm_hub_manual_production_observation`
+ * has been revoked; do NOT call it from the frontend.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { sendCommunication } from "./sendCommunication";
 
-export interface RecordObservationInput {
+export type ObservationPhase =
+  | "IDLE"
+  | "ENQUEUED"
+  | "DISPATCHED"
+  | "AWAITING_PROVIDER"
+  | "CONFIRMED"
+  | "FAILED";
+
+export interface RunObservationInput {
   moduleCode: string;
   eventCode: string;
   channel?: string;
-  requestId?: string | null;
-  messageId?: string | null;
-  deliveryAttemptId?: string | null;
-  traceId?: string | null;
-  providerId?: string | null;
-  providerName?: string | null;
-  providerMessageId?: string | null;
-  providerCallAttempted: boolean;
-  providerOutcome?: string | null;
   recipientEmail: string;
-  recipientSetHash?: string | null;
-  senderProfileId?: string | null;
-  templateVersionId?: string | null;
+  data?: Record<string, unknown>;
   idempotencyKey: string;
 }
 
-export interface RecordObservationResult {
+export interface RunObservationResult {
   ok: boolean;
-  observation_id: string;
-  idempotent?: boolean;
+  phase: ObservationPhase;
+  observation_id?: string;
+  message_id?: string;
+  request_id?: string;
+  provider_message_id?: string | null;
+  trace_id?: string | null;
+  attempt_status?: string | null;
+  message_status?: string | null;
   event_certification_id?: string;
+  blockers?: Array<{ code: string; detail?: unknown }>;
 }
 
-export async function recordManualProductionObservation(
-  input: RecordObservationInput,
-): Promise<RecordObservationResult> {
-  const { data, error } = await (supabase as any).rpc(
-    "record_comm_hub_manual_production_observation",
+export async function runManualProductionObservation(
+  input: RunObservationInput,
+): Promise<RunObservationResult> {
+  const { data, error } = await supabase.functions.invoke(
+    "comm-hub-run-manual-production-observation",
     {
-      p_payload: {
-        module_code: input.moduleCode,
-        event_code: input.eventCode,
+      body: {
+        moduleCode: input.moduleCode,
+        eventCode: input.eventCode,
         channel: input.channel ?? "email",
-        request_id: input.requestId,
-        message_id: input.messageId,
-        delivery_attempt_id: input.deliveryAttemptId,
-        trace_id: input.traceId,
-        provider_id: input.providerId,
-        provider_name: input.providerName,
-        provider_message_id: input.providerMessageId,
-        provider_call_attempted: input.providerCallAttempted,
-        provider_outcome: input.providerOutcome,
-        recipient_email: input.recipientEmail,
-        recipient_set_hash: input.recipientSetHash,
-        idempotency_key: input.idempotencyKey,
-        sender_profile_id: input.senderProfileId,
-        template_version_id: input.templateVersionId,
+        recipientEmail: input.recipientEmail,
+        data: input.data ?? {},
+        idempotencyKey: input.idempotencyKey,
       },
     },
   );
-  if (error) throw new Error(error.message ?? "record_comm_hub_manual_production_observation failed");
-  return data as RecordObservationResult;
-}
-
-export async function confirmManualProductionObservation(input: {
-  observationId: string;
-  status: "CONFIRMED" | "NOT_RECEIVED";
-  note?: string;
-}): Promise<{ ok: boolean; status: string }> {
-  const { data, error } = await (supabase as any).rpc(
-    "confirm_comm_hub_manual_production_observation",
-    {
-      p_observation_id: input.observationId,
-      p_status: input.status,
-      p_note: input.note ?? null,
-    },
-  );
-  if (error) throw new Error(error.message ?? "confirm_comm_hub_manual_production_observation failed");
-  return data as { ok: boolean; status: string };
+  if (error) {
+    const context: any = (error as any)?.context;
+    let body: any = null;
+    try { body = context ? await context.json() : null; } catch {}
+    return {
+      ok: false,
+      phase: "FAILED",
+      ...(body ?? {}),
+      blockers: body?.blockers ?? [{ code: "invoke_failed", detail: error.message }],
+    };
+  }
+  return {
+    phase: (data as any)?.ok ? "CONFIRMED" : ((data as any)?.phase ?? "FAILED"),
+    ...(data as any),
+  };
 }
 
 /**
- * Dispatch + record an observation in one call.  Uses `sendCommunication`
- * (the canonical business-module façade) so the platform's real Manual
- * Production dispatcher path is exercised — NOT the Stage 6 One Real Email
- * edge function.
+ * Finalize a pending observation once the provider evidence has become
+ * durable (used after an AWAITING_PROVIDER phase).
  */
-export async function dispatchAndRecordObservation(input: {
-  moduleCode: string;
-  eventCode: string;
-  channel?: string;
-  recipientEmail: string;
-  recipientId?: string;
-  data?: Record<string, unknown>;
-  idempotencyKey: string;
-  departmentCode?: string;
-}): Promise<RecordObservationResult> {
-  const channelCode = ((input.channel ?? "email").toUpperCase() as any);
-  const sendResult: any = await sendCommunication({
-    moduleCode: input.moduleCode,
-    eventCode: input.eventCode,
-    channels: [channelCode],
-    recipient: {
-      personId: input.recipientId ?? null,
-      email: input.recipientEmail,
-      role: "to",
-    } as any,
-    data: input.data ?? {},
-    idempotencyKey: input.idempotencyKey,
-    departmentCode: input.departmentCode,
-    metadata: { context: "manual_production_observation" },
-  } as any);
-
-  const firstMessage = sendResult?.messages?.[0];
-  const messageId = firstMessage?.id ?? sendResult?.messageIds?.[0] ?? null;
-  const providerCallAttempted = Boolean(messageId);
-
-  return recordManualProductionObservation({
-    moduleCode: input.moduleCode,
-    eventCode: input.eventCode,
-    channel: input.channel ?? "email",
-    requestId: sendResult?.requestId ?? null,
-    messageId,
-    deliveryAttemptId: null,
-    traceId: null,
-    providerId: null,
-    providerName: null,
-    providerMessageId: null,
-    providerCallAttempted,
-    providerOutcome: firstMessage?.status ?? null,
-    recipientEmail: input.recipientEmail,
-    recipientSetHash: null,
-    senderProfileId: null,
-    templateVersionId: null,
-    idempotencyKey: input.idempotencyKey,
-  });
+export async function finalizeManualProductionObservation(input: {
+  messageId: string; idempotencyKey: string;
+}): Promise<RunObservationResult> {
+  const { data, error } = await (supabase as any).rpc(
+    "finalize_comm_hub_manual_production_observation",
+    { p_message_id: input.messageId, p_idempotency_key: input.idempotencyKey },
+  );
+  if (error) return { ok: false, phase: "FAILED", blockers: [{ code: "finalize_failed", detail: error.message }] };
+  return { phase: (data as any)?.ok ? "CONFIRMED" : "FAILED", ...(data as any) };
 }
-

@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, CheckCircle2, RefreshCcw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLiveStatusService";
 import {
-  dispatchAndRecordObservation,
-  confirmManualProductionObservation,
+  runManualProductionObservation,
+  finalizeManualProductionObservation,
+  type ObservationPhase,
+  type RunObservationResult,
 } from "@/platform/communication-hub/manualProductionObservationService";
 
 interface Props {
@@ -19,13 +21,21 @@ interface Props {
   onChanged: () => void;
 }
 
-/**
- * Manual Production observation — uses the standard sendCommunication()
- * façade (the same dispatcher as any real business event), records the
- * observation server-side, and offers an explicit inbox confirmation.
- *
- * This is deliberately NOT the Stage 6 One Real Email edge function.
- */
+const PHASE_ORDER: ObservationPhase[] = [
+  "ENQUEUED",
+  "DISPATCHED",
+  "AWAITING_PROVIDER",
+  "CONFIRMED",
+];
+
+function phaseBadge(p: ObservationPhase) {
+  const variant =
+    p === "CONFIRMED" ? "default" :
+    p === "FAILED" ? "destructive" :
+    "secondary";
+  return <Badge variant={variant as any}>{p}</Badge>;
+}
+
 export function ManualProductionObservationPanel({
   moduleCode,
   eventCode,
@@ -33,65 +43,63 @@ export function ManualProductionObservationPanel({
   status,
   onChanged,
 }: Props) {
-  const [recipient, setRecipient] = useState(
-    status?.stage6?.manual_verified_recipient ?? "",
-  );
-  const [dispatching, setDispatching] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [lastObservationId, setLastObservationId] = useState<string | null>(null);
+  const [recipient, setRecipient] = useState(status?.stage6?.manual_verified_recipient ?? "");
+  const [running, setRunning] = useState(false);
+  const [resuming, setResuming] = useState(false);
+  const [result, setResult] = useState<RunObservationResult | null>(null);
+  const [phase, setPhase] = useState<ObservationPhase>("IDLE");
+  const [idem, setIdem] = useState<string | null>(null);
 
   const stage7 = status?.stage7;
   const canDispatch =
     stage7?.manual_event_status === "live_manual_only" ||
     stage7?.manual_event_status === "live_cron_allowed";
 
-  const latest = stage7
-    ? {
-        id: stage7.latest_manual_observation_id,
-        messageId: stage7.latest_manual_observation_message_id,
-        traceId: stage7.latest_manual_observation_trace_id,
-        status: stage7.latest_manual_observation_status,
-        inbox: stage7.latest_manual_observation_inbox,
-      }
-    : null;
-
-  async function handleDispatch() {
+  async function run() {
     if (!canDispatch || !recipient.trim()) return;
-    setDispatching(true);
+    setRunning(true);
+    setResult(null);
+    setPhase("ENQUEUED");
+    const key = `mprod-obs-${crypto.randomUUID()}`;
+    setIdem(key);
     try {
-      const idem = `mprod-obs-${crypto.randomUUID()}`;
-      const res = await dispatchAndRecordObservation({
-        moduleCode,
-        eventCode,
-        channel,
+      const res = await runManualProductionObservation({
+        moduleCode, eventCode, channel,
         recipientEmail: recipient.trim(),
-        idempotencyKey: idem,
+        idempotencyKey: key,
       });
-      setLastObservationId(res.observation_id);
-      toast.success("Observation dispatched");
+      setResult(res);
+      setPhase(res.phase);
+      if (res.ok) {
+        toast.success("Observation confirmed");
+      } else if (res.phase === "AWAITING_PROVIDER") {
+        toast.warning("Awaiting provider evidence — retry finalize shortly");
+      } else {
+        toast.error(res.blockers?.[0]?.code ?? "Observation failed");
+      }
       onChanged();
     } catch (e: any) {
-      toast.error(e?.message ?? "Observation dispatch failed");
+      setPhase("FAILED");
+      toast.error(e?.message ?? "Observation failed");
     } finally {
-      setDispatching(false);
+      setRunning(false);
     }
   }
 
-  async function handleConfirm(status: "CONFIRMED" | "NOT_RECEIVED") {
-    const id = lastObservationId ?? latest?.id;
-    if (!id) return;
-    setConfirming(true);
+  async function resumeFinalize() {
+    if (!result?.message_id || !idem) return;
+    setResuming(true);
     try {
-      await confirmManualProductionObservation({
-        observationId: id,
-        status,
+      const res = await finalizeManualProductionObservation({
+        messageId: result.message_id, idempotencyKey: idem,
       });
-      toast.success(`Observation marked ${status}`);
+      setResult((prev) => ({ ...(prev ?? {} as any), ...res }));
+      setPhase(res.phase);
+      if (res.ok) toast.success("Finalized");
+      else toast.error(res.blockers?.[0]?.code ?? "Finalize failed");
       onChanged();
-    } catch (e: any) {
-      toast.error(e?.message ?? "Confirmation failed");
     } finally {
-      setConfirming(false);
+      setResuming(false);
     }
   }
 
@@ -100,50 +108,87 @@ export function ManualProductionObservationPanel({
       <div className="flex items-center gap-2">
         <Send className="h-4 w-4" />
         <div className="font-medium">5. Run a Manual Production observation</div>
-        <Badge variant="outline" className="ml-auto">observations: {stage7?.manual_observation_count ?? 0}</Badge>
+        <Badge variant="outline" className="ml-auto">
+          observations: {stage7?.manual_observation_count ?? 0}
+        </Badge>
       </div>
+
       <Alert>
         <AlertDescription>
-          Sends through the standard Manual Production dispatcher
-          (not the Stage 6 One Real Email path), records evidence, and
-          requires an explicit inbox confirmation. Only observations with
-          <strong> send_context = manual_production</strong>, dispatched
-          after Manual Production certification, with inbox status
-          <strong> CONFIRMED</strong> count towards automated certification.
+          Sends through the standard Manual Production dispatcher via the
+          server-coordinated <code>comm-hub-run-manual-production-observation</code>
+          {" "}function. Evidence (request, message, delivery attempt, trace,
+          provider message id) is derived server-side from durable rows —
+          the browser only supplies the approved recipient and idempotency key.
         </AlertDescription>
       </Alert>
 
       <Input
         value={recipient}
         onChange={(e) => setRecipient(e.target.value)}
-        placeholder="approved internal recipient email"
-        disabled={dispatching || !canDispatch}
+        placeholder="approved recipient email (must match recipient policy)"
+        disabled={running || !canDispatch}
       />
-      <Button onClick={handleDispatch} disabled={dispatching || !canDispatch || !recipient.trim()}>
-        {dispatching && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-        Dispatch observation
-      </Button>
 
-      {latest?.id && (
-        <div className="rounded-md border p-3 bg-muted/30 text-sm space-y-1">
-          <div><span className="text-muted-foreground">Latest observation:</span> <code className="font-mono text-xs">{latest.id}</code></div>
-          <div><span className="text-muted-foreground">Message id:</span> <code className="font-mono text-xs">{latest.messageId ?? "—"}</code></div>
-          <div><span className="text-muted-foreground">Trace id:</span> <code className="font-mono text-xs">{latest.traceId ?? "—"}</code></div>
-          <div><span className="text-muted-foreground">Status:</span> <Badge>{latest.status}</Badge>{" "}
-            <span className="text-muted-foreground ml-2">Inbox:</span>{" "}
-            <Badge variant={latest.inbox === "CONFIRMED" ? "default" : "secondary"}>{latest.inbox ?? "pending"}</Badge>
+      <div className="flex items-center gap-2">
+        <Button onClick={run} disabled={running || !canDispatch || !recipient.trim()}>
+          {running && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Dispatch observation
+        </Button>
+        {phase === "AWAITING_PROVIDER" && result?.message_id && (
+          <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
+            {resuming ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCcw className="h-4 w-4 mr-2" />}
+            Retry finalize
+          </Button>
+        )}
+      </div>
+
+      {phase !== "IDLE" && (
+        <div className="rounded-md border p-3 bg-muted/30 text-sm space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {PHASE_ORDER.map((p) => {
+              const reached = PHASE_ORDER.indexOf(phase) >= PHASE_ORDER.indexOf(p) || phase === "CONFIRMED";
+              return (
+                <div key={p} className="flex items-center gap-1">
+                  {reached && phase !== "FAILED" ? (
+                    <CheckCircle2 className="h-3 w-3 text-primary" />
+                  ) : phase === "FAILED" ? (
+                    <AlertTriangle className="h-3 w-3 text-destructive" />
+                  ) : (
+                    <div className="h-3 w-3 rounded-full border" />
+                  )}
+                  <span className={reached ? "" : "text-muted-foreground"}>{p}</span>
+                </div>
+              );
+            })}
+            <div className="ml-auto">{phaseBadge(phase)}</div>
           </div>
-          {latest.inbox !== "CONFIRMED" && (
-            <div className="flex gap-2 pt-2">
-              <Button size="sm" variant="default" onClick={() => handleConfirm("CONFIRMED")} disabled={confirming}>
-                {confirming && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                <CheckCircle2 className="h-4 w-4 mr-1" />
-                Confirm inbox receipt
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleConfirm("NOT_RECEIVED")} disabled={confirming}>
-                Not received
-              </Button>
-            </div>
+
+          {result?.message_id && (
+            <div><span className="text-muted-foreground">Message id:</span> <code className="font-mono text-xs">{result.message_id}</code></div>
+          )}
+          {result?.request_id && (
+            <div><span className="text-muted-foreground">Request id:</span> <code className="font-mono text-xs">{result.request_id}</code></div>
+          )}
+          {result?.trace_id && (
+            <div><span className="text-muted-foreground">Trace id:</span> <code className="font-mono text-xs">{result.trace_id}</code></div>
+          )}
+          {result?.provider_message_id && (
+            <div><span className="text-muted-foreground">Provider message id:</span> <code className="font-mono text-xs">{result.provider_message_id}</code></div>
+          )}
+          {result?.observation_id && (
+            <div><span className="text-muted-foreground">Observation id:</span> <code className="font-mono text-xs">{result.observation_id}</code></div>
+          )}
+          {(result?.blockers ?? []).length > 0 && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                <ul className="list-disc pl-5">
+                  {result!.blockers!.map((b, i) => (
+                    <li key={i}><code>{b.code}</code>{b.detail ? <> — {String(b.detail)}</> : null}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
           )}
         </div>
       )}
