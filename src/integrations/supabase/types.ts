@@ -99276,6 +99276,7 @@ export type Database = {
       }
       probe_comm_hub_dry_run_service_identity: { Args: never; Returns: Json }
       probe_comm_hub_one_real_email_contracts: { Args: never; Returns: Json }
+      probe_comm_hub_one_real_email_runtime: { Args: never; Returns: Json }
       probe_comm_hub_operator_identity: { Args: never; Returns: Json }
       process_comm_hub_dry_run_execution: {
         Args: { p_correlation_id: string; p_execution_id: string }
@@ -99878,6 +99879,16 @@ export type Database = {
           p_setting_key: string
           p_setting_value: string
           p_typed_confirmation: string
+        }
+        Returns: Json
+      }
+      set_comm_hub_one_real_email_message_status: {
+        Args: {
+          p_error_code?: string
+          p_error_message?: string
+          p_message_id: string
+          p_provider_message_id?: string
+          p_target_status: string
         }
         Returns: Json
       }
@@ -100660,6 +100671,7 @@ export type Database = {
         | "DELIVERED"
         | "BLOCKED"
         | "FAILED"
+        | "PROVIDER_REJECTED"
       communication_operating_mode:
         | "DRY_RUN"
         | "CONTROLLED_LIVE"
@@ -101324,6 +101336,7 @@ export const Constants = {
         "DELIVERED",
         "BLOCKED",
         "FAILED",
+        "PROVIDER_REJECTED",
       ],
       communication_operating_mode: [
         "DRY_RUN",
