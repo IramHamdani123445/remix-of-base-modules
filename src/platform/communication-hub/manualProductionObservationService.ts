@@ -277,3 +277,28 @@ export async function getManualProductionEvidence(
   return { ok: true, evidence: body.evidence as ManualProductionEvidence };
 }
 
+/**
+ * Checkpoint 0 remediation — void a Manual Production observation that has
+ * no provider linkage. The server RPC refuses to void an observation with
+ * any real provider evidence (message/request/attempt/trace/provider/
+ * provider_message/dispatched_at). Requires the confirmation phrase
+ * `VOID EMPTY OBSERVATION`.
+ */
+export async function voidManualProductionObservation(input: {
+  observationId: string;
+  reason: string;
+  confirmation: string;
+}): Promise<{ ok: boolean; status?: string; idempotent?: boolean; error?: string }> {
+  const { data, error } = await (supabase as any).rpc(
+    "void_comm_hub_manual_production_observation",
+    {
+      p_observation_id: input.observationId,
+      p_reason: input.reason,
+      p_confirmation: input.confirmation,
+    },
+  );
+  if (error) return { ok: false, error: error.message };
+  const row = data as any;
+  return { ok: !!row?.ok, status: row?.status, idempotent: !!row?.idempotent };
+}
+

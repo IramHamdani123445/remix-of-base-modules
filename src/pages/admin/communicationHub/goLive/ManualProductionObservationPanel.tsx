@@ -13,6 +13,7 @@ import {
   confirmManualProductionObservation,
   getObservationRecovery,
   getManualProductionEvidence,
+  voidManualProductionObservation,
   type ObservationPhase,
   type RunObservationResult,
   type ManualProductionEvidence,
@@ -197,6 +198,12 @@ export function ManualProductionObservationPanel({
         </AlertDescription>
       </Alert>
 
+      <details className="rounded-md border border-dashed p-3 text-xs">
+        <summary className="cursor-pointer font-medium">Void an empty observation (Checkpoint 0 remediation)</summary>
+        <VoidObservationForm onDone={onChanged} />
+      </details>
+
+
       <Input
         value={recipient}
         onChange={(e) => setRecipient(e.target.value)}
@@ -351,6 +358,40 @@ export function ManualProductionObservationPanel({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function VoidObservationForm({ onDone }: { onDone: () => void }) {
+  const [observationId, setObservationId] = useState("");
+  const [reason, setReason] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  async function submit() {
+    setErr(null); setBusy(true);
+    try {
+      const r = await voidManualProductionObservation({ observationId: observationId.trim(), reason: reason.trim(), confirmation });
+      if (!r.ok) { setErr(r.error ?? "void_failed"); toast.error(r.error ?? "Void failed"); return; }
+      toast.success(r.idempotent ? "Already voided" : "Observation voided");
+      setObservationId(""); setReason(""); setConfirmation("");
+      onDone();
+    } finally { setBusy(false); }
+  }
+  return (
+    <div className="mt-2 space-y-2">
+      <div className="text-muted-foreground">
+        Refuses to void observations with any provider linkage. Server-enforced.
+        Requires the exact phrase: <code>VOID EMPTY OBSERVATION</code>.
+      </div>
+      <Input value={observationId} onChange={(e) => setObservationId(e.target.value)} placeholder="observation_id (uuid)" disabled={busy} />
+      <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="reason (immutable audit)" disabled={busy} />
+      <Input value={confirmation} onChange={(e) => setConfirmation(e.target.value)} placeholder="type: VOID EMPTY OBSERVATION" disabled={busy} />
+      <Button variant="destructive" size="sm" onClick={submit} disabled={busy || !observationId.trim() || !reason.trim() || confirmation !== "VOID EMPTY OBSERVATION"}>
+        {busy && <Loader2 className="h-3 w-3 mr-2 animate-spin" />}
+        Void observation
+      </Button>
+      {err && <Alert variant="destructive"><AlertDescription><code>{err}</code></AlertDescription></Alert>}
     </div>
   );
 }
