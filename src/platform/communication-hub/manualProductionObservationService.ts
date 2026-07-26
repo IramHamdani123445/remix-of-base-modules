@@ -230,3 +230,50 @@ export async function getObservationRecovery(input: {
     createdAt: data.created_at,
   };
 }
+
+/**
+ * Slice A — server-authoritative Manual Production evidence contract.
+ * Returns the 14-field evidence view row for a confirmed (or in-flight)
+ * observation. The RPC is Admin-only and derives every field from durable
+ * server rows.
+ */
+export interface ManualProductionEvidence {
+  observation_id: string;
+  request_id: string | null;
+  message_id: string | null;
+  delivery_attempt_id: string | null;
+  trace_id: string | null;
+  provider_id: string | null;
+  provider_message_id: string | null;
+  message_status: string | null;
+  attempt_status: string | null;
+  send_context: string | null;
+  test_mode: boolean | null;
+  recipient_email: string | null;
+  inbox_confirmation_status: string | null;
+  dispatched_at: string | null;
+  event_certification_id: string | null;
+  manual_prod_approved_at: string | null;
+  event_status: string | null;
+  provider_mode: string | null;
+  provider_display_name: string | null;
+  observation_status: string | null;
+  module_code: string | null;
+  event_code: string | null;
+  channel: string | null;
+  configuration_version: number | null;
+}
+
+export async function getManualProductionEvidence(
+  observationId: string,
+): Promise<{ ok: boolean; evidence?: ManualProductionEvidence; error?: string }> {
+  const { data, error } = await (supabase as any).rpc(
+    "get_comm_hub_manual_production_evidence",
+    { p_observation_id: observationId },
+  );
+  if (error) return { ok: false, error: error.message };
+  const body = data as any;
+  if (!body?.ok) return { ok: false, error: body?.error ?? "evidence_unavailable" };
+  return { ok: true, evidence: body.evidence as ManualProductionEvidence };
+}
+
