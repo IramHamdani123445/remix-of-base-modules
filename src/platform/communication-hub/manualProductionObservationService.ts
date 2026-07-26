@@ -112,3 +112,43 @@ export async function confirmManualProductionObservation(input: {
   if (error) return { ok: false, phase: "FAILED", blockers: [{ code: "confirm_failed", detail: error.message }] };
   return { ...(data as any), phase: derivePhase(data) };
 }
+
+/**
+ * Server-authoritative recovery: load any unfinished observation intent
+ * (ENQUEUED / AWAITING_PROVIDER / AWAITING_INBOX_CONFIRMATION) for the given
+ * event so the panel can resume after a browser refresh without sending
+ * another message.
+ */
+export interface ObservationRecovery {
+  hasPending: boolean;
+  idempotencyKey?: string;
+  phase?: ObservationPhase;
+  messageId?: string;
+  requestId?: string;
+  observationId?: string;
+  inboxConfirmationStatus?: "CONFIRMED" | "NOT_RECEIVED" | null;
+  recipientEmail?: string;
+  createdAt?: string;
+}
+
+export async function getObservationRecovery(input: {
+  moduleCode: string; eventCode: string; channel?: string;
+}): Promise<ObservationRecovery> {
+  const { data, error } = await (supabase as any).rpc("get_comm_hub_observation_recovery", {
+    p_module_code: input.moduleCode,
+    p_event_code: input.eventCode,
+    p_channel: input.channel ?? "email",
+  });
+  if (error || !data?.has_pending) return { hasPending: false };
+  return {
+    hasPending: true,
+    idempotencyKey: data.idempotency_key,
+    phase: data.phase as ObservationPhase,
+    messageId: data.message_id ?? undefined,
+    requestId: data.request_id ?? undefined,
+    observationId: data.observation_id ?? undefined,
+    inboxConfirmationStatus: data.inbox_confirmation_status ?? null,
+    recipientEmail: data.recipient_email,
+    createdAt: data.created_at,
+  };
+}
