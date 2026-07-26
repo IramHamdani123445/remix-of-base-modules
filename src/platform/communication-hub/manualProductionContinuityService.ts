@@ -23,13 +23,44 @@ export interface ReconcileManualProductionResult {
   event_status?: string;
   one_real_email_certification_id?: string;
   evidence_fingerprint?: string;
+  evidence_fingerprint_v2?: string;
+  runtime_mode_version?: number;
   stored?: string;
   current?: string;
+  current_v2?: string;
   intent_id?: string;
   phase?: string;
   idempotency_key?: string;
   reason?: string;
 }
+
+export interface ManualObservationEligibility {
+  eligible: boolean;
+  blockers: Array<{ code: string; [key: string]: unknown }>;
+  runtime_mode_version?: number;
+  automation_generation?: number;
+  operating_mode?: string;
+  event_status?: string;
+  evidence_fingerprint?: string;
+}
+
+export async function checkManualObservationEligibility(input: {
+  moduleCode: string;
+  eventCode: string;
+  channel?: string;
+}): Promise<ManualObservationEligibility> {
+  const { data, error } = await (supabase as any).rpc(
+    "check_comm_hub_manual_observation_eligibility",
+    {
+      p_module_code: input.moduleCode,
+      p_event_code: input.eventCode,
+      p_channel: input.channel ?? "email",
+    },
+  );
+  if (error) throw new Error(error.message ?? "check_comm_hub_manual_observation_eligibility failed");
+  return data as ManualObservationEligibility;
+}
+
 
 export async function reconcileManualProductionEntry(input: {
   moduleCode: string;
