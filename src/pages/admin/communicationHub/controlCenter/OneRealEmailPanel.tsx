@@ -584,8 +584,12 @@ export function OneRealEmailPanel({
           <div className="text-sm font-semibold">Execution result</div>
           <div className="grid gap-1 text-xs md:grid-cols-2">
             <div>Status: <Badge variant={envelope.passed ? "default" : "destructive"}>{envelope.status}</Badge></div>
+            <div>Runtime build: <code className="font-mono text-[10px] break-all">{envelope.runtimeBuild}</code></div>
             <div>Failure stage: <code>{envelope.failureStage ?? "—"}</code></div>
             <div>Provider called: <code>{String(envelope.providerCallAttempted)}</code></div>
+            <div>Retry safe: <code>{String(envelope.retrySafe)}</code></div>
+            <div>Cleanup proven: <code>{String(envelope.cleanupProven)}</code></div>
+            <div>Reconciliation required: <code>{String(envelope.reconciliationRequired)}</code></div>
             <div>Provider status: <code>{envelope.providerStatus ?? "—"}</code></div>
             <div>Provider msg id: <code className="font-mono">{envelope.providerMessageId ?? "—"}</code></div>
             <div>Grant status: <code>{envelope.grantStatus ?? "—"}</code></div>
@@ -594,6 +598,32 @@ export function OneRealEmailPanel({
             <div>Trace id: <code className="font-mono text-[10px]">{envelope.traceId ?? "—"}</code></div>
             <div>Certification: <code className="font-mono text-[10px]">{envelope.certificationId ?? "—"}</code> ({envelope.certificationStatus ?? "—"})</div>
           </div>
+
+          {envelope.blockers.length > 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Execution blockers</AlertTitle>
+              <AlertDescription>
+                <ul className="mt-2 space-y-2 text-xs">
+                  {envelope.blockers.map((blocker, index) => (
+                    <li key={`${blocker.code}-${blocker.stage}-${index}`} className="space-y-1">
+                      <div>
+                        <code>{blocker.code}</code> · <code>{blocker.stage}</code>
+                        {blocker.message ? ` — ${blocker.message}` : ""}
+                      </div>
+                      {blocker.detail !== undefined && (
+                        <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-sm bg-muted p-2 text-[10px] text-muted-foreground">
+                          {typeof blocker.detail === "string"
+                            ? blocker.detail
+                            : JSON.stringify(blocker.detail, null, 2)}
+                        </pre>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {preProviderRetryable && (
             <Alert>

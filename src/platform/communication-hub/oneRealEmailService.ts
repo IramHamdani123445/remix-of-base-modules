@@ -35,6 +35,7 @@ export interface OneRealEmailBlocker {
 
 export interface OneRealEmailEnvelope {
   schemaVersion: "one-real-email.v1";
+  runtimeBuild: string;
   action: typeof ACTION;
   status: OneRealEmailStatus;
   passed: boolean;
@@ -89,6 +90,7 @@ export interface OneRealEmailInvocation {
 function emptyEnvelope(httpStatus: number, startedAt: string): OneRealEmailEnvelope {
   return {
     schemaVersion: "one-real-email.v1",
+    runtimeBuild: "unavailable",
     action: ACTION,
     status: "FAILED",
     passed: false,
@@ -143,6 +145,8 @@ export function normaliseOneRealEmailEnvelope(
   const status: OneRealEmailStatus = raw.status ?? "FAILED";
   return {
     schemaVersion: "one-real-email.v1",
+    runtimeBuild:
+      typeof raw.runtime_build === "string" ? raw.runtime_build : "unavailable",
     action: ACTION,
     status,
     // Never derive `passed` from anything other than the server field.

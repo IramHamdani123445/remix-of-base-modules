@@ -24,6 +24,8 @@ const ANON_KEY =
   Deno.env.get("VITE_SUPABASE_PUBLISHABLE_KEY") ?? "";
 
 const FN_URL = `${SUPABASE_URL}/functions/v1/comm-hub-send-one-real-email`;
+const EXPECTED_RUNTIME_BUILD =
+  "comm-hub-send-one-real-email@a0a9275fb6852527763708cd67af157604619eb3";
 
 async function callFn(body: unknown, opts: { auth?: string } = {}) {
   const headers: Record<string, string> = {
@@ -58,6 +60,7 @@ Deno.test("Stage 6 — function refuses anon-key Bearer at stage=auth (retry-saf
     { auth: `Bearer ${ANON_KEY}` });
   assertEquals(r.status, 401);
   assertEquals(r.body?.schema_version, "one-real-email.v1");
+  assertEquals(r.body?.runtime_build, EXPECTED_RUNTIME_BUILD);
   assertEquals(r.body?.status, "BLOCKED");
   assertEquals(r.body?.failure_stage, "auth");
   assertEquals(r.body?.retry_safe, true);
@@ -72,7 +75,7 @@ Deno.test("Stage 6 — refusal envelope preserves the one-real-email.v1 contract
   const r = await callFn({}, { auth: `Bearer ${ANON_KEY}` });
   assert(r.body, "response body must be JSON");
   const required = [
-    "schema_version", "action", "status", "passed", "idempotent_replay",
+    "schema_version", "runtime_build", "action", "status", "passed", "idempotent_replay",
     "execution_id", "grant_id", "message_id", "delivery_attempt_id",
     "provider_call_attempted", "provider_mode", "send_context",
     "real_email_authorised", "certification_id", "certification_kind",
@@ -83,6 +86,7 @@ Deno.test("Stage 6 — refusal envelope preserves the one-real-email.v1 contract
     assert(key in r.body, `missing key in envelope: ${key}`);
   }
   assertEquals(r.body.action, "SEND_ONE_REAL_EMAIL");
+  assertEquals(r.body.runtime_build, EXPECTED_RUNTIME_BUILD);
   assertEquals(r.body.send_context, "REAL_EMAIL");
   assert(Array.isArray(r.body.blockers));
   assert(Array.isArray(r.body.warnings));
@@ -120,6 +124,51 @@ Deno.test("Stage 6 — begin RPC refuses anonymous callers", async () => {
       `unexpected error: ${error.message}`,
     );
   }
+});
+
+Deno.test("Stage 6 — auth-context RPC does not authenticate an anonymous client", async () => {
+  const client = anon();
+  const { data, error } = await client.rpc("get_comm_hub_request_auth_context");
+  assert(
+    error !== null ||
+      (data?.authenticated === false && data?.auth_uid == null && data?.comm_hub_admin === false),
+    "anonymous/service-style context must never produce an authenticated user",
+  );
+});
+
+Deno.test("Stage 6 — source keeps identity-sensitive and privileged clients separated", async () => {
+  const source = await Deno.readTextFile(
+    new URL("./index.ts", import.meta.url),
+  );
+  assert(source.includes('userClient.rpc(\n      "get_comm_hub_request_auth_context"'));
+  assert(source.includes('/rest/v1/rpc/begin_comm_hub_one_real_email'));
+  assert(source.includes('"Authorization": `Bearer ${bearer}`'));
+  assert(!source.includes('admin.rpc("begin_comm_hub_one_real_email"'));
+  for (const privilegedRpc of [
+    "create_comm_hub_one_real_email_message",
+    "reconcile_comm_hub_one_real_email_pre_provider",
+    "reserve_comm_hub_one_real_email_grant",
+    "consume_comm_hub_one_real_email_grant",
+    "finalize_comm_hub_one_real_email",
+  ]) {
+    assert(
+      source.includes(`admin.rpc(\n      "${privilegedRpc}"`) ||
+        source.includes(`admin.rpc("${privilegedRpc}"`),
+      `${privilegedRpc} must remain on the admin client`,
+    );
+  }
+});
+
+Deno.test("Stage 6 — auth-context failure occurs before any execution or provider work", async () => {
+  const source = await Deno.readTextFile(new URL("./index.ts", import.meta.url));
+  const authContextAt = source.indexOf('"get_comm_hub_request_auth_context"');
+  const beginAt = source.indexOf("/rest/v1/rpc/begin_comm_hub_one_real_email");
+  const createAt = source.indexOf('"create_comm_hub_one_real_email_message"');
+  const providerAt = source.indexOf("sendEmailViaGuardedTransport(admin");
+  assert(authContextAt > 0 && authContextAt < beginAt);
+  assert(beginAt < createAt && createAt < providerAt);
+  assert(source.includes('return finalize("BLOCKED", "authorisation"'));
+  assert(source.includes("provider_call_attempted: false"));
 });
 
 // ------------------------------------------------------------------------
