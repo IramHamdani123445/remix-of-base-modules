@@ -116,6 +116,7 @@ function emptyEnvelope(httpStatus: number, startedAt: string): OneRealEmailEnvel
     certificationKind: null,
     certificationStatus: null,
     retrySafe: false,
+    automaticRetryAllowed: false,
     reconciliationRequired: false,
     cleanupProven: false,
     failureStage: "client_transport",
