@@ -40290,6 +40290,60 @@ export type Database = {
           },
         ]
       }
+      communication_hub_arm_audit: {
+        Row: {
+          action: string
+          actor: string | null
+          automation_state_after: string | null
+          automation_state_before: string | null
+          configuration_version: number | null
+          created_at: string
+          eligible_event_count: number | null
+          id: string
+          pinned_configuration_version: number | null
+          readiness_result_ids: string[] | null
+          reason: string | null
+          scope_channel: string | null
+          scope_event_code: string | null
+          scope_module_code: string | null
+          snapshot: Json
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          automation_state_after?: string | null
+          automation_state_before?: string | null
+          configuration_version?: number | null
+          created_at?: string
+          eligible_event_count?: number | null
+          id?: string
+          pinned_configuration_version?: number | null
+          readiness_result_ids?: string[] | null
+          reason?: string | null
+          scope_channel?: string | null
+          scope_event_code?: string | null
+          scope_module_code?: string | null
+          snapshot?: Json
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          automation_state_after?: string | null
+          automation_state_before?: string | null
+          configuration_version?: number | null
+          created_at?: string
+          eligible_event_count?: number | null
+          id?: string
+          pinned_configuration_version?: number | null
+          readiness_result_ids?: string[] | null
+          reason?: string | null
+          scope_channel?: string | null
+          scope_event_code?: string | null
+          scope_module_code?: string | null
+          snapshot?: Json
+        }
+        Relationships: []
+      }
       communication_hub_automation_readiness: {
         Row: {
           alerting_monitoring_checked_at: string | null
@@ -40439,6 +40493,7 @@ export type Database = {
           automation_arm_reason: string | null
           automation_armed_at: string | null
           automation_armed_by: string | null
+          automation_generation: number
           automation_state: string
           automation_state_changed_at: string
           automation_state_changed_by: string | null
@@ -40450,12 +40505,18 @@ export type Database = {
           configuration_version: number
           created_at: string
           cron_desired_enabled: boolean
+          current_arm_audit_id: string | null
           dispatch_enabled: boolean
           dry_run_only: boolean
           email_click_tracking_default: boolean
           email_live_enabled: boolean
           email_open_tracking_default: boolean
+          heartbeat_arm_audit_id: string | null
+          heartbeat_readiness_snapshot_id: string | null
           id: string
+          last_processed_count: number | null
+          last_scheduler_error: string | null
+          last_scheduler_heartbeat_at: string | null
           letter_enabled: boolean
           live_eligible_after: string | null
           live_eligible_max_age_minutes: number
@@ -40474,6 +40535,7 @@ export type Database = {
           retry_max_seconds: number
           retry_worker_enabled: boolean
           scheduler_enabled: boolean
+          scheduler_worker_version: string | null
           singleton_guard: string
           sms_live_enabled: boolean
           tracking_policy_mode: string
@@ -40488,6 +40550,7 @@ export type Database = {
           automation_arm_reason?: string | null
           automation_armed_at?: string | null
           automation_armed_by?: string | null
+          automation_generation?: number
           automation_state?: string
           automation_state_changed_at?: string
           automation_state_changed_by?: string | null
@@ -40499,12 +40562,18 @@ export type Database = {
           configuration_version?: number
           created_at?: string
           cron_desired_enabled?: boolean
+          current_arm_audit_id?: string | null
           dispatch_enabled?: boolean
           dry_run_only?: boolean
           email_click_tracking_default?: boolean
           email_live_enabled?: boolean
           email_open_tracking_default?: boolean
+          heartbeat_arm_audit_id?: string | null
+          heartbeat_readiness_snapshot_id?: string | null
           id?: string
+          last_processed_count?: number | null
+          last_scheduler_error?: string | null
+          last_scheduler_heartbeat_at?: string | null
           letter_enabled?: boolean
           live_eligible_after?: string | null
           live_eligible_max_age_minutes?: number
@@ -40523,6 +40592,7 @@ export type Database = {
           retry_max_seconds?: number
           retry_worker_enabled?: boolean
           scheduler_enabled?: boolean
+          scheduler_worker_version?: string | null
           singleton_guard?: string
           sms_live_enabled?: boolean
           tracking_policy_mode?: string
@@ -40537,6 +40607,7 @@ export type Database = {
           automation_arm_reason?: string | null
           automation_armed_at?: string | null
           automation_armed_by?: string | null
+          automation_generation?: number
           automation_state?: string
           automation_state_changed_at?: string
           automation_state_changed_by?: string | null
@@ -40548,12 +40619,18 @@ export type Database = {
           configuration_version?: number
           created_at?: string
           cron_desired_enabled?: boolean
+          current_arm_audit_id?: string | null
           dispatch_enabled?: boolean
           dry_run_only?: boolean
           email_click_tracking_default?: boolean
           email_live_enabled?: boolean
           email_open_tracking_default?: boolean
+          heartbeat_arm_audit_id?: string | null
+          heartbeat_readiness_snapshot_id?: string | null
           id?: string
+          last_processed_count?: number | null
+          last_scheduler_error?: string | null
+          last_scheduler_heartbeat_at?: string | null
           letter_enabled?: boolean
           live_eligible_after?: string | null
           live_eligible_max_age_minutes?: number
@@ -40572,6 +40649,7 @@ export type Database = {
           retry_max_seconds?: number
           retry_worker_enabled?: boolean
           scheduler_enabled?: boolean
+          scheduler_worker_version?: string | null
           singleton_guard?: string
           sms_live_enabled?: boolean
           tracking_policy_mode?: string
@@ -40652,6 +40730,8 @@ export type Database = {
           manual_verified_recipient: string | null
           module_code: string
           one_real_email_certification_id: string
+          pinned_configuration_version: number | null
+          pinned_readiness_result_ids: string[] | null
           real_email_gate_closed_at: string | null
           real_email_gate_closed_by: string | null
           real_email_gate_closed_reason: string | null
@@ -40684,6 +40764,8 @@ export type Database = {
           manual_verified_recipient?: string | null
           module_code: string
           one_real_email_certification_id: string
+          pinned_configuration_version?: number | null
+          pinned_readiness_result_ids?: string[] | null
           real_email_gate_closed_at?: string | null
           real_email_gate_closed_by?: string | null
           real_email_gate_closed_reason?: string | null
@@ -40716,6 +40798,8 @@ export type Database = {
           manual_verified_recipient?: string | null
           module_code?: string
           one_real_email_certification_id?: string
+          pinned_configuration_version?: number | null
+          pinned_readiness_result_ids?: string[] | null
           real_email_gate_closed_at?: string | null
           real_email_gate_closed_by?: string | null
           real_email_gate_closed_reason?: string | null
@@ -42271,6 +42355,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      communication_manual_production_observation_intent: {
+        Row: {
+          channel: string
+          created_at: string
+          event_certification_id: string | null
+          event_code: string
+          finalized_observation_id: string | null
+          idempotency_key: string
+          last_error: string | null
+          message_id: string | null
+          module_code: string
+          operator_id: string
+          phase: string
+          recipient_email: string
+          request_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          event_certification_id?: string | null
+          event_code: string
+          finalized_observation_id?: string | null
+          idempotency_key: string
+          last_error?: string | null
+          message_id?: string | null
+          module_code: string
+          operator_id: string
+          phase?: string
+          recipient_email: string
+          request_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          event_certification_id?: string | null
+          event_code?: string
+          finalized_observation_id?: string | null
+          idempotency_key?: string
+          last_error?: string | null
+          message_id?: string | null
+          module_code?: string
+          operator_id?: string
+          phase?: string
+          recipient_email?: string
+          request_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       communication_message: {
         Row: {
@@ -96988,7 +97123,7 @@ export type Database = {
         Returns: Json
       }
       confirm_comm_hub_manual_production_observation: {
-        Args: { p_note: string; p_observation_id: string; p_status: string }
+        Args: { p_decision: string; p_note?: string; p_observation_id: string }
         Returns: Json
       }
       consume_comm_hub_controlled_live_grant:
@@ -98379,6 +98514,14 @@ export type Database = {
         }
       }
       get_comm_hub_cron_status: { Args: never; Returns: Json }
+      get_comm_hub_event_go_live_stage9: {
+        Args: {
+          p_channel?: string
+          p_event_code: string
+          p_module_code: string
+        }
+        Returns: Json
+      }
       get_comm_hub_event_go_live_status: {
         Args: { p_channel: string; p_event_code: string; p_module_code: string }
         Returns: Json
@@ -98428,6 +98571,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_comm_hub_observation_recovery: {
+        Args: {
+          p_channel?: string
+          p_event_code: string
+          p_module_code: string
+        }
+        Returns: Json
       }
       get_comm_hub_one_real_email_context: {
         Args: {
@@ -99762,6 +99913,26 @@ export type Database = {
         Args: { p_payload: Json }
         Returns: Json
       }
+      record_comm_hub_observation_intent: {
+        Args: {
+          p_channel: string
+          p_event_code: string
+          p_idempotency_key: string
+          p_module_code: string
+          p_recipient_email: string
+        }
+        Returns: Json
+      }
+      record_comm_hub_scheduler_heartbeat: {
+        Args: {
+          p_arm_audit_id: string
+          p_error?: string
+          p_processed_count?: number
+          p_readiness_snapshot_id: string
+          p_worker_version: string
+        }
+        Returns: Json
+      }
       record_comm_hub_template_version_certification: {
         Args: { p_reason?: string; p_template_version_id: string }
         Returns: Json
@@ -100265,6 +100436,17 @@ export type Database = {
           _record_id?: string
           _test_user_id: string
           _workflow_id: string
+        }
+        Returns: Json
+      }
+      update_comm_hub_observation_intent: {
+        Args: {
+          p_finalized_observation_id?: string
+          p_idempotency_key: string
+          p_last_error?: string
+          p_message_id?: string
+          p_phase?: string
+          p_request_id?: string
         }
         Returns: Json
       }

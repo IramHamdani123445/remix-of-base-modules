@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   runManualProductionObservation,
   finalizeManualProductionObservation,
   confirmManualProductionObservation,
+  getObservationRecovery,
   type ObservationPhase,
   type RunObservationResult,
 } from "@/platform/communication-hub/manualProductionObservationService";
@@ -54,6 +55,33 @@ export function ManualProductionObservationPanel({
   const [result, setResult] = useState<RunObservationResult | null>(null);
   const [phase, setPhase] = useState<ObservationPhase>("IDLE");
   const [idem, setIdem] = useState<string | null>(null);
+  const [recovering, setRecovering] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const rec = await getObservationRecovery({ moduleCode, eventCode, channel });
+        if (cancelled || !rec.hasPending) return;
+        setIdem(rec.idempotencyKey ?? null);
+        setRecipient(rec.recipientEmail ?? "");
+        setPhase(rec.phase ?? "AWAITING_PROVIDER");
+        setResult({
+          ok: true,
+          phase: rec.phase ?? "AWAITING_PROVIDER",
+          observation_id: rec.observationId,
+          message_id: rec.messageId,
+          request_id: rec.requestId,
+          inbox_confirmation_status: rec.inboxConfirmationStatus ?? null,
+        });
+        toast.info(`Recovered pending observation (${rec.phase}) — no new message will be sent.`);
+      } finally {
+        if (!cancelled) setRecovering(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [moduleCode, eventCode, channel]);
+
 
   const stage7 = status?.stage7;
   const canDispatch =
@@ -156,9 +184,9 @@ export function ManualProductionObservationPanel({
       />
 
       <div className="flex items-center gap-2">
-        <Button onClick={run} disabled={running || !canDispatch || !recipient.trim()}>
-          {running && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Dispatch observation
+        <Button onClick={run} disabled={running || recovering || !canDispatch || !recipient.trim() || (phase !== "IDLE" && phase !== "FAILED" && phase !== "NOT_RECEIVED")}>
+          {(running || recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {recovering ? "Checking pending…" : "Dispatch observation"}
         </Button>
         {phase === "AWAITING_PROVIDER" && result?.message_id && (
           <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
