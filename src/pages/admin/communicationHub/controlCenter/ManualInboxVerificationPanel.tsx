@@ -40,7 +40,7 @@ export default function ManualInboxVerificationPanel({
   const [current, setCurrent] = useState<OneRealEmailCertificationRow | null>(null);
 
   async function submit(decision: ManualInboxVerificationDecision) {
-    if (!recipient.trim()) {
+    if (decision === "CONFIRMED" && !recipient.trim()) {
       toast.error("Enter the recipient email exactly as it appeared in the inbox.");
       return;
     }
@@ -54,6 +54,17 @@ export default function ManualInboxVerificationPanel({
       });
       if (!res.ok) {
         toast.error(`Manual verification refused: ${res.status}`);
+        return;
+      }
+      // Server response is authoritative. Only treat CONFIRMED as success.
+      if (
+        decision === "CONFIRMED" &&
+        !(res.status === "DELIVERY_CONFIRMED_MANUALLY" &&
+          res.manualVerificationStatus === "CONFIRMED")
+      ) {
+        toast.error(
+          `Server did not confirm verification (status=${res.status}, verification=${res.manualVerificationStatus ?? "null"}).`,
+        );
         return;
       }
       const reloaded = await fetchOneRealEmailCertification(certificationId);
@@ -75,7 +86,10 @@ export default function ManualInboxVerificationPanel({
     }
   }
 
-  if (current?.manualVerificationStatus === "DELIVERY_CONFIRMED_MANUALLY") {
+  if (
+    current?.status === "DELIVERY_CONFIRMED_MANUALLY" ||
+    current?.manualVerificationStatus === "CONFIRMED"
+  ) {
     return (
       <Alert>
         <CheckCircle2 className="h-4 w-4 text-emerald-600" />

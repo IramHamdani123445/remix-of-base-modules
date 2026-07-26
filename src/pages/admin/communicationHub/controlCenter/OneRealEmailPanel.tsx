@@ -856,8 +856,12 @@ export function OneRealEmailPanel({
               certificationId={envelope.certificationId}
               expectedRecipient={lineage.recipient}
               onVerified={(row) => {
-                if (row.manualVerificationStatus === "DELIVERY_CONFIRMED_MANUALLY") {
+                if (
+                  row.status === "DELIVERY_CONFIRMED_MANUALLY" ||
+                  row.manualVerificationStatus === "CONFIRMED"
+                ) {
                   onVerified?.(row.id);
+                  onReloadContext?.();
                 }
               }}
             />
