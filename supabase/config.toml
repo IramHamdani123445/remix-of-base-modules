@@ -49,3 +49,5 @@ project_id = "xynceskeiiisiefqlgxo"
     verify_jwt = true
   [functions.comm-hub-run-manual-production-observation]
     verify_jwt = true
+  [functions.comm-hub-automation-tick]
+    verify_jwt = false
