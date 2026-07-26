@@ -12,7 +12,7 @@ import {
   closeOneRealEmailGateAfterStage6,
   MANUAL_PRODUCTION_TYPED_PHRASE,
 } from "@/platform/communication-hub/manualProductionCertificationService";
-import { supabase } from "@/integrations/supabase/client";
+import { applyReleaseMode } from "@/platform/communication-hub/releaseModeService";
 
 const ACTIVATE_TYPED_PHRASE = "ACTIVATE MANUAL PRODUCTION";
 
