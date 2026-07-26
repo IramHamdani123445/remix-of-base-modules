@@ -161,5 +161,14 @@ Deno.serve(async (req) => {
     return json(500, { ok: false, blockers: [{ code: "finalize_failed", detail: finErr.message }] });
   }
 
-  return json(200, { ok: true, phase: "CONFIRMED", request_id: requestId, message_id: messageId, ...(finalized ?? {}) });
+  // Finalizer proves provider evidence only; explicit inbox confirmation
+  // is a separate operator action (confirm_comm_hub_manual_production_observation).
+  const fin: any = finalized ?? {};
+  return json(200, {
+    ok: true,
+    phase: fin.phase ?? "AWAITING_INBOX_CONFIRMATION",
+    request_id: requestId,
+    message_id: messageId,
+    ...fin,
+  });
 });

@@ -2,13 +2,15 @@ import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, CheckCircle2, RefreshCcw, AlertTriangle } from "lucide-react";
+import { Loader2, Send, CheckCircle2, RefreshCcw, AlertTriangle, Inbox, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLiveStatusService";
 import {
   runManualProductionObservation,
   finalizeManualProductionObservation,
+  confirmManualProductionObservation,
   type ObservationPhase,
   type RunObservationResult,
 } from "@/platform/communication-hub/manualProductionObservationService";
@@ -25,6 +27,7 @@ const PHASE_ORDER: ObservationPhase[] = [
   "ENQUEUED",
   "DISPATCHED",
   "AWAITING_PROVIDER",
+  "AWAITING_INBOX_CONFIRMATION",
   "CONFIRMED",
 ];
 
@@ -46,6 +49,8 @@ export function ManualProductionObservationPanel({
   const [recipient, setRecipient] = useState(status?.stage6?.manual_verified_recipient ?? "");
   const [running, setRunning] = useState(false);
   const [resuming, setResuming] = useState(false);
+  const [confirming, setConfirming] = useState<null | "CONFIRMED" | "NOT_RECEIVED">(null);
+  const [note, setNote] = useState("");
   const [result, setResult] = useState<RunObservationResult | null>(null);
   const [phase, setPhase] = useState<ObservationPhase>("IDLE");
   const [idem, setIdem] = useState<string | null>(null);
@@ -70,10 +75,12 @@ export function ManualProductionObservationPanel({
       });
       setResult(res);
       setPhase(res.phase);
-      if (res.ok) {
-        toast.success("Observation confirmed");
+      if (res.phase === "AWAITING_INBOX_CONFIRMATION") {
+        toast.success("Provider evidence captured — confirm inbox receipt to proceed");
       } else if (res.phase === "AWAITING_PROVIDER") {
         toast.warning("Awaiting provider evidence — retry finalize shortly");
+      } else if (res.phase === "CONFIRMED") {
+        toast.success("Observation confirmed");
       } else {
         toast.error(res.blockers?.[0]?.code ?? "Observation failed");
       }
@@ -83,6 +90,24 @@ export function ManualProductionObservationPanel({
       toast.error(e?.message ?? "Observation failed");
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function decideInbox(decision: "CONFIRMED" | "NOT_RECEIVED") {
+    if (!result?.observation_id) return;
+    setConfirming(decision);
+    try {
+      const res = await confirmManualProductionObservation({
+        observationId: result.observation_id, decision, note: note.trim() || undefined,
+      });
+      setResult((prev) => ({ ...(prev ?? {} as any), ...res }));
+      setPhase(res.phase);
+      if (res.phase === "CONFIRMED") toast.success("Inbox receipt confirmed");
+      else if (res.phase === "NOT_RECEIVED") toast.warning("Recorded as not received");
+      else toast.error(res.blockers?.[0]?.code ?? "Confirmation failed");
+      onChanged();
+    } finally {
+      setConfirming(null);
     }
   }
 
@@ -142,6 +167,47 @@ export function ManualProductionObservationPanel({
           </Button>
         )}
       </div>
+
+      {phase === "AWAITING_INBOX_CONFIRMATION" && result?.observation_id && (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Inbox className="h-4 w-4" />
+            Confirm inbox receipt
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Provider accepted the message. Check the recipient inbox and confirm
+            whether the email was received. This is a required separate operator step —
+            certification cannot proceed on provider evidence alone.
+          </p>
+          <Textarea
+            placeholder="Optional note (e.g. inbox screenshot ref, spam-folder observation)"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+          />
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => decideInbox("CONFIRMED")}
+              disabled={confirming !== null}
+            >
+              {confirming === "CONFIRMED" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Confirm received
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => decideInbox("NOT_RECEIVED")}
+              disabled={confirming !== null}
+            >
+              {confirming === "NOT_RECEIVED" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <XCircle className="h-4 w-4 mr-2" />
+              Not received
+            </Button>
+          </div>
+        </div>
+      )}
 
       {phase !== "IDLE" && (
         <div className="rounded-md border p-3 bg-muted/30 text-sm space-y-2">
