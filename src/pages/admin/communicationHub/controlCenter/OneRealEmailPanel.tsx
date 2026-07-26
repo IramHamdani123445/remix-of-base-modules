@@ -653,6 +653,19 @@ export function OneRealEmailPanel({
             </Alert>
           )}
 
+          {envelope.status === "DELIVERY_PENDING" && (
+            <Alert variant="destructive">
+              <MailWarning className="h-4 w-4" />
+              <AlertTitle>Delivery pending — no retry action offered</AlertTitle>
+              <AlertDescription>
+                The provider accepted the message but final delivery is still
+                pending. Automatic retry is disabled and no New Run action is
+                available. Wait for the asynchronous delivery evidence to arrive
+                and preserve the execution, message, attempt and trace ids.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {envelope.status === "PROVIDER_REJECTED" && (
             <Alert variant="destructive">
               <XCircle className="h-4 w-4" />
