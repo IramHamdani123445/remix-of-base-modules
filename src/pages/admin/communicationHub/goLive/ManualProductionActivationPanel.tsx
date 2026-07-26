@@ -13,6 +13,10 @@ import {
   MANUAL_PRODUCTION_TYPED_PHRASE,
 } from "@/platform/communication-hub/manualProductionCertificationService";
 import { applyReleaseMode } from "@/platform/communication-hub/releaseModeService";
+import {
+  reconcileManualProductionEntry,
+  promoteEventToManualProduction,
+} from "@/platform/communication-hub/manualProductionContinuityService";
 
 const ACTIVATE_TYPED_PHRASE = "ACTIVATE MANUAL PRODUCTION";
 
@@ -51,6 +55,9 @@ export function ManualProductionActivationPanel({
   const [activateReason, setActivateReason] = useState("");
   const [activatePhrase, setActivatePhrase] = useState("");
   const [switching, setSwitching] = useState(false);
+
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileMsg, setReconcileMsg] = useState<string | null>(null);
 
   const stage6 = status?.stage6;
   const stage7 = status?.stage7;
@@ -158,6 +165,60 @@ export function ManualProductionActivationPanel({
       setSwitching(false);
     }
   }
+
+  async function handleReconcile() {
+    setReconciling(true);
+    setReconcileMsg(null);
+    try {
+      const res = await reconcileManualProductionEntry({ moduleCode, eventCode, channel });
+      if (res.status === "READY_TO_DISPATCH") {
+        setReconcileMsg("Event certification is valid — ready to dispatch a Manual Production observation.");
+        toast.success("Event certification reconciled — ready to dispatch");
+        onChanged();
+        return;
+      }
+      if (res.status === "EVENT_CERTIFICATION_REQUIRED" && res.one_real_email_certification_id) {
+        // Server has valid Stage 6 evidence and matching fingerprint;
+        // upsert event certification without sending another email.
+        const promote = await promoteEventToManualProduction({
+          moduleCode,
+          eventCode,
+          channel,
+          reason: "Reconcile after mode-only version change",
+          typedConfirmation: MANUAL_PRODUCTION_TYPED_PHRASE,
+          oneRealEmailCertificationId: res.one_real_email_certification_id,
+        });
+        if (!promote.ok) {
+          toast.error(`Reconcile blocked: ${promote.error ?? promote.phase ?? "unknown"}`);
+        } else {
+          toast.success("Event certified from existing Stage 6 evidence");
+        }
+        onChanged();
+        return;
+      }
+      if (res.status === "EVIDENCE_DRIFT_REQUIRES_RETEST") {
+        setReconcileMsg("Safety-relevant evidence has changed (template, sender, recipient policy or provider). A fresh One Real Email is required.");
+        toast.error("Evidence drift — retest required");
+        return;
+      }
+      if (res.status === "PENDING_OBSERVATION_RECOVERY") {
+        setReconcileMsg(`An observation is in phase ${res.phase ?? "PENDING"}. Resolve it below before reconciling.`);
+        toast.warning("Pending observation recovery");
+        return;
+      }
+      if (res.status === "EMERGENCY_STOP_ACTIVE") {
+        setReconcileMsg("Emergency Stop is active. Clear it before reconciling.");
+        toast.error("Emergency Stop active");
+        return;
+      }
+      setReconcileMsg(`Reconcile result: ${res.status}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Reconcile failed");
+    } finally {
+      setReconciling(false);
+    }
+  }
+
 
   return (
     <div className="space-y-6">
@@ -292,7 +353,7 @@ export function ManualProductionActivationPanel({
       )}
 
       {/* Action 3+4 — Mode switch (collapsed to COMPLETED when already active) */}
-      {globalManualActive ? (
+      {globalManualActive && (
         <Alert>
           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           <AlertTitle className="flex items-center gap-2">
@@ -305,7 +366,37 @@ export function ManualProductionActivationPanel({
             No further mode action is required for Step 7.
           </AlertDescription>
         </Alert>
-      ) : (
+      )}
+
+      {/* Reconcile — mode already Manual Production but this event is not yet certified.
+          Uses Stage 6 evidence to upsert the event certification without sending another email. */}
+      {globalManualActive && !eventCertified && (
+        <div className="rounded-md border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <div className="font-medium">Reconcile event certification</div>
+          </div>
+          <Alert>
+            <AlertDescription>
+              The platform is already in Manual Production. If valid Stage 6
+              evidence exists for this event and no safety-relevant input has
+              changed, reconciliation certifies the event without sending
+              another One Real Email.
+            </AlertDescription>
+          </Alert>
+          {reconcileMsg && (
+            <Alert>
+              <AlertDescription className="text-xs">{reconcileMsg}</AlertDescription>
+            </Alert>
+          )}
+          <Button onClick={handleReconcile} disabled={reconciling}>
+            {reconciling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Reconcile event certification
+          </Button>
+        </div>
+      )}
+
+      {globalManualActive ? null : (
         <>
           <div className="rounded-md border p-4 space-y-2">
             <div className="flex items-center gap-2">

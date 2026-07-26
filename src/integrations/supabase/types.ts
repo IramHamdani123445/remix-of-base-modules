@@ -39553,6 +39553,7 @@ export type Database = {
           delivery_attempt_id: string | null
           dry_run_certification_id: string
           event_code: string
+          evidence_fingerprint: string | null
           execution_id: string
           id: string
           invalidated_at: string | null
@@ -39591,6 +39592,7 @@ export type Database = {
           delivery_attempt_id?: string | null
           dry_run_certification_id: string
           event_code: string
+          evidence_fingerprint?: string | null
           execution_id: string
           id?: string
           invalidated_at?: string | null
@@ -39629,6 +39631,7 @@ export type Database = {
           delivery_attempt_id?: string | null
           dry_run_certification_id?: string
           event_code?: string
+          evidence_fingerprint?: string | null
           execution_id?: string
           id?: string
           invalidated_at?: string | null
@@ -40798,6 +40801,7 @@ export type Database = {
           drift_detected_at: string | null
           drift_reason: string | null
           event_code: string
+          evidence_fingerprint: string | null
           id: string
           manual_verification_status: string | null
           manual_verified_at: string | null
@@ -40832,6 +40836,7 @@ export type Database = {
           drift_detected_at?: string | null
           drift_reason?: string | null
           event_code: string
+          evidence_fingerprint?: string | null
           id?: string
           manual_verification_status?: string | null
           manual_verified_at?: string | null
@@ -40866,6 +40871,7 @@ export type Database = {
           drift_detected_at?: string | null
           drift_reason?: string | null
           event_code?: string
+          evidence_fingerprint?: string | null
           id?: string
           manual_verification_status?: string | null
           manual_verified_at?: string | null
@@ -95745,6 +95751,20 @@ export type Database = {
         Args: { p_manifest_hash: string; p_mapping_id: string }
         Returns: string
       }
+      _comm_hub_evidence_fingerprint: {
+        Args: {
+          p_channel: string
+          p_event: string
+          p_module: string
+          p_provider_key: string
+          p_recipient_policy_version: string
+          p_recipient_set_hash: string
+          p_sender_profile_id: string
+          p_template_manifest_hash: string
+          p_template_version_id: string
+        }
+        Returns: string
+      }
       _comm_hub_get_request_actor: { Args: never; Returns: Json }
       _comm_hub_get_request_role: { Args: never; Returns: Json }
       _comm_hub_governance_transition_core: {
@@ -98821,6 +98841,7 @@ export type Database = {
           delivery_attempt_id: string | null
           dry_run_certification_id: string
           event_code: string
+          evidence_fingerprint: string | null
           execution_id: string
           id: string
           invalidated_at: string | null
@@ -99828,6 +99849,18 @@ export type Database = {
         Args: { p_unique_uuid: string }
         Returns: Json
       }
+      promote_comm_hub_event_to_manual_production: {
+        Args: {
+          p_channel: string
+          p_event_code: string
+          p_expected_runtime_mode_version?: number
+          p_module_code: string
+          p_one_real_email_certification_id?: string
+          p_reason: string
+          p_typed_confirmation: string
+        }
+        Returns: Json
+      }
       public_api_c3_detail: {
         Args: {
           p_c3_type: string
@@ -100008,6 +100041,14 @@ export type Database = {
           p_grant_id: string
           p_message_id: string
           p_reason: string
+        }
+        Returns: Json
+      }
+      reconcile_comm_hub_manual_production_entry: {
+        Args: {
+          p_channel?: string
+          p_event_code: string
+          p_module_code: string
         }
         Returns: Json
       }
