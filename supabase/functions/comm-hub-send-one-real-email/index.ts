@@ -276,15 +276,28 @@ Deno.serve(async (req) => {
   };
   let begin: any = null;
   {
-    // Must run under the operator JWT so auth.uid() resolves inside the
-    // SECURITY DEFINER RPC (it enforces operator identity + admin authority).
-    const { data, error } = await userClient.rpc("begin_comm_hub_one_real_email", { p_payload: beginPayload });
-    if (error) {
-      addBlocker(error.code || "authorisation_failed", "authorisation",
-        error.message ?? "begin_comm_hub_one_real_email failed");
+    // Call PostgREST directly with the operator's bearer token so auth.uid()
+    // resolves inside the SECURITY DEFINER RPC. supabase-js v2 can override
+    // global.headers.Authorization with its own (anon) token when no session
+    // is set via setSession, which would cause auth.uid() to be null.
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/begin_comm_hub_one_real_email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": ANON_KEY,
+        "Authorization": `Bearer ${bearer}`,
+      },
+      body: JSON.stringify({ p_payload: beginPayload }),
+    });
+    const raw = await resp.text();
+    let parsed: any = null;
+    try { parsed = raw ? JSON.parse(raw) : null; } catch { parsed = { message: raw }; }
+    if (!resp.ok) {
+      addBlocker(parsed?.code || "authorisation_failed", "authorisation",
+        parsed?.message ?? `begin_comm_hub_one_real_email failed (HTTP ${resp.status})`);
       return finalize("BLOCKED", "authorisation", { retrySafe: true, http: 400 });
     }
-    begin = data ?? {};
+    begin = parsed ?? {};
   }
   env.execution_id = begin.execution_id ?? null;
   env.grant_id = begin.grant_id ?? null;
