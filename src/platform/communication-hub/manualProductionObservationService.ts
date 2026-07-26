@@ -29,6 +29,12 @@ export interface RunObservationInput {
   idempotencyKey: string;
 }
 
+export type TransportErrorClass =
+  | "FunctionsFetchError"
+  | "FunctionsHttpError"
+  | "FunctionsRelayError"
+  | "unknown";
+
 export interface RunObservationResult {
   ok: boolean;
   phase: ObservationPhase;
@@ -42,6 +48,16 @@ export interface RunObservationResult {
   event_certification_id?: string;
   inbox_confirmation_status?: string | null;
   status?: string | null;
+  recovered?: boolean;
+  runtime_build?: string;
+  transport?: {
+    errorClass: TransportErrorClass;
+    httpStatus?: number;
+    runtimeBuild?: string;
+    responseBody?: string;
+    correlationId?: string;
+    resolved: boolean;
+  };
   blockers?: Array<{ code: string; detail?: unknown }>;
 }
 
@@ -52,6 +68,25 @@ function derivePhase(body: any): ObservationPhase {
   if (body.inbox_confirmation_status === "NOT_RECEIVED") return "NOT_RECEIVED";
   if (body.ok && body.observation_id) return "AWAITING_INBOX_CONFIRMATION";
   return body.ok ? "AWAITING_INBOX_CONFIRMATION" : "FAILED";
+}
+
+function classifyError(error: any): TransportErrorClass {
+  const name = String(error?.name ?? "");
+  if (name === "FunctionsFetchError") return "FunctionsFetchError";
+  if (name === "FunctionsHttpError") return "FunctionsHttpError";
+  if (name === "FunctionsRelayError") return "FunctionsRelayError";
+  return "unknown";
+}
+
+export async function probeManualProductionObservation(input: {
+  moduleCode?: string; eventCode?: string; channel?: string;
+}): Promise<{ ok: boolean; runtimeBuild?: string; probe?: any; error?: string }> {
+  const { data, error } = await supabase.functions.invoke(
+    "comm-hub-run-manual-production-observation",
+    { body: { action: "probe", ...input, channel: input.channel ?? "email" } },
+  );
+  if (error) return { ok: false, error: error.message };
+  return { ok: !!(data as any)?.ok, runtimeBuild: (data as any)?.runtime_build, probe: (data as any)?.probe };
 }
 
 export async function runManualProductionObservation(
@@ -71,14 +106,57 @@ export async function runManualProductionObservation(
     },
   );
   if (error) {
+    const errorClass = classifyError(error);
     const context: any = (error as any)?.context;
     let body: any = null;
-    try { body = context ? await context.json() : null; } catch {}
+    let responseBody: string | undefined;
+    let httpStatus: number | undefined;
+    let runtimeBuild: string | undefined;
+    let correlationId: string | undefined;
+    try {
+      if (context?.status) httpStatus = context.status;
+      if (context?.headers?.get) {
+        runtimeBuild = context.headers.get("x-comm-hub-runtime-build") ?? undefined;
+        correlationId = context.headers.get("x-request-id") ?? context.headers.get("sb-request-id") ?? undefined;
+      }
+      if (context) {
+        try { body = await context.clone().json(); }
+        catch {
+          try { responseBody = await context.clone().text(); } catch {}
+        }
+      }
+    } catch {}
+    if (body) {
+      return {
+        ok: false,
+        phase: "FAILED",
+        ...(body ?? {}),
+        transport: { errorClass, httpStatus, runtimeBuild: runtimeBuild ?? body?.runtime_build, correlationId, responseBody, resolved: true },
+        blockers: body?.blockers ?? [{ code: "invoke_failed", detail: error.message }],
+      };
+    }
+    // Transport interruption — outcome unresolved. Try server-authoritative
+    // recovery by idempotency key so we never fabricate a fresh key on retry.
+    const recovery = await getObservationRecovery({
+      moduleCode: input.moduleCode, eventCode: input.eventCode, channel: input.channel ?? "email",
+    });
+    if (recovery.hasPending && recovery.idempotencyKey === input.idempotencyKey) {
+      return {
+        ok: true,
+        phase: recovery.phase ?? "AWAITING_PROVIDER",
+        message_id: recovery.messageId,
+        request_id: recovery.requestId,
+        observation_id: recovery.observationId,
+        inbox_confirmation_status: (recovery.inboxConfirmationStatus ?? null) as any,
+        recovered: true,
+        transport: { errorClass, httpStatus, runtimeBuild, correlationId, resolved: true },
+      };
+    }
     return {
       ok: false,
       phase: "FAILED",
-      ...(body ?? {}),
-      blockers: body?.blockers ?? [{ code: "invoke_failed", detail: error.message }],
+      transport: { errorClass, httpStatus, runtimeBuild, correlationId, responseBody, resolved: false },
+      blockers: [{ code: "invoke_failed", detail: error.message }],
     };
   }
   return { ...(data as any), phase: derivePhase(data) };
