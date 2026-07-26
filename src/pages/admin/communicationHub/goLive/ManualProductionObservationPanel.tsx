@@ -13,6 +13,7 @@ import {
   confirmManualProductionObservation,
   getObservationRecovery,
   getManualProductionEvidence,
+  voidManualProductionObservation,
   type ObservationPhase,
   type RunObservationResult,
   type ManualProductionEvidence,
