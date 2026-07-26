@@ -755,5 +755,3 @@ Deno.serve(async (req) => {
   return finalize(finalStatus, null, { retrySafe: retrySafeFinal, cleanupProven: true });
 });
 
-  return finalize(finalStatus, null, { retrySafe: false, cleanupProven: true });
-});
