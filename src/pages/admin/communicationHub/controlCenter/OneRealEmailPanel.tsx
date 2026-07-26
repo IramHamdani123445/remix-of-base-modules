@@ -725,6 +725,27 @@ export function OneRealEmailPanel({
             </Alert>
           )}
 
+          {showResumeFinalization && (
+            <Alert>
+              <ShieldAlert className="h-4 w-4" />
+              <AlertTitle>Finalization pending — provider already accepted</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <div className="text-xs">
+                  The provider accepted this email but the server failed to
+                  record the certification. Resuming will finalize the existing
+                  execution using durable server rows only. No new email will
+                  be sent, no new grant, message, delivery attempt, or provider
+                  call will be created.
+                </div>
+                <Button size="sm" onClick={handleResumeFinalization} disabled={resumeBusy}>
+                  {resumeBusy
+                    ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Resuming…</>
+                    : <><RefreshCw className="h-4 w-4 mr-1" /> Resume finalization — no email will be sent</>}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {showManualVerification && envelope.certificationId && (
             <ManualInboxVerificationPanel
               certificationId={envelope.certificationId}
