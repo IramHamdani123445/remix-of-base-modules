@@ -58,6 +58,20 @@ export function ManualProductionObservationPanel({
   const [phase, setPhase] = useState<ObservationPhase>("IDLE");
   const [idem, setIdem] = useState<string | null>(null);
   const [recovering, setRecovering] = useState(true);
+  const [evidence, setEvidence] = useState<ManualProductionEvidence | null>(null);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (phase !== "CONFIRMED" || !result?.observation_id) return;
+    let cancelled = false;
+    (async () => {
+      const r = await getManualProductionEvidence(result.observation_id!);
+      if (cancelled) return;
+      if (r.ok && r.evidence) { setEvidence(r.evidence); setEvidenceError(null); }
+      else setEvidenceError(r.error ?? "evidence_unavailable");
+    })();
+    return () => { cancelled = true; };
+  }, [phase, result?.observation_id]);
 
   useEffect(() => {
     let cancelled = false;
