@@ -366,7 +366,37 @@ export function ManualProductionActivationPanel({
             No further mode action is required for Step 7.
           </AlertDescription>
         </Alert>
-      ) : (
+      )}
+
+      {/* Reconcile — mode already Manual Production but this event is not yet certified.
+          Uses Stage 6 evidence to upsert the event certification without sending another email. */}
+      {globalManualActive && !eventCertified && (
+        <div className="rounded-md border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <div className="font-medium">Reconcile event certification</div>
+          </div>
+          <Alert>
+            <AlertDescription>
+              The platform is already in Manual Production. If valid Stage 6
+              evidence exists for this event and no safety-relevant input has
+              changed, reconciliation certifies the event without sending
+              another One Real Email.
+            </AlertDescription>
+          </Alert>
+          {reconcileMsg && (
+            <Alert>
+              <AlertDescription className="text-xs">{reconcileMsg}</AlertDescription>
+            </Alert>
+          )}
+          <Button onClick={handleReconcile} disabled={reconciling}>
+            {reconciling && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Reconcile event certification
+          </Button>
+        </div>
+      )}
+
+      {globalManualActive ? null : (
         <>
           <div className="rounded-md border p-4 space-y-2">
             <div className="flex items-center gap-2">
