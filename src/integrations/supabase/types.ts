@@ -98218,6 +98218,7 @@ export type Database = {
         Args: { p_channel: string; p_event: string; p_module: string }
         Returns: Json
       }
+      get_comm_hub_request_auth_context: { Args: never; Returns: Json }
       get_comm_hub_safety_counts: {
         Args: { window_minutes?: number }
         Returns: Json
