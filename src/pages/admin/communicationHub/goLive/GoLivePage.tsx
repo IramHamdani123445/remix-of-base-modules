@@ -511,6 +511,66 @@ export default function GoLivePage() {
   const [goLiveReloadNonce, setGoLiveReloadNonce] = useState(0);
   const reloadGoLive = () => setGoLiveReloadNonce((n) => n + 1);
 
+  // Server-authoritative pending-observation state — hoisted so LifecycleBanner
+  // and ManualProductionObservationPanel consume the SAME state.
+  const [observationRecovery, setObservationRecovery] = useState<ObservationRecovery | null>(null);
+  const [observationRecovering, setObservationRecovering] = useState(false);
+  const [observationLastResult, setObservationLastResult] = useState<RunObservationResult | null>(null);
+  const [observationLastKey, setObservationLastKey] = useState<string | null>(null);
+  const pendingObservation: PendingObservationState = session.moduleCode && session.eventCode
+    ? composePendingObservationState({
+        recovery: observationRecovery,
+        recovering: observationRecovering,
+        lastResult: observationLastResult,
+        lastIdempotencyKey: observationLastKey,
+      })
+    : EMPTY_PENDING_OBSERVATION_STATE;
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!session.moduleCode || !session.eventCode) {
+      setObservationRecovery(null);
+      return;
+    }
+    setObservationRecovering(true);
+    (async () => {
+      try {
+        const rec = await getObservationRecovery({
+          moduleCode: session.moduleCode,
+          eventCode: session.eventCode,
+          channel: session.channel ?? "email",
+        });
+        if (!cancelled) setObservationRecovery(rec);
+      } finally {
+        if (!cancelled) setObservationRecovering(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session.moduleCode, session.eventCode, session.channel, goLiveReloadNonce]);
+
+  // Stage 9 completion RPC — the ONLY authority for LIVE_AUTOMATED_ARMED.
+  const [goLiveCompletion, setGoLiveCompletion] = useState<GoLiveCompletion | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!session.moduleCode || !session.eventCode) {
+      setGoLiveCompletion(null);
+      return;
+    }
+    (async () => {
+      try {
+        const c = await getGoLiveCompletion({
+          moduleCode: session.moduleCode,
+          eventCode: session.eventCode,
+          channel: session.channel ?? "email",
+        });
+        if (!cancelled) setGoLiveCompletion(c);
+      } catch {
+        if (!cancelled) setGoLiveCompletion(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session.moduleCode, session.eventCode, session.channel, goLiveReloadNonce]);
+
   useEffect(() => {
     let cancelled = false;
     if (!session.moduleCode || !session.eventCode) {
