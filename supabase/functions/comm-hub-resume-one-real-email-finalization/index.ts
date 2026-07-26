@@ -24,7 +24,7 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
 const RUNTIME_BUILD =
-  "comm-hub-resume-one-real-email-finalization@2026-07-26-initial";
+  "comm-hub-resume-one-real-email-finalization@2026-07-26-admin-flag-fix";
 
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
