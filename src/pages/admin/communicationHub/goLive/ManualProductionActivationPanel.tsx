@@ -56,6 +56,9 @@ export function ManualProductionActivationPanel({
   const [activatePhrase, setActivatePhrase] = useState("");
   const [switching, setSwitching] = useState(false);
 
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileMsg, setReconcileMsg] = useState<string | null>(null);
+
   const stage6 = status?.stage6;
   const stage7 = status?.stage7;
   const platform = status?.platform;
