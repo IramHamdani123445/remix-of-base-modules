@@ -38,7 +38,7 @@ const CORS: Record<string, string> = {
 const CONFIRMATION_PHRASE = "SEND ONE REAL EMAIL";
 const ACTION = "SEND_ONE_REAL_EMAIL";
 const RUNTIME_BUILD =
-  "comm-hub-send-one-real-email@a0a9275fb6852527763708cd67af157604619eb3";
+  "comm-hub-send-one-real-email@2026-07-26-finalize-uuid-fix+resume-recovery";
 
 type Status =
   | "BLOCKED"

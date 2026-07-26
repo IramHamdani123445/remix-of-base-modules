@@ -99787,6 +99787,10 @@ export type Database = {
         Args: { p_execution_id: string }
         Returns: Json
       }
+      resume_comm_hub_one_real_email_finalization: {
+        Args: { p_execution_id: string }
+        Returns: Json
+      }
       retry_comm_hub_message: {
         Args: {
           p_actor_user_id: string
