@@ -353,7 +353,7 @@ export function ManualProductionActivationPanel({
       )}
 
       {/* Action 3+4 — Mode switch (collapsed to COMPLETED when already active) */}
-      {globalManualActive ? (
+      {globalManualActive && (
         <Alert>
           <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           <AlertTitle className="flex items-center gap-2">
