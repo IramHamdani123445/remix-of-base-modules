@@ -1,90 +1,190 @@
-# Comm Hub Go-Live — Stages 6 / 7 / 8
 
-Sequenced per user decision: **all three stages, migrations first, then code**.
+# Go-Live Closure — Slices A + B + C
 
-## Migration 1 (this turn) — Schema + core RPCs for Stages 6, 7, 8
+Pilot: `APPEALS / APPEAL_RECEIVED_NOTICE / email`. Nothing in this slice sends
+another email. Existing Dry Run, Controlled Stub, One Real Email and the
+pending Manual Production observation evidence are preserved.
 
-Additive only. Does NOT alter existing controlled-stub RPCs. Existing Stage 5
-flow remains unchanged.
+Canary (Slice F), readiness hardening (D), Stage 9 rewrite (E), Emergency Stop
+(G), UI (H), tests 3–22 (I) and runtime acceptance (J) come in later slices
+after each of these lands with evidence.
 
-### Stage 6 — Send One Real Email
-- `communication_controlled_live_execution`
-  - `send_context text NOT NULL DEFAULT 'STUB'`  CHECK IN ('STUB','REAL_EMAIL')
-  - `provider_mode text` CHECK IN ('stub','real')
-  - `real_email_authorised boolean NOT NULL DEFAULT false`
-- `communication_controlled_live_grant`
-  - `send_context text NOT NULL DEFAULT 'STUB'`  CHECK IN ('STUB','REAL_EMAIL')
-- `comm_hub_controlled_live_scope_hash_v2(...)` — includes `send_context` so
-  STAGE_5 grant hash ≠ STAGE_6 grant hash for same event/recipient.
-- `communication_hub_real_email_gate` — event-level feature gate row required
-  before a real send is authorised (platform-admin only).
-- `begin_comm_hub_one_real_email(p_payload jsonb)` — SECURITY DEFINER:
-  1. Require CONTROLLED_LIVE operating mode & no EMERGENCY_STOP.
-  2. Require one **valid, non-invalidated** CONTROLLED_STUB certification
-     for (module, event, channel) whose
-     (preview_approval_id, dry_run_certification_id, recipient_set_hash,
-     configuration_version, recipient_policy_version) exactly match input.
-  3. Require exactly one To recipient, no cc/bcc.
-  4. Require active sender profile + active real provider + open feature gate.
-  5. Require canonical `evaluate_comm_hub_send_decision` = allowed for
-     `send_context='REAL_EMAIL'`.
-  6. Create execution (`send_context='REAL_EMAIL'`, `provider_mode='real'`,
-     `real_email_authorised=true`) and grant with the v2 scope hash.
-- `record_comm_hub_one_real_email_provider_attempt(payload)` — same evidence
-  shape as controlled-stub variant but tagged `send_context='REAL_EMAIL'`.
-- `finalize_comm_hub_one_real_email(payload)` — issues certification with
-  `certification_kind='ONE_REAL_EMAIL'`.
+---
 
-### Stage 7 — Activate Manual Production
-- `communication_hub_event_certification` — frozen manifest per (module,event,channel):
-  - `status text` CHECK IN ('live_manual_only','live_cron_allowed','SUSPENDED','REVOKED')
-  - Frozen: `controlled_stub_certification_id`, `one_real_email_certification_id`,
-    `configuration_version`, `recipient_policy_version`,
-    `template_version_id`, `template_manifest_hash`, `sender_profile_id`,
-    `recipient_set_hash`.
-  - Approval: `approved_by`, `approved_at`, `reason`.
-  - Drift: `drift_detected_at`, `drift_reason`, `suspended_at`.
-- `certify_comm_hub_event_manual_production(p_payload jsonb)` —
-  requires ONE_REAL_EMAIL certification + inbox confirmation
-  (`manual_verification_status='CONFIRMED'` OR provider
-  `DELIVERED`). Writes frozen row, upserts
-  `communication_hub_event_live_control.status='live_manual_only'`.
-- Drift trigger — on `communication_hub_control_settings.configuration_version`
-  bump OR `communication_hub_recipient_policy.version` bump for scope, sets
-  drift_detected_at + status='SUSPENDED'; sends to
-  `communication_hub_event_live_control.status='dry_run_only'`.
+## Slice A — Manual Production finalize + evidence contract
 
-### Stage 8 — Activate Automated Production
-- `communication_hub_automation_readiness` — one row per (module,event,channel),
-  boolean+timestamp+by columns for:
-  scheduler, automatic_triggers, retry_worker, dead_letter, rate_limits,
-  batch_limits, provider_circuit_breaker, emergency_stop, alerting_monitoring.
-- `certify_comm_hub_event_automated_production(p_payload)` —
-  1. Require existing `live_manual_only` certification.
-  2. Require ≥N successful manual sends observed since certification.
-  3. Require all readiness columns TRUE + recent.
-  4. Promotes certification `status='live_cron_allowed'` and updates
-     `event_live_control.status='live_cron_allowed'`.
-- `rollback_comm_hub_event_production(p_payload)` — moves certification back
-  to `live_manual_only` or SUSPENDED, records reason.
+**Migration `comm_hub_manual_prod_finalize_v1`**
 
-## Migration 2 (follow-up) — Automation readiness bootstrap rows
+1. New view `public.v_comm_hub_manual_production_evidence` joining
+   `communication_hub_manual_production_observation` →
+   `communication_requests` → `communication_messages` →
+   `communication_delivery_attempts` → `communication_traces` →
+   `notification_providers` → `communication_hub_event_certifications`.
+   Columns: observation_id, request_id, message_id, delivery_attempt_id,
+   trace_id, provider_id, provider_message_id, message_status,
+   attempt_status, send_context, test_mode, recipient_email,
+   inbox_confirmation_status, dispatched_at, event_certification_id,
+   manual_prod_approved_at.
 
-Only after Migration 1 approved: seed catalog rows / defaults where safe.
+2. New RPC `get_comm_hub_manual_production_evidence(p_observation_id uuid)`
+   returning the view row for the caller's org (SECURITY DEFINER, admin-only).
 
-## Frontend code (post-migration)
-- Replace `OneRealEmailPanel` placeholder with real Stage 6 panel wired to
-  `send-one-real-email` edge function.
-- New `ManualProductionPanel` (Stage 7) — certify + freeze manifest.
-- New `AutomatedProductionPanel` (Stage 8) — 9-check readiness board +
-  certify.
-- `useStageReadiness` extended to consume server evidence.
+3. Rewrite `confirm_comm_hub_manual_production_observation` to enforce the
+   full completion predicate before flipping status to `CONFIRMED`:
+   event `live_manual_only`, `send_context='manual_production'`,
+   `test_mode=false`, message.status ∈ (sent,delivered),
+   attempt.status ∈ (success,sent,delivered), provider.kind NOT IN
+   (stub,test,dry_run), provider_message_id NOT NULL, trace exists,
+   `inbox_confirmation_status='CONFIRMED'`, observation.created_at >
+   event_certification.manual_prod_approved_at.
+   Return structured `{ok, blockers[]}`; never raise on missing rows.
 
-## Edge functions (post-migration)
-- New `comm-hub-send-one-real-email` — reuses controlled-live dispatcher
-  scaffold with `send_context='REAL_EMAIL'`, provider = Resend (only), no
-  stub fallback, one-use grant consume after provider evidence persisted.
+4. Grants: EXECUTE on both RPCs to `authenticated`; view SELECT to
+   `authenticated`.
 
-## Tests (post-migration)
-- SQL harness `run_ch_stage_678_runtime_tests()` mirroring existing
-  P3E-B pattern. Covers all Stage 6/7/8 assertions listed in the request.
+**Client**
+
+- `manualProductionObservationService.ts`: add
+  `getManualProductionEvidence(observationId)` returning the typed contract.
+- `ManualProductionObservationPanel.tsx`: after CONFIRMED, render the
+  evidence block (14 fields). Show inline blockers when confirm RPC returns
+  `ok=false`.
+
+**Tests (subset of I)**
+
+- I.1 recovery-does-not-resend (already covered — reassert).
+- I.2 provider acceptance without inbox confirmation ≠ CONFIRMED.
+- I.16 targeted observation works with automation disarmed.
+
+---
+
+## Slice B — Real scheduler worker
+
+**Migration `comm_hub_scheduler_worker_v1`**
+
+1. Columns on `communication_hub_control_settings`:
+   `scheduler_worker_version text`,
+   `last_processed_count int`,
+   `last_scheduler_error jsonb`,
+   `heartbeat_arm_audit_id uuid`,
+   `heartbeat_automation_generation bigint`,
+   `heartbeat_readiness_hash text`.
+   (`last_scheduler_heartbeat_at`, `automation_generation`,
+   `current_arm_audit_id` already exist.)
+
+2. New table `comm_hub_scheduler_tick_leases` (id, started_at, expires_at,
+   arm_audit_id, automation_generation, configuration_version,
+   pinned_readiness_ids uuid[], readiness_hash, operating_mode,
+   automation_state, status enum(RUNNING,COMPLETED,FAILED,ABANDONED),
+   worker_version, processed_count, sent_count, retried_count,
+   failed_count, skipped_count, error jsonb, finished_at).
+   Grants: SELECT to `authenticated`, ALL to `service_role`.
+   No RLS (service-role only writes).
+
+3. RPC `begin_comm_hub_scheduler_tick(p_worker_version text)` SECURITY
+   DEFINER, callable only when `has_role(auth.uid(),'service_role')` OR
+   caller JWT role = service_role. Locks control-settings row `FOR UPDATE`,
+   validates all 8 preconditions from Section B, inserts a lease row and
+   returns `{allowed, blockers[], lease_id, current_arm_audit_id,
+   automation_generation, configuration_version, pinned_readiness_ids,
+   readiness_hash, operating_mode, automation_state}`.
+
+4. RPC `complete_comm_hub_scheduler_tick(p_lease_id uuid, p_arm_audit_id
+   uuid, p_automation_generation bigint, p_readiness_hash text,
+   p_counts jsonb, p_error jsonb)`. Validates the lease is RUNNING and all
+   pinned identifiers still equal the current control-settings values and
+   the Arm audit action='ARMED'. Only then updates heartbeat columns and
+   marks lease COMPLETED. On mismatch: mark ABANDONED, do not update
+   heartbeat, return `{ok:false, blockers}`.
+
+**Edge function `comm-hub-automation-tick`**
+
+- Verifies JWT, then additionally requires `x-scheduler-secret` matching
+  `COMMUNICATION_HUB_SCHEDULER_SECRET` (added via `add_secret` — dedicated,
+  not the dispatch secret).
+- `action=probe`: writes an `automation_readiness_results` row of kind
+  `scheduler` with `{runtime_build, probe_time, worker_version}` and
+  returns `{ok, runtime_build, probed_at}`. No claim, no provider.
+- `action=run`: calls `begin_comm_hub_scheduler_tick`; if blocked, records
+  the blockers and returns without touching the queue. On allowed, invokes
+  the canonical queue runner (`comm-hub-dispatch` `operation=queue`)
+  bounded by `max_batch`, aggregates counts, then calls
+  `complete_comm_hub_scheduler_tick`. Errors are captured into `p_error`
+  and heartbeat is not written on failure.
+- Top-level try/catch → JSON + CORS + runtime build marker
+  `comm-hub-automation-tick@2026-07-26-slice-b`.
+
+**Secrets**
+
+- `add_secret` → `COMMUNICATION_HUB_SCHEDULER_SECRET` (new).
+
+**Client**
+
+- No UI wiring in this slice beyond exposing probe from an
+  Admin diagnostics button on `AutomatedProductionActivationPanel` labelled
+  "Run scheduler probe" (writes evidence; does not arm).
+
+**Tests**
+
+- I.3 scheduler run blocked before Arm.
+- I.4 scheduler run blocked in Manual Production.
+- I.6 blocked with old Arm audit id.
+- I.7 blocked with old automation generation.
+- I.9 heartbeat cannot be recorded for invented Arm context.
+- I.10 re-arm invalidates previous heartbeat.
+
+---
+
+## Slice C — Bind generic queue dispatcher to Arm context
+
+**Edit `supabase/functions/comm-hub-dispatch/index.ts`**
+
+- When `operation=queue` (scheduled/automatic path only — not
+  `targeted`/`one_real_email`/`manual_production_observation`), require a
+  `x-scheduler-lease-id` header. Before any claim, call new RPC
+  `assert_comm_hub_queue_run_context(p_lease_id, p_module, p_event,
+  p_channel)` returning `{allowed, blockers}`. Refuse to claim on
+  disallowed.
+- Predicate: mode=AUTOMATED_PRODUCTION, state=ARMED, scheduler_enabled,
+  dispatch_enabled, no Emergency Stop, lease still RUNNING,
+  lease.arm_audit_id = current_arm_audit_id, lease.automation_generation =
+  current_automation_generation, event status=`live_cron_allowed`.
+
+**Migration `comm_hub_queue_arm_binding_v1`**
+
+- `assert_comm_hub_queue_run_context` RPC (SECURITY DEFINER,
+  service-role-only).
+
+**Tests**
+
+- I.5 scheduler run blocked during Emergency Stop simulated (rollback-only
+  txn setting `operating_mode='EMERGENCY_STOP'`).
+- I.8 blocked run claims zero messages.
+
+---
+
+## Runtime evidence at end of slices A+B+C
+
+1. Migration versions from `supabase migrations list`.
+2. `comm-hub-automation-tick` deploy id + build marker.
+3. `action=probe` returns ok=true; a scheduler `automation_readiness_results`
+   row exists < 5 min old.
+4. `begin_comm_hub_scheduler_tick` called with system NOT ARMED returns
+   `allowed=false` with blocker `not_armed` (I.3).
+5. Pending Manual Production observation evidence view returns the pending
+   row unchanged (no second email).
+6. `batch_enabled=false`, `bulk_enabled=false` re-asserted.
+
+Slices D–J will be planned separately once A+B+C are green in runtime.
+
+---
+
+## Non-goals in this slice
+
+- No canary creation (Slice F).
+- No Emergency Stop RPC (Slice G).
+- No changes to `get_comm_hub_go_live_completion` (Slice E).
+- No readiness probe rewrites beyond the scheduler probe wiring in B (D
+  hardens the other 8).
+- No UI redesign of Stage 8 / 9 (Slice H).
+- No canary or Stage-9-only tests (I.11–I.22, minus the ones listed above).
