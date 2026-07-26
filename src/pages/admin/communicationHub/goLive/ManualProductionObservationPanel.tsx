@@ -188,10 +188,26 @@ export function ManualProductionObservationPanel({
         disabled={running || !canDispatch}
       />
 
+      {result?.transport && !result.transport.resolved && (
+        <Alert variant="destructive">
+          <AlertDescription className="space-y-1 text-xs">
+            <div>Checking whether the previous request reached the server…</div>
+            <div><span className="text-muted-foreground">Class:</span> {result.transport.errorClass}
+              {result.transport.httpStatus ? <> · HTTP {result.transport.httpStatus}</> : null}
+              {result.transport.runtimeBuild ? <> · build {result.transport.runtimeBuild}</> : null}
+              {result.transport.correlationId ? <> · req {result.transport.correlationId}</> : null}
+            </div>
+            {result.transport.responseBody && (
+              <pre className="max-h-32 overflow-auto rounded bg-muted p-2 font-mono text-[10px]">{result.transport.responseBody}</pre>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center gap-2">
-        <Button onClick={run} disabled={running || recovering || !canDispatch || !recipient.trim() || (phase !== "IDLE" && phase !== "FAILED" && phase !== "NOT_RECEIVED")}>
+        <Button onClick={run} disabled={running || recovering || !canDispatch || !recipient.trim() || (result?.transport && !result.transport.resolved) || (phase !== "IDLE" && phase !== "FAILED" && phase !== "NOT_RECEIVED")}>
           {(running || recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {recovering ? "Checking pending…" : "Dispatch observation"}
+          {recovering ? "Checking pending…" : (result?.transport && !result.transport.resolved) ? "Checking previous request…" : "Dispatch observation"}
         </Button>
         {phase === "AWAITING_PROVIDER" && result?.message_id && (
           <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
