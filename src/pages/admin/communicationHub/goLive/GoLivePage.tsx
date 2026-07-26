@@ -885,11 +885,11 @@ export default function GoLivePage() {
 
       {/* Top-level lifecycle banner — server-authoritative snapshot. */}
       <LifecycleBanner
-        summary={deriveLifecycle(
-          goLiveStatus,
-          controlledLiveDone,
-          deriveObservation(goLiveStatus, null, false, null),
-        )}
+        summary={deriveLifecycle({
+          status: goLiveStatus,
+          observation: deriveObservation(goLiveStatus, pendingObservation),
+          completion: goLiveCompletion,
+        })}
       />
 
       {/* Phase 4B3 — Compact whole-journey Gate Monitor. Server-authoritative,
