@@ -276,7 +276,9 @@ Deno.serve(async (req) => {
   };
   let begin: any = null;
   {
-    const { data, error } = await admin.rpc("begin_comm_hub_one_real_email", { p_payload: beginPayload });
+    // Must run under the operator JWT so auth.uid() resolves inside the
+    // SECURITY DEFINER RPC (it enforces operator identity + admin authority).
+    const { data, error } = await userClient.rpc("begin_comm_hub_one_real_email", { p_payload: beginPayload });
     if (error) {
       addBlocker(error.code || "authorisation_failed", "authorisation",
         error.message ?? "begin_comm_hub_one_real_email failed");
