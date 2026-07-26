@@ -488,6 +488,8 @@ export default function GoLivePage() {
   const [stage6ContextLoading, setStage6ContextLoading] = useState(false);
   const [stage6ContextReloadNonce, setStage6ContextReloadNonce] = useState(0);
   const [goLiveStatus, setGoLiveStatus] = useState<EventGoLiveStatus | null>(null);
+  const [goLiveStatusLoading, setGoLiveStatusLoading] = useState(false);
+  const [goLiveStatusError, setGoLiveStatusError] = useState<string | null>(null);
   const [goLiveReloadNonce, setGoLiveReloadNonce] = useState(0);
   const reloadGoLive = () => setGoLiveReloadNonce((n) => n + 1);
 
@@ -495,8 +497,10 @@ export default function GoLivePage() {
     let cancelled = false;
     if (!session.moduleCode || !session.eventCode) {
       setGoLiveStatus(null);
+      setGoLiveStatusError(null);
       return;
     }
+    setGoLiveStatusLoading(true);
     (async () => {
       try {
         const s = await getEventGoLiveStatus({
@@ -504,9 +508,17 @@ export default function GoLivePage() {
           eventCode: session.eventCode,
           channel: session.channel ?? "email",
         });
-        if (!cancelled) setGoLiveStatus(s);
-      } catch {
-        if (!cancelled) setGoLiveStatus(null);
+        if (!cancelled) {
+          setGoLiveStatus(s);
+          setGoLiveStatusError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          // Preserve last-known-good status; surface the error.
+          setGoLiveStatusError(e instanceof Error ? e.message : String(e));
+        }
+      } finally {
+        if (!cancelled) setGoLiveStatusLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -1114,12 +1126,15 @@ export default function GoLivePage() {
               stage6CompletedAt: env.completedAt,
             }))
           }
-          onVerified={() =>
+          onVerified={() => {
             setSession((s) => ({
               ...s,
-              stage6ManualVerificationStatus: "DELIVERY_CONFIRMED_MANUALLY",
-            }))
-          }
+              stage6ManualVerificationStatus: "CONFIRMED",
+              stage6CertificationStatus: "DELIVERY_CONFIRMED_MANUALLY",
+            }));
+            setStage6ContextReloadNonce((n) => n + 1);
+            reloadGoLive();
+          }}
           onReloadContext={() => setStage6ContextReloadNonce((n) => n + 1)}
         />
       </CommunicationHubSectionCard>
