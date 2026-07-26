@@ -207,13 +207,21 @@ export function ManualProductionObservationPanel({
         </Badge>
       </div>
 
-      <Alert>
-        <AlertDescription>
-          Sends through the standard Manual Production dispatcher via the
-          server-coordinated <code>comm-hub-run-manual-production-observation</code>
-          {" "}function. Evidence (request, message, delivery attempt, trace,
-          provider message id) is derived server-side from durable rows —
-          the browser only supplies the approved recipient and idempotency key.
+      {/* Server-authoritative state banner */}
+      <Alert variant={derived.state === "COMPLETED" ? "default" : derived.blocker ? "default" : "default"}>
+        <AlertDescription className="text-xs space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground">Observation state:</span>
+            <Badge variant={derived.state === "COMPLETED" ? "default" : "secondary"} className="font-mono">
+              {derived.state}
+            </Badge>
+            {derived.blocker && (
+              <>
+                <span className="text-muted-foreground">Blocker:</span>
+                <code className="font-mono">{derived.blocker}</code>
+              </>
+            )}
+          </div>
         </AlertDescription>
       </Alert>
 
@@ -222,42 +230,62 @@ export function ManualProductionObservationPanel({
         <VoidObservationForm onDone={onChanged} />
       </details>
 
-
-      <Input
-        value={recipient}
-        onChange={(e) => setRecipient(e.target.value)}
-        placeholder="approved recipient email (must match recipient policy)"
-        disabled={running || !canDispatch}
-      />
-
-      {result?.transport && !result.transport.resolved && (
-        <Alert variant="destructive">
-          <AlertDescription className="space-y-1 text-xs">
-            <div>Checking whether the previous request reached the server…</div>
-            <div><span className="text-muted-foreground">Class:</span> {result.transport.errorClass}
-              {result.transport.httpStatus ? <> · HTTP {result.transport.httpStatus}</> : null}
-              {result.transport.runtimeBuild ? <> · build {result.transport.runtimeBuild}</> : null}
-              {result.transport.correlationId ? <> · req {result.transport.correlationId}</> : null}
-            </div>
-            {result.transport.responseBody && (
-              <pre className="max-h-32 overflow-auto rounded bg-muted p-2 font-mono text-[10px]">{result.transport.responseBody}</pre>
-            )}
+      {derived.state === "COMPLETED" ? (
+        <Alert>
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <AlertDescription className="text-xs">
+            Manual Production observation confirmed. See the evidence block below for
+            request, message, delivery-attempt, trace and provider identifiers.
           </AlertDescription>
         </Alert>
-      )}
+      ) : (
+        <>
+          <Input
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            placeholder="approved recipient email (must match recipient policy)"
+            disabled={running || !canDispatch}
+          />
 
-      <div className="flex items-center gap-2">
-        <Button onClick={run} disabled={running || recovering || !canDispatch || !recipient.trim() || (result?.transport && !result.transport.resolved) || (phase !== "IDLE" && phase !== "FAILED" && phase !== "NOT_RECEIVED")}>
-          {(running || recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {recovering ? "Checking pending…" : (result?.transport && !result.transport.resolved) ? "Checking previous request…" : "Dispatch observation"}
-        </Button>
-        {phase === "AWAITING_PROVIDER" && result?.message_id && (
-          <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
-            {resuming ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCcw className="h-4 w-4 mr-2" />}
-            Retry finalize
-          </Button>
-        )}
-      </div>
+          {result?.transport && !result.transport.resolved && (
+            <Alert variant="destructive">
+              <AlertDescription className="space-y-1 text-xs">
+                <div>Checking whether the previous request reached the server…</div>
+                <div><span className="text-muted-foreground">Class:</span> {result.transport.errorClass}
+                  {result.transport.httpStatus ? <> · HTTP {result.transport.httpStatus}</> : null}
+                  {result.transport.runtimeBuild ? <> · build {result.transport.runtimeBuild}</> : null}
+                  {result.transport.correlationId ? <> · req {result.transport.correlationId}</> : null}
+                </div>
+                {result.transport.responseBody && (
+                  <pre className="max-h-32 overflow-auto rounded bg-muted p-2 font-mono text-[10px]">{result.transport.responseBody}</pre>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={run}
+              disabled={running || !canDispatch || !recipient.trim()}
+              title={derived.blocker ?? undefined}
+            >
+              {(running || recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {derived.primaryLabel}
+            </Button>
+            {derived.state === "RECOVERY_REQUIRED_RETRY_FINALIZE" && result?.message_id && (
+              <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
+                {resuming ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCcw className="h-4 w-4 mr-2" />}
+                Retry finalize
+              </Button>
+            )}
+            {!derived.primaryEnabled && derived.blocker && (
+              <span className="text-xs text-muted-foreground">
+                Blocked by <code className="font-mono">{derived.blocker}</code>
+              </span>
+            )}
+          </div>
+        </>
+      )}
 
       {phase === "AWAITING_INBOX_CONFIRMATION" && result?.observation_id && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">
