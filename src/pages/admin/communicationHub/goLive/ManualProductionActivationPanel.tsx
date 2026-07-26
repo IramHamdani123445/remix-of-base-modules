@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck, Lock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLiveStatusService";
+import type { EventGoLiveStatus, Stage6Blocker } from "@/platform/communication-hub/eventGoLiveStatusService";
 import {
   certifyEventManualProduction,
   closeOneRealEmailGateAfterStage6,
@@ -56,12 +56,10 @@ export function ManualProductionActivationPanel({
   const stage7 = status?.stage7;
   const platform = status?.platform;
 
-  const stage6ReadyForCert =
-    !!stage6?.one_real_email_certification_id &&
-    !!stage6?.trace_id &&
-    stage6?.provider_call_attempted === true &&
-    stage6?.manual_verification_status === "CONFIRMED" &&
-    !stage6?.reconciliation_required;
+  // Server-authoritative eligibility (do NOT infer from browser booleans)
+  const eligibleCertId = stage6?.eligible_one_real_email_certification_id ?? null;
+  const stage6ReadyForCert = stage6?.stage6_ready_for_manual_production === true && !!eligibleCertId;
+  const stage6Blockers = stage6?.stage6_manual_production_blockers ?? [];
 
   const eventCertified =
     stage7?.manual_event_status === "live_manual_only" ||
@@ -86,17 +84,24 @@ export function ManualProductionActivationPanel({
     activatePhrase === ACTIVATE_TYPED_PHRASE;
 
   async function handleCertify() {
-    if (!stage6?.one_real_email_certification_id) return;
+    if (!eligibleCertId) return;
     setCertifying(true);
     try {
-      await certifyEventManualProduction({
+      const result = await certifyEventManualProduction({
         moduleCode,
         eventCode,
         channel,
-        oneRealEmailCertificationId: stage6.one_real_email_certification_id,
+        oneRealEmailCertificationId: eligibleCertId,
         reason: certifyReason.trim(),
         typedConfirmation: certifyPhrase,
       });
+      if ((result as any)?.ok === false) {
+        const blockers = ((result as any).blockers ?? []) as Stage6Blocker[];
+        const summary = blockers.map((b) => b.code).join(", ") || (result as any).error || "prerequisites_not_met";
+        toast.error(`Certification blocked: ${summary}`);
+        onChanged();
+        return;
+      }
       toast.success("Event certified for Manual Production");
       setCertifyReason("");
       setCertifyPhrase("");
@@ -149,11 +154,17 @@ export function ManualProductionActivationPanel({
     <div className="space-y-6">
       {/* Stage 6 evidence */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm rounded-md border p-3 bg-muted/30">
-        <div><span className="text-muted-foreground">Stage 6 certification:</span>{" "}
-          <code className="font-mono text-xs">{stage6?.one_real_email_certification_id ?? "—"}</code>
+        <div><span className="text-muted-foreground">Eligible certification:</span>{" "}
+          <code className="font-mono text-xs">{eligibleCertId ?? "—"}</code>
         </div>
-        <div><span className="text-muted-foreground">Provider status:</span>{" "}
-          <Badge variant="outline">{stage6?.one_real_email_certification_status ?? "—"}</Badge>
+        <div><span className="text-muted-foreground">Latest certification:</span>{" "}
+          <code className="font-mono text-xs">{stage6?.latest_one_real_email_certification_id ?? "—"}</code>
+        </div>
+        <div><span className="text-muted-foreground">Eligible status:</span>{" "}
+          <Badge variant="outline">{stage6?.eligible_one_real_email_certification_status ?? "—"}</Badge>
+        </div>
+        <div><span className="text-muted-foreground">Latest status:</span>{" "}
+          <Badge variant="outline">{stage6?.latest_one_real_email_certification_status ?? "—"}</Badge>
         </div>
         <div><span className="text-muted-foreground">Manual inbox verification:</span>{" "}
           <Badge variant={stage6?.manual_verification_status === "CONFIRMED" ? "default" : "secondary"}>
@@ -180,11 +191,24 @@ export function ManualProductionActivationPanel({
       {!stage6ReadyForCert && !eventCertified && (
         <Alert variant="destructive">
           <Lock className="h-4 w-4" />
-          <AlertTitle>Stage 6 not complete</AlertTitle>
+          <AlertTitle>Stage 6 prerequisites not satisfied</AlertTitle>
           <AlertDescription>
-            Manual production certification requires a One Real Email
-            certification with provider call attempted, a trace id, and
-            manual inbox confirmation.
+            <div className="mb-2">
+              Manual Production certification is gated by the server. The
+              following prerequisites are outstanding:
+            </div>
+            {stage6Blockers.length > 0 ? (
+              <ul className="list-disc pl-5 space-y-1">
+                {stage6Blockers.map((b) => (
+                  <li key={b.code}>
+                    <code className="font-mono text-xs">{b.code}</code>
+                    {b.message ? <> — {b.message}</> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-xs">Waiting on authoritative status…</div>
+            )}
           </AlertDescription>
         </Alert>
       )}
