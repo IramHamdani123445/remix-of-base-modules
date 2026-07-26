@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   runManualProductionObservation,
   finalizeManualProductionObservation,
   confirmManualProductionObservation,
+  getObservationRecovery,
   type ObservationPhase,
   type RunObservationResult,
 } from "@/platform/communication-hub/manualProductionObservationService";
