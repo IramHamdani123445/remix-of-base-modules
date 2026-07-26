@@ -101,7 +101,19 @@ import {
   deriveLifecycle,
   deriveObservation,
   deriveStep6,
+  composePendingObservationState,
+  EMPTY_PENDING_OBSERVATION_STATE,
+  type PendingObservationState,
 } from "./goLiveStateResolver";
+import {
+  getObservationRecovery,
+  type ObservationRecovery,
+  type RunObservationResult,
+} from "@/platform/communication-hub/manualProductionObservationService";
+import {
+  getGoLiveCompletion,
+  type GoLiveCompletion,
+} from "@/platform/communication-hub/goLiveCompletionService";
 
 
 const SESSION_KEY = "commHub.goLive.v1";
