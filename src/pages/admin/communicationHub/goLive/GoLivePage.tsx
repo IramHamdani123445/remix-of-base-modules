@@ -1310,7 +1310,12 @@ export default function GoLivePage() {
               eventCode={session.eventCode}
               channel={session.channel ?? "email"}
               status={goLiveStatus}
+              pendingObservation={pendingObservation}
               reloadNonce={goLiveReloadNonce}
+              onLastResult={(res, key) => {
+                setObservationLastResult(res);
+                if (key !== undefined) setObservationLastKey(key);
+              }}
               onChanged={reloadGoLive}
             />
           </div>
