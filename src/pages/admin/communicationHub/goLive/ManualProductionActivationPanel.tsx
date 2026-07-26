@@ -166,6 +166,60 @@ export function ManualProductionActivationPanel({
     }
   }
 
+  async function handleReconcile() {
+    setReconciling(true);
+    setReconcileMsg(null);
+    try {
+      const res = await reconcileManualProductionEntry({ moduleCode, eventCode, channel });
+      if (res.status === "READY_TO_DISPATCH") {
+        setReconcileMsg("Event certification is valid — ready to dispatch a Manual Production observation.");
+        toast.success("Event certification reconciled — ready to dispatch");
+        onChanged();
+        return;
+      }
+      if (res.status === "EVENT_CERTIFICATION_REQUIRED" && res.one_real_email_certification_id) {
+        // Server has valid Stage 6 evidence and matching fingerprint;
+        // upsert event certification without sending another email.
+        const promote = await promoteEventToManualProduction({
+          moduleCode,
+          eventCode,
+          channel,
+          reason: "Reconcile after mode-only version change",
+          typedConfirmation: MANUAL_PRODUCTION_TYPED_PHRASE,
+          oneRealEmailCertificationId: res.one_real_email_certification_id,
+        });
+        if (!promote.ok) {
+          toast.error(`Reconcile blocked: ${promote.error ?? promote.phase ?? "unknown"}`);
+        } else {
+          toast.success("Event certified from existing Stage 6 evidence");
+        }
+        onChanged();
+        return;
+      }
+      if (res.status === "EVIDENCE_DRIFT_REQUIRES_RETEST") {
+        setReconcileMsg("Safety-relevant evidence has changed (template, sender, recipient policy or provider). A fresh One Real Email is required.");
+        toast.error("Evidence drift — retest required");
+        return;
+      }
+      if (res.status === "PENDING_OBSERVATION_RECOVERY") {
+        setReconcileMsg(`An observation is in phase ${res.phase ?? "PENDING"}. Resolve it below before reconciling.`);
+        toast.warning("Pending observation recovery");
+        return;
+      }
+      if (res.status === "EMERGENCY_STOP_ACTIVE") {
+        setReconcileMsg("Emergency Stop is active. Clear it before reconciling.");
+        toast.error("Emergency Stop active");
+        return;
+      }
+      setReconcileMsg(`Reconcile result: ${res.status}`);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Reconcile failed");
+    } finally {
+      setReconciling(false);
+    }
+  }
+
+
   return (
     <div className="space-y-6">
       {/* Stage 6 evidence */}
