@@ -90,7 +90,9 @@ Deno.serve(async (req) => {
   const { data: authCtx, error: ctxErr } = await authClient.rpc(
     "get_comm_hub_request_auth_context",
   );
-  if (ctxErr || !authCtx || (authCtx as any).is_admin !== true) {
+  const ctxAny = authCtx as any;
+  const isAdmin = ctxAny?.is_admin === true || ctxAny?.comm_hub_admin === true;
+  if (ctxErr || !authCtx || !isAdmin) {
     return json(
       {
         ok: false,
