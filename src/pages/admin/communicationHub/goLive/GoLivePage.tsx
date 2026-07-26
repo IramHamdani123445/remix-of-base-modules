@@ -96,6 +96,12 @@ import {
   getEventGoLiveStatus,
   type EventGoLiveStatus,
 } from "@/platform/communication-hub/eventGoLiveStatusService";
+import LifecycleBanner from "./LifecycleBanner";
+import {
+  deriveLifecycle,
+  deriveObservation,
+  deriveStep6,
+} from "./goLiveStateResolver";
 
 
 const SESSION_KEY = "commHub.goLive.v1";
