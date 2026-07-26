@@ -1238,6 +1238,7 @@ export default function GoLivePage() {
               eventCode={session.eventCode}
               channel={session.channel ?? "email"}
               status={goLiveStatus}
+              reloadNonce={goLiveReloadNonce}
               onChanged={reloadGoLive}
             />
           </div>
