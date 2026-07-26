@@ -570,6 +570,19 @@ Deno.serve(async (req) => {
     .update({ provider_call_attempted: true, updated_at: new Date().toISOString() })
     .eq("id", env.execution_id);
 
+  // Message lifecycle: queued -> sending (immediately before provider call).
+  {
+    const { data: lc, error: lcErr } = await admin.rpc(
+      "set_comm_hub_one_real_email_message_status",
+      { p_message_id: env.message_id, p_target_status: "sending" });
+    if (lcErr || !(lc && (lc as any).ok === true)) {
+      env.warnings.push({
+        code: "message_lifecycle_sending_failed",
+        message: lcErr?.message ?? JSON.stringify(lc),
+      });
+    }
+  }
+
   const transportResult = await sendEmailViaGuardedTransport(admin, {
     guard: {
       messageId: env.message_id!,
@@ -596,17 +609,21 @@ Deno.serve(async (req) => {
 
   // ---- Stage G: persist provider evidence, then consume + finalise ----
   if (isGuardRefusal(transportResult)) {
-    // Guard refused before provider was reached — technically pre-provider.
-    // But provider_call_attempted was already flipped; we must NOT auto-retry
-    // because we cannot prove the transport did not touch the wire.
     addBlocker("transport_guard_refused", "provider_invocation",
       transportResult.code);
     await admin.from("communication_delivery_attempt").update({
       status: "failure",
       error_code: transportResult.code,
       provider_call_attempted: false,
+      finished_at: new Date().toISOString(),
+      provider_call_completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq("id", attemptId);
+    await admin.rpc("set_comm_hub_one_real_email_message_status", {
+      p_message_id: env.message_id, p_target_status: "failed",
+      p_error_code: transportResult.code,
+      p_error_message: "transport_guard_refused",
+    });
     return finalize("BLOCKED", "provider_invocation",
       { retrySafe: false, reconciliationRequired: true });
   }
