@@ -288,6 +288,55 @@ serve(async (req) => {
     return await processTargetedControlledLive(admin, bodyParsed);
   }
 
+  // CH-SLICE-C — Arm-context binding for the generic queue path.
+  // Any scheduled/automatic invocation of operation="queue" MUST arrive with
+  // an active scheduler tick lease, and the server-side RPC must confirm the
+  // Arm context still matches. Targeted operations (`targeted_dry_run`,
+  // `targeted_controlled_live`, and the dedicated one-real-email /
+  // manual-production observation edge functions) keep their own stronger
+  // gates and are NOT subject to this check.
+  if (operation === "queue") {
+    const leaseId = req.headers.get("x-scheduler-lease-id") ?? bodyParsed?.scheduler_lease_id ?? "";
+    if (!leaseId) {
+      return json({
+        ok: false,
+        error: "scheduler_lease_id_required",
+        note: "operation=queue requires an active scheduler tick lease (Slice C binding).",
+        claimed: 0, processed: 0, sentLive: 0, sentDryRun: 0,
+        failed: 0, retried: 0, skipped: 0,
+      }, 400);
+    }
+    const gate = createClient(SUPABASE_URL, SERVICE_ROLE, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data: gateData, error: gateErr } = await gate.rpc(
+      "assert_comm_hub_queue_run_context",
+      {
+        p_lease_id: leaseId,
+        p_module_code: bodyParsed?.module_code ?? null,
+        p_event_code: bodyParsed?.event_code ?? null,
+        p_channel: bodyParsed?.channel ?? "email",
+      },
+    );
+    if (gateErr) {
+      return json({
+        ok: false, error: "queue_run_context_rpc_failed",
+        detail: gateErr.message,
+        claimed: 0, processed: 0, sentLive: 0, sentDryRun: 0,
+        failed: 0, retried: 0, skipped: 0,
+      }, 500);
+    }
+    if (!(gateData as any)?.allowed) {
+      return json({
+        ok: false, error: "queue_run_context_disallowed",
+        blockers: (gateData as any)?.blockers ?? [],
+        lease_id: leaseId,
+        claimed: 0, processed: 0, sentLive: 0, sentDryRun: 0,
+        failed: 0, retried: 0, skipped: 0,
+      }, 409);
+    }
+  }
+
   const dispatchEnabledEnv = flag("COMMUNICATION_HUB_DISPATCH_ENABLED");
   const emailLiveEnv = flag("COMMUNICATION_HUB_EMAIL_LIVE");
   const allowlist = parseAllowlist(Deno.env.get("COMMUNICATION_HUB_EMAIL_LIVE_ALLOWLIST"));
