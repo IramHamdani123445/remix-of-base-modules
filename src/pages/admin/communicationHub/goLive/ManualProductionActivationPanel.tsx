@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck, Lock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLiveStatusService";
+import type { EventGoLiveStatus, Stage6Blocker } from "@/platform/communication-hub/eventGoLiveStatusService";
 import {
   certifyEventManualProduction,
   closeOneRealEmailGateAfterStage6,
