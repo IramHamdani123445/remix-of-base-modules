@@ -100,16 +100,24 @@ export async function dispatchAndRecordObservation(input: {
   idempotencyKey: string;
   departmentCode?: string;
 }): Promise<RecordObservationResult> {
+  const channelCode = ((input.channel ?? "email").toUpperCase() as any);
   const sendResult: any = await sendCommunication({
     moduleCode: input.moduleCode,
     eventCode: input.eventCode,
-    channels: [input.channel ?? "email"],
-    recipient: { email: input.recipientEmail, id: input.recipientId },
+    channels: [channelCode],
+    recipient: {
+      personId: input.recipientId ?? null,
+      email: input.recipientEmail,
+      role: "to",
+    } as any,
     data: input.data ?? {},
     idempotencyKey: input.idempotencyKey,
     departmentCode: input.departmentCode,
-    reference: { context: "manual_production_observation" },
+    metadata: { context: "manual_production_observation" },
   } as any);
+
+  const firstMessage = sendResult?.messages?.[0];
+
 
   const providerCallAttempted = Boolean(
     sendResult?.providerCallAttempted ??
