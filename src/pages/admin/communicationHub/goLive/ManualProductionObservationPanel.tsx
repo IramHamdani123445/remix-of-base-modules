@@ -198,6 +198,12 @@ export function ManualProductionObservationPanel({
         </AlertDescription>
       </Alert>
 
+      <details className="rounded-md border border-dashed p-3 text-xs">
+        <summary className="cursor-pointer font-medium">Void an empty observation (Checkpoint 0 remediation)</summary>
+        <VoidObservationForm onDone={onChanged} />
+      </details>
+
+
       <Input
         value={recipient}
         onChange={(e) => setRecipient(e.target.value)}
