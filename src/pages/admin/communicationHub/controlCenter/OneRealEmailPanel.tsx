@@ -588,6 +588,7 @@ export function OneRealEmailPanel({
             <div>Failure stage: <code>{envelope.failureStage ?? "—"}</code></div>
             <div>Provider called: <code>{String(envelope.providerCallAttempted)}</code></div>
             <div>Retry safe: <code>{String(envelope.retrySafe)}</code></div>
+            <div>Automatic retry allowed: <code>{String(envelope.automaticRetryAllowed)}</code></div>
             <div>Cleanup proven: <code>{String(envelope.cleanupProven)}</code></div>
             <div>Reconciliation required: <code>{String(envelope.reconciliationRequired)}</code></div>
             <div>Provider status: <code>{envelope.providerStatus ?? "—"}</code></div>
