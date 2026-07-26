@@ -60,6 +60,7 @@ export interface OneRealEmailEnvelope {
   certificationKind: "ONE_REAL_EMAIL" | null;
   certificationStatus: string | null;
   retrySafe: boolean;
+  automaticRetryAllowed: boolean;
   reconciliationRequired: boolean;
   cleanupProven: boolean;
   failureStage: string | null;
@@ -115,6 +116,7 @@ function emptyEnvelope(httpStatus: number, startedAt: string): OneRealEmailEnvel
     certificationKind: null,
     certificationStatus: null,
     retrySafe: false,
+    automaticRetryAllowed: false,
     reconciliationRequired: false,
     cleanupProven: false,
     failureStage: "client_transport",
@@ -172,6 +174,7 @@ export function normaliseOneRealEmailEnvelope(
     certificationKind: raw.certification_kind ?? null,
     certificationStatus: raw.certification_status ?? null,
     retrySafe: raw.retry_safe === true,
+    automaticRetryAllowed: raw.automatic_retry_allowed === true,
     reconciliationRequired: raw.reconciliation_required === true,
     cleanupProven: raw.cleanup_proven === true,
     failureStage: raw.failure_stage ?? null,

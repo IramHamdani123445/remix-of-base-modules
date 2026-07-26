@@ -95488,6 +95488,15 @@ export type Database = {
         }
         Returns: Json
       }
+      assert_comm_hub_one_real_email_provider_boundary: {
+        Args: {
+          p_attempt_id: string
+          p_execution_id: string
+          p_grant_id: string
+          p_message_id: string
+        }
+        Returns: Json
+      }
       assert_comm_hub_runtime_transition: {
         Args: { p_action: string; p_context: Json }
         Returns: Json

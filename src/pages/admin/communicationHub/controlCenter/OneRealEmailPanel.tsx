@@ -588,6 +588,7 @@ export function OneRealEmailPanel({
             <div>Failure stage: <code>{envelope.failureStage ?? "—"}</code></div>
             <div>Provider called: <code>{String(envelope.providerCallAttempted)}</code></div>
             <div>Retry safe: <code>{String(envelope.retrySafe)}</code></div>
+            <div>Automatic retry allowed: <code>{String(envelope.automaticRetryAllowed)}</code></div>
             <div>Cleanup proven: <code>{String(envelope.cleanupProven)}</code></div>
             <div>Reconciliation required: <code>{String(envelope.reconciliationRequired)}</code></div>
             <div>Provider status: <code>{envelope.providerStatus ?? "—"}</code></div>
@@ -648,6 +649,19 @@ export function OneRealEmailPanel({
                 Reconciliation is required (<code>reconciliation_required=true</code>).
                 Automatic retry is disabled. Do not click New Run. Preserve the
                 execution, message, attempt, and trace ids for reconciliation.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {envelope.status === "DELIVERY_PENDING" && (
+            <Alert variant="destructive">
+              <MailWarning className="h-4 w-4" />
+              <AlertTitle>Delivery pending — no retry action offered</AlertTitle>
+              <AlertDescription>
+                The provider accepted the message but final delivery is still
+                pending. Automatic retry is disabled and no New Run action is
+                available. Wait for the asynchronous delivery evidence to arrive
+                and preserve the execution, message, attempt and trace ids.
               </AlertDescription>
             </Alert>
           )}

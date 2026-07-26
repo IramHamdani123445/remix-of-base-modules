@@ -75,6 +75,7 @@ interface Envelope {
   certification_status: string | null;
   failure_stage: string | null;
   retry_safe: boolean;
+  automatic_retry_allowed: boolean;
   reconciliation_required: boolean;
   cleanup_proven: boolean;
   blockers: Array<{ code: string; stage: string; message?: string; detail?: unknown }>;
@@ -120,6 +121,7 @@ function emptyEnvelope(started: string): Envelope {
     certification_status: null,
     failure_stage: null,
     retry_safe: false,
+    automatic_retry_allowed: false,
     reconciliation_required: false,
     cleanup_proven: false,
     blockers: [],
@@ -161,7 +163,14 @@ Deno.serve(async (req) => {
     env.failure_stage = stage;
     env.passed = status === "PROVIDER_ACCEPTED"
       || status === "DELIVERY_PENDING";
-    env.retry_safe = opts.retrySafe;
+    // Any post-provider outcome (provider was invoked, evidence persisted or
+    // otherwise) MUST forbid automatic retry regardless of caller intent.
+    const postProvider = env.provider_call_attempted
+      || status === "PROVIDER_ACCEPTED"
+      || status === "DELIVERY_PENDING"
+      || status === "PROVIDER_REJECTED";
+    env.retry_safe = postProvider ? false : !!opts.retrySafe;
+    env.automatic_retry_allowed = env.retry_safe;
     env.reconciliation_required = !!opts.reconciliationRequired;
     env.cleanup_proven = !!opts.cleanupProven;
     if (opts.message) env.message = opts.message;
@@ -569,25 +578,48 @@ Deno.serve(async (req) => {
   }
   const recipient = String(body.recipient).trim().toLowerCase();
 
-  // Mark execution provider_call_attempted BEFORE invoking transport so that
-  // any crash between provider call and evidence persistence still routes
-  // through the post-provider (retry-unsafe) branch.
-  await admin.from("communication_controlled_live_execution")
-    .update({ provider_call_attempted: true, updated_at: new Date().toISOString() })
-    .eq("id", env.execution_id);
-
-  // Message lifecycle: queued -> sending (immediately before provider call).
+  // Message lifecycle: queued -> sending. This MUST succeed before we go near
+  // the provider — any failure is treated as a hard pre-provider blocker.
   {
     const { data: lc, error: lcErr } = await admin.rpc(
       "set_comm_hub_one_real_email_message_status",
       { p_message_id: env.message_id, p_target_status: "sending" });
     if (lcErr || !(lc && (lc as any).ok === true)) {
-      env.warnings.push({
-        code: "message_lifecycle_sending_failed",
-        message: lcErr?.message ?? JSON.stringify(lc),
-      });
+      addBlocker("message_lifecycle_sending_failed", "pre_provider_evidence",
+        lcErr?.message ?? JSON.stringify(lc));
+      await preProviderReconcile("message_lifecycle_sending_failed");
+      return finalize("BLOCKED", "pre_provider_evidence",
+        { retrySafe: false, cleanupProven: env.cleanup_proven });
     }
   }
+
+  // Provider-boundary assertion — proves every invariant before the wire.
+  {
+    const { data: boundary, error: boundaryErr } = await admin.rpc(
+      "assert_comm_hub_one_real_email_provider_boundary",
+      {
+        p_execution_id: env.execution_id,
+        p_grant_id: env.grant_id,
+        p_message_id: env.message_id,
+        p_attempt_id: attemptId,
+      });
+    if (boundaryErr || !(boundary && (boundary as any).ok === true)) {
+      const bblockers = (boundary as any)?.blockers ?? [];
+      addBlocker("provider_boundary_assertion_failed", "pre_provider_evidence",
+        boundaryErr?.message ?? "provider-boundary invariants not satisfied",
+        bblockers);
+      await preProviderReconcile("provider_boundary_assertion_failed");
+      return finalize("BLOCKED", "pre_provider_evidence",
+        { retrySafe: false, cleanupProven: env.cleanup_proven });
+    }
+  }
+
+  // Irreversible provider boundary — flip execution.provider_call_attempted
+  // ONLY here. A crash between this point and evidence persistence must route
+  // through the post-provider (retry-unsafe) branch.
+  await admin.from("communication_controlled_live_execution")
+    .update({ provider_call_attempted: true, updated_at: new Date().toISOString() })
+    .eq("id", env.execution_id);
 
   const transportResult = await sendEmailViaGuardedTransport(admin, {
     guard: {
@@ -611,28 +643,34 @@ Deno.serve(async (req) => {
     },
   });
 
-  env.provider_call_attempted = true;
-
   // ---- Stage G: persist provider evidence, then consume + finalise ----
   if (isGuardRefusal(transportResult)) {
-    addBlocker("transport_guard_refused", "provider_invocation",
+    // The guard PROVES the provider was not invoked. Reset the pre-boundary
+    // flip on the execution row and pre-provider reconcile the grant.
+    addBlocker("transport_guard_refused", "pre_provider_evidence",
       transportResult.code);
     await admin.from("communication_delivery_attempt").update({
       status: "failure",
       error_code: transportResult.code,
       provider_call_attempted: false,
       finished_at: new Date().toISOString(),
-      provider_call_completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq("id", attemptId);
+    await admin.from("communication_controlled_live_execution")
+      .update({ provider_call_attempted: false, updated_at: new Date().toISOString() })
+      .eq("id", env.execution_id);
     await admin.rpc("set_comm_hub_one_real_email_message_status", {
       p_message_id: env.message_id, p_target_status: "failed",
       p_error_code: transportResult.code,
       p_error_message: "transport_guard_refused",
     });
-    return finalize("BLOCKED", "provider_invocation",
-      { retrySafe: false, reconciliationRequired: true });
+    await preProviderReconcile("transport_guard_refused");
+    return finalize("BLOCKED", "pre_provider_evidence",
+      { retrySafe: false, cleanupProven: env.cleanup_proven });
   }
+
+  // The wire was touched — from here on every path is retry-unsafe.
+  env.provider_call_attempted = true;
 
   // Map durable provider outcome onto the attempt row.
   const providerOk = transportResult.ok;
@@ -750,7 +788,8 @@ Deno.serve(async (req) => {
     : attemptStatus === "pending" ? "DELIVERY_PENDING"
     : "PROVIDER_REJECTED";
 
-  const retrySafeFinal = finalStatus === "DELIVERY_PENDING";
+  // Every post-provider outcome — accepted, pending, rejected — is retry-unsafe.
+  const retrySafeFinal = false;
 
   env.message = finalStatus === "PROVIDER_ACCEPTED"
     ? "Provider accepted the one real email."
