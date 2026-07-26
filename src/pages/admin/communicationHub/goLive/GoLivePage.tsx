@@ -88,6 +88,15 @@ import {
 import ReleaseModeCards from "./ReleaseModeCards";
 import AutomationStandbyPanel from "./AutomationStandbyPanel";
 import { useStageReadiness } from "@/platform/communication-hub/useStageReadiness";
+import { ManualProductionActivationPanel } from "./ManualProductionActivationPanel";
+import { ManualProductionObservationPanel } from "./ManualProductionObservationPanel";
+import { AutomatedProductionActivationPanel } from "./AutomatedProductionActivationPanel";
+import { GoLiveCompletionPanel } from "./GoLiveCompletionPanel";
+import {
+  getEventGoLiveStatus,
+  type EventGoLiveStatus,
+} from "@/platform/communication-hub/eventGoLiveStatusService";
+
 
 const SESSION_KEY = "commHub.goLive.v1";
 
@@ -478,6 +487,31 @@ export default function GoLivePage() {
   const [stage6ContextError, setStage6ContextError] = useState<string | null>(null);
   const [stage6ContextLoading, setStage6ContextLoading] = useState(false);
   const [stage6ContextReloadNonce, setStage6ContextReloadNonce] = useState(0);
+  const [goLiveStatus, setGoLiveStatus] = useState<EventGoLiveStatus | null>(null);
+  const [goLiveReloadNonce, setGoLiveReloadNonce] = useState(0);
+  const reloadGoLive = () => setGoLiveReloadNonce((n) => n + 1);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!session.moduleCode || !session.eventCode) {
+      setGoLiveStatus(null);
+      return;
+    }
+    (async () => {
+      try {
+        const s = await getEventGoLiveStatus({
+          moduleCode: session.moduleCode,
+          eventCode: session.eventCode,
+          channel: session.channel ?? "email",
+        });
+        if (!cancelled) setGoLiveStatus(s);
+      } catch {
+        if (!cancelled) setGoLiveStatus(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session.moduleCode, session.eventCode, session.channel, goLiveReloadNonce, stage6ContextReloadNonce]);
+
   useEffect(() => {
     let cancelled = false;
     setStage6Context(null);
@@ -1092,87 +1126,109 @@ export default function GoLivePage() {
 
       <Separator />
 
-      {/* STEP 7 — ACTIVATE MANUAL PRODUCTION (locked) */}
+      {/* STEP 7 — ACTIVATE MANUAL PRODUCTION */}
       <CommunicationHubSectionCard
         title={
           <StepHeader
             index={7}
             title="Activate Manual Production"
-            status={stageReadiness.stageLockReason.MANUAL_PRODUCTION ? "locked" : "attention"}
-            hint={stageReadiness.stageLockReason.MANUAL_PRODUCTION ?? "Ready to activate from the mode cards above."}
+            status={
+              goLiveStatus?.stage7?.manual_event_status === "live_manual_only" ||
+              goLiveStatus?.stage7?.manual_event_status === "live_cron_allowed"
+                ? "done"
+                : controlledLiveDone
+                ? "current"
+                : "locked"
+            }
+            hint="Server-derived. Requires Stage 6 manual inbox confirmation."
           /> as any
         }
-        description="Certified events send by explicit operator action only. Activated via the Manual Production mode card once the event is certified."
+        description="Certify this event, close the scoped real-email gate, review global impact, switch platform mode, and run a Manual Production observation."
       >
-        <Alert>
-          <Lock className="h-4 w-4" />
-          <AlertTitle>{stageReadiness.stageLockReason.MANUAL_PRODUCTION ? "Locked" : "Ready to activate"}</AlertTitle>
-          <AlertDescription>
-            {stageReadiness.stageLockReason.MANUAL_PRODUCTION ??
-              "Use the Manual Production mode card at the top of the page to activate."}
-          </AlertDescription>
-        </Alert>
+        {!controlledLiveDone ? (
+          <Alert>
+            <Lock className="h-4 w-4" />
+            <AlertDescription>Locked until Stage 6 is complete.</AlertDescription>
+          </Alert>
+        ) : (
+          <div className="space-y-6">
+            <ManualProductionActivationPanel
+              moduleCode={session.moduleCode}
+              eventCode={session.eventCode}
+              channel={session.channel ?? "email"}
+              status={goLiveStatus}
+              onChanged={reloadGoLive}
+            />
+            <ManualProductionObservationPanel
+              moduleCode={session.moduleCode}
+              eventCode={session.eventCode}
+              channel={session.channel ?? "email"}
+              status={goLiveStatus}
+              onChanged={reloadGoLive}
+            />
+          </div>
+        )}
       </CommunicationHubSectionCard>
 
       <Separator />
 
-      {/* STEP 8 — ACTIVATE AUTOMATED PRODUCTION (locked) */}
+      {/* STEP 8 — ACTIVATE AUTOMATED PRODUCTION */}
       <CommunicationHubSectionCard
         title={
           <StepHeader
             index={8}
             title="Activate Automated Production"
-            status={stageReadiness.stageLockReason.AUTOMATED_PRODUCTION ? "locked" : "attention"}
-            hint={stageReadiness.stageLockReason.AUTOMATED_PRODUCTION ?? "Ready to activate from the mode cards above."}
+            status={
+              goLiveStatus?.stage8?.automation_event_certification_status === "live_cron_allowed"
+                ? "done"
+                : goLiveStatus?.stage7?.manual_event_status === "live_manual_only"
+                ? "current"
+                : "locked"
+            }
+            hint="Requires all nine readiness checks, drift-free lineage, and a confirmed manual observation."
           /> as any
         }
-        description="Certified events run automatically under policy. Activated via the Automated Production mode card once the event is certified for cron."
+        description="Run readiness probes, certify the event as live_cron_allowed, switch mode to AUTOMATED_PRODUCTION (STANDBY), then arm automation."
       >
-        <Alert>
-          <Lock className="h-4 w-4" />
-          <AlertTitle>{stageReadiness.stageLockReason.AUTOMATED_PRODUCTION ? "Locked" : "Ready to activate"}</AlertTitle>
-          <AlertDescription>
-            {stageReadiness.stageLockReason.AUTOMATED_PRODUCTION ??
-              "Use the Automated Production mode card at the top of the page to activate."}
-          </AlertDescription>
-        </Alert>
+        {goLiveStatus?.stage7?.manual_event_status !== "live_manual_only" &&
+        goLiveStatus?.stage7?.manual_event_status !== "live_cron_allowed" ? (
+          <Alert>
+            <Lock className="h-4 w-4" />
+            <AlertDescription>Locked until the event is Manual-Production certified.</AlertDescription>
+          </Alert>
+        ) : (
+          <AutomatedProductionActivationPanel
+            moduleCode={session.moduleCode}
+            eventCode={session.eventCode}
+            channel={session.channel ?? "email"}
+            status={goLiveStatus}
+            onChanged={reloadGoLive}
+          />
+        )}
       </CommunicationHubSectionCard>
 
       <Separator />
 
-      {/* STEP 9 — REVIEW */}
+      {/* STEP 9 — REVIEW & COMPLETE */}
       <CommunicationHubSectionCard
         title={<StepHeader index={9} title="Review & Complete" status={stepStatus.s6} /> as any}
-        description="Full evidence trail for this event. All ids below are server-issued — nothing here is authoritative in the browser."
+        description="Server-authoritative evidence. Nothing on this page is sourced from the browser."
       >
         {!controlledLiveDone ? (
           <div className="text-sm text-muted-foreground">
             Locked. Complete the Controlled Stub certification to view the evidence summary.
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-            <div><span className="text-muted-foreground">Module / Event:</span> {session.moduleCode} / {session.eventCode}</div>
-            <div><span className="text-muted-foreground">Channel:</span> {session.channel}</div>
-            <div><span className="text-muted-foreground">Preview snapshot id:</span> <code className="font-mono text-xs">{session.previewSnapshotId ?? "—"}</code></div>
-            <div><span className="text-muted-foreground">Preview approval id:</span> <code className="font-mono text-xs">{session.previewApprovalId ?? "—"}</code></div>
-            <div><span className="text-muted-foreground">Dry-run execution id:</span> <code className="font-mono text-xs">{session.dryRunExecutionId ?? "—"}</code></div>
-            <div><span className="text-muted-foreground">Dry-run certification id:</span> <code className="font-mono text-xs">{session.dryRunCertificationId ?? "—"}</code></div>
-            <div><span className="text-muted-foreground">Controlled-stub execution id:</span> <code className="font-mono text-xs">{session.controlledLiveExecutionId ?? "—"}</code></div>
-            <div><span className="text-muted-foreground">Controlled-stub certification id:</span> <code className="font-mono text-xs">{session.controlledLiveCertificationId ?? "—"}</code></div>
-            <div className="md:col-span-2">
-              <Alert>
-                <AlertTitle>Recommendation</AlertTitle>
-                <AlertDescription>
-                  This event is <strong>P3E_STUB_CERTIFIED</strong> once the controlled-stub test passes.
-                  Send One Real Email, Manual Production and Automated Production remain locked until
-                  platform administrators unlock the real-provider gate and certify the event for
-                  live_manual_only / live_cron_allowed.
-                </AlertDescription>
-              </Alert>
-            </div>
-          </div>
+          <GoLiveCompletionPanel
+            moduleCode={session.moduleCode}
+            eventCode={session.eventCode}
+            channel={session.channel ?? "email"}
+            reloadNonce={goLiveReloadNonce}
+            onChanged={reloadGoLive}
+          />
         )}
       </CommunicationHubSectionCard>
+
     </CommunicationHubWorkspaceShell>
   );
 }

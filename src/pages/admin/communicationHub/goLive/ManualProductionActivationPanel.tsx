@@ -1,0 +1,289 @@
+import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, ShieldCheck, Lock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
+import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLiveStatusService";
+import {
+  certifyEventManualProduction,
+  closeOneRealEmailGateAfterStage6,
+  MANUAL_PRODUCTION_TYPED_PHRASE,
+} from "@/platform/communication-hub/manualProductionCertificationService";
+import { supabase } from "@/integrations/supabase/client";
+
+const ACTIVATE_TYPED_PHRASE = "ACTIVATE MANUAL PRODUCTION";
+
+interface Props {
+  moduleCode: string;
+  eventCode: string;
+  channel: string;
+  status: EventGoLiveStatus | null;
+  onChanged: () => void;
+}
+
+/**
+ * Stage 7 — Activate Manual Production.
+ *
+ * Actions in order:
+ * 1. Certify selected event for Manual Production
+ * 2. Close One Real Email testing gate (if still open)
+ * 3. Global mode impact preview
+ * 4. Switch platform mode to MANUAL_PRODUCTION
+ * 5. (Observation lives in its own panel below)
+ */
+export function ManualProductionActivationPanel({
+  moduleCode,
+  eventCode,
+  channel,
+  status,
+  onChanged,
+}: Props) {
+  const [certifyReason, setCertifyReason] = useState("");
+  const [certifyPhrase, setCertifyPhrase] = useState("");
+  const [certifying, setCertifying] = useState(false);
+
+  const [closingGate, setClosingGate] = useState(false);
+  const [gateReason, setGateReason] = useState("Stage 6 complete — closing scoped real-email gate");
+
+  const [activateReason, setActivateReason] = useState("");
+  const [activatePhrase, setActivatePhrase] = useState("");
+  const [switching, setSwitching] = useState(false);
+
+  const stage6 = status?.stage6;
+  const stage7 = status?.stage7;
+  const platform = status?.platform;
+
+  const stage6ReadyForCert =
+    !!stage6?.one_real_email_certification_id &&
+    !!stage6?.trace_id &&
+    stage6?.provider_call_attempted === true &&
+    stage6?.manual_verification_status === "CONFIRMED" &&
+    !stage6?.reconciliation_required;
+
+  const eventCertified =
+    stage7?.manual_event_status === "live_manual_only" ||
+    stage7?.manual_event_status === "live_cron_allowed";
+
+  const globalManualActive =
+    platform?.current_operating_mode === "MANUAL_PRODUCTION" ||
+    platform?.current_operating_mode === "AUTOMATED_PRODUCTION";
+
+  const gateStillOpen = stage6?.real_email_gate_enabled === true;
+
+  const canCertify =
+    stage6ReadyForCert &&
+    !certifying &&
+    certifyReason.trim().length >= 6 &&
+    certifyPhrase === MANUAL_PRODUCTION_TYPED_PHRASE;
+
+  const canSwitchMode =
+    eventCertified &&
+    !switching &&
+    activateReason.trim().length >= 6 &&
+    activatePhrase === ACTIVATE_TYPED_PHRASE;
+
+  async function handleCertify() {
+    if (!stage6?.one_real_email_certification_id) return;
+    setCertifying(true);
+    try {
+      await certifyEventManualProduction({
+        moduleCode,
+        eventCode,
+        channel,
+        oneRealEmailCertificationId: stage6.one_real_email_certification_id,
+        reason: certifyReason.trim(),
+        typedConfirmation: certifyPhrase,
+      });
+      toast.success("Event certified for Manual Production");
+      setCertifyReason("");
+      setCertifyPhrase("");
+      onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Certification failed");
+    } finally {
+      setCertifying(false);
+    }
+  }
+
+  async function handleCloseGate() {
+    setClosingGate(true);
+    try {
+      await closeOneRealEmailGateAfterStage6({
+        moduleCode,
+        eventCode,
+        channel,
+        reason: gateReason.trim() || "Stage 6 complete",
+      });
+      toast.success("One Real Email testing gate closed");
+      onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Gate closure failed");
+    } finally {
+      setClosingGate(false);
+    }
+  }
+
+  async function handleSwitchMode() {
+    setSwitching(true);
+    try {
+      const { data, error } = await (supabase as any).rpc(
+        "set_communication_operating_mode",
+        { p_new_mode: "MANUAL_PRODUCTION", p_reason: activateReason.trim() },
+      );
+      if (error) throw new Error(error.message ?? "mode switch failed");
+      toast.success("Platform mode switched to MANUAL_PRODUCTION");
+      setActivateReason("");
+      setActivatePhrase("");
+      onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Mode switch failed");
+    } finally {
+      setSwitching(false);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Stage 6 evidence */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm rounded-md border p-3 bg-muted/30">
+        <div><span className="text-muted-foreground">Stage 6 certification:</span>{" "}
+          <code className="font-mono text-xs">{stage6?.one_real_email_certification_id ?? "—"}</code>
+        </div>
+        <div><span className="text-muted-foreground">Provider status:</span>{" "}
+          <Badge variant="outline">{stage6?.one_real_email_certification_status ?? "—"}</Badge>
+        </div>
+        <div><span className="text-muted-foreground">Manual inbox verification:</span>{" "}
+          <Badge variant={stage6?.manual_verification_status === "CONFIRMED" ? "default" : "secondary"}>
+            {stage6?.manual_verification_status ?? "—"}
+          </Badge>
+        </div>
+        <div><span className="text-muted-foreground">Verified recipient:</span>{" "}
+          {stage6?.manual_verified_recipient ?? "—"}
+        </div>
+        <div><span className="text-muted-foreground">Current event status:</span>{" "}
+          <Badge>{stage7?.manual_event_status ?? "—"}</Badge>
+        </div>
+        <div><span className="text-muted-foreground">Global operating mode:</span>{" "}
+          <Badge>{platform?.current_operating_mode ?? "—"}</Badge>
+        </div>
+        <div><span className="text-muted-foreground">Real-email gate:</span>{" "}
+          {gateStillOpen ? <Badge variant="destructive">OPEN</Badge> : <Badge variant="outline">closed</Badge>}
+        </div>
+        <div><span className="text-muted-foreground">Drift:</span>{" "}
+          {stage7?.drift_detected ? <Badge variant="destructive">detected</Badge> : <Badge variant="outline">none</Badge>}
+        </div>
+      </div>
+
+      {!stage6ReadyForCert && !eventCertified && (
+        <Alert variant="destructive">
+          <Lock className="h-4 w-4" />
+          <AlertTitle>Stage 6 not complete</AlertTitle>
+          <AlertDescription>
+            Manual production certification requires a One Real Email
+            certification with provider call attempted, a trace id, and
+            manual inbox confirmation.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Action 1 — Certify */}
+      <div className="rounded-md border p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4" />
+          <div className="font-medium">1. Certify this event for Manual Production</div>
+          {eventCertified && <Badge className="ml-auto">CERTIFIED</Badge>}
+        </div>
+        <Textarea
+          value={certifyReason}
+          onChange={(e) => setCertifyReason(e.target.value)}
+          placeholder="Audit reason (min 6 chars)"
+          disabled={certifying || eventCertified}
+        />
+        <Input
+          value={certifyPhrase}
+          onChange={(e) => setCertifyPhrase(e.target.value)}
+          placeholder={`Type: ${MANUAL_PRODUCTION_TYPED_PHRASE}`}
+          disabled={certifying || eventCertified}
+        />
+        <Button onClick={handleCertify} disabled={!canCertify || eventCertified}>
+          {certifying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Certify for Manual Production
+        </Button>
+      </div>
+
+      {/* Action 2 — Close gate */}
+      {gateStillOpen && (
+        <div className="rounded-md border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            <div className="font-medium">2. Close One Real Email testing gate</div>
+          </div>
+          <Alert>
+            <AlertDescription>
+              The scoped real-email gate remains open. Stage 6 is complete;
+              close it so no additional One Real Email sends are permitted
+              for this event without a new gate.
+            </AlertDescription>
+          </Alert>
+          <Textarea
+            value={gateReason}
+            onChange={(e) => setGateReason(e.target.value)}
+            disabled={closingGate}
+          />
+          <Button variant="secondary" onClick={handleCloseGate} disabled={closingGate}>
+            {closingGate && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Close real-email gate
+          </Button>
+        </div>
+      )}
+
+      {/* Action 3 — Global mode impact preview */}
+      <div className="rounded-md border p-4 space-y-2">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <div className="font-medium">3. Global Manual Production impact preview</div>
+        </div>
+        <Alert>
+          <AlertTitle>Switching to MANUAL_PRODUCTION is a global change</AlertTitle>
+          <AlertDescription>
+            All <strong>{platform?.eligible_manual_event_count ?? 0}</strong> currently
+            certified events (across every module and channel) will become
+            eligible for manual operator sends. This is a platform-wide
+            state, not a per-event switch.
+          </AlertDescription>
+        </Alert>
+      </div>
+
+      {/* Action 4 — Switch mode */}
+      <div className="rounded-md border p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-primary" />
+          <div className="font-medium">4. Switch platform mode to MANUAL_PRODUCTION</div>
+          {globalManualActive && <Badge className="ml-auto">{platform?.current_operating_mode}</Badge>}
+        </div>
+        <Textarea
+          value={activateReason}
+          onChange={(e) => setActivateReason(e.target.value)}
+          placeholder="Audit reason (min 6 chars)"
+          disabled={switching || !eventCertified || globalManualActive}
+        />
+        <Input
+          value={activatePhrase}
+          onChange={(e) => setActivatePhrase(e.target.value)}
+          placeholder={`Type: ${ACTIVATE_TYPED_PHRASE}`}
+          disabled={switching || !eventCertified || globalManualActive}
+        />
+        <Button
+          onClick={handleSwitchMode}
+          disabled={!canSwitchMode || globalManualActive}
+        >
+          {switching && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Activate MANUAL_PRODUCTION mode
+        </Button>
+      </div>
+    </div>
+  );
+}
