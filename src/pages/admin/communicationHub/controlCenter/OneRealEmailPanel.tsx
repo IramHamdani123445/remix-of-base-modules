@@ -49,6 +49,7 @@ import {
   ONE_REAL_EMAIL_CONFIRMATION_PHRASE,
   type OneRealEmailEnvelope,
 } from "@/platform/communication-hub/oneRealEmailService";
+import { resumeOneRealEmailFinalization } from "@/platform/communication-hub/resumeOneRealEmailFinalizationService";
 import {
   runStage6ContractProbe,
   type ContractProbeResult,
