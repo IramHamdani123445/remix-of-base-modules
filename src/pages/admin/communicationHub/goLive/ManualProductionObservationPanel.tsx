@@ -93,7 +93,10 @@ export function ManualProductionObservationPanel({
     setRunning(true);
     setResult(null);
     setPhase("ENQUEUED");
-    const key = `mprod-obs-${crypto.randomUUID()}`;
+    // Reuse the existing key if the last attempt's transport is unresolved.
+    const key = idem && result?.transport && !result.transport.resolved
+      ? idem
+      : `mprod-obs-${crypto.randomUUID()}`;
     setIdem(key);
     try {
       const res = await runManualProductionObservation({
@@ -103,8 +106,10 @@ export function ManualProductionObservationPanel({
       });
       setResult(res);
       setPhase(res.phase);
-      if (res.phase === "AWAITING_INBOX_CONFIRMATION") {
-        toast.success("Provider evidence captured — confirm inbox receipt to proceed");
+      if (res.transport && !res.transport.resolved) {
+        toast.error(`Transport unresolved (${res.transport.errorClass}) — will retry with same idempotency key.`);
+      } else if (res.phase === "AWAITING_INBOX_CONFIRMATION") {
+        toast.success(res.recovered ? "Recovered pending observation" : "Provider evidence captured — confirm inbox receipt to proceed");
       } else if (res.phase === "AWAITING_PROVIDER") {
         toast.warning("Awaiting provider evidence — retry finalize shortly");
       } else if (res.phase === "CONFIRMED") {
