@@ -1130,7 +1130,7 @@ export default function GoLivePage() {
             setSession((s) => ({
               ...s,
               stage6ManualVerificationStatus: "CONFIRMED",
-              stage6CertificationStatus: "DELIVERY_CONFIRMED_MANUALLY",
+              stage6Status: "DELIVERY_CONFIRMED_MANUALLY",
             }));
             setStage6ContextReloadNonce((n) => n + 1);
             reloadGoLive();
