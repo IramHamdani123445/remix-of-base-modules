@@ -12,7 +12,7 @@ import {
   closeOneRealEmailGateAfterStage6,
   MANUAL_PRODUCTION_TYPED_PHRASE,
 } from "@/platform/communication-hub/manualProductionCertificationService";
-import { supabase } from "@/integrations/supabase/client";
+import { applyReleaseMode } from "@/platform/communication-hub/releaseModeService";
 
 const ACTIVATE_TYPED_PHRASE = "ACTIVATE MANUAL PRODUCTION";
 
@@ -134,17 +134,26 @@ export function ManualProductionActivationPanel({
   async function handleSwitchMode() {
     setSwitching(true);
     try {
-      const { data, error } = await (supabase as any).rpc(
-        "set_communication_operating_mode",
-        { p_new_mode: "MANUAL_PRODUCTION", p_reason: activateReason.trim() },
-      );
-      if (error) throw new Error(error.message ?? "mode switch failed");
+      const result = await applyReleaseMode({
+        newMode: "MANUAL_PRODUCTION",
+        reason: activateReason.trim(),
+        expectedVersion: platform?.configuration_version ?? undefined,
+        moduleCode,
+        eventCode,
+        channel,
+      });
+      if (!result?.ok || result.new_mode !== "MANUAL_PRODUCTION") {
+        throw new Error("Mode switch did not confirm MANUAL_PRODUCTION");
+      }
       toast.success("Platform mode switched to MANUAL_PRODUCTION");
       setActivateReason("");
       setActivatePhrase("");
       onChanged();
     } catch (e: any) {
-      toast.error(e?.message ?? "Mode switch failed");
+      const msg = e?.message ?? "Mode switch failed";
+      toast.error(msg);
+      // Refresh authoritative status on any conflict/failure — never retry with stale evidence.
+      onChanged();
     } finally {
       setSwitching(false);
     }
