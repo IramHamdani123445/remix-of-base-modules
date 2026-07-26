@@ -19,11 +19,17 @@ import {
   type ManualProductionEvidence,
 } from "@/platform/communication-hub/manualProductionObservationService";
 
+import {
+  deriveObservation,
+  type ObservationDerived,
+} from "./goLiveStateResolver";
+
 interface Props {
   moduleCode: string;
   eventCode: string;
   channel: string;
   status: EventGoLiveStatus | null;
+  reloadNonce?: number;
   onChanged: () => void;
 }
 
@@ -48,6 +54,7 @@ export function ManualProductionObservationPanel({
   eventCode,
   channel,
   status,
+  reloadNonce,
   onChanged,
 }: Props) {
   const [recipient, setRecipient] = useState(status?.stage6?.manual_verified_recipient ?? "");
@@ -59,6 +66,7 @@ export function ManualProductionObservationPanel({
   const [phase, setPhase] = useState<ObservationPhase>("IDLE");
   const [idem, setIdem] = useState<string | null>(null);
   const [recovering, setRecovering] = useState(true);
+  const [recovery, setRecovery] = useState<Awaited<ReturnType<typeof getObservationRecovery>> | null>(null);
   const [evidence, setEvidence] = useState<ManualProductionEvidence | null>(null);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
 
@@ -76,34 +84,45 @@ export function ManualProductionObservationPanel({
 
   useEffect(() => {
     let cancelled = false;
+    setRecovering(true);
     (async () => {
       try {
         const rec = await getObservationRecovery({ moduleCode, eventCode, channel });
-        if (cancelled || !rec.hasPending) return;
-        setIdem(rec.idempotencyKey ?? null);
-        setRecipient(rec.recipientEmail ?? "");
-        setPhase(rec.phase ?? "AWAITING_PROVIDER");
-        setResult({
-          ok: true,
-          phase: rec.phase ?? "AWAITING_PROVIDER",
-          observation_id: rec.observationId,
-          message_id: rec.messageId,
-          request_id: rec.requestId,
-          inbox_confirmation_status: rec.inboxConfirmationStatus ?? null,
-        });
-        toast.info(`Recovered pending observation (${rec.phase}) — no new message will be sent.`);
+        if (cancelled) return;
+        setRecovery(rec);
+        if (rec.hasPending) {
+          setIdem(rec.idempotencyKey ?? null);
+          setRecipient(rec.recipientEmail ?? "");
+          setPhase(rec.phase ?? "AWAITING_PROVIDER");
+          setResult({
+            ok: true,
+            phase: rec.phase ?? "AWAITING_PROVIDER",
+            observation_id: rec.observationId,
+            message_id: rec.messageId,
+            request_id: rec.requestId,
+            inbox_confirmation_status: rec.inboxConfirmationStatus ?? null,
+          });
+        } else {
+          // No pending intent — clear stale in-flight result so the UI can
+          // offer a fresh Dispatch action (e.g. after a Void).
+          if (phase !== "CONFIRMED") {
+            setResult(null);
+            setPhase("IDLE");
+            setIdem(null);
+          }
+        }
       } finally {
         if (!cancelled) setRecovering(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [moduleCode, eventCode, channel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moduleCode, eventCode, channel, reloadNonce]);
 
 
   const stage7 = status?.stage7;
-  const canDispatch =
-    stage7?.manual_event_status === "live_manual_only" ||
-    stage7?.manual_event_status === "live_cron_allowed";
+  const derived: ObservationDerived = deriveObservation(status, recovery, recovering, result);
+  const canDispatch = derived.state === "ACTION_REQUIRED_DISPATCH" || derived.state === "TRANSPORT_UNRESOLVED";
 
   async function run() {
     if (!canDispatch || !recipient.trim()) return;
@@ -188,13 +207,21 @@ export function ManualProductionObservationPanel({
         </Badge>
       </div>
 
-      <Alert>
-        <AlertDescription>
-          Sends through the standard Manual Production dispatcher via the
-          server-coordinated <code>comm-hub-run-manual-production-observation</code>
-          {" "}function. Evidence (request, message, delivery attempt, trace,
-          provider message id) is derived server-side from durable rows —
-          the browser only supplies the approved recipient and idempotency key.
+      {/* Server-authoritative state banner */}
+      <Alert variant={derived.state === "COMPLETED" ? "default" : derived.blocker ? "default" : "default"}>
+        <AlertDescription className="text-xs space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-muted-foreground">Observation state:</span>
+            <Badge variant={derived.state === "COMPLETED" ? "default" : "secondary"} className="font-mono">
+              {derived.state}
+            </Badge>
+            {derived.blocker && (
+              <>
+                <span className="text-muted-foreground">Blocker:</span>
+                <code className="font-mono">{derived.blocker}</code>
+              </>
+            )}
+          </div>
         </AlertDescription>
       </Alert>
 
@@ -203,42 +230,62 @@ export function ManualProductionObservationPanel({
         <VoidObservationForm onDone={onChanged} />
       </details>
 
-
-      <Input
-        value={recipient}
-        onChange={(e) => setRecipient(e.target.value)}
-        placeholder="approved recipient email (must match recipient policy)"
-        disabled={running || !canDispatch}
-      />
-
-      {result?.transport && !result.transport.resolved && (
-        <Alert variant="destructive">
-          <AlertDescription className="space-y-1 text-xs">
-            <div>Checking whether the previous request reached the server…</div>
-            <div><span className="text-muted-foreground">Class:</span> {result.transport.errorClass}
-              {result.transport.httpStatus ? <> · HTTP {result.transport.httpStatus}</> : null}
-              {result.transport.runtimeBuild ? <> · build {result.transport.runtimeBuild}</> : null}
-              {result.transport.correlationId ? <> · req {result.transport.correlationId}</> : null}
-            </div>
-            {result.transport.responseBody && (
-              <pre className="max-h-32 overflow-auto rounded bg-muted p-2 font-mono text-[10px]">{result.transport.responseBody}</pre>
-            )}
+      {derived.state === "COMPLETED" ? (
+        <Alert>
+          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          <AlertDescription className="text-xs">
+            Manual Production observation confirmed. See the evidence block below for
+            request, message, delivery-attempt, trace and provider identifiers.
           </AlertDescription>
         </Alert>
-      )}
+      ) : (
+        <>
+          <Input
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            placeholder="approved recipient email (must match recipient policy)"
+            disabled={running || !canDispatch}
+          />
 
-      <div className="flex items-center gap-2">
-        <Button onClick={run} disabled={running || recovering || !canDispatch || !recipient.trim() || (result?.transport && !result.transport.resolved) || (phase !== "IDLE" && phase !== "FAILED" && phase !== "NOT_RECEIVED")}>
-          {(running || recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {recovering ? "Checking pending…" : (result?.transport && !result.transport.resolved) ? "Checking previous request…" : "Dispatch observation"}
-        </Button>
-        {phase === "AWAITING_PROVIDER" && result?.message_id && (
-          <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
-            {resuming ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCcw className="h-4 w-4 mr-2" />}
-            Retry finalize
-          </Button>
-        )}
-      </div>
+          {result?.transport && !result.transport.resolved && (
+            <Alert variant="destructive">
+              <AlertDescription className="space-y-1 text-xs">
+                <div>Checking whether the previous request reached the server…</div>
+                <div><span className="text-muted-foreground">Class:</span> {result.transport.errorClass}
+                  {result.transport.httpStatus ? <> · HTTP {result.transport.httpStatus}</> : null}
+                  {result.transport.runtimeBuild ? <> · build {result.transport.runtimeBuild}</> : null}
+                  {result.transport.correlationId ? <> · req {result.transport.correlationId}</> : null}
+                </div>
+                {result.transport.responseBody && (
+                  <pre className="max-h-32 overflow-auto rounded bg-muted p-2 font-mono text-[10px]">{result.transport.responseBody}</pre>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={run}
+              disabled={running || !canDispatch || !recipient.trim()}
+              title={derived.blocker ?? undefined}
+            >
+              {(running || recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {derived.primaryLabel}
+            </Button>
+            {derived.state === "RECOVERY_REQUIRED_RETRY_FINALIZE" && result?.message_id && (
+              <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
+                {resuming ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCcw className="h-4 w-4 mr-2" />}
+                Retry finalize
+              </Button>
+            )}
+            {!derived.primaryEnabled && derived.blocker && (
+              <span className="text-xs text-muted-foreground">
+                Blocked by <code className="font-mono">{derived.blocker}</code>
+              </span>
+            )}
+          </div>
+        </>
+      )}
 
       {phase === "AWAITING_INBOX_CONFIRMATION" && result?.observation_id && (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 space-y-2">

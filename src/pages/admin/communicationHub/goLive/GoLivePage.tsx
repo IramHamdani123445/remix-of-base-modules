@@ -96,6 +96,12 @@ import {
   getEventGoLiveStatus,
   type EventGoLiveStatus,
 } from "@/platform/communication-hub/eventGoLiveStatusService";
+import LifecycleBanner from "./LifecycleBanner";
+import {
+  deriveLifecycle,
+  deriveObservation,
+  deriveStep6,
+} from "./goLiveStateResolver";
 
 
 const SESSION_KEY = "commHub.goLive.v1";
@@ -805,6 +811,15 @@ export default function GoLivePage() {
         </div>
       )}
 
+      {/* Top-level lifecycle banner — server-authoritative snapshot. */}
+      <LifecycleBanner
+        summary={deriveLifecycle(
+          goLiveStatus,
+          controlledLiveDone,
+          deriveObservation(goLiveStatus, null, false, null),
+        )}
+      />
+
       {/* Phase 4B3 — Compact whole-journey Gate Monitor. Server-authoritative,
           read-only. Creates zero runtime rows. */}
       <GoLiveGateMonitor
@@ -1082,6 +1097,36 @@ export default function GoLivePage() {
             </AlertDescription>
           </Alert>
         )}
+        {deriveStep6(goLiveStatus, controlledLiveDone) === "COMPLETED" ? (
+          <Alert>
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <AlertTitle className="flex items-center gap-2">
+              Send One Real Email — COMPLETED
+              <Badge>{goLiveStatus?.stage6?.manual_verification_status ?? "CONFIRMED"}</Badge>
+            </AlertTitle>
+            <AlertDescription>
+              <div className="mt-1 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+                <div><span className="text-muted-foreground">Certification id:</span>{" "}
+                  <code className="font-mono">{goLiveStatus?.stage6?.one_real_email_certification_id ?? "—"}</code></div>
+                <div><span className="text-muted-foreground">Execution id:</span>{" "}
+                  <code className="font-mono">{goLiveStatus?.stage6?.one_real_email_execution_id ?? "—"}</code></div>
+                <div><span className="text-muted-foreground">Provider message id:</span>{" "}
+                  <code className="font-mono">{goLiveStatus?.stage6?.provider_message_id ?? "—"}</code></div>
+                <div><span className="text-muted-foreground">Delivery attempt:</span>{" "}
+                  <code className="font-mono">{goLiveStatus?.stage6?.delivery_attempt_id ?? "—"}</code></div>
+                <div><span className="text-muted-foreground">Trace id:</span>{" "}
+                  <code className="font-mono">{goLiveStatus?.stage6?.trace_id ?? "—"}</code></div>
+                <div><span className="text-muted-foreground">Verified recipient:</span>{" "}
+                  <code className="font-mono">{goLiveStatus?.stage6?.manual_verified_recipient ?? "—"}</code></div>
+                <div><span className="text-muted-foreground">Verified at:</span>{" "}
+                  {goLiveStatus?.stage6?.manual_verified_at ?? "—"}</div>
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                Step 6 is complete for this event. No further Send action is offered here.
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : (
         <OneRealEmailPanel
           controlledStubCertified={controlledLiveDone}
           lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
@@ -1137,6 +1182,7 @@ export default function GoLivePage() {
           }}
           onReloadContext={() => setStage6ContextReloadNonce((n) => n + 1)}
         />
+        )}
       </CommunicationHubSectionCard>
 
       <Separator />
@@ -1192,6 +1238,7 @@ export default function GoLivePage() {
               eventCode={session.eventCode}
               channel={session.channel ?? "email"}
               status={goLiveStatus}
+              reloadNonce={goLiveReloadNonce}
               onChanged={reloadGoLive}
             />
           </div>

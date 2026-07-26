@@ -19,6 +19,7 @@ import {
 } from "@/platform/communication-hub/automatedProductionCertificationService";
 import { supabase } from "@/integrations/supabase/client";
 import { applyReleaseMode } from "@/platform/communication-hub/releaseModeService";
+import { deriveStep8, STEP8_STATE_LABELS } from "./goLiveStateResolver";
 
 interface Props {
   moduleCode: string;
@@ -168,8 +169,21 @@ export function AutomatedProductionActivationPanel({
     certReason.trim().length >= 6 &&
     certPhrase === AUTOMATED_CERTIFY_TYPED_PHRASE;
 
+  const step8State = deriveStep8(status);
+
   return (
     <div className="space-y-6">
+      <Alert>
+        <AlertDescription className="text-xs flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground">Stage 8 state:</span>
+          <Badge variant={step8State === "LIVE_AUTOMATED_ARMED" ? "default" : "secondary"} className="font-mono">
+            {step8State}
+          </Badge>
+          <span className="text-muted-foreground">·</span>
+          <span>{STEP8_STATE_LABELS[step8State]}</span>
+        </AlertDescription>
+      </Alert>
+
       {/* Manual + observation summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm rounded-md border p-3 bg-muted/30">
         <div>Manual event status: <Badge>{stage7?.manual_event_status ?? "—"}</Badge></div>
