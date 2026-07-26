@@ -12,8 +12,10 @@ import {
   finalizeManualProductionObservation,
   confirmManualProductionObservation,
   getObservationRecovery,
+  getManualProductionEvidence,
   type ObservationPhase,
   type RunObservationResult,
+  type ManualProductionEvidence,
 } from "@/platform/communication-hub/manualProductionObservationService";
 
 interface Props {
@@ -56,6 +58,20 @@ export function ManualProductionObservationPanel({
   const [phase, setPhase] = useState<ObservationPhase>("IDLE");
   const [idem, setIdem] = useState<string | null>(null);
   const [recovering, setRecovering] = useState(true);
+  const [evidence, setEvidence] = useState<ManualProductionEvidence | null>(null);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (phase !== "CONFIRMED" || !result?.observation_id) return;
+    let cancelled = false;
+    (async () => {
+      const r = await getManualProductionEvidence(result.observation_id!);
+      if (cancelled) return;
+      if (r.ok && r.evidence) { setEvidence(r.evidence); setEvidenceError(null); }
+      else setEvidenceError(r.error ?? "evidence_unavailable");
+    })();
+    return () => { cancelled = true; };
+  }, [phase, result?.observation_id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -304,6 +320,34 @@ export function ManualProductionObservationPanel({
                 </ul>
               </AlertDescription>
             </Alert>
+          )}
+
+          {phase === "CONFIRMED" && (
+            <div className="rounded-md border p-3 bg-background text-xs space-y-1">
+              <div className="font-medium text-sm mb-2">Manual Production evidence (server-authoritative)</div>
+              {evidenceError && (
+                <Alert variant="destructive"><AlertDescription><code>{evidenceError}</code></AlertDescription></Alert>
+              )}
+              {evidence && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
+                  <div><span className="text-muted-foreground">observation_id:</span> <code>{evidence.observation_id}</code></div>
+                  <div><span className="text-muted-foreground">request_id:</span> <code>{evidence.request_id ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">message_id:</span> <code>{evidence.message_id ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">delivery_attempt_id:</span> <code>{evidence.delivery_attempt_id ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">trace_id:</span> <code>{evidence.trace_id ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">provider_id:</span> <code>{evidence.provider_id ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">provider_message_id:</span> <code>{evidence.provider_message_id ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">message_status:</span> <code>{evidence.message_status ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">attempt_status:</span> <code>{evidence.attempt_status ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">send_context:</span> <code>{evidence.send_context ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">test_mode:</span> <code>{String(evidence.test_mode)}</code></div>
+                  <div><span className="text-muted-foreground">recipient_email:</span> <code>{evidence.recipient_email ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">inbox_confirmation_status:</span> <code>{evidence.inbox_confirmation_status ?? "—"}</code></div>
+                  <div><span className="text-muted-foreground">dispatched_at:</span> <code>{evidence.dispatched_at ?? "—"}</code></div>
+                  <div className="md:col-span-2"><span className="text-muted-foreground">event_certification_id:</span> <code>{evidence.event_certification_id ?? "—"}</code></div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}

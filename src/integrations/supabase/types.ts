@@ -38750,6 +38750,75 @@ export type Database = {
         }
         Relationships: []
       }
+      comm_hub_scheduler_tick_leases: {
+        Row: {
+          arm_audit_id: string | null
+          automation_generation: number | null
+          automation_state: string | null
+          configuration_version: number | null
+          created_at: string
+          error: Json | null
+          expires_at: string
+          failed_count: number
+          finished_at: string | null
+          id: string
+          operating_mode: string | null
+          pinned_readiness_ids: string[] | null
+          processed_count: number
+          readiness_hash: string | null
+          retried_count: number
+          sent_count: number
+          skipped_count: number
+          started_at: string
+          status: string
+          worker_version: string | null
+        }
+        Insert: {
+          arm_audit_id?: string | null
+          automation_generation?: number | null
+          automation_state?: string | null
+          configuration_version?: number | null
+          created_at?: string
+          error?: Json | null
+          expires_at?: string
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          operating_mode?: string | null
+          pinned_readiness_ids?: string[] | null
+          processed_count?: number
+          readiness_hash?: string | null
+          retried_count?: number
+          sent_count?: number
+          skipped_count?: number
+          started_at?: string
+          status?: string
+          worker_version?: string | null
+        }
+        Update: {
+          arm_audit_id?: string | null
+          automation_generation?: number | null
+          automation_state?: string | null
+          configuration_version?: number | null
+          created_at?: string
+          error?: Json | null
+          expires_at?: string
+          failed_count?: number
+          finished_at?: string | null
+          id?: string
+          operating_mode?: string | null
+          pinned_readiness_ids?: string[] | null
+          processed_count?: number
+          readiness_hash?: string | null
+          retried_count?: number
+          sent_count?: number
+          skipped_count?: number
+          started_at?: string
+          status?: string
+          worker_version?: string | null
+        }
+        Relationships: []
+      }
       comm_hub_sender_readiness: {
         Row: {
           advisories: Json
@@ -40512,6 +40581,8 @@ export type Database = {
           email_live_enabled: boolean
           email_open_tracking_default: boolean
           heartbeat_arm_audit_id: string | null
+          heartbeat_automation_generation: number | null
+          heartbeat_readiness_hash: string | null
           heartbeat_readiness_snapshot_id: string | null
           id: string
           last_processed_count: number | null
@@ -40569,6 +40640,8 @@ export type Database = {
           email_live_enabled?: boolean
           email_open_tracking_default?: boolean
           heartbeat_arm_audit_id?: string | null
+          heartbeat_automation_generation?: number | null
+          heartbeat_readiness_hash?: string | null
           heartbeat_readiness_snapshot_id?: string | null
           id?: string
           last_processed_count?: number | null
@@ -40626,6 +40699,8 @@ export type Database = {
           email_live_enabled?: boolean
           email_open_tracking_default?: boolean
           heartbeat_arm_audit_id?: string | null
+          heartbeat_automation_generation?: number | null
+          heartbeat_readiness_hash?: string | null
           heartbeat_readiness_snapshot_id?: string | null
           id?: string
           last_processed_count?: number | null
@@ -94989,6 +95064,43 @@ export type Database = {
         }
         Relationships: []
       }
+      v_comm_hub_manual_production_evidence: {
+        Row: {
+          attempt_status: string | null
+          channel: string | null
+          configuration_version: number | null
+          delivery_attempt_id: string | null
+          dispatched_at: string | null
+          event_certification_id: string | null
+          event_code: string | null
+          event_status: string | null
+          inbox_confirmation_status: string | null
+          manual_prod_approved_at: string | null
+          message_id: string | null
+          message_status: string | null
+          module_code: string | null
+          observation_id: string | null
+          observation_status: string | null
+          provider_display_name: string | null
+          provider_id: string | null
+          provider_message_id: string | null
+          provider_mode: string | null
+          recipient_email: string | null
+          request_id: string | null
+          send_context: string | null
+          test_mode: boolean | null
+          trace_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_manual_production_obs_event_certification_id_fkey"
+            columns: ["event_certification_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_event_certification"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_comm_hub_transition_log_safe: {
         Row: {
           action: string | null
@@ -95593,6 +95705,10 @@ export type Database = {
         Returns: Json
       }
       _chub_assert_admin: { Args: never; Returns: undefined }
+      _comm_hub_append_blocker: {
+        Args: { p_arr: Json; p_code: string }
+        Returns: Json
+      }
       _comm_hub_assert_bound_service_operation: {
         Args: { p_operation: string; p_service: string }
         Returns: Json
@@ -95822,6 +95938,15 @@ export type Database = {
         }
         Returns: Json
       }
+      assert_comm_hub_queue_run_context: {
+        Args: {
+          p_channel: string
+          p_event_code: string
+          p_lease_id: string
+          p_module_code: string
+        }
+        Returns: Json
+      }
       assert_comm_hub_runtime_transition: {
         Args: { p_action: string; p_context: Json }
         Returns: Json
@@ -95873,6 +95998,10 @@ export type Database = {
       begin_comm_hub_dry_run_v1: { Args: { p_payload: Json }; Returns: Json }
       begin_comm_hub_one_real_email: {
         Args: { p_payload: Json }
+        Returns: Json
+      }
+      begin_comm_hub_scheduler_tick: {
+        Args: { p_worker_version: string }
         Returns: Json
       }
       bn_actor_has_capability: {
@@ -97106,6 +97235,17 @@ export type Database = {
       }
       comm_hub_scrub_protected_keys: { Args: { p_bundle: Json }; Returns: Json }
       comm_hub_sha256_hex: { Args: { p_text: string }; Returns: string }
+      complete_comm_hub_scheduler_tick: {
+        Args: {
+          p_arm_audit_id: string
+          p_automation_generation: number
+          p_counts: Json
+          p_error?: Json
+          p_lease_id: string
+          p_readiness_hash: string
+        }
+        Returns: Json
+      }
       complete_comm_hub_trace: {
         Args: { p_payload: Json; p_status: string; p_trace_id: string }
         Returns: Json
@@ -98542,6 +98682,10 @@ export type Database = {
         Returns: Json
       }
       get_comm_hub_live_window_status: { Args: never; Returns: Json }
+      get_comm_hub_manual_production_evidence: {
+        Args: { p_observation_id: string }
+        Returns: Json
+      }
       get_comm_hub_module_automation_setting: {
         Args: {
           p_environment_scope?: string
@@ -99278,6 +99422,7 @@ export type Database = {
       is_employer: { Args: { p_regno: string }; Returns: boolean }
       is_insured_person: { Args: { p_ssn: string }; Returns: boolean }
       is_self_employed: { Args: { p_ssn: string }; Returns: boolean }
+      is_service_role_caller: { Args: never; Returns: boolean }
       is_voluntary_contributor: { Args: { p_ssn: string }; Returns: boolean }
       jsonb_object_keys_count: { Args: { p: Json }; Returns: number }
       kb_search: {
