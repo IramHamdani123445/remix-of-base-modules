@@ -179,7 +179,10 @@ export function ManualProductionActivationPanel({
       }
       if (res.status === "EVENT_CERTIFICATION_REQUIRED" && res.one_real_email_certification_id) {
         // Server has valid Stage 6 evidence and matching fingerprint;
-        // upsert event certification without sending another email.
+        // upsert event certification without sending another email. Pass the
+        // runtime_mode_version the reconcile call observed so mode churn
+        // between calls surfaces as an explicit version conflict rather than
+        // a silent overwrite.
         const promote = await promoteEventToManualProduction({
           moduleCode,
           eventCode,
@@ -187,6 +190,7 @@ export function ManualProductionActivationPanel({
           reason: "Reconcile after mode-only version change",
           typedConfirmation: MANUAL_PRODUCTION_TYPED_PHRASE,
           oneRealEmailCertificationId: res.one_real_email_certification_id,
+          expectedRuntimeModeVersion: res.runtime_mode_version,
         });
         if (!promote.ok) {
           toast.error(`Reconcile blocked: ${promote.error ?? promote.phase ?? "unknown"}`);
@@ -196,6 +200,7 @@ export function ManualProductionActivationPanel({
         onChanged();
         return;
       }
+
       if (res.status === "EVIDENCE_DRIFT_REQUIRES_RETEST") {
         setReconcileMsg("Safety-relevant evidence has changed (template, sender, recipient policy or provider). A fresh One Real Email is required.");
         toast.error("Evidence drift — retest required");
