@@ -93,7 +93,10 @@ export function ManualProductionObservationPanel({
     setRunning(true);
     setResult(null);
     setPhase("ENQUEUED");
-    const key = `mprod-obs-${crypto.randomUUID()}`;
+    // Reuse the existing key if the last attempt's transport is unresolved.
+    const key = idem && result?.transport && !result.transport.resolved
+      ? idem
+      : `mprod-obs-${crypto.randomUUID()}`;
     setIdem(key);
     try {
       const res = await runManualProductionObservation({
@@ -103,8 +106,10 @@ export function ManualProductionObservationPanel({
       });
       setResult(res);
       setPhase(res.phase);
-      if (res.phase === "AWAITING_INBOX_CONFIRMATION") {
-        toast.success("Provider evidence captured — confirm inbox receipt to proceed");
+      if (res.transport && !res.transport.resolved) {
+        toast.error(`Transport unresolved (${res.transport.errorClass}) — will retry with same idempotency key.`);
+      } else if (res.phase === "AWAITING_INBOX_CONFIRMATION") {
+        toast.success(res.recovered ? "Recovered pending observation" : "Provider evidence captured — confirm inbox receipt to proceed");
       } else if (res.phase === "AWAITING_PROVIDER") {
         toast.warning("Awaiting provider evidence — retry finalize shortly");
       } else if (res.phase === "CONFIRMED") {
@@ -183,10 +188,26 @@ export function ManualProductionObservationPanel({
         disabled={running || !canDispatch}
       />
 
+      {result?.transport && !result.transport.resolved && (
+        <Alert variant="destructive">
+          <AlertDescription className="space-y-1 text-xs">
+            <div>Checking whether the previous request reached the server…</div>
+            <div><span className="text-muted-foreground">Class:</span> {result.transport.errorClass}
+              {result.transport.httpStatus ? <> · HTTP {result.transport.httpStatus}</> : null}
+              {result.transport.runtimeBuild ? <> · build {result.transport.runtimeBuild}</> : null}
+              {result.transport.correlationId ? <> · req {result.transport.correlationId}</> : null}
+            </div>
+            {result.transport.responseBody && (
+              <pre className="max-h-32 overflow-auto rounded bg-muted p-2 font-mono text-[10px]">{result.transport.responseBody}</pre>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center gap-2">
-        <Button onClick={run} disabled={running || recovering || !canDispatch || !recipient.trim() || (phase !== "IDLE" && phase !== "FAILED" && phase !== "NOT_RECEIVED")}>
+        <Button onClick={run} disabled={running || recovering || !canDispatch || !recipient.trim() || (result?.transport && !result.transport.resolved) || (phase !== "IDLE" && phase !== "FAILED" && phase !== "NOT_RECEIVED")}>
           {(running || recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          {recovering ? "Checking pending…" : "Dispatch observation"}
+          {recovering ? "Checking pending…" : (result?.transport && !result.transport.resolved) ? "Checking previous request…" : "Dispatch observation"}
         </Button>
         {phase === "AWAITING_PROVIDER" && result?.message_id && (
           <Button variant="outline" onClick={resumeFinalize} disabled={resuming}>
