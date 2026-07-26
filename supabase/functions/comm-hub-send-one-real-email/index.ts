@@ -121,6 +121,7 @@ function emptyEnvelope(started: string): Envelope {
     certification_status: null,
     failure_stage: null,
     retry_safe: false,
+    automatic_retry_allowed: false,
     reconciliation_required: false,
     cleanup_proven: false,
     blockers: [],
