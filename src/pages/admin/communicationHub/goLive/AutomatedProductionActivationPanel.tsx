@@ -18,6 +18,7 @@ import {
   AUTOMATED_ARM_TYPED_PHRASE,
 } from "@/platform/communication-hub/automatedProductionCertificationService";
 import { supabase } from "@/integrations/supabase/client";
+import { applyReleaseMode } from "@/platform/communication-hub/releaseModeService";
 
 interface Props {
   moduleCode: string;
