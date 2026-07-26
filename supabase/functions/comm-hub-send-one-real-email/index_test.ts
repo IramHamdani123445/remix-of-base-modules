@@ -152,8 +152,7 @@ Deno.test("Stage 6 — source keeps identity-sensitive and privileged clients se
     "finalize_comm_hub_one_real_email",
   ]) {
     assert(
-      source.includes(`admin.rpc(\n      "${privilegedRpc}"`) ||
-        source.includes(`admin.rpc("${privilegedRpc}"`),
+      new RegExp(`admin\\.rpc\\(\\s*[\"']${privilegedRpc}[\"']`).test(source),
       `${privilegedRpc} must remain on the admin client`,
     );
   }
