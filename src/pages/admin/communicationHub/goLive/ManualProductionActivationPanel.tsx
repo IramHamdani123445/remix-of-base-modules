@@ -154,11 +154,17 @@ export function ManualProductionActivationPanel({
     <div className="space-y-6">
       {/* Stage 6 evidence */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm rounded-md border p-3 bg-muted/30">
-        <div><span className="text-muted-foreground">Stage 6 certification:</span>{" "}
-          <code className="font-mono text-xs">{stage6?.one_real_email_certification_id ?? "—"}</code>
+        <div><span className="text-muted-foreground">Eligible certification:</span>{" "}
+          <code className="font-mono text-xs">{eligibleCertId ?? "—"}</code>
         </div>
-        <div><span className="text-muted-foreground">Provider status:</span>{" "}
-          <Badge variant="outline">{stage6?.one_real_email_certification_status ?? "—"}</Badge>
+        <div><span className="text-muted-foreground">Latest certification:</span>{" "}
+          <code className="font-mono text-xs">{stage6?.latest_one_real_email_certification_id ?? "—"}</code>
+        </div>
+        <div><span className="text-muted-foreground">Eligible status:</span>{" "}
+          <Badge variant="outline">{stage6?.eligible_one_real_email_certification_status ?? "—"}</Badge>
+        </div>
+        <div><span className="text-muted-foreground">Latest status:</span>{" "}
+          <Badge variant="outline">{stage6?.latest_one_real_email_certification_status ?? "—"}</Badge>
         </div>
         <div><span className="text-muted-foreground">Manual inbox verification:</span>{" "}
           <Badge variant={stage6?.manual_verification_status === "CONFIRMED" ? "default" : "secondary"}>
@@ -185,11 +191,24 @@ export function ManualProductionActivationPanel({
       {!stage6ReadyForCert && !eventCertified && (
         <Alert variant="destructive">
           <Lock className="h-4 w-4" />
-          <AlertTitle>Stage 6 not complete</AlertTitle>
+          <AlertTitle>Stage 6 prerequisites not satisfied</AlertTitle>
           <AlertDescription>
-            Manual production certification requires a One Real Email
-            certification with provider call attempted, a trace id, and
-            manual inbox confirmation.
+            <div className="mb-2">
+              Manual Production certification is gated by the server. The
+              following prerequisites are outstanding:
+            </div>
+            {stage6Blockers.length > 0 ? (
+              <ul className="list-disc pl-5 space-y-1">
+                {stage6Blockers.map((b) => (
+                  <li key={b.code}>
+                    <code className="font-mono text-xs">{b.code}</code>
+                    {b.message ? <> — {b.message}</> : null}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-xs">Waiting on authoritative status…</div>
+            )}
           </AlertDescription>
         </Alert>
       )}
