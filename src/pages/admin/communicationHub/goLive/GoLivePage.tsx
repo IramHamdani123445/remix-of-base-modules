@@ -811,6 +811,15 @@ export default function GoLivePage() {
         </div>
       )}
 
+      {/* Top-level lifecycle banner — server-authoritative snapshot. */}
+      <LifecycleBanner
+        summary={deriveLifecycle(
+          goLiveStatus,
+          controlledLiveDone,
+          deriveObservation(goLiveStatus, null, false, null),
+        )}
+      />
+
       {/* Phase 4B3 — Compact whole-journey Gate Monitor. Server-authoritative,
           read-only. Creates zero runtime rows. */}
       <GoLiveGateMonitor
