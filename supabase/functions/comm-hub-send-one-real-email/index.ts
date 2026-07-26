@@ -436,6 +436,12 @@ Deno.serve(async (req) => {
   env.request_number = created.request_no ?? null;
   env.message_id = created.message_id ?? null;
   env.provider_name = created.provider_name ?? env.provider_name;
+  (env as any).preview_approval_id = created.preview_approval_id ?? null;
+  (env as any).dry_run_certification_id = created.dry_run_certification_id ?? null;
+  (env as any).original_decision_id = created.original_decision_id ?? null;
+  (env as any).recipient_set_hash = created.recipient_set_hash ?? null;
+  (env as any).subject_hash = created.subject_hash ?? null;
+  (env as any).body_hash = created.body_hash ?? null;
 
   if (!env.request_id || !env.message_id) {
     addBlocker("message_creation_contract_invalid", "request_creation");
@@ -497,15 +503,20 @@ Deno.serve(async (req) => {
       .from("communication_delivery_attempt")
       .insert({
         message_id: env.message_id,
-        request_id: env.request_id,
         attempt_no: 1,
         status: "pending",
         provider_id: providerId,
-        provider_name: env.provider_name,
         provider_call_attempted: false,
+        send_context: "controlled_live",
+        attempt_type: "controlled_live",
         controlled_live_execution_id: env.execution_id,
-        controlled_live_grant_id: env.grant_id,
-        origin_function: "comm-hub-send-one-real-email",
+        grant_id: env.grant_id,
+        preview_approval_id: (env as any).preview_approval_id ?? null,
+        dry_run_certification_id: (env as any).dry_run_certification_id ?? null,
+        recipient_set_hash: (env as any).recipient_set_hash ?? null,
+        subject_hash: (env as any).subject_hash ?? null,
+        body_hash: (env as any).body_hash ?? null,
+        original_decision_id: (env as any).original_decision_id ?? null,
       })
       .select("id")
       .single();
@@ -565,6 +576,19 @@ Deno.serve(async (req) => {
     .update({ provider_call_attempted: true, updated_at: new Date().toISOString() })
     .eq("id", env.execution_id);
 
+  // Message lifecycle: queued -> sending (immediately before provider call).
+  {
+    const { data: lc, error: lcErr } = await admin.rpc(
+      "set_comm_hub_one_real_email_message_status",
+      { p_message_id: env.message_id, p_target_status: "sending" });
+    if (lcErr || !(lc && (lc as any).ok === true)) {
+      env.warnings.push({
+        code: "message_lifecycle_sending_failed",
+        message: lcErr?.message ?? JSON.stringify(lc),
+      });
+    }
+  }
+
   const transportResult = await sendEmailViaGuardedTransport(admin, {
     guard: {
       messageId: env.message_id!,
@@ -591,17 +615,21 @@ Deno.serve(async (req) => {
 
   // ---- Stage G: persist provider evidence, then consume + finalise ----
   if (isGuardRefusal(transportResult)) {
-    // Guard refused before provider was reached — technically pre-provider.
-    // But provider_call_attempted was already flipped; we must NOT auto-retry
-    // because we cannot prove the transport did not touch the wire.
     addBlocker("transport_guard_refused", "provider_invocation",
       transportResult.code);
     await admin.from("communication_delivery_attempt").update({
       status: "failure",
       error_code: transportResult.code,
       provider_call_attempted: false,
+      finished_at: new Date().toISOString(),
+      provider_call_completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq("id", attemptId);
+    await admin.rpc("set_comm_hub_one_real_email_message_status", {
+      p_message_id: env.message_id, p_target_status: "failed",
+      p_error_code: transportResult.code,
+      p_error_message: "transport_guard_refused",
+    });
     return finalize("BLOCKED", "provider_invocation",
       { retrySafe: false, reconciliationRequired: true });
   }
@@ -610,10 +638,15 @@ Deno.serve(async (req) => {
   const providerOk = transportResult.ok;
   const providerMsgId = transportResult.providerMessageId ?? null;
   const rawStatus = transportResult.rawStatus ?? (providerOk ? "success" : "failure");
-  let attemptStatus: "success" | "failure" | "pending" = "failure";
+  // Attempt status must satisfy communication_delivery_attempt_status_chk:
+  //   pending | success | failure | timeout | throttled | skipped
+  let attemptStatus: "success" | "failure" | "pending" | "timeout" | "throttled" | "skipped" = "failure";
   if (providerOk) attemptStatus = "success";
   else if (transportResult.retryable) attemptStatus = "pending";
+  else if ((transportResult.errorCode ?? "").toLowerCase().includes("timeout")) attemptStatus = "timeout";
+  else if ((transportResult.errorCode ?? "").toLowerCase().includes("throttl")) attemptStatus = "throttled";
 
+  const nowIso = new Date().toISOString();
   let evidenceOk = true;
   try {
     const { error: attemptUpdErr } = await admin
@@ -622,13 +655,14 @@ Deno.serve(async (req) => {
         status: attemptStatus,
         provider_call_attempted: true,
         provider_message_id: providerMsgId,
-        provider_status_raw: rawStatus,
-        provider_response_status_code: transportResult.statusCode,
+        provider_status: rawStatus,
+        provider_response_safe: transportResult.providerResponseSafe ?? null,
+        provider_response: transportResult.providerResponseSafe ?? null,
         error_code: transportResult.errorCode ?? null,
         error_message: transportResult.errorMessage ?? null,
-        provider_response: transportResult.providerResponseSafe ?? null,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        finished_at: nowIso,
+        provider_call_completed_at: nowIso,
+        updated_at: nowIso,
       })
       .eq("id", attemptId);
     if (attemptUpdErr) throw attemptUpdErr;
@@ -637,7 +671,8 @@ Deno.serve(async (req) => {
       provider_message_id: providerMsgId,
       provider_status: rawStatus,
       provider_name: env.provider_name,
-      updated_at: new Date().toISOString(),
+      provider_call_attempted: true,
+      updated_at: nowIso,
     }).eq("id", env.execution_id);
   } catch (e) {
     evidenceOk = false;
@@ -648,7 +683,6 @@ Deno.serve(async (req) => {
   env.provider_status = rawStatus;
 
   if (!evidenceOk) {
-    // Evidence is missing — grant MUST NOT be consumed. Reconciliation is required.
     addBlocker("post_provider_evidence_incomplete", "provider_invocation",
       "Provider invocation completed but evidence could not be persisted; operator reconciliation required.");
     return finalize("BLOCKED", "provider_invocation",
@@ -656,6 +690,7 @@ Deno.serve(async (req) => {
   }
 
   // Consume the one-use grant — evidence is durable at this point.
+  // Rejection MUST also consume the grant so the same session cannot re-send.
   {
     const { data, error } = await admin.rpc(
       "consume_comm_hub_one_real_email_grant",
@@ -668,6 +703,25 @@ Deno.serve(async (req) => {
       });
     } else {
       env.grant_status = "CONSUMED";
+    }
+  }
+
+  // Drive targeted-message lifecycle to a terminal state.
+  {
+    const target = providerOk ? "sent" : "failed";
+    const { data: lc, error: lcErr } = await admin.rpc(
+      "set_comm_hub_one_real_email_message_status", {
+        p_message_id: env.message_id,
+        p_target_status: target,
+        p_provider_message_id: providerMsgId,
+        p_error_code: providerOk ? null : (transportResult.errorCode ?? null),
+        p_error_message: providerOk ? null : (transportResult.errorMessage ?? null),
+      });
+    if (lcErr || !(lc && (lc as any).ok === true)) {
+      env.warnings.push({
+        code: "message_lifecycle_terminal_failed",
+        message: lcErr?.message ?? JSON.stringify(lc),
+      });
     }
   }
 
@@ -696,11 +750,14 @@ Deno.serve(async (req) => {
     : attemptStatus === "pending" ? "DELIVERY_PENDING"
     : "PROVIDER_REJECTED";
 
+  const retrySafeFinal = finalStatus === "DELIVERY_PENDING";
+
   env.message = finalStatus === "PROVIDER_ACCEPTED"
     ? "Provider accepted the one real email."
     : finalStatus === "DELIVERY_PENDING"
       ? "Provider outcome pending; delivery evidence will surface asynchronously."
       : "Provider rejected the one real email.";
 
-  return finalize(finalStatus, null, { retrySafe: false, cleanupProven: true });
+  return finalize(finalStatus, null, { retrySafe: retrySafeFinal, cleanupProven: true });
 });
+
