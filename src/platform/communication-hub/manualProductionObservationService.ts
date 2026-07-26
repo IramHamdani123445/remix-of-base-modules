@@ -117,38 +117,27 @@ export async function dispatchAndRecordObservation(input: {
   } as any);
 
   const firstMessage = sendResult?.messages?.[0];
-
-
-  const providerCallAttempted = Boolean(
-    sendResult?.providerCallAttempted ??
-      sendResult?.provider_call_attempted ??
-      sendResult?.messageId ??
-      sendResult?.message_id,
-  );
+  const messageId = firstMessage?.id ?? sendResult?.messageIds?.[0] ?? null;
+  const providerCallAttempted = Boolean(messageId);
 
   return recordManualProductionObservation({
     moduleCode: input.moduleCode,
     eventCode: input.eventCode,
     channel: input.channel ?? "email",
-    requestId: sendResult?.requestId ?? sendResult?.request_id ?? null,
-    messageId: sendResult?.messageId ?? sendResult?.message_id ?? null,
-    deliveryAttemptId:
-      sendResult?.deliveryAttemptId ?? sendResult?.delivery_attempt_id ?? null,
-    traceId: sendResult?.traceId ?? sendResult?.trace_id ?? null,
-    providerId: sendResult?.providerId ?? sendResult?.provider_id ?? null,
-    providerName: sendResult?.providerName ?? sendResult?.provider_name ?? null,
-    providerMessageId:
-      sendResult?.providerMessageId ?? sendResult?.provider_message_id ?? null,
+    requestId: sendResult?.requestId ?? null,
+    messageId,
+    deliveryAttemptId: null,
+    traceId: null,
+    providerId: null,
+    providerName: null,
+    providerMessageId: null,
     providerCallAttempted,
-    providerOutcome:
-      sendResult?.providerOutcome ?? sendResult?.provider_outcome ?? null,
+    providerOutcome: firstMessage?.status ?? null,
     recipientEmail: input.recipientEmail,
-    recipientSetHash:
-      sendResult?.recipientSetHash ?? sendResult?.recipient_set_hash ?? null,
-    senderProfileId:
-      sendResult?.senderProfileId ?? sendResult?.sender_profile_id ?? null,
-    templateVersionId:
-      sendResult?.templateVersionId ?? sendResult?.template_version_id ?? null,
+    recipientSetHash: null,
+    senderProfileId: null,
+    templateVersionId: null,
     idempotencyKey: input.idempotencyKey,
   });
 }
+
