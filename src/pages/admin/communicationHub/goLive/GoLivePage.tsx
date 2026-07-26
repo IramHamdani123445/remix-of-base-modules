@@ -88,6 +88,15 @@ import {
 import ReleaseModeCards from "./ReleaseModeCards";
 import AutomationStandbyPanel from "./AutomationStandbyPanel";
 import { useStageReadiness } from "@/platform/communication-hub/useStageReadiness";
+import { ManualProductionActivationPanel } from "./ManualProductionActivationPanel";
+import { ManualProductionObservationPanel } from "./ManualProductionObservationPanel";
+import { AutomatedProductionActivationPanel } from "./AutomatedProductionActivationPanel";
+import { GoLiveCompletionPanel } from "./GoLiveCompletionPanel";
+import {
+  getEventGoLiveStatus,
+  type EventGoLiveStatus,
+} from "@/platform/communication-hub/eventGoLiveStatusService";
+
 
 const SESSION_KEY = "commHub.goLive.v1";
 
