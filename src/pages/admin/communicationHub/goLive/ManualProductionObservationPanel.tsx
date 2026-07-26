@@ -19,11 +19,17 @@ import {
   type ManualProductionEvidence,
 } from "@/platform/communication-hub/manualProductionObservationService";
 
+import {
+  deriveObservation,
+  type ObservationDerived,
+} from "./goLiveStateResolver";
+
 interface Props {
   moduleCode: string;
   eventCode: string;
   channel: string;
   status: EventGoLiveStatus | null;
+  reloadNonce?: number;
   onChanged: () => void;
 }
 
