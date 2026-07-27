@@ -89,6 +89,7 @@ import ReleaseModeCards from "./ReleaseModeCards";
 import AutomationStandbyPanel from "./AutomationStandbyPanel";
 import { useStageReadiness } from "@/platform/communication-hub/useStageReadiness";
 import { ManualProductionActivationPanel } from "./ManualProductionActivationPanel";
+import { LegacyBaselineAttestationPanel } from "./LegacyBaselineAttestationPanel";
 import { ManualProductionObservationPanel } from "./ManualProductionObservationPanel";
 import { AutomatedProductionActivationPanel } from "./AutomatedProductionActivationPanel";
 import { GoLiveCompletionPanel } from "./GoLiveCompletionPanel";
@@ -1298,6 +1299,12 @@ export default function GoLivePage() {
           </Alert>
         ) : (
           <div className="space-y-6">
+            <LegacyBaselineAttestationPanel
+              moduleCode={session.moduleCode}
+              eventCode={session.eventCode}
+              channel={session.channel ?? "email"}
+              onChanged={reloadGoLive}
+            />
             <ManualProductionActivationPanel
               moduleCode={session.moduleCode}
               eventCode={session.eventCode}
