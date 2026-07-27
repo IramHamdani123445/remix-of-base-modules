@@ -94,6 +94,8 @@ import { LegacyBaselineAttestationPanel } from "./LegacyBaselineAttestationPanel
 import { RuntimeContractCard } from "./RuntimeContractCard";
 import { DiagnosticBundlePanel } from "./DiagnosticBundlePanel";
 import { RuntimeContractProvider } from "@/platform/communication-hub/RuntimeContractContext";
+import { RuntimeContractGate } from "./RuntimeContractGate";
+import { getRuntimeRequirements } from "@/platform/communication-hub/runtimeActionRequirements";
 
 import { ManualProductionObservationPanel } from "./ManualProductionObservationPanel";
 import { AutomatedProductionActivationPanel } from "./AutomatedProductionActivationPanel";
@@ -1214,75 +1216,88 @@ function GoLivePageInner() {
           </Alert>
         )}
         {deriveStep6(goLiveStatus) === "COMPLETED" && session.moduleCode && session.eventCode && (
-          <ControlledRevalidationPanel
-            moduleCode={session.moduleCode}
-            eventCode={session.eventCode}
-            channel={session.channel ?? "email"}
-            productionAnchor={{
-              oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
-              verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
-              verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
-              productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
-              baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
-            }}
-          />
+          <RuntimeContractGate
+            action="CONTROLLED_REVALIDATION_AUTHORISATION"
+            capabilities={[
+              ...getRuntimeRequirements("CONTROLLED_REVALIDATION_AUTHORISATION"),
+              ...getRuntimeRequirements("CONTROLLED_REVALIDATION_SEND"),
+            ]}
+          >
+            <ControlledRevalidationPanel
+              moduleCode={session.moduleCode}
+              eventCode={session.eventCode}
+              channel={session.channel ?? "email"}
+              productionAnchor={{
+                oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
+                verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
+                verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
+                productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
+                baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
+              }}
+            />
+          </RuntimeContractGate>
         )}
         {deriveStep6(goLiveStatus) !== "COMPLETED" && (
-        <OneRealEmailPanel
-          controlledStubCertified={controlledLiveDone}
-          lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
-          lineage={
-            controlledLiveDone && stage6Context && stage6Context.ok &&
-            stage6Context.recipient && stage6Context.recipientSetHash &&
-            stage6Context.previewApprovalId && stage6Context.dryRunCertificationId &&
-            stage6Context.senderName && stage6Context.senderAddress &&
-            stage6Context.providerName && stage6Context.providerHealth === "READY"
-              ? {
-                  moduleCode: stage6Context.moduleCode,
-                  eventCode: stage6Context.eventCode,
-                  channel: stage6Context.channel,
-                  previewSnapshotId: stage6Context.previewSnapshotId,
-                  previewApprovalId: stage6Context.previewApprovalId!,
-                  dryRunCertificationId: stage6Context.dryRunCertificationId!,
-                  controlledStubCertificationId: stage6Context.controlledStubCertificationId,
-                  recipientSetHash: stage6Context.recipientSetHash!,
-                  configurationVersion: stage6Context.configurationVersion,
-                  recipientPolicyVersion: stage6Context.recipientPolicyVersion,
-                  recipient: stage6Context.recipient!,
-                  senderName: stage6Context.senderName,
-                  senderAddress: stage6Context.senderAddress,
-                  providerName: stage6Context.providerName,
-                }
-              : null
-          }
-          onEnvelope={(env) =>
-            setSession((s) => ({
-              ...s,
-              stage6ExecutionId: env.executionId,
-              stage6CertificationId: env.certificationId,
-              stage6Status: env.status,
-              stage6ProviderCallAttempted: env.providerCallAttempted,
-              stage6ProviderStatus: env.providerStatus,
-              stage6ProviderMessageId: env.providerMessageId,
-              stage6DeliveryAttemptId: env.deliveryAttemptId,
-              stage6TraceId: env.traceId,
-              stage6RetrySafe: env.retrySafe,
-              stage6ReconciliationRequired: env.reconciliationRequired,
-              stage6CleanupProven: env.cleanupProven,
-              stage6CompletedAt: env.completedAt,
-            }))
-          }
-          onVerified={() => {
-            setSession((s) => ({
-              ...s,
-              stage6ManualVerificationStatus: "CONFIRMED",
-              stage6Status: "DELIVERY_CONFIRMED_MANUALLY",
-            }));
-            setStage6ContextReloadNonce((n) => n + 1);
-            reloadGoLive();
-          }}
-          onReloadContext={() => setStage6ContextReloadNonce((n) => n + 1)}
-        />
+        <RuntimeContractGate
+          action="ONE_REAL_EMAIL"
+          capabilities={[...getRuntimeRequirements("ONE_REAL_EMAIL")]}
+        >
+          <OneRealEmailPanel
+            controlledStubCertified={controlledLiveDone}
+            lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
+            lineage={
+              controlledLiveDone && stage6Context && stage6Context.ok &&
+              stage6Context.recipient && stage6Context.recipientSetHash &&
+              stage6Context.previewApprovalId && stage6Context.dryRunCertificationId &&
+              stage6Context.senderName && stage6Context.senderAddress &&
+              stage6Context.providerName && stage6Context.providerHealth === "READY"
+                ? {
+                    moduleCode: stage6Context.moduleCode,
+                    eventCode: stage6Context.eventCode,
+                    channel: stage6Context.channel,
+                    previewSnapshotId: stage6Context.previewSnapshotId,
+                    previewApprovalId: stage6Context.previewApprovalId!,
+                    dryRunCertificationId: stage6Context.dryRunCertificationId!,
+                    controlledStubCertificationId: stage6Context.controlledStubCertificationId,
+                    recipientSetHash: stage6Context.recipientSetHash!,
+                    configurationVersion: stage6Context.configurationVersion,
+                    recipientPolicyVersion: stage6Context.recipientPolicyVersion,
+                    recipient: stage6Context.recipient!,
+                    senderName: stage6Context.senderName,
+                    senderAddress: stage6Context.senderAddress,
+                    providerName: stage6Context.providerName,
+                  }
+                : null
+            }
+            onEnvelope={(env) =>
+              setSession((s) => ({
+                ...s,
+                stage6ExecutionId: env.executionId,
+                stage6CertificationId: env.certificationId,
+                stage6Status: env.status,
+                stage6ProviderCallAttempted: env.providerCallAttempted,
+                stage6ProviderStatus: env.providerStatus,
+                stage6ProviderMessageId: env.providerMessageId,
+                stage6DeliveryAttemptId: env.deliveryAttemptId,
+                stage6TraceId: env.traceId,
+                stage6RetrySafe: env.retrySafe,
+                stage6ReconciliationRequired: env.reconciliationRequired,
+                stage6CleanupProven: env.cleanupProven,
+                stage6CompletedAt: env.completedAt,
+              }))
+            }
+            onVerified={() => {
+              setSession((s) => ({
+                ...s,
+                stage6ManualVerificationStatus: "CONFIRMED",
+                stage6Status: "DELIVERY_CONFIRMED_MANUALLY",
+              }));
+              setStage6ContextReloadNonce((n) => n + 1);
+              reloadGoLive();
+            }}
+            onReloadContext={() => setStage6ContextReloadNonce((n) => n + 1)}
+          />
+        </RuntimeContractGate>
         )}
       </CommunicationHubSectionCard>
 
@@ -1340,19 +1355,24 @@ function GoLivePageInner() {
               status={goLiveStatus}
               onChanged={reloadGoLive}
             />
-            <ManualProductionObservationPanel
-              moduleCode={session.moduleCode}
-              eventCode={session.eventCode}
-              channel={session.channel ?? "email"}
-              status={goLiveStatus}
-              pendingObservation={pendingObservation}
-              reloadNonce={goLiveReloadNonce}
-              onLastResult={(res, key) => {
-                setObservationLastResult(res);
-                if (key !== undefined) setObservationLastKey(key);
-              }}
-              onChanged={reloadGoLive}
-            />
+            <RuntimeContractGate
+              action="MANUAL_PRODUCTION_SEND"
+              capabilities={[...getRuntimeRequirements("MANUAL_PRODUCTION_SEND")]}
+            >
+              <ManualProductionObservationPanel
+                moduleCode={session.moduleCode}
+                eventCode={session.eventCode}
+                channel={session.channel ?? "email"}
+                status={goLiveStatus}
+                pendingObservation={pendingObservation}
+                reloadNonce={goLiveReloadNonce}
+                onLastResult={(res, key) => {
+                  setObservationLastResult(res);
+                  if (key !== undefined) setObservationLastKey(key);
+                }}
+                onChanged={reloadGoLive}
+              />
+            </RuntimeContractGate>
           </div>
         )}
       </CommunicationHubSectionCard>
@@ -1384,13 +1404,18 @@ function GoLivePageInner() {
             <AlertDescription>Locked until the event is Manual-Production certified.</AlertDescription>
           </Alert>
         ) : (
-          <AutomatedProductionActivationPanel
-            moduleCode={session.moduleCode}
-            eventCode={session.eventCode}
-            channel={session.channel ?? "email"}
-            status={goLiveStatus}
-            onChanged={reloadGoLive}
-          />
+          <RuntimeContractGate
+            action="AUTOMATED_CANARY"
+            capabilities={[...getRuntimeRequirements("AUTOMATED_CANARY")]}
+          >
+            <AutomatedProductionActivationPanel
+              moduleCode={session.moduleCode}
+              eventCode={session.eventCode}
+              channel={session.channel ?? "email"}
+              status={goLiveStatus}
+              onChanged={reloadGoLive}
+            />
+          </RuntimeContractGate>
         )}
       </CommunicationHubSectionCard>
 

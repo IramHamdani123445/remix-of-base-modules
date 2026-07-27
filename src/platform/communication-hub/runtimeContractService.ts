@@ -37,10 +37,15 @@ export async function auditRuntimeContract(): Promise<RuntimeContractReport> {
   return (data ?? { ok: false, checked_at: new Date().toISOString(), checks: [], summary: { total: 0, pass: 0, fail: 0 } }) as RuntimeContractReport;
 }
 
-/** Return the failing checks for one capability (used by UI to disable provider actions). */
+/**
+ * Return whether the runtime contract has at least one check for the given
+ * capability and every matched check is PASS. Zero matched checks fails
+ * closed (defence-in-depth: an unknown or misnamed capability must never
+ * silently permit a provider-contacting action).
+ */
 export function capabilityPasses(report: RuntimeContractReport | null | undefined, capability: string): boolean {
   if (!report) return false;
-  return report.checks
-    .filter((c) => c.capability === capability)
-    .every((c) => c.status === "PASS");
+  const matched = report.checks.filter((c) => c.capability === capability);
+  if (matched.length === 0) return false;
+  return matched.every((c) => c.status === "PASS");
 }
