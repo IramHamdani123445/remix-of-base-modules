@@ -1215,27 +1215,23 @@ function GoLivePageInner() {
             </AlertDescription>
           </Alert>
         )}
+        {/* A4.0: Panel stays mounted. Provider-touching buttons inside the
+            panel must self-gate via RuntimeContractActionGate. Diagnostics,
+            assessment, reassessment, history, recovery and inbox confirmation
+            remain visible regardless of runtime-contract state. */}
         {deriveStep6(goLiveStatus) === "COMPLETED" && session.moduleCode && session.eventCode && (
-          <RuntimeContractGate
-            action="CONTROLLED_REVALIDATION_AUTHORISATION"
-            capabilities={[
-              ...getRuntimeRequirements("CONTROLLED_REVALIDATION_AUTHORISATION"),
-              ...getRuntimeRequirements("CONTROLLED_REVALIDATION_SEND"),
-            ]}
-          >
-            <ControlledRevalidationPanel
-              moduleCode={session.moduleCode}
-              eventCode={session.eventCode}
-              channel={session.channel ?? "email"}
-              productionAnchor={{
-                oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
-                verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
-                verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
-                productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
-                baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
-              }}
-            />
-          </RuntimeContractGate>
+          <ControlledRevalidationPanel
+            moduleCode={session.moduleCode}
+            eventCode={session.eventCode}
+            channel={session.channel ?? "email"}
+            productionAnchor={{
+              oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
+              verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
+              verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
+              productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
+              baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
+            }}
+          />
         )}
         {deriveStep6(goLiveStatus) !== "COMPLETED" && (
         <RuntimeContractGate
