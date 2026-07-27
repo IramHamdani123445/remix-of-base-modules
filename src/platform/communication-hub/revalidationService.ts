@@ -327,6 +327,53 @@ export async function recoverControlledRevalidationSend(input: {
   return data as ControlledRevalidationSendResult;
 }
 
+export interface PrepareControlledRevalidationResult {
+  status:
+    | "BLOCKED" | "READY_FOR_PROVIDER" | "FAILED_PRE_PROVIDER"
+    | "PROVIDER_ACCEPTED" | "PROVIDER_REJECTED" | "RECOVERED";
+  passed: boolean;
+  cycle_status: string | null;
+  authorisation_status: string | null;
+  execution_id: string | null;
+  request_id: string | null;
+  message_id: string | null;
+  delivery_attempt_id: string | null;
+  trace_id: string | null;
+  reused_existing_execution: boolean;
+  provider_boundary_state: "NOT_ENTERED" | "ENTERED" | null;
+  provider_call_attempted: boolean;
+  provider_name: string | null;
+  message: string;
+  blockers: Array<{ code: string; stage: string; message?: string }>;
+  warnings: Array<Record<string, unknown>>;
+}
+
+/**
+ * A4.1 — Durable Controlled Revalidation preparation.
+ *
+ * Reserves canonical template/sender/recipient/provider bindings and creates
+ * durable evidence records via the internal service-role RPC. Never contacts
+ * the email provider. Never consumes the operator's authorisation.
+ */
+export async function prepareControlledRevalidation(input: {
+  cycleId: string;
+  authorisationId: string;
+  idempotencyKey?: string;
+}): Promise<PrepareControlledRevalidationResult> {
+  const { data, error } = await supabase.functions.invoke(
+    "comm-hub-send-controlled-revalidation",
+    {
+      body: {
+        action: "PREPARE_CONTROLLED_REVALIDATION",
+        cycleId: input.cycleId,
+        authorisationId: input.authorisationId,
+        idempotencyKey: input.idempotencyKey,
+      },
+    },
+  );
+  if (error) throw new Error(error.message ?? "controlled revalidation preparation failed");
+  return data as PrepareControlledRevalidationResult;
+
 /**
  * Checkpoint A — Server-authoritative cycle reassessment.
  *
