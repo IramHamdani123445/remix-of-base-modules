@@ -1404,13 +1404,18 @@ function GoLivePageInner() {
             <AlertDescription>Locked until the event is Manual-Production certified.</AlertDescription>
           </Alert>
         ) : (
-          <AutomatedProductionActivationPanel
-            moduleCode={session.moduleCode}
-            eventCode={session.eventCode}
-            channel={session.channel ?? "email"}
-            status={goLiveStatus}
-            onChanged={reloadGoLive}
-          />
+          <RuntimeContractGate
+            action="AUTOMATED_CANARY"
+            capabilities={[...getRuntimeRequirements("AUTOMATED_CANARY")]}
+          >
+            <AutomatedProductionActivationPanel
+              moduleCode={session.moduleCode}
+              eventCode={session.eventCode}
+              channel={session.channel ?? "email"}
+              status={goLiveStatus}
+              onChanged={reloadGoLive}
+            />
+          </RuntimeContractGate>
         )}
       </CommunicationHubSectionCard>
 
