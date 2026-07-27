@@ -96469,6 +96469,20 @@ export type Database = {
         Args: { payload: Json }
         Returns: undefined
       }
+      _comm_hub_revalidation_finalize_preparation: {
+        Args: {
+          p_delivery_attempt_id: string
+          p_execution_id: string
+          p_message_id: string
+          p_recipient_snapshot_id?: string
+          p_request_id: string
+          p_trace_id: string
+        }
+        Returns: {
+          execution_id: string
+          state: string
+        }[]
+      }
       _comm_hub_revalidation_mark_pre_provider_failure: {
         Args: {
           p_execution_id: string
