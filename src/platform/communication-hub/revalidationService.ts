@@ -261,3 +261,68 @@ export async function listRevalidationCycles(input: {
 
 export const REVALIDATION_SEND_TYPED_PHRASE = "SEND ONE CONTROLLED REVALIDATION EMAIL";
 export const REVALIDATION_PROMOTE_TYPED_PHRASE = "PROMOTE REVALIDATION BASELINE";
+
+export interface ControlledRevalidationSendResult {
+  status:
+    | "BLOCKED" | "RESERVED" | "PROVIDER_ACCEPTED"
+    | "PROVIDER_REJECTED" | "RECOVERED";
+  passed: boolean;
+  cycle_status: string | null;
+  authorisation_status: string | null;
+  provider_call_attempted: boolean;
+  provider_result_recorded: boolean;
+  reused_existing_execution: boolean;
+  request_id: string | null;
+  message_id: string | null;
+  provider_message_id: string | null;
+  message: string;
+  blockers: Array<{ code: string; stage: string; message?: string }>;
+  warnings: Array<Record<string, unknown>>;
+}
+
+/**
+ * Invoke the dedicated Edge Function that consumes a one-use revalidation
+ * authorisation. Contacts the provider at most once per cycle. Uses the
+ * existing `comm-hub-send-controlled-revalidation` runtime — this
+ * function does NOT reuse `comm-hub-send-one-real-email` and does NOT
+ * reopen Stage 6.
+ */
+export async function sendControlledRevalidationEmail(input: {
+  cycleId: string;
+  authorisationId: string;
+  currentFingerprint: string;
+  recipient: string;
+}): Promise<ControlledRevalidationSendResult> {
+  const { data, error } = await supabase.functions.invoke(
+    "comm-hub-send-controlled-revalidation",
+    {
+      body: {
+        action: "SEND_CONTROLLED_REVALIDATION_EMAIL",
+        cycleId: input.cycleId,
+        authorisationId: input.authorisationId,
+        currentFingerprint: input.currentFingerprint,
+        recipient: input.recipient,
+      },
+    },
+  );
+  if (error) throw new Error(error.message ?? "controlled revalidation send failed");
+  return data as ControlledRevalidationSendResult;
+}
+
+export async function recoverControlledRevalidationSend(input: {
+  cycleId: string;
+  authorisationId: string;
+}): Promise<ControlledRevalidationSendResult> {
+  const { data, error } = await supabase.functions.invoke(
+    "comm-hub-send-controlled-revalidation",
+    {
+      body: {
+        action: "RECOVER",
+        cycleId: input.cycleId,
+        authorisationId: input.authorisationId,
+      },
+    },
+  );
+  if (error) throw new Error(error.message ?? "controlled revalidation recover failed");
+  return data as ControlledRevalidationSendResult;
+}
