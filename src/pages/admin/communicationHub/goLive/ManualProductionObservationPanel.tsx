@@ -297,10 +297,25 @@ export function ManualProductionObservationPanel({
           )}
 
           <div className="flex items-center gap-2">
-            <RuntimeContractActionGate
-              action="MANUAL_PRODUCTION_SEND"
-              actionLabel="Manual Production dispatch"
-            >
+            {derived.action === "DISPATCH" ? (
+              <RuntimeContractActionGate
+                action="MANUAL_PRODUCTION_SEND"
+                actionLabel="Manual Production dispatch"
+              >
+                <Button
+                  onClick={runPrimaryAction}
+                  disabled={primaryDisabled}
+                  title={derived.blocker ?? undefined}
+                  data-testid="observation-primary-action"
+                  data-action={derived.action}
+                  data-state={derived.state}
+                >
+                  {(primaryLoading || pendingObservation.recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {!primaryLoading && <Send className="h-4 w-4 mr-2" />}
+                  {derived.primaryLabel}
+                </Button>
+              </RuntimeContractActionGate>
+            ) : (
               <Button
                 onClick={runPrimaryAction}
                 disabled={primaryDisabled}
@@ -312,11 +327,10 @@ export function ManualProductionObservationPanel({
                 {(primaryLoading || pendingObservation.recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {derived.action === "FINALIZE" && !primaryLoading && <RefreshCcw className="h-4 w-4 mr-2" />}
                 {derived.action === "CHECK_RECOVERY" && !primaryLoading && <RefreshCcw className="h-4 w-4 mr-2" />}
-                {derived.action === "DISPATCH" && !primaryLoading && <Send className="h-4 w-4 mr-2" />}
                 {derived.action === "CONFIRM_INBOX" && <Inbox className="h-4 w-4 mr-2" />}
                 {derived.primaryLabel}
               </Button>
-            </RuntimeContractActionGate>
+            )}
             {!derived.primaryEnabled && derived.blocker && (
               <span className="text-xs text-muted-foreground">
                 Blocked by <code className="font-mono">{derived.blocker}</code>
