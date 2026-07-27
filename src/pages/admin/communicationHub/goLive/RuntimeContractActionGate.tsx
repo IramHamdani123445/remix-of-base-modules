@@ -12,7 +12,6 @@
  * mounted; only the specific action button is disabled.
  */
 import { AlertTriangle, ShieldOff } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useRuntimeCapabilities } from "@/platform/communication-hub/RuntimeContractContext";
@@ -94,12 +93,12 @@ export function RuntimeContractActionGate({
             <strong>{status.failing.length || "runtime"}</strong>{" "}
             readiness requirement{status.failing.length === 1 ? "" : "s"} need
             attention.{" "}
-            <Link
-              to="/admin/communication-hub/readiness"
+            <a
+              href="/admin/communication-hub/readiness"
               className="font-medium underline underline-offset-2"
             >
               Open Readiness Center
-            </Link>
+            </a>
             .
           </AlertDescription>
         </Alert>

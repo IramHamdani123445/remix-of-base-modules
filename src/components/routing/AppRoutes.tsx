@@ -900,6 +900,8 @@ const CommHubEventTemplateWizardPage = lazy(() => import('@/pages/admin/communic
 const CommHubModuleAdapterTestsPage = lazy(() => import('@/pages/admin/communicationHub/onboarding/ModuleAdapterTestsPage'));
 const CommHubPilotsPage = lazy(() => import('@/pages/admin/communicationHub/CommunicationHubPilotsPage'));
 const CommHubGoLivePage = lazy(() => import('@/pages/admin/communicationHub/goLive/GoLivePage'));
+const CommHubSimpleOperationsPage = lazy(() => import('@/pages/admin/communicationHub/goLive/SimpleOperationsPage'));
+const CommHubWorkspaceLayout = lazy(() => import('@/pages/admin/communicationHub/goLive/CommunicationHubWorkspaceLayout'));
 const CommHubReadinessCenterPage = lazy(() => import('@/pages/admin/communicationHub/goLive/ReadinessCenterPage'));
 const CommHubRevalidationWorkspacePage = lazy(() => import('@/pages/admin/communicationHub/goLive/RevalidationWorkspacePage'));
 const CommHubAuditEvidenceWorkspacePage = lazy(() => import('@/pages/admin/communicationHub/goLive/AuditEvidenceWorkspacePage'));
@@ -2275,12 +2277,18 @@ export const AppRoutes = () => {
       <Route path="/admin/communication-hub/onboarding/event-template-wizard" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubEventTemplateWizardPage /></Suspense></CommHubAdminRoute>} />
       <Route path="/admin/communication-hub/onboarding/module-adapter-tests" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubModuleAdapterTestsPage /></Suspense></CommHubAdminRoute>} />
       <Route path="/admin/communication-hub/pilots" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubPilotsPage /></Suspense></CommHubAdminRoute>} />
-      <Route path="/admin/communication-hub/go-live" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubGoLivePage /></Suspense></CommHubAdminRoute>} />
+      {/* /admin/communication-hub/go-live moved into the shared workspace layout below. */}
       <Route path="/admin/communication-hub/test-diagnostics" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubTestDiagnosticsPage /></Suspense></CommHubAdminRoute>} />
       <Route path="/admin/communication-hub/testing/controlled-live-test" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubControlledLiveTestPage /></Suspense></CommHubAdminRoute>} />
-      <Route path="/admin/communication-hub/readiness" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubReadinessCenterPage /></Suspense></CommHubAdminRoute>} />
-      <Route path="/admin/communication-hub/revalidation" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubRevalidationWorkspacePage /></Suspense></CommHubAdminRoute>} />
-      <Route path="/admin/communication-hub/audit" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubAuditEvidenceWorkspacePage /></Suspense></CommHubAdminRoute>} />
+
+      {/* Shared workspace layout: mounts RuntimeContractProvider + WorkspaceProvider ONCE across the four Go-Live tabs. */}
+      <Route element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubWorkspaceLayout /></Suspense></CommHubAdminRoute>}>
+        <Route path="/admin/communication-hub/go-live" element={<Suspense fallback={<div>Loading...</div>}><CommHubSimpleOperationsPage /></Suspense>} />
+        <Route path="/admin/communication-hub/go-live/advanced" element={<Suspense fallback={<div>Loading...</div>}><CommHubGoLivePage /></Suspense>} />
+        <Route path="/admin/communication-hub/readiness" element={<Suspense fallback={<div>Loading...</div>}><CommHubReadinessCenterPage /></Suspense>} />
+        <Route path="/admin/communication-hub/revalidation" element={<Suspense fallback={<div>Loading...</div>}><CommHubRevalidationWorkspacePage /></Suspense>} />
+        <Route path="/admin/communication-hub/audit" element={<Suspense fallback={<div>Loading...</div>}><CommHubAuditEvidenceWorkspacePage /></Suspense>} />
+      </Route>
       <Route path="/admin/communication-hub/governance" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubGovernancePage /></Suspense></CommHubAdminRoute>} />
 {/* MOVED_BELOW_GOLIVE_ROUTES */}
       <Route path="/admin/communication-hub/live-readiness/all-events" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubAllEventsLiveReadinessPage /></Suspense></CommHubAdminRoute>} />

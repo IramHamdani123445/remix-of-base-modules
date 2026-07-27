@@ -1,11 +1,11 @@
 /**
  * Communication Hub — Operations / Readiness / Revalidation / Audit tab bar.
  *
- * Rendered at the top of each of the four workspaces so operators can move
- * between operations and diagnostics without leaving the runtime-contract
- * provider tree. Presentation only — no data fetch.
+ * Preserves the current URL query string when navigating between tabs so the
+ * shared module/event/channel selection carries across workspaces without a
+ * second RuntimeContractProvider fetch.
  */
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 
 const TABS = [
   { to: "/admin/communication-hub/go-live", label: "Operations", testId: "chub-tab-operations" },
@@ -15,6 +15,8 @@ const TABS = [
 ] as const;
 
 export function CommunicationHubGoLiveTabs() {
+  const location = useLocation();
+  const search = location.search || "";
   return (
     <nav
       aria-label="Communication Hub Go-Live workspaces"
@@ -24,7 +26,7 @@ export function CommunicationHubGoLiveTabs() {
       {TABS.map((t) => (
         <NavLink
           key={t.to}
-          to={t.to}
+          to={{ pathname: t.to, search }}
           end
           data-testid={t.testId}
           className={({ isActive }) =>
