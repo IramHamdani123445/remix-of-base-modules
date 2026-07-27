@@ -41117,6 +41117,8 @@ export type Database = {
           id: string
           module_code: string
           notes: string | null
+          policy_content_hash: string | null
+          policy_version: number
           preview_required: boolean
           require_business_approval: boolean
           require_legal_approval: boolean
@@ -41140,6 +41142,8 @@ export type Database = {
           id?: string
           module_code: string
           notes?: string | null
+          policy_content_hash?: string | null
+          policy_version?: number
           preview_required?: boolean
           require_business_approval?: boolean
           require_legal_approval?: boolean
@@ -41163,6 +41167,8 @@ export type Database = {
           id?: string
           module_code?: string
           notes?: string | null
+          policy_content_hash?: string | null
+          policy_version?: number
           preview_required?: boolean
           require_business_approval?: boolean
           require_legal_approval?: boolean
@@ -41197,6 +41203,8 @@ export type Database = {
           max_recipients_per_send: number
           max_sends_per_entity_per_event: number
           module_code: string
+          policy_content_hash: string | null
+          policy_version: number
           recipient_policy: string
           require_preview_before_manual_send: boolean
           require_typed_confirmation_for_policy_change: boolean
@@ -41229,6 +41237,8 @@ export type Database = {
           max_recipients_per_send?: number
           max_sends_per_entity_per_event?: number
           module_code: string
+          policy_content_hash?: string | null
+          policy_version?: number
           recipient_policy: string
           require_preview_before_manual_send?: boolean
           require_typed_confirmation_for_policy_change?: boolean
@@ -41261,6 +41271,8 @@ export type Database = {
           max_recipients_per_send?: number
           max_sends_per_entity_per_event?: number
           module_code?: string
+          policy_content_hash?: string | null
+          policy_version?: number
           recipient_policy?: string
           require_preview_before_manual_send?: boolean
           require_typed_confirmation_for_policy_change?: boolean
@@ -41399,6 +41411,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      communication_hub_forward_baseline_audit: {
+        Row: {
+          actor: string | null
+          channel: string
+          created_at: string
+          effective_from: string
+          established_at: string
+          event_certification_id: string | null
+          event_code: string
+          forward_baseline_only: boolean
+          id: string
+          module_code: string
+          production_lineage_id: string | null
+          reason: string
+          review_policy_hash: string | null
+          review_policy_id: string | null
+          review_policy_version: number | null
+          send_policy_hash: string | null
+          send_policy_id: string | null
+          send_policy_version: number | null
+          typed_confirmation: string
+        }
+        Insert: {
+          actor?: string | null
+          channel: string
+          created_at?: string
+          effective_from?: string
+          established_at?: string
+          event_certification_id?: string | null
+          event_code: string
+          forward_baseline_only?: boolean
+          id?: string
+          module_code: string
+          production_lineage_id?: string | null
+          reason: string
+          review_policy_hash?: string | null
+          review_policy_id?: string | null
+          review_policy_version?: number | null
+          send_policy_hash?: string | null
+          send_policy_id?: string | null
+          send_policy_version?: number | null
+          typed_confirmation: string
+        }
+        Update: {
+          actor?: string | null
+          channel?: string
+          created_at?: string
+          effective_from?: string
+          established_at?: string
+          event_certification_id?: string | null
+          event_code?: string
+          forward_baseline_only?: boolean
+          id?: string
+          module_code?: string
+          production_lineage_id?: string | null
+          reason?: string
+          review_policy_hash?: string | null
+          review_policy_id?: string | null
+          review_policy_version?: number | null
+          send_policy_hash?: string | null
+          send_policy_id?: string | null
+          send_policy_version?: number | null
+          typed_confirmation?: string
+        }
+        Relationships: []
       }
       communication_hub_gate_catalog: {
         Row: {
@@ -98296,6 +98374,18 @@ export type Database = {
       }
       er_app_docs_resolve: {
         Args: { p_external_docs?: Json; p_source_application_reference: string }
+        Returns: Json
+      }
+      establish_comm_hub_forward_baseline_policies: {
+        Args: {
+          p_channel: string
+          p_event_code: string
+          p_expected_event_certification_id: string
+          p_expected_template_version_id: string
+          p_module_code: string
+          p_reason: string
+          p_typed_confirmation: string
+        }
         Returns: Json
       }
       evaluate_comm_hub_live_gate: {
