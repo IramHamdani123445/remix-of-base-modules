@@ -405,7 +405,7 @@ Deno.serve(async (req) => {
           event_code: ctx.event_code,
           channels: [ctx.channel ?? "email"],
           priority: "normal",
-          status: "prepared",
+          status: "pending",
           payload: {
             cycle_id: cycleId, authorisation_id: authorisationId,
             purpose: "CONTROLLED_REVALIDATION_PREPARATION",
@@ -442,7 +442,7 @@ Deno.serve(async (req) => {
           subject: `[Controlled revalidation — PREPARED] ${ctx.module_code} / ${ctx.event_code}`,
           body_text: "Preparation-only record. No provider call.",
           body_html: "<p>Preparation-only record. No provider call.</p>",
-          status: "prepared",
+          status: "queued",
           send_context: "controlled_revalidation",
           from_email: null,
         })
@@ -456,7 +456,7 @@ Deno.serve(async (req) => {
         .insert({
           message_id: messageId,
           attempt_no: 0,
-          status: "prepared",
+          status: "pending",
           provider_id: providerId,
           provider_call_attempted: false,
           send_context: "controlled_revalidation",
