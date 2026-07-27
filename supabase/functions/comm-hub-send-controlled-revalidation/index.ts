@@ -40,7 +40,7 @@ const ACTION_PROBE = "probe";
 const ACTION_PREPARE = "PREPARE_CONTROLLED_REVALIDATION";
 const SEND_CONTEXT = "CONTROLLED_REVALIDATION";
 const RUNTIME_BUILD =
-  "comm-hub-send-controlled-revalidation@2026-07-27-a4.1-prepare";
+  "comm-hub-send-controlled-revalidation@2026-07-27-a4.1.2B-finalize";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -366,12 +366,26 @@ Deno.serve(async (req) => {
     env.execution_id = prep?.execution_id ?? null;
     const reused: boolean = !!prep?.reused;
     env.reused_existing_execution = reused;
+    const canonicalIdempotencyKey: string | null =
+      prep?.canonical_idempotency_key ?? null;
 
     // 4. If reused, do NOT re-create request/message/attempt — return anchor.
+    //    A reused execution may already be READY_FOR_PROVIDER from a prior
+    //    finalisation. Trust the server-authoritative state.
     if (reused) {
       env.provider_boundary_state = "NOT_ENTERED";
       env.provider_call_attempted = false;
-      return finalize("READY_FOR_PROVIDER", 200,
+      const reusedState = (prep?.state === "READY_FOR_PROVIDER")
+        ? "READY_FOR_PROVIDER" : "FAILED_PRE_PROVIDER";
+      // If the reused row is still PREPARING it means a previous attempt
+      // never finalised — surface that as a soft blocker, not READY.
+      if (prep?.state === "PREPARING") {
+        addBlocker("reused_execution_not_finalised", "execution",
+          "Existing preparation row is still PREPARING. Retry to finalise.");
+        return finalize("BLOCKED", 409,
+          "Existing preparation reused but never finalised. No email has been sent.");
+      }
+      return finalize(reusedState, 200,
         "Existing preparation reused. No email has been sent. Provider delivery remains disabled until the provider-boundary runtime is approved.");
     }
 
@@ -406,7 +420,8 @@ Deno.serve(async (req) => {
             provider_boundary_state: "NOT_ENTERED",
             provider_call_attempted: false,
           },
-          idempotency_key: idempotencyKey,
+          idempotency_key: canonicalIdempotencyKey
+            ?? `crev-prep:${cycleId}:${authorisationId}:${preparationVersion}`,
           requested_by: operatorId,
           approved_by: operatorId,
           approved_at: nowIso,
@@ -468,11 +483,41 @@ Deno.serve(async (req) => {
         "Preparation failed before any provider call. Authorisation preserved. No email has been sent.");
     }
 
+    // 6. Finalise the execution: PREPARING → READY_FOR_PROVIDER only after
+    //    the DB verifies request/message/attempt exist and are linked.
+    //    Never enters the provider transport.
+    const { error: finErr } = await admin.rpc(
+      "_comm_hub_revalidation_finalize_preparation",
+      {
+        p_execution_id: env.execution_id,
+        p_request_id: requestId,
+        p_message_id: messageId,
+        p_trace_id: env.trace_id,
+        p_delivery_attempt_id: attemptId,
+        p_recipient_snapshot_id: null,
+      },
+    );
+    if (finErr) {
+      addBlocker("finalize_preparation_failed", "finalisation", finErr.message);
+      if (env.execution_id) {
+        await admin.rpc("_comm_hub_revalidation_mark_pre_provider_failure", {
+          p_execution_id: env.execution_id,
+          p_failure_code: "finalize_preparation_failed",
+          p_failure_detail: { message: finErr.message },
+        }).catch(() => {});
+      }
+      env.provider_boundary_state = "NOT_ENTERED";
+      env.provider_call_attempted = false;
+      env.authorisation_status = ctx.authorisation_status; // preserved
+      return finalize("FAILED_PRE_PROVIDER", 500,
+        "Preparation finalisation failed before any provider call. Authorisation preserved.");
+    }
+
     env.provider_boundary_state = "NOT_ENTERED";
     env.provider_call_attempted = false;
     env.authorisation_status = ctx.authorisation_status; // ISSUED — preserved
     return finalize("READY_FOR_PROVIDER", 200,
-      "Preparation complete. No email has been sent. Provider delivery remains disabled until the provider-boundary runtime is approved.");
+      "Preparation complete and finalised. No email has been sent. Provider delivery remains disabled until the provider-boundary runtime is approved.");
   }
 
 
