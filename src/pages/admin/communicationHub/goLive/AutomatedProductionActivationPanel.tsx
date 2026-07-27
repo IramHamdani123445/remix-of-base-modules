@@ -38,6 +38,7 @@ export function AutomatedProductionActivationPanel({
   onChanged,
 }: Props) {
   const [probing, setProbing] = useState(false);
+  const [probeError, setProbeError] = useState<ReadinessProbeBlocker | null>(null);
   const [certReason, setCertReason] = useState("");
   const [certPhrase, setCertPhrase] = useState("");
   const [certifying, setCertifying] = useState(false);
