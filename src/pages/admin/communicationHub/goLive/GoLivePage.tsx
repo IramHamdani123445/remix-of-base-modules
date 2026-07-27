@@ -40,6 +40,7 @@ import EventTestContextSummary from "./EventTestContextSummary";
 import DryRunPanel from "../controlCenter/DryRunPanel";
 import ControlledStubPanel from "../controlCenter/ControlledStubPanel";
 import OneRealEmailPanel from "../controlCenter/OneRealEmailPanel";
+import { ControlledRevalidationPanel } from "./ControlledRevalidationPanel";
 import ReadinessSummary from "./ReadinessSummary";
 import GoLiveGateMonitor from "./GoLiveGateMonitor";
 import {
@@ -1170,7 +1171,7 @@ export default function GoLivePage() {
             </AlertDescription>
           </Alert>
         )}
-        {deriveStep6(goLiveStatus) === "COMPLETED" ? (
+        {deriveStep6(goLiveStatus) === "COMPLETED" && (
           <Alert>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             <AlertTitle className="flex items-center gap-2">
@@ -1199,7 +1200,22 @@ export default function GoLivePage() {
               </div>
             </AlertDescription>
           </Alert>
-        ) : (
+        )}
+        {deriveStep6(goLiveStatus) === "COMPLETED" && session.moduleCode && session.eventCode && (
+          <ControlledRevalidationPanel
+            moduleCode={session.moduleCode}
+            eventCode={session.eventCode}
+            channel={session.channel ?? "email"}
+            productionAnchor={{
+              oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
+              verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
+              verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
+              productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
+              baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
+            }}
+          />
+        )}
+        {deriveStep6(goLiveStatus) !== "COMPLETED" && (
         <OneRealEmailPanel
           controlledStubCertified={controlledLiveDone}
           lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
