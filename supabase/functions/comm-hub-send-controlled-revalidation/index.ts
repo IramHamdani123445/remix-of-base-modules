@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
   const finalize = (status: Envelope["status"], http = 200, message?: string): Response => {
     env.status = status;
     env.passed = status === "PROVIDER_ACCEPTED" || status === "RECOVERED"
-      || status === "RESERVED";
+      || status === "RESERVED" || status === "READY_FOR_PROVIDER";
     if (message) env.message = message;
     env.completed_at = new Date().toISOString();
     return json(env, http);
@@ -149,9 +149,13 @@ Deno.serve(async (req) => {
     return finalize("RECOVERED", 200, "probe_ok");
   }
 
-  if (action !== ACTION_SEND && action !== ACTION_RECOVER) {
+  if (
+    action !== ACTION_SEND &&
+    action !== ACTION_RECOVER &&
+    action !== ACTION_PREPARE
+  ) {
     addBlocker("action_invalid", "input_validation",
-      `action must be ${ACTION_SEND}, ${ACTION_RECOVER}, or ${ACTION_PROBE}`);
+      `action must be ${ACTION_SEND}, ${ACTION_RECOVER}, ${ACTION_PREPARE}, or ${ACTION_PROBE}`);
     return finalize("BLOCKED", 400);
   }
 
