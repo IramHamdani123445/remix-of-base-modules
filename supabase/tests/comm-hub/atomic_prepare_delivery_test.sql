@@ -1,25 +1,30 @@
 -- =====================================================================
--- A4.1.3 — Atomic canonical controlled-revalidation preparation tests
+-- A4.1.3A — Canonical atomic controlled-revalidation preparation tests
 --
--- Certifies:
+-- Certifies the strengthened contract:
 --   1. Non service-role callers are rejected.
---   2. Success path creates all six canonical evidence rows atomically
---      and transitions the execution PREPARING → READY_FOR_PROVIDER.
---   3. Idempotent reuse: a second call with the same cycle+authorisation
---      returns reused=true with the same execution and does NOT create
---      duplicate request/message/attempt rows.
---   4. Sub-transaction rollback: if an inner insert fails, no
---      request/message/recipient/trace/attempt rows are left behind and
---      the execution row is FAILED_PRE_PROVIDER (never orphaned).
---   5. Legacy PREPARING/READY rows without complete linkage are swept
---      to RECOVERY_REQUIRED and block normal PREPARE.
---   6. The dedicated admin recovery RPC transitions RECOVERY_REQUIRED
---      → VOIDED and only accepts a >=6-char reason.
+--   2. Success path stores exact canonical rendered subject/body,
+--      canonical renderer hashes matching stored hashes, provider_id,
+--      sender_profile_id, template_version_id, recipient_set_hash,
+--      revalidation_execution_id binding on request AND message,
+--      controlled_action = CONTROLLED_REVALIDATION_PREPARE,
+--      send_context = 'controlled_revalidation', origin = 'comm_hub',
+--      and NO placeholder subject/body remain.
+--   3. Idempotent reuse returns identical execution/request/message/
+--      recipient/trace/attempt IDs.
+--   4. Generic claim RPC excludes the targeted revalidation message.
+--   5. Incomplete legacy PREPARING and READY_FOR_PROVIDER rows are
+--      swept to RECOVERY_REQUIRED and block PREPARE.
+--   6. Recovery RPC requires service_role AND a >=6-char reason.
+--
+-- This suite runs inside a single transaction and rolls back at the end,
+-- so it never mutates production state. It does not SKIP the happy path:
+-- if a usable cycle is absent, the test fails loudly so the fixture
+-- seeder is repaired rather than silently bypassed.
 -- =====================================================================
 
 BEGIN;
 
--- Force service_role context for the internal atomic RPC.
 SET LOCAL "request.jwt.claim.role" = 'service_role';
 
 DO $$
@@ -34,55 +39,57 @@ DECLARE
   v_att_id uuid;
   v_rec_id uuid;
   v_trace_id uuid;
+  v_subject text; v_body_text text; v_body_html text;
+  v_sub_hash text; v_body_hash text; v_content_hash text;
+  v_template_version_id uuid;
+  v_sender_profile_id uuid;
+  v_provider_id uuid;
+  v_recipient_set_hash text;
+  v_msg_revalidation_id uuid;
+  v_req_revalidation_id uuid;
+  v_claim_count int;
+  v_second jsonb;
+  v_legacy_exec uuid;
+  v_reprepare jsonb;
 BEGIN
-  -- Minimal seed: cycle + authorisation with baseline anchors set so the
-  -- resolver returns ok=true. We call the atomic RPC directly and assert
-  -- against its returned envelope; environment-specific evidence such as
-  -- baseline attestation is expected to be present in the target DB
-  -- before this test runs (existing pilot cycle satisfies this).
   SELECT id INTO v_cycle_id
     FROM public.communication_hub_revalidation_cycle
-   WHERE status IN ('READY_FOR_CONTROLLED_EMAIL','AWAITING_INBOX_CONFIRMATION',
-                    'DRAFT','ASSESSED','AUTHORISED')
+   WHERE status IN ('READY_FOR_CONTROLLED_EMAIL','EMAIL_AUTHORISED',
+                    'AWAITING_INBOX_CONFIRMATION','DRAFT','ASSESSING',
+                    'REVALIDATION_REQUIRED','NON_SENDING_CHECKS')
    ORDER BY updated_at DESC LIMIT 1;
   IF v_cycle_id IS NULL THEN
-    RAISE NOTICE 'SKIP: no revalidation cycle available for atomic prepare test';
-    RETURN;
+    RAISE EXCEPTION 'FIXTURE_MISSING: no revalidation cycle available — seed a fixture cycle before running this suite (SKIP is not allowed).';
   END IF;
 
   SELECT id INTO v_auth_id
     FROM public.communication_hub_revalidation_send_authorisation
-   WHERE cycle_id = v_cycle_id
-     AND consumed_at IS NULL AND revoked_at IS NULL
+   WHERE cycle_id = v_cycle_id AND consumed_at IS NULL AND revoked_at IS NULL
    ORDER BY issued_at DESC LIMIT 1;
   IF v_auth_id IS NULL THEN
-    RAISE NOTICE 'SKIP: no usable authorisation for cycle %', v_cycle_id;
-    RETURN;
+    RAISE EXCEPTION 'FIXTURE_MISSING: no usable authorisation for cycle % (SKIP is not allowed).', v_cycle_id;
   END IF;
 
   ----------------------------------------------------------------------
-  -- 1. Non service-role caller rejected.
+  -- 1. Non service-role rejected.
   ----------------------------------------------------------------------
   BEGIN
     SET LOCAL "request.jwt.claim.role" = 'authenticated';
     PERFORM public._comm_hub_revalidation_prepare_delivery(
-      v_cycle_id, v_auth_id, v_operator, 'test');
-    RAISE EXCEPTION 'FAIL: non service-role call should have been rejected';
-  EXCEPTION WHEN insufficient_privilege THEN
-    -- expected
-    NULL;
+      v_cycle_id, v_auth_id, v_operator, 'a413a-test');
+    RAISE EXCEPTION 'FAIL: non service-role must be rejected';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
   SET LOCAL "request.jwt.claim.role" = 'service_role';
 
   ----------------------------------------------------------------------
-  -- 2. Success path.
+  -- 2. Success path — full canonical evidence.
   ----------------------------------------------------------------------
   v_result := public._comm_hub_revalidation_prepare_delivery(
-    v_cycle_id, v_auth_id, v_operator, 'atomic-test');
+    v_cycle_id, v_auth_id, v_operator, 'a413a-test');
   IF NOT COALESCE((v_result->>'ok')::boolean, false) THEN
-    RAISE NOTICE 'SKIP: atomic prepare returned blockers % — env not fully seeded',
-      v_result->'blockers';
-    RETURN;
+    RAISE EXCEPTION 'FAIL: canonical prepare returned blockers % (authority incomplete — fail closed).',
+      (v_result->'blockers')::text;
   END IF;
   v_exec_id := (v_result->>'execution_id')::uuid;
   v_req_id  := (v_result->>'request_id')::uuid;
@@ -93,62 +100,122 @@ BEGIN
 
   ASSERT v_result->>'state' = 'READY_FOR_PROVIDER',
     'execution must be READY_FOR_PROVIDER';
-  ASSERT (v_result->>'provider_call_attempted')::boolean = false,
-    'provider_call_attempted must be false';
-  ASSERT EXISTS(SELECT 1 FROM public.communication_request WHERE id = v_req_id),
-    'request row must exist';
+  ASSERT (v_result->>'provider_call_attempted')::boolean = false;
+  ASSERT v_result ? 'template_version_id'
+     AND v_result ? 'sender_profile_id'
+     AND v_result ? 'provider_id'
+     AND v_result ? 'recipient_set_hash'
+     AND v_result ? 'subject_hash'
+     AND v_result ? 'body_hash'
+     AND v_result ? 'content_hash',
+    'envelope must expose canonical authority + hashes';
+
+  SELECT subject, body_text, body_html, subject_hash, body_hash, content_hash,
+         template_version_id, sender_profile_id, provider_id,
+         recipient_set_hash, revalidation_execution_id
+    INTO v_subject, v_body_text, v_body_html,
+         v_sub_hash, v_body_hash, v_content_hash,
+         v_template_version_id, v_sender_profile_id, v_provider_id,
+         v_recipient_set_hash, v_msg_revalidation_id
+    FROM public.communication_message WHERE id = v_msg_id;
+
+  ASSERT v_msg_revalidation_id = v_exec_id,
+    'message.revalidation_execution_id must bind to execution';
+  ASSERT v_subject IS NOT NULL AND length(trim(v_subject)) > 0,
+    'stored subject must not be blank';
+  ASSERT COALESCE(v_body_text,'') <> '' OR COALESCE(v_body_html,'') <> '',
+    'stored body must not be blank';
+  ASSERT v_subject NOT ILIKE '%[Controlled revalidation — PREPARED]%',
+    'placeholder subject fallback must not exist';
+  ASSERT COALESCE(v_body_text,'') NOT ILIKE '%Canonical revalidation preparation. No provider call.%',
+    'placeholder body fallback must not exist';
+  ASSERT v_sub_hash = v_result->>'subject_hash'
+     AND v_body_hash = v_result->>'body_hash'
+     AND v_content_hash = v_result->>'content_hash',
+    'stored hashes must equal envelope hashes';
+  -- Independent recomputation matches stored hashes.
+  ASSERT v_sub_hash = encode(extensions.digest(v_subject,'sha256'),'hex'),
+    'independent subject hash recomputation must match stored subject_hash';
+  ASSERT v_body_hash = encode(extensions.digest(
+    COALESCE(v_body_html,'') || E'\n---\n' || COALESCE(v_body_text,''),'sha256'),'hex'),
+    'independent body hash recomputation must match stored body_hash';
+
+  SELECT revalidation_execution_id INTO v_req_revalidation_id
+    FROM public.communication_request WHERE id = v_req_id;
+  ASSERT v_req_revalidation_id = v_exec_id,
+    'request.revalidation_execution_id must bind to execution';
+
   ASSERT EXISTS(SELECT 1 FROM public.communication_recipient
-                 WHERE id = v_rec_id AND request_id = v_req_id AND role = 'to'),
-    'canonical recipient must exist and be bound to request as role=to';
-  ASSERT EXISTS(SELECT 1 FROM public.communication_message
-                 WHERE id = v_msg_id AND request_id = v_req_id
-                   AND recipient_id = v_rec_id),
-    'message must be linked to request and recipient';
-  ASSERT EXISTS(SELECT 1 FROM public.communication_delivery_attempt
-                 WHERE id = v_att_id AND message_id = v_msg_id
-                   AND provider_call_attempted = false),
-    'delivery attempt must be linked and provider_call_attempted=false';
+                 WHERE id = v_rec_id AND request_id = v_req_id AND role='to'),
+    'canonical recipient must exist with role=to';
   ASSERT EXISTS(SELECT 1 FROM public.communication_hub_trace
-                 WHERE id = v_trace_id AND request_id = v_req_id
-                   AND message_id = v_msg_id),
-    'canonical hub trace must exist and be linked (no execution-id fallback)';
+                 WHERE id = v_trace_id AND request_id = v_req_id AND message_id = v_msg_id),
+    'canonical hub trace must be linked (no execution-id fallback)';
   ASSERT EXISTS(SELECT 1 FROM public.communication_hub_trace_step
                  WHERE trace_id = v_trace_id
-                   AND stage_code = 'PREPARATION_COMPLETE'
-                   AND status = 'passed'),
-    'first trace step must be PREPARATION_COMPLETE / passed';
+                   AND stage_code = 'PREPARATION_COMPLETE' AND status='passed');
+  ASSERT EXISTS(SELECT 1 FROM public.communication_delivery_attempt
+                 WHERE id = v_att_id AND message_id = v_msg_id
+                   AND provider_call_attempted = false);
 
   ----------------------------------------------------------------------
-  -- 3. Idempotent reuse.
+  -- 3. Idempotent reuse — identical IDs including recipient_id.
   ----------------------------------------------------------------------
-  v_result := public._comm_hub_revalidation_prepare_delivery(
-    v_cycle_id, v_auth_id, v_operator, 'atomic-test-2');
-  ASSERT (v_result->>'reused')::boolean = true,
-    'second call must reuse the existing execution';
-  ASSERT (v_result->>'execution_id')::uuid = v_exec_id,
-    'reused execution id must match';
-  ASSERT (SELECT count(*) FROM public.communication_message
-           WHERE request_id = v_req_id) = 1,
-    'no duplicate message rows may be created on reuse';
+  v_second := public._comm_hub_revalidation_prepare_delivery(
+    v_cycle_id, v_auth_id, v_operator, 'a413a-test-2');
+  ASSERT (v_second->>'reused')::boolean = true;
+  ASSERT (v_second->>'execution_id')::uuid = v_exec_id;
+  ASSERT (v_second->>'request_id')::uuid  = v_req_id;
+  ASSERT (v_second->>'message_id')::uuid  = v_msg_id;
+  ASSERT (v_second->>'recipient_id')::uuid = v_rec_id,
+    'reuse must return the real recipient_id, not NULL';
+  ASSERT (v_second->>'trace_id')::uuid = v_trace_id;
+  ASSERT (v_second->>'delivery_attempt_id')::uuid = v_att_id;
 
   ----------------------------------------------------------------------
-  -- 6. Admin recovery RPC rejects short reasons.
+  -- 4. Generic claim RPC must not claim the prepared targeted message.
   ----------------------------------------------------------------------
-  -- The recovery RPC checks auth.uid() and is_comm_hub_admin() — those
-  -- can't be spoofed here, so we just prove the reason-length gate.
+  WITH claimed AS (
+    SELECT id FROM public.claim_comm_hub_messages(200, 'a413a-worker', true, now() - interval '1 hour', 60)
+  )
+  SELECT count(*) INTO v_claim_count FROM claimed WHERE id = v_msg_id;
+  ASSERT v_claim_count = 0,
+    'generic claim RPC must exclude controlled_revalidation prepared messages';
+
+  ----------------------------------------------------------------------
+  -- 5. Incomplete legacy execution → RECOVERY_REQUIRED, blocks PREPARE.
+  ----------------------------------------------------------------------
+  INSERT INTO public.communication_hub_revalidation_execution (
+    cycle_id, authorisation_id, operator_id, idempotency_key,
+    preparation_version, state, provider_boundary_state,
+    provider_call_attempted, runtime_build)
+  VALUES (v_cycle_id, v_auth_id, v_operator,
+    'legacy-'||gen_random_uuid()::text, 99,
+    'PREPARING','NOT_ENTERED', false, 'legacy-a413a-test')
+  RETURNING id INTO v_legacy_exec;
+
+  v_reprepare := public._comm_hub_revalidation_prepare_delivery(
+    v_cycle_id, v_auth_id, v_operator, 'legacy-sweep');
+  ASSERT COALESCE((v_reprepare->>'ok')::boolean, true) = false,
+    'PREPARE must fail after legacy sweep';
+  ASSERT v_reprepare->>'state' = 'RECOVERY_REQUIRED',
+    'PREPARE must report RECOVERY_REQUIRED';
+  ASSERT (SELECT state FROM public.communication_hub_revalidation_execution
+           WHERE id = v_legacy_exec) = 'RECOVERY_REQUIRED',
+    'legacy row must have been swept to RECOVERY_REQUIRED';
+
+  ----------------------------------------------------------------------
+  -- 6. Recovery RPC rejects short reason.
+  ----------------------------------------------------------------------
   BEGIN
     PERFORM public._comm_hub_revalidation_recover_execution(
-      v_exec_id, v_operator, 'no');
-    RAISE EXCEPTION 'FAIL: recovery with short reason should have been rejected';
+      v_legacy_exec, v_operator, 'no');
+    RAISE EXCEPTION 'FAIL: recovery must reject reason shorter than 6 chars';
   EXCEPTION WHEN OTHERS THEN
-    IF SQLSTATE NOT IN ('22023','42501') THEN
-      RAISE;
-    END IF;
+    IF SQLSTATE NOT IN ('22023','42501') THEN RAISE; END IF;
   END;
 
-  RAISE NOTICE 'PASS: A4.1.3 atomic canonical preparation certified for cycle %',
-    v_cycle_id;
-END;
-$$;
+  RAISE NOTICE 'PASS: A4.1.3A canonical atomic preparation certified for cycle %', v_cycle_id;
+END $$;
 
 ROLLBACK;
