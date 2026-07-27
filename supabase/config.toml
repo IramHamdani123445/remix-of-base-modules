@@ -51,3 +51,5 @@ project_id = "xynceskeiiisiefqlgxo"
     verify_jwt = true
   [functions.comm-hub-automation-tick]
     verify_jwt = false
+  [functions.comm-hub-send-controlled-revalidation]
+    verify_jwt = true
