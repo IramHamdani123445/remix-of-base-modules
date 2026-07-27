@@ -124,6 +124,29 @@ describe("Shared runtime-contract provider — one audit across tabs", () => {
   });
 });
 
+describe("A4.1 — legacy Go-Live advanced page does NOT duplicate runtime-contract audit", () => {
+  it("only mounts the RuntimeContractProvider once, even when the advanced route is active", async () => {
+    // The advanced GoLivePage previously mounted its own <RuntimeContractProvider>.
+    // With A4.1 the workspace layout owns the provider; the advanced page must
+    // therefore NOT trigger a second auditRuntimeContract fetch.
+    vi.mocked(auditRuntimeContract).mockReset();
+    vi.mocked(auditRuntimeContract).mockResolvedValue(passingReport());
+    // Verify by inspecting the source that the advanced page has no
+    // internal RuntimeContractProvider wrapper.
+    // (The rendered tree is intentionally NOT exercised here to avoid pulling
+    // in the full advanced page render surface; a static source assertion
+    // proves the invariant more cheaply and deterministically.)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("node:fs");
+    const src = fs.readFileSync(
+      "src/pages/admin/communicationHub/goLive/GoLivePage.tsx",
+      "utf8",
+    ) as string;
+    const exported = src.slice(src.indexOf("export default function GoLivePage"));
+    expect(exported.includes("<RuntimeContractProvider>")).toBe(false);
+  });
+});
+
 describe("Workspace URL restoration and persistence", () => {
   function Probe() {
     const w = useCommunicationHubWorkspace();

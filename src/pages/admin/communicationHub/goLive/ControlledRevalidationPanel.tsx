@@ -25,6 +25,7 @@ import {
   assessRevalidationRequirement,
   startRevalidationCycle,
   issueRevalidationSendAuthorisation,
+  prepareControlledRevalidation,
   recordRevalidationInboxConfirmation,
   markRevalidationCycleSupplemental,
   promoteRevalidationBaseline,
@@ -96,6 +97,9 @@ export function ControlledRevalidationPanel({
   const [promotePhrase, setPromotePhrase] = useState("");
   const [promoteReason, setPromoteReason] = useState("");
   const [promoting, setPromoting] = useState(false);
+  const [lastAuthorisationId, setLastAuthorisationId] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const [prepareResult, setPrepareResult] = useState<Awaited<ReturnType<typeof prepareControlledRevalidation>> | null>(null);
 
   async function refresh() {
     try {
@@ -148,17 +152,42 @@ export function ControlledRevalidationPanel({
     if (!activeCycle) return;
     setIssuing(true);
     try {
-      await issueRevalidationSendAuthorisation({
+      const res: any = await issueRevalidationSendAuthorisation({
         cycleId: activeCycle.id,
         recipientEmail: recipient,
         currentFingerprint: activeCycle.current_evidence_fingerprint_v2 ?? "",
         typedPhrase: phrase,
       });
-      toast.success("Authorisation issued. Operator may now dispatch the controlled revalidation email.");
+      const authId = res?.authorisation_id ?? res?.id ?? null;
+      setLastAuthorisationId(authId);
+      setPrepareResult(null);
+      toast.success("Authorisation issued. You may now prepare the controlled delivery.");
       setPhrase("");
       await refresh();
     } catch (e: any) { toast.error(e.message); }
     finally { setIssuing(false); }
+  }
+
+  async function handlePrepare() {
+    if (!activeCycle || !lastAuthorisationId) return;
+    setPreparing(true);
+    try {
+      const res = await prepareControlledRevalidation({
+        cycleId: activeCycle.id,
+        authorisationId: lastAuthorisationId,
+      });
+      setPrepareResult(res);
+      if (res.status === "READY_FOR_PROVIDER") {
+        toast.success(res.reused_existing_execution
+          ? "Existing preparation reused. No email sent."
+          : "Preparation complete. No email sent. Provider delivery remains disabled.");
+      } else if (res.status === "BLOCKED") {
+        toast.error(`Preparation blocked (${res.blockers[0]?.code ?? "unknown"}). No email sent.`);
+      } else if (res.status === "FAILED_PRE_PROVIDER") {
+        toast.error("Preparation failed before any provider call. Authorisation preserved.");
+      }
+    } catch (e: any) { toast.error(e.message); }
+    finally { setPreparing(false); }
   }
 
   async function handleInbox(status: "CONFIRMED" | "NOT_RECEIVED") {
@@ -371,6 +400,73 @@ export function ControlledRevalidationPanel({
                 </div>
               </div>
             )}
+
+            {/* A4.1 — Prepare controlled delivery (no provider call) */}
+            {activeCycle && lastAuthorisationId && (
+              <div className="rounded border p-2 space-y-2 bg-muted/30">
+                <div className="text-xs font-medium">
+                  Prepare controlled delivery <Badge variant="outline">no email sent</Badge>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Reserves canonical template, sender, recipient and provider
+                  bindings and creates durable evidence. The email provider is
+                  NOT contacted — that step remains disabled until the
+                  provider-boundary runtime is approved.
+                </div>
+                <RuntimeContractActionGate
+                  action="CONTROLLED_REVALIDATION_SEND"
+                  actionLabel="Controlled revalidation preparation"
+                >
+                  <Button
+                    size="sm"
+                    onClick={handlePrepare}
+                    disabled={preparing}
+                    data-testid="controlled-revalidation-prepare-button"
+                  >
+                    {preparing && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                    Prepare controlled delivery
+                  </Button>
+                </RuntimeContractActionGate>
+                {prepareResult && (
+                  <div className="text-[11px] space-y-1" data-testid="controlled-revalidation-prepare-result">
+                    <div>
+                      <span className="text-muted-foreground">Status:</span>{" "}
+                      <Badge variant={prepareResult.status === "READY_FOR_PROVIDER" ? "default" : "destructive"}>
+                        {prepareResult.status}
+                      </Badge>
+                      {prepareResult.reused_existing_execution && (
+                        <Badge variant="outline" className="ml-1">reused</Badge>
+                      )}
+                    </div>
+                    {prepareResult.execution_id && (
+                      <div>
+                        <span className="text-muted-foreground">Execution:</span>{" "}
+                        <code className="font-mono">{prepareResult.execution_id}</code>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-muted-foreground">Provider call attempted:</span>{" "}
+                      {String(prepareResult.provider_call_attempted)}
+                    </div>
+                    {prepareResult.blockers.length > 0 && (
+                      <ul className="list-disc pl-4 text-destructive">
+                        {prepareResult.blockers.map((b, i) => (
+                          <li key={i}>{b.code} ({b.stage}){b.message ? `: ${b.message}` : ""}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <a
+                      href="/admin/communication-hub/audit"
+                      className="underline text-primary text-[11px]"
+                    >
+                      View evidence in Audit workspace →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+
 
             {/* Inbox confirmation */}
             {canConfirmInbox && (

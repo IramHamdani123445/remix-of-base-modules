@@ -101247,6 +101247,10 @@ export type Database = {
           storage_path: string
         }[]
       }
+      resolve_comm_hub_revalidation_preparation_context: {
+        Args: { p_authorisation_id: string; p_cycle_id: string }
+        Returns: Json
+      }
       resolve_comm_hub_send_policy: {
         Args: {
           p_channel?: string
