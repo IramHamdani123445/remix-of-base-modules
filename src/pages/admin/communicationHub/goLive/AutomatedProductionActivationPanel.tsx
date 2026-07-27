@@ -42,6 +42,7 @@ export function AutomatedProductionActivationPanel({
 }: Props) {
   const [probing, setProbing] = useState(false);
   const [probeError, setProbeError] = useState<ReadinessProbeBlocker | null>(null);
+  const [probeResult, setProbeResult] = useState<ReadinessProbeSuccess | null>(null);
   const [certReason, setCertReason] = useState("");
   const [certPhrase, setCertPhrase] = useState("");
   const [certifying, setCertifying] = useState(false);
@@ -61,7 +62,12 @@ export function AutomatedProductionActivationPanel({
   const globalAutomatedActive = platform?.current_operating_mode === "AUTOMATED_PRODUCTION";
   const armed = platform?.automation_state === "ARMED";
 
-  const readinessByCode = new Map(
+  // Per-check status: prefer the live probe response so NOT_IMPLEMENTED /
+  // NOT_CONFIGURED / DRIFTED render distinctly (not as generic ERROR).
+  const probeByCode = new Map<string, ReadinessProbeCheck>(
+    (probeResult?.checks ?? []).map((c) => [c.check_code, c]),
+  );
+  const stageByCode = new Map(
     (stage8?.readiness_checks ?? []).map((c) => [c.check_code, c]),
   );
 
