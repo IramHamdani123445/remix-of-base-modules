@@ -401,6 +401,73 @@ export function ControlledRevalidationPanel({
               </div>
             )}
 
+            {/* A4.1 — Prepare controlled delivery (no provider call) */}
+            {activeCycle && lastAuthorisationId && (
+              <div className="rounded border p-2 space-y-2 bg-muted/30">
+                <div className="text-xs font-medium">
+                  Prepare controlled delivery <Badge variant="outline">no email sent</Badge>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  Reserves canonical template, sender, recipient and provider
+                  bindings and creates durable evidence. The email provider is
+                  NOT contacted — that step remains disabled until the
+                  provider-boundary runtime is approved.
+                </div>
+                <RuntimeContractActionGate
+                  action="CONTROLLED_REVALIDATION_SEND"
+                  actionLabel="Controlled revalidation preparation"
+                >
+                  <Button
+                    size="sm"
+                    onClick={handlePrepare}
+                    disabled={preparing}
+                    data-testid="controlled-revalidation-prepare-button"
+                  >
+                    {preparing && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                    Prepare controlled delivery
+                  </Button>
+                </RuntimeContractActionGate>
+                {prepareResult && (
+                  <div className="text-[11px] space-y-1" data-testid="controlled-revalidation-prepare-result">
+                    <div>
+                      <span className="text-muted-foreground">Status:</span>{" "}
+                      <Badge variant={prepareResult.status === "READY_FOR_PROVIDER" ? "default" : "destructive"}>
+                        {prepareResult.status}
+                      </Badge>
+                      {prepareResult.reused_existing_execution && (
+                        <Badge variant="outline" className="ml-1">reused</Badge>
+                      )}
+                    </div>
+                    {prepareResult.execution_id && (
+                      <div>
+                        <span className="text-muted-foreground">Execution:</span>{" "}
+                        <code className="font-mono">{prepareResult.execution_id}</code>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-muted-foreground">Provider call attempted:</span>{" "}
+                      {String(prepareResult.provider_call_attempted)}
+                    </div>
+                    {prepareResult.blockers.length > 0 && (
+                      <ul className="list-disc pl-4 text-destructive">
+                        {prepareResult.blockers.map((b, i) => (
+                          <li key={i}>{b.code} ({b.stage}){b.message ? `: ${b.message}` : ""}</li>
+                        ))}
+                      </ul>
+                    )}
+                    <a
+                      href="/admin/communication-hub/audit"
+                      className="underline text-primary text-[11px]"
+                    >
+                      View evidence in Audit workspace →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+
+
             {/* Inbox confirmation */}
             {canConfirmInbox && (
               <div className="rounded border p-2 space-y-2">
