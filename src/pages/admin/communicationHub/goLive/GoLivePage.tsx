@@ -94,6 +94,8 @@ import { LegacyBaselineAttestationPanel } from "./LegacyBaselineAttestationPanel
 import { RuntimeContractCard } from "./RuntimeContractCard";
 import { DiagnosticBundlePanel } from "./DiagnosticBundlePanel";
 import { RuntimeContractProvider } from "@/platform/communication-hub/RuntimeContractContext";
+import { RuntimeContractGate } from "./RuntimeContractGate";
+import { getRuntimeRequirements } from "@/platform/communication-hub/runtimeActionRequirements";
 
 import { ManualProductionObservationPanel } from "./ManualProductionObservationPanel";
 import { AutomatedProductionActivationPanel } from "./AutomatedProductionActivationPanel";
