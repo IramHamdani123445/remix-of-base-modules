@@ -39554,7 +39554,13 @@ export type Database = {
           dry_run_certification_id: string
           event_code: string
           evidence_fingerprint: string | null
+          evidence_fingerprint_algorithm: string | null
+          evidence_fingerprint_v2: string | null
+          evidence_snapshot_v2: Json | null
           execution_id: string
+          fingerprint_backfill_detail: Json | null
+          fingerprint_backfill_status: string | null
+          fingerprint_backfilled_at: string | null
           id: string
           invalidated_at: string | null
           invalidated_by: string | null
@@ -39571,6 +39577,7 @@ export type Database = {
           operating_mode_prior: string | null
           preview_approval_id: string
           preview_snapshot_id: string | null
+          production_lineage_id: string | null
           provider_message_id: string | null
           provider_name: string | null
           provider_outcome: string
@@ -39593,7 +39600,13 @@ export type Database = {
           dry_run_certification_id: string
           event_code: string
           evidence_fingerprint?: string | null
+          evidence_fingerprint_algorithm?: string | null
+          evidence_fingerprint_v2?: string | null
+          evidence_snapshot_v2?: Json | null
           execution_id: string
+          fingerprint_backfill_detail?: Json | null
+          fingerprint_backfill_status?: string | null
+          fingerprint_backfilled_at?: string | null
           id?: string
           invalidated_at?: string | null
           invalidated_by?: string | null
@@ -39610,6 +39623,7 @@ export type Database = {
           operating_mode_prior?: string | null
           preview_approval_id: string
           preview_snapshot_id?: string | null
+          production_lineage_id?: string | null
           provider_message_id?: string | null
           provider_name?: string | null
           provider_outcome: string
@@ -39632,7 +39646,13 @@ export type Database = {
           dry_run_certification_id?: string
           event_code?: string
           evidence_fingerprint?: string | null
+          evidence_fingerprint_algorithm?: string | null
+          evidence_fingerprint_v2?: string | null
+          evidence_snapshot_v2?: Json | null
           execution_id?: string
+          fingerprint_backfill_detail?: Json | null
+          fingerprint_backfill_status?: string | null
+          fingerprint_backfilled_at?: string | null
           id?: string
           invalidated_at?: string | null
           invalidated_by?: string | null
@@ -39649,6 +39669,7 @@ export type Database = {
           operating_mode_prior?: string | null
           preview_approval_id?: string
           preview_snapshot_id?: string | null
+          production_lineage_id?: string | null
           provider_message_id?: string | null
           provider_name?: string | null
           provider_outcome?: string
@@ -40805,6 +40826,12 @@ export type Database = {
           drift_reason: string | null
           event_code: string
           evidence_fingerprint: string | null
+          evidence_fingerprint_algorithm: string | null
+          evidence_fingerprint_v2: string | null
+          evidence_snapshot_v2: Json | null
+          fingerprint_backfill_detail: Json | null
+          fingerprint_backfill_status: string | null
+          fingerprint_backfilled_at: string | null
           id: string
           manual_verification_status: string | null
           manual_verified_at: string | null
@@ -40814,6 +40841,7 @@ export type Database = {
           one_real_email_certification_id: string
           pinned_configuration_version: number | null
           pinned_readiness_result_ids: string[] | null
+          production_lineage_id: string | null
           real_email_gate_closed_at: string | null
           real_email_gate_closed_by: string | null
           real_email_gate_closed_reason: string | null
@@ -40840,6 +40868,12 @@ export type Database = {
           drift_reason?: string | null
           event_code: string
           evidence_fingerprint?: string | null
+          evidence_fingerprint_algorithm?: string | null
+          evidence_fingerprint_v2?: string | null
+          evidence_snapshot_v2?: Json | null
+          fingerprint_backfill_detail?: Json | null
+          fingerprint_backfill_status?: string | null
+          fingerprint_backfilled_at?: string | null
           id?: string
           manual_verification_status?: string | null
           manual_verified_at?: string | null
@@ -40849,6 +40883,7 @@ export type Database = {
           one_real_email_certification_id: string
           pinned_configuration_version?: number | null
           pinned_readiness_result_ids?: string[] | null
+          production_lineage_id?: string | null
           real_email_gate_closed_at?: string | null
           real_email_gate_closed_by?: string | null
           real_email_gate_closed_reason?: string | null
@@ -40875,6 +40910,12 @@ export type Database = {
           drift_reason?: string | null
           event_code?: string
           evidence_fingerprint?: string | null
+          evidence_fingerprint_algorithm?: string | null
+          evidence_fingerprint_v2?: string | null
+          evidence_snapshot_v2?: Json | null
+          fingerprint_backfill_detail?: Json | null
+          fingerprint_backfill_status?: string | null
+          fingerprint_backfilled_at?: string | null
           id?: string
           manual_verification_status?: string | null
           manual_verified_at?: string | null
@@ -40884,6 +40925,7 @@ export type Database = {
           one_real_email_certification_id?: string
           pinned_configuration_version?: number | null
           pinned_readiness_result_ids?: string[] | null
+          production_lineage_id?: string | null
           real_email_gate_closed_at?: string | null
           real_email_gate_closed_by?: string | null
           real_email_gate_closed_reason?: string | null
@@ -95785,6 +95827,10 @@ export type Database = {
         }
         Returns: string
       }
+      _comm_hub_fingerprint_evidence_snapshot_v2: {
+        Args: { p_snapshot: Json }
+        Returns: string
+      }
       _comm_hub_get_request_actor: { Args: never; Returns: Json }
       _comm_hub_get_request_role: { Args: never; Returns: Json }
       _comm_hub_governance_transition_core: {
@@ -95818,11 +95864,14 @@ export type Database = {
         Args: { p_ipath: string; p_sch: Json; p_spath: string; p_val: Json }
         Returns: Json
       }
+      _comm_hub_norm_channel: { Args: { t: string }; Returns: string }
+      _comm_hub_norm_code: { Args: { t: string }; Returns: string }
       _comm_hub_reject_reserved_targeted_fields: {
         Args: { payload: Json }
         Returns: undefined
       }
       _comm_hub_sha256_hex: { Args: { p_text: string }; Returns: string }
+      _comm_hub_sha256_jsonb: { Args: { p: Json }; Returns: string }
       _evaluate_comm_hub_send_decision_core: {
         Args: { p_payload: Json }
         Returns: Json
@@ -96034,6 +96083,7 @@ export type Database = {
         }
         Returns: Json
       }
+      backfill_comm_hub_ore_evidence_snapshots: { Args: never; Returns: Json }
       begin_comm_hub_controlled_live: {
         Args: { p_payload: Json }
         Returns: Json
@@ -98706,6 +98756,10 @@ export type Database = {
         }
       }
       get_comm_hub_cron_status: { Args: never; Returns: Json }
+      get_comm_hub_current_evidence_snapshot: {
+        Args: { p_channel: string; p_event_code: string; p_module_code: string }
+        Returns: Json
+      }
       get_comm_hub_event_go_live_stage9: {
         Args: {
           p_channel?: string
@@ -98787,6 +98841,10 @@ export type Database = {
       }
       get_comm_hub_one_real_email_recovery_status: {
         Args: { p_execution_id: string }
+        Returns: Json
+      }
+      get_comm_hub_ore_evidence_snapshot: {
+        Args: { p_one_real_email_certification_id: string }
         Returns: Json
       }
       get_comm_hub_real_email_gate: {
@@ -98874,7 +98932,13 @@ export type Database = {
           dry_run_certification_id: string
           event_code: string
           evidence_fingerprint: string | null
+          evidence_fingerprint_algorithm: string | null
+          evidence_fingerprint_v2: string | null
+          evidence_snapshot_v2: Json | null
           execution_id: string
+          fingerprint_backfill_detail: Json | null
+          fingerprint_backfill_status: string | null
+          fingerprint_backfilled_at: string | null
           id: string
           invalidated_at: string | null
           invalidated_by: string | null
@@ -98891,6 +98955,7 @@ export type Database = {
           operating_mode_prior: string | null
           preview_approval_id: string
           preview_snapshot_id: string | null
+          production_lineage_id: string | null
           provider_message_id: string | null
           provider_name: string | null
           provider_outcome: string
