@@ -1355,19 +1355,24 @@ function GoLivePageInner() {
               status={goLiveStatus}
               onChanged={reloadGoLive}
             />
-            <ManualProductionObservationPanel
-              moduleCode={session.moduleCode}
-              eventCode={session.eventCode}
-              channel={session.channel ?? "email"}
-              status={goLiveStatus}
-              pendingObservation={pendingObservation}
-              reloadNonce={goLiveReloadNonce}
-              onLastResult={(res, key) => {
-                setObservationLastResult(res);
-                if (key !== undefined) setObservationLastKey(key);
-              }}
-              onChanged={reloadGoLive}
-            />
+            <RuntimeContractGate
+              action="MANUAL_PRODUCTION_SEND"
+              capabilities={[...getRuntimeRequirements("MANUAL_PRODUCTION_SEND")]}
+            >
+              <ManualProductionObservationPanel
+                moduleCode={session.moduleCode}
+                eventCode={session.eventCode}
+                channel={session.channel ?? "email"}
+                status={goLiveStatus}
+                pendingObservation={pendingObservation}
+                reloadNonce={goLiveReloadNonce}
+                onLastResult={(res, key) => {
+                  setObservationLastResult(res);
+                  if (key !== undefined) setObservationLastKey(key);
+                }}
+                onChanged={reloadGoLive}
+              />
+            </RuntimeContractGate>
           </div>
         )}
       </CommunicationHubSectionCard>
