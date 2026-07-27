@@ -25,6 +25,7 @@ import {
   assessRevalidationRequirement,
   startRevalidationCycle,
   issueRevalidationSendAuthorisation,
+  prepareControlledRevalidation,
   recordRevalidationInboxConfirmation,
   markRevalidationCycleSupplemental,
   promoteRevalidationBaseline,
