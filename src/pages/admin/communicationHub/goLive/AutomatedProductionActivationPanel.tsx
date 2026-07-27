@@ -446,8 +446,8 @@ export function AutomatedProductionActivationPanel({
         />
         <div className="flex gap-2">
           <RuntimeContractActionGate
-            action="AUTOMATED_CANARY"
-            actionLabel="Arm automation / automated canary"
+            action="AUTOMATED_PRODUCTION_ARM"
+            actionLabel="Arm automation"
           >
             <Button
               onClick={handleArm}
