@@ -273,13 +273,16 @@ export function ControlledRevalidationPanel({
   }
 
   async function handlePrepare() {
-    if (!activeCycle || !hydratedAuth?.id || !hydratedAuth.usable) return;
+    // Cycle-authorisation consistency is enforced through effectiveAuth.
+    if (!activeCycle || !effectiveAuth?.id || !effectiveAuth.usable) return;
     setPreparing(true);
     try {
       const res = await prepareControlledRevalidation({
         cycleId: activeCycle.id,
-        authorisationId: hydratedAuth.id,
+        authorisationId: effectiveAuth.id,
       });
+      // Do NOT let this transient response act as authority — the displayed
+      // final state comes from the subsequent server refetch.
       setPrepareResult(res);
       if (res.status === "READY_FOR_PROVIDER") {
         toast.success(res.reused_existing_execution
@@ -290,6 +293,7 @@ export function ControlledRevalidationPanel({
       } else if (res.status === "FAILED_PRE_PROVIDER") {
         toast.error("Preparation failed before any provider call. Authorisation preserved.");
       }
+      await refresh();
     } catch (e: any) { toast.error(e.message); }
     finally { setPreparing(false); }
   }
