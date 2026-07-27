@@ -90,6 +90,11 @@ interface Props {
 export function ControlledRevalidationPanel({
   moduleCode, eventCode, channel, productionAnchor,
 }: Props) {
+  const qc = useQueryClient();
+  const location = useLocation();
+  const searchQS = location.search || "";
+  const withSearch = (path: string) => (searchQS ? `${path}${searchQS}` : path);
+
   const [assessment, setAssessment] = useState<AssessmentEnvelope | null>(null);
   const [assessing, setAssessing] = useState(false);
   const [purpose, setPurpose] = useState<RevalidationPurpose>("OPERATOR_ASSURANCE");
@@ -115,6 +120,15 @@ export function ControlledRevalidationPanel({
   const [prepUnavailableReason, setPrepUnavailableReason] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [prepareResult, setPrepareResult] = useState<Awaited<ReturnType<typeof prepareControlledRevalidation>> | null>(null);
+
+  // A4.1.2C — after any mutation invalidate the Operations summary AND the
+  // hydrated authorisation/preparation caches so the displayed state comes
+  // from the subsequent server read, never from transient React state.
+  async function invalidateAuthorities() {
+    await qc.invalidateQueries({ queryKey: ["comm-hub-operations-summary", moduleCode, eventCode, channel] });
+    await qc.invalidateQueries({ queryKey: ["comm-hub-golive-status", moduleCode, eventCode, channel] });
+    await qc.invalidateQueries({ queryKey: ["comm-hub-active-revalidation"] });
+  }
 
   async function refresh() {
     try {
@@ -154,12 +168,57 @@ export function ControlledRevalidationPanel({
         setHydratedPrep(null);
         setPrepUnavailableReason("no_cycle");
       }
+      await invalidateAuthorities();
     } catch (e: any) {
       console.error(e);
     }
   }
 
   useEffect(() => { refresh(); }, [moduleCode, eventCode, channel]);
+
+  // Cycle-authorisation consistency: only display/use hydratedAuth when it
+  // is bound to the currently-active cycle. The Edge/server resolver
+  // remains the final authority — but we do NOT silently prefer one side.
+  const cycleAuthMismatch = useMemo(
+    () => !!(hydratedAuth && activeCycle && hydratedAuth.cycle_id !== activeCycle.id),
+    [hydratedAuth, activeCycle],
+  );
+  const effectiveAuth: HydratedAuthorisation | null =
+    hydratedAuth && !cycleAuthMismatch ? hydratedAuth : null;
+
+  // Preparation-state action matrix (§3). Derived from server state only.
+  type PrepAction =
+    | { kind: "PREPARE" }
+    | { kind: "RESUME"; reason: string }
+    | { kind: "COMPLETE" }
+    | { kind: "RETRY"; reason: string }
+    | { kind: "RECOVER"; reason: string }
+    | { kind: "PROVIDER_PENDING" }
+    | { kind: "NONE" };
+  const prepAction: PrepAction = useMemo(() => {
+    if (!activeCycle || !effectiveAuth?.usable) return { kind: "NONE" };
+    if (!hydratedPrep) return { kind: "PREPARE" };
+    switch (hydratedPrep.classified_state) {
+      case "PREPARING":
+        return { kind: "RESUME", reason: "Preparation started but not finalised." };
+      case "READY_FOR_PROVIDER":
+        return { kind: "COMPLETE" };
+      case "FAILED_PRE_PROVIDER":
+        // Retry only when server confirms authorisation remains usable AND
+        // preparation is still classified as re-runnable pre-provider.
+        return effectiveAuth.usable
+          ? { kind: "RETRY", reason: hydratedPrep.failure_code ?? "pre_provider_failure" }
+          : { kind: "NONE" };
+      case "RECOVERY_REQUIRED":
+        return { kind: "RECOVER", reason: hydratedPrep.failure_code ?? "recovery_required" };
+      case "PROVIDER_RESULT_PENDING":
+      case "COMPLETE":
+        return { kind: "PROVIDER_PENDING" };
+      default:
+        return { kind: "NONE" };
+    }
+  }, [activeCycle, effectiveAuth, hydratedPrep]);
+
 
   async function runAssessment() {
     setAssessing(true);
