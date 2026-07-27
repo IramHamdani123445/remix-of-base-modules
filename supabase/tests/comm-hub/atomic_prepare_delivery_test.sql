@@ -55,7 +55,7 @@ BEGIN
   SELECT id INTO v_cycle_id
     FROM public.communication_hub_revalidation_cycle
    WHERE status IN ('READY_FOR_CONTROLLED_EMAIL','EMAIL_AUTHORISED',
-                    'AWAITING_INBOX_CONFIRMATION','DRAFT',
+                    'AWAITING_INBOX_CONFIRMATION','DRAFT','ASSESSING',
                     'REVALIDATION_REQUIRED','NON_SENDING_CHECKS')
    ORDER BY updated_at DESC LIMIT 1;
   IF v_cycle_id IS NULL THEN
