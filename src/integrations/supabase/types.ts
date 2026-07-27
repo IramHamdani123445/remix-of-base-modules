@@ -42207,6 +42207,111 @@ export type Database = {
           },
         ]
       }
+      communication_hub_revalidation_execution: {
+        Row: {
+          authorisation_id: string | null
+          baseline_fingerprint_v2: string | null
+          baseline_ore_certification_id: string | null
+          created_at: string
+          current_fingerprint_v2: string | null
+          cycle_id: string
+          delivery_attempt_id: string | null
+          event_certification_id: string | null
+          failure_code: string | null
+          failure_detail: Json | null
+          id: string
+          idempotency_key: string
+          message_id: string | null
+          metadata: Json
+          operator_id: string
+          production_lineage_id: string | null
+          provider_boundary_state: string
+          provider_call_attempted: boolean
+          provider_call_completed_at: string | null
+          provider_call_started_at: string | null
+          provider_id: string | null
+          provider_message_id: string | null
+          recipient_policy_version: string | null
+          recipient_set_hash: string | null
+          request_id: string | null
+          runtime_build: string | null
+          sender_profile_id: string | null
+          state: string
+          template_manifest_hash: string | null
+          template_version_id: string | null
+          trace_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          authorisation_id?: string | null
+          baseline_fingerprint_v2?: string | null
+          baseline_ore_certification_id?: string | null
+          created_at?: string
+          current_fingerprint_v2?: string | null
+          cycle_id: string
+          delivery_attempt_id?: string | null
+          event_certification_id?: string | null
+          failure_code?: string | null
+          failure_detail?: Json | null
+          id?: string
+          idempotency_key: string
+          message_id?: string | null
+          metadata?: Json
+          operator_id: string
+          production_lineage_id?: string | null
+          provider_boundary_state?: string
+          provider_call_attempted?: boolean
+          provider_call_completed_at?: string | null
+          provider_call_started_at?: string | null
+          provider_id?: string | null
+          provider_message_id?: string | null
+          recipient_policy_version?: string | null
+          recipient_set_hash?: string | null
+          request_id?: string | null
+          runtime_build?: string | null
+          sender_profile_id?: string | null
+          state?: string
+          template_manifest_hash?: string | null
+          template_version_id?: string | null
+          trace_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          authorisation_id?: string | null
+          baseline_fingerprint_v2?: string | null
+          baseline_ore_certification_id?: string | null
+          created_at?: string
+          current_fingerprint_v2?: string | null
+          cycle_id?: string
+          delivery_attempt_id?: string | null
+          event_certification_id?: string | null
+          failure_code?: string | null
+          failure_detail?: Json | null
+          id?: string
+          idempotency_key?: string
+          message_id?: string | null
+          metadata?: Json
+          operator_id?: string
+          production_lineage_id?: string | null
+          provider_boundary_state?: string
+          provider_call_attempted?: boolean
+          provider_call_completed_at?: string | null
+          provider_call_started_at?: string | null
+          provider_id?: string | null
+          provider_message_id?: string | null
+          recipient_policy_version?: string | null
+          recipient_set_hash?: string | null
+          request_id?: string | null
+          runtime_build?: string | null
+          sender_profile_id?: string | null
+          state?: string
+          template_manifest_hash?: string | null
+          template_version_id?: string | null
+          trace_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       communication_hub_revalidation_send_authorisation: {
         Row: {
           bound_current_fingerprint: string
@@ -96360,6 +96465,43 @@ export type Database = {
       _comm_hub_reject_reserved_targeted_fields: {
         Args: { payload: Json }
         Returns: undefined
+      }
+      _comm_hub_revalidation_mark_pre_provider_failure: {
+        Args: {
+          p_execution_id: string
+          p_failure_code: string
+          p_failure_detail?: Json
+        }
+        Returns: {
+          execution_id: string
+          state: string
+        }[]
+      }
+      _comm_hub_revalidation_prepare_execution: {
+        Args: {
+          p_authorisation_id: string
+          p_baseline_fingerprint_v2: string
+          p_baseline_ore_certification_id: string
+          p_current_fingerprint_v2: string
+          p_cycle_id: string
+          p_event_certification_id: string
+          p_idempotency_key: string
+          p_metadata?: Json
+          p_operator_id: string
+          p_production_lineage_id: string
+          p_provider_id: string
+          p_recipient_policy_version: string
+          p_recipient_set_hash: string
+          p_runtime_build: string
+          p_sender_profile_id: string
+          p_template_manifest_hash: string
+          p_template_version_id: string
+        }
+        Returns: {
+          execution_id: string
+          reused: boolean
+          state: string
+        }[]
       }
       _comm_hub_sha256_hex: { Args: { p_text: string }; Returns: string }
       _comm_hub_sha256_jsonb: { Args: { p: Json }; Returns: string }
