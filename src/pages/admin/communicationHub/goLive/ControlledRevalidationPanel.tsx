@@ -152,17 +152,42 @@ export function ControlledRevalidationPanel({
     if (!activeCycle) return;
     setIssuing(true);
     try {
-      await issueRevalidationSendAuthorisation({
+      const res: any = await issueRevalidationSendAuthorisation({
         cycleId: activeCycle.id,
         recipientEmail: recipient,
         currentFingerprint: activeCycle.current_evidence_fingerprint_v2 ?? "",
         typedPhrase: phrase,
       });
-      toast.success("Authorisation issued. Operator may now dispatch the controlled revalidation email.");
+      const authId = res?.authorisation_id ?? res?.id ?? null;
+      setLastAuthorisationId(authId);
+      setPrepareResult(null);
+      toast.success("Authorisation issued. You may now prepare the controlled delivery.");
       setPhrase("");
       await refresh();
     } catch (e: any) { toast.error(e.message); }
     finally { setIssuing(false); }
+  }
+
+  async function handlePrepare() {
+    if (!activeCycle || !lastAuthorisationId) return;
+    setPreparing(true);
+    try {
+      const res = await prepareControlledRevalidation({
+        cycleId: activeCycle.id,
+        authorisationId: lastAuthorisationId,
+      });
+      setPrepareResult(res);
+      if (res.status === "READY_FOR_PROVIDER") {
+        toast.success(res.reused_existing_execution
+          ? "Existing preparation reused. No email sent."
+          : "Preparation complete. No email sent. Provider delivery remains disabled.");
+      } else if (res.status === "BLOCKED") {
+        toast.error(`Preparation blocked (${res.blockers[0]?.code ?? "unknown"}). No email sent.`);
+      } else if (res.status === "FAILED_PRE_PROVIDER") {
+        toast.error("Preparation failed before any provider call. Authorisation preserved.");
+      }
+    } catch (e: any) { toast.error(e.message); }
+    finally { setPreparing(false); }
   }
 
   async function handleInbox(status: "CONFIRMED" | "NOT_RECEIVED") {
