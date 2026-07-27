@@ -43162,6 +43162,7 @@ export type Database = {
           rendered_at: string | null
           reply_to_email: string | null
           request_id: string
+          revalidation_execution_id: string | null
           send_context: string | null
           sender_profile_id: string | null
           sent_at: string | null
@@ -43218,6 +43219,7 @@ export type Database = {
           rendered_at?: string | null
           reply_to_email?: string | null
           request_id: string
+          revalidation_execution_id?: string | null
           send_context?: string | null
           sender_profile_id?: string | null
           sent_at?: string | null
@@ -43274,6 +43276,7 @@ export type Database = {
           rendered_at?: string | null
           reply_to_email?: string | null
           request_id?: string
+          revalidation_execution_id?: string | null
           send_context?: string | null
           sender_profile_id?: string | null
           sent_at?: string | null
@@ -43355,6 +43358,13 @@ export type Database = {
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "communication_request"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_message_revalidation_execution_id_fkey"
+            columns: ["revalidation_execution_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_revalidation_execution"
             referencedColumns: ["id"]
           },
           {
@@ -43772,6 +43782,7 @@ export type Database = {
           reference_no: string | null
           request_no: string
           requested_by: string | null
+          revalidation_execution_id: string | null
           review_policy_version: number | null
           scheduled_at: string | null
           send_policy_version: number | null
@@ -43813,6 +43824,7 @@ export type Database = {
           reference_no?: string | null
           request_no: string
           requested_by?: string | null
+          revalidation_execution_id?: string | null
           review_policy_version?: number | null
           scheduled_at?: string | null
           send_policy_version?: number | null
@@ -43854,6 +43866,7 @@ export type Database = {
           reference_no?: string | null
           request_no?: string
           requested_by?: string | null
+          revalidation_execution_id?: string | null
           review_policy_version?: number | null
           scheduled_at?: string | null
           send_policy_version?: number | null
@@ -43868,6 +43881,13 @@ export type Database = {
             columns: ["core_template_id"]
             isOneToOne: false
             referencedRelation: "core_template"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_request_revalidation_execution_id_fkey"
+            columns: ["revalidation_execution_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_revalidation_execution"
             referencedColumns: ["id"]
           },
           {
@@ -97808,6 +97828,7 @@ export type Database = {
           rendered_at: string | null
           reply_to_email: string | null
           request_id: string
+          revalidation_execution_id: string | null
           send_context: string | null
           sender_profile_id: string | null
           sent_at: string | null
@@ -97879,6 +97900,7 @@ export type Database = {
           rendered_at: string | null
           reply_to_email: string | null
           request_id: string
+          revalidation_execution_id: string | null
           send_context: string | null
           sender_profile_id: string | null
           sent_at: string | null
