@@ -18,6 +18,7 @@ export type RuntimeActionCode =
   | "MANUAL_PRODUCTION_SEND"
   | "CONTROLLED_REVALIDATION_AUTHORISATION"
   | "CONTROLLED_REVALIDATION_SEND"
+  | "AUTOMATED_PRODUCTION_ARM"
   | "AUTOMATED_CANARY";
 
 // Capability codes emitted by audit_comm_hub_runtime_contract.
