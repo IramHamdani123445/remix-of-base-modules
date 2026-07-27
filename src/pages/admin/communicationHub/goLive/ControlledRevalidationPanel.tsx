@@ -22,9 +22,6 @@ import { Loader2, ShieldCheck, RefreshCw, AlertTriangle, MailCheck, MailX } from
 import { toast } from "sonner";
 import { RuntimeContractActionGate } from "./RuntimeContractActionGate";
 import {
-  getRuntimeRequirements,
-} from "@/platform/communication-hub/runtimeActionRequirements";
-import {
   assessRevalidationRequirement,
   startRevalidationCycle,
   issueRevalidationSendAuthorisation,
@@ -354,9 +351,6 @@ export function ControlledRevalidationPanel({
                 <RuntimeContractActionGate
                   action="CONTROLLED_REVALIDATION_AUTHORISATION"
                   actionLabel="Controlled revalidation authorisation"
-                  extraCapabilities={[
-                    ...getRuntimeRequirements("CONTROLLED_REVALIDATION_SEND"),
-                  ]}
                 >
                   <Button
                     onClick={handleAuthoriseSend}

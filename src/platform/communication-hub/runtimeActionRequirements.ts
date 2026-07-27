@@ -18,6 +18,7 @@ export type RuntimeActionCode =
   | "MANUAL_PRODUCTION_SEND"
   | "CONTROLLED_REVALIDATION_AUTHORISATION"
   | "CONTROLLED_REVALIDATION_SEND"
+  | "AUTOMATED_PRODUCTION_ARM"
   | "AUTOMATED_CANARY";
 
 // Capability codes emitted by audit_comm_hub_runtime_contract.
@@ -80,6 +81,14 @@ const RUNTIME_REQUIREMENTS: Record<RuntimeActionCode, readonly string[]> = {
     CAP.event_certification,
     CAP.baseline,
     CAP.control_settings,
+  ],
+  AUTOMATED_PRODUCTION_ARM: [
+    CAP.automation,
+    CAP.automated_readiness,
+    CAP.baseline,
+    CAP.event_certification,
+    CAP.control_settings,
+    CAP.mode_transitions,
   ],
   AUTOMATED_CANARY: [
     CAP.automation,
