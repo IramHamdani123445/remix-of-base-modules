@@ -1346,24 +1346,23 @@ function GoLivePageInner() {
               status={goLiveStatus}
               onChanged={reloadGoLive}
             />
-            <RuntimeContractGate
-              action="MANUAL_PRODUCTION_SEND"
-              capabilities={[...getRuntimeRequirements("MANUAL_PRODUCTION_SEND")]}
-            >
-              <ManualProductionObservationPanel
-                moduleCode={session.moduleCode}
-                eventCode={session.eventCode}
-                channel={session.channel ?? "email"}
-                status={goLiveStatus}
-                pendingObservation={pendingObservation}
-                reloadNonce={goLiveReloadNonce}
-                onLastResult={(res, key) => {
-                  setObservationLastResult(res);
-                  if (key !== undefined) setObservationLastKey(key);
-                }}
-                onChanged={reloadGoLive}
-              />
-            </RuntimeContractGate>
+            {/* A4.0: Panel stays mounted; observation dispatch button
+                self-gates via RuntimeContractActionGate inside the panel.
+                Pending observation, evidence, recovery, and inbox
+                confirmation remain visible regardless of runtime contract. */}
+            <ManualProductionObservationPanel
+              moduleCode={session.moduleCode}
+              eventCode={session.eventCode}
+              channel={session.channel ?? "email"}
+              status={goLiveStatus}
+              pendingObservation={pendingObservation}
+              reloadNonce={goLiveReloadNonce}
+              onLastResult={(res, key) => {
+                setObservationLastResult(res);
+                if (key !== undefined) setObservationLastKey(key);
+              }}
+              onChanged={reloadGoLive}
+            />
           </div>
         )}
       </CommunicationHubSectionCard>
