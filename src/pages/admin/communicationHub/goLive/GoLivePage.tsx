@@ -94,8 +94,8 @@ import { LegacyBaselineAttestationPanel } from "./LegacyBaselineAttestationPanel
 import { RuntimeContractCard } from "./RuntimeContractCard";
 import { DiagnosticBundlePanel } from "./DiagnosticBundlePanel";
 import { RuntimeContractProvider } from "@/platform/communication-hub/RuntimeContractContext";
-import { RuntimeContractGate } from "./RuntimeContractGate";
-import { getRuntimeRequirements } from "@/platform/communication-hub/runtimeActionRequirements";
+// A4.0: RuntimeContractGate panel-wrapping is removed. Provider-touching
+// buttons must self-gate via RuntimeContractActionGate inside each panel.
 
 import { ManualProductionObservationPanel } from "./ManualProductionObservationPanel";
 import { AutomatedProductionActivationPanel } from "./AutomatedProductionActivationPanel";
@@ -1215,34 +1215,26 @@ function GoLivePageInner() {
             </AlertDescription>
           </Alert>
         )}
+        {/* A4.0: Panel stays mounted. Provider-touching buttons inside the
+            panel must self-gate via RuntimeContractActionGate. Diagnostics,
+            assessment, reassessment, history, recovery and inbox confirmation
+            remain visible regardless of runtime-contract state. */}
         {deriveStep6(goLiveStatus) === "COMPLETED" && session.moduleCode && session.eventCode && (
-          <RuntimeContractGate
-            action="CONTROLLED_REVALIDATION_AUTHORISATION"
-            capabilities={[
-              ...getRuntimeRequirements("CONTROLLED_REVALIDATION_AUTHORISATION"),
-              ...getRuntimeRequirements("CONTROLLED_REVALIDATION_SEND"),
-            ]}
-          >
-            <ControlledRevalidationPanel
-              moduleCode={session.moduleCode}
-              eventCode={session.eventCode}
-              channel={session.channel ?? "email"}
-              productionAnchor={{
-                oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
-                verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
-                verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
-                productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
-                baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
-              }}
-            />
-          </RuntimeContractGate>
+          <ControlledRevalidationPanel
+            moduleCode={session.moduleCode}
+            eventCode={session.eventCode}
+            channel={session.channel ?? "email"}
+            productionAnchor={{
+              oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
+              verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
+              verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
+              productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
+              baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
+            }}
+          />
         )}
         {deriveStep6(goLiveStatus) !== "COMPLETED" && (
-        <RuntimeContractGate
-          action="ONE_REAL_EMAIL"
-          capabilities={[...getRuntimeRequirements("ONE_REAL_EMAIL")]}
-        >
-          <OneRealEmailPanel
+        <OneRealEmailPanel
             controlledStubCertified={controlledLiveDone}
             lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
             lineage={
@@ -1297,7 +1289,6 @@ function GoLivePageInner() {
             }}
             onReloadContext={() => setStage6ContextReloadNonce((n) => n + 1)}
           />
-        </RuntimeContractGate>
         )}
       </CommunicationHubSectionCard>
 
@@ -1355,24 +1346,23 @@ function GoLivePageInner() {
               status={goLiveStatus}
               onChanged={reloadGoLive}
             />
-            <RuntimeContractGate
-              action="MANUAL_PRODUCTION_SEND"
-              capabilities={[...getRuntimeRequirements("MANUAL_PRODUCTION_SEND")]}
-            >
-              <ManualProductionObservationPanel
-                moduleCode={session.moduleCode}
-                eventCode={session.eventCode}
-                channel={session.channel ?? "email"}
-                status={goLiveStatus}
-                pendingObservation={pendingObservation}
-                reloadNonce={goLiveReloadNonce}
-                onLastResult={(res, key) => {
-                  setObservationLastResult(res);
-                  if (key !== undefined) setObservationLastKey(key);
-                }}
-                onChanged={reloadGoLive}
-              />
-            </RuntimeContractGate>
+            {/* A4.0: Panel stays mounted; observation dispatch button
+                self-gates via RuntimeContractActionGate inside the panel.
+                Pending observation, evidence, recovery, and inbox
+                confirmation remain visible regardless of runtime contract. */}
+            <ManualProductionObservationPanel
+              moduleCode={session.moduleCode}
+              eventCode={session.eventCode}
+              channel={session.channel ?? "email"}
+              status={goLiveStatus}
+              pendingObservation={pendingObservation}
+              reloadNonce={goLiveReloadNonce}
+              onLastResult={(res, key) => {
+                setObservationLastResult(res);
+                if (key !== undefined) setObservationLastKey(key);
+              }}
+              onChanged={reloadGoLive}
+            />
           </div>
         )}
       </CommunicationHubSectionCard>
@@ -1404,18 +1394,18 @@ function GoLivePageInner() {
             <AlertDescription>Locked until the event is Manual-Production certified.</AlertDescription>
           </Alert>
         ) : (
-          <RuntimeContractGate
-            action="AUTOMATED_CANARY"
-            capabilities={[...getRuntimeRequirements("AUTOMATED_CANARY")]}
-          >
-            <AutomatedProductionActivationPanel
-              moduleCode={session.moduleCode}
-              eventCode={session.eventCode}
-              channel={session.channel ?? "email"}
-              status={goLiveStatus}
-              onChanged={reloadGoLive}
-            />
-          </RuntimeContractGate>
+          /* A4.0: Panel stays mounted. Canary / activation buttons must
+             self-gate inside the panel via RuntimeContractActionGate.
+             Emergency Stop, disarm, readiness report, lease/status
+             inspection and audit evidence remain visible regardless of
+             runtime-contract state. */
+          <AutomatedProductionActivationPanel
+            moduleCode={session.moduleCode}
+            eventCode={session.eventCode}
+            channel={session.channel ?? "email"}
+            status={goLiveStatus}
+            onChanged={reloadGoLive}
+          />
         )}
       </CommunicationHubSectionCard>
 
