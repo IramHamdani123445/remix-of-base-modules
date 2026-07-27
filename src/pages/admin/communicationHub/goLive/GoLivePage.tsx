@@ -91,6 +91,7 @@ import AutomationStandbyPanel from "./AutomationStandbyPanel";
 import { useStageReadiness } from "@/platform/communication-hub/useStageReadiness";
 import { ManualProductionActivationPanel } from "./ManualProductionActivationPanel";
 import { LegacyBaselineAttestationPanel } from "./LegacyBaselineAttestationPanel";
+import { RuntimeContractCard } from "./RuntimeContractCard";
 import { ManualProductionObservationPanel } from "./ManualProductionObservationPanel";
 import { AutomatedProductionActivationPanel } from "./AutomatedProductionActivationPanel";
 import { GoLiveCompletionPanel } from "./GoLiveCompletionPanel";
@@ -804,6 +805,8 @@ export default function GoLivePage() {
         { label: "Testing & Pilots (advanced)", href: "/admin/communication-hub/pilots" },
       ]}
     >
+      <RuntimeContractCard />
+
       {loadError && (
         <Alert variant="destructive">
           <ShieldAlert className="h-4 w-4" />

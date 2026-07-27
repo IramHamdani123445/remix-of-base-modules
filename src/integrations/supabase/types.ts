@@ -96618,6 +96618,7 @@ export type Database = {
         }
         Returns: Json
       }
+      audit_comm_hub_runtime_contract: { Args: never; Returns: Json }
       backfill_comm_hub_ore_evidence_snapshots: { Args: never; Returns: Json }
       begin_comm_hub_controlled_live: {
         Args: { p_payload: Json }
