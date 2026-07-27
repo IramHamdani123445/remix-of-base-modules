@@ -41559,6 +41559,7 @@ export type Database = {
           production_lineage_id: string
           status: string
           superseded_at: string | null
+          supersedes_attestation_id: string | null
           typed_confirmation: string
         }
         Insert: {
@@ -41575,6 +41576,7 @@ export type Database = {
           production_lineage_id: string
           status?: string
           superseded_at?: string | null
+          supersedes_attestation_id?: string | null
           typed_confirmation: string
         }
         Update: {
@@ -41591,6 +41593,7 @@ export type Database = {
           production_lineage_id?: string
           status?: string
           superseded_at?: string | null
+          supersedes_attestation_id?: string | null
           typed_confirmation?: string
         }
         Relationships: [
@@ -41599,6 +41602,13 @@ export type Database = {
             columns: ["one_real_email_certification_id"]
             isOneToOne: false
             referencedRelation: "communication_controlled_live_certification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_hub_legacy_evidenc_supersedes_attestation_id_fkey"
+            columns: ["supersedes_attestation_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_legacy_evidence_attestation"
             referencedColumns: ["id"]
           },
           {
@@ -95975,6 +95985,10 @@ export type Database = {
         }
         Returns: string
       }
+      _comm_hub_fingerprint_evidence_core_v2: {
+        Args: { p_core: Json }
+        Returns: string
+      }
       _comm_hub_fingerprint_evidence_snapshot_v2: {
         Args: { p_snapshot: Json }
         Returns: string
@@ -98067,6 +98081,16 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      correct_comm_hub_legacy_baseline_attestation: {
+        Args: {
+          p_channel: string
+          p_event_code: string
+          p_module_code: string
+          p_reason: string
+          p_typed_confirmation: string
+        }
+        Returns: Json
+      }
       create_c3_config_period: {
         Args: {
           p_description?: string
@@ -98281,6 +98305,10 @@ export type Database = {
       }
       delete_head_cashier_override: {
         Args: { p_deleted_by?: string; p_override_id: string }
+        Returns: Json
+      }
+      diagnose_comm_hub_legacy_attestation_fingerprint: {
+        Args: { p_channel: string; p_event_code: string; p_module_code: string }
         Returns: Json
       }
       disable_comm_hub_event_template_mapping: {
