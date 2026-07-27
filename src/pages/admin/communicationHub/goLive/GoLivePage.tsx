@@ -1234,11 +1234,7 @@ function GoLivePageInner() {
           />
         )}
         {deriveStep6(goLiveStatus) !== "COMPLETED" && (
-        <RuntimeContractGate
-          action="ONE_REAL_EMAIL"
-          capabilities={[...getRuntimeRequirements("ONE_REAL_EMAIL")]}
-        >
-          <OneRealEmailPanel
+        <OneRealEmailPanel
             controlledStubCertified={controlledLiveDone}
             lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
             lineage={
@@ -1293,7 +1289,6 @@ function GoLivePageInner() {
             }}
             onReloadContext={() => setStage6ContextReloadNonce((n) => n + 1)}
           />
-        </RuntimeContractGate>
         )}
       </CommunicationHubSectionCard>
 
