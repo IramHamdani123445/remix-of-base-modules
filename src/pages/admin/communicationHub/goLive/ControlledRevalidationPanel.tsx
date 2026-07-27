@@ -39,6 +39,7 @@ import {
   type ChangeCategory,
   type RevalidationCycle,
   type RevalidationPurpose,
+  recoverControlledRevalidationExecution,
 } from "@/platform/communication-hub/revalidationService";
 import {
   getActiveRevalidationAuthorisation,
@@ -296,6 +297,35 @@ export function ControlledRevalidationPanel({
       await refresh();
     } catch (e: any) { toast.error(e.message); }
     finally { setPreparing(false); }
+  }
+
+  async function handleRecover() {
+    // A4.1.3 §3 — dedicated no-send admin recovery path. Never invokes the
+    // provider. Transitions the RECOVERY_REQUIRED execution to VOIDED so a
+    // fresh atomic preparation may start on the next PREPARE.
+    if (!activeCycle || !hydratedPrep?.execution_id) return;
+    const reason = window.prompt(
+      "Reason for recovering this preparation execution (min 6 chars):",
+    );
+    if (!reason || reason.trim().length < 6) return;
+    setPreparing(true);
+    try {
+      const res = await recoverControlledRevalidationExecution({
+        cycleId: activeCycle.id,
+        executionId: hydratedPrep.execution_id,
+        reason: reason.trim(),
+      });
+      if (res.status === "RECOVERED") {
+        toast.success("Recovery recorded. You may now prepare a fresh atomic delivery.");
+      } else {
+        toast.error(`Recovery blocked (${res.blockers?.[0]?.code ?? "unknown"}).`);
+      }
+      await refresh();
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setPreparing(false);
+    }
   }
 
   async function handleInbox(status: "CONFIRMED" | "NOT_RECEIVED") {
@@ -621,7 +651,7 @@ export function ControlledRevalidationPanel({
                     >
                       <Button
                         size="sm"
-                        onClick={handlePrepare}
+                        onClick={prepAction.kind === "RECOVER" ? handleRecover : handlePrepare}
                         disabled={preparing || cycleAuthMismatch}
                         data-testid={
                           prepAction.kind === "PREPARE" ? "controlled-revalidation-prepare-button"

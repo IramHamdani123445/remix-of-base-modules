@@ -96494,6 +96494,15 @@ export type Database = {
           state: string
         }[]
       }
+      _comm_hub_revalidation_prepare_delivery: {
+        Args: {
+          p_authorisation_id: string
+          p_cycle_id: string
+          p_operator_id: string
+          p_runtime_build: string
+        }
+        Returns: Json
+      }
       _comm_hub_revalidation_prepare_execution: {
         Args: {
           p_authorisation_id: string
@@ -96521,6 +96530,10 @@ export type Database = {
           reused: boolean
           state: string
         }[]
+      }
+      _comm_hub_revalidation_recover_execution: {
+        Args: { p_admin_id: string; p_execution_id: string; p_reason: string }
+        Returns: Json
       }
       _comm_hub_sha256_hex: { Args: { p_text: string }; Returns: string }
       _comm_hub_sha256_jsonb: { Args: { p: Json }; Returns: string }

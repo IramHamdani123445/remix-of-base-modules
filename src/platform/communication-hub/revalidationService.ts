@@ -375,6 +375,43 @@ export async function prepareControlledRevalidation(input: {
   return data as PrepareControlledRevalidationResult;
 }
 
+/**
+ * A4.1.3 — Dedicated no-send admin recovery path.
+ *
+ * Transitions a RECOVERY_REQUIRED preparation execution to VOIDED so that a
+ * fresh atomic preparation may start. Never contacts the provider. Rejected
+ * unless the caller is a Communication Hub admin and provides a reason.
+ */
+export interface RecoverControlledRevalidationResult {
+  status: "RECOVERED" | "BLOCKED";
+  execution_id: string | null;
+  message: string;
+  blockers: Array<{ code: string; stage?: string; message?: string }>;
+}
+
+export async function recoverControlledRevalidationExecution(input: {
+  cycleId: string;
+  executionId: string;
+  reason: string;
+}): Promise<RecoverControlledRevalidationResult> {
+  const { data, error } = await supabase.functions.invoke(
+    "comm-hub-send-controlled-revalidation",
+    {
+      body: {
+        action: "RECOVER_CONTROLLED_REVALIDATION_PREPARATION",
+        cycleId: input.cycleId,
+        executionId: input.executionId,
+        reason: input.reason,
+      },
+    },
+  );
+  if (error) throw new Error(error.message ?? "controlled revalidation recovery failed");
+  return data as RecoverControlledRevalidationResult;
+}
+
+
+
+
 
 
 /**
