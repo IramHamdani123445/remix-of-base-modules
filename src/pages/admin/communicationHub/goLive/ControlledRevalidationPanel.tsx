@@ -39,6 +39,7 @@ import {
   type ChangeCategory,
   type RevalidationCycle,
   type RevalidationPurpose,
+  recoverControlledRevalidationExecution,
 } from "@/platform/communication-hub/revalidationService";
 import {
   getActiveRevalidationAuthorisation,
