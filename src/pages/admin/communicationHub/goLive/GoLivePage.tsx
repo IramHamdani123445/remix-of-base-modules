@@ -1170,7 +1170,7 @@ export default function GoLivePage() {
             </AlertDescription>
           </Alert>
         )}
-        {deriveStep6(goLiveStatus) === "COMPLETED" ? (
+        {deriveStep6(goLiveStatus) === "COMPLETED" && (
           <Alert>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             <AlertTitle className="flex items-center gap-2">
