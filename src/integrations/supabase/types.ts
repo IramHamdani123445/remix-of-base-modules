@@ -95831,6 +95831,10 @@ export type Database = {
         Args: { p_payload: Json }
         Returns: Json
       }
+      _normalize_comm_hub_manual_production_controls: {
+        Args: { p_actor: string; p_reason: string; p_source: string }
+        Returns: Json
+      }
       add_sep_activity: {
         Args: {
           p_activity_type: string
