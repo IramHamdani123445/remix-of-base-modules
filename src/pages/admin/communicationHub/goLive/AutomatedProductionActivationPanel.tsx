@@ -77,14 +77,17 @@ export function AutomatedProductionActivationPanel({
       const result = await runAutomationReadinessProbe({ moduleCode, eventCode, channel });
       if (result.ok === false) {
         setProbeError(result.blocker);
+        setProbeResult(null);
         toast.error(`Readiness probe error: ${result.blocker.code}`);
       } else {
         setProbeError(null);
-        toast.success("Automation readiness probe complete");
+        setProbeResult(result);
+        toast.success(`Pre-arm readiness complete (mode ${result.current_operating_mode})`);
       }
       onChanged();
     } catch (e: any) {
       setProbeError({ code: "READINESS_PROBE_TRANSPORT_ERROR", detail: e?.message });
+      setProbeResult(null);
       toast.error(e?.message ?? "Readiness probe failed");
     } finally {
       setProbing(false);
