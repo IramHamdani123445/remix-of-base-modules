@@ -40,6 +40,7 @@ import EventTestContextSummary from "./EventTestContextSummary";
 import DryRunPanel from "../controlCenter/DryRunPanel";
 import ControlledStubPanel from "../controlCenter/ControlledStubPanel";
 import OneRealEmailPanel from "../controlCenter/OneRealEmailPanel";
+import { ControlledRevalidationPanel } from "./ControlledRevalidationPanel";
 import ReadinessSummary from "./ReadinessSummary";
 import GoLiveGateMonitor from "./GoLiveGateMonitor";
 import {
