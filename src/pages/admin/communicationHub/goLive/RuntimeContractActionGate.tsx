@@ -12,6 +12,7 @@
  * mounted; only the specific action button is disabled.
  */
 import { AlertTriangle, ShieldOff } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useRuntimeCapabilities } from "@/platform/communication-hub/RuntimeContractContext";
@@ -30,24 +31,16 @@ interface RenderProps {
 
 interface Props {
   action: RuntimeActionCode;
-  /**
-   * Either a render function receiving the gate result, or a single React
-   * button-like element. When an element is passed and blocked, the element
-   * is cloned with `disabled` forced true and `aria-disabled="true"`.
-   */
   children: ReactElement | ((r: RenderProps) => ReactNode);
-  /**
-   * Optional descriptive label rendered in the blocker note (e.g. "Send one
-   * real email"). Falls back to the action code.
-   */
   actionLabel?: string;
-  /**
-   * When true, do NOT render the blocker note. Useful when several buttons
-   * share the same action and only one should show the note.
-   */
   suppressBlockerNote?: boolean;
-  /** Optional additional capabilities to require beyond the action's canonical set. */
   extraCapabilities?: string[];
+  /**
+   * "full"    — legacy: dump the failing-capability table beneath the button.
+   * "compact" — operator UX: one plain-language line + "Open Readiness Center".
+   * Default is "compact"; Readiness Center opts into "full".
+   */
+  variant?: "compact" | "full";
 }
 
 export function RuntimeContractActionGate({
@@ -56,6 +49,7 @@ export function RuntimeContractActionGate({
   actionLabel,
   suppressBlockerNote,
   extraCapabilities,
+  variant = "compact",
 }: Props) {
   const capabilities = [
     ...getRuntimeRequirements(action),
@@ -87,11 +81,35 @@ export function RuntimeContractActionGate({
   return (
     <div className="space-y-2" data-runtime-contract-action={action}>
       {rendered}
-      {disabled && !suppressBlockerNote && (
+      {disabled && !suppressBlockerNote && variant === "compact" && (
+        <Alert
+          role="status"
+          variant="destructive"
+          className="border-amber-300 bg-amber-50 py-2 text-amber-900 [&>svg]:text-amber-800"
+          data-runtime-contract-blocker="compact"
+        >
+          <ShieldOff className="h-3.5 w-3.5" />
+          <AlertDescription className="text-xs">
+            Action unavailable —{" "}
+            <strong>{status.failing.length || "runtime"}</strong>{" "}
+            readiness requirement{status.failing.length === 1 ? "" : "s"} need
+            attention.{" "}
+            <Link
+              to="/admin/communication-hub/readiness"
+              className="font-medium underline underline-offset-2"
+            >
+              Open Readiness Center
+            </Link>
+            .
+          </AlertDescription>
+        </Alert>
+      )}
+      {disabled && !suppressBlockerNote && variant === "full" && (
         <Alert
           role="status"
           variant="destructive"
           className="border-amber-300 bg-amber-50 text-amber-900 [&>svg]:text-amber-800"
+          data-runtime-contract-blocker="full"
         >
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="space-y-1 text-xs">

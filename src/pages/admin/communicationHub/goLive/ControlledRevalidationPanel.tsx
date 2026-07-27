@@ -20,6 +20,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, ShieldCheck, RefreshCw, AlertTriangle, MailCheck, MailX } from "lucide-react";
 import { toast } from "sonner";
+import { RuntimeContractActionGate } from "./RuntimeContractActionGate";
+import {
+  getRuntimeRequirements,
+} from "@/platform/communication-hub/runtimeActionRequirements";
 import {
   assessRevalidationRequirement,
   startRevalidationCycle,
@@ -347,17 +351,25 @@ export function ControlledRevalidationPanel({
                   value={recipient} onChange={(e) => setRecipient(e.target.value)} />
                 <Input placeholder={`Type: ${REVALIDATION_SEND_TYPED_PHRASE}`}
                   value={phrase} onChange={(e) => setPhrase(e.target.value)} />
-                <Button
-                  onClick={handleAuthoriseSend}
-                  disabled={
-                    issuing || !recipient.includes("@") ||
-                    phrase !== REVALIDATION_SEND_TYPED_PHRASE
-                  }
-                  size="sm"
+                <RuntimeContractActionGate
+                  action="CONTROLLED_REVALIDATION_AUTHORISATION"
+                  actionLabel="Controlled revalidation authorisation"
+                  extraCapabilities={[
+                    ...getRuntimeRequirements("CONTROLLED_REVALIDATION_SEND"),
+                  ]}
                 >
-                  {issuing && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                  Issue one-use authorisation
-                </Button>
+                  <Button
+                    onClick={handleAuthoriseSend}
+                    disabled={
+                      issuing || !recipient.includes("@") ||
+                      phrase !== REVALIDATION_SEND_TYPED_PHRASE
+                    }
+                    size="sm"
+                  >
+                    {issuing && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                    Issue one-use authorisation
+                  </Button>
+                </RuntimeContractActionGate>
                 <div className="text-[11px] text-muted-foreground">
                   The email is dispatched by the existing One Real Email transport
                   under an explicit CONTROLLED_REVALIDATION context; no second
