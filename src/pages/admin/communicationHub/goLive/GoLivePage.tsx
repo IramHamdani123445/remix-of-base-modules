@@ -1437,11 +1437,10 @@ function GoLivePageInner() {
   );
 }
 
+// A4.1 advanced-route cleanup: RuntimeContractProvider is mounted ONCE by
+// CommunicationHubWorkspaceLayout. Do NOT wrap again here — a second
+// provider would trigger a duplicate auditRuntimeContract fetch.
 export default function GoLivePage() {
-  return (
-    <RuntimeContractProvider>
-      <GoLivePageInner />
-    </RuntimeContractProvider>
-  );
+  return <GoLivePageInner />;
 }
 
