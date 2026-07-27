@@ -354,9 +354,6 @@ export function ControlledRevalidationPanel({
                 <RuntimeContractActionGate
                   action="CONTROLLED_REVALIDATION_AUTHORISATION"
                   actionLabel="Controlled revalidation authorisation"
-                  extraCapabilities={[
-                    ...getRuntimeRequirements("CONTROLLED_REVALIDATION_SEND"),
-                  ]}
                 >
                   <Button
                     onClick={handleAuthoriseSend}
