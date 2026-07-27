@@ -373,6 +373,9 @@ export async function prepareControlledRevalidation(input: {
   );
   if (error) throw new Error(error.message ?? "controlled revalidation preparation failed");
   return data as PrepareControlledRevalidationResult;
+}
+
+
 
 /**
  * Checkpoint A — Server-authoritative cycle reassessment.
