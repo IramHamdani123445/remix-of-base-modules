@@ -804,6 +804,8 @@ export default function GoLivePage() {
         { label: "Testing & Pilots (advanced)", href: "/admin/communication-hub/pilots" },
       ]}
     >
+      <RuntimeContractCard />
+
       {loadError && (
         <Alert variant="destructive">
           <ShieldAlert className="h-4 w-4" />
