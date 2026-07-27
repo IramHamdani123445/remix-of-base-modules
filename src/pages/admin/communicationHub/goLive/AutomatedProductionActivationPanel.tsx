@@ -339,8 +339,8 @@ export function AutomatedProductionActivationPanel({
           Run pre-arm readiness
         </Button>
       </div>
-        </Button>
-      </div>
+
+
 
 
       {/* Action 2 — Certify */}
