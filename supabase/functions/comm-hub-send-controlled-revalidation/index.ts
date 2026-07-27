@@ -250,6 +250,31 @@ Deno.serve(async (req) => {
   }
 
   // ============================================================
+  // A4.1.1 §0 — HARD STOP: PROVIDER BOUNDARY NOT APPROVED
+  // Reject SEND_CONTROLLED_REVALIDATION_EMAIL before any provider
+  // credential resolution, SDK construction, transport invocation,
+  // authorisation consumption, or message-state transition. This
+  // hard stop is enforced regardless of what the UI shows.
+  // ============================================================
+  if (action === ACTION_SEND) {
+    addBlocker(
+      "provider_boundary_not_approved",
+      "provider_boundary",
+      "SEND_CONTROLLED_REVALIDATION_EMAIL is disabled until the A4.2 provider-boundary runtime is approved. No provider was contacted. Authorisation preserved.",
+    );
+    env.provider_boundary_state = "NOT_ENTERED";
+    env.provider_call_attempted = false;
+    env.provider_result_recorded = false;
+    env.reused_existing_execution = false;
+    env.authorisation_status = "PRESERVED";
+    return finalize(
+      "BLOCKED",
+      403,
+      "SEND is disabled. Provider boundary not approved. No email has been sent. Authorisation preserved.",
+    );
+  }
+
+  // ============================================================
   // A4.1 — PREPARE_CONTROLLED_REVALIDATION
   // Server-authoritative durable preparation. Never invokes the provider,
   // never consumes the operator's authorisation.
