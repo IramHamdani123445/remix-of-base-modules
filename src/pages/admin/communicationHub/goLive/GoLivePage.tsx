@@ -27,6 +27,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import CommunicationHubWorkspaceShell, {
   CommunicationHubSectionCard,
 } from "../components/CommunicationHubWorkspaceShell";
+import { CommunicationHubGoLiveTabs } from "../components/CommunicationHubGoLiveTabs";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
