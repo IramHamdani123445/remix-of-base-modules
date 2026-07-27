@@ -1,0 +1,302 @@
+_apply_comm_hub_mode_transition_core|p_new_mode communication_operating_mode, p_reason text, p_expected_version bigint, p_actor uuid, p_source text|jsonb|plpgsql|DEFINER|v
+_check_comm_hub_runtime_governance_impl|p_module_code text, p_event_code text, p_channel text, p_target_stage text, p_preview_snapshot_id uuid, p_preview_approval_id uuid, p_dry_run_certification_id uuid|jsonb|plpgsql|DEFINER|s
+_chrc_derive_stages|p_categories jsonb|jsonb|plpgsql|INVOKER|i
+_chrc_get_production_baseline|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+_chrc_require_admin||uuid|plpgsql|DEFINER|s
+_chub_assert_admin||void|plpgsql|DEFINER|v
+_comm_hub_append_blocker|p_arr jsonb, p_code text|jsonb|sql|INVOKER|i
+_comm_hub_assert_bound_service_operation|p_service text, p_operation text|jsonb|plpgsql|DEFINER|v
+_comm_hub_build_event_manifest|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+_comm_hub_bump_runtime_mode_version||trigger|plpgsql|INVOKER|v
+_comm_hub_compute_canonical_approval_evidence_v1|p_snapshot_id uuid, p_correlation_id uuid, p_content_hash text, p_recipient_set_hash text, p_template_version_id uuid, p_configuration_hash text, p_scanner_version text, p_placeholder_evidence_hash text, p_approved_by uuid, p_approved_at timestamp with time zone, p_expires_at timestamp with time zone|text|sql|INVOKER|i
+_comm_hub_compute_placeholder_evidence_v1|p_scanner_version text, p_rescan jsonb|text|sql|INVOKER|i
+_comm_hub_ensure_event_governance_record|p_mapping_id uuid, p_manifest_hash text|uuid|plpgsql|DEFINER|v
+_comm_hub_evidence_core_v2|p_snapshot jsonb|jsonb|sql|INVOKER|i
+_comm_hub_evidence_fingerprint|p_module text, p_event text, p_channel text, p_template_version_id uuid, p_template_manifest_hash text, p_sender_profile_id uuid, p_recipient_policy_version text, p_recipient_set_hash text, p_provider_key text|text|sql|INVOKER|i
+_comm_hub_evidence_fingerprint_v2|p_module text, p_event text, p_channel text, p_template_version_id uuid, p_template_manifest_hash text, p_sender_profile_id uuid, p_recipient_policy_version text, p_recipient_set_hash text, p_provider_key text, p_payload_schema_hash text, p_review_policy_hash text, p_send_policy_hash text|text|sql|INVOKER|i
+_comm_hub_fingerprint_evidence_core_v2|p_core jsonb|text|plpgsql|INVOKER|i
+_comm_hub_fingerprint_evidence_snapshot_v2|p_snapshot jsonb|text|plpgsql|INVOKER|i
+_comm_hub_get_request_actor||jsonb|plpgsql|DEFINER|s
+_comm_hub_get_request_role||jsonb|plpgsql|DEFINER|s
+_comm_hub_governance_transition_core|p_entity_type comm_hub_governance_entity_type, p_entity_id uuid, p_entity_version text, p_target_status text, p_expected_version bigint, p_reason text, p_actor uuid, p_action comm_hub_governance_action, p_source text|jsonb|plpgsql|DEFINER|v
+_comm_hub_hash_manifest|p_manifest jsonb|text|sql|INVOKER|s
+_comm_hub_is_valid_date|p_value text|boolean|plpgsql|INVOKER|i
+_comm_hub_is_valid_datetime|p_value text|boolean|plpgsql|INVOKER|i
+_comm_hub_is_valid_email|p_value text|boolean|sql|INVOKER|i
+_comm_hub_is_valid_uuid|p_value text|boolean|sql|INVOKER|i
+_comm_hub_jval_format|p_format text, p_value text|boolean|sql|INVOKER|i
+_comm_hub_jval_type|p_val jsonb|text|sql|INVOKER|i
+_comm_hub_jval_walk|p_sch jsonb, p_val jsonb, p_ipath text, p_spath text|jsonb|plpgsql|INVOKER|i
+_comm_hub_norm_channel|t text|text|sql|INVOKER|i
+_comm_hub_norm_code|t text|text|sql|INVOKER|i
+_comm_hub_preview_approval_evidence_immutability||trigger|plpgsql|INVOKER|v
+_comm_hub_recipient_set_hash_v2|p_policy jsonb|text|plpgsql|INVOKER|i
+_comm_hub_reject_reserved_targeted_fields|payload jsonb|void|plpgsql|INVOKER|i
+_comm_hub_sha256_hex|p_text text|text|sql|INVOKER|i
+_comm_hub_sha256_jsonb|p jsonb|text|sql|INVOKER|s
+_comm_hub_template_manifest_hash_v2|p_subject text, p_body_html text, p_body_text text, p_layout_id uuid|text|sql|INVOKER|i
+_evaluate_comm_hub_send_decision_core|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+_evaluate_comm_hub_send_rules|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+_normalize_comm_hub_manual_production_controls|p_actor uuid, p_reason text, p_source text|jsonb|plpgsql|DEFINER|v
+_persist_pre_arm_readiness_row|p_module_code text, p_event_code text, p_channel text, p_check_code text, p_cfg_version bigint, p_event_certification_id uuid, p_production_lineage_id uuid, p_result boolean, p_status text, p_evidence jsonb, p_blocker text, p_fix text, p_uid uuid, p_now timestamp with time zone|void|plpgsql|DEFINER|v
+admin_compute_comm_hub_sender_readiness|p_sender_profile_id uuid, p_readiness_kind text|jsonb|plpgsql|DEFINER|v
+admin_get_comm_hub_controlled_live_grant|p_grant_id uuid|communication_controlled_live_grant|plpgsql|DEFINER|s
+append_comm_hub_trace_step|p_trace_id uuid, p_payload jsonb|jsonb|plpgsql|DEFINER|v
+apply_communication_release_mode|p_new_mode text, p_reason text, p_expected_version integer, p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|v
+approve_comm_hub_preview|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+arm_comm_hub_automation|p_reason text, p_confirmation text, p_expected_version bigint|jsonb|plpgsql|DEFINER|v
+assert_comm_hub_event_ready_for_stage|p_module_code text, p_event_code text, p_channel text, p_target_stage text|jsonb|plpgsql|DEFINER|s
+assert_comm_hub_one_real_email_provider_boundary|p_execution_id uuid, p_grant_id uuid, p_message_id uuid, p_attempt_id uuid|jsonb|plpgsql|DEFINER|s
+assert_comm_hub_queue_run_context|p_lease_id uuid, p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|v
+assert_comm_hub_runtime_transition|p_action text, p_context jsonb|jsonb|plpgsql|DEFINER|v
+assert_comm_hub_service_operation|p_operation text, p_expected_transition text|jsonb|plpgsql|DEFINER|s
+assess_comm_hub_revalidation_requirement|p_module_code text, p_event_code text, p_channel text, p_declared_change_categories jsonb, p_runtime_release_reference text|jsonb|plpgsql|DEFINER|s
+assess_comm_hub_template_version_manifests||TABLE(template_version_id uuid, template_id uuid, template_code text, template_purpose text, governance_status text, classification text, manifest_build_status text, current_dependency_hash text, missing_dependencies text[], has_certification boolean, freshness_status text, recommended_action text)|plpgsql|DEFINER|s
+attest_comm_hub_legacy_production_baseline|p_module_code text, p_event_code text, p_channel text, p_attestation_reason text, p_typed_confirmation text, p_historically_proven_components jsonb, p_historically_unavailable_components jsonb|jsonb|plpgsql|DEFINER|v
+backfill_comm_hub_ore_evidence_snapshots||jsonb|plpgsql|DEFINER|v
+begin_comm_hub_controlled_live|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+begin_comm_hub_dry_run|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+begin_comm_hub_dry_run_v1|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+begin_comm_hub_one_real_email|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+begin_comm_hub_scheduler_tick|p_worker_version text|jsonb|plpgsql|DEFINER|v
+bn_mortality_integration_readiness_touch||trigger|plpgsql|INVOKER|v
+bn_mortality_set_integration_readiness|p_integration_code text, p_certification_status text, p_is_ready boolean, p_certification_reference text, p_notes text, p_expected_row_version integer, p_actor_user_id uuid, p_justification text, p_correlation_id text|jsonb|plpgsql|DEFINER|v
+build_comm_hub_certification_dependency_hash|p_template_version_id uuid|TABLE(dependency_hash text)|plpgsql|DEFINER|s
+build_comm_hub_dependency_manifest|p_entity_type text, p_entity_id uuid, p_entity_version_id uuid|jsonb|plpgsql|INVOKER|s
+build_comm_hub_recipient_context|p_recipient_policy_id uuid|jsonb|plpgsql|DEFINER|s
+build_comm_hub_request_context|p_source text|jsonb|sql|DEFINER|s
+build_comm_hub_system_context||jsonb|sql|DEFINER|s
+build_comm_hub_template_dependency_manifest|p_template_version_id uuid|jsonb|plpgsql|DEFINER|s
+can_access_communication_request|_request_id uuid|boolean|sql|DEFINER|s
+cancel_comm_hub_message|p_message_id uuid, p_reason text, p_actor_user_id uuid|jsonb|plpgsql|DEFINER|v
+certify_all_comm_hub_template_versions||TABLE(template_version_id uuid, template_code text, template_purpose text, result text, is_certified boolean, blocker_count integer, warning_count integer, detail jsonb)|sql|INVOKER|s
+certify_comm_hub_dry_run|p_execution_id uuid|jsonb|plpgsql|DEFINER|v
+certify_comm_hub_event_automated_production|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+certify_comm_hub_event_manual_production|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+certify_comm_hub_template_version|p_template_version_id uuid|jsonb|plpgsql|INVOKER|s
+check_all_comm_hub_template_renderability||TABLE(template_id uuid, template_version_id uuid, template_code text, version_no integer, status text, purpose text, module_code text, event_code text, channel text, detected_variable_count integer, contract_row_count integer, fixture_present boolean, recipient_required boolean, sender_required boolean, renderable boolean, raw_token_count integer, unresolved_required_count integer, blockers jsonb, recommended_action text, dependency_hash text, checked_at timestamp with time zone)|plpgsql|DEFINER|s
+check_comm_hub_certification_freshness|p_certification_id uuid|jsonb|plpgsql|DEFINER|s
+check_comm_hub_dispatch_secret_compatibility|p_canonical_present boolean, p_legacy_present boolean|jsonb|sql|INVOKER|i
+check_comm_hub_dry_run_certification_binding|p_dry_run_certification_id uuid, p_dry_run_execution_id uuid, p_preview_approval_id uuid, p_preview_snapshot_id uuid, p_expected_correlation_id uuid|jsonb|plpgsql|DEFINER|s
+check_comm_hub_event_fixture_compatibility|p_module_code text, p_event_code text|jsonb|plpgsql|DEFINER|s
+check_comm_hub_event_fixture_compatibility_v2|p_module_code text, p_event_code text, p_channel text, p_template_version_id uuid, p_scenario_id uuid, p_platform_test_context_id uuid|jsonb|plpgsql|DEFINER|s
+check_comm_hub_manual_observation_eligibility|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|v
+check_comm_hub_preview_approval_binding|p_preview_approval_id uuid, p_preview_snapshot_id uuid, p_expected_correlation_id uuid, p_expected_content_hash text, p_expected_recipient_hash text, p_expected_configuration_hash text|jsonb|plpgsql|DEFINER|s
+check_comm_hub_preview_runtime_evidence|p_snapshot_id uuid, p_module_code text, p_event_code text, p_channel text, p_correlation_id uuid, p_expected_content_hash text, p_expected_recipient_hash text, p_expected_template_version_id uuid, p_expected_configuration_hash text, p_transition_stage text|jsonb|plpgsql|DEFINER|s
+check_comm_hub_readiness|p_payload jsonb|jsonb|plpgsql|DEFINER|s
+check_comm_hub_runtime_governance|p_module_code text, p_event_code text, p_channel text, p_target_stage text, p_preview_snapshot_id uuid, p_preview_approval_id uuid, p_dry_run_certification_id uuid|jsonb|plpgsql|DEFINER|s
+check_comm_hub_runtime_transition_safe|p_action text, p_context jsonb|jsonb|plpgsql|DEFINER|v
+chk_comm_hub_control_settings||trigger|plpgsql|INVOKER|v
+claim_comm_hub_message_by_id|p_message_id uuid, p_worker_id text, p_include_live boolean, p_live_eligible_after timestamp with time zone, p_live_max_age_minutes integer|SETOF communication_message|plpgsql|DEFINER|v
+claim_comm_hub_messages|p_batch_size integer, p_worker_id text, p_include_live boolean, p_live_eligible_after timestamp with time zone, p_live_max_age_minutes integer|SETOF communication_message|plpgsql|DEFINER|v
+claim_comm_hub_targeted_message|p_message_id uuid, p_execution_id uuid, p_grant_id uuid, p_action text, p_worker_id text|jsonb|plpgsql|DEFINER|v
+clear_comm_hub_message_lock|p_message_id uuid, p_reason text, p_actor_user_id uuid|jsonb|plpgsql|DEFINER|v
+close_comm_hub_live_window|p_reason text, p_emergency boolean|jsonb|plpgsql|DEFINER|v
+close_comm_hub_one_real_email_gate_after_stage6|p_module_code text, p_event_code text, p_channel text, p_reason text|jsonb|plpgsql|DEFINER|v
+comm_hub_backfill_governance_assessment||jsonb|plpgsql|DEFINER|v
+comm_hub_canonical_jsonb|p jsonb|jsonb|sql|INVOKER|i
+comm_hub_canonicalization_version||text|sql|INVOKER|i
+comm_hub_canonicalize_jsonb|p_value jsonb|text|plpgsql|INVOKER|i
+comm_hub_classify_template_purpose|p_template_id uuid|text|sql|INVOKER|s
+comm_hub_compute_scenario_hash|p_scenario_id uuid|text|plpgsql|INVOKER|s
+comm_hub_controlled_live_scope_hash|p_operator uuid, p_module text, p_event text, p_channel text, p_recipient_hash text, p_preview_approval uuid, p_dryrun_cert uuid|text|sql|INVOKER|i
+comm_hub_controlled_live_scope_hash_v2|p_operator uuid, p_module text, p_event text, p_channel text, p_recipient_hash text, p_preview_approval uuid, p_dryrun_cert uuid, p_send_context text|text|sql|INVOKER|i
+comm_hub_diff_manifests|p_certified jsonb, p_current jsonb|text[]|plpgsql|INVOKER|i
+comm_hub_dry_run_scope_hash|p_actor uuid, p_module text, p_event text, p_channel text, p_snapshot uuid, p_recipient_hash text|text|sql|INVOKER|i
+comm_hub_evidence_hash|p_domain text, p_value jsonb|text|sql|INVOKER|i
+comm_hub_flatten_tokens|p_tokens jsonb, p_prefix text|jsonb|plpgsql|INVOKER|i
+comm_hub_governance_is_valid_transition|p_entity_type comm_hub_governance_entity_type, p_from text, p_to text|boolean|plpgsql|INVOKER|i
+comm_hub_governance_status_is_valid|p_entity_type comm_hub_governance_entity_type, p_status text|boolean|plpgsql|INVOKER|i
+comm_hub_governance_transition|p_entity_type text, p_entity_id uuid, p_entity_version text, p_target_status text, p_reason text, p_expected_version bigint, p_action text|jsonb|plpgsql|DEFINER|v
+comm_hub_html_escape|p_in text|text|sql|INVOKER|i
+comm_hub_json_schema_subset_scan_keywords|p_schema jsonb|jsonb|sql|INVOKER|i
+comm_hub_normalize_gate_key|p_value text|text|sql|INVOKER|i
+comm_hub_normalize_recipient_set|p_to jsonb, p_cc jsonb, p_bcc jsonb|jsonb|plpgsql|INVOKER|i
+comm_hub_preview_snapshot_bind_versions||trigger|plpgsql|DEFINER|v
+comm_hub_render_template|p_source text, p_context jsonb|jsonb|sql|INVOKER|i
+comm_hub_scrub_protected_keys|p_bundle jsonb|jsonb|sql|INVOKER|i
+comm_hub_sha256_hex|p_text text|text|sql|INVOKER|i
+comm_hub_snapshot_align_recipient_hash||trigger|plpgsql|DEFINER|v
+comm_hub_transition_log_immutable||trigger|plpgsql|INVOKER|v
+communication_controlled_live_execution_immutability||trigger|plpgsql|DEFINER|v
+communication_controlled_live_grant_immutability||trigger|plpgsql|DEFINER|v
+communication_dry_run_cert_immutability||trigger|plpgsql|INVOKER|v
+communication_hub_transport_guard_audit_immutable||trigger|plpgsql|INVOKER|v
+communication_message_send_context_immutability||trigger|plpgsql|INVOKER|v
+communication_message_targeted_immutability||trigger|plpgsql|INVOKER|v
+communication_preview_approval_immutability||trigger|plpgsql|INVOKER|v
+communication_request_targeted_immutability||trigger|plpgsql|INVOKER|v
+complete_comm_hub_scheduler_tick|p_lease_id uuid, p_arm_audit_id uuid, p_automation_generation bigint, p_readiness_hash text, p_counts jsonb, p_error jsonb|jsonb|plpgsql|DEFINER|v
+complete_comm_hub_trace|p_trace_id uuid, p_status text, p_payload jsonb|jsonb|plpgsql|DEFINER|v
+compute_comm_hub_dependency_hash|p_manifest jsonb|text|sql|INVOKER|i
+compute_comm_hub_provider_capability_evidence|p_provider_code text|jsonb|plpgsql|DEFINER|v
+compute_comm_hub_sender_readiness|p_sender_profile_id uuid, p_readiness_kind text|jsonb|plpgsql|DEFINER|v
+confirm_comm_hub_manual_production_observation|p_observation_id uuid, p_decision text, p_note text|jsonb|plpgsql|DEFINER|v
+consume_comm_hub_controlled_live_grant|p_grant_id uuid, p_consumed_by uuid, p_message_id uuid|jsonb|plpgsql|DEFINER|v
+consume_comm_hub_controlled_live_grant|p_grant_id uuid, p_execution_id uuid, p_message_id uuid, p_expected_correlation_id uuid, p_service_operation text|jsonb|plpgsql|DEFINER|v
+consume_comm_hub_controlled_live_grant|p_grant_id uuid, p_execution_id uuid, p_provider_invocation_key text|jsonb|plpgsql|DEFINER|v
+consume_comm_hub_one_real_email_grant|p_grant_id uuid, p_execution_id uuid, p_message_id uuid|jsonb|plpgsql|DEFINER|v
+consume_comm_hub_preview_approval|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+correct_comm_hub_legacy_baseline_attestation|p_module_code text, p_event_code text, p_channel text, p_reason text, p_typed_confirmation text|jsonb|plpgsql|DEFINER|v
+create_comm_hub_controlled_stub_message|p_execution_id uuid, p_grant_id uuid|jsonb|plpgsql|DEFINER|v
+create_comm_hub_one_real_email_message|p_execution_id uuid, p_grant_id uuid|jsonb|plpgsql|DEFINER|v
+create_comm_hub_synthetic_failed_test_message|p_module_code text, p_event_code text, p_template_code text, p_reason text, p_actor_user_id uuid|jsonb|plpgsql|DEFINER|v
+create_comm_hub_synthetic_stale_locked_test_message|p_module_code text, p_event_code text, p_template_code text, p_reason text, p_actor_user_id uuid|jsonb|plpgsql|DEFINER|v
+create_comm_hub_template_with_version|p_template jsonb, p_version jsonb, p_reason text, p_confirm text|jsonb|plpgsql|DEFINER|v
+diagnose_comm_hub_legacy_attestation_fingerprint|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+disable_comm_hub_event_template_mapping|p_module_code text, p_event_code text, p_channel text, p_reason text, p_actor_user_id uuid|jsonb|plpgsql|DEFINER|v
+disarm_comm_hub_automation|p_reason text, p_suspend boolean|jsonb|plpgsql|DEFINER|v
+ensure_comm_hub_event_live_control|p_module_code text, p_event_code text, p_channel text, p_risk_level text, p_reason text|jsonb|plpgsql|DEFINER|v
+establish_comm_hub_forward_baseline_policies|p_module_code text, p_event_code text, p_channel text, p_expected_event_certification_id uuid, p_expected_template_version_id uuid, p_reason text, p_typed_confirmation text|jsonb|plpgsql|DEFINER|v
+evaluate_comm_hub_live_gate|p_module_code text, p_event_code text, p_recipient_email text, p_mode text, p_template_code text|jsonb|plpgsql|DEFINER|s
+evaluate_comm_hub_recipient_policy|p_payload jsonb|jsonb|plpgsql|DEFINER|s
+evaluate_comm_hub_review_policy|p_payload jsonb|jsonb|plpgsql|DEFINER|s
+evaluate_comm_hub_runtime_gate_status|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+evaluate_comm_hub_send_authorization|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+evaluate_comm_hub_send_decision|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+evaluate_comm_hub_stage_readiness|p_module_code text, p_event_code text, p_target_stage text, p_channel text, p_auto_compute_sender_readiness boolean|jsonb|plpgsql|DEFINER|v
+execute_comm_hub_dry_run|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+fail_comm_hub_dry_run|p_execution_id uuid, p_state text, p_failure_stage text, p_blockers jsonb, p_warnings jsonb, p_technical_summary text|jsonb|plpgsql|DEFINER|v
+fetch_comm_hub_dry_run_certification|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+finalize_comm_hub_controlled_live|p_execution_id uuid, p_state text, p_final_operating_mode communication_operating_mode, p_cleanup_succeeded boolean, p_cleanup_state text, p_cleanup_error text, p_warnings jsonb, p_failure_stage text|jsonb|plpgsql|DEFINER|v
+finalize_comm_hub_dry_run|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+finalize_comm_hub_manual_production_observation|p_message_id uuid, p_idempotency_key text|jsonb|plpgsql|DEFINER|v
+finalize_comm_hub_one_real_email|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+get_comm_hub_controlled_live_execution|p_execution_id uuid|communication_controlled_live_execution|plpgsql|DEFINER|s
+get_comm_hub_cron_status||jsonb|plpgsql|DEFINER|v
+get_comm_hub_current_evidence_snapshot|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+get_comm_hub_event_go_live_stage9|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+get_comm_hub_event_go_live_status|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+get_comm_hub_go_live_completion|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+get_comm_hub_go_live_gate_snapshot|p_module_code text, p_event_code text, p_channel text, p_preview_snapshot_id uuid, p_preview_approval_id uuid, p_dry_run_execution_id uuid|jsonb|plpgsql|DEFINER|s
+get_comm_hub_live_window_status||jsonb|plpgsql|DEFINER|v
+get_comm_hub_manual_production_evidence|p_observation_id uuid|jsonb|plpgsql|DEFINER|v
+get_comm_hub_module_automation_setting|p_module_code text, p_setting_key text, p_environment_scope text|communication_hub_module_automation_setting|sql|DEFINER|s
+get_comm_hub_observation_recovery|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+get_comm_hub_one_real_email_context|p_module_code text, p_event_code text, p_channel text, p_controlled_stub_certification_id uuid|jsonb|plpgsql|DEFINER|v
+get_comm_hub_one_real_email_recovery_status|p_execution_id uuid|jsonb|plpgsql|DEFINER|s
+get_comm_hub_ore_evidence_snapshot|p_one_real_email_certification_id uuid|jsonb|plpgsql|DEFINER|s
+get_comm_hub_production_lineage_diagnostic|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+get_comm_hub_real_email_gate|p_module text, p_event text, p_channel text|jsonb|plpgsql|DEFINER|v
+get_comm_hub_request_auth_context||jsonb|plpgsql|DEFINER|v
+get_comm_hub_revalidation_send_context|p_cycle_id uuid|jsonb|plpgsql|DEFINER|s
+get_comm_hub_safety_counts|window_minutes integer|jsonb|plpgsql|DEFINER|v
+get_comm_hub_stage_requirements|p_stage text|jsonb|plpgsql|INVOKER|i
+get_communication_operating_mode||TABLE(id uuid, singleton_guard text, operating_mode communication_operating_mode, previous_operating_mode communication_operating_mode, mode_changed_at timestamp with time zone, mode_changed_by uuid, mode_change_reason text, configuration_version bigint, dispatch_enabled boolean, dry_run_only boolean, email_live_enabled boolean, sms_live_enabled boolean, whatsapp_live_enabled boolean, print_enabled boolean, letter_enabled boolean, updated_at timestamp with time zone)|sql|DEFINER|s
+get_communication_recipient_policy||communication_hub_recipient_policy|sql|DEFINER|s
+get_my_comm_hub_controlled_live_executions|p_limit integer|SETOF communication_controlled_live_execution|sql|DEFINER|s
+ia_check_data_readiness|p_plan_id uuid|jsonb|plpgsql|DEFINER|s
+ia_check_launch_readiness|p_engagement_id uuid|jsonb|plpgsql|DEFINER|v
+ia_get_communication_timeline|p_engagement_id uuid|jsonb|plpgsql|DEFINER|s
+ia_record_communication_stage|p_engagement_id uuid, p_stage_code text, p_template_id uuid, p_recipient_name text, p_recipient_email text, p_notes text, p_created_by text, p_acknowledgment_required boolean|jsonb|plpgsql|DEFINER|v
+ia_record_communication_stage|p_engagement_id uuid, p_stage_code text, p_template_id uuid, p_recipient_name text, p_recipient_email text, p_notes text, p_created_by text, p_acknowledgment_required boolean, p_mode text|jsonb|plpgsql|DEFINER|v
+inspect_comm_hub_dry_run_preflight|p_preview_snapshot_id uuid, p_preview_approval_id uuid, p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+is_comm_hub_admin|_uid uuid|boolean|sql|DEFINER|s
+is_comm_hub_operator_admin|p_user_id uuid|boolean|sql|DEFINER|s
+issue_comm_hub_revalidation_send_authorisation|p_cycle_id uuid, p_recipient_email text, p_current_fingerprint text, p_typed_phrase text, p_expires_minutes integer|jsonb|plpgsql|DEFINER|v
+link_comm_hub_trace_message|p_trace_id uuid, p_message_id uuid|jsonb|plpgsql|DEFINER|v
+link_comm_hub_trace_request|p_trace_id uuid, p_request_id uuid, p_request_no text|jsonb|plpgsql|DEFINER|v
+list_comm_hub_approved_recipients|p_module_code text, p_event_code text, p_channel text|TABLE(email text)|sql|DEFINER|v
+list_comm_hub_revalidation_cycles|p_module_code text, p_event_code text, p_channel text, p_limit integer|SETOF communication_hub_revalidation_cycle|plpgsql|DEFINER|s
+list_comm_hub_transition_log|p_limit integer, p_offset integer, p_correlation_id uuid|TABLE(id uuid, action text, allowed boolean, actor_id uuid, module_code text, event_code text, channel text, correlation_id uuid, denied_reasons jsonb, created_at timestamp with time zone)|plpgsql|DEFINER|v
+mark_comm_hub_certifications_possibly_stale|p_entity_type text, p_entity_id uuid, p_category text|integer|plpgsql|DEFINER|v
+mark_comm_hub_dry_run_dispatching|p_execution_id uuid, p_requested_by uuid|jsonb|plpgsql|DEFINER|v
+mark_comm_hub_revalidation_cycle_supplemental|p_cycle_id uuid|jsonb|plpgsql|DEFINER|v
+normalize_comm_hub_go_live_stage|p_stage text|text|plpgsql|INVOKER|i
+normalize_comm_hub_go_live_stage_for_action|p_stage text, p_action text|text|plpgsql|INVOKER|i
+normalize_comm_hub_go_live_stage_strict|p_stage text|text|plpgsql|INVOKER|i
+open_comm_hub_live_window|p_module_code text, p_event_code text, p_duration_minutes integer, p_reason text, p_typed_confirmation text|jsonb|plpgsql|DEFINER|v
+prepare_comm_hub_preview|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+probe_comm_hub_dry_run_service_identity||jsonb|plpgsql|DEFINER|s
+probe_comm_hub_one_real_email_contracts||jsonb|plpgsql|DEFINER|v
+probe_comm_hub_one_real_email_runtime||jsonb|sql|DEFINER|s
+probe_comm_hub_operator_identity||jsonb|plpgsql|DEFINER|s
+process_comm_hub_dry_run_execution|p_execution_id uuid, p_correlation_id uuid|jsonb|plpgsql|DEFINER|v
+promote_comm_hub_event_to_manual_production|p_module_code text, p_event_code text, p_channel text, p_reason text, p_typed_confirmation text, p_expected_runtime_mode_version bigint, p_one_real_email_certification_id uuid|jsonb|plpgsql|DEFINER|v
+promote_comm_hub_revalidation_baseline|p_cycle_id uuid, p_typed_phrase text, p_reason text|jsonb|plpgsql|DEFINER|v
+recompute_communication_request_status|p_request_id uuid|text|plpgsql|DEFINER|v
+reconcile_comm_hub_controlled_live_pre_provider|p_grant_id uuid, p_execution_id uuid, p_message_id uuid, p_failure_stage text, p_failure_code text, p_reason text|jsonb|plpgsql|DEFINER|v
+reconcile_comm_hub_manual_production_entry|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|v
+reconcile_comm_hub_one_real_email_pre_provider|p_execution_id uuid, p_grant_id uuid, p_reason text|jsonb|plpgsql|DEFINER|v
+record_comm_hub_automation_readiness_check|p_module text, p_event text, p_channel text, p_check text, p_ok boolean|jsonb|plpgsql|DEFINER|v
+record_comm_hub_controlled_live_provider_attempt|p_execution_id uuid, p_invocation_key text, p_provider_name text|jsonb|plpgsql|DEFINER|v
+record_comm_hub_controlled_live_provider_outcome|p_execution_id uuid, p_provider_status text, p_provider_message_id text, p_provider_response_safe jsonb, p_warnings jsonb|jsonb|plpgsql|DEFINER|v
+record_comm_hub_fixture_compatibility_evidence|p_module_code text, p_event_code text, p_channel text, p_template_version_id uuid, p_scenario_id uuid, p_platform_test_context_id uuid|jsonb|plpgsql|DEFINER|v
+record_comm_hub_manual_production_observation|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+record_comm_hub_observation_intent|p_idempotency_key text, p_module_code text, p_event_code text, p_channel text, p_recipient_email text|jsonb|plpgsql|DEFINER|v
+record_comm_hub_revalidation_inbox_confirmation|p_cycle_id uuid, p_status text, p_notes text|jsonb|plpgsql|DEFINER|v
+record_comm_hub_revalidation_provider_result|p_cycle_id uuid, p_execution_id uuid, p_outcome text|jsonb|plpgsql|DEFINER|v
+record_comm_hub_revalidation_stage|p_cycle_id uuid, p_stage_code comm_hub_revalidation_stage_code, p_status comm_hub_stage_result_status, p_evidence jsonb, p_reused_historical boolean, p_preview_snapshot_id uuid, p_preview_approval_id uuid, p_dry_run_certification_id uuid, p_controlled_stub_certification_id uuid, p_one_real_email_certification_id uuid, p_manual_observation_id uuid, p_automated_canary_id uuid|jsonb|plpgsql|DEFINER|v
+record_comm_hub_runtime_release|p_release_reference text, p_git_commit_sha text, p_component_build_ids jsonb, p_affected_surfaces text[], p_revalidation_impact jsonb, p_change_reason text|jsonb|plpgsql|DEFINER|v
+record_comm_hub_scheduler_heartbeat|p_worker_version text, p_arm_audit_id uuid, p_readiness_snapshot_id uuid, p_processed_count bigint, p_error text|jsonb|plpgsql|DEFINER|v
+record_comm_hub_template_version_certification|p_template_version_id uuid, p_reason text|jsonb|plpgsql|DEFINER|v
+refresh_comm_hub_certification_freshness|p_certification_id uuid, p_source text|jsonb|plpgsql|DEFINER|v
+release_comm_hub_preview_reservation|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+render_comm_hub_content|p_content text, p_tokens jsonb, p_output_context text|jsonb|plpgsql|INVOKER|i
+render_comm_hub_template|p_source text, p_context jsonb|jsonb|sql|INVOKER|i
+render_comm_hub_template_preview|p_payload jsonb|jsonb|plpgsql|DEFINER|s
+render_comm_hub_template_version|p_template_version_id uuid, p_tokens jsonb|jsonb|sql|INVOKER|s
+render_comm_hub_template_version|p_template_version_id uuid, p_tokens jsonb, p_channel text, p_render_mode text|jsonb|plpgsql|INVOKER|s
+repair_comm_hub_production_lineage_anchor|p_module_code text, p_event_code text, p_channel text, p_expected_event_certification_id uuid, p_expected_ore_certification_id uuid, p_reason text, p_typed_confirmation text|jsonb|plpgsql|DEFINER|v
+report_comm_hub_status_normalisation||TABLE(scope text, status_value text, occurrence_count bigint)|sql|INVOKER|s
+reserve_comm_hub_controlled_live_grant|p_grant_id uuid, p_execution_id uuid, p_expected_action text, p_expected_correlation_id uuid, p_service_operation text|jsonb|plpgsql|DEFINER|v
+reserve_comm_hub_controlled_live_grant|p_grant_id uuid, p_execution_id uuid, p_recipient_set_hash text, p_subject_hash text, p_body_hash text|jsonb|plpgsql|DEFINER|v
+reserve_comm_hub_controlled_live_grant|p_grant_id uuid, p_reserved_by uuid|jsonb|plpgsql|DEFINER|v
+reserve_comm_hub_one_real_email_grant|p_grant_id uuid, p_execution_id uuid|jsonb|plpgsql|DEFINER|v
+reserve_comm_hub_preview_approval|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+reserve_comm_hub_revalidation_send_authorisation|p_cycle_id uuid, p_authorisation_id uuid, p_current_fingerprint text, p_recipient_email text|jsonb|plpgsql|DEFINER|v
+resolve_comm_hub_send_policy|p_module_code text, p_event_code text, p_channel text, p_environment_scope text|jsonb|plpgsql|DEFINER|s
+resolve_comm_hub_sender_for_event|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|s
+resolve_comm_hub_template_variables|p_template_version_id uuid, p_module_code text, p_event_code text, p_channel text, p_resolution_mode text, p_test_scenario_id uuid, p_event_payload jsonb, p_recipient_context jsonb, p_request_context jsonb, p_system_context jsonb|jsonb|plpgsql|DEFINER|s
+resolve_comm_hub_transport_guard|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+restore_comm_hub_operating_mode_after_controlled_live|p_execution_id uuid|jsonb|plpgsql|DEFINER|v
+resume_comm_hub_one_real_email_finalization|p_execution_id uuid|jsonb|plpgsql|DEFINER|v
+retry_comm_hub_message|p_message_id uuid, p_reason text, p_actor_user_id uuid|jsonb|plpgsql|DEFINER|v
+revalidate_comm_hub_send_decision|p_prior_decision_id uuid, p_payload jsonb|jsonb|plpgsql|DEFINER|v
+revoke_comm_hub_controlled_live_grant|p_grant_id uuid, p_revoked_by uuid, p_reason text|jsonb|plpgsql|DEFINER|v
+revoke_comm_hub_controlled_live_grant|p_grant_id uuid, p_execution_id uuid, p_reason text, p_service_operation text|jsonb|plpgsql|DEFINER|v
+revoke_comm_hub_dry_run_certification|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+revoke_comm_hub_one_real_email_grant|p_grant_id uuid, p_execution_id uuid, p_reason text|jsonb|plpgsql|DEFINER|v
+revoke_comm_hub_preview_approval|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+rollback_comm_hub_event_production|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+run_comm_hub_automation_readiness_probe|p_module_code text, p_event_code text, p_channel text|jsonb|plpgsql|DEFINER|v
+run_comm_hub_go_live_certification|p_module_code text, p_event_code text, p_channel text, p_target_stage text, p_execute boolean|jsonb|plpgsql|DEFINER|v
+scan_comm_hub_raw_placeholders|p_subject text, p_body_html text, p_body_text text|jsonb|plpgsql|INVOKER|i
+send_communication_v1|payload jsonb|jsonb|plpgsql|DEFINER|v
+send_communication_v1_core|payload jsonb|jsonb|plpgsql|DEFINER|v
+set_comm_hub_module_automation_setting|p_module_code text, p_setting_key text, p_setting_value text, p_reason text, p_typed_confirmation text, p_actor_user_id uuid, p_environment_scope text|jsonb|plpgsql|DEFINER|v
+set_comm_hub_one_real_email_message_status|p_message_id uuid, p_target_status text, p_provider_message_id text, p_error_code text, p_error_message text|jsonb|plpgsql|DEFINER|v
+set_comm_hub_real_email_gate|p_module text, p_event text, p_channel text, p_enabled boolean, p_reason text|jsonb|plpgsql|DEFINER|v
+set_comm_hub_sender_profile_flags|p_id uuid, p_is_enabled boolean, p_provider_identity_status text, p_domain_verified boolean, p_is_default boolean, p_reason text, p_actor_user_id uuid|jsonb|plpgsql|DEFINER|v
+set_comm_hub_sender_verification|p_id uuid, p_spf_status text, p_dkim_status text, p_dmarc_status text, p_verification_notes text, p_reason text, p_actor_user_id uuid|jsonb|plpgsql|DEFINER|v
+set_communication_operating_mode|p_new_mode text, p_reason text|jsonb|plpgsql|DEFINER|v
+set_communication_operating_mode|p_new_mode communication_operating_mode, p_reason text|jsonb|plpgsql|DEFINER|v
+set_communication_recipient_policy|p_active_mode text, p_single_configured_address text, p_clear_single_configured_address boolean, p_approved_named_addresses jsonb, p_approved_domains jsonb, p_max_recipients_per_request integer, p_max_to_recipients integer, p_cc_allowed boolean, p_max_cc_recipients integer, p_bcc_allowed boolean, p_max_bcc_recipients integer, p_external_addresses_permitted boolean, p_subdomains_permitted boolean, p_reason text|jsonb|plpgsql|DEFINER|v
+start_comm_hub_revalidation_cycle|p_module_code text, p_event_code text, p_channel text, p_purpose comm_hub_revalidation_purpose, p_reason text, p_change_ticket_reference text, p_declared_change_categories jsonb, p_runtime_release_reference text|jsonb|plpgsql|DEFINER|v
+start_comm_hub_trace|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+suspend_comm_hub_event_certification_on_drift|p_module text, p_event text, p_channel text, p_reason text|jsonb|plpgsql|DEFINER|v
+tg_comm_hub_fce_writer_guard||trigger|plpgsql|INVOKER|v
+tg_comm_hub_platform_test_context_guard||trigger|plpgsql|INVOKER|v
+tg_comm_hub_scenario_govern||trigger|plpgsql|INVOKER|v
+tg_comm_hub_svc_allowlist_touch||trigger|plpgsql|INVOKER|v
+tg_comm_hub_touch_updated_at||trigger|plpgsql|INVOKER|v
+tg_communication_hub_arm_audit_immutable||trigger|plpgsql|INVOKER|v
+trg_comm_hub_certification_immutable||trigger|plpgsql|DEFINER|v
+trg_comm_hub_governance_immutable||trigger|plpgsql|DEFINER|v
+trg_comm_hub_invalidate_dependency||trigger|plpgsql|DEFINER|v
+update_comm_hub_observation_intent|p_idempotency_key text, p_message_id uuid, p_request_id uuid, p_phase text, p_finalized_observation_id uuid, p_last_error text|jsonb|plpgsql|DEFINER|v
+update_comm_hub_registry_token_metadata|p_module_code text, p_event_code text, p_channel text, p_token_metadata jsonb, p_reason text|jsonb|plpgsql|DEFINER|v
+upsert_comm_hub_event_template_mapping|p_module_code text, p_event_code text, p_channel text, p_template_code text, p_reason text, p_actor_user_id uuid, p_risk_level text|jsonb|plpgsql|DEFINER|v
+upsert_comm_hub_event_template_mapping_v2|p_module_code text, p_event_code text, p_channel text, p_template_code text, p_reason text, p_actor_user_id uuid, p_risk_level text, p_sender_profile_id uuid|jsonb|plpgsql|DEFINER|v
+upsert_comm_hub_module_event_registry|p_payload jsonb, p_reason text|jsonb|plpgsql|DEFINER|v
+upsert_comm_hub_sender_profile|p_id uuid, p_profile_code text, p_profile_name text, p_from_email text, p_display_name text, p_reply_to_email text, p_sender_category text, p_audience_type text, p_risk_level text, p_notes text, p_actor_user_id uuid|jsonb|plpgsql|DEFINER|v
+validate_comm_hub_controlled_live_grant|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+validate_comm_hub_dry_run_certification|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+validate_comm_hub_event_payload|p_module_code text, p_event_code text, p_payload_schema_version integer, p_event_payload jsonb, p_require_enforced boolean|jsonb|plpgsql|DEFINER|s
+validate_comm_hub_event_payload_pure|p_schema jsonb, p_payload jsonb|jsonb|plpgsql|INVOKER|i
+validate_comm_hub_preview_approval|p_payload jsonb|jsonb|plpgsql|DEFINER|v
+validate_comm_hub_recipient_release_mode|p_mode text, p_allowed_email_addresses text[], p_allowed_email_domains text[]|jsonb|plpgsql|DEFINER|s
+validate_comm_hub_template_contract|p_template_version_id uuid, p_template_code text|jsonb|plpgsql|INVOKER|s
+void_comm_hub_manual_production_observation|p_observation_id uuid, p_reason text, p_confirmation text|jsonb|plpgsql|DEFINER|v
+void_comm_hub_revalidation_cycle|p_cycle_id uuid, p_reason text|jsonb|plpgsql|DEFINER|v
+write_comm_hub_operating_mode_audit|p_control_settings_id uuid, p_previous_mode communication_operating_mode, p_new_mode communication_operating_mode, p_actor uuid, p_reason text, p_configuration_version bigint, p_effective_before jsonb, p_effective_after jsonb, p_automation_before text, p_automation_after text, p_source text, p_module_code text, p_event_code text, p_channel text|uuid|plpgsql|DEFINER|v

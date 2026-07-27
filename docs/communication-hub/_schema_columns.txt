@@ -1,0 +1,1763 @@
+comm_hub_automation_readiness_results|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_automation_readiness_results|module_code|text|text|NO|
+comm_hub_automation_readiness_results|event_code|text|text|NO|
+comm_hub_automation_readiness_results|channel|text|text|NO|'email'::text
+comm_hub_automation_readiness_results|check_code|text|text|NO|
+comm_hub_automation_readiness_results|configuration_version|bigint|int8|NO|
+comm_hub_automation_readiness_results|event_certification_id|uuid|uuid|YES|
+comm_hub_automation_readiness_results|result|boolean|bool|NO|
+comm_hub_automation_readiness_results|source|text|text|NO|'SERVER_PROBE'::text
+comm_hub_automation_readiness_results|evidence|jsonb|jsonb|NO|'{}'::jsonb
+comm_hub_automation_readiness_results|checked_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_automation_readiness_results|checked_by|uuid|uuid|YES|
+comm_hub_automation_readiness_results|expires_at|timestamp with time zone|timestamptz|NO|(now() + '24:00:00'::interval)
+comm_hub_automation_readiness_results|created_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_automation_readiness_results|updated_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_certification|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_certification|governance_record_id|uuid|uuid|NO|
+comm_hub_certification|entity_type|USER-DEFINED|comm_hub_governance_entity_type|NO|
+comm_hub_certification|entity_id|uuid|uuid|NO|
+comm_hub_certification|entity_version|text|text|NO|
+comm_hub_certification|certification_kind|text|text|NO|
+comm_hub_certification|result|text|text|NO|
+comm_hub_certification|dependency_manifest|jsonb|jsonb|NO|
+comm_hub_certification|dependency_hash|text|text|NO|
+comm_hub_certification|renderer_version|text|text|YES|
+comm_hub_certification|template_purpose|text|text|YES|
+comm_hub_certification|channel|text|text|YES|
+comm_hub_certification|template_type|text|text|YES|
+comm_hub_certification|validation_findings|jsonb|jsonb|NO|'{}'::jsonb
+comm_hub_certification|error_count|integer|int4|NO|0
+comm_hub_certification|warning_count|integer|int4|NO|0
+comm_hub_certification|certified_by|uuid|uuid|YES|
+comm_hub_certification|certified_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_certification|certification_reason|text|text|NO|
+comm_hub_certification|is_stale|boolean|bool|NO|false
+comm_hub_certification|stale_reason|text|text|YES|
+comm_hub_certification|stale_detected_at|timestamp with time zone|timestamptz|YES|
+comm_hub_certification|superseded_by|uuid|uuid|YES|
+comm_hub_certification|correlation_id|uuid|uuid|YES|
+comm_hub_certification|certification_layer|text|text|YES|
+comm_hub_certification|provenance_state|text|text|YES|
+comm_hub_certification|producer_function|text|text|YES|
+comm_hub_certification|producer_version|text|text|YES|
+comm_hub_certification|diagnostic_function|text|text|YES|
+comm_hub_certification|diagnostic_version|text|text|YES|
+comm_hub_certification|canonicalization_version|text|text|YES|
+comm_hub_certification|hash_algorithm|text|text|YES|
+comm_hub_certification|manifest_hash|text|text|YES|
+comm_hub_certification|superseded_at|timestamp with time zone|timestamptz|YES|
+comm_hub_certification_freshness|certification_id|uuid|uuid|NO|
+comm_hub_certification_freshness|freshness_status|text|text|NO|'NOT_EVALUATED'::text
+comm_hub_certification_freshness|certified_dependency_hash|text|text|NO|
+comm_hub_certification_freshness|current_dependency_hash|text|text|YES|
+comm_hub_certification_freshness|current_manifest_summary|jsonb|jsonb|NO|'{}'::jsonb
+comm_hub_certification_freshness|changed_dependency_categories|ARRAY|_text|NO|ARRAY[]::text[]
+comm_hub_certification_freshness|stale_reason_codes|ARRAY|_text|NO|ARRAY[]::text[]
+comm_hub_certification_freshness|last_evaluated_at|timestamp with time zone|timestamptz|YES|
+comm_hub_certification_freshness|last_evaluated_source|text|text|YES|
+comm_hub_certification_freshness|stale_detected_at|timestamp with time zone|timestamptz|YES|
+comm_hub_certification_freshness|evaluation_version|text|text|NO|'1'::text
+comm_hub_certification_freshness|updated_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_event_release_certification|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_event_release_certification|module_code|text|text|NO|
+comm_hub_event_release_certification|event_code|text|text|NO|
+comm_hub_event_release_certification|channel|text|text|NO|
+comm_hub_event_release_certification|release_status|USER-DEFINED|comm_hub_release_lifecycle|NO|'NOT_CERTIFIED'::comm_hub_release_lifecycle
+comm_hub_event_release_certification|latest_certification_id|uuid|uuid|YES|
+comm_hub_event_release_certification|latest_dependency_hash|text|text|YES|
+comm_hub_event_release_certification|is_stale|boolean|bool|NO|false
+comm_hub_event_release_certification|stale_reason|text|text|YES|
+comm_hub_event_release_certification|updated_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_event_release_certification|updated_by|uuid|uuid|YES|
+comm_hub_fixture_compatibility_evidence|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_fixture_compatibility_evidence|module_code|text|text|NO|
+comm_hub_fixture_compatibility_evidence|event_code|text|text|NO|
+comm_hub_fixture_compatibility_evidence|channel|text|text|NO|
+comm_hub_fixture_compatibility_evidence|template_version_id|uuid|uuid|NO|
+comm_hub_fixture_compatibility_evidence|scenario_id|uuid|uuid|NO|
+comm_hub_fixture_compatibility_evidence|platform_test_context_id|uuid|uuid|NO|
+comm_hub_fixture_compatibility_evidence|schema_id|uuid|uuid|YES|
+comm_hub_fixture_compatibility_evidence|schema_version|integer|int4|YES|
+comm_hub_fixture_compatibility_evidence|validator_name|text|text|NO|'comm-hub-json-schema-subset'::text
+comm_hub_fixture_compatibility_evidence|validator_version|text|text|NO|'v1'::text
+comm_hub_fixture_compatibility_evidence|compatibility_hash|text|text|NO|
+comm_hub_fixture_compatibility_evidence|manifest|jsonb|jsonb|NO|
+comm_hub_fixture_compatibility_evidence|status|text|text|NO|'CURRENT'::text
+comm_hub_fixture_compatibility_evidence|blockers|jsonb|jsonb|NO|'[]'::jsonb
+comm_hub_fixture_compatibility_evidence|warnings|jsonb|jsonb|NO|'[]'::jsonb
+comm_hub_fixture_compatibility_evidence|computed_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_fixture_compatibility_evidence|computed_by|uuid|uuid|YES|
+comm_hub_governance_audit|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_governance_audit|governance_record_id|uuid|uuid|YES|
+comm_hub_governance_audit|certification_id|uuid|uuid|YES|
+comm_hub_governance_audit|entity_type|USER-DEFINED|comm_hub_governance_entity_type|NO|
+comm_hub_governance_audit|entity_id|uuid|uuid|NO|
+comm_hub_governance_audit|entity_version|text|text|NO|
+comm_hub_governance_audit|action|USER-DEFINED|comm_hub_governance_action|NO|
+comm_hub_governance_audit|previous_status|text|text|YES|
+comm_hub_governance_audit|new_status|text|text|YES|
+comm_hub_governance_audit|actor|uuid|uuid|YES|
+comm_hub_governance_audit|reason|text|text|YES|
+comm_hub_governance_audit|governance_version|bigint|int8|YES|
+comm_hub_governance_audit|dependency_hash|text|text|YES|
+comm_hub_governance_audit|correlation_id|uuid|uuid|YES|
+comm_hub_governance_audit|detail|jsonb|jsonb|NO|'{}'::jsonb
+comm_hub_governance_audit|audited_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_governance_record|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_governance_record|entity_type|USER-DEFINED|comm_hub_governance_entity_type|NO|
+comm_hub_governance_record|entity_id|uuid|uuid|NO|
+comm_hub_governance_record|entity_version|text|text|NO|'1'::text
+comm_hub_governance_record|governance_status|text|text|NO|
+comm_hub_governance_record|governance_version|bigint|int8|NO|1
+comm_hub_governance_record|validation_status|text|text|YES|
+comm_hub_governance_record|certification_status|text|text|YES|
+comm_hub_governance_record|enforcement_status|text|text|YES|
+comm_hub_governance_record|dependency_hash|text|text|YES|
+comm_hub_governance_record|dependency_manifest|jsonb|jsonb|NO|'{}'::jsonb
+comm_hub_governance_record|is_stale|boolean|bool|NO|false
+comm_hub_governance_record|stale_reason|text|text|YES|
+comm_hub_governance_record|stale_detected_at|timestamp with time zone|timestamptz|YES|
+comm_hub_governance_record|last_validated_at|timestamp with time zone|timestamptz|YES|
+comm_hub_governance_record|last_certified_at|timestamp with time zone|timestamptz|YES|
+comm_hub_governance_record|validated_by|uuid|uuid|YES|
+comm_hub_governance_record|certified_by|uuid|uuid|YES|
+comm_hub_governance_record|activated_by|uuid|uuid|YES|
+comm_hub_governance_record|retired_by|uuid|uuid|YES|
+comm_hub_governance_record|reason|text|text|YES|
+comm_hub_governance_record|classification|text|text|YES|
+comm_hub_governance_record|correlation_id|uuid|uuid|YES|
+comm_hub_governance_record|created_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_governance_record|updated_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_governance_record|created_by|uuid|uuid|YES|
+comm_hub_governance_record|updated_by|uuid|uuid|YES|
+comm_hub_platform_test_context|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_platform_test_context|context_code|text|text|NO|
+comm_hub_platform_test_context|version|integer|int4|NO|1
+comm_hub_platform_test_context|status|text|text|NO|'ACTIVE'::text
+comm_hub_platform_test_context|recipient_context|jsonb|jsonb|NO|
+comm_hub_platform_test_context|request_context|jsonb|jsonb|NO|
+comm_hub_platform_test_context|system_context|jsonb|jsonb|NO|
+comm_hub_platform_test_context|sender_context|jsonb|jsonb|NO|
+comm_hub_platform_test_context|context_hash|text|text|NO|
+comm_hub_platform_test_context|ownership_contract_version|text|text|NO|'source-ownership/v1'::text
+comm_hub_platform_test_context|description|text|text|YES|
+comm_hub_platform_test_context|created_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_platform_test_context|updated_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_provider_capability_evidence|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_provider_capability_evidence|provider_code|text|text|NO|
+comm_hub_provider_capability_evidence|provider_configuration_version|text|text|YES|
+comm_hub_provider_capability_evidence|adapter_contract_version|text|text|YES|
+comm_hub_provider_capability_evidence|adapter_deployed_version|text|text|YES|
+comm_hub_provider_capability_evidence|test_adapter_available|boolean|bool|NO|false
+comm_hub_provider_capability_evidence|test_adapter_enabled|boolean|bool|NO|false
+comm_hub_provider_capability_evidence|live_adapter_available|boolean|bool|NO|false
+comm_hub_provider_capability_evidence|live_adapter_enabled|boolean|bool|NO|false
+comm_hub_provider_capability_evidence|credentials_present|boolean|bool|NO|false
+comm_hub_provider_capability_evidence|credential_reference_version|text|text|YES|
+comm_hub_provider_capability_evidence|connectivity_check_status|text|text|NO|'NOT_CHECKED'::text
+comm_hub_provider_capability_evidence|connectivity_check_type|text|text|YES|
+comm_hub_provider_capability_evidence|environment_code|text|text|YES|
+comm_hub_provider_capability_evidence|environment_version|text|text|YES|
+comm_hub_provider_capability_evidence|external_send_gate_enabled|boolean|bool|NO|false
+comm_hub_provider_capability_evidence|dispatch_secret_status|text|text|NO|'MISSING'::text
+comm_hub_provider_capability_evidence|dispatch_secret_canonical_name|text|text|NO|'COMMUNICATION_HUB_DISPATCH_SECRET'::text
+comm_hub_provider_capability_evidence|legacy_dispatch_secret_present|boolean|bool|NO|false
+comm_hub_provider_capability_evidence|state|text|text|NO|'NOT_CHECKED'::text
+comm_hub_provider_capability_evidence|blockers|jsonb|jsonb|NO|'[]'::jsonb
+comm_hub_provider_capability_evidence|warnings|jsonb|jsonb|NO|'[]'::jsonb
+comm_hub_provider_capability_evidence|advisories|jsonb|jsonb|NO|'[]'::jsonb
+comm_hub_provider_capability_evidence|evidence_hash|text|text|YES|
+comm_hub_provider_capability_evidence|evidence_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_provider_capability_evidence|expires_at|timestamp with time zone|timestamptz|YES|
+comm_hub_provider_capability_evidence|producer_function|text|text|NO|'compute_comm_hub_provider_capability_evidence'::text
+comm_hub_provider_capability_evidence|producer_version|text|text|NO|'provider-cap/v1'::text
+comm_hub_provider_capability_evidence|computed_by|uuid|uuid|YES|
+comm_hub_runtime_transition_log|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_runtime_transition_log|action|text|text|NO|
+comm_hub_runtime_transition_log|allowed|boolean|bool|NO|
+comm_hub_runtime_transition_log|actor_id|uuid|uuid|YES|
+comm_hub_runtime_transition_log|module_code|text|text|YES|
+comm_hub_runtime_transition_log|event_code|text|text|YES|
+comm_hub_runtime_transition_log|channel|text|text|YES|
+comm_hub_runtime_transition_log|context|jsonb|jsonb|NO|'{}'::jsonb
+comm_hub_runtime_transition_log|denied_reasons|jsonb|jsonb|NO|'[]'::jsonb
+comm_hub_runtime_transition_log|correlation_id|uuid|uuid|YES|
+comm_hub_runtime_transition_log|created_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_scheduler_tick_leases|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_scheduler_tick_leases|started_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_scheduler_tick_leases|expires_at|timestamp with time zone|timestamptz|NO|(now() + '00:05:00'::interval)
+comm_hub_scheduler_tick_leases|finished_at|timestamp with time zone|timestamptz|YES|
+comm_hub_scheduler_tick_leases|arm_audit_id|uuid|uuid|YES|
+comm_hub_scheduler_tick_leases|automation_generation|bigint|int8|YES|
+comm_hub_scheduler_tick_leases|configuration_version|bigint|int8|YES|
+comm_hub_scheduler_tick_leases|pinned_readiness_ids|ARRAY|_uuid|YES|
+comm_hub_scheduler_tick_leases|readiness_hash|text|text|YES|
+comm_hub_scheduler_tick_leases|operating_mode|text|text|YES|
+comm_hub_scheduler_tick_leases|automation_state|text|text|YES|
+comm_hub_scheduler_tick_leases|status|text|text|NO|'RUNNING'::text
+comm_hub_scheduler_tick_leases|worker_version|text|text|YES|
+comm_hub_scheduler_tick_leases|processed_count|integer|int4|NO|0
+comm_hub_scheduler_tick_leases|sent_count|integer|int4|NO|0
+comm_hub_scheduler_tick_leases|retried_count|integer|int4|NO|0
+comm_hub_scheduler_tick_leases|failed_count|integer|int4|NO|0
+comm_hub_scheduler_tick_leases|skipped_count|integer|int4|NO|0
+comm_hub_scheduler_tick_leases|error|jsonb|jsonb|YES|
+comm_hub_scheduler_tick_leases|created_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_sender_readiness|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_sender_readiness|sender_profile_id|uuid|uuid|NO|
+comm_hub_sender_readiness|sender_version|text|text|NO|'1'::text
+comm_hub_sender_readiness|readiness_state|USER-DEFINED|comm_hub_sender_readiness_state|NO|
+comm_hub_sender_readiness|readiness_details|jsonb|jsonb|NO|'{}'::jsonb
+comm_hub_sender_readiness|computed_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_sender_readiness|is_stale|boolean|bool|NO|false
+comm_hub_sender_readiness|stale_reason|text|text|YES|
+comm_hub_sender_readiness|readiness_kind|text|text|NO|'TEST_READY'::text
+comm_hub_sender_readiness|verification_evidence_version|text|text|YES|
+comm_hub_sender_readiness|provider_code|text|text|YES|
+comm_hub_sender_readiness|provider_version|text|text|YES|
+comm_hub_sender_readiness|environment_code|text|text|YES|
+comm_hub_sender_readiness|environment_version|text|text|YES|
+comm_hub_sender_readiness|evidence_hash|text|text|YES|
+comm_hub_sender_readiness|expires_at|timestamp with time zone|timestamptz|YES|
+comm_hub_sender_readiness|blockers|jsonb|jsonb|NO|'[]'::jsonb
+comm_hub_sender_readiness|warnings|jsonb|jsonb|NO|'[]'::jsonb
+comm_hub_sender_readiness|advisories|jsonb|jsonb|NO|'[]'::jsonb
+comm_hub_sender_readiness|computed_by|uuid|uuid|YES|
+comm_hub_sender_readiness|reason|text|text|YES|
+comm_hub_service_operation_allowlist|id|uuid|uuid|NO|gen_random_uuid()
+comm_hub_service_operation_allowlist|service_account|text|text|NO|
+comm_hub_service_operation_allowlist|operation|text|text|NO|
+comm_hub_service_operation_allowlist|reason|text|text|NO|
+comm_hub_service_operation_allowlist|active|boolean|bool|NO|true
+comm_hub_service_operation_allowlist|created_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_service_operation_allowlist|updated_at|timestamp with time zone|timestamptz|NO|now()
+comm_hub_service_operation_allowlist|created_by|uuid|uuid|YES|
+communication_approval|id|uuid|uuid|NO|gen_random_uuid()
+communication_approval|request_id|uuid|uuid|NO|
+communication_approval|policy_ref|text|text|YES|
+communication_approval|required_role|text|text|YES|
+communication_approval|required_permission|text|text|YES|
+communication_approval|sequence|integer|int4|NO|1
+communication_approval|status|text|text|NO|'pending'::text
+communication_approval|decided_by|uuid|uuid|YES|
+communication_approval|decided_at|timestamp with time zone|timestamptz|YES|
+communication_approval|decision_note|text|text|YES|
+communication_approval|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_approval|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_attachment|id|uuid|uuid|NO|gen_random_uuid()
+communication_attachment|message_id|uuid|uuid|NO|
+communication_attachment|generated_document_id|uuid|uuid|YES|
+communication_attachment|storage_ref|text|text|YES|
+communication_attachment|filename|text|text|YES|
+communication_attachment|mime_type|text|text|YES|
+communication_attachment|size_bytes|bigint|int8|YES|
+communication_attachment|role|text|text|NO|'primary'::text
+communication_attachment|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_attachment|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_controlled_live_certification|id|uuid|uuid|NO|gen_random_uuid()
+communication_controlled_live_certification|certification_no|bigint|int8|NO|nextval('clc_no_seq'::regclass)
+communication_controlled_live_certification|execution_id|uuid|uuid|NO|
+communication_controlled_live_certification|module_code|text|text|NO|
+communication_controlled_live_certification|event_code|text|text|NO|
+communication_controlled_live_certification|channel|text|text|NO|'email'::text
+communication_controlled_live_certification|recipient_set_hash|text|text|NO|
+communication_controlled_live_certification|preview_snapshot_id|uuid|uuid|YES|
+communication_controlled_live_certification|preview_approval_id|uuid|uuid|NO|
+communication_controlled_live_certification|dry_run_certification_id|uuid|uuid|NO|
+communication_controlled_live_certification|request_id|uuid|uuid|YES|
+communication_controlled_live_certification|message_id|uuid|uuid|YES|
+communication_controlled_live_certification|delivery_attempt_id|uuid|uuid|YES|
+communication_controlled_live_certification|trace_id|uuid|uuid|YES|
+communication_controlled_live_certification|provider_name|text|text|YES|
+communication_controlled_live_certification|provider_message_id|text|text|YES|
+communication_controlled_live_certification|provider_outcome|text|text|NO|
+communication_controlled_live_certification|provider_status|text|text|YES|
+communication_controlled_live_certification|status|text|text|NO|'PROVIDER_ACCEPTED'::text
+communication_controlled_live_certification|manual_verification_status|text|text|YES|
+communication_controlled_live_certification|manual_verification_received_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_certification|manual_verification_recipient|text|text|YES|
+communication_controlled_live_certification|manual_verification_note|text|text|YES|
+communication_controlled_live_certification|manual_verified_by|uuid|uuid|YES|
+communication_controlled_live_certification|manual_verified_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_certification|recipient_policy_version|integer|int4|YES|
+communication_controlled_live_certification|configuration_version|integer|int4|YES|
+communication_controlled_live_certification|operating_mode_prior|text|text|YES|
+communication_controlled_live_certification|operating_mode_final|text|text|YES|
+communication_controlled_live_certification|cleanup_succeeded|boolean|bool|YES|
+communication_controlled_live_certification|certified_at|timestamp with time zone|timestamptz|NO|now()
+communication_controlled_live_certification|certified_by|uuid|uuid|YES|
+communication_controlled_live_certification|invalidation_reason|text|text|YES|
+communication_controlled_live_certification|invalidated_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_certification|invalidated_by|uuid|uuid|YES|
+communication_controlled_live_certification|certification_kind|text|text|NO|'CONTROLLED_STUB'::text
+communication_controlled_live_certification|evidence_fingerprint|text|text|YES|
+communication_controlled_live_certification|production_lineage_id|uuid|uuid|YES|
+communication_controlled_live_certification|evidence_snapshot_v2|jsonb|jsonb|YES|
+communication_controlled_live_certification|evidence_fingerprint_v2|text|text|YES|
+communication_controlled_live_certification|evidence_fingerprint_algorithm|text|text|YES|
+communication_controlled_live_certification|fingerprint_backfill_status|text|text|YES|
+communication_controlled_live_certification|fingerprint_backfilled_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_certification|fingerprint_backfill_detail|jsonb|jsonb|YES|
+communication_controlled_live_execution|id|uuid|uuid|NO|gen_random_uuid()
+communication_controlled_live_execution|execution_no|bigint|int8|NO|nextval('communication_controlled_live_execution_execution_no_seq'::regclass)
+communication_controlled_live_execution|idempotency_key|text|text|NO|
+communication_controlled_live_execution|scope_hash|text|text|NO|
+communication_controlled_live_execution|requested_by|uuid|uuid|NO|
+communication_controlled_live_execution|module_code|text|text|NO|
+communication_controlled_live_execution|event_code|text|text|NO|
+communication_controlled_live_execution|channel|text|text|NO|'email'::text
+communication_controlled_live_execution|recipient_set_hash|text|text|NO|
+communication_controlled_live_execution|recipient|text|text|NO|
+communication_controlled_live_execution|preview_snapshot_id|uuid|uuid|YES|
+communication_controlled_live_execution|preview_approval_id|uuid|uuid|NO|
+communication_controlled_live_execution|dry_run_certification_id|uuid|uuid|NO|
+communication_controlled_live_execution|original_decision_id|uuid|uuid|YES|
+communication_controlled_live_execution|controlled_live_grant_id|uuid|uuid|YES|
+communication_controlled_live_execution|request_id|uuid|uuid|YES|
+communication_controlled_live_execution|message_id|uuid|uuid|YES|
+communication_controlled_live_execution|delivery_attempt_id|uuid|uuid|YES|
+communication_controlled_live_execution|dispatcher_revalidation_decision_id|uuid|uuid|YES|
+communication_controlled_live_execution|provider_message_id|text|text|YES|
+communication_controlled_live_execution|provider_acceptance_status|text|text|YES|
+communication_controlled_live_execution|trace_id|uuid|uuid|YES|
+communication_controlled_live_execution|state|USER-DEFINED|communication_controlled_live_state|NO|'STARTED'::communication_controlled_live_state
+communication_controlled_live_execution|failure_stage|text|text|YES|
+communication_controlled_live_execution|blockers|jsonb|jsonb|NO|'[]'::jsonb
+communication_controlled_live_execution|warnings|jsonb|jsonb|NO|'[]'::jsonb
+communication_controlled_live_execution|reason|text|text|NO|
+communication_controlled_live_execution|configuration_version|bigint|int8|YES|
+communication_controlled_live_execution|recipient_policy_version|bigint|int8|YES|
+communication_controlled_live_execution|audit_metadata|jsonb|jsonb|NO|'{}'::jsonb
+communication_controlled_live_execution|started_at|timestamp with time zone|timestamptz|NO|now()
+communication_controlled_live_execution|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_controlled_live_execution|completed_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_execution|prior_operating_mode|USER-DEFINED|communication_operating_mode|YES|
+communication_controlled_live_execution|final_operating_mode|USER-DEFINED|communication_operating_mode|YES|
+communication_controlled_live_execution|restored_operating_mode|USER-DEFINED|communication_operating_mode|YES|
+communication_controlled_live_execution|cleanup_state|text|text|YES|
+communication_controlled_live_execution|cleanup_succeeded|boolean|bool|YES|
+communication_controlled_live_execution|cleanup_error|text|text|YES|
+communication_controlled_live_execution|provider_call_attempted|boolean|bool|NO|false
+communication_controlled_live_execution|provider_invocation_key|text|text|YES|
+communication_controlled_live_execution|provider_invocation_started_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_execution|provider_call_completed_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_execution|provider_name|text|text|YES|
+communication_controlled_live_execution|provider_status|text|text|YES|
+communication_controlled_live_execution|provider_response_safe|jsonb|jsonb|YES|
+communication_controlled_live_execution|send_context|text|text|NO|'STUB'::text
+communication_controlled_live_execution|provider_mode|text|text|YES|
+communication_controlled_live_execution|real_email_authorised|boolean|bool|NO|false
+communication_controlled_live_grant|id|uuid|uuid|NO|gen_random_uuid()
+communication_controlled_live_grant|execution_id|uuid|uuid|NO|
+communication_controlled_live_grant|module_code|text|text|NO|
+communication_controlled_live_grant|event_code|text|text|NO|
+communication_controlled_live_grant|channel|text|text|NO|'email'::text
+communication_controlled_live_grant|recipient_set_hash|text|text|NO|
+communication_controlled_live_grant|scope_hash|text|text|NO|
+communication_controlled_live_grant|preview_approval_id|uuid|uuid|NO|
+communication_controlled_live_grant|dry_run_certification_id|uuid|uuid|NO|
+communication_controlled_live_grant|configuration_version|bigint|int8|YES|
+communication_controlled_live_grant|recipient_policy_version|bigint|int8|YES|
+communication_controlled_live_grant|issued_by|uuid|uuid|NO|
+communication_controlled_live_grant|issued_at|timestamp with time zone|timestamptz|NO|now()
+communication_controlled_live_grant|expires_at|timestamp with time zone|timestamptz|NO|
+communication_controlled_live_grant|reserved_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_grant|consumed_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_grant|revoked_at|timestamp with time zone|timestamptz|YES|
+communication_controlled_live_grant|revocation_reason|text|text|YES|
+communication_controlled_live_grant|status|USER-DEFINED|communication_controlled_live_grant_status|NO|'ISSUED'::communication_controlled_live_grant_status
+communication_controlled_live_grant|audit_metadata|jsonb|jsonb|NO|'{}'::jsonb
+communication_controlled_live_grant|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_controlled_live_grant|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_controlled_live_grant|send_context|text|text|NO|'STUB'::text
+communication_delivery_attempt|id|uuid|uuid|NO|gen_random_uuid()
+communication_delivery_attempt|message_id|uuid|uuid|NO|
+communication_delivery_attempt|attempt_no|integer|int4|NO|
+communication_delivery_attempt|provider_id|uuid|uuid|YES|
+communication_delivery_attempt|started_at|timestamp with time zone|timestamptz|NO|now()
+communication_delivery_attempt|finished_at|timestamp with time zone|timestamptz|YES|
+communication_delivery_attempt|status|text|text|NO|
+communication_delivery_attempt|provider_message_id|text|text|YES|
+communication_delivery_attempt|provider_response|jsonb|jsonb|YES|
+communication_delivery_attempt|error_code|text|text|YES|
+communication_delivery_attempt|error_message|text|text|YES|
+communication_delivery_attempt|retry_reason|text|text|YES|
+communication_delivery_attempt|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_delivery_attempt|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_delivery_attempt|original_decision_id|uuid|uuid|YES|
+communication_delivery_attempt|revalidation_decision_id|uuid|uuid|YES|
+communication_delivery_attempt|revalidation_result|text|text|YES|
+communication_delivery_attempt|stale_reasons|jsonb|jsonb|YES|
+communication_delivery_attempt|send_context|text|text|YES|
+communication_delivery_attempt|attempt_type|text|text|YES|
+communication_delivery_attempt|provider_call_attempted|boolean|bool|NO|false
+communication_delivery_attempt|recipient_set_hash|text|text|YES|
+communication_delivery_attempt|subject_hash|text|text|YES|
+communication_delivery_attempt|body_hash|text|text|YES|
+communication_delivery_attempt|blockers|jsonb|jsonb|YES|
+communication_delivery_attempt|warnings|jsonb|jsonb|YES|
+communication_delivery_attempt|controlled_live_execution_id|uuid|uuid|YES|
+communication_delivery_attempt|grant_id|uuid|uuid|YES|
+communication_delivery_attempt|provider_invocation_key|text|text|YES|
+communication_delivery_attempt|provider_call_completed_at|timestamp with time zone|timestamptz|YES|
+communication_delivery_attempt|provider_status|text|text|YES|
+communication_delivery_attempt|provider_response_safe|jsonb|jsonb|YES|
+communication_delivery_attempt|preview_approval_id|uuid|uuid|YES|
+communication_delivery_attempt|dry_run_certification_id|uuid|uuid|YES|
+communication_delivery_attempt|result|text|text|YES|
+communication_dry_run_certification|id|uuid|uuid|NO|gen_random_uuid()
+communication_dry_run_certification|certification_no|text|text|NO|
+communication_dry_run_certification|module_code|text|text|NO|
+communication_dry_run_certification|event_code|text|text|NO|
+communication_dry_run_certification|channel|text|text|NO|'email'::text
+communication_dry_run_certification|preview_snapshot_id|uuid|uuid|YES|
+communication_dry_run_certification|preview_approval_id|uuid|uuid|YES|
+communication_dry_run_certification|communication_request_id|uuid|uuid|YES|
+communication_dry_run_certification|communication_message_id|uuid|uuid|YES|
+communication_dry_run_certification|communication_delivery_attempt_id|uuid|uuid|YES|
+communication_dry_run_certification|trace_id|uuid|uuid|YES|
+communication_dry_run_certification|recipient_set_hash|text|text|NO|
+communication_dry_run_certification|template_id|uuid|uuid|YES|
+communication_dry_run_certification|template_version_id|uuid|uuid|YES|
+communication_dry_run_certification|sender_profile_id|uuid|uuid|YES|
+communication_dry_run_certification|rendered_subject_hash|text|text|YES|
+communication_dry_run_certification|rendered_body_hash|text|text|YES|
+communication_dry_run_certification|content_hash|text|text|YES|
+communication_dry_run_certification|configuration_version|bigint|int8|YES|
+communication_dry_run_certification|recipient_policy_version|bigint|int8|YES|
+communication_dry_run_certification|send_policy_version|bigint|int8|YES|
+communication_dry_run_certification|review_policy_version|bigint|int8|YES|
+communication_dry_run_certification|original_decision_id|uuid|uuid|YES|
+communication_dry_run_certification|dispatcher_revalidation_decision_id|uuid|uuid|YES|
+communication_dry_run_certification|result|text|text|NO|'DRY_RUN_PASSED'::text
+communication_dry_run_certification|status|text|text|NO|'ACTIVE'::text
+communication_dry_run_certification|provider_call_attempted|boolean|bool|NO|false
+communication_dry_run_certification|certified_by|uuid|uuid|YES|
+communication_dry_run_certification|certified_at|timestamp with time zone|timestamptz|NO|now()
+communication_dry_run_certification|expires_at|timestamp with time zone|timestamptz|NO|(now() + '7 days'::interval)
+communication_dry_run_certification|invalidation_reason|text|text|YES|
+communication_dry_run_certification|invalidated_at|timestamp with time zone|timestamptz|YES|
+communication_dry_run_certification|invalidated_by|uuid|uuid|YES|
+communication_dry_run_certification|superseded_by|uuid|uuid|YES|
+communication_dry_run_certification|audit_metadata|jsonb|jsonb|NO|'{}'::jsonb
+communication_dry_run_certification|idempotency_key|text|text|YES|
+communication_dry_run_certification|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_dry_run_certification|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_dry_run_certification|revoked_by|uuid|uuid|YES|
+communication_dry_run_certification|revoked_at|timestamp with time zone|timestamptz|YES|
+communication_dry_run_certification|revocation_reason|text|text|YES|
+communication_dry_run_certification|lifecycle_updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_dry_run_execution|id|uuid|uuid|NO|gen_random_uuid()
+communication_dry_run_execution|execution_no|text|text|NO|
+communication_dry_run_execution|idempotency_key|text|text|NO|
+communication_dry_run_execution|scope_hash|text|text|NO|
+communication_dry_run_execution|requested_by|uuid|uuid|NO|
+communication_dry_run_execution|module_code|text|text|NO|
+communication_dry_run_execution|event_code|text|text|NO|
+communication_dry_run_execution|channel|text|text|NO|
+communication_dry_run_execution|preview_snapshot_id|uuid|uuid|NO|
+communication_dry_run_execution|preview_approval_id|uuid|uuid|YES|
+communication_dry_run_execution|recipient_set_hash|text|text|NO|
+communication_dry_run_execution|original_decision_id|uuid|uuid|YES|
+communication_dry_run_execution|request_id|uuid|uuid|YES|
+communication_dry_run_execution|message_id|uuid|uuid|YES|
+communication_dry_run_execution|delivery_attempt_id|uuid|uuid|YES|
+communication_dry_run_execution|dispatcher_revalidation_decision_id|uuid|uuid|YES|
+communication_dry_run_execution|trace_id|uuid|uuid|YES|
+communication_dry_run_execution|certification_id|uuid|uuid|YES|
+communication_dry_run_execution|state|text|text|NO|'STARTED'::text
+communication_dry_run_execution|failure_stage|text|text|YES|
+communication_dry_run_execution|blockers|jsonb|jsonb|NO|'[]'::jsonb
+communication_dry_run_execution|warnings|jsonb|jsonb|NO|'[]'::jsonb
+communication_dry_run_execution|started_at|timestamp with time zone|timestamptz|NO|now()
+communication_dry_run_execution|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_dry_run_execution|completed_at|timestamp with time zone|timestamptz|YES|
+communication_dry_run_execution|audit_metadata|jsonb|jsonb|NO|'{}'::jsonb
+communication_dry_run_execution|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_event_log|id|uuid|uuid|NO|gen_random_uuid()
+communication_event_log|message_id|uuid|uuid|YES|
+communication_event_log|request_id|uuid|uuid|YES|
+communication_event_log|event_type|text|text|NO|
+communication_event_log|occurred_at|timestamp with time zone|timestamptz|NO|now()
+communication_event_log|source|text|text|YES|
+communication_event_log|payload|jsonb|jsonb|YES|
+communication_event_log|actor_user_id|uuid|uuid|YES|
+communication_event_log|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_arm_audit|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_arm_audit|action|text|text|NO|
+communication_hub_arm_audit|actor|uuid|uuid|YES|
+communication_hub_arm_audit|reason|text|text|YES|
+communication_hub_arm_audit|configuration_version|bigint|int8|YES|
+communication_hub_arm_audit|automation_state_before|text|text|YES|
+communication_hub_arm_audit|automation_state_after|text|text|YES|
+communication_hub_arm_audit|eligible_event_count|integer|int4|YES|
+communication_hub_arm_audit|scope_module_code|text|text|YES|
+communication_hub_arm_audit|scope_event_code|text|text|YES|
+communication_hub_arm_audit|scope_channel|text|text|YES|
+communication_hub_arm_audit|snapshot|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_arm_audit|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_arm_audit|readiness_result_ids|ARRAY|_uuid|YES|
+communication_hub_arm_audit|pinned_configuration_version|bigint|int8|YES|
+communication_hub_automation_readiness|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_automation_readiness|module_code|text|text|NO|
+communication_hub_automation_readiness|event_code|text|text|NO|
+communication_hub_automation_readiness|channel|text|text|NO|'email'::text
+communication_hub_automation_readiness|scheduler_ok|boolean|bool|NO|false
+communication_hub_automation_readiness|scheduler_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_automation_readiness|scheduler_checked_by|uuid|uuid|YES|
+communication_hub_automation_readiness|automatic_triggers_ok|boolean|bool|NO|false
+communication_hub_automation_readiness|automatic_triggers_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_automation_readiness|automatic_triggers_checked_by|uuid|uuid|YES|
+communication_hub_automation_readiness|retry_worker_ok|boolean|bool|NO|false
+communication_hub_automation_readiness|retry_worker_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_automation_readiness|retry_worker_checked_by|uuid|uuid|YES|
+communication_hub_automation_readiness|dead_letter_ok|boolean|bool|NO|false
+communication_hub_automation_readiness|dead_letter_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_automation_readiness|dead_letter_checked_by|uuid|uuid|YES|
+communication_hub_automation_readiness|rate_limits_ok|boolean|bool|NO|false
+communication_hub_automation_readiness|rate_limits_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_automation_readiness|rate_limits_checked_by|uuid|uuid|YES|
+communication_hub_automation_readiness|batch_limits_ok|boolean|bool|NO|false
+communication_hub_automation_readiness|batch_limits_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_automation_readiness|batch_limits_checked_by|uuid|uuid|YES|
+communication_hub_automation_readiness|provider_circuit_breaker_ok|boolean|bool|NO|false
+communication_hub_automation_readiness|provider_circuit_breaker_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_automation_readiness|provider_circuit_breaker_checked_by|uuid|uuid|YES|
+communication_hub_automation_readiness|emergency_stop_ok|boolean|bool|NO|false
+communication_hub_automation_readiness|emergency_stop_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_automation_readiness|emergency_stop_checked_by|uuid|uuid|YES|
+communication_hub_automation_readiness|alerting_monitoring_ok|boolean|bool|NO|false
+communication_hub_automation_readiness|alerting_monitoring_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_automation_readiness|alerting_monitoring_checked_by|uuid|uuid|YES|
+communication_hub_automation_readiness|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_automation_readiness|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_control_audit|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_control_audit|setting_key|text|text|NO|
+communication_hub_control_audit|old_value|jsonb|jsonb|YES|
+communication_hub_control_audit|new_value|jsonb|jsonb|YES|
+communication_hub_control_audit|reason|text|text|YES|
+communication_hub_control_audit|changed_by|uuid|uuid|YES|
+communication_hub_control_audit|changed_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_control_audit|source|text|text|YES|'communication-hub-control-center'::text
+communication_hub_control_settings|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_control_settings|dispatch_enabled|boolean|bool|NO|true
+communication_hub_control_settings|dry_run_only|boolean|bool|NO|true
+communication_hub_control_settings|email_live_enabled|boolean|bool|NO|false
+communication_hub_control_settings|sms_live_enabled|boolean|bool|NO|false
+communication_hub_control_settings|whatsapp_live_enabled|boolean|bool|NO|false
+communication_hub_control_settings|print_enabled|boolean|bool|NO|false
+communication_hub_control_settings|letter_enabled|boolean|bool|NO|false
+communication_hub_control_settings|allowed_email_addresses|ARRAY|_text|NO|ARRAY['rohit@mishainfotech.com'::text]
+communication_hub_control_settings|allowed_email_domains|ARRAY|_text|NO|'{}'::text[]
+communication_hub_control_settings|batch_size|integer|int4|NO|10
+communication_hub_control_settings|cron_desired_enabled|boolean|bool|NO|false
+communication_hub_control_settings|max_attempts|integer|int4|NO|3
+communication_hub_control_settings|retry_base_seconds|integer|int4|NO|60
+communication_hub_control_settings|retry_max_seconds|integer|int4|NO|3600
+communication_hub_control_settings|notes|text|text|YES|
+communication_hub_control_settings|updated_by|uuid|uuid|YES|
+communication_hub_control_settings|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_control_settings|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_control_settings|live_eligible_after|timestamp with time zone|timestamptz|YES|
+communication_hub_control_settings|live_eligible_max_age_minutes|integer|int4|NO|30
+communication_hub_control_settings|email_open_tracking_default|boolean|bool|NO|false
+communication_hub_control_settings|email_click_tracking_default|boolean|bool|NO|false
+communication_hub_control_settings|tracking_policy_mode|text|text|NO|'off_by_default'::text
+communication_hub_control_settings|recipient_release_mode|text|text|NO|'single_recipient_pilot'::text
+communication_hub_control_settings|singleton_guard|text|text|NO|'primary'::text
+communication_hub_control_settings|operating_mode|USER-DEFINED|communication_operating_mode|NO|'CONTROLLED_LIVE'::communication_operating_mode
+communication_hub_control_settings|previous_operating_mode|USER-DEFINED|communication_operating_mode|YES|
+communication_hub_control_settings|mode_changed_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_control_settings|mode_changed_by|uuid|uuid|YES|
+communication_hub_control_settings|mode_change_reason|text|text|YES|
+communication_hub_control_settings|configuration_version|bigint|int8|NO|1
+communication_hub_control_settings|scheduler_enabled|boolean|bool|NO|false
+communication_hub_control_settings|automatic_triggers_enabled|boolean|bool|NO|false
+communication_hub_control_settings|retry_worker_enabled|boolean|bool|NO|false
+communication_hub_control_settings|batch_enabled|boolean|bool|NO|false
+communication_hub_control_settings|bulk_enabled|boolean|bool|NO|false
+communication_hub_control_settings|automation_state|text|text|NO|'STANDBY'::text
+communication_hub_control_settings|automation_armed_at|timestamp with time zone|timestamptz|YES|
+communication_hub_control_settings|automation_armed_by|uuid|uuid|YES|
+communication_hub_control_settings|automation_arm_reason|text|text|YES|
+communication_hub_control_settings|automation_suspended_at|timestamp with time zone|timestamptz|YES|
+communication_hub_control_settings|automation_suspension_reason|text|text|YES|
+communication_hub_control_settings|automation_state_changed_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_control_settings|automation_state_changed_by|uuid|uuid|YES|
+communication_hub_control_settings|last_scheduler_heartbeat_at|timestamp with time zone|timestamptz|YES|
+communication_hub_control_settings|scheduler_worker_version|text|text|YES|
+communication_hub_control_settings|last_processed_count|bigint|int8|YES|
+communication_hub_control_settings|last_scheduler_error|text|text|YES|
+communication_hub_control_settings|automation_generation|bigint|int8|NO|0
+communication_hub_control_settings|current_arm_audit_id|uuid|uuid|YES|
+communication_hub_control_settings|heartbeat_arm_audit_id|uuid|uuid|YES|
+communication_hub_control_settings|heartbeat_readiness_snapshot_id|uuid|uuid|YES|
+communication_hub_control_settings|heartbeat_automation_generation|bigint|int8|YES|
+communication_hub_control_settings|heartbeat_readiness_hash|text|text|YES|
+communication_hub_control_settings|runtime_mode_version|bigint|int8|NO|1
+communication_hub_delivery_event|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_delivery_event|provider|text|text|NO|'resend'::text
+communication_hub_delivery_event|provider_event_id|text|text|NO|
+communication_hub_delivery_event|provider_message_id|text|text|YES|
+communication_hub_delivery_event|event_type|text|text|NO|
+communication_hub_delivery_event|occurred_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_delivery_event|message_id|uuid|uuid|YES|
+communication_hub_delivery_event|payload_summary|jsonb|jsonb|YES|
+communication_hub_delivery_event|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_certification|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_event_certification|module_code|text|text|NO|
+communication_hub_event_certification|event_code|text|text|NO|
+communication_hub_event_certification|channel|text|text|NO|'email'::text
+communication_hub_event_certification|status|text|text|NO|
+communication_hub_event_certification|controlled_stub_certification_id|uuid|uuid|NO|
+communication_hub_event_certification|one_real_email_certification_id|uuid|uuid|NO|
+communication_hub_event_certification|configuration_version|bigint|int8|YES|
+communication_hub_event_certification|recipient_policy_version|bigint|int8|YES|
+communication_hub_event_certification|template_version_id|uuid|uuid|YES|
+communication_hub_event_certification|template_manifest_hash|text|text|YES|
+communication_hub_event_certification|sender_profile_id|uuid|uuid|YES|
+communication_hub_event_certification|recipient_set_hash|text|text|YES|
+communication_hub_event_certification|approved_by|uuid|uuid|NO|
+communication_hub_event_certification|approved_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_certification|reason|text|text|NO|
+communication_hub_event_certification|drift_detected_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_certification|drift_reason|text|text|YES|
+communication_hub_event_certification|suspended_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_certification|automation_certified_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_certification|automation_certified_by|uuid|uuid|YES|
+communication_hub_event_certification|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_certification|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_certification|manual_verification_status|text|text|YES|
+communication_hub_event_certification|manual_verified_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_certification|manual_verified_by|uuid|uuid|YES|
+communication_hub_event_certification|manual_verified_recipient|text|text|YES|
+communication_hub_event_certification|real_email_gate_closed_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_certification|real_email_gate_closed_by|uuid|uuid|YES|
+communication_hub_event_certification|real_email_gate_closed_reason|text|text|YES|
+communication_hub_event_certification|pinned_readiness_result_ids|ARRAY|_uuid|YES|
+communication_hub_event_certification|pinned_configuration_version|bigint|int8|YES|
+communication_hub_event_certification|evidence_fingerprint|text|text|YES|
+communication_hub_event_certification|production_lineage_id|uuid|uuid|YES|
+communication_hub_event_certification|evidence_snapshot_v2|jsonb|jsonb|YES|
+communication_hub_event_certification|evidence_fingerprint_v2|text|text|YES|
+communication_hub_event_certification|evidence_fingerprint_algorithm|text|text|YES|
+communication_hub_event_certification|fingerprint_backfill_status|text|text|YES|
+communication_hub_event_certification|fingerprint_backfilled_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_certification|fingerprint_backfill_detail|jsonb|jsonb|YES|
+communication_hub_event_certification|evidence_authority|text|text|YES|
+communication_hub_event_live_control|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_event_live_control|module_code|text|text|NO|
+communication_hub_event_live_control|event_code|text|text|NO|
+communication_hub_event_live_control|status|text|text|NO|'dry_run_only'::text
+communication_hub_event_live_control|risk_level|text|text|NO|'low'::text
+communication_hub_event_live_control|reason|text|text|YES|
+communication_hub_event_live_control|changed_by|uuid|uuid|YES|
+communication_hub_event_live_control|changed_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_live_control|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_live_control|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_payload_field|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_event_payload_field|schema_id|uuid|uuid|NO|
+communication_hub_event_payload_field|canonical_path|text|text|NO|
+communication_hub_event_payload_field|data_type|text|text|NO|'string'::text
+communication_hub_event_payload_field|is_required|boolean|bool|NO|true
+communication_hub_event_payload_field|protected_from_client_override|boolean|bool|NO|false
+communication_hub_event_payload_field|description|text|text|YES|
+communication_hub_event_payload_field|example_value|text|text|YES|
+communication_hub_event_payload_field|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_payload_field|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_payload_schema|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_event_payload_schema|module_code|text|text|NO|
+communication_hub_event_payload_schema|event_code|text|text|NO|
+communication_hub_event_payload_schema|schema_version|integer|int4|NO|1
+communication_hub_event_payload_schema|status|text|text|NO|'DRAFT'::text
+communication_hub_event_payload_schema|description|text|text|YES|
+communication_hub_event_payload_schema|json_schema|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_event_payload_schema|notes|text|text|YES|
+communication_hub_event_payload_schema|discovered_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_payload_schema|validated_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_payload_schema|validated_by|uuid|uuid|YES|
+communication_hub_event_payload_schema|enforced_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_payload_schema|enforced_by|uuid|uuid|YES|
+communication_hub_event_payload_schema|created_by|uuid|uuid|YES|
+communication_hub_event_payload_schema|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_payload_schema|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_review_policy|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_event_review_policy|module_code|text|text|NO|
+communication_hub_event_review_policy|event_code|text|text|NO|
+communication_hub_event_review_policy|channel|text|text|NO|'email'::text
+communication_hub_event_review_policy|review_mode|text|text|NO|'preview_required'::text
+communication_hub_event_review_policy|preview_required|boolean|bool|NO|true
+communication_hub_event_review_policy|allow_operator_edit_tokens|boolean|bool|NO|false
+communication_hub_event_review_policy|allow_operator_edit_body|boolean|bool|NO|false
+communication_hub_event_review_policy|allow_operator_change_recipient|boolean|bool|NO|false
+communication_hub_event_review_policy|show_template_to_operator|boolean|bool|NO|true
+communication_hub_event_review_policy|show_template_to_recipient_portal|boolean|bool|NO|false
+communication_hub_event_review_policy|require_template_approval|boolean|bool|NO|true
+communication_hub_event_review_policy|require_legal_approval|boolean|bool|NO|false
+communication_hub_event_review_policy|require_business_approval|boolean|bool|NO|false
+communication_hub_event_review_policy|approval_status|text|text|NO|'draft'::text
+communication_hub_event_review_policy|approved_template_version_id|uuid|uuid|YES|
+communication_hub_event_review_policy|approved_by|uuid|uuid|YES|
+communication_hub_event_review_policy|approved_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_review_policy|notes|text|text|YES|
+communication_hub_event_review_policy|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_review_policy|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_review_policy|policy_version|bigint|int8|NO|1
+communication_hub_event_review_policy|policy_content_hash|text|text|YES|
+communication_hub_event_send_policy|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_event_send_policy|module_code|text|text|NO|
+communication_hub_event_send_policy|event_code|text|text|NO|
+communication_hub_event_send_policy|channel|text|text|NO|'email'::text
+communication_hub_event_send_policy|send_policy|text|text|NO|
+communication_hub_event_send_policy|environment_scope|text|text|NO|'production'::text
+communication_hub_event_send_policy|recipient_policy|text|text|NO|
+communication_hub_event_send_policy|requires_template_approval|boolean|bool|NO|true
+communication_hub_event_send_policy|requires_sender_verified|boolean|bool|NO|true
+communication_hub_event_send_policy|requires_recipient_validation|boolean|bool|NO|true
+communication_hub_event_send_policy|allow_internal_recipients|boolean|bool|NO|false
+communication_hub_event_send_policy|allow_external_recipients|boolean|bool|NO|false
+communication_hub_event_send_policy|allowed_internal_domains|ARRAY|_text|NO|'{}'::text[]
+communication_hub_event_send_policy|allowed_external_domains|ARRAY|_text|NO|'{}'::text[]
+communication_hub_event_send_policy|max_recipients_per_send|integer|int4|NO|1
+communication_hub_event_send_policy|max_sends_per_entity_per_event|integer|int4|NO|1
+communication_hub_event_send_policy|duplicate_window_minutes|integer|int4|NO|1440
+communication_hub_event_send_policy|require_preview_before_manual_send|boolean|bool|NO|true
+communication_hub_event_send_policy|require_typed_confirmation_for_send|boolean|bool|NO|false
+communication_hub_event_send_policy|require_typed_confirmation_for_policy_change|boolean|bool|NO|true
+communication_hub_event_send_policy|is_enabled|boolean|bool|NO|true
+communication_hub_event_send_policy|approved_by|uuid|uuid|YES|
+communication_hub_event_send_policy|approved_at|timestamp with time zone|timestamptz|YES|
+communication_hub_event_send_policy|approval_notes|text|text|YES|
+communication_hub_event_send_policy|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_send_policy|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_send_policy|duplicate_scope|text|text|NO|'entity'::text
+communication_hub_event_send_policy|duplicate_key_template|text|text|YES|
+communication_hub_event_send_policy|allow_new_recipient_within_window|boolean|bool|NO|false
+communication_hub_event_send_policy|allow_new_business_event_within_window|boolean|bool|NO|false
+communication_hub_event_send_policy|policy_version|bigint|int8|NO|1
+communication_hub_event_send_policy|policy_content_hash|text|text|YES|
+communication_hub_event_template_map|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_event_template_map|module_code|text|text|NO|
+communication_hub_event_template_map|event_code|text|text|NO|
+communication_hub_event_template_map|channel|text|text|NO|'email'::text
+communication_hub_event_template_map|template_code|text|text|NO|
+communication_hub_event_template_map|template_id|uuid|uuid|YES|
+communication_hub_event_template_map|active|boolean|bool|NO|true
+communication_hub_event_template_map|risk_level|text|text|NO|'low'::text
+communication_hub_event_template_map|mapping_source|text|text|NO|'admin'::text
+communication_hub_event_template_map|reason|text|text|YES|
+communication_hub_event_template_map|created_by|uuid|uuid|YES|
+communication_hub_event_template_map|updated_by|uuid|uuid|YES|
+communication_hub_event_template_map|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_template_map|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_template_map|sender_profile_id|uuid|uuid|YES|
+communication_hub_event_test_scenario|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_event_test_scenario|module_code|text|text|NO|
+communication_hub_event_test_scenario|event_code|text|text|NO|
+communication_hub_event_test_scenario|channel|text|text|NO|'email'::text
+communication_hub_event_test_scenario|scenario_key|text|text|NO|'default'::text
+communication_hub_event_test_scenario|label|text|text|NO|
+communication_hub_event_test_scenario|description|text|text|YES|
+communication_hub_event_test_scenario|tokens|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_event_test_scenario|is_active|boolean|bool|NO|true
+communication_hub_event_test_scenario|created_by|uuid|uuid|YES|
+communication_hub_event_test_scenario|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_test_scenario|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_event_test_scenario|scenario_version|integer|int4|YES|
+communication_hub_event_test_scenario|scenario_hash|text|text|YES|
+communication_hub_event_test_scenario|scenario_status|text|text|NO|'DRAFT'::text
+communication_hub_event_test_scenario|supersedes_scenario_id|uuid|uuid|YES|
+communication_hub_forward_baseline_audit|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_forward_baseline_audit|module_code|text|text|NO|
+communication_hub_forward_baseline_audit|event_code|text|text|NO|
+communication_hub_forward_baseline_audit|channel|text|text|NO|
+communication_hub_forward_baseline_audit|production_lineage_id|uuid|uuid|YES|
+communication_hub_forward_baseline_audit|event_certification_id|uuid|uuid|YES|
+communication_hub_forward_baseline_audit|send_policy_id|uuid|uuid|YES|
+communication_hub_forward_baseline_audit|send_policy_version|bigint|int8|YES|
+communication_hub_forward_baseline_audit|send_policy_hash|text|text|YES|
+communication_hub_forward_baseline_audit|review_policy_id|uuid|uuid|YES|
+communication_hub_forward_baseline_audit|review_policy_version|bigint|int8|YES|
+communication_hub_forward_baseline_audit|review_policy_hash|text|text|YES|
+communication_hub_forward_baseline_audit|actor|uuid|uuid|YES|
+communication_hub_forward_baseline_audit|reason|text|text|NO|
+communication_hub_forward_baseline_audit|effective_from|timestamp with time zone|timestamptz|NO|now()
+communication_hub_forward_baseline_audit|established_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_forward_baseline_audit|forward_baseline_only|boolean|bool|NO|true
+communication_hub_forward_baseline_audit|typed_confirmation|text|text|NO|
+communication_hub_forward_baseline_audit|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_gate_catalog|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_gate_catalog|gate_code|text|text|NO|
+communication_hub_gate_catalog|gate_name|text|text|NO|
+communication_hub_gate_catalog|category|text|text|NO|
+communication_hub_gate_catalog|plain_language_description|text|text|NO|
+communication_hub_gate_catalog|blocker_code|text|text|NO|
+communication_hub_gate_catalog|severity|text|text|NO|'medium'::text
+communication_hub_gate_catalog|normal_state|text|text|YES|
+communication_hub_gate_catalog|live_state|text|text|YES|
+communication_hub_gate_catalog|recommended_fix|text|text|YES|
+communication_hub_gate_catalog|fixing_screen_url|text|text|YES|
+communication_hub_gate_catalog|requires_reason|boolean|bool|NO|true
+communication_hub_gate_catalog|requires_typed_confirmation_when_enabling|boolean|bool|NO|false
+communication_hub_gate_catalog|requires_typed_confirmation_when_disabling|boolean|bool|NO|false
+communication_hub_gate_catalog|go_live_blocking|boolean|bool|NO|true
+communication_hub_gate_catalog|display_order|integer|int4|NO|100
+communication_hub_gate_catalog|is_active|boolean|bool|NO|true
+communication_hub_gate_catalog|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_gate_catalog|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_legacy_evidence_attestation|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_legacy_evidence_attestation|production_lineage_id|uuid|uuid|NO|
+communication_hub_legacy_evidence_attestation|event_certification_id|uuid|uuid|NO|
+communication_hub_legacy_evidence_attestation|one_real_email_certification_id|uuid|uuid|NO|
+communication_hub_legacy_evidence_attestation|current_evidence_snapshot_v2|jsonb|jsonb|NO|
+communication_hub_legacy_evidence_attestation|current_evidence_fingerprint_v2|text|text|NO|
+communication_hub_legacy_evidence_attestation|historically_proven_components|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_legacy_evidence_attestation|historically_unavailable_components|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_legacy_evidence_attestation|attestation_reason|text|text|NO|
+communication_hub_legacy_evidence_attestation|typed_confirmation|text|text|NO|
+communication_hub_legacy_evidence_attestation|attested_by|uuid|uuid|NO|
+communication_hub_legacy_evidence_attestation|attested_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_legacy_evidence_attestation|status|text|text|NO|'ACTIVE'::text
+communication_hub_legacy_evidence_attestation|superseded_at|timestamp with time zone|timestamptz|YES|
+communication_hub_legacy_evidence_attestation|supersedes_attestation_id|uuid|uuid|YES|
+communication_hub_mode_profile|operating_mode|text|text|NO|
+communication_hub_mode_profile|display_name|text|text|NO|
+communication_hub_mode_profile|summary|text|text|NO|
+communication_hub_mode_profile|dispatch_enabled|boolean|bool|NO|
+communication_hub_mode_profile|dry_run_only|boolean|bool|NO|
+communication_hub_mode_profile|email_live_enabled|boolean|bool|NO|
+communication_hub_mode_profile|sms_live_enabled|boolean|bool|NO|false
+communication_hub_mode_profile|whatsapp_live_enabled|boolean|bool|NO|false
+communication_hub_mode_profile|print_enabled|boolean|bool|NO|false
+communication_hub_mode_profile|letter_enabled|boolean|bool|NO|false
+communication_hub_mode_profile|scheduler_enabled|boolean|bool|NO|
+communication_hub_mode_profile|automatic_triggers_enabled|boolean|bool|NO|
+communication_hub_mode_profile|retry_worker_enabled|boolean|bool|NO|
+communication_hub_mode_profile|batch_enabled|boolean|bool|NO|
+communication_hub_mode_profile|bulk_enabled|boolean|bool|NO|
+communication_hub_mode_profile|real_provider_available|boolean|bool|NO|
+communication_hub_mode_profile|requires_grant_for_real_email|boolean|bool|NO|false
+communication_hub_mode_profile|eligible_release_stages|ARRAY|_text|NO|ARRAY[]::text[]
+communication_hub_mode_profile|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_module_automation_setting|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_module_automation_setting|module_code|text|text|NO|
+communication_hub_module_automation_setting|setting_key|text|text|NO|
+communication_hub_module_automation_setting|setting_value|text|text|NO|
+communication_hub_module_automation_setting|environment_scope|text|text|NO|'production'::text
+communication_hub_module_automation_setting|is_enabled|boolean|bool|NO|true
+communication_hub_module_automation_setting|allowed_values|ARRAY|_text|NO|
+communication_hub_module_automation_setting|description|text|text|YES|
+communication_hub_module_automation_setting|risk_level|text|text|NO|'medium'::text
+communication_hub_module_automation_setting|requires_approval|boolean|bool|NO|true
+communication_hub_module_automation_setting|approved_by|uuid|uuid|YES|
+communication_hub_module_automation_setting|approved_at|timestamp with time zone|timestamptz|YES|
+communication_hub_module_automation_setting|updated_by|uuid|uuid|YES|
+communication_hub_module_automation_setting|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_module_automation_setting|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_module_event_registry|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_module_event_registry|module_code|text|text|NO|
+communication_hub_module_event_registry|module_name|text|text|YES|
+communication_hub_module_event_registry|event_code|text|text|NO|
+communication_hub_module_event_registry|event_name|text|text|YES|
+communication_hub_module_event_registry|description|text|text|YES|
+communication_hub_module_event_registry|source_module_path|text|text|YES|
+communication_hub_module_event_registry|trigger_description|text|text|YES|
+communication_hub_module_event_registry|current_communication_method|text|text|YES|
+communication_hub_module_event_registry|current_legacy_table_or_function|text|text|YES|
+communication_hub_module_event_registry|channel|text|text|NO|'email'::text
+communication_hub_module_event_registry|recipient_type|text|text|YES|
+communication_hub_module_event_registry|recipient_source|text|text|YES|
+communication_hub_module_event_registry|entity_type|text|text|YES|
+communication_hub_module_event_registry|entity_reference_field|text|text|YES|
+communication_hub_module_event_registry|template_code|text|text|YES|
+communication_hub_module_event_registry|required_tokens|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_module_event_registry|risk_level|text|text|NO|'low'::text
+communication_hub_module_event_registry|integration_status|text|text|NO|'identified'::text
+communication_hub_module_event_registry|template_status|text|text|NO|'not_created'::text
+communication_hub_module_event_registry|mapping_status|text|text|NO|'not_mapped'::text
+communication_hub_module_event_registry|live_status|text|text|NO|'not_live'::text
+communication_hub_module_event_registry|recommended_phase|text|text|YES|
+communication_hub_module_event_registry|blockers|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_module_event_registry|notes|text|text|YES|
+communication_hub_module_event_registry|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_module_event_registry|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_module_event_registry|token_metadata|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_operating_mode_audit|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_operating_mode_audit|control_settings_id|uuid|uuid|NO|
+communication_hub_operating_mode_audit|previous_mode|USER-DEFINED|communication_operating_mode|YES|
+communication_hub_operating_mode_audit|new_mode|USER-DEFINED|communication_operating_mode|NO|
+communication_hub_operating_mode_audit|actor|uuid|uuid|YES|
+communication_hub_operating_mode_audit|reason|text|text|YES|
+communication_hub_operating_mode_audit|changed_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_operating_mode_audit|configuration_version|bigint|int8|NO|
+communication_hub_operating_mode_audit|settings_snapshot|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_real_email_gate|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_real_email_gate|module_code|text|text|NO|
+communication_hub_real_email_gate|event_code|text|text|NO|
+communication_hub_real_email_gate|channel|text|text|NO|'email'::text
+communication_hub_real_email_gate|enabled|boolean|bool|NO|false
+communication_hub_real_email_gate|opened_by|uuid|uuid|YES|
+communication_hub_real_email_gate|opened_at|timestamp with time zone|timestamptz|YES|
+communication_hub_real_email_gate|reason|text|text|YES|
+communication_hub_real_email_gate|closed_by|uuid|uuid|YES|
+communication_hub_real_email_gate|closed_at|timestamp with time zone|timestamptz|YES|
+communication_hub_real_email_gate|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_real_email_gate|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_recipient_policy|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_recipient_policy|singleton_guard|text|text|NO|'primary'::text
+communication_hub_recipient_policy|active_mode|USER-DEFINED|communication_recipient_policy_mode|NO|'SINGLE_CONFIGURED_RECIPIENT'::communication_recipient_policy_mode
+communication_hub_recipient_policy|single_configured_address|text|text|YES|
+communication_hub_recipient_policy|approved_named_addresses|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_recipient_policy|approved_domains|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_recipient_policy|max_recipients_per_request|integer|int4|NO|1
+communication_hub_recipient_policy|max_to_recipients|integer|int4|NO|1
+communication_hub_recipient_policy|cc_allowed|boolean|bool|NO|false
+communication_hub_recipient_policy|max_cc_recipients|integer|int4|NO|0
+communication_hub_recipient_policy|bcc_allowed|boolean|bool|NO|false
+communication_hub_recipient_policy|max_bcc_recipients|integer|int4|NO|0
+communication_hub_recipient_policy|external_addresses_permitted|boolean|bool|NO|false
+communication_hub_recipient_policy|subdomains_permitted|boolean|bool|NO|false
+communication_hub_recipient_policy|policy_version|integer|int4|NO|1
+communication_hub_recipient_policy|configuration_version|integer|int4|NO|1
+communication_hub_recipient_policy|change_reason|text|text|YES|
+communication_hub_recipient_policy|changed_by|uuid|uuid|YES|
+communication_hub_recipient_policy|changed_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_recipient_policy|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_recipient_policy|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_recipient_policy|single_configured_display_name|text|text|YES|
+communication_hub_recipient_policy|single_configured_display_name_source|text|text|NO|'unknown'::text
+communication_hub_recipient_policy|single_configured_display_name_confirmed|boolean|bool|NO|false
+communication_hub_recipient_policy|single_configured_display_name_confirmed_at|timestamp with time zone|timestamptz|YES|
+communication_hub_recipient_policy|single_configured_display_name_confirmed_by|uuid|uuid|YES|
+communication_hub_recipient_policy_audit|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_recipient_policy_audit|policy_id|uuid|uuid|NO|
+communication_hub_recipient_policy_audit|changed_field|text|text|NO|
+communication_hub_recipient_policy_audit|old_value|jsonb|jsonb|YES|
+communication_hub_recipient_policy_audit|new_value|jsonb|jsonb|YES|
+communication_hub_recipient_policy_audit|reason|text|text|YES|
+communication_hub_recipient_policy_audit|changed_by|uuid|uuid|YES|
+communication_hub_recipient_policy_audit|changed_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_recipient_policy_audit|policy_version|integer|int4|NO|
+communication_hub_recipient_policy_audit|configuration_version|integer|int4|NO|
+communication_hub_revalidation_cycle|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_revalidation_cycle|module_code|text|text|NO|
+communication_hub_revalidation_cycle|event_code|text|text|NO|
+communication_hub_revalidation_cycle|channel|text|text|NO|'email'::text
+communication_hub_revalidation_cycle|purpose|USER-DEFINED|comm_hub_revalidation_purpose|NO|
+communication_hub_revalidation_cycle|reason|text|text|NO|
+communication_hub_revalidation_cycle|change_ticket_reference|text|text|YES|
+communication_hub_revalidation_cycle|status|USER-DEFINED|comm_hub_revalidation_status|NO|'DRAFT'::comm_hub_revalidation_status
+communication_hub_revalidation_cycle|started_by|uuid|uuid|YES|
+communication_hub_revalidation_cycle|started_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_revalidation_cycle|baseline_event_certification_id|uuid|uuid|YES|
+communication_hub_revalidation_cycle|baseline_ore_certification_id|uuid|uuid|YES|
+communication_hub_revalidation_cycle|baseline_production_lineage_id|uuid|uuid|YES|
+communication_hub_revalidation_cycle|baseline_evidence_core_v2|jsonb|jsonb|YES|
+communication_hub_revalidation_cycle|baseline_evidence_fingerprint_v2|text|text|YES|
+communication_hub_revalidation_cycle|current_evidence_core_v2|jsonb|jsonb|YES|
+communication_hub_revalidation_cycle|current_evidence_fingerprint_v2|text|text|YES|
+communication_hub_revalidation_cycle|changed_components|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_revalidation_cycle|runtime_changes|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_revalidation_cycle|required_validation_level|USER-DEFINED|comm_hub_revalidation_level|NO|'NONE'::comm_hub_revalidation_level
+communication_hub_revalidation_cycle|required_stages|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_revalidation_cycle|runtime_release_id|uuid|uuid|YES|
+communication_hub_revalidation_cycle|recipient_email|text|text|YES|
+communication_hub_revalidation_cycle|recipient_set_hash|text|text|YES|
+communication_hub_revalidation_cycle|controlled_email_execution_id|uuid|uuid|YES|
+communication_hub_revalidation_cycle|controlled_email_certification_id|uuid|uuid|YES|
+communication_hub_revalidation_cycle|inbox_confirmation_status|text|text|YES|
+communication_hub_revalidation_cycle|provider_call_attempted|boolean|bool|NO|false
+communication_hub_revalidation_cycle|completed_at|timestamp with time zone|timestamptz|YES|
+communication_hub_revalidation_cycle|promotion_status|text|text|YES|'NONE'::text
+communication_hub_revalidation_cycle|promoted_at|timestamp with time zone|timestamptz|YES|
+communication_hub_revalidation_cycle|promoted_by|uuid|uuid|YES|
+communication_hub_revalidation_cycle|superseded_cycle_id|uuid|uuid|YES|
+communication_hub_revalidation_cycle|configuration_version_at_start|bigint|int8|YES|
+communication_hub_revalidation_cycle|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_revalidation_cycle|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_revalidation_send_authorisation|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_revalidation_send_authorisation|cycle_id|uuid|uuid|NO|
+communication_hub_revalidation_send_authorisation|recipient_email|text|text|NO|
+communication_hub_revalidation_send_authorisation|bound_current_fingerprint|text|text|NO|
+communication_hub_revalidation_send_authorisation|bound_event_certification_id|uuid|uuid|NO|
+communication_hub_revalidation_send_authorisation|bound_production_lineage_id|uuid|uuid|NO|
+communication_hub_revalidation_send_authorisation|issued_by|uuid|uuid|NO|
+communication_hub_revalidation_send_authorisation|issued_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_revalidation_send_authorisation|expires_at|timestamp with time zone|timestamptz|NO|
+communication_hub_revalidation_send_authorisation|consumed_at|timestamp with time zone|timestamptz|YES|
+communication_hub_revalidation_send_authorisation|consumed_execution_id|uuid|uuid|YES|
+communication_hub_revalidation_send_authorisation|revoked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_revalidation_send_authorisation|revoke_reason|text|text|YES|
+communication_hub_revalidation_send_authorisation|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_revalidation_stage_result|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_revalidation_stage_result|cycle_id|uuid|uuid|NO|
+communication_hub_revalidation_stage_result|stage_code|USER-DEFINED|comm_hub_revalidation_stage_code|NO|
+communication_hub_revalidation_stage_result|status|USER-DEFINED|comm_hub_stage_result_status|NO|
+communication_hub_revalidation_stage_result|evidence|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_revalidation_stage_result|preview_snapshot_id|uuid|uuid|YES|
+communication_hub_revalidation_stage_result|preview_approval_id|uuid|uuid|YES|
+communication_hub_revalidation_stage_result|dry_run_certification_id|uuid|uuid|YES|
+communication_hub_revalidation_stage_result|controlled_stub_certification_id|uuid|uuid|YES|
+communication_hub_revalidation_stage_result|one_real_email_certification_id|uuid|uuid|YES|
+communication_hub_revalidation_stage_result|manual_observation_id|uuid|uuid|YES|
+communication_hub_revalidation_stage_result|automated_canary_id|uuid|uuid|YES|
+communication_hub_revalidation_stage_result|reused_historical_evidence|boolean|bool|NO|false
+communication_hub_revalidation_stage_result|completed_by|uuid|uuid|YES|
+communication_hub_revalidation_stage_result|completed_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_revalidation_stage_result|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_runtime_release|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_runtime_release|git_commit_sha|text|text|NO|
+communication_hub_runtime_release|release_reference|text|text|NO|
+communication_hub_runtime_release|component_build_ids|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_runtime_release|affected_surfaces|ARRAY|_text|NO|ARRAY[]::text[]
+communication_hub_runtime_release|revalidation_impact|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_runtime_release|change_reason|text|text|YES|
+communication_hub_runtime_release|deployed_by|uuid|uuid|YES|
+communication_hub_runtime_release|deployed_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_runtime_release|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_runtime_release|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_send_decision_log|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_send_decision_log|decision_id|uuid|uuid|NO|
+communication_hub_send_decision_log|module_code|text|text|NO|
+communication_hub_send_decision_log|event_code|text|text|NO|
+communication_hub_send_decision_log|channel|text|text|NO|
+communication_hub_send_decision_log|send_context|text|text|NO|
+communication_hub_send_decision_log|requested_by|uuid|uuid|YES|
+communication_hub_send_decision_log|idempotency_key|text|text|YES|
+communication_hub_send_decision_log|allowed|boolean|bool|NO|
+communication_hub_send_decision_log|status|text|text|NO|
+communication_hub_send_decision_log|configuration_version|bigint|int8|YES|
+communication_hub_send_decision_log|recipient_policy_version|bigint|int8|YES|
+communication_hub_send_decision_log|send_policy_version|bigint|int8|YES|
+communication_hub_send_decision_log|review_policy_version|bigint|int8|YES|
+communication_hub_send_decision_log|blockers|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_send_decision_log|warnings|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_send_decision_log|gate_results|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_send_decision_log|fix_actions|jsonb|jsonb|NO|'[]'::jsonb
+communication_hub_send_decision_log|trace_context|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_send_decision_log|payload|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_send_decision_log|evaluated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_send_decision_log|expires_at|timestamp with time zone|timestamptz|NO|(now() + '00:05:00'::interval)
+communication_hub_send_decision_log|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_sender_profile|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_sender_profile|profile_code|text|text|NO|
+communication_hub_sender_profile|profile_name|text|text|NO|
+communication_hub_sender_profile|from_email|text|text|NO|
+communication_hub_sender_profile|display_name|text|text|NO|
+communication_hub_sender_profile|reply_to_email|text|text|YES|
+communication_hub_sender_profile|sender_category|text|text|NO|
+communication_hub_sender_profile|audience_type|text|text|NO|
+communication_hub_sender_profile|risk_level|text|text|NO|'low'::text
+communication_hub_sender_profile|provider_code|text|text|NO|'resend'::text
+communication_hub_sender_profile|provider_identity_status|text|text|NO|'pending'::text
+communication_hub_sender_profile|domain_verified|boolean|bool|NO|false
+communication_hub_sender_profile|is_enabled|boolean|bool|NO|true
+communication_hub_sender_profile|is_default|boolean|bool|NO|false
+communication_hub_sender_profile|notes|text|text|YES|
+communication_hub_sender_profile|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_sender_profile|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_sender_profile|created_by|uuid|uuid|YES|
+communication_hub_sender_profile|updated_by|uuid|uuid|YES|
+communication_hub_sender_profile|spf_status|text|text|NO|'unknown'::text
+communication_hub_sender_profile|dkim_status|text|text|NO|'unknown'::text
+communication_hub_sender_profile|dmarc_status|text|text|NO|'unknown'::text
+communication_hub_sender_profile|last_checked_at|timestamp with time zone|timestamptz|YES|
+communication_hub_sender_profile|last_checked_by|uuid|uuid|YES|
+communication_hub_sender_profile|verification_notes|text|text|YES|
+communication_hub_sender_profile|dkim_selector|text|text|YES|
+communication_hub_sender_profile|provider_identity_id|text|text|YES|
+communication_hub_sender_profile|provider_last_response_summary|jsonb|jsonb|YES|
+communication_hub_template_variable_contract|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_template_variable_contract|template_id|uuid|uuid|YES|
+communication_hub_template_variable_contract|template_version_id|uuid|uuid|YES|
+communication_hub_template_variable_contract|template_code|text|text|YES|
+communication_hub_template_variable_contract|module_code|text|text|NO|
+communication_hub_template_variable_contract|event_code|text|text|NO|
+communication_hub_template_variable_contract|variable_name|text|text|NO|
+communication_hub_template_variable_contract|source_type|text|text|NO|
+communication_hub_template_variable_contract|canonical_path|text|text|NO|
+communication_hub_template_variable_contract|is_required|boolean|bool|NO|true
+communication_hub_template_variable_contract|default_value|text|text|YES|
+communication_hub_template_variable_contract|description|text|text|YES|
+communication_hub_template_variable_contract|contract_status|text|text|NO|'DRAFT'::text
+communication_hub_template_variable_contract|discovered_at|timestamp with time zone|timestamptz|YES|
+communication_hub_template_variable_contract|validated_at|timestamp with time zone|timestamptz|YES|
+communication_hub_template_variable_contract|validated_by|uuid|uuid|YES|
+communication_hub_template_variable_contract|enforced_at|timestamp with time zone|timestamptz|YES|
+communication_hub_template_variable_contract|enforced_by|uuid|uuid|YES|
+communication_hub_template_variable_contract|notes|text|text|YES|
+communication_hub_template_variable_contract|created_by|uuid|uuid|YES|
+communication_hub_template_variable_contract|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_template_variable_contract|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_trace|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_trace|trace_no|text|text|NO|
+communication_hub_trace|correlation_id|text|text|YES|
+communication_hub_trace|module_code|text|text|YES|
+communication_hub_trace|event_code|text|text|YES|
+communication_hub_trace|channel|text|text|NO|'email'::text
+communication_hub_trace|entity_type|text|text|YES|
+communication_hub_trace|entity_id|text|text|YES|
+communication_hub_trace|reference_no|text|text|YES|
+communication_hub_trace|source_module|text|text|YES|
+communication_hub_trace|source_screen|text|text|YES|
+communication_hub_trace|source_action|text|text|YES|
+communication_hub_trace|initiated_by|uuid|uuid|YES|
+communication_hub_trace|recipient_email_masked|text|text|YES|
+communication_hub_trace|recipient_domain|text|text|YES|
+communication_hub_trace|status|text|text|NO|'initiated'::text
+communication_hub_trace|current_stage|text|text|YES|
+communication_hub_trace|blocked_stage|text|text|YES|
+communication_hub_trace|blocker_codes|ARRAY|_text|NO|'{}'::text[]
+communication_hub_trace|request_id|uuid|uuid|YES|
+communication_hub_trace|request_no|text|text|YES|
+communication_hub_trace|message_id|uuid|uuid|YES|
+communication_hub_trace|provider_message_id|text|text|YES|
+communication_hub_trace|metadata|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_trace|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_trace|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_trace_step|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_trace_step|trace_id|uuid|uuid|NO|
+communication_hub_trace_step|stage_code|text|text|NO|
+communication_hub_trace_step|stage_name|text|text|NO|
+communication_hub_trace_step|status|text|text|NO|
+communication_hub_trace_step|blocker_codes|ARRAY|_text|NO|'{}'::text[]
+communication_hub_trace_step|warnings|ARRAY|_text|NO|'{}'::text[]
+communication_hub_trace_step|plain_summary|text|text|YES|
+communication_hub_trace_step|fix_href|text|text|YES|
+communication_hub_trace_step|request_id|uuid|uuid|YES|
+communication_hub_trace_step|message_id|uuid|uuid|YES|
+communication_hub_trace_step|payload|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_trace_step|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_trace_unified_view|trace_id|uuid|uuid|YES|
+communication_hub_trace_unified_view|trace_no|text|text|YES|
+communication_hub_trace_unified_view|trace_kind|text|text|YES|
+communication_hub_trace_unified_view|module_code|text|text|YES|
+communication_hub_trace_unified_view|event_code|text|text|YES|
+communication_hub_trace_unified_view|channel|text|text|YES|
+communication_hub_trace_unified_view|entity_type|text|text|YES|
+communication_hub_trace_unified_view|entity_id|text|text|YES|
+communication_hub_trace_unified_view|reference_no|text|text|YES|
+communication_hub_trace_unified_view|recipient_email_masked|text|text|YES|
+communication_hub_trace_unified_view|recipient_domain|text|text|YES|
+communication_hub_trace_unified_view|status|text|text|YES|
+communication_hub_trace_unified_view|current_stage|text|text|YES|
+communication_hub_trace_unified_view|blocked_stage|text|text|YES|
+communication_hub_trace_unified_view|blocker_codes|ARRAY|_text|YES|
+communication_hub_trace_unified_view|request_id|uuid|uuid|YES|
+communication_hub_trace_unified_view|request_no|text|text|YES|
+communication_hub_trace_unified_view|message_id|uuid|uuid|YES|
+communication_hub_trace_unified_view|provider_message_id|text|text|YES|
+communication_hub_trace_unified_view|correlation_id|text|text|YES|
+communication_hub_trace_unified_view|source_module|text|text|YES|
+communication_hub_trace_unified_view|created_at|timestamp with time zone|timestamptz|YES|
+communication_hub_trace_unified_view|updated_at|timestamp with time zone|timestamptz|YES|
+communication_hub_trace_unified_view|reconstructed_note|text|text|YES|
+communication_hub_transport_guard_audit|id|uuid|uuid|NO|gen_random_uuid()
+communication_hub_transport_guard_audit|request_id|uuid|uuid|YES|
+communication_hub_transport_guard_audit|message_id|uuid|uuid|YES|
+communication_hub_transport_guard_audit|authoritative_send_context|text|text|YES|
+communication_hub_transport_guard_audit|dry_run_locked|boolean|bool|YES|
+communication_hub_transport_guard_audit|request_dry_run|boolean|bool|YES|
+communication_hub_transport_guard_audit|attempted_provider|text|text|YES|
+communication_hub_transport_guard_audit|caller_function|text|text|YES|
+communication_hub_transport_guard_audit|caller_context|text|text|YES|
+communication_hub_transport_guard_audit|block_code|text|text|NO|
+communication_hub_transport_guard_audit|correlation_id|text|text|YES|
+communication_hub_transport_guard_audit|trace_id|uuid|uuid|YES|
+communication_hub_transport_guard_audit|metadata|jsonb|jsonb|NO|'{}'::jsonb
+communication_hub_transport_guard_audit|blocked_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_variable_source_registry|source_type|text|text|NO|
+communication_hub_variable_source_registry|description|text|text|NO|
+communication_hub_variable_source_registry|protected_from_client_override|boolean|bool|NO|false
+communication_hub_variable_source_registry|authoritative_owner|text|text|NO|'platform'::text
+communication_hub_variable_source_registry|allowed_in_test_scenario|boolean|bool|NO|false
+communication_hub_variable_source_registry|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_hub_variable_source_registry|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_manual_production_observation|id|uuid|uuid|NO|gen_random_uuid()
+communication_manual_production_observation|module_code|text|text|NO|
+communication_manual_production_observation|event_code|text|text|NO|
+communication_manual_production_observation|channel|text|text|NO|'email'::text
+communication_manual_production_observation|event_certification_id|uuid|uuid|NO|
+communication_manual_production_observation|request_id|uuid|uuid|YES|
+communication_manual_production_observation|message_id|uuid|uuid|YES|
+communication_manual_production_observation|delivery_attempt_id|uuid|uuid|YES|
+communication_manual_production_observation|trace_id|uuid|uuid|YES|
+communication_manual_production_observation|provider_id|uuid|uuid|YES|
+communication_manual_production_observation|provider_name|text|text|YES|
+communication_manual_production_observation|provider_message_id|text|text|YES|
+communication_manual_production_observation|provider_call_attempted|boolean|bool|NO|false
+communication_manual_production_observation|provider_outcome|text|text|YES|
+communication_manual_production_observation|recipient_email|text|text|NO|
+communication_manual_production_observation|recipient_set_hash|text|text|YES|
+communication_manual_production_observation|send_context|text|text|NO|'manual_production'::text
+communication_manual_production_observation|configuration_version|bigint|int8|NO|
+communication_manual_production_observation|sender_profile_id|uuid|uuid|YES|
+communication_manual_production_observation|template_version_id|uuid|uuid|YES|
+communication_manual_production_observation|idempotency_key|text|text|NO|
+communication_manual_production_observation|status|text|text|NO|'DISPATCHED'::text
+communication_manual_production_observation|inbox_confirmation_status|text|text|YES|
+communication_manual_production_observation|inbox_confirmed_at|timestamp with time zone|timestamptz|YES|
+communication_manual_production_observation|inbox_confirmed_by|uuid|uuid|YES|
+communication_manual_production_observation|inbox_confirmation_note|text|text|YES|
+communication_manual_production_observation|dispatched_at|timestamp with time zone|timestamptz|NO|now()
+communication_manual_production_observation|dispatched_by|uuid|uuid|YES|
+communication_manual_production_observation|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_manual_production_observation|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_manual_production_observation_intent|idempotency_key|text|text|NO|
+communication_manual_production_observation_intent|operator_id|uuid|uuid|NO|
+communication_manual_production_observation_intent|module_code|text|text|NO|
+communication_manual_production_observation_intent|event_code|text|text|NO|
+communication_manual_production_observation_intent|channel|text|text|NO|'email'::text
+communication_manual_production_observation_intent|recipient_email|text|text|NO|
+communication_manual_production_observation_intent|event_certification_id|uuid|uuid|YES|
+communication_manual_production_observation_intent|request_id|uuid|uuid|YES|
+communication_manual_production_observation_intent|message_id|uuid|uuid|YES|
+communication_manual_production_observation_intent|phase|text|text|NO|'ENQUEUED'::text
+communication_manual_production_observation_intent|finalized_observation_id|uuid|uuid|YES|
+communication_manual_production_observation_intent|last_error|text|text|YES|
+communication_manual_production_observation_intent|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_manual_production_observation_intent|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_message|id|uuid|uuid|NO|gen_random_uuid()
+communication_message|request_id|uuid|uuid|NO|
+communication_message|recipient_id|uuid|uuid|YES|
+communication_message|channel|text|text|NO|
+communication_message|provider_id|uuid|uuid|YES|
+communication_message|template_version_id|uuid|uuid|YES|
+communication_message|subject|text|text|YES|
+communication_message|body_text|text|text|YES|
+communication_message|body_html|text|text|YES|
+communication_message|rendered_at|timestamp with time zone|timestamptz|YES|
+communication_message|generated_document_id|uuid|uuid|YES|
+communication_message|status|text|text|NO|'queued'::text
+communication_message|attempt_count|integer|int4|NO|0
+communication_message|last_attempt_at|timestamp with time zone|timestamptz|YES|
+communication_message|next_attempt_at|timestamp with time zone|timestamptz|YES|
+communication_message|sent_at|timestamp with time zone|timestamptz|YES|
+communication_message|delivered_at|timestamp with time zone|timestamptz|YES|
+communication_message|provider_message_id|text|text|YES|
+communication_message|error_code|text|text|YES|
+communication_message|error_message|text|text|YES|
+communication_message|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_message|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_message|locked_at|timestamp with time zone|timestamptz|YES|
+communication_message|locked_by|text|text|YES|
+communication_message|test_mode|boolean|bool|NO|false
+communication_message|origin|text|text|YES|
+communication_message|bounced_at|timestamp with time zone|timestamptz|YES|
+communication_message|complained_at|timestamp with time zone|timestamptz|YES|
+communication_message|delivery_status|text|text|YES|
+communication_message|delivery_last_event_at|timestamp with time zone|timestamptz|YES|
+communication_message|delivery_last_event_type|text|text|YES|
+communication_message|open_tracking_enabled|boolean|bool|YES|
+communication_message|click_tracking_enabled|boolean|bool|YES|
+communication_message|tracking_policy_source|text|text|YES|
+communication_message|sender_profile_id|uuid|uuid|YES|
+communication_message|from_email|text|text|YES|
+communication_message|from_display_name|text|text|YES|
+communication_message|reply_to_email|text|text|YES|
+communication_message|original_decision_id|uuid|uuid|YES|
+communication_message|send_context|text|text|YES|
+communication_message|dry_run_locked|boolean|bool|NO|false
+communication_message|targeted_dispatch_only|boolean|bool|NO|false
+communication_message|controlled_action|text|text|YES|
+communication_message|controlled_live_execution_id|uuid|uuid|YES|
+communication_message|controlled_live_grant_id|uuid|uuid|YES|
+communication_message|preview_snapshot_id|uuid|uuid|YES|
+communication_message|preview_approval_id|uuid|uuid|YES|
+communication_message|dry_run_certification_id|uuid|uuid|YES|
+communication_message|governance_certification_id|uuid|uuid|YES|
+communication_message|certified_dependency_hash|text|text|YES|
+communication_message|recipient_set_hash|text|text|YES|
+communication_message|subject_hash|text|text|YES|
+communication_message|body_hash|text|text|YES|
+communication_message|content_hash|text|text|YES|
+communication_preview_approval|id|uuid|uuid|NO|gen_random_uuid()
+communication_preview_approval|snapshot_id|uuid|uuid|NO|
+communication_preview_approval|approved_by|uuid|uuid|NO|
+communication_preview_approval|approved_at|timestamp with time zone|timestamptz|NO|now()
+communication_preview_approval|approval_reason|text|text|NO|
+communication_preview_approval|status|text|text|NO|'ACTIVE'::text
+communication_preview_approval|expires_at|timestamp with time zone|timestamptz|NO|
+communication_preview_approval|revoked_by|uuid|uuid|YES|
+communication_preview_approval|revoked_at|timestamp with time zone|timestamptz|YES|
+communication_preview_approval|revocation_reason|text|text|YES|
+communication_preview_approval|reserved_at|timestamp with time zone|timestamptz|YES|
+communication_preview_approval|reserved_by|uuid|uuid|YES|
+communication_preview_approval|reservation_token|uuid|uuid|YES|
+communication_preview_approval|consumed_at|timestamp with time zone|timestamptz|YES|
+communication_preview_approval|consumed_by|uuid|uuid|YES|
+communication_preview_approval|consumed_request_id|uuid|uuid|YES|
+communication_preview_approval|configuration_version|bigint|int8|YES|
+communication_preview_approval|recipient_policy_version|integer|int4|YES|
+communication_preview_approval|send_policy_version|integer|int4|YES|
+communication_preview_approval|review_policy_version|integer|int4|YES|
+communication_preview_approval|content_hash_at_approval|text|text|NO|
+communication_preview_approval|audit_metadata|jsonb|jsonb|NO|'{}'::jsonb
+communication_preview_approval|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_preview_approval|snapshot_id_at_approval|uuid|uuid|YES|
+communication_preview_approval|correlation_id_at_approval|uuid|uuid|YES|
+communication_preview_approval|recipient_set_hash_at_approval|text|text|YES|
+communication_preview_approval|template_version_id_at_approval|uuid|uuid|YES|
+communication_preview_approval|configuration_hash_at_approval|text|text|YES|
+communication_preview_approval|scanner_version_at_approval|text|text|YES|
+communication_preview_approval|placeholder_evidence_hash_at_approval|text|text|YES|
+communication_preview_approval|canonical_approval_evidence_hash|text|text|YES|
+communication_preview_approval|evidence_version|text|text|YES|
+communication_preview_snapshot|id|uuid|uuid|NO|gen_random_uuid()
+communication_preview_snapshot|module_code|text|text|NO|
+communication_preview_snapshot|event_code|text|text|NO|
+communication_preview_snapshot|channel|text|text|NO|'email'::text
+communication_preview_snapshot|send_context|text|text|NO|
+communication_preview_snapshot|to_recipients|jsonb|jsonb|NO|'[]'::jsonb
+communication_preview_snapshot|cc_recipients|jsonb|jsonb|NO|'[]'::jsonb
+communication_preview_snapshot|bcc_recipients|jsonb|jsonb|NO|'[]'::jsonb
+communication_preview_snapshot|recipient_set_hash|text|text|NO|
+communication_preview_snapshot|template_id|uuid|uuid|YES|
+communication_preview_snapshot|template_version_id|uuid|uuid|YES|
+communication_preview_snapshot|sender_profile_id|uuid|uuid|YES|
+communication_preview_snapshot|rendered_subject|text|text|YES|
+communication_preview_snapshot|rendered_body_html|text|text|YES|
+communication_preview_snapshot|rendered_body_text|text|text|YES|
+communication_preview_snapshot|subject_hash|text|text|NO|
+communication_preview_snapshot|body_hash|text|text|NO|
+communication_preview_snapshot|content_hash|text|text|NO|
+communication_preview_snapshot|context_data|jsonb|jsonb|NO|'{}'::jsonb
+communication_preview_snapshot|context_hash|text|text|NO|
+communication_preview_snapshot|unresolved_variables|jsonb|jsonb|NO|'[]'::jsonb
+communication_preview_snapshot|configuration_version|bigint|int8|YES|
+communication_preview_snapshot|recipient_policy_version|integer|int4|YES|
+communication_preview_snapshot|send_policy_version|integer|int4|YES|
+communication_preview_snapshot|review_policy_version|integer|int4|YES|
+communication_preview_snapshot|status|text|text|NO|'PREPARED'::text
+communication_preview_snapshot|created_by|uuid|uuid|YES|
+communication_preview_snapshot|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_preview_snapshot|expires_at|timestamp with time zone|timestamptz|NO|(now() + '00:30:00'::interval)
+communication_preview_snapshot|metadata|jsonb|jsonb|NO|'{}'::jsonb
+communication_preview_snapshot|governance_certification_id|uuid|uuid|YES|
+communication_preview_snapshot|governance_record_id|uuid|uuid|YES|
+communication_preview_snapshot|certified_dependency_hash|text|text|YES|
+communication_preview_snapshot|current_dependency_hash|text|text|YES|
+communication_preview_snapshot|governance_freshness_status|text|text|YES|
+communication_preview_snapshot|changed_dependency_categories|ARRAY|_text|NO|ARRAY[]::text[]
+communication_preview_snapshot|canonical_renderer_version|text|text|YES|
+communication_preview_snapshot|manifest_schema_version|text|text|YES|
+communication_preview_snapshot|event_template_map_id|uuid|uuid|YES|
+communication_preview_snapshot|governance_evidence|jsonb|jsonb|NO|'{}'::jsonb
+communication_preview_snapshot|resolver_version|text|text|YES|
+communication_preview_snapshot|variable_contract_version|text|text|YES|
+communication_preview_snapshot|resolved_token_bundle|jsonb|jsonb|YES|
+communication_preview_snapshot|variable_evidence|jsonb|jsonb|YES|
+communication_preview_snapshot|unresolved_variables_normalised|jsonb|jsonb|YES|
+communication_preview_snapshot|test_scenario_id|uuid|uuid|YES|
+communication_preview_snapshot|test_scenario_hash|text|text|YES|
+communication_preview_snapshot|recipient_context_ref|text|text|YES|
+communication_preview_snapshot|request_context_values|jsonb|jsonb|YES|
+communication_preview_snapshot|correlation_id|uuid|uuid|YES|
+communication_preview_snapshot|renderer_unresolved_variables|jsonb|jsonb|YES|
+communication_preview_snapshot|raw_placeholders|jsonb|jsonb|NO|'[]'::jsonb
+communication_preview_snapshot|raw_placeholder_count|integer|int4|NO|0
+communication_preview_snapshot|placeholder_scanner_version|text|text|YES|
+communication_recipient|id|uuid|uuid|NO|gen_random_uuid()
+communication_recipient|request_id|uuid|uuid|NO|
+communication_recipient|role|text|text|NO|'to'::text
+communication_recipient|recipient_type|text|text|YES|
+communication_recipient|recipient_user_id|uuid|uuid|YES|
+communication_recipient|recipient_person_id|uuid|uuid|YES|
+communication_recipient|recipient_employer_id|uuid|uuid|YES|
+communication_recipient|name|text|text|YES|
+communication_recipient|email|text|text|YES|
+communication_recipient|phone|text|text|YES|
+communication_recipient|postal_address|jsonb|jsonb|YES|
+communication_recipient|channel_hint|text|text|YES|
+communication_recipient|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_recipient|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_request|id|uuid|uuid|NO|gen_random_uuid()
+communication_request|request_no|text|text|NO|
+communication_request|module_code|text|text|NO|
+communication_request|department_code|text|text|YES|
+communication_request|event_code|text|text|NO|
+communication_request|entity_type|text|text|YES|
+communication_request|entity_id|text|text|YES|
+communication_request|reference_no|text|text|YES|
+communication_request|template_id|uuid|uuid|YES|
+communication_request|core_template_id|uuid|uuid|YES|
+communication_request|country_code|text|text|YES|
+communication_request|language_code|text|text|YES|
+communication_request|channels|ARRAY|_text|NO|ARRAY[]::text[]
+communication_request|priority|text|text|NO|'normal'::text
+communication_request|scheduled_at|timestamp with time zone|timestamptz|YES|
+communication_request|status|text|text|NO|'pending'::text
+communication_request|payload|jsonb|jsonb|NO|'{}'::jsonb
+communication_request|context|jsonb|jsonb|NO|'{}'::jsonb
+communication_request|idempotency_key|text|text|YES|
+communication_request|requested_by|uuid|uuid|YES|
+communication_request|approved_by|uuid|uuid|YES|
+communication_request|approved_at|timestamp with time zone|timestamptz|YES|
+communication_request|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_request|updated_at|timestamp with time zone|timestamptz|NO|now()
+communication_request|dedupe_key|text|text|YES|
+communication_request|business_event_id|text|text|YES|
+communication_request|business_event_type|text|text|YES|
+communication_request|original_decision_id|uuid|uuid|YES|
+communication_request|decision_send_context|text|text|YES|
+communication_request|configuration_version|integer|int4|YES|
+communication_request|recipient_policy_version|integer|int4|YES|
+communication_request|send_policy_version|integer|int4|YES|
+communication_request|review_policy_version|integer|int4|YES|
+communication_request|decision_expires_at|timestamp with time zone|timestamptz|YES|
+communication_request|decision_blocker_snapshot|jsonb|jsonb|YES|
+communication_request|targeted_dispatch_only|boolean|bool|NO|false
+communication_request|controlled_action|text|text|YES|
+communication_request|controlled_live_execution_id|uuid|uuid|YES|
+communication_request|controlled_live_grant_id|uuid|uuid|YES|
+communication_retry_policy|id|uuid|uuid|NO|gen_random_uuid()
+communication_retry_policy|channel|text|text|NO|
+communication_retry_policy|provider_id|uuid|uuid|YES|
+communication_retry_policy|max_attempts|integer|int4|NO|3
+communication_retry_policy|initial_delay_seconds|integer|int4|NO|60
+communication_retry_policy|backoff_strategy|text|text|NO|'exponential'::text
+communication_retry_policy|backoff_multiplier|numeric|numeric|NO|2.0
+communication_retry_policy|max_delay_seconds|integer|int4|NO|3600
+communication_retry_policy|retryable_error_codes|ARRAY|_text|YES|
+communication_retry_policy|is_active|boolean|bool|NO|true
+communication_retry_policy|notes|text|text|YES|
+communication_retry_policy|created_at|timestamp with time zone|timestamptz|NO|now()
+communication_retry_policy|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template|id|uuid|uuid|NO|gen_random_uuid()
+core_template|code|text|text|NO|
+core_template|name|text|text|NO|
+core_template|description|text|text|YES|
+core_template|module_code|text|text|NO|
+core_template|module_name|text|text|YES|
+core_template|country_code|text|text|NO|'KN'::text
+core_template|institution_code|text|text|NO|'SSB'::text
+core_template|template_type|text|text|NO|
+core_template|template_category|text|text|YES|
+core_template|owning_department|text|text|YES|
+core_template|status|text|text|NO|'DRAFT'::text
+core_template|active_version_id|uuid|uuid|YES|
+core_template|default_layout_id|uuid|uuid|YES|
+core_template|source_system|text|text|NO|'CORE'::text
+core_template|source_ref_id|uuid|uuid|YES|
+core_template|tags|ARRAY|_text|YES|
+core_template|is_active|boolean|bool|NO|true
+core_template|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template|created_by|text|text|YES|
+core_template|updated_by|text|text|YES|
+core_template|category_id|uuid|uuid|YES|
+core_template|scope|text|text|NO|'COUNTRY'::text
+core_template|parent_template_id|uuid|uuid|YES|
+core_template|owner_scope|text|text|NO|'GLOBAL'::text
+core_template|communication_profile_id|uuid|uuid|YES|
+core_template|document_profile_id|uuid|uuid|YES|
+core_template|legacy_code|text|text|YES|
+core_template|is_base_layout|boolean|bool|NO|false
+core_template|business_category|text|text|YES|
+core_template|preheader|text|text|YES|
+core_template|cta_label|text|text|YES|
+core_template|cta_href_token|text|text|YES|
+core_template|attachment_rules_json|jsonb|jsonb|YES|
+core_template_approval|id|uuid|uuid|NO|gen_random_uuid()
+core_template_approval|template_version_id|uuid|uuid|NO|
+core_template_approval|action|text|text|NO|
+core_template_approval|from_state|text|text|YES|
+core_template_approval|to_state|text|text|NO|
+core_template_approval|actor_user_code|text|text|YES|
+core_template_approval|notes|text|text|YES|
+core_template_approval|acted_at|timestamp with time zone|timestamptz|NO|now()
+core_template_category|id|uuid|uuid|NO|gen_random_uuid()
+core_template_category|code|text|text|NO|
+core_template_category|name|text|text|NO|
+core_template_category|module_code|text|text|NO|
+core_template_category|description|text|text|YES|
+core_template_category|sort_order|integer|int4|NO|0
+core_template_category|is_active|boolean|bool|NO|true
+core_template_category|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_category|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_category|legacy_code|text|text|YES|
+core_template_channel|id|uuid|uuid|NO|gen_random_uuid()
+core_template_channel|code|text|text|NO|
+core_template_channel|name|text|text|NO|
+core_template_channel|channel_group|text|text|NO|
+core_template_channel|format|text|text|NO|
+core_template_channel|max_length|integer|int4|YES|
+core_template_channel|supports_attachments|boolean|bool|NO|false
+core_template_channel|is_active|boolean|bool|NO|true
+core_template_channel|sort_order|integer|int4|NO|0
+core_template_channel|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_channel|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_channel|legacy_code|text|text|YES|
+core_template_channel_variant|id|uuid|uuid|NO|gen_random_uuid()
+core_template_channel_variant|template_version_id|uuid|uuid|NO|
+core_template_channel_variant|channel_code|text|text|NO|
+core_template_channel_variant|subject|text|text|YES|
+core_template_channel_variant|body_html|text|text|YES|
+core_template_channel_variant|body_text|text|text|YES|
+core_template_channel_variant|payload_schema|jsonb|jsonb|YES|
+core_template_channel_variant|attachments_policy|text|text|YES|
+core_template_channel_variant|is_default|boolean|bool|NO|false
+core_template_channel_variant|is_active|boolean|bool|NO|true
+core_template_channel_variant|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_channel_variant|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_layout|id|uuid|uuid|NO|gen_random_uuid()
+core_template_layout|code|text|text|NO|
+core_template_layout|name|text|text|NO|
+core_template_layout|description|text|text|YES|
+core_template_layout|has_letterhead|boolean|bool|NO|true
+core_template_layout|header_html|text|text|YES|
+core_template_layout|footer_html|text|text|YES|
+core_template_layout|logo_url|text|text|YES|
+core_template_layout|institution_address|text|text|YES|
+core_template_layout|contact_details|text|text|YES|
+core_template_layout|legal_disclaimer|text|text|YES|
+core_template_layout|page_size|text|text|NO|'A4'::text
+core_template_layout|orientation|text|text|NO|'portrait'::text
+core_template_layout|show_page_numbers|boolean|bool|NO|true
+core_template_layout|show_generated_date|boolean|bool|NO|true
+core_template_layout|show_doc_reference|boolean|bool|NO|true
+core_template_layout|is_pre_printed|boolean|bool|NO|false
+core_template_layout|is_active|boolean|bool|NO|true
+core_template_layout|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_layout|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_layout|created_by|text|text|YES|
+core_template_layout|updated_by|text|text|YES|
+core_template_layout|legacy_code|text|text|YES|
+core_template_layout|is_base_layout|boolean|bool|NO|false
+core_template_layout|layout_kind|text|text|NO|'LETTERHEAD'::text
+core_template_layout|email_max_width|integer|int4|YES|
+core_template_layout|email_background_hex|text|text|YES|
+core_template_layout|email_font_family|text|text|YES|
+core_template_layout|email_button_style_json|jsonb|jsonb|YES|
+core_template_layout|email_divider_style_json|jsonb|jsonb|YES|
+core_template_layout|body_placeholder_html|text|text|YES|
+core_template_layout|signature_slot|text|text|YES|
+core_template_layout|footer_slot|text|text|YES|
+core_template_layout|disclaimer_slot|text|text|YES|
+core_template_layout|logo_position|text|text|YES|
+core_template_layout|mobile_responsive|boolean|bool|NO|true
+core_template_layout|logo_asset_id|uuid|uuid|YES|
+core_template_layout|header_asset_id|uuid|uuid|YES|
+core_template_layout|footer_asset_id|uuid|uuid|YES|
+core_template_layout|letterhead_id|uuid|uuid|YES|
+core_template_layout|email_signature_id|uuid|uuid|YES|
+core_template_layout|print_footer_id|uuid|uuid|YES|
+core_template_layout|disclaimer_text_block_code|text|text|YES|
+core_template_layout|theme_id|uuid|uuid|YES|
+core_template_layout|font_family_code|text|text|YES|
+core_template_layout|header_block_id|uuid|uuid|YES|
+core_template_layout|footer_block_id|uuid|uuid|YES|
+core_template_legal_reference|id|uuid|uuid|NO|gen_random_uuid()
+core_template_legal_reference|template_id|uuid|uuid|NO|
+core_template_legal_reference|template_version_id|uuid|uuid|YES|
+core_template_legal_reference|legal_reference_id|uuid|uuid|NO|
+core_template_legal_reference|required_flag|boolean|bool|NO|false
+core_template_legal_reference|display_order|integer|int4|NO|0
+core_template_legal_reference|usage_note|text|text|YES|
+core_template_legal_reference|created_by|character varying|varchar|YES|
+core_template_legal_reference|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_legal_reference|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_legal_reference|legal_reference_version_id|uuid|uuid|YES|
+core_template_localization|id|uuid|uuid|NO|gen_random_uuid()
+core_template_localization|template_version_id|uuid|uuid|NO|
+core_template_localization|locale|text|text|NO|
+core_template_localization|subject|text|text|YES|
+core_template_localization|body_html|text|text|YES|
+core_template_localization|body_text|text|text|YES|
+core_template_localization|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_localization|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_schedule_policy|id|uuid|uuid|NO|gen_random_uuid()
+core_template_schedule_policy|template_id|uuid|uuid|NO|
+core_template_schedule_policy|trigger_event|text|text|NO|
+core_template_schedule_policy|delay_minutes|integer|int4|NO|0
+core_template_schedule_policy|channel|text|text|YES|
+core_template_schedule_policy|schedule_cron|text|text|YES|
+core_template_schedule_policy|is_active|boolean|bool|NO|true
+core_template_schedule_policy|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_schedule_policy|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_section|id|uuid|uuid|NO|gen_random_uuid()
+core_template_section|version_id|uuid|uuid|NO|
+core_template_section|section_key|text|text|NO|
+core_template_section|label|text|text|YES|
+core_template_section|sort_order|integer|int4|NO|0
+core_template_section|content_html|text|text|YES|
+core_template_section|is_required|boolean|bool|NO|false
+core_template_section|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_section|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_token|id|uuid|uuid|NO|gen_random_uuid()
+core_template_token|token_code|text|text|NO|
+core_template_token|token_label|text|text|NO|
+core_template_token|module_code|text|text|NO|'COMMON'::text
+core_template_token|entity_type|text|text|YES|
+core_template_token|resolver_service|text|text|YES|
+core_template_token|sample_value|text|text|YES|
+core_template_token|description|text|text|YES|
+core_template_token|is_active|boolean|bool|NO|true
+core_template_token|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_token|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_token|token_group|text|text|YES|
+core_template_token|data_type|text|text|YES|'string'::text
+core_template_token|is_required|boolean|bool|NO|false
+core_template_token|legacy_code|text|text|YES|
+core_template_usage|id|uuid|uuid|NO|gen_random_uuid()
+core_template_usage|template_id|uuid|uuid|NO|
+core_template_usage|template_version_id|uuid|uuid|YES|
+core_template_usage|module_code|text|text|NO|
+core_template_usage|feature_area|text|text|YES|
+core_template_usage|screen_code|text|text|YES|
+core_template_usage|workflow_code|text|text|YES|
+core_template_usage|trigger_event|text|text|YES|
+core_template_usage|entity_type|text|text|YES|
+core_template_usage|is_active|boolean|bool|NO|true
+core_template_usage|notes|text|text|YES|
+core_template_usage|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_usage|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_usage|case_type_code|text|text|YES|
+core_template_usage|stage_code|text|text|YES|
+core_template_usage|usage_context|text|text|YES|
+core_template_usage|is_default|boolean|bool|NO|false
+core_template_usage|is_required|boolean|bool|NO|false
+core_template_usage|auto_generate_allowed|boolean|bool|NO|false
+core_template_usage|approval_required|boolean|bool|NO|false
+core_template_usage|sort_order|integer|int4|NO|100
+core_template_variable_binding|id|uuid|uuid|NO|gen_random_uuid()
+core_template_variable_binding|template_version_id|uuid|uuid|NO|
+core_template_variable_binding|token_code|text|text|NO|
+core_template_variable_binding|is_required|boolean|bool|NO|false
+core_template_variable_binding|default_value|text|text|YES|
+core_template_variable_binding|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_version|id|uuid|uuid|NO|gen_random_uuid()
+core_template_version|template_id|uuid|uuid|NO|
+core_template_version|version_no|integer|int4|NO|
+core_template_version|status|text|text|NO|'DRAFT'::text
+core_template_version|subject|text|text|YES|
+core_template_version|body_html|text|text|YES|
+core_template_version|body_text|text|text|YES|
+core_template_version|layout_id|uuid|uuid|YES|
+core_template_version|change_summary|text|text|YES|
+core_template_version|published_at|timestamp with time zone|timestamptz|YES|
+core_template_version|published_by|text|text|YES|
+core_template_version|created_at|timestamp with time zone|timestamptz|NO|now()
+core_template_version|updated_at|timestamp with time zone|timestamptz|NO|now()
+core_template_version|created_by|text|text|YES|
+core_template_version|updated_by|text|text|YES|
+core_template_version|template_structure|jsonb|jsonb|YES|
+core_template_version|body_metadata|jsonb|jsonb|YES|
+notification_logs|id|uuid|uuid|NO|gen_random_uuid()
+notification_logs|template_id|uuid|uuid|YES|
+notification_logs|channel|USER-DEFINED|notification_channel|NO|
+notification_logs|recipient_user_id|uuid|uuid|YES|
+notification_logs|recipient_address|text|text|NO|
+notification_logs|subject|text|text|YES|
+notification_logs|title|text|text|YES|
+notification_logs|body|text|text|NO|
+notification_logs|status|USER-DEFINED|notification_status|YES|'queued'::notification_status
+notification_logs|failure_reason|text|text|YES|
+notification_logs|sent_at|timestamp with time zone|timestamptz|YES|
+notification_logs|triggered_by|uuid|uuid|YES|
+notification_logs|trigger_source|text|text|YES|
+notification_logs|ip_address|text|text|YES|
+notification_logs|metadata|jsonb|jsonb|YES|
+notification_logs|created_at|timestamp with time zone|timestamptz|YES|now()
+notification_logs|resend_message_id|text|text|YES|
+notification_logs|retry_count|integer|int4|YES|0
+notification_logs|last_retry_at|timestamp with time zone|timestamptz|YES|
+notification_logs|campaign_id|uuid|uuid|YES|
+notification_providers|id|uuid|uuid|NO|gen_random_uuid()
+notification_providers|channel|USER-DEFINED|notification_channel|NO|
+notification_providers|provider_name|text|text|NO|
+notification_providers|config|jsonb|jsonb|NO|'{}'::jsonb
+notification_providers|is_active|boolean|bool|YES|true
+notification_providers|created_at|timestamp with time zone|timestamptz|YES|now()
+notification_providers|updated_at|timestamp with time zone|timestamptz|YES|now()
+notification_providers|updated_by|uuid|uuid|YES|
+notification_providers|email_provider_type|text|text|YES|'smtp'::text
+notification_providers|is_default|boolean|bool|YES|false
+notification_providers|display_name|text|text|YES|
+notification_providers|description|text|text|YES|
+notification_providers|created_by|text|text|YES|
+notification_providers|sms_provider_type|text|text|YES|
+notification_providers|push_provider_type|text|text|YES|
+notification_queue|id|uuid|uuid|NO|gen_random_uuid()
+notification_queue|template_key|text|text|YES|
+notification_queue|template_id|uuid|uuid|YES|
+notification_queue|recipient_email|text|text|YES|
+notification_queue|recipient_phone|text|text|YES|
+notification_queue|recipient_name|text|text|YES|
+notification_queue|recipient_user_id|uuid|uuid|YES|
+notification_queue|channel|text|text|NO|
+notification_queue|subject|text|text|YES|
+notification_queue|body|text|text|YES|
+notification_queue|template_data|jsonb|jsonb|YES|'{}'::jsonb
+notification_queue|module|text|text|YES|
+notification_queue|entity_type|text|text|YES|
+notification_queue|entity_id|text|text|YES|
+notification_queue|status|text|text|NO|'pending'::text
+notification_queue|error_message|text|text|YES|
+notification_queue|retry_count|integer|int4|NO|0
+notification_queue|provider|text|text|YES|
+notification_queue|provider_message_id|text|text|YES|
+notification_queue|created_by|text|text|YES|
+notification_queue|created_at|timestamp with time zone|timestamptz|NO|now()
+notification_queue|updated_at|timestamp with time zone|timestamptz|NO|now()
+notification_queue|sent_at|timestamp with time zone|timestamptz|YES|
+notification_queue|scheduled_at|timestamp with time zone|timestamptz|YES|
+notification_template_audit_logs|id|uuid|uuid|NO|gen_random_uuid()
+notification_template_audit_logs|template_id|uuid|uuid|YES|
+notification_template_audit_logs|template_name|text|text|YES|
+notification_template_audit_logs|action|text|text|NO|
+notification_template_audit_logs|field_name|text|text|YES|
+notification_template_audit_logs|old_value|text|text|YES|
+notification_template_audit_logs|new_value|text|text|YES|
+notification_template_audit_logs|performed_by|uuid|uuid|YES|
+notification_template_audit_logs|performed_at|timestamp with time zone|timestamptz|NO|now()
+notification_template_audit_logs|ip_address|text|text|YES|
+notification_template_audit_logs|details|jsonb|jsonb|YES|
+notification_template_versions|id|uuid|uuid|NO|gen_random_uuid()
+notification_template_versions|template_id|uuid|uuid|NO|
+notification_template_versions|version_no|integer|int4|NO|
+notification_template_versions|name|text|text|NO|
+notification_template_versions|subject|text|text|YES|
+notification_template_versions|body|text|text|YES|
+notification_template_versions|html_body|text|text|YES|
+notification_template_versions|placeholders|jsonb|jsonb|YES|
+notification_template_versions|changed_by|uuid|uuid|YES|
+notification_template_versions|changed_at|timestamp with time zone|timestamptz|NO|now()
+notification_template_versions|change_summary|text|text|YES|
+notification_templates|id|uuid|uuid|NO|gen_random_uuid()
+notification_templates|name|text|text|NO|
+notification_templates|channel|USER-DEFINED|notification_channel|NO|
+notification_templates|subject|text|text|YES|
+notification_templates|title|text|text|YES|
+notification_templates|body|text|text|NO|
+notification_templates|placeholders|jsonb|jsonb|YES|
+notification_templates|is_enabled|boolean|bool|YES|true
+notification_templates|created_at|timestamp with time zone|timestamptz|YES|now()
+notification_templates|updated_at|timestamp with time zone|timestamptz|YES|now()
+notification_templates|created_by|uuid|uuid|YES|
+notification_templates|updated_by|uuid|uuid|YES|
+notification_templates|module_id|uuid|uuid|YES|
+notification_templates|template_code|text|text|YES|
+notification_templates|trigger_event|text|text|YES|
+notification_templates|html_body|text|text|YES|
+notification_templates|version_no|integer|int4|NO|1
+notification_templates|category|text|text|YES|'informational'::text
+notification_templates|description|text|text|YES|
+notification_templates|effective_from|date|date|YES|
+notification_templates|effective_to|date|date|YES|
+notification_templates|mapped_core_template_id|uuid|uuid|YES|
+notification_templates|migration_status|text|text|NO|'pending'::text
+notification_templates|default_layout_id|uuid|uuid|YES|
+notification_types|id|uuid|uuid|NO|gen_random_uuid()
+notification_types|code|text|text|NO|
+notification_types|display_name|text|text|NO|
+notification_types|description|text|text|YES|
+notification_types|icon|text|text|YES|
+notification_types|display_order|integer|int4|YES|0
+notification_types|is_active|boolean|bool|YES|true
+notification_types|metadata|jsonb|jsonb|YES|'{}'::jsonb
+notification_types|created_by|text|text|YES|
+notification_types|created_at|timestamp with time zone|timestamptz|YES|now()
+notification_types|updated_by|text|text|YES|
+notification_types|updated_at|timestamp with time zone|timestamptz|YES|now()
