@@ -1216,18 +1216,26 @@ function GoLivePageInner() {
           </Alert>
         )}
         {deriveStep6(goLiveStatus) === "COMPLETED" && session.moduleCode && session.eventCode && (
-          <ControlledRevalidationPanel
-            moduleCode={session.moduleCode}
-            eventCode={session.eventCode}
-            channel={session.channel ?? "email"}
-            productionAnchor={{
-              oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
-              verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
-              verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
-              productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
-              baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
-            }}
-          />
+          <RuntimeContractGate
+            action="CONTROLLED_REVALIDATION_AUTHORISATION"
+            capabilities={[
+              ...getRuntimeRequirements("CONTROLLED_REVALIDATION_AUTHORISATION"),
+              ...getRuntimeRequirements("CONTROLLED_REVALIDATION_SEND"),
+            ]}
+          >
+            <ControlledRevalidationPanel
+              moduleCode={session.moduleCode}
+              eventCode={session.eventCode}
+              channel={session.channel ?? "email"}
+              productionAnchor={{
+                oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
+                verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
+                verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
+                productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
+                baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
+              }}
+            />
+          </RuntimeContractGate>
         )}
         {deriveStep6(goLiveStatus) !== "COMPLETED" && (
         <OneRealEmailPanel
