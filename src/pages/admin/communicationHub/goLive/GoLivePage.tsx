@@ -1394,18 +1394,18 @@ function GoLivePageInner() {
             <AlertDescription>Locked until the event is Manual-Production certified.</AlertDescription>
           </Alert>
         ) : (
-          <RuntimeContractGate
-            action="AUTOMATED_CANARY"
-            capabilities={[...getRuntimeRequirements("AUTOMATED_CANARY")]}
-          >
-            <AutomatedProductionActivationPanel
-              moduleCode={session.moduleCode}
-              eventCode={session.eventCode}
-              channel={session.channel ?? "email"}
-              status={goLiveStatus}
-              onChanged={reloadGoLive}
-            />
-          </RuntimeContractGate>
+          /* A4.0: Panel stays mounted. Canary / activation buttons must
+             self-gate inside the panel via RuntimeContractActionGate.
+             Emergency Stop, disarm, readiness report, lease/status
+             inspection and audit evidence remain visible regardless of
+             runtime-contract state. */
+          <AutomatedProductionActivationPanel
+            moduleCode={session.moduleCode}
+            eventCode={session.eventCode}
+            channel={session.channel ?? "email"}
+            status={goLiveStatus}
+            onChanged={reloadGoLive}
+          />
         )}
       </CommunicationHubSectionCard>
 
