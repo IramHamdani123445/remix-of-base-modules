@@ -477,28 +477,57 @@ export function ControlledRevalidationPanel({
                 {activeCycle.required_stages.length ? activeCycle.required_stages.join(" → ") : "none"}</div>
             </div>
 
-            {/* Server-hydrated authorisation card */}
-            {hydratedAuth && (
+            {/* Cycle-authorisation consistency (§2). */}
+            {cycleAuthMismatch && (
+              <Alert variant="destructive" data-testid="cycle-auth-mismatch">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Authorisation belongs to a different cycle</AlertTitle>
+                <AlertDescription>
+                  A hydrated authorisation was returned for cycle{" "}
+                  <code className="font-mono">{hydratedAuth?.cycle_id?.slice(0, 8)}</code>{" "}
+                  but the active cycle is{" "}
+                  <code className="font-mono">{activeCycle.id.slice(0, 8)}</code>.{" "}
+                  Preparation is disabled until server state converges.
+                  <div className="mt-2">
+                    <Button size="sm" variant="outline" onClick={refresh}>
+                      <RefreshCw className="h-3 w-3 mr-1" /> Refresh server state
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Server-hydrated authorisation card — abbreviated only.
+                Full IDs live in the Audit & Evidence workspace. */}
+            {effectiveAuth && (
               <div className="rounded border p-2 space-y-1 bg-muted/20" data-testid="hydrated-authorisation">
                 <div className="text-xs font-medium flex items-center gap-2">
-                  Authorisation <Badge variant={hydratedAuth.usable ? "default" : "destructive"}>{hydratedAuth.status}</Badge>
-                  {hydratedAuth.usable && <Badge variant="outline">usable</Badge>}
+                  Authorisation <Badge variant={effectiveAuth.usable ? "default" : "destructive"}>{effectiveAuth.status}</Badge>
+                  {effectiveAuth.usable && <Badge variant="outline">usable</Badge>}
+                  <code className="font-mono text-[11px] text-muted-foreground ml-auto">
+                    {effectiveAuth.id.slice(0, 8)}…
+                  </code>
                 </div>
                 <div className="text-[11px] grid gap-x-4 gap-y-0.5 sm:grid-cols-2">
-                  <div><span className="text-muted-foreground">Recipient:</span> <code className="font-mono">{maskEmail(hydratedAuth.recipient)}</code></div>
-                  <div><span className="text-muted-foreground">Expires:</span> {hydratedAuth.expires_at ? new Date(hydratedAuth.expires_at).toLocaleString() : "—"}</div>
-                  <div className="sm:col-span-2"><span className="text-muted-foreground">Authorisation ID:</span> <code className="font-mono">{hydratedAuth.id}</code></div>
-                  {!hydratedAuth.usable && (
+                  <div><span className="text-muted-foreground">Recipient:</span> <code className="font-mono">{maskEmail(effectiveAuth.recipient)}</code></div>
+                  <div><span className="text-muted-foreground">Expires:</span> {effectiveAuth.expires_at ? new Date(effectiveAuth.expires_at).toLocaleString() : "—"}</div>
+                  {!effectiveAuth.usable && (
                     <div className="sm:col-span-2 text-destructive">
-                      Not usable: {hydratedAuth.unusable_reason ?? "unknown"}
+                      Not usable: {effectiveAuth.unusable_reason ?? "unknown"}
                     </div>
                   )}
+                </div>
+                <div className="text-[11px]">
+                  <Link to={withSearch("/admin/communication-hub/audit")} className="underline text-primary">
+                    View full evidence in Audit workspace →
+                  </Link>
                 </div>
               </div>
             )}
 
-            {/* Authorise send — only when there is no usable authorisation */}
-            {canAuthorise && !hydratedAuth?.usable && (
+            {/* Authorise send — only when there is no usable authorisation
+                that is consistent with the active cycle. */}
+            {canAuthorise && !effectiveAuth?.usable && (
               <div className="rounded border p-2 space-y-2">
                 <div className="text-xs font-medium">Controlled revalidation email authorisation</div>
                 <Input placeholder="Recipient email"
@@ -512,7 +541,7 @@ export function ControlledRevalidationPanel({
                   <Button
                     onClick={handleAuthoriseSend}
                     disabled={
-                      issuing || !recipient.includes("@") ||
+                      issuing || cycleAuthMismatch || !recipient.includes("@") ||
                       phrase !== REVALIDATION_SEND_TYPED_PHRASE
                     }
                     size="sm"
@@ -529,7 +558,8 @@ export function ControlledRevalidationPanel({
               </div>
             )}
 
-            {/* Server-hydrated active preparation execution */}
+            {/* Server-hydrated preparation execution — abbreviated. Full
+                identifiers live in Audit & Evidence. */}
             {hydratedPrep && (
               <div className="rounded border p-2 space-y-1 text-[11px]" data-testid="hydrated-preparation">
                 <div className="font-medium text-xs flex items-center gap-2">
@@ -538,83 +568,76 @@ export function ControlledRevalidationPanel({
                     {hydratedPrep.classified_state}
                   </Badge>
                   <Badge variant="outline">v{hydratedPrep.preparation_version}</Badge>
+                  <code className="font-mono text-[11px] text-muted-foreground ml-auto">
+                    {hydratedPrep.execution_id.slice(0, 8)}…
+                  </code>
                 </div>
                 {hydratedPrep.classified_state === "PREPARING" && (
-                  <div className="text-destructive">Preparation incomplete — retry to finalise (no email will be sent).</div>
+                  <div className="text-destructive">Preparation incomplete — resume to finalise (no email will be sent).</div>
                 )}
                 {hydratedPrep.classified_state === "READY_FOR_PROVIDER" && (
-                  <div className="text-emerald-700 dark:text-emerald-300">Preparation complete. No email sent. Provider delivery remains disabled until A4.2.</div>
+                  <div className="text-emerald-700 dark:text-emerald-300">Preparation complete — no email sent. Provider delivery remains disabled.</div>
                 )}
                 {hydratedPrep.classified_state === "FAILED_PRE_PROVIDER" && (
                   <div className="text-destructive">Failed before any provider call ({hydratedPrep.failure_code ?? "unknown"}). Authorisation preserved.</div>
                 )}
-                <div><span className="text-muted-foreground">Execution:</span> <code className="font-mono">{hydratedPrep.execution_id}</code></div>
-                <div><span className="text-muted-foreground">Idempotency key:</span> <code className="font-mono break-all">{hydratedPrep.canonical_idempotency_key ?? "—"}</code></div>
-                <div><span className="text-muted-foreground">Provider call attempted:</span> {String(hydratedPrep.provider_call_attempted)}</div>
+                <div className="text-muted-foreground">Provider call attempted: {String(hydratedPrep.provider_call_attempted)}</div>
+                <Link to={withSearch("/admin/communication-hub/audit")} className="underline text-primary">
+                  View full identifiers in Audit workspace →
+                </Link>
               </div>
             )}
 
-            {/* A4.1 — Prepare controlled delivery (no provider call) */}
-            {activeCycle && hydratedAuth?.usable && (
-              <div className="rounded border p-2 space-y-2 bg-muted/30">
+            {/* Preparation action — derived from server state (§3). */}
+            {activeCycle && effectiveAuth?.usable && prepAction.kind !== "NONE" && (
+              <div className="rounded border p-2 space-y-2 bg-muted/30" data-testid="preparation-action-card">
                 <div className="text-xs font-medium">
                   Prepare controlled delivery <Badge variant="outline">no email sent</Badge>
                 </div>
-                <div className="text-[11px] text-muted-foreground">
-                  Reserves canonical template, sender, recipient and provider
-                  bindings and creates durable evidence. The email provider is
-                  NOT contacted — that step remains disabled until the
-                  provider-boundary runtime is approved.
-                </div>
-                <RuntimeContractActionGate
-                  action="CONTROLLED_REVALIDATION_PREPARE"
-                  actionLabel="Controlled revalidation preparation"
-                >
-                  <Button
-                    size="sm"
-                    onClick={handlePrepare}
-                    disabled={preparing}
-                    data-testid="controlled-revalidation-prepare-button"
-                  >
-                    {preparing && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                    Prepare controlled delivery
-                  </Button>
-                </RuntimeContractActionGate>
-                {prepareResult && (
-                  <div className="text-[11px] space-y-1" data-testid="controlled-revalidation-prepare-result">
-                    <div>
-                      <span className="text-muted-foreground">Status:</span>{" "}
-                      <Badge variant={prepareResult.status === "READY_FOR_PROVIDER" ? "default" : "destructive"}>
-                        {prepareResult.status}
-                      </Badge>
-                      {prepareResult.reused_existing_execution && (
-                        <Badge variant="outline" className="ml-1">reused</Badge>
-                      )}
-                    </div>
-                    {prepareResult.execution_id && (
-                      <div>
-                        <span className="text-muted-foreground">Execution:</span>{" "}
-                        <code className="font-mono">{prepareResult.execution_id}</code>
+                {prepAction.kind === "COMPLETE" && (
+                  <div className="text-[11px] text-emerald-700 dark:text-emerald-300" data-testid="prep-complete-notice">
+                    Preparation complete — no email sent. Provider delivery remains disabled until the provider-boundary runtime is approved.
+                  </div>
+                )}
+                {prepAction.kind === "PROVIDER_PENDING" && (
+                  <div className="text-[11px] text-muted-foreground">
+                    Provider result pending. No further preparation action available.
+                  </div>
+                )}
+                {(prepAction.kind === "PREPARE" || prepAction.kind === "RESUME" ||
+                  prepAction.kind === "RETRY" || prepAction.kind === "RECOVER") && (
+                  <>
+                    {prepAction.kind !== "PREPARE" && "reason" in prepAction && (
+                      <div className="text-[11px] text-muted-foreground">
+                        {prepAction.kind === "RESUME" && "Existing preparation started but not finalised. "}
+                        {prepAction.kind === "RETRY" && `Previous preparation failed pre-provider (${prepAction.reason}). `}
+                        {prepAction.kind === "RECOVER" && `Recovery required (${prepAction.reason}). `}
+                        The same idempotent preparation path is invoked; no new execution is created.
                       </div>
                     )}
-                    <div>
-                      <span className="text-muted-foreground">Provider call attempted:</span>{" "}
-                      {String(prepareResult.provider_call_attempted)}
-                    </div>
-                    {prepareResult.blockers.length > 0 && (
-                      <ul className="list-disc pl-4 text-destructive">
-                        {prepareResult.blockers.map((b, i) => (
-                          <li key={i}>{b.code} ({b.stage}){b.message ? `: ${b.message}` : ""}</li>
-                        ))}
-                      </ul>
-                    )}
-                    <a
-                      href="/admin/communication-hub/audit"
-                      className="underline text-primary text-[11px]"
+                    <RuntimeContractActionGate
+                      action="CONTROLLED_REVALIDATION_PREPARE"
+                      actionLabel="Controlled revalidation preparation"
                     >
-                      View evidence in Audit workspace →
-                    </a>
-                  </div>
+                      <Button
+                        size="sm"
+                        onClick={handlePrepare}
+                        disabled={preparing || cycleAuthMismatch}
+                        data-testid={
+                          prepAction.kind === "PREPARE" ? "controlled-revalidation-prepare-button"
+                          : prepAction.kind === "RESUME" ? "controlled-revalidation-resume-button"
+                          : prepAction.kind === "RETRY" ? "controlled-revalidation-retry-button"
+                          : "controlled-revalidation-recover-button"
+                        }
+                      >
+                        {preparing && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                        {prepAction.kind === "PREPARE" && "Prepare controlled delivery"}
+                        {prepAction.kind === "RESUME" && "Resume preparation"}
+                        {prepAction.kind === "RETRY" && "Retry preparation"}
+                        {prepAction.kind === "RECOVER" && "Recover preparation"}
+                      </Button>
+                    </RuntimeContractActionGate>
+                  </>
                 )}
               </div>
             )}
