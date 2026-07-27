@@ -1238,61 +1238,66 @@ function GoLivePageInner() {
           </RuntimeContractGate>
         )}
         {deriveStep6(goLiveStatus) !== "COMPLETED" && (
-        <OneRealEmailPanel
-          controlledStubCertified={controlledLiveDone}
-          lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
-          lineage={
-            controlledLiveDone && stage6Context && stage6Context.ok &&
-            stage6Context.recipient && stage6Context.recipientSetHash &&
-            stage6Context.previewApprovalId && stage6Context.dryRunCertificationId &&
-            stage6Context.senderName && stage6Context.senderAddress &&
-            stage6Context.providerName && stage6Context.providerHealth === "READY"
-              ? {
-                  moduleCode: stage6Context.moduleCode,
-                  eventCode: stage6Context.eventCode,
-                  channel: stage6Context.channel,
-                  previewSnapshotId: stage6Context.previewSnapshotId,
-                  previewApprovalId: stage6Context.previewApprovalId!,
-                  dryRunCertificationId: stage6Context.dryRunCertificationId!,
-                  controlledStubCertificationId: stage6Context.controlledStubCertificationId,
-                  recipientSetHash: stage6Context.recipientSetHash!,
-                  configurationVersion: stage6Context.configurationVersion,
-                  recipientPolicyVersion: stage6Context.recipientPolicyVersion,
-                  recipient: stage6Context.recipient!,
-                  senderName: stage6Context.senderName,
-                  senderAddress: stage6Context.senderAddress,
-                  providerName: stage6Context.providerName,
-                }
-              : null
-          }
-          onEnvelope={(env) =>
-            setSession((s) => ({
-              ...s,
-              stage6ExecutionId: env.executionId,
-              stage6CertificationId: env.certificationId,
-              stage6Status: env.status,
-              stage6ProviderCallAttempted: env.providerCallAttempted,
-              stage6ProviderStatus: env.providerStatus,
-              stage6ProviderMessageId: env.providerMessageId,
-              stage6DeliveryAttemptId: env.deliveryAttemptId,
-              stage6TraceId: env.traceId,
-              stage6RetrySafe: env.retrySafe,
-              stage6ReconciliationRequired: env.reconciliationRequired,
-              stage6CleanupProven: env.cleanupProven,
-              stage6CompletedAt: env.completedAt,
-            }))
-          }
-          onVerified={() => {
-            setSession((s) => ({
-              ...s,
-              stage6ManualVerificationStatus: "CONFIRMED",
-              stage6Status: "DELIVERY_CONFIRMED_MANUALLY",
-            }));
-            setStage6ContextReloadNonce((n) => n + 1);
-            reloadGoLive();
-          }}
-          onReloadContext={() => setStage6ContextReloadNonce((n) => n + 1)}
-        />
+        <RuntimeContractGate
+          action="ONE_REAL_EMAIL"
+          capabilities={[...getRuntimeRequirements("ONE_REAL_EMAIL")]}
+        >
+          <OneRealEmailPanel
+            controlledStubCertified={controlledLiveDone}
+            lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
+            lineage={
+              controlledLiveDone && stage6Context && stage6Context.ok &&
+              stage6Context.recipient && stage6Context.recipientSetHash &&
+              stage6Context.previewApprovalId && stage6Context.dryRunCertificationId &&
+              stage6Context.senderName && stage6Context.senderAddress &&
+              stage6Context.providerName && stage6Context.providerHealth === "READY"
+                ? {
+                    moduleCode: stage6Context.moduleCode,
+                    eventCode: stage6Context.eventCode,
+                    channel: stage6Context.channel,
+                    previewSnapshotId: stage6Context.previewSnapshotId,
+                    previewApprovalId: stage6Context.previewApprovalId!,
+                    dryRunCertificationId: stage6Context.dryRunCertificationId!,
+                    controlledStubCertificationId: stage6Context.controlledStubCertificationId,
+                    recipientSetHash: stage6Context.recipientSetHash!,
+                    configurationVersion: stage6Context.configurationVersion,
+                    recipientPolicyVersion: stage6Context.recipientPolicyVersion,
+                    recipient: stage6Context.recipient!,
+                    senderName: stage6Context.senderName,
+                    senderAddress: stage6Context.senderAddress,
+                    providerName: stage6Context.providerName,
+                  }
+                : null
+            }
+            onEnvelope={(env) =>
+              setSession((s) => ({
+                ...s,
+                stage6ExecutionId: env.executionId,
+                stage6CertificationId: env.certificationId,
+                stage6Status: env.status,
+                stage6ProviderCallAttempted: env.providerCallAttempted,
+                stage6ProviderStatus: env.providerStatus,
+                stage6ProviderMessageId: env.providerMessageId,
+                stage6DeliveryAttemptId: env.deliveryAttemptId,
+                stage6TraceId: env.traceId,
+                stage6RetrySafe: env.retrySafe,
+                stage6ReconciliationRequired: env.reconciliationRequired,
+                stage6CleanupProven: env.cleanupProven,
+                stage6CompletedAt: env.completedAt,
+              }))
+            }
+            onVerified={() => {
+              setSession((s) => ({
+                ...s,
+                stage6ManualVerificationStatus: "CONFIRMED",
+                stage6Status: "DELIVERY_CONFIRMED_MANUALLY",
+              }));
+              setStage6ContextReloadNonce((n) => n + 1);
+              reloadGoLive();
+            }}
+            onReloadContext={() => setStage6ContextReloadNonce((n) => n + 1)}
+          />
+        </RuntimeContractGate>
         )}
       </CommunicationHubSectionCard>
 
