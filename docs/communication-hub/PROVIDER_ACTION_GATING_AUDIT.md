@@ -168,3 +168,30 @@ replay in this reply, no Deno test invocation, no artifact upload.
 - Baseline correction via typed phrase (only if diagnostic confirms divergence).
 - `reassess_comm_hub_revalidation_cycle('d2a6f6ba-a414-446d-8254-bb4efa991212')`.
 - Triggering the real GitHub Actions workflow.
+
+---
+
+## Post-slice update — five gates wired
+
+After this slice all five provider-contacting actions are mounted **inside**
+`RuntimeContractGate` in `GoLivePage.tsx`, using the canonical capability map
+in `src/platform/communication-hub/runtimeActionRequirements.ts`
+(`getRuntimeRequirements` / `runtimeActionPasses`). Panels no longer receive
+per-panel hard-coded capability arrays; the map is the single source.
+
+| Action                                  | Capability code                          | Mount site                                                                                                                             | Gated? |
+| --------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| Initial One Real Email                  | `ONE_REAL_EMAIL`                         | `GoLivePage.tsx` — `RuntimeContractGate` around `OneRealEmailPanel`                                                                    | ✅     |
+| Manual Production observation / send    | `MANUAL_PRODUCTION_SEND`                 | `GoLivePage.tsx` — `RuntimeContractGate` around `ManualProductionObservationPanel`                                                     | ✅     |
+| Controlled Revalidation authorisation   | `CONTROLLED_REVALIDATION_AUTHORISATION`  | `GoLivePage.tsx` — `RuntimeContractGate` around `ControlledRevalidationPanel` (also requires `CONTROLLED_REVALIDATION_SEND` union)     | ✅     |
+| Controlled Revalidation provider send   | `CONTROLLED_REVALIDATION_SEND`           | Same gate above (union) — send button inside the panel therefore inherits the closed gate                                              | ✅     |
+| Automated canary (Arm automation)       | `AUTOMATED_CANARY`                       | `GoLivePage.tsx` — `RuntimeContractGate` around `AutomatedProductionActivationPanel`                                                   | ✅     |
+
+Regression fix: `capabilityPasses(report, cap)` previously returned **true**
+when the capability had **zero matched checks** (empty `.every` = `true`).
+It now returns `false` on zero matches — an unknown/misnamed capability
+therefore fails closed. See `runtimeContractGating.test.tsx` regression suite.
+
+Runtime-contract gating remains an **additional** safety layer stacked on
+top of server-side RPCs, typed-phrase requirements, mode gates, and status
+gates — none of which have been removed.
