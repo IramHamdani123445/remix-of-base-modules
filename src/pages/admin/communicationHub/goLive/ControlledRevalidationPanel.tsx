@@ -38,6 +38,13 @@ import {
   type RevalidationCycle,
   type RevalidationPurpose,
 } from "@/platform/communication-hub/revalidationService";
+import {
+  getActiveRevalidationAuthorisation,
+  getActiveRevalidationPreparation,
+  type HydratedAuthorisation,
+  type HydratedPreparationExecution,
+} from "@/platform/communication-hub/operationsSummaryService";
+import { maskEmail } from "../utils/mask";
 
 const CHANGE_CATEGORIES: { code: ChangeCategory; label: string }[] = [
   { code: "UI_ONLY", label: "UI / reporting only" },
