@@ -1200,11 +1200,11 @@ export default function GoLivePage() {
             </AlertDescription>
           </Alert>
         )}
-        {deriveStep6(goLiveStatus) === "COMPLETED" && moduleCode && eventCode && (
+        {deriveStep6(goLiveStatus) === "COMPLETED" && session.moduleCode && session.eventCode && (
           <ControlledRevalidationPanel
-            moduleCode={moduleCode}
-            eventCode={eventCode}
-            channel={channel ?? "email"}
+            moduleCode={session.moduleCode}
+            eventCode={session.eventCode}
+            channel={session.channel ?? "email"}
             productionAnchor={{
               oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
               verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
