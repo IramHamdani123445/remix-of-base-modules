@@ -97,6 +97,9 @@ export function ControlledRevalidationPanel({
   const [promotePhrase, setPromotePhrase] = useState("");
   const [promoteReason, setPromoteReason] = useState("");
   const [promoting, setPromoting] = useState(false);
+  const [lastAuthorisationId, setLastAuthorisationId] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const [prepareResult, setPrepareResult] = useState<Awaited<ReturnType<typeof prepareControlledRevalidation>> | null>(null);
 
   async function refresh() {
     try {
