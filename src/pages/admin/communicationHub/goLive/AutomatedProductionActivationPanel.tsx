@@ -11,6 +11,9 @@ import {
   runAutomationReadinessProbe,
   AUTOMATION_READINESS_CHECK_CODES,
   type ReadinessProbeBlocker,
+  type ReadinessProbeSuccess,
+  type ReadinessProbeCheck,
+  type ReadinessCheckStatus,
 } from "@/platform/communication-hub/automationReadinessProbeService";
 import {
   certifyEventAutomatedProduction,
@@ -39,6 +42,7 @@ export function AutomatedProductionActivationPanel({
 }: Props) {
   const [probing, setProbing] = useState(false);
   const [probeError, setProbeError] = useState<ReadinessProbeBlocker | null>(null);
+  const [probeResult, setProbeResult] = useState<ReadinessProbeSuccess | null>(null);
   const [certReason, setCertReason] = useState("");
   const [certPhrase, setCertPhrase] = useState("");
   const [certifying, setCertifying] = useState(false);
@@ -58,7 +62,12 @@ export function AutomatedProductionActivationPanel({
   const globalAutomatedActive = platform?.current_operating_mode === "AUTOMATED_PRODUCTION";
   const armed = platform?.automation_state === "ARMED";
 
-  const readinessByCode = new Map(
+  // Per-check status: prefer the live probe response so NOT_IMPLEMENTED /
+  // NOT_CONFIGURED / DRIFTED render distinctly (not as generic ERROR).
+  const probeByCode = new Map<string, ReadinessProbeCheck>(
+    (probeResult?.checks ?? []).map((c) => [c.check_code, c]),
+  );
+  const stageByCode = new Map(
     (stage8?.readiness_checks ?? []).map((c) => [c.check_code, c]),
   );
 
@@ -68,14 +77,17 @@ export function AutomatedProductionActivationPanel({
       const result = await runAutomationReadinessProbe({ moduleCode, eventCode, channel });
       if (result.ok === false) {
         setProbeError(result.blocker);
+        setProbeResult(null);
         toast.error(`Readiness probe error: ${result.blocker.code}`);
       } else {
         setProbeError(null);
-        toast.success("Automation readiness probe complete");
+        setProbeResult(result);
+        toast.success(`Pre-arm readiness complete (mode ${result.current_operating_mode})`);
       }
       onChanged();
     } catch (e: any) {
       setProbeError({ code: "READINESS_PROBE_TRANSPORT_ERROR", detail: e?.message });
+      setProbeResult(null);
       toast.error(e?.message ?? "Readiness probe failed");
     } finally {
       setProbing(false);
@@ -203,15 +215,19 @@ export function AutomatedProductionActivationPanel({
         <div>Drift: {stage7?.drift_detected ? <Badge variant="destructive">yes</Badge> : "none"}</div>
       </div>
 
-      {/* Action 1 — Readiness probes */}
+      {/* Action 1 — Pre-arm readiness */}
       <div className="rounded-md border p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Radar className="h-4 w-4" />
-          <div className="font-medium">1. Automation readiness probes (9 checks)</div>
+          <div className="font-medium">1. Automated Production pre-arm readiness (9 checks)</div>
           <Badge
             className="ml-auto"
             variant={
-              probeError ? "destructive" : stage8?.readiness_all_ok_and_fresh ? "default" : "secondary"
+              probeError
+                ? "destructive"
+                : stage8?.readiness_all_ok_and_fresh
+                  ? "default"
+                  : "secondary"
             }
           >
             {probeError
@@ -221,6 +237,29 @@ export function AutomatedProductionActivationPanel({
                 : "incomplete or stale"}
           </Badge>
         </div>
+        <Alert>
+          <AlertDescription className="text-xs space-y-1">
+            <div>
+              Readiness phase:{" "}
+              <span className="font-mono">
+                {probeResult?.readiness_phase ?? "PRE_ARM_READINESS"}
+              </span>{" "}
+              · Current mode:{" "}
+              <span className="font-mono">
+                {probeResult?.current_operating_mode ?? platform?.current_operating_mode ?? "—"}
+              </span>{" "}
+              · Automation state:{" "}
+              <span className="font-mono">
+                {probeResult?.automation_state ?? platform?.automation_state ?? "—"}
+              </span>{" "}
+              · <span className="font-mono">No activation performed</span>
+            </div>
+            <div className="text-muted-foreground">
+              Readiness can be checked while the platform remains in a safe mode.
+              Passing readiness does not change mode or Arm automation.
+            </div>
+          </AlertDescription>
+        </Alert>
         {probeError && (
           <Alert variant="destructive">
             <AlertTitle className="font-mono text-xs">{probeError.code}</AlertTitle>
@@ -236,38 +275,72 @@ export function AutomatedProductionActivationPanel({
                 <div className="text-muted-foreground">Fix: {probeError.fix_action}</div>
               )}
               <div className="text-muted-foreground">
-                Automated certification remains disabled. Operating mode is unchanged. No readiness
-                PASS rows were created.
+                Automated certification remains disabled. Operating mode is
+                unchanged. No readiness PASS rows were created.
               </div>
             </AlertDescription>
           </Alert>
         )}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
           {AUTOMATION_READINESS_CHECK_CODES.map((code) => {
-            const r = readinessByCode.get(code);
+            const probeCheck = probeByCode.get(code);
+            const stageCheck = stageByCode.get(code);
+            const status: ReadinessCheckStatus | null =
+              probeCheck?.status ?? null;
+            const result = probeCheck?.result ?? stageCheck?.result ?? null;
+            const fresh = stageCheck?.fresh ?? true;
+            const showTopLevelError = !!probeError && !probeCheck;
+            const variant: "default" | "destructive" | "secondary" | "outline" =
+              showTopLevelError
+                ? "destructive"
+                : status === "PASS"
+                  ? "default"
+                  : status
+                    ? "destructive"
+                    : result === true
+                      ? "default"
+                      : result === false
+                        ? "destructive"
+                        : "outline";
+            const label = showTopLevelError
+              ? "ERROR"
+              : status
+                ? `${status}${fresh ? "" : " · stale"}`
+                : result === null
+                  ? "not run"
+                  : `${result ? "OK" : "FAIL"}${fresh ? "" : " · stale"}`;
             return (
-              <div key={code} className="rounded border p-2 flex items-center justify-between">
+              <div
+                key={code}
+                className="rounded border p-2 flex items-center justify-between gap-2"
+                title={probeCheck?.blocker ?? probeCheck?.fix_action ?? ""}
+              >
                 <span className="font-mono">{code}</span>
-                <span>
-                  {probeError ? (
-                    <Badge variant="destructive">ERROR</Badge>
-                  ) : r ? (
-                    <Badge variant={r.result && r.fresh ? "default" : "destructive"}>
-                      {r.result ? "OK" : "FAIL"}{r.fresh ? "" : " · stale"}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">not run</Badge>
-                  )}
-                </span>
+                <Badge variant={variant} className="font-mono text-[10px]">
+                  {label}
+                </Badge>
               </div>
             );
           })}
         </div>
+        {probeResult && (
+          <div className="text-[11px] text-muted-foreground">
+            Bound to config v{probeResult.configuration_version}
+            {probeResult.event_certification_id
+              ? ` · event cert ${probeResult.event_certification_id.slice(0, 8)}…`
+              : ""}
+            {probeResult.production_lineage_id
+              ? ` · lineage ${probeResult.production_lineage_id.slice(0, 8)}…`
+              : ""}
+          </div>
+        )}
         <Button onClick={handleProbe} disabled={probing} variant="secondary">
           {probing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Run readiness probes
+          Run pre-arm readiness
         </Button>
       </div>
+
+
 
 
       {/* Action 2 — Certify */}

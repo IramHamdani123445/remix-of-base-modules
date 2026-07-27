@@ -96059,6 +96059,40 @@ export type Database = {
         Args: { p_actor: string; p_reason: string; p_source: string }
         Returns: Json
       }
+      _persist_pre_arm_readiness_row: {
+        Args: {
+          p_blocker: string
+          p_cfg_version: number
+          p_channel: string
+          p_check_code: string
+          p_event_certification_id: string
+          p_event_code: string
+          p_evidence: Json
+          p_fix: string
+          p_module_code: string
+          p_now: string
+          p_production_lineage_id: string
+          p_result: boolean
+          p_status: string
+          p_uid: string
+        }
+        Returns: undefined
+      }
+      _pre_arm_check_json: {
+        Args: {
+          p_blocker: string
+          p_cfg_version: number
+          p_check_code: string
+          p_event_certification_id: string
+          p_evidence: Json
+          p_fix: string
+          p_now: string
+          p_production_lineage_id: string
+          p_result: boolean
+          p_status: string
+        }
+        Returns: Json
+      }
       add_sep_activity: {
         Args: {
           p_activity_type: string
