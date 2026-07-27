@@ -94,8 +94,8 @@ import { LegacyBaselineAttestationPanel } from "./LegacyBaselineAttestationPanel
 import { RuntimeContractCard } from "./RuntimeContractCard";
 import { DiagnosticBundlePanel } from "./DiagnosticBundlePanel";
 import { RuntimeContractProvider } from "@/platform/communication-hub/RuntimeContractContext";
-import { RuntimeContractGate } from "./RuntimeContractGate";
-import { getRuntimeRequirements } from "@/platform/communication-hub/runtimeActionRequirements";
+// A4.0: RuntimeContractGate panel-wrapping is removed. Provider-touching
+// buttons must self-gate via RuntimeContractActionGate inside each panel.
 
 import { ManualProductionObservationPanel } from "./ManualProductionObservationPanel";
 import { AutomatedProductionActivationPanel } from "./AutomatedProductionActivationPanel";
