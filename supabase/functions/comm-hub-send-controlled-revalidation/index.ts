@@ -36,9 +36,11 @@ const CORS: Record<string, string> = {
 const ACTION_SEND = "SEND_CONTROLLED_REVALIDATION_EMAIL";
 const ACTION_RECOVER = "RECOVER";
 const ACTION_PROBE = "probe";
+// A4.1 durable preparation. Never invokes the provider.
+const ACTION_PREPARE = "PREPARE_CONTROLLED_REVALIDATION";
 const SEND_CONTEXT = "CONTROLLED_REVALIDATION";
 const RUNTIME_BUILD =
-  "comm-hub-send-controlled-revalidation@2026-07-27-initial";
+  "comm-hub-send-controlled-revalidation@2026-07-27-a4.1-prepare";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
