@@ -414,7 +414,7 @@ export function ControlledRevalidationPanel({
                   provider-boundary runtime is approved.
                 </div>
                 <RuntimeContractActionGate
-                  action="CONTROLLED_REVALIDATION_SEND"
+                  action="CONTROLLED_REVALIDATION_PREPARE"
                   actionLabel="Controlled revalidation preparation"
                 >
                   <Button

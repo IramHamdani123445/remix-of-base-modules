@@ -318,9 +318,14 @@ Deno.serve(async (req) => {
     }
 
     // 3. Bind durable execution via internal service-role RPC.
-    const idempotencyKey =
-      body.idempotencyKey ?? body.idempotency_key
-        ?? `crev-prep:${cycleId}:${authorisationId}`;
+    // A4.1.2 §4 — SERVER-DERIVED IDEMPOTENCY. Any client-supplied idempotency
+    // key is intentionally IGNORED for production preparation. The key is
+    // derived from (cycle_id, authorisation_id, preparation_version) so that
+    // a different browser-generated key can never create a competing
+    // execution. preparation_version defaults to 1 until the numeric column
+    // migration lands in the next slice; the derivation format is stable.
+    const preparationVersion = 1;
+    const idempotencyKey = `crev-prep:${cycleId}:${authorisationId}:${preparationVersion}`;
     const prepRuntimeBuild = RUNTIME_BUILD;
     const { data: prepData, error: prepErr } = await admin
       .rpc("_comm_hub_revalidation_prepare_execution", {
