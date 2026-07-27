@@ -12,7 +12,6 @@
  * mounted; only the specific action button is disabled.
  */
 import { AlertTriangle, ShieldOff } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useRuntimeCapabilities } from "@/platform/communication-hub/RuntimeContractContext";
