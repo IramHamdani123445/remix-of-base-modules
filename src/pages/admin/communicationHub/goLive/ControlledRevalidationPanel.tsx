@@ -104,7 +104,13 @@ export function ControlledRevalidationPanel({
   const [promotePhrase, setPromotePhrase] = useState("");
   const [promoteReason, setPromoteReason] = useState("");
   const [promoting, setPromoting] = useState(false);
-  const [lastAuthorisationId, setLastAuthorisationId] = useState<string | null>(null);
+  // A4.1.2C — Server-hydrated authority. React state is NOT the source of
+  // truth for authorisation or preparation execution; both survive refresh,
+  // tab switch, deep link, and a second operator session.
+  const [hydratedAuth, setHydratedAuth] = useState<HydratedAuthorisation | null>(null);
+  const [authUnusableReason, setAuthUnusableReason] = useState<string | null>(null);
+  const [hydratedPrep, setHydratedPrep] = useState<HydratedPreparationExecution | null>(null);
+  const [prepUnavailableReason, setPrepUnavailableReason] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [prepareResult, setPrepareResult] = useState<Awaited<ReturnType<typeof prepareControlledRevalidation>> | null>(null);
 
@@ -115,7 +121,37 @@ export function ControlledRevalidationPanel({
       const unresolved = list.find(
         (c) => !["CONFIRMED","NOT_RECEIVED","FAILED","VOIDED","PROMOTED","SUPERSEDED","VERIFIED_SUPPLEMENTAL"].includes(c.status),
       );
-      setActiveCycle(unresolved ?? list[0] ?? null);
+      const active = unresolved ?? list[0] ?? null;
+      setActiveCycle(active);
+
+      // Hydrate authorisation from the server (authoritative).
+      try {
+        const authRes = await getActiveRevalidationAuthorisation({ moduleCode, eventCode, channel });
+        setHydratedAuth(authRes.authorisation);
+        setAuthUnusableReason(
+          authRes.authorisation && authRes.authorisation.usable
+            ? null
+            : (authRes.authorisation?.unusable_reason ?? authRes.unusable_reason ?? null),
+        );
+      } catch (e: any) {
+        setHydratedAuth(null);
+        setAuthUnusableReason("authorisation_unavailable");
+      }
+
+      // Hydrate active preparation execution from the server (authoritative).
+      if (active) {
+        try {
+          const prepRes = await getActiveRevalidationPreparation(active.id);
+          setHydratedPrep(prepRes.execution);
+          setPrepUnavailableReason(prepRes.unavailable_reason ?? null);
+        } catch {
+          setHydratedPrep(null);
+          setPrepUnavailableReason("execution_unavailable");
+        }
+      } else {
+        setHydratedPrep(null);
+        setPrepUnavailableReason("no_cycle");
+      }
     } catch (e: any) {
       console.error(e);
     }
