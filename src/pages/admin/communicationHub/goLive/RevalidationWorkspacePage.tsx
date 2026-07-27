@@ -1,83 +1,75 @@
 /**
  * Revalidation workspace — hosts the ControlledRevalidationPanel by itself
- * so operators can run governed re-send cycles without the noise of the
- * Operations lifecycle.
+ * so operators can run governed re-send cycles. Consumes the shared workspace
+ * context — no local RuntimeContractProvider or event state.
  */
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import CommunicationHubWorkspaceShell, {
   CommunicationHubSectionCard,
 } from "../components/CommunicationHubWorkspaceShell";
 import { CommunicationHubGoLiveTabs } from "../components/CommunicationHubGoLiveTabs";
-import { RuntimeContractProvider } from "@/platform/communication-hub/RuntimeContractContext";
-import { ControlledRevalidationPanel } from "../goLive/ControlledRevalidationPanel";
-import ModuleEventSelectors from "../goLive/ModuleEventSelectors";
+import { ControlledRevalidationPanel } from "./ControlledRevalidationPanel";
+import ModuleEventSelectors from "./ModuleEventSelectors";
+import { useCommunicationHubWorkspace } from "./WorkspaceContext";
 import { getEventGoLiveStatus } from "@/platform/communication-hub/eventGoLiveStatusService";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 
 export default function RevalidationWorkspacePage() {
-  const [moduleCode, setModuleCode] = useState<string>("");
-  const [eventCode, setEventCode] = useState<string>("");
-  const channel = "email";
+  const { moduleCode, eventCode, channel, hasSelection, setSelection } = useCommunicationHubWorkspace();
 
   const { data: goLiveStatus } = useQuery({
     queryKey: ["comm-hub-golive-status", moduleCode, eventCode, channel],
     queryFn: () => getEventGoLiveStatus({ moduleCode, eventCode, channel }),
-    enabled: !!moduleCode && !!eventCode,
+    enabled: hasSelection,
   });
 
   const stage6 = goLiveStatus?.stage6 as any;
   const baselineReady = !!stage6?.one_real_email_certification_id;
 
   return (
-    <RuntimeContractProvider>
-      <CommunicationHubWorkspaceShell
-        title="Controlled Revalidation"
-        purpose="Governed re-send cycles that preserve the production baseline."
-        section="Go-Live"
-        risk="high-risk"
-      >
-        <CommunicationHubGoLiveTabs />
+    <CommunicationHubWorkspaceShell
+      title="Controlled Revalidation"
+      purpose="Governed re-send cycles that preserve the production baseline. Controlled delivery remains gated until the hardened runtime is approved."
+      section="Go-Live"
+      risk="high-risk"
+    >
+      <CommunicationHubGoLiveTabs />
 
-        <CommunicationHubSectionCard title="Event context">
-          <ModuleEventSelectors
-            moduleCode={moduleCode}
-            eventCode={eventCode}
-            onModuleChange={(m) => { setModuleCode(m); setEventCode(""); }}
-            onSelect={(r) => {
-              setModuleCode(r.moduleCode);
-              setEventCode(r.eventCode);
-            }}
-          />
-        </CommunicationHubSectionCard>
+      <CommunicationHubSectionCard title="Event context">
+        <ModuleEventSelectors
+          moduleCode={moduleCode}
+          eventCode={eventCode}
+          onModuleChange={(m) => setSelection({ moduleCode: m, eventCode: "" })}
+          onSelect={(r) => setSelection({ moduleCode: r.moduleCode, eventCode: r.eventCode, channel: r.channel })}
+        />
+      </CommunicationHubSectionCard>
 
-        {moduleCode && eventCode && !baselineReady && (
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>No production baseline yet</AlertTitle>
-            <AlertDescription>
-              This event has not completed Stage 6 (Send One Real Email). Revalidation is only available once a
-              production baseline exists. Return to Operations to complete initial certification.
-            </AlertDescription>
-          </Alert>
-        )}
+      {hasSelection && !baselineReady && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>No production baseline yet</AlertTitle>
+          <AlertDescription>
+            This event has not completed Stage 6 (Send One Real Email). Revalidation is only available once a
+            production baseline exists. Return to Operations to complete initial certification.
+          </AlertDescription>
+        </Alert>
+      )}
 
-        {moduleCode && eventCode && baselineReady && (
-          <ControlledRevalidationPanel
-            moduleCode={moduleCode}
-            eventCode={eventCode}
-            channel={channel}
-            productionAnchor={{
-              oreCertificationId: stage6?.one_real_email_certification_id ?? null,
-              verifiedRecipient: stage6?.manual_verified_recipient ?? null,
-              verifiedAt: stage6?.manual_verified_at ?? null,
-              productionLineageId: stage6?.production_lineage_id ?? null,
-              baselineFingerprint: stage6?.evidence_fingerprint_v2 ?? null,
-            }}
-          />
-        )}
-      </CommunicationHubWorkspaceShell>
-    </RuntimeContractProvider>
+      {hasSelection && baselineReady && (
+        <ControlledRevalidationPanel
+          moduleCode={moduleCode}
+          eventCode={eventCode}
+          channel={channel}
+          productionAnchor={{
+            oreCertificationId: stage6?.one_real_email_certification_id ?? null,
+            verifiedRecipient: stage6?.manual_verified_recipient ?? null,
+            verifiedAt: stage6?.manual_verified_at ?? null,
+            productionLineageId: stage6?.production_lineage_id ?? null,
+            baselineFingerprint: stage6?.evidence_fingerprint_v2 ?? null,
+          }}
+        />
+      )}
+    </CommunicationHubWorkspaceShell>
   );
 }
