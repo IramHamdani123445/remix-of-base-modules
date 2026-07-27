@@ -10,6 +10,7 @@ import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLive
 import {
   runAutomationReadinessProbe,
   AUTOMATION_READINESS_CHECK_CODES,
+  type ReadinessProbeBlocker,
 } from "@/platform/communication-hub/automationReadinessProbeService";
 import {
   certifyEventAutomatedProduction,
