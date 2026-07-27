@@ -82,6 +82,14 @@ const RUNTIME_REQUIREMENTS: Record<RuntimeActionCode, readonly string[]> = {
     CAP.baseline,
     CAP.control_settings,
   ],
+  AUTOMATED_PRODUCTION_ARM: [
+    CAP.automation,
+    CAP.automated_readiness,
+    CAP.baseline,
+    CAP.event_certification,
+    CAP.control_settings,
+    CAP.mode_transitions,
+  ],
   AUTOMATED_CANARY: [
     CAP.automation,
     CAP.automated_readiness,
