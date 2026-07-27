@@ -810,6 +810,7 @@ function GoLivePageInner() {
         { label: "Testing & Pilots (advanced)", href: "/admin/communication-hub/pilots" },
       ]}
     >
+      <CommunicationHubGoLiveTabs />
       <RuntimeContractCard />
       <DiagnosticBundlePanel
         moduleCode={session.moduleCode}
