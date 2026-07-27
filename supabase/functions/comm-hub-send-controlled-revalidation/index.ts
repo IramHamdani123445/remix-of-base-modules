@@ -58,7 +58,8 @@ interface Envelope {
   action: string;
   status:
     | "BLOCKED" | "RESERVED" | "PROVIDER_ACCEPTED"
-    | "PROVIDER_REJECTED" | "RECOVERED";
+    | "PROVIDER_REJECTED" | "RECOVERED"
+    | "READY_FOR_PROVIDER" | "FAILED_PRE_PROVIDER";
   passed: boolean;
   send_context: "CONTROLLED_REVALIDATION";
   cycle_id: string | null;
@@ -68,6 +69,9 @@ interface Envelope {
   request_id: string | null;
   message_id: string | null;
   delivery_attempt_id: string | null;
+  execution_id: string | null;
+  trace_id: string | null;
+  provider_boundary_state: "NOT_ENTERED" | "ENTERED" | null;
   provider_call_attempted: boolean;
   provider_name: string | null;
   provider_message_id: string | null;
