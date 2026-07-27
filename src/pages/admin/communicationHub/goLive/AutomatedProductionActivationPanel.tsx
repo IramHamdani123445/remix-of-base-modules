@@ -10,6 +10,7 @@ import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLive
 import {
   runAutomationReadinessProbe,
   AUTOMATION_READINESS_CHECK_CODES,
+  type ReadinessProbeBlocker,
 } from "@/platform/communication-hub/automationReadinessProbeService";
 import {
   certifyEventAutomatedProduction,
@@ -37,6 +38,7 @@ export function AutomatedProductionActivationPanel({
   onChanged,
 }: Props) {
   const [probing, setProbing] = useState(false);
+  const [probeError, setProbeError] = useState<ReadinessProbeBlocker | null>(null);
   const [certReason, setCertReason] = useState("");
   const [certPhrase, setCertPhrase] = useState("");
   const [certifying, setCertifying] = useState(false);
@@ -63,10 +65,17 @@ export function AutomatedProductionActivationPanel({
   async function handleProbe() {
     setProbing(true);
     try {
-      await runAutomationReadinessProbe({ moduleCode, eventCode, channel });
-      toast.success("Automation readiness probe complete");
+      const result = await runAutomationReadinessProbe({ moduleCode, eventCode, channel });
+      if (result.ok === false) {
+        setProbeError(result.blocker);
+        toast.error(`Readiness probe error: ${result.blocker.code}`);
+      } else {
+        setProbeError(null);
+        toast.success("Automation readiness probe complete");
+      }
       onChanged();
     } catch (e: any) {
+      setProbeError({ code: "READINESS_PROBE_TRANSPORT_ERROR", detail: e?.message });
       toast.error(e?.message ?? "Readiness probe failed");
     } finally {
       setProbing(false);
@@ -199,10 +208,40 @@ export function AutomatedProductionActivationPanel({
         <div className="flex items-center gap-2">
           <Radar className="h-4 w-4" />
           <div className="font-medium">1. Automation readiness probes (9 checks)</div>
-          <Badge className="ml-auto" variant={stage8?.readiness_all_ok_and_fresh ? "default" : "secondary"}>
-            {stage8?.readiness_all_ok_and_fresh ? "all fresh & OK" : "incomplete or stale"}
+          <Badge
+            className="ml-auto"
+            variant={
+              probeError ? "destructive" : stage8?.readiness_all_ok_and_fresh ? "default" : "secondary"
+            }
+          >
+            {probeError
+              ? "probe ERROR"
+              : stage8?.readiness_all_ok_and_fresh
+                ? "all fresh & OK"
+                : "incomplete or stale"}
           </Badge>
         </div>
+        {probeError && (
+          <Alert variant="destructive">
+            <AlertTitle className="font-mono text-xs">{probeError.code}</AlertTitle>
+            <AlertDescription className="text-xs space-y-1">
+              {probeError.object_name && (
+                <div>
+                  <span className="text-muted-foreground">object:</span>{" "}
+                  <span className="font-mono">{probeError.object_name}</span>
+                </div>
+              )}
+              {probeError.detail && <div>{probeError.detail}</div>}
+              {probeError.fix_action && (
+                <div className="text-muted-foreground">Fix: {probeError.fix_action}</div>
+              )}
+              <div className="text-muted-foreground">
+                Automated certification remains disabled. Operating mode is unchanged. No readiness
+                PASS rows were created.
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
           {AUTOMATION_READINESS_CHECK_CODES.map((code) => {
             const r = readinessByCode.get(code);
@@ -210,7 +249,9 @@ export function AutomatedProductionActivationPanel({
               <div key={code} className="rounded border p-2 flex items-center justify-between">
                 <span className="font-mono">{code}</span>
                 <span>
-                  {r ? (
+                  {probeError ? (
+                    <Badge variant="destructive">ERROR</Badge>
+                  ) : r ? (
                     <Badge variant={r.result && r.fresh ? "default" : "destructive"}>
                       {r.result ? "OK" : "FAIL"}{r.fresh ? "" : " · stale"}
                     </Badge>
@@ -227,6 +268,7 @@ export function AutomatedProductionActivationPanel({
           Run readiness probes
         </Button>
       </div>
+
 
       {/* Action 2 — Certify */}
       <div className="rounded-md border p-4 space-y-3">
