@@ -42224,6 +42224,7 @@ export type Database = {
           message_id: string | null
           metadata: Json
           operator_id: string
+          preparation_version: number
           production_lineage_id: string | null
           provider_boundary_state: string
           provider_call_attempted: boolean
@@ -42258,6 +42259,7 @@ export type Database = {
           message_id?: string | null
           metadata?: Json
           operator_id: string
+          preparation_version?: number
           production_lineage_id?: string | null
           provider_boundary_state?: string
           provider_call_attempted?: boolean
@@ -42292,6 +42294,7 @@ export type Database = {
           message_id?: string | null
           metadata?: Json
           operator_id?: string
+          preparation_version?: number
           production_lineage_id?: string | null
           provider_boundary_state?: string
           provider_call_attempted?: boolean
@@ -96485,9 +96488,9 @@ export type Database = {
           p_current_fingerprint_v2: string
           p_cycle_id: string
           p_event_certification_id: string
-          p_idempotency_key: string
           p_metadata?: Json
           p_operator_id: string
+          p_preparation_version: number
           p_production_lineage_id: string
           p_provider_id: string
           p_recipient_policy_version: string
@@ -96498,7 +96501,9 @@ export type Database = {
           p_template_version_id: string
         }
         Returns: {
+          canonical_idempotency_key: string
           execution_id: string
+          preparation_version: number
           reused: boolean
           state: string
         }[]

@@ -318,35 +318,42 @@ Deno.serve(async (req) => {
     }
 
     // 3. Bind durable execution via internal service-role RPC.
-    // A4.1.2 §4 — SERVER-DERIVED IDEMPOTENCY. Any client-supplied idempotency
-    // key is intentionally IGNORED for production preparation. The key is
-    // derived from (cycle_id, authorisation_id, preparation_version) so that
-    // a different browser-generated key can never create a competing
-    // execution. preparation_version defaults to 1 until the numeric column
-    // migration lands in the next slice; the derivation format is stable.
+    // A4.1.2B §2/§4 — DATABASE-DERIVED IDEMPOTENCY.
+    // The Edge Function passes only the preparation_version (defaults to 1).
+    // The DB derives the canonical key crev-prep:<cycle>:<auth>:<version> and
+    // enforces at-most-one active pre-provider execution per cycle+version
+    // via ux_chre_active_per_cycle_version. Any client-supplied key on the
+    // request body is ignored and never forwarded.
     const preparationVersion = 1;
-    const idempotencyKey = `crev-prep:${cycleId}:${authorisationId}:${preparationVersion}`;
+    // Prefer the resolver-derived provider so preparation is truly
+    // server-authoritative. Fall back to the lookup only if absent.
+    const providerFromContext =
+      (ctx.provider_configuration && ctx.provider_configuration.provider_id)
+        || null;
+    const boundProviderId = providerFromContext ?? providerId;
     const prepRuntimeBuild = RUNTIME_BUILD;
     const { data: prepData, error: prepErr } = await admin
       .rpc("_comm_hub_revalidation_prepare_execution", {
         p_cycle_id: cycleId,
         p_authorisation_id: authorisationId,
         p_operator_id: operatorId,
-        p_idempotency_key: idempotencyKey,
+        p_preparation_version: preparationVersion,
         p_event_certification_id: ctx.baseline_event_certification_id ?? null,
         p_production_lineage_id: ctx.production_lineage_id ?? null,
         p_baseline_ore_certification_id: ctx.baseline_ore_certification_id ?? null,
         p_baseline_fingerprint_v2: ctx.baseline_fingerprint_v2 ?? null,
         p_current_fingerprint_v2: ctx.current_fingerprint_v2 ?? null,
-        p_template_version_id: null,
-        p_template_manifest_hash: null,
-        p_sender_profile_id: null,
-        p_recipient_policy_version: null,
+        p_template_version_id: ctx.template?.version_id ?? null,
+        p_template_manifest_hash: ctx.template?.manifest_hash ?? null,
+        p_sender_profile_id: ctx.sender?.profile_id ?? null,
+        p_recipient_policy_version: ctx.recipient?.policy_version ?? null,
         p_recipient_set_hash: ctx.recipient_set_hash ?? null,
-        p_provider_id: providerId,
+        p_provider_id: boundProviderId,
         p_runtime_build: prepRuntimeBuild,
         p_metadata: { module_code: ctx.module_code, event_code: ctx.event_code,
-                      channel: ctx.channel },
+                      channel: ctx.channel,
+                      preparation_version: preparationVersion,
+                      canonical_idempotency_key: ctx.canonical_idempotency_key ?? null },
       });
     if (prepErr) {
       addBlocker("prepare_execution_failed", "execution", prepErr.message);
