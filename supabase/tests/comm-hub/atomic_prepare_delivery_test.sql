@@ -54,8 +54,9 @@ DECLARE
 BEGIN
   SELECT id INTO v_cycle_id
     FROM public.communication_hub_revalidation_cycle
-   WHERE status IN ('READY_FOR_CONTROLLED_EMAIL','AWAITING_INBOX_CONFIRMATION',
-                    'DRAFT','ASSESSED','AUTHORISED')
+   WHERE status IN ('READY_FOR_CONTROLLED_EMAIL','EMAIL_AUTHORISED',
+                    'AWAITING_INBOX_CONFIRMATION','DRAFT',
+                    'REVALIDATION_REQUIRED','NON_SENDING_CHECKS')
    ORDER BY updated_at DESC LIMIT 1;
   IF v_cycle_id IS NULL THEN
     RAISE EXCEPTION 'FIXTURE_MISSING: no revalidation cycle available — seed a fixture cycle before running this suite (SKIP is not allowed).';
