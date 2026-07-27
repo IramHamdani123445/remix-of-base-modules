@@ -38,6 +38,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { RuntimeContractActionGate } from "@/pages/admin/communicationHub/goLive/RuntimeContractActionGate";
 import {
   fetchRealEmailGate,
   type RealEmailGateState,
@@ -629,10 +630,12 @@ export function OneRealEmailPanel({
         </label>
       </div>
 
-      <Button onClick={send} disabled={buttonDisabled}>
-        {sending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
-        Send One Real Email
-      </Button>
+      <RuntimeContractActionGate action="ONE_REAL_EMAIL" actionLabel="Send one real email">
+        <Button onClick={send} disabled={buttonDisabled}>
+          {sending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Send className="h-4 w-4 mr-1" />}
+          Send One Real Email
+        </Button>
+      </RuntimeContractActionGate>
 
       {/* Stage 6 readiness checklist — always visible; only failed checks
           render in red. Inline actions appear beside actionable blockers. */}

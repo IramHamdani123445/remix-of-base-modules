@@ -1,83 +1,78 @@
-# Communication Hub — Controlled Revalidation & Re-Send
+## Goal
 
-Addendum to the Production Go-Live epic. Existing Automated Readiness work stays in place; this workstream lands after it. Nothing here sends an email — implementation stops before the first controlled revalidation email and hands off to an operator.
+Preserve backend safety, readiness contract, and A4.1 durable preparation. Simplify operator UI by splitting one 1,445-line Operations page into four workspaces sharing a single `RuntimeContractProvider`, and wire `RuntimeContractActionGate` around actual provider-touching buttons (not panels). No provider calls, no schema changes, no mode/anchor/baseline mutations.
 
-## Invariants (must not change)
+## Information architecture
 
-- Event certification `732386ff-5efc-49b2-acf9-8a619f734214`
-- Authoritative ORE `39c0f243-d6df-40cd-8b45-52edf7ff2a24`
-- Production lineage `ecf8e376-e245-450f-b44b-1da5bf895722`
-- Lifecycle `LIVE_MANUAL`, mode `MANUAL_PRODUCTION`, automation `STANDBY`
-- No overwrite of historical confirmations, no auto-selection of newer ORE, no reuse of old idempotency keys, no automatic re-Arm, no automatic promotion.
+Introduce a shared `CommunicationHubWorkspace` shell with tabs:
 
-## Deliverables
+```text
+Operations | Readiness | Revalidation | Audit & Evidence
+```
 
-### 1. Data model (single migration)
+Routes (added to `src/config/routes.ts` and mounted in the app router):
 
-- `communication_hub_revalidation_cycle` — one row per cycle, unique partial index enforcing at most one unresolved cycle per (module, event, channel). Full field set per spec section 2, including baseline + current `evidence_core_v2` / `evidence_fingerprint_v2`, `changed_components`, `runtime_changes`, `required_validation_level`, `required_stages`, promotion fields, `superseded_cycle_id`.
-- `communication_hub_revalidation_stage_result` — child evidence, one row per stage code, linked to the source certification / observation / canary id where applicable.
-- `communication_hub_runtime_release` — additive, server-owned release manifest (git SHA, component build ids, deployed_at, affected surfaces, revalidation impact, deployed_by, reason). No secrets.
-- `communication_hub_revalidation_send_authorisation` — one-use, cycle-scoped, recipient-scoped, fingerprint-scoped grant with expiry and consumed_at. Server constraint: at most one provider-contacting execution per cycle.
-- Enums for `purpose`, `status`, `stage_code`, `required_validation_level`.
-- GRANTs to `authenticated` / `service_role`; RLS scoped to platform admins via `has_role`.
-- All promotion / stage rows immutable via triggers (append-only + status-transition guard).
+- `/admin/communication-hub/go-live` — Operations (simplified)
+- `/admin/communication-hub/readiness` — Readiness Center
+- `/admin/communication-hub/revalidation` — Revalidation workspace
+- `/admin/communication-hub/audit` — Audit & Evidence
 
-### 2. Server RPCs (all `SECURITY DEFINER`, admin-only)
+The shell mounts `RuntimeContractProvider` once at the layout level so all four tabs consume the same context — no duplicate contract fetch.
 
-- `assess_comm_hub_revalidation_requirement(module, event, channel, declared_change_categories, runtime_release_reference)` — non-mutating. Compares baseline vs current `evidence_core_v2`, fingerprints, lineage, template hash, sender, recipient policy, provider, payload schema, review/send policy versions and runtime release. Returns the full envelope from spec §4 including `production_may_continue`, `event_must_be_suspended`, `automation_must_be_disarmed`, plus `required_stages` derived from the section 5 rule matrix (levels `NONE` → `AUTOMATED_CANARY`).
-- `start_comm_hub_revalidation_cycle(...)` — creates a DRAFT/ASSESSING cycle bound to a fresh assessment result; rejects if an unresolved cycle exists.
-- `record_comm_hub_revalidation_stage(cycle_id, stage_code, evidence_ids...)` — writes a stage result, enforces stage prerequisites, never copies historical evidence unless the assessment marked that stage unaffected.
-- `issue_comm_hub_revalidation_send_authorisation(cycle_id, recipient, current_fingerprint, typed_phrase)` — creates the one-use grant. Requires typed phrase `SEND ONE CONTROLLED REVALIDATION EMAIL`. Rejects if ARMED, EMERGENCY_STOP, batch/bulk enabled, or if a provider-contacting execution already exists for the cycle.
-- `record_comm_hub_revalidation_provider_result(cycle_id, execution_id, outcome)` — reuses the One Real Email transport results; closes the grant.
-- `record_comm_hub_revalidation_inbox_confirmation(cycle_id, status)` — CONFIRMED / NOT_RECEIVED. NOT_RECEIVED closes the cycle and requires a new cycle for another email.
-- `void_comm_hub_revalidation_cycle(cycle_id, reason)` — mirror of the manual production observation voider; rejects if provider evidence exists.
-- `promote_comm_hub_revalidation_baseline(cycle_id, typed_phrase)` — typed phrase `PROMOTE REVALIDATION BASELINE`. Validates all required stages, fingerprint identity, inbox CONFIRMED, no provider ambiguity. Atomically: writes immutable audit of old event cert / ORE / lineage, creates new lineage + certified revision, binds new ORE + current fingerprint, updates projection, supersedes prior baseline authority, clears `REVALIDATION_REQUIRED`. When event was automated: invalidates readiness + Arm authority, requires fresh readiness + canary + explicit re-Arm.
-- `mark_comm_hub_revalidation_cycle_supplemental(cycle_id)` — outcome A: `VERIFIED_SUPPLEMENTAL`, no anchor change.
-- `record_comm_hub_runtime_release(...)` — additive release manifest write; used by the assessment RPC.
+## Operations page (rewrite)
 
-### 3. Send-context reuse (no second dispatcher)
+New `OperationsPage.tsx` replaces the body of `GoLivePage.tsx`. Sections in order:
 
-Extend the existing One Real Email transport with an explicit `send_context = 'CONTROLLED_REVALIDATION'` (and `revalidation_cycle_id`). Requires the one-use revalidation authorisation instead of the standard ORE grant. Initial Stage 6 keeps its existing `SEND_ONE_REAL_EMAIL` contract untouched.
+1. Compact event selector (reuses `ModuleEventSelectors`).
+2. Current-state header (mode, automation state, lifecycle status, anchor status, last delivery) — derived from existing `goLiveStateResolver` + shared runtime-contract context.
+3. Compact readiness strip: single pill `READY | BLOCKED | ACTION_REQUIRED | PROCESSING`, blocker count, one-line summary, "Open Readiness Center" link. Derived via new presentation helper `useOperationsReadinessSummary()` — no new DB authority.
+4. Next Action card — exactly one primary CTA from server-authoritative state.
+5. Compact lifecycle stepper — only current stage expanded, completed collapsed with one-line summary, future collapsed.
+6. Safety controls row: Emergency Stop, disarm, recovery — always visible regardless of contract status.
+7. Compact Revalidation Summary card (status, reason, level, next action, provider-touched, inbox confirmed, "Open Revalidation" link).
 
-### 4. UI
+Detailed panels (RuntimeContractCard, DiagnosticBundlePanel, GoLiveGateMonitor, LegacyBaselineAttestationPanel, full ReadinessSummary, full ControlledRevalidationPanel) are removed from Operations.
 
-Under `/admin/communication-hub/go-live`, once initial Stage 6 is CONFIRMED:
+## Readiness Center
 
-- New `ProductionCertifiedEmailPanel` — shows pinned ORE, verified recipient, verified date, lineage, baseline fingerprint. No "Resend" button.
-- New `CurrentConfigurationPanel` — fingerprint match/drift, changed components, runtime release deltas.
-- New `RevalidationCycleWizard` — 8 steps per spec §9. Step 5 requires the typed phrase and shows the required-stage plan derived server-side.
-- OPERATOR_ASSURANCE (no drift) shows the exact copy from the spec; drift shows the "production remains blocked" copy.
-- New `RevalidationHistoryPanel` per spec §11. Later confirmed emails render visibly distinct from the current production anchor.
-- Route stays server-authoritative — all wizard state derives from the RPCs, no browser authority.
+New `ReadinessCenterPage.tsx` composed of existing components in ten collapsible sections (overall, current-action, configuration, provider/sender, template/policy, baseline convergence, Manual Production, Automated Production, CI/runtime evidence, advanced diagnostics). Fingerprints and raw JSON collapsed by default behind "Advanced diagnostics".
 
-### 5. Tests
+## Revalidation workspace
 
-Add `src/__tests__/comm-hub/controlledRevalidation.test.ts` covering all 24 cases in spec §12. Includes a fixture that fails if any test triggers a provider call.
+New `RevalidationPage.tsx` mounts the existing `ControlledRevalidationPanel` in full, including assessment, reassessment, cycle creation, authorisation, controlled send, recovery, inbox confirmation, promotion prep, history.
 
-### 6. Stop point (mandatory)
+## Audit & Evidence
 
-Implementation halts after: migrations applied, RPCs deployed, UI shipped, tests green, one cycle in `READY_FOR_CONTROLLED_EMAIL` state for the pilot. No email sent. No anchor change. No re-Arm. Report includes: commit SHA, migration ids, current production anchor, detected change categories, recommended stages, cycle id/status, tests executed, deployment evidence, exact operator action required.
+New `AuditEvidencePage.tsx` surfaces execution IDs, request IDs, message IDs, delivery-attempt IDs, provider message IDs, event certification IDs, ORE IDs, lineage IDs, evidence fingerprints, attestation history, raw diagnostic JSON, runtime build IDs, promotion history — using existing services (`runtimeContractService`, evidence snapshot RPCs already available).
 
-## Technical notes
+## Button-level gating
 
-- Reuse `_comm_hub_fingerprint_evidence_core_v2` — no new hashing helper.
-- Reuse `communication_hub_control_settings` for mode/automation gate reads.
-- Reuse `notification_providers` resolver for provider identity.
-- Reuse `_normalize_comm_hub_manual_production_controls` for gate validation.
-- Reuse existing legal / audit tables — audit rows are written via `_comm_hub_audit_write` where present.
-- All new tables use `updated_at` triggers; all status transitions enforced by trigger, not application code.
-- No changes to `src/integrations/supabase/*` (auto-generated).
-- Automated Readiness work in progress is untouched; the assessment RPC just reads its outputs.
+Remove any remaining panel-level `RuntimeContractGate` wraps. Wire `RuntimeContractActionGate` around exactly these buttons with a compact blocker note ("Action unavailable — N readiness requirements need attention. Open Readiness Center"):
 
-## Sequencing
+- `ONE_REAL_EMAIL` — send button inside `OneRealEmailPanel`.
+- `MANUAL_PRODUCTION_SEND` — dispatch button inside `ManualProductionObservationPanel`.
+- `CONTROLLED_REVALIDATION_AUTHORISATION` — authorise button inside `ControlledRevalidationPanel`.
+- `CONTROLLED_REVALIDATION_SEND` — controlled send button inside `ControlledRevalidationPanel`.
+- `AUTOMATED_CANARY` — canary/activation action inside `AutomatedProductionActivationPanel`.
 
-1. Migration: enums + 4 new tables + triggers + GRANTs + RLS.
-2. Migration: 9 RPCs + immutability triggers on stage results.
-3. Migration: extend One Real Email transport for `send_context`.
-4. Migration: runtime release manifest table + `record_comm_hub_runtime_release`.
-5. Frontend: services (`revalidationCycleService.ts`, `changeAssessmentService.ts`, `runtimeReleaseService.ts`).
-6. Frontend: 4 panels + 8-step wizard, slotted into `GoLivePage.tsx` under Stage 6 once CONFIRMED.
-7. Tests: 24-case suite.
-8. Bootstrap: seed one DRAFT cycle for `APPEALS / APPEAL_RECEIVED_NOTICE / email`, run assessment against current runtime, advance to `READY_FOR_CONTROLLED_EMAIL`, and stop.
+Diagnostics, reassessment, history, recovery, reconciliation, inbox confirmation, Emergency Stop, disarm, evidence links stay ungated. `RuntimeContractActionGate` already supports `suppressBlockerNote` for compact mode; extend it with a `variant="compact"` that shows the one-line message + link instead of the full failure list.
 
-Awaiting approval to build.
+## Presentation-only summary
+
+Add `src/pages/admin/communicationHub/shared/useOperationsReadinessSummary.ts` returning `{ overall_status, current_action, current_action_permitted, blocker_count, blocker_summary, readiness_link, recovery_required, inbox_confirmation_required }` — pure derivation from existing runtime-contract context + `goLiveStateResolver`. No new fetch, no new RPC.
+
+## Tests
+
+`src/pages/admin/communicationHub/__tests__/uiSimplification.test.tsx` — 15 tests covering: compact current-state, only current stage expanded, completed stages summarized, future collapsed, no `RuntimeContractCard` on Operations, `DiagnosticBundlePanel` on Readiness, `ControlledRevalidationPanel` on Revalidation, execution IDs on Audit, five buttons individually gated, blocked send preserves recovery/inbox/Emergency Stop/disarm, shared provider (single fetch spy), no provider action on render/navigation.
+
+## Stop point
+
+No provider boundary entry, no authorisation issuance, no mode change, no Arm, no canary, no baseline correction. Preserve pilot state.
+
+## Technical details
+
+Files created: `OperationsPage.tsx`, `ReadinessCenterPage.tsx`, `RevalidationPage.tsx`, `AuditEvidencePage.tsx`, `CommunicationHubWorkspace.tsx` (tab shell + provider), `useOperationsReadinessSummary.ts`, `uiSimplification.test.tsx`, small `RevalidationSummaryCard.tsx`, `LifecycleStepper.tsx`, `NextActionCard.tsx`, `CurrentStateHeader.tsx`, `ReadinessStrip.tsx`.
+
+Files edited: `src/config/routes.ts` (four routes), app router (mount workspace + children), `GoLivePage.tsx` (thin wrapper delegating to `OperationsPage` under the shell for back-compat), `RuntimeContractActionGate.tsx` (add `variant="compact"` with readiness-center link), `OneRealEmailPanel.tsx`, `ManualProductionObservationPanel.tsx`, `ControlledRevalidationPanel.tsx` (two gates), `AutomatedProductionActivationPanel.tsx`.
+
+Verification: `tsgo` typecheck + `bunx vitest run src/pages/admin/communicationHub` + existing 76 Comm Hub tests must remain green.

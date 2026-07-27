@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, ShieldCheck, Zap, ZapOff, Radar } from "lucide-react";
 import { toast } from "sonner";
+import { RuntimeContractActionGate } from "./RuntimeContractActionGate";
 import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLiveStatusService";
 import {
   runAutomationReadinessProbe,
@@ -444,13 +445,18 @@ export function AutomatedProductionActivationPanel({
           disabled={arming || armed || !globalAutomatedActive}
         />
         <div className="flex gap-2">
-          <Button
-            onClick={handleArm}
-            disabled={arming || armed || !globalAutomatedActive || armPhrase !== AUTOMATED_ARM_TYPED_PHRASE || armReason.trim().length < 6}
+          <RuntimeContractActionGate
+            action="AUTOMATED_CANARY"
+            actionLabel="Arm automation / automated canary"
           >
-            {arming && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            ARM automation
-          </Button>
+            <Button
+              onClick={handleArm}
+              disabled={arming || armed || !globalAutomatedActive || armPhrase !== AUTOMATED_ARM_TYPED_PHRASE || armReason.trim().length < 6}
+            >
+              {arming && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              ARM automation
+            </Button>
+          </RuntimeContractActionGate>
           {armed && (
             <Button variant="destructive" onClick={handleDisarm} disabled={disarming}>
               {disarming && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

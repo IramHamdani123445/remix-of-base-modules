@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Send, CheckCircle2, RefreshCcw, AlertTriangle, Inbox, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { RuntimeContractActionGate } from "./RuntimeContractActionGate";
 import type { EventGoLiveStatus } from "@/platform/communication-hub/eventGoLiveStatusService";
 import {
   runManualProductionObservation,
@@ -296,21 +297,26 @@ export function ManualProductionObservationPanel({
           )}
 
           <div className="flex items-center gap-2">
-            <Button
-              onClick={runPrimaryAction}
-              disabled={primaryDisabled}
-              title={derived.blocker ?? undefined}
-              data-testid="observation-primary-action"
-              data-action={derived.action}
-              data-state={derived.state}
+            <RuntimeContractActionGate
+              action="MANUAL_PRODUCTION_SEND"
+              actionLabel="Manual Production dispatch"
             >
-              {(primaryLoading || pendingObservation.recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {derived.action === "FINALIZE" && !primaryLoading && <RefreshCcw className="h-4 w-4 mr-2" />}
-              {derived.action === "CHECK_RECOVERY" && !primaryLoading && <RefreshCcw className="h-4 w-4 mr-2" />}
-              {derived.action === "DISPATCH" && !primaryLoading && <Send className="h-4 w-4 mr-2" />}
-              {derived.action === "CONFIRM_INBOX" && <Inbox className="h-4 w-4 mr-2" />}
-              {derived.primaryLabel}
-            </Button>
+              <Button
+                onClick={runPrimaryAction}
+                disabled={primaryDisabled}
+                title={derived.blocker ?? undefined}
+                data-testid="observation-primary-action"
+                data-action={derived.action}
+                data-state={derived.state}
+              >
+                {(primaryLoading || pendingObservation.recovering) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                {derived.action === "FINALIZE" && !primaryLoading && <RefreshCcw className="h-4 w-4 mr-2" />}
+                {derived.action === "CHECK_RECOVERY" && !primaryLoading && <RefreshCcw className="h-4 w-4 mr-2" />}
+                {derived.action === "DISPATCH" && !primaryLoading && <Send className="h-4 w-4 mr-2" />}
+                {derived.action === "CONFIRM_INBOX" && <Inbox className="h-4 w-4 mr-2" />}
+                {derived.primaryLabel}
+              </Button>
+            </RuntimeContractActionGate>
             {!derived.primaryEnabled && derived.blocker && (
               <span className="text-xs text-muted-foreground">
                 Blocked by <code className="font-mono">{derived.blocker}</code>
