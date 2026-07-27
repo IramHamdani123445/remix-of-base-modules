@@ -1,26 +1,23 @@
 /**
- * Controlled Revalidation — send exactly one revalidation email.
+ * Controlled Revalidation — canonical atomic preparation runtime (A4.1.3).
  *
- * Consumed by ControlledRevalidationPanel after an admin has issued a
- * one-use send authorisation for a revalidation cycle. This function is
- * the ONLY runtime path that turns a revalidation authorisation into a
- * provider call. It never sends more than one provider request per
- * cycle, never mutates the production anchor, and never reopens
- * Stage 6.
+ * This Edge Function is service-role only and NEVER contacts an email
+ * provider. Provider boundary remains sealed until A4.2. All durable
+ * evidence (request / recipient / message / trace / trace-step / delivery
+ * attempt) is created inside ONE database transaction by the canonical
+ * RPC `_comm_hub_revalidation_prepare_delivery`. If any step fails the
+ * sub-transaction is rolled back and the execution row is transitioned
+ * to FAILED_PRE_PROVIDER — no orphans.
  *
- * Send context: CONTROLLED_REVALIDATION
+ * Actions:
+ *   - PREPARE_CONTROLLED_REVALIDATION           — canonical atomic prepare
+ *   - RETRY_CONTROLLED_REVALIDATION_PREPARATION — new preparation version
+ *   - RECOVER_CONTROLLED_REVALIDATION_PREPARATION — admin no-send recovery
+ *   - SEND_CONTROLLED_REVALIDATION_EMAIL        — HARD STOP (403)
+ *   - probe                                     — no-side-effect health probe
  */
-
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "npm:@supabase/supabase-js@2.58.0";
-import {
-  lookupActiveEmailProvider,
-  redactProviderForLog,
-} from "../_shared/communication-hub/provider-lookup.ts";
-import {
-  sendEmailViaGuardedTransport,
-  isGuardRefusal,
-} from "../_shared/communication-hub/transport-guard.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -33,14 +30,12 @@ const CORS: Record<string, string> = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const ACTION_SEND = "SEND_CONTROLLED_REVALIDATION_EMAIL";
-const ACTION_RECOVER = "RECOVER";
-const ACTION_PROBE = "probe";
-// A4.1 durable preparation. Never invokes the provider.
 const ACTION_PREPARE = "PREPARE_CONTROLLED_REVALIDATION";
-const SEND_CONTEXT = "CONTROLLED_REVALIDATION";
-const RUNTIME_BUILD =
-  "comm-hub-send-controlled-revalidation@2026-07-27-a4.1.2B-finalize";
+const ACTION_RETRY = "RETRY_CONTROLLED_REVALIDATION_PREPARATION";
+const ACTION_RECOVER = "RECOVER_CONTROLLED_REVALIDATION_PREPARATION";
+const ACTION_SEND = "SEND_CONTROLLED_REVALIDATION_EMAIL";
+const ACTION_PROBE = "probe";
+const RUNTIME_BUILD = "comm-hub-send-controlled-revalidation@2026-07-27-a4.1.3-atomic";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -48,74 +43,55 @@ function json(body: unknown, status = 200): Response {
     headers: { "content-type": "application/json", ...CORS },
   });
 }
-function errStr(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
+const errStr = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 interface Envelope {
-  schema_version: "controlled-revalidation.v1";
+  schema_version: "controlled-revalidation.v2";
   runtime_build: string;
   action: string;
   status:
-    | "BLOCKED" | "RESERVED" | "PROVIDER_ACCEPTED"
-    | "PROVIDER_REJECTED" | "RECOVERED"
-    | "READY_FOR_PROVIDER" | "FAILED_PRE_PROVIDER";
+    | "READY_FOR_PROVIDER" | "FAILED_PRE_PROVIDER" | "RECOVERY_REQUIRED"
+    | "RECOVERED" | "BLOCKED";
   passed: boolean;
   send_context: "CONTROLLED_REVALIDATION";
   cycle_id: string | null;
-  cycle_status: string | null;
   authorisation_id: string | null;
-  authorisation_status: string | null;
+  execution_id: string | null;
   request_id: string | null;
   message_id: string | null;
-  delivery_attempt_id: string | null;
-  execution_id: string | null;
+  recipient_id: string | null;
   trace_id: string | null;
-  provider_boundary_state: "NOT_ENTERED" | "ENTERED" | null;
-  provider_call_attempted: boolean;
-  provider_name: string | null;
-  provider_message_id: string | null;
-  provider_status: string | null;
-  provider_result_recorded: boolean;
+  delivery_attempt_id: string | null;
+  preparation_version: number | null;
+  canonical_idempotency_key: string | null;
   reused_existing_execution: boolean;
+  provider_boundary_state: "NOT_ENTERED";
+  provider_call_attempted: false;
   message: string;
-  blockers: Array<{ code: string; stage: string; message?: string; detail?: unknown }>;
-  warnings: Array<Record<string, unknown>>;
+  blockers: Array<{ code: string; stage?: string; message?: string; detail?: unknown }>;
+  warnings: unknown[];
+  failure_code: string | null;
+  failure_detail: unknown | null;
   started_at: string;
   completed_at: string | null;
-  provider_redacted: Record<string, unknown> | null;
 }
 
 function emptyEnvelope(action: string, started: string): Envelope {
   return {
-    schema_version: "controlled-revalidation.v1",
+    schema_version: "controlled-revalidation.v2",
     runtime_build: RUNTIME_BUILD,
-    action,
-    status: "BLOCKED",
-    passed: false,
+    action, status: "BLOCKED", passed: false,
     send_context: "CONTROLLED_REVALIDATION",
-    cycle_id: null,
-    cycle_status: null,
-    authorisation_id: null,
-    authorisation_status: null,
-    request_id: null,
-    message_id: null,
-    delivery_attempt_id: null,
-    execution_id: null,
-    trace_id: null,
-    provider_boundary_state: null,
-    provider_call_attempted: false,
-    provider_name: null,
-    provider_message_id: null,
-    provider_status: null,
-    provider_result_recorded: false,
+    cycle_id: null, authorisation_id: null, execution_id: null,
+    request_id: null, message_id: null, recipient_id: null,
+    trace_id: null, delivery_attempt_id: null,
+    preparation_version: null, canonical_idempotency_key: null,
     reused_existing_execution: false,
-    message: "",
-    blockers: [],
-    warnings: [],
-    started_at: started,
-    completed_at: null,
-    provider_redacted: null,
+    provider_boundary_state: "NOT_ENTERED",
+    provider_call_attempted: false,
+    message: "", blockers: [], warnings: [],
+    failure_code: null, failure_detail: null,
+    started_at: started, completed_at: null,
   };
 }
 
@@ -136,30 +112,21 @@ Deno.serve(async (req) => {
   };
   const finalize = (status: Envelope["status"], http = 200, message?: string): Response => {
     env.status = status;
-    env.passed = status === "PROVIDER_ACCEPTED" || status === "RECOVERED"
-      || status === "RESERVED" || status === "READY_FOR_PROVIDER";
+    env.passed = status === "READY_FOR_PROVIDER" || status === "RECOVERED";
     if (message) env.message = message;
     env.completed_at = new Date().toISOString();
     return json(env, http);
   };
 
-  // ---- Probe (no side effects) ----
-  if (action === ACTION_PROBE) {
-    env.message = "probe_ok";
-    return finalize("RECOVERED", 200, "probe_ok");
-  }
+  if (action === ACTION_PROBE) return finalize("RECOVERED", 200, "probe_ok");
 
-  if (
-    action !== ACTION_SEND &&
-    action !== ACTION_RECOVER &&
-    action !== ACTION_PREPARE
-  ) {
+  if (![ACTION_PREPARE, ACTION_RETRY, ACTION_RECOVER, ACTION_SEND].includes(action)) {
     addBlocker("action_invalid", "input_validation",
-      `action must be ${ACTION_SEND}, ${ACTION_RECOVER}, ${ACTION_PREPARE}, or ${ACTION_PROBE}`);
+      `action must be one of ${ACTION_PREPARE}, ${ACTION_RETRY}, ${ACTION_RECOVER}, ${ACTION_SEND}, or ${ACTION_PROBE}`);
     return finalize("BLOCKED", 400);
   }
 
-  // ---- Auth ----
+  // ---- Auth (JWT-pinned Comm Hub admin) ----
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.startsWith("Bearer ") || authHeader.length < 10) {
     addBlocker("authentication_header_missing", "auth");
@@ -189,20 +156,16 @@ Deno.serve(async (req) => {
 
   // Prove operator is a Comm Hub admin as seen by PostgREST.
   {
-    const authCtxResp = await fetch(
+    const r = await fetch(
       `${SUPABASE_URL}/rest/v1/rpc/get_comm_hub_request_auth_context`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: ANON_KEY,
-          Authorization: `Bearer ${bearer}`,
-        },
+        headers: { "Content-Type": "application/json", apikey: ANON_KEY,
+                   Authorization: `Bearer ${bearer}` },
         body: "{}",
-      },
-    );
-    const ctx = await authCtxResp.json().catch(() => ({}));
-    if (!authCtxResp.ok || ctx?.authenticated !== true || ctx?.comm_hub_admin !== true) {
+      });
+    const ctx = await r.json().catch(() => ({} as any));
+    if (!r.ok || ctx?.authenticated !== true || ctx?.comm_hub_admin !== true) {
       addBlocker("not_authorised", "auth",
         "Communication Hub administrator authority is required.",
         { rpc_auth_uid: ctx?.auth_uid, expected_operator_id: operatorId });
@@ -214,590 +177,104 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ---- Input ----
+  // ============================================================
+  // HARD STOP — provider boundary not approved
+  // ============================================================
+  if (action === ACTION_SEND) {
+    addBlocker("provider_boundary_not_approved", "provider_boundary",
+      "SEND is disabled until the A4.2 provider-boundary runtime is approved. No provider was contacted. Authorisation preserved.");
+    return finalize("BLOCKED", 403,
+      "SEND is disabled. Provider boundary not approved. No email has been sent. Authorisation preserved.");
+  }
+
   const cycleId: string = body.cycleId ?? body.cycle_id ?? "";
   const authorisationId: string = body.authorisationId ?? body.authorisation_id ?? "";
-  if (!cycleId || !authorisationId) {
-    addBlocker("missing_parameters", "input_validation",
-      "cycleId and authorisationId are required");
+  if (!cycleId) {
+    addBlocker("missing_parameters", "input_validation", "cycleId is required");
     return finalize("BLOCKED", 400);
   }
   env.cycle_id = cycleId;
-  env.authorisation_id = authorisationId;
+  env.authorisation_id = authorisationId || null;
 
-  // ---- Recovery action: report state, never contact provider ----
+  // ============================================================
+  // RECOVER — dedicated no-send admin recovery path
+  // ============================================================
   if (action === ACTION_RECOVER) {
-    const { data, error } = await admin.rpc("get_comm_hub_revalidation_send_context",
-      { p_cycle_id: cycleId });
-    if (error) {
-      addBlocker("recovery_query_failed", "recovery", error.message);
-      return finalize("BLOCKED", 500);
+    const executionId: string = body.executionId ?? body.execution_id ?? "";
+    const reason: string = String(body.reason ?? "").trim();
+    if (!executionId) {
+      addBlocker("missing_parameters", "input_validation",
+        "executionId is required for recovery");
+      return finalize("BLOCKED", 400);
     }
-    const ctx: any = data ?? {};
-    env.cycle_status = ctx.cycle_status ?? null;
-    env.authorisation_status = ctx.authorisation?.consumed_at
-      ? "CONSUMED"
-      : ctx.authorisation?.revoked_at
-        ? "REVOKED"
-        : ctx.authorisation?.id
-          ? "ACTIVE"
-          : null;
-    env.provider_call_attempted = !!ctx.provider_call_attempted;
-    env.reused_existing_execution = !!ctx.controlled_email_execution_id;
-    env.request_id = ctx.controlled_email_execution_id ?? null;
-    env.message = "recovery_snapshot";
-    return finalize("RECOVERED", 200);
-  }
-
-  // ============================================================
-  // A4.1.1 §0 — HARD STOP: PROVIDER BOUNDARY NOT APPROVED
-  // Reject SEND_CONTROLLED_REVALIDATION_EMAIL before any provider
-  // credential resolution, SDK construction, transport invocation,
-  // authorisation consumption, or message-state transition. This
-  // hard stop is enforced regardless of what the UI shows.
-  // ============================================================
-  if (action === ACTION_SEND) {
-    addBlocker(
-      "provider_boundary_not_approved",
-      "provider_boundary",
-      "SEND_CONTROLLED_REVALIDATION_EMAIL is disabled until the A4.2 provider-boundary runtime is approved. No provider was contacted. Authorisation preserved.",
-    );
-    env.provider_boundary_state = "NOT_ENTERED";
-    env.provider_call_attempted = false;
-    env.provider_result_recorded = false;
-    env.reused_existing_execution = false;
-    env.authorisation_status = "PRESERVED";
-    return finalize(
-      "BLOCKED",
-      403,
-      "SEND is disabled. Provider boundary not approved. No email has been sent. Authorisation preserved.",
-    );
-  }
-
-  // ============================================================
-  // A4.1 — PREPARE_CONTROLLED_REVALIDATION
-  // Server-authoritative durable preparation. Never invokes the provider,
-  // never consumes the operator's authorisation.
-  // ============================================================
-  if (action === ACTION_PREPARE) {
-    // 1. Fresh server-authoritative context.
-    const { data: ctxData, error: ctxErr } = await admin.rpc(
-      "resolve_comm_hub_revalidation_preparation_context",
-      { p_cycle_id: cycleId, p_authorisation_id: authorisationId },
-    );
-    if (ctxErr) {
-      addBlocker("resolve_failed", "fresh_context", ctxErr.message);
-      return finalize("BLOCKED", 500);
-    }
-    const ctx: any = ctxData ?? {};
-    env.cycle_status = ctx.cycle_status ?? null;
-    env.authorisation_status = ctx.authorisation_status ?? null;
-    if (!ctx.ok) {
-      for (const b of (ctx.blockers ?? [])) {
-        addBlocker(String(b.code), String(b.stage ?? "fresh_context"), b.message);
-      }
-      env.provider_boundary_state = "NOT_ENTERED";
-      env.provider_call_attempted = false;
-      return finalize("BLOCKED", 400,
-        "Preparation blocked. No email has been sent. Authorisation preserved.");
-    }
-
-    // 2. Resolve provider exactly once (recorded in warnings if absent).
-    const providerRes = await lookupActiveEmailProvider(admin);
-    let providerId: string | null = null;
-    if (providerRes.ok) {
-      env.provider_redacted = redactProviderForLog(providerRes.provider);
-      env.provider_name = providerRes.provider.name ?? providerRes.provider.type ?? null;
-      providerId = (providerRes.provider as any).id ?? null;
-    } else {
-      addBlocker(providerRes.errorCode, "provider", providerRes.errorMessage);
-      env.provider_boundary_state = "NOT_ENTERED";
-      env.provider_call_attempted = false;
-      return finalize("BLOCKED", 400,
-        "Preparation blocked: no active email provider. No email has been sent.");
-    }
-
-    // 3. Bind durable execution via internal service-role RPC.
-    // A4.1.2B §2/§4 — DATABASE-DERIVED IDEMPOTENCY.
-    // The Edge Function passes only the preparation_version (defaults to 1).
-    // The DB derives the canonical key crev-prep:<cycle>:<auth>:<version> and
-    // enforces at-most-one active pre-provider execution per cycle+version
-    // via ux_chre_active_per_cycle_version. Any client-supplied key on the
-    // request body is ignored and never forwarded.
-    const preparationVersion = 1;
-    // Prefer the resolver-derived provider so preparation is truly
-    // server-authoritative. Fall back to the lookup only if absent.
-    const providerFromContext =
-      (ctx.provider_configuration && ctx.provider_configuration.provider_id)
-        || null;
-    const boundProviderId = providerFromContext ?? providerId;
-    const prepRuntimeBuild = RUNTIME_BUILD;
-    const { data: prepData, error: prepErr } = await admin
-      .rpc("_comm_hub_revalidation_prepare_execution", {
-        p_cycle_id: cycleId,
-        p_authorisation_id: authorisationId,
-        p_operator_id: operatorId,
-        p_preparation_version: preparationVersion,
-        p_event_certification_id: ctx.baseline_event_certification_id ?? null,
-        p_production_lineage_id: ctx.production_lineage_id ?? null,
-        p_baseline_ore_certification_id: ctx.baseline_ore_certification_id ?? null,
-        p_baseline_fingerprint_v2: ctx.baseline_fingerprint_v2 ?? null,
-        p_current_fingerprint_v2: ctx.current_fingerprint_v2 ?? null,
-        p_template_version_id: ctx.template?.version_id ?? null,
-        p_template_manifest_hash: ctx.template?.manifest_hash ?? null,
-        p_sender_profile_id: ctx.sender?.profile_id ?? null,
-        p_recipient_policy_version: ctx.recipient?.policy_version ?? null,
-        p_recipient_set_hash: ctx.recipient_set_hash ?? null,
-        p_provider_id: boundProviderId,
-        p_runtime_build: prepRuntimeBuild,
-        p_metadata: { module_code: ctx.module_code, event_code: ctx.event_code,
-                      channel: ctx.channel,
-                      preparation_version: preparationVersion,
-                      canonical_idempotency_key: ctx.canonical_idempotency_key ?? null },
-      });
-    if (prepErr) {
-      addBlocker("prepare_execution_failed", "execution", prepErr.message);
-      env.provider_boundary_state = "NOT_ENTERED";
-      env.provider_call_attempted = false;
-      return finalize("BLOCKED", 500,
-        "Preparation blocked during execution binding. No email has been sent.");
-    }
-    const prep = Array.isArray(prepData) ? prepData[0] : prepData;
-    env.execution_id = prep?.execution_id ?? null;
-    const reused: boolean = !!prep?.reused;
-    env.reused_existing_execution = reused;
-    const canonicalIdempotencyKey: string | null =
-      prep?.canonical_idempotency_key ?? null;
-
-    // 4. If reused, do NOT re-create request/message/attempt — return anchor.
-    //    A reused execution may already be READY_FOR_PROVIDER from a prior
-    //    finalisation. Trust the server-authoritative state.
-    if (reused) {
-      env.provider_boundary_state = "NOT_ENTERED";
-      env.provider_call_attempted = false;
-      const reusedState = (prep?.state === "READY_FOR_PROVIDER")
-        ? "READY_FOR_PROVIDER" : "FAILED_PRE_PROVIDER";
-      // If the reused row is still PREPARING it means a previous attempt
-      // never finalised — surface that as a soft blocker, not READY.
-      if (prep?.state === "PREPARING") {
-        addBlocker("reused_execution_not_finalised", "execution",
-          "Existing preparation row is still PREPARING. Retry to finalise.");
-        return finalize("BLOCKED", 409,
-          "Existing preparation reused but never finalised. No email has been sent.");
-      }
-      return finalize(reusedState, 200,
-        "Existing preparation reused. No email has been sent. Provider delivery remains disabled until the provider-boundary runtime is approved.");
-    }
-
-    // 5. Create durable communication_request / message / attempt records.
-    //    Any failure here is pre-provider and must mark FAILED_PRE_PROVIDER.
-    const nowIso = new Date().toISOString();
-    let requestId: string | null = null;
-    let messageId: string | null = null;
-    let attemptId: string | null = null;
-    try {
-      const requestNo = `CREV-PREP-${cycleId.slice(0, 8)}-${Date.now().toString(36)}`;
-      const { data: reqRow, error: reqErr } = await admin
-        .from("communication_request")
-        .insert({
-          request_no: requestNo,
-          module_code: ctx.module_code,
-          event_code: ctx.event_code,
-          channels: [ctx.channel ?? "email"],
-          priority: "normal",
-          status: "pending",
-          payload: {
-            cycle_id: cycleId, authorisation_id: authorisationId,
-            purpose: "CONTROLLED_REVALIDATION_PREPARATION",
-          },
-          context: {
-            send_context: SEND_CONTEXT,
-            execution_id: env.execution_id,
-            baseline_ore_certification_id: ctx.baseline_ore_certification_id,
-            production_lineage_id: ctx.production_lineage_id,
-            baseline_fingerprint_v2: ctx.baseline_fingerprint_v2,
-            current_fingerprint_v2: ctx.current_fingerprint_v2,
-            provider_boundary_state: "NOT_ENTERED",
-            provider_call_attempted: false,
-          },
-          idempotency_key: canonicalIdempotencyKey
-            ?? `crev-prep:${cycleId}:${authorisationId}:${preparationVersion}`,
-          requested_by: operatorId,
-          approved_by: operatorId,
-          approved_at: nowIso,
-          decision_send_context: "controlled_revalidation",
-          targeted_dispatch_only: true,
-        })
-        .select("id").single();
-      if (reqErr || !reqRow?.id) throw reqErr ?? new Error("request insert failed");
-      requestId = reqRow.id;
-      env.request_id = requestId;
-
-      const { data: msgRow, error: msgErr } = await admin
-        .from("communication_message")
-        .insert({
-          request_id: requestId,
-          channel: ctx.channel ?? "email",
-          provider_id: providerId,
-          subject: `[Controlled revalidation — PREPARED] ${ctx.module_code} / ${ctx.event_code}`,
-          body_text: "Preparation-only record. No provider call.",
-          body_html: "<p>Preparation-only record. No provider call.</p>",
-          status: "queued",
-          send_context: "controlled_revalidation",
-          from_email: null,
-        })
-        .select("id").single();
-      if (msgErr || !msgRow?.id) throw msgErr ?? new Error("message insert failed");
-      messageId = msgRow.id;
-      env.message_id = messageId;
-
-      const { data: attemptRow, error: attemptErr } = await admin
-        .from("communication_delivery_attempt")
-        .insert({
-          message_id: messageId,
-          attempt_no: 0,
-          status: "pending",
-          provider_id: providerId,
-          provider_call_attempted: false,
-          send_context: "controlled_revalidation",
-          attempt_type: "controlled_revalidation_preparation",
-        })
-        .select("id").single();
-      if (attemptErr || !attemptRow?.id) throw attemptErr ?? new Error("attempt insert failed");
-      attemptId = attemptRow.id;
-      env.delivery_attempt_id = attemptId;
-      env.trace_id = env.execution_id; // execution acts as the correlation trace anchor
-    } catch (e) {
-      addBlocker("preparation_evidence_creation_failed", "pre_provider_evidence", errStr(e));
-      if (env.execution_id) {
-        await admin.rpc("_comm_hub_revalidation_mark_pre_provider_failure", {
-          p_execution_id: env.execution_id,
-          p_failure_code: "preparation_evidence_creation_failed",
-          p_failure_detail: { message: errStr(e) },
-        }).catch(() => {});
-      }
-      env.provider_boundary_state = "NOT_ENTERED";
-      env.provider_call_attempted = false;
-      env.authorisation_status = ctx.authorisation_status; // preserved
-      return finalize("FAILED_PRE_PROVIDER", 500,
-        "Preparation failed before any provider call. Authorisation preserved. No email has been sent.");
-    }
-
-    // 6. Finalise the execution: PREPARING → READY_FOR_PROVIDER only after
-    //    the DB verifies request/message/attempt exist and are linked.
-    //    Never enters the provider transport.
-    const { error: finErr } = await admin.rpc(
-      "_comm_hub_revalidation_finalize_preparation",
-      {
-        p_execution_id: env.execution_id,
-        p_request_id: requestId,
-        p_message_id: messageId,
-        p_trace_id: env.trace_id,
-        p_delivery_attempt_id: attemptId,
-        p_recipient_snapshot_id: null,
-      },
-    );
-    if (finErr) {
-      addBlocker("finalize_preparation_failed", "finalisation", finErr.message);
-      if (env.execution_id) {
-        await admin.rpc("_comm_hub_revalidation_mark_pre_provider_failure", {
-          p_execution_id: env.execution_id,
-          p_failure_code: "finalize_preparation_failed",
-          p_failure_detail: { message: finErr.message },
-        }).catch(() => {});
-      }
-      env.provider_boundary_state = "NOT_ENTERED";
-      env.provider_call_attempted = false;
-      env.authorisation_status = ctx.authorisation_status; // preserved
-      return finalize("FAILED_PRE_PROVIDER", 500,
-        "Preparation finalisation failed before any provider call. Authorisation preserved.");
-    }
-
-    env.provider_boundary_state = "NOT_ENTERED";
-    env.provider_call_attempted = false;
-    env.authorisation_status = ctx.authorisation_status; // ISSUED — preserved
-    return finalize("READY_FOR_PROVIDER", 200,
-      "Preparation complete and finalised. No email has been sent. Provider delivery remains disabled until the provider-boundary runtime is approved.");
-  }
-
-
-  const currentFingerprint: string = body.currentFingerprint ?? body.current_fingerprint ?? "";
-  const recipient: string = String(body.recipient ?? body.recipient_email ?? "").trim().toLowerCase();
-  if (!currentFingerprint || !recipient || !recipient.includes("@")) {
-    addBlocker("missing_parameters", "input_validation",
-      "currentFingerprint and recipient are required");
-    return finalize("BLOCKED", 400);
-  }
-
-  // ---- Stage A: atomic reserve ----
-  let reserved: any = null;
-  {
     const { data, error } = await admin.rpc(
-      "reserve_comm_hub_revalidation_send_authorisation",
-      {
-        p_cycle_id: cycleId,
-        p_authorisation_id: authorisationId,
-        p_current_fingerprint: currentFingerprint,
-        p_recipient_email: recipient,
-      },
-    );
+      "_comm_hub_revalidation_recover_execution",
+      { p_execution_id: executionId, p_admin_id: operatorId, p_reason: reason });
     if (error) {
-      addBlocker(String(error.code ?? "reserve_failed"), "reservation",
-        error.message ?? "reserve rpc failed");
+      addBlocker(String((error as any).code ?? "recovery_failed"), "recovery",
+        error.message);
       return finalize("BLOCKED", 400);
     }
-    reserved = data ?? {};
-    if (!reserved.ok) {
-      addBlocker("reserve_refused", "reservation", JSON.stringify(reserved));
-      return finalize("BLOCKED", 400);
-    }
-    env.cycle_status = "PROVIDER_PROCESSING";
-    env.authorisation_status = "RESERVED";
-    if (reserved.already_reserved && reserved.controlled_email_execution_id) {
-      env.reused_existing_execution = true;
-      env.request_id = reserved.controlled_email_execution_id;
-      env.provider_call_attempted = true;
-      env.message = "authorisation_already_consumed; refusing second provider call.";
-      return finalize("RECOVERED", 200);
-    }
+    env.execution_id = (data as any)?.execution_id ?? executionId;
+    return finalize("RECOVERED", 200,
+      "Recovery-required execution transitioned to VOIDED. A fresh preparation may now start. No email has been sent.");
   }
 
-  // ---- Stage B: create durable request/message/attempt ----
-  let providerRow: any = null;
-  try {
-    const { data } = await admin
-      .from("notification_providers")
-      .select("id,provider_name,email_provider_type")
-      .eq("channel", "email").eq("is_active", true).eq("is_default", true)
-      .order("updated_at", { ascending: false }).limit(1).maybeSingle();
-    providerRow = data;
-    env.provider_name = providerRow?.provider_name ?? null;
-  } catch (e) {
-    env.warnings.push({ code: "provider_probe_error", message: errStr(e) });
+  // ============================================================
+  // PREPARE / RETRY — atomic canonical preparation (no provider)
+  // ============================================================
+  if (!authorisationId) {
+    addBlocker("missing_parameters", "input_validation",
+      "authorisationId is required to prepare");
+    return finalize("BLOCKED", 400);
   }
 
-  const requestNo = `CREV-${cycleId.slice(0, 8)}-${Date.now().toString(36)}`;
-  let requestId: string | null = null;
-  let messageId: string | null = null;
-  let attemptId: string | null = null;
-  try {
-    const { data: reqRow, error: reqErr } = await admin
-      .from("communication_request")
-      .insert({
-        request_no: requestNo,
-        module_code: reserved.module_code,
-        event_code: reserved.event_code,
-        channels: [reserved.channel ?? "email"],
-        priority: "normal",
-        status: "processing",
-        payload: {
-          cycle_id: cycleId,
-          authorisation_id: authorisationId,
-          purpose: "CONTROLLED_REVALIDATION",
-        },
-        context: {
-          send_context: SEND_CONTEXT,
-          event_certification_id: reserved.event_certification_id,
-          production_lineage_id: reserved.production_lineage_id,
-          baseline_ore_certification_id: reserved.baseline_ore_certification_id,
-          current_fingerprint: reserved.current_fingerprint,
-        },
-        idempotency_key: `crev:${cycleId}:${authorisationId}`,
-        requested_by: operatorId,
-        approved_by: operatorId,
-        approved_at: new Date().toISOString(),
-        decision_send_context: "controlled_revalidation",
-        targeted_dispatch_only: true,
-      })
-      .select("id").single();
-    if (reqErr || !reqRow?.id) throw reqErr ?? new Error("request insert failed");
-    requestId = reqRow.id;
-    env.request_id = requestId;
-
-    const subject = `[Controlled revalidation] ${reserved.module_code} / ${reserved.event_code}`;
-    const bodyText =
-      `This is a controlled revalidation email issued by the Communication Hub.\n\n` +
-      `Cycle: ${cycleId}\nAuthorisation: ${authorisationId}\n` +
-      `Fingerprint: ${reserved.current_fingerprint}\n` +
-      `Production lineage: ${reserved.production_lineage_id}\n` +
-      `Event certification: ${reserved.event_certification_id}\n\n` +
-      `No production anchor has been altered by this send.`;
-    const { data: msgRow, error: msgErr } = await admin
-      .from("communication_message")
-      .insert({
-        request_id: requestId,
-        channel: reserved.channel ?? "email",
-        provider_id: providerRow?.id ?? null,
-        subject,
-        body_text: bodyText,
-        body_html: `<pre>${bodyText.replace(/</g, "&lt;")}</pre>`,
-        status: "queued",
-        send_context: "controlled_revalidation",
-        from_email: null,
-      })
-      .select("id").single();
-    if (msgErr || !msgRow?.id) throw msgErr ?? new Error("message insert failed");
-    messageId = msgRow.id;
-    env.message_id = messageId;
-
-    const { data: attemptRow, error: attemptErr } = await admin
-      .from("communication_delivery_attempt")
-      .insert({
-        message_id: messageId,
-        attempt_no: 1,
-        status: "pending",
-        provider_id: providerRow?.id ?? null,
-        provider_call_attempted: false,
-        send_context: "controlled_revalidation",
-        attempt_type: "controlled_revalidation",
-      })
-      .select("id").single();
-    if (attemptErr || !attemptRow?.id) throw attemptErr ?? new Error("attempt insert failed");
-    attemptId = attemptRow.id;
-    env.delivery_attempt_id = attemptId;
-  } catch (e) {
-    addBlocker("evidence_creation_failed", "pre_provider_evidence", errStr(e));
-    // Mark cycle FAILED via record_provider_result REJECTED to release auth.
-    await admin.rpc("record_comm_hub_revalidation_provider_result", {
+  const { data, error } = await admin.rpc(
+    "_comm_hub_revalidation_prepare_delivery",
+    {
       p_cycle_id: cycleId,
-      p_execution_id: requestId,
-      p_outcome: "REJECTED",
-    }).catch(() => {});
-    env.provider_result_recorded = true;
-    return finalize("BLOCKED", 500);
-  }
-
-  // ---- Stage C: provider lookup + guarded transport ----
-  const providerRes = await lookupActiveEmailProvider(admin);
-  if (!providerRes.ok) {
-    addBlocker(providerRes.errorCode, "pre_provider_evidence", providerRes.errorMessage);
-    await admin.rpc("record_comm_hub_revalidation_provider_result", {
-      p_cycle_id: cycleId, p_execution_id: requestId, p_outcome: "REJECTED",
-    }).catch(() => {});
-    env.provider_result_recorded = true;
-    return finalize("BLOCKED", 400);
-  }
-  const provider = providerRes.provider;
-  env.provider_redacted = redactProviderForLog(provider);
-  if ((provider.type as any) === "stub") {
-    addBlocker("provider_stub_not_allowed_revalidation", "pre_provider_evidence");
-    await admin.rpc("record_comm_hub_revalidation_provider_result", {
-      p_cycle_id: cycleId, p_execution_id: requestId, p_outcome: "REJECTED",
-    }).catch(() => {});
-    env.provider_result_recorded = true;
-    return finalize("BLOCKED", 400);
-  }
-
-  // Load message for transport.
-  const { data: msg } = await admin
-    .from("communication_message")
-    .select("subject,body_text,body_html,from_email,from_display_name,reply_to_email")
-    .eq("id", messageId!).maybeSingle();
-
-  // Provider boundary flip (irreversible for retry).
-  await admin.from("communication_message").update({ status: "sending" }).eq("id", messageId!);
-
-  const transportResult = await sendEmailViaGuardedTransport(admin, {
-    guard: {
-      messageId: messageId!,
-      requestId: requestId!,
-      attemptedProvider: provider.type,
-      callerFunction: "comm-hub-send-controlled-revalidation",
-      callerContext: SEND_CONTEXT,
-      correlationId: cycleId,
-      traceId: null,
-    },
-    provider,
-    payload: {
-      to: recipient,
-      subject: msg?.subject ?? "Controlled revalidation",
-      html: msg?.body_html ?? "",
-      text: msg?.body_text ?? undefined,
-      fromName: msg?.from_display_name ?? provider.fromName,
-      fromEmail: msg?.from_email ?? provider.fromEmail,
-      replyTo: msg?.reply_to_email ?? undefined,
-    },
-  });
-
-  const nowIso = new Date().toISOString();
-
-  if (isGuardRefusal(transportResult)) {
-    addBlocker("transport_guard_refused", "provider", transportResult.code);
-    await admin.from("communication_delivery_attempt").update({
-      status: "failure",
-      error_code: transportResult.code,
-      provider_call_attempted: false,
-      finished_at: nowIso, updated_at: nowIso,
-    }).eq("id", attemptId!);
-    await admin.from("communication_message").update({
-      status: "failed",
-      error_code: transportResult.code,
-      error_message: "transport_guard_refused",
-      updated_at: nowIso,
-    }).eq("id", messageId!);
-    await admin.rpc("record_comm_hub_revalidation_provider_result", {
-      p_cycle_id: cycleId, p_execution_id: requestId, p_outcome: "REJECTED",
+      p_authorisation_id: authorisationId,
+      p_operator_id: operatorId,
+      p_runtime_build: RUNTIME_BUILD,
     });
-    env.provider_result_recorded = true;
-    return finalize("BLOCKED", 400);
+  if (error) {
+    addBlocker(String((error as any).code ?? "prepare_rpc_failed"), "execution",
+      error.message);
+    return finalize("BLOCKED", 500,
+      "Atomic preparation RPC failed. No email has been sent.");
+  }
+  const r = (data ?? {}) as any;
+  env.execution_id            = r.execution_id ?? null;
+  env.request_id              = r.request_id ?? null;
+  env.message_id              = r.message_id ?? null;
+  env.recipient_id            = r.recipient_id ?? null;
+  env.trace_id                = r.trace_id ?? null;
+  env.delivery_attempt_id     = r.delivery_attempt_id ?? null;
+  env.preparation_version     = r.preparation_version ?? null;
+  env.canonical_idempotency_key = r.canonical_idempotency_key ?? null;
+  env.reused_existing_execution = !!r.reused;
+  env.blockers = Array.isArray(r.blockers) ? r.blockers : [];
+  env.warnings = Array.isArray(r.warnings) ? r.warnings : [];
+  env.failure_code   = r.failure_code ?? null;
+  env.failure_detail = r.failure_detail ?? null;
+
+  if (r.ok === true) {
+    return finalize("READY_FOR_PROVIDER", 200,
+      env.reused_existing_execution
+        ? "Existing atomic preparation reused. No email has been sent."
+        : "Atomic preparation complete. No email has been sent. Provider delivery remains disabled until the provider-boundary runtime is approved.");
   }
 
-  env.provider_call_attempted = true;
-  const providerOk = transportResult.ok;
-  const providerMsgId = transportResult.providerMessageId ?? null;
-  const rawStatus = transportResult.rawStatus ?? (providerOk ? "success" : "failure");
-  const attemptStatus: string = providerOk
-    ? "success"
-    : (transportResult.retryable ? "pending" : "failure");
-
-  await admin.from("communication_delivery_attempt").update({
-    status: attemptStatus,
-    provider_call_attempted: true,
-    provider_message_id: providerMsgId,
-    provider_response: transportResult.providerResponseSafe ?? null,
-    error_code: transportResult.errorCode ?? null,
-    error_message: transportResult.errorMessage ?? null,
-    finished_at: nowIso, provider_call_completed_at: nowIso, updated_at: nowIso,
-  }).eq("id", attemptId!);
-
-  await admin.from("communication_message").update({
-    status: providerOk ? "sent" : "failed",
-    provider_message_id: providerMsgId,
-    sent_at: providerOk ? nowIso : null,
-    error_code: providerOk ? null : (transportResult.errorCode ?? null),
-    error_message: providerOk ? null : (transportResult.errorMessage ?? null),
-    updated_at: nowIso,
-  }).eq("id", messageId!);
-
-  env.provider_message_id = providerMsgId;
-  env.provider_status = rawStatus;
-
-  // Record provider result on the revalidation cycle. This is the ONE place
-  // that transitions cycle → AWAITING_INBOX_CONFIRMATION and consumes the
-  // one-use authorisation atomically. Inbox confirmation is separate.
-  {
-    const { error: recErr } = await admin.rpc(
-      "record_comm_hub_revalidation_provider_result",
-      {
-        p_cycle_id: cycleId,
-        p_execution_id: requestId,
-        p_outcome: providerOk ? "ACCEPTED" : "REJECTED",
-      },
-    );
-    if (recErr) {
-      env.warnings.push({ code: "provider_result_record_failed", message: recErr.message });
-    } else {
-      env.provider_result_recorded = true;
-      env.authorisation_status = "CONSUMED";
-      env.cycle_status = providerOk ? "AWAITING_INBOX_CONFIRMATION" : "FAILED";
-    }
+  // Not-OK envelope from RPC.
+  if (r.state === "FAILED_PRE_PROVIDER") {
+    return finalize("FAILED_PRE_PROVIDER", 500,
+      "Atomic preparation failed before any provider call. Authorisation preserved. Dependent evidence rolled back. No orphans.");
   }
-
-  return finalize(
-    providerOk ? "PROVIDER_ACCEPTED" : "PROVIDER_REJECTED",
-    200,
-    providerOk
-      ? "Provider accepted the controlled revalidation email. Awaiting inbox confirmation."
-      : "Provider rejected the controlled revalidation email.",
-  );
+  if (r.state === "RECOVERY_REQUIRED"
+      || env.blockers.some((b) => b.code === "recovery_required")) {
+    return finalize("RECOVERY_REQUIRED", 409,
+      "An execution requires admin recovery before a new preparation may start.");
+  }
+  return finalize("BLOCKED", 400,
+    "Atomic preparation blocked. No email has been sent. Authorisation preserved.");
 });
