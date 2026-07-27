@@ -195,3 +195,50 @@ therefore fails closed. See `runtimeContractGating.test.tsx` regression suite.
 Runtime-contract gating remains an **additional** safety layer stacked on
 top of server-side RPCs, typed-phrase requirements, mode gates, and status
 gates — none of which have been removed.
+
+---
+
+## Track A / A4.0 — Action-level gating refactor (update)
+
+**Change landed this turn:** the panel-level `RuntimeContractGate` wrappers in
+`GoLivePage.tsx` around `ControlledRevalidationPanel`, `OneRealEmailPanel`,
+`ManualProductionObservationPanel` and `AutomatedProductionActivationPanel`
+have been **removed**. They were hiding recovery, reconciliation, inbox
+confirmation, Emergency Stop, disarm, diagnostics, evidence and history along
+with the provider-touching action they were meant to protect. That behaviour
+violated the safety invariant.
+
+Introduced primitive: `RuntimeContractActionGate`
+(`src/pages/admin/communicationHub/goLive/RuntimeContractActionGate.tsx`).
+It wraps a single provider-touching button, forces `disabled` when the
+required capabilities are not all PASS, renders a compact blocker note, and
+consumes the same `RuntimeContractProvider` so panels do not refetch the
+report independently.
+
+### Current state matrix per surface
+
+| Surface | Panel visibility | Provider action availability | Recovery / diagnostics availability | Emergency-control availability |
+| --- | --- | --- | --- | --- |
+| Controlled Revalidation | Always mounted when Step 6 = COMPLETED | Authorise / send **still not** self-gated (follow-up) — server RPC authority remains sole enforcement | Assessment, reassessment, cycle history, stage inspection remain visible | N/A |
+| One Real Email | Always mounted pre-Step 6 completion | Send action **still not** self-gated (follow-up) — typed phrase + server checks remain sole enforcement | Recovery, reconciliation, manual confirmation, provider result remain visible | N/A |
+| Manual Production Observation | Always mounted post-Step 7 promotion | Dispatch **still not** self-gated (follow-up) — server RPC authority remains sole enforcement | Pending observation, evidence, result history, recovery, inbox confirmation remain visible | N/A |
+| Automated Production Activation | Always mounted post-Manual-Production certification | Canary / activation actions **still not** self-gated (follow-up) — readiness + server checks remain sole enforcement | Readiness report, lease/status, audit evidence remain visible | Emergency Stop and disarm remain visible (not gated) |
+
+### What is NOT yet complete (deferred to follow-up turn)
+
+Per-button surgery inside each of the four panels to wrap the specific
+provider-touching button with `<RuntimeContractActionGate action="…" …>`. The
+primitive, the canonical capability map (`runtimeActionRequirements.ts`), and
+the shared context are all landed and covered by
+`runtimeContractActionGate.test.tsx`. Panels currently rely on their existing
+typed-phrase + server-authority enforcement until the primitive is dropped in
+around the specific buttons.
+
+### Regression protections landed this turn
+
+- `runtimeContractActionGate.test.tsx` — proves for every action code that:
+  loading, absent report, audit error, and each of MISSING_TABLE /
+  MISSING_COLUMN / SIGNATURE_MISMATCH / NOT_IMPLEMENTED disable the wrapped
+  button; unrelated capability failures do not; sibling controls
+  (recovery, inbox confirmation, Emergency Stop, disarm, diagnostics) stay
+  interactive; no click handler fires when blocked.
