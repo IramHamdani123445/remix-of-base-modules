@@ -99421,6 +99421,10 @@ export type Database = {
         Returns: Json
       }
       get_comm_hub_request_auth_context: { Args: never; Returns: Json }
+      get_comm_hub_revalidation_send_context: {
+        Args: { p_cycle_id: string }
+        Returns: Json
+      }
       get_comm_hub_safety_counts: {
         Args: { window_minutes?: number }
         Returns: Json
@@ -101029,6 +101033,15 @@ export type Database = {
       }
       reserve_comm_hub_preview_approval: {
         Args: { p_payload: Json }
+        Returns: Json
+      }
+      reserve_comm_hub_revalidation_send_authorisation: {
+        Args: {
+          p_authorisation_id: string
+          p_current_fingerprint: string
+          p_cycle_id: string
+          p_recipient_email: string
+        }
         Returns: Json
       }
       resolve_batch_office: {
