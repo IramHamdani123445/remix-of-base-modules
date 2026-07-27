@@ -72,6 +72,21 @@ const RUNTIME_REQUIREMENTS: Record<RuntimeActionCode, readonly string[]> = {
     CAP.baseline,
     CAP.control_settings,
   ],
+  // A4.1.2 §3 — PREPARE splits from SEND. It resolves canonical bindings and
+  // creates durable pre-provider evidence, but MUST NOT require runtime
+  // dispatch, scheduler, or automation capabilities. Provider capability is
+  // required because preparation binds exactly one provider configuration,
+  // but the provider transport is not entered.
+  CONTROLLED_REVALIDATION_PREPARE: [
+    CAP.revalidation,
+    CAP.assessment,
+    CAP.snapshot,
+    CAP.event_certification,
+    CAP.baseline,
+    CAP.control_settings,
+    CAP.policy,
+    CAP.provider,
+  ],
   CONTROLLED_REVALIDATION_SEND: [
     CAP.revalidation,
     CAP.revalidation_runtime,
