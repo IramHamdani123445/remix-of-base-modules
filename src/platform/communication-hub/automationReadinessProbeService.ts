@@ -1,12 +1,14 @@
 /**
- * Client for the server-side automation readiness probe.
+ * Client for the server-side pre-arm readiness probe.
  *
  * `run_comm_hub_automation_readiness_probe` writes evidence rows for all
- * 9 checks and never arms anything. On a server-side schema mismatch
- * (missing table / column / function / object / schema) the RPC returns a
- * structured `{ ok: false, blocker: { code: 'READINESS_SCHEMA_MISMATCH', ... } }`
- * envelope instead of raising, so the UI can render an exact ERROR state
- * rather than leaving all nine tiles as "not run".
+ * 9 checks and never arms anything. It is callable while the platform is
+ * in DRY_RUN, CONTROLLED_LIVE, MANUAL_PRODUCTION, or AUTOMATED_PRODUCTION
+ * (STANDBY only). Each check returns a real `status` (PASS / FAIL /
+ * NOT_IMPLEMENTED / NOT_CONFIGURED / PROBE_FAILED / STALE / DRIFTED). On a
+ * server-side schema mismatch the RPC returns `{ ok: false, blocker }` so
+ * the UI can render an exact top-level ERROR without fabricating partial
+ * PASS rows.
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -24,6 +26,15 @@ export const AUTOMATION_READINESS_CHECK_CODES = [
 
 export type AutomationReadinessCheckCode = (typeof AUTOMATION_READINESS_CHECK_CODES)[number];
 
+export type ReadinessCheckStatus =
+  | "PASS"
+  | "FAIL"
+  | "NOT_IMPLEMENTED"
+  | "NOT_CONFIGURED"
+  | "PROBE_FAILED"
+  | "STALE"
+  | "DRIFTED";
+
 export interface ReadinessProbeBlocker {
   code: string;
   object_name?: string;
@@ -32,21 +43,35 @@ export interface ReadinessProbeBlocker {
   fix_action?: string;
 }
 
+export interface ReadinessProbeCheck {
+  check_code: AutomationReadinessCheckCode;
+  result: boolean;
+  status: ReadinessCheckStatus;
+  evidence: Record<string, unknown>;
+  blocker: string | null;
+  fix_action: string | null;
+  checked_at: string;
+  expires_at: string;
+  configuration_version: number;
+  event_certification_id: string | null;
+  production_lineage_id: string | null;
+  evidence_fingerprint_v2: string;
+}
+
 export interface ReadinessProbeSuccess {
   ok: true;
+  readiness_phase: "PRE_ARM_READINESS";
+  current_operating_mode: string;
+  automation_state: string;
+  safe_mode: boolean;
   module_code: string;
   event_code: string;
   channel: string;
   configuration_version: number;
+  event_certification_id: string | null;
+  production_lineage_id: string | null;
   checked_at: string;
-  checks: Array<{
-    check_code: AutomationReadinessCheckCode;
-    result: boolean;
-    evidence: Record<string, unknown>;
-    checked_at: string;
-    expires_at: string;
-    configuration_version: number;
-  }>;
+  checks: ReadinessProbeCheck[];
 }
 
 export interface ReadinessProbeFailure {
