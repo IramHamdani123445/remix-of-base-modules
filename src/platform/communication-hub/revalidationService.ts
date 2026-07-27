@@ -326,3 +326,41 @@ export async function recoverControlledRevalidationSend(input: {
   if (error) throw new Error(error.message ?? "controlled revalidation recover failed");
   return data as ControlledRevalidationSendResult;
 }
+
+/**
+ * Checkpoint A — Server-authoritative cycle reassessment.
+ *
+ * Calls the admin-gated `reassess_comm_hub_revalidation_cycle` RPC, which
+ * fails closed when evidence is missing. The RPC recomputes current
+ * evidence fingerprints from fresh resolvers and clears the
+ * `needs_reassessment` flag when it succeeds. Never masks a failure —
+ * blockers surface to the operator so they can repair the underlying
+ * evidence gap.
+ */
+export interface ReassessCycleResult {
+  ok: boolean;
+  cycle_id: string;
+  assessment_version: number;
+  needs_reassessment: boolean;
+  assessed_at: string | null;
+  assessed_runtime_contract_version: string | null;
+  changed_components: string[];
+  required_validation_level: RevalidationLevel | null;
+  required_stages: RevalidationStageCode[];
+  baseline_evidence_fingerprint_v2: string | null;
+  current_evidence_fingerprint_v2: string | null;
+  blockers: Array<{ code: string; message?: string }>;
+  message: string;
+}
+
+export async function reassessRevalidationCycle(
+  cycleId: string,
+): Promise<ReassessCycleResult> {
+  return unwrap<ReassessCycleResult>(
+    await (supabase as any).rpc("reassess_comm_hub_revalidation_cycle", {
+      p_cycle_id: cycleId,
+    }),
+    "reassess_comm_hub_revalidation_cycle failed",
+  );
+}
+

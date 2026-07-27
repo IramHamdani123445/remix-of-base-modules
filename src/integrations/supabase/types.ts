@@ -42056,6 +42056,10 @@ export type Database = {
       }
       communication_hub_revalidation_cycle: {
         Row: {
+          assessed_at: string | null
+          assessed_runtime_contract_version: string | null
+          assessment_fingerprint: string | null
+          assessment_version: number
           baseline_event_certification_id: string | null
           baseline_evidence_core_v2: Json | null
           baseline_evidence_fingerprint_v2: string | null
@@ -42074,7 +42078,10 @@ export type Database = {
           event_code: string
           id: string
           inbox_confirmation_status: string | null
+          last_reassessment_at: string | null
+          last_reassessment_error: string | null
           module_code: string
+          needs_reassessment: boolean
           promoted_at: string | null
           promoted_by: string | null
           promotion_status: string | null
@@ -42094,6 +42101,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assessed_at?: string | null
+          assessed_runtime_contract_version?: string | null
+          assessment_fingerprint?: string | null
+          assessment_version?: number
           baseline_event_certification_id?: string | null
           baseline_evidence_core_v2?: Json | null
           baseline_evidence_fingerprint_v2?: string | null
@@ -42112,7 +42123,10 @@ export type Database = {
           event_code: string
           id?: string
           inbox_confirmation_status?: string | null
+          last_reassessment_at?: string | null
+          last_reassessment_error?: string | null
           module_code: string
+          needs_reassessment?: boolean
           promoted_at?: string | null
           promoted_by?: string | null
           promotion_status?: string | null
@@ -42132,6 +42146,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assessed_at?: string | null
+          assessed_runtime_contract_version?: string | null
+          assessment_fingerprint?: string | null
+          assessment_version?: number
           baseline_event_certification_id?: string | null
           baseline_evidence_core_v2?: Json | null
           baseline_evidence_fingerprint_v2?: string | null
@@ -42150,7 +42168,10 @@ export type Database = {
           event_code?: string
           id?: string
           inbox_confirmation_status?: string | null
+          last_reassessment_at?: string | null
+          last_reassessment_error?: string | null
           module_code?: string
+          needs_reassessment?: boolean
           promoted_at?: string | null
           promoted_by?: string | null
           promotion_status?: string | null
@@ -97871,6 +97892,7 @@ export type Database = {
         Args: { p_context: Json; p_source: string }
         Returns: Json
       }
+      comm_hub_runtime_contract_version: { Args: never; Returns: string }
       comm_hub_scrub_protected_keys: { Args: { p_bundle: Json }; Returns: Json }
       comm_hub_sha256_hex: { Args: { p_text: string }; Returns: string }
       complete_comm_hub_scheduler_tick: {
@@ -100325,6 +100347,10 @@ export type Database = {
           p_module_code?: string
         }
         Returns: {
+          assessed_at: string | null
+          assessed_runtime_contract_version: string | null
+          assessment_fingerprint: string | null
+          assessment_version: number
           baseline_event_certification_id: string | null
           baseline_evidence_core_v2: Json | null
           baseline_evidence_fingerprint_v2: string | null
@@ -100343,7 +100369,10 @@ export type Database = {
           event_code: string
           id: string
           inbox_confirmation_status: string | null
+          last_reassessment_at: string | null
+          last_reassessment_error: string | null
           module_code: string
+          needs_reassessment: boolean
           promoted_at: string | null
           promoted_by: string | null
           promotion_status: string | null
@@ -100769,6 +100798,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      reassess_comm_hub_revalidation_cycle: {
+        Args: { p_cycle_id: string }
+        Returns: Json
       }
       recompute_communication_request_status: {
         Args: { p_request_id: string }

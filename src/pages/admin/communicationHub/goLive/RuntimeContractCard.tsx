@@ -10,7 +10,6 @@
  * via `capabilityPasses()` and remain disabled unless the relevant
  * capability is PASS.
  */
-import { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2, Loader2, RefreshCw, ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +22,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  auditRuntimeContract,
-  type RuntimeContractCheck,
-  type RuntimeContractReport,
+import type {
+  RuntimeContractCheck,
 } from "@/platform/communication-hub/runtimeContractService";
+import { useRuntimeContract } from "@/platform/communication-hub/RuntimeContractContext";
 
 function statusBadge(status: RuntimeContractCheck["status"]) {
   if (status === "PASS") {
@@ -45,26 +43,9 @@ function statusBadge(status: RuntimeContractCheck["status"]) {
 }
 
 export function RuntimeContractCard() {
-  const [loading, setLoading] = useState(false);
-  const [report, setReport] = useState<RuntimeContractReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { report, loading, error, refresh } = useRuntimeContract();
+  const run = () => { void refresh(); };
 
-  async function run() {
-    setLoading(true);
-    setError(null);
-    try {
-      const r = await auditRuntimeContract();
-      setReport(r);
-    } catch (e: any) {
-      setError(e?.message ?? "runtime contract audit failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void run();
-  }, []);
 
   const failing = (report?.checks ?? []).filter((c) => c.status !== "PASS");
   const passing = (report?.checks ?? []).filter((c) => c.status === "PASS");

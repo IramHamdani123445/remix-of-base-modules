@@ -92,6 +92,9 @@ import { useStageReadiness } from "@/platform/communication-hub/useStageReadines
 import { ManualProductionActivationPanel } from "./ManualProductionActivationPanel";
 import { LegacyBaselineAttestationPanel } from "./LegacyBaselineAttestationPanel";
 import { RuntimeContractCard } from "./RuntimeContractCard";
+import { DiagnosticBundlePanel } from "./DiagnosticBundlePanel";
+import { RuntimeContractProvider } from "@/platform/communication-hub/RuntimeContractContext";
+
 import { ManualProductionObservationPanel } from "./ManualProductionObservationPanel";
 import { AutomatedProductionActivationPanel } from "./AutomatedProductionActivationPanel";
 import { GoLiveCompletionPanel } from "./GoLiveCompletionPanel";
@@ -247,7 +250,7 @@ function StepHeader({ index, title, status, hint }: StepHeaderProps) {
   );
 }
 
-export default function GoLivePage() {
+function GoLivePageInner() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [session, setSession] = useState<GoLiveSession>(() => loadSession());
   const [invalidUrlNotice, setInvalidUrlNotice] = useState<string | null>(null);
@@ -806,6 +809,12 @@ export default function GoLivePage() {
       ]}
     >
       <RuntimeContractCard />
+      <DiagnosticBundlePanel
+        moduleCode={session.moduleCode}
+        eventCode={session.eventCode}
+        channel={session.channel ?? "email"}
+      />
+
 
       {loadError && (
         <Alert variant="destructive">
@@ -1410,3 +1419,12 @@ export default function GoLivePage() {
     </CommunicationHubWorkspaceShell>
   );
 }
+
+export default function GoLivePage() {
+  return (
+    <RuntimeContractProvider>
+      <GoLivePageInner />
+    </RuntimeContractProvider>
+  );
+}
+
