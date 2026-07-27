@@ -1199,7 +1199,22 @@ export default function GoLivePage() {
               </div>
             </AlertDescription>
           </Alert>
-        ) : (
+        )}
+        {deriveStep6(goLiveStatus) === "COMPLETED" && moduleCode && eventCode && (
+          <ControlledRevalidationPanel
+            moduleCode={moduleCode}
+            eventCode={eventCode}
+            channel={channel ?? "email"}
+            productionAnchor={{
+              oreCertificationId: goLiveStatus?.stage6?.one_real_email_certification_id ?? null,
+              verifiedRecipient: goLiveStatus?.stage6?.manual_verified_recipient ?? null,
+              verifiedAt: goLiveStatus?.stage6?.manual_verified_at ?? null,
+              productionLineageId: (goLiveStatus?.stage6 as any)?.production_lineage_id ?? null,
+              baselineFingerprint: (goLiveStatus?.stage6 as any)?.evidence_fingerprint_v2 ?? null,
+            }}
+          />
+        )}
+        {deriveStep6(goLiveStatus) !== "COMPLETED" && (
         <OneRealEmailPanel
           controlledStubCertified={controlledLiveDone}
           lockReason={stageReadiness.stageLockReason.ONE_REAL_EMAIL ?? null}
