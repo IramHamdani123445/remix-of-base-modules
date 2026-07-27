@@ -40825,6 +40825,7 @@ export type Database = {
           drift_detected_at: string | null
           drift_reason: string | null
           event_code: string
+          evidence_authority: string | null
           evidence_fingerprint: string | null
           evidence_fingerprint_algorithm: string | null
           evidence_fingerprint_v2: string | null
@@ -40867,6 +40868,7 @@ export type Database = {
           drift_detected_at?: string | null
           drift_reason?: string | null
           event_code: string
+          evidence_authority?: string | null
           evidence_fingerprint?: string | null
           evidence_fingerprint_algorithm?: string | null
           evidence_fingerprint_v2?: string | null
@@ -40909,6 +40911,7 @@ export type Database = {
           drift_detected_at?: string | null
           drift_reason?: string | null
           event_code?: string
+          evidence_authority?: string | null
           evidence_fingerprint?: string | null
           evidence_fingerprint_algorithm?: string | null
           evidence_fingerprint_v2?: string | null
@@ -41462,6 +41465,72 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      communication_hub_legacy_evidence_attestation: {
+        Row: {
+          attestation_reason: string
+          attested_at: string
+          attested_by: string
+          current_evidence_fingerprint_v2: string
+          current_evidence_snapshot_v2: Json
+          event_certification_id: string
+          historically_proven_components: Json
+          historically_unavailable_components: Json
+          id: string
+          one_real_email_certification_id: string
+          production_lineage_id: string
+          status: string
+          superseded_at: string | null
+          typed_confirmation: string
+        }
+        Insert: {
+          attestation_reason: string
+          attested_at?: string
+          attested_by: string
+          current_evidence_fingerprint_v2: string
+          current_evidence_snapshot_v2: Json
+          event_certification_id: string
+          historically_proven_components?: Json
+          historically_unavailable_components?: Json
+          id?: string
+          one_real_email_certification_id: string
+          production_lineage_id: string
+          status?: string
+          superseded_at?: string | null
+          typed_confirmation: string
+        }
+        Update: {
+          attestation_reason?: string
+          attested_at?: string
+          attested_by?: string
+          current_evidence_fingerprint_v2?: string
+          current_evidence_snapshot_v2?: Json
+          event_certification_id?: string
+          historically_proven_components?: Json
+          historically_unavailable_components?: Json
+          id?: string
+          one_real_email_certification_id?: string
+          production_lineage_id?: string
+          status?: string
+          superseded_at?: string | null
+          typed_confirmation?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_hub_legacy_evid_one_real_email_certification_fkey"
+            columns: ["one_real_email_certification_id"]
+            isOneToOne: false
+            referencedRelation: "communication_controlled_live_certification"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_hub_legacy_evidence_a_event_certification_id_fkey"
+            columns: ["event_certification_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_event_certification"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       communication_hub_mode_profile: {
         Row: {
@@ -95796,6 +95865,7 @@ export type Database = {
         Args: { p_manifest_hash: string; p_mapping_id: string }
         Returns: string
       }
+      _comm_hub_evidence_core_v2: { Args: { p_snapshot: Json }; Returns: Json }
       _comm_hub_evidence_fingerprint: {
         Args: {
           p_channel: string
@@ -95866,12 +95936,25 @@ export type Database = {
       }
       _comm_hub_norm_channel: { Args: { t: string }; Returns: string }
       _comm_hub_norm_code: { Args: { t: string }; Returns: string }
+      _comm_hub_recipient_set_hash_v2: {
+        Args: { p_policy: Json }
+        Returns: string
+      }
       _comm_hub_reject_reserved_targeted_fields: {
         Args: { payload: Json }
         Returns: undefined
       }
       _comm_hub_sha256_hex: { Args: { p_text: string }; Returns: string }
       _comm_hub_sha256_jsonb: { Args: { p: Json }; Returns: string }
+      _comm_hub_template_manifest_hash_v2: {
+        Args: {
+          p_body_html: string
+          p_body_text: string
+          p_layout_id: string
+          p_subject: string
+        }
+        Returns: string
+      }
       _evaluate_comm_hub_send_decision_core: {
         Args: { p_payload: Json }
         Returns: Json
@@ -96080,6 +96163,18 @@ export type Database = {
           p_date: string
           p_office_code: string
           p_user_id: string
+        }
+        Returns: Json
+      }
+      attest_comm_hub_legacy_production_baseline: {
+        Args: {
+          p_attestation_reason: string
+          p_channel: string
+          p_event_code: string
+          p_historically_proven_components?: Json
+          p_historically_unavailable_components?: Json
+          p_module_code: string
+          p_typed_confirmation: string
         }
         Returns: Json
       }
@@ -98847,6 +98942,14 @@ export type Database = {
         Args: { p_one_real_email_certification_id: string }
         Returns: Json
       }
+      get_comm_hub_production_lineage_diagnostic: {
+        Args: {
+          p_channel?: string
+          p_event_code: string
+          p_module_code: string
+        }
+        Returns: Json
+      }
       get_comm_hub_real_email_gate: {
         Args: { p_channel: string; p_event: string; p_module: string }
         Returns: Json
@@ -100289,6 +100392,18 @@ export type Database = {
       render_email_template: {
         Args: { p_template_id: string; p_variables?: Json }
         Returns: string
+      }
+      repair_comm_hub_production_lineage_anchor: {
+        Args: {
+          p_channel: string
+          p_event_code: string
+          p_expected_event_certification_id: string
+          p_expected_ore_certification_id: string
+          p_module_code: string
+          p_reason: string
+          p_typed_confirmation: string
+        }
+        Returns: Json
       }
       repair_legal_referral_close_stale_tasks: {
         Args: { p_actor: string; p_info_request_id: string }
