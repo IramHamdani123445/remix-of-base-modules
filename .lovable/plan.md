@@ -1,190 +1,83 @@
+# Communication Hub — Controlled Revalidation & Re-Send
 
-# Go-Live Closure — Slices A + B + C
+Addendum to the Production Go-Live epic. Existing Automated Readiness work stays in place; this workstream lands after it. Nothing here sends an email — implementation stops before the first controlled revalidation email and hands off to an operator.
 
-Pilot: `APPEALS / APPEAL_RECEIVED_NOTICE / email`. Nothing in this slice sends
-another email. Existing Dry Run, Controlled Stub, One Real Email and the
-pending Manual Production observation evidence are preserved.
+## Invariants (must not change)
 
-Canary (Slice F), readiness hardening (D), Stage 9 rewrite (E), Emergency Stop
-(G), UI (H), tests 3–22 (I) and runtime acceptance (J) come in later slices
-after each of these lands with evidence.
+- Event certification `732386ff-5efc-49b2-acf9-8a619f734214`
+- Authoritative ORE `39c0f243-d6df-40cd-8b45-52edf7ff2a24`
+- Production lineage `ecf8e376-e245-450f-b44b-1da5bf895722`
+- Lifecycle `LIVE_MANUAL`, mode `MANUAL_PRODUCTION`, automation `STANDBY`
+- No overwrite of historical confirmations, no auto-selection of newer ORE, no reuse of old idempotency keys, no automatic re-Arm, no automatic promotion.
 
----
+## Deliverables
 
-## Slice A — Manual Production finalize + evidence contract
+### 1. Data model (single migration)
 
-**Migration `comm_hub_manual_prod_finalize_v1`**
+- `communication_hub_revalidation_cycle` — one row per cycle, unique partial index enforcing at most one unresolved cycle per (module, event, channel). Full field set per spec section 2, including baseline + current `evidence_core_v2` / `evidence_fingerprint_v2`, `changed_components`, `runtime_changes`, `required_validation_level`, `required_stages`, promotion fields, `superseded_cycle_id`.
+- `communication_hub_revalidation_stage_result` — child evidence, one row per stage code, linked to the source certification / observation / canary id where applicable.
+- `communication_hub_runtime_release` — additive, server-owned release manifest (git SHA, component build ids, deployed_at, affected surfaces, revalidation impact, deployed_by, reason). No secrets.
+- `communication_hub_revalidation_send_authorisation` — one-use, cycle-scoped, recipient-scoped, fingerprint-scoped grant with expiry and consumed_at. Server constraint: at most one provider-contacting execution per cycle.
+- Enums for `purpose`, `status`, `stage_code`, `required_validation_level`.
+- GRANTs to `authenticated` / `service_role`; RLS scoped to platform admins via `has_role`.
+- All promotion / stage rows immutable via triggers (append-only + status-transition guard).
 
-1. New view `public.v_comm_hub_manual_production_evidence` joining
-   `communication_hub_manual_production_observation` →
-   `communication_requests` → `communication_messages` →
-   `communication_delivery_attempts` → `communication_traces` →
-   `notification_providers` → `communication_hub_event_certifications`.
-   Columns: observation_id, request_id, message_id, delivery_attempt_id,
-   trace_id, provider_id, provider_message_id, message_status,
-   attempt_status, send_context, test_mode, recipient_email,
-   inbox_confirmation_status, dispatched_at, event_certification_id,
-   manual_prod_approved_at.
+### 2. Server RPCs (all `SECURITY DEFINER`, admin-only)
 
-2. New RPC `get_comm_hub_manual_production_evidence(p_observation_id uuid)`
-   returning the view row for the caller's org (SECURITY DEFINER, admin-only).
+- `assess_comm_hub_revalidation_requirement(module, event, channel, declared_change_categories, runtime_release_reference)` — non-mutating. Compares baseline vs current `evidence_core_v2`, fingerprints, lineage, template hash, sender, recipient policy, provider, payload schema, review/send policy versions and runtime release. Returns the full envelope from spec §4 including `production_may_continue`, `event_must_be_suspended`, `automation_must_be_disarmed`, plus `required_stages` derived from the section 5 rule matrix (levels `NONE` → `AUTOMATED_CANARY`).
+- `start_comm_hub_revalidation_cycle(...)` — creates a DRAFT/ASSESSING cycle bound to a fresh assessment result; rejects if an unresolved cycle exists.
+- `record_comm_hub_revalidation_stage(cycle_id, stage_code, evidence_ids...)` — writes a stage result, enforces stage prerequisites, never copies historical evidence unless the assessment marked that stage unaffected.
+- `issue_comm_hub_revalidation_send_authorisation(cycle_id, recipient, current_fingerprint, typed_phrase)` — creates the one-use grant. Requires typed phrase `SEND ONE CONTROLLED REVALIDATION EMAIL`. Rejects if ARMED, EMERGENCY_STOP, batch/bulk enabled, or if a provider-contacting execution already exists for the cycle.
+- `record_comm_hub_revalidation_provider_result(cycle_id, execution_id, outcome)` — reuses the One Real Email transport results; closes the grant.
+- `record_comm_hub_revalidation_inbox_confirmation(cycle_id, status)` — CONFIRMED / NOT_RECEIVED. NOT_RECEIVED closes the cycle and requires a new cycle for another email.
+- `void_comm_hub_revalidation_cycle(cycle_id, reason)` — mirror of the manual production observation voider; rejects if provider evidence exists.
+- `promote_comm_hub_revalidation_baseline(cycle_id, typed_phrase)` — typed phrase `PROMOTE REVALIDATION BASELINE`. Validates all required stages, fingerprint identity, inbox CONFIRMED, no provider ambiguity. Atomically: writes immutable audit of old event cert / ORE / lineage, creates new lineage + certified revision, binds new ORE + current fingerprint, updates projection, supersedes prior baseline authority, clears `REVALIDATION_REQUIRED`. When event was automated: invalidates readiness + Arm authority, requires fresh readiness + canary + explicit re-Arm.
+- `mark_comm_hub_revalidation_cycle_supplemental(cycle_id)` — outcome A: `VERIFIED_SUPPLEMENTAL`, no anchor change.
+- `record_comm_hub_runtime_release(...)` — additive release manifest write; used by the assessment RPC.
 
-3. Rewrite `confirm_comm_hub_manual_production_observation` to enforce the
-   full completion predicate before flipping status to `CONFIRMED`:
-   event `live_manual_only`, `send_context='manual_production'`,
-   `test_mode=false`, message.status ∈ (sent,delivered),
-   attempt.status ∈ (success,sent,delivered), provider.kind NOT IN
-   (stub,test,dry_run), provider_message_id NOT NULL, trace exists,
-   `inbox_confirmation_status='CONFIRMED'`, observation.created_at >
-   event_certification.manual_prod_approved_at.
-   Return structured `{ok, blockers[]}`; never raise on missing rows.
+### 3. Send-context reuse (no second dispatcher)
 
-4. Grants: EXECUTE on both RPCs to `authenticated`; view SELECT to
-   `authenticated`.
+Extend the existing One Real Email transport with an explicit `send_context = 'CONTROLLED_REVALIDATION'` (and `revalidation_cycle_id`). Requires the one-use revalidation authorisation instead of the standard ORE grant. Initial Stage 6 keeps its existing `SEND_ONE_REAL_EMAIL` contract untouched.
 
-**Client**
+### 4. UI
 
-- `manualProductionObservationService.ts`: add
-  `getManualProductionEvidence(observationId)` returning the typed contract.
-- `ManualProductionObservationPanel.tsx`: after CONFIRMED, render the
-  evidence block (14 fields). Show inline blockers when confirm RPC returns
-  `ok=false`.
+Under `/admin/communication-hub/go-live`, once initial Stage 6 is CONFIRMED:
 
-**Tests (subset of I)**
+- New `ProductionCertifiedEmailPanel` — shows pinned ORE, verified recipient, verified date, lineage, baseline fingerprint. No "Resend" button.
+- New `CurrentConfigurationPanel` — fingerprint match/drift, changed components, runtime release deltas.
+- New `RevalidationCycleWizard` — 8 steps per spec §9. Step 5 requires the typed phrase and shows the required-stage plan derived server-side.
+- OPERATOR_ASSURANCE (no drift) shows the exact copy from the spec; drift shows the "production remains blocked" copy.
+- New `RevalidationHistoryPanel` per spec §11. Later confirmed emails render visibly distinct from the current production anchor.
+- Route stays server-authoritative — all wizard state derives from the RPCs, no browser authority.
 
-- I.1 recovery-does-not-resend (already covered — reassert).
-- I.2 provider acceptance without inbox confirmation ≠ CONFIRMED.
-- I.16 targeted observation works with automation disarmed.
+### 5. Tests
 
----
+Add `src/__tests__/comm-hub/controlledRevalidation.test.ts` covering all 24 cases in spec §12. Includes a fixture that fails if any test triggers a provider call.
 
-## Slice B — Real scheduler worker
+### 6. Stop point (mandatory)
 
-**Migration `comm_hub_scheduler_worker_v1`**
+Implementation halts after: migrations applied, RPCs deployed, UI shipped, tests green, one cycle in `READY_FOR_CONTROLLED_EMAIL` state for the pilot. No email sent. No anchor change. No re-Arm. Report includes: commit SHA, migration ids, current production anchor, detected change categories, recommended stages, cycle id/status, tests executed, deployment evidence, exact operator action required.
 
-1. Columns on `communication_hub_control_settings`:
-   `scheduler_worker_version text`,
-   `last_processed_count int`,
-   `last_scheduler_error jsonb`,
-   `heartbeat_arm_audit_id uuid`,
-   `heartbeat_automation_generation bigint`,
-   `heartbeat_readiness_hash text`.
-   (`last_scheduler_heartbeat_at`, `automation_generation`,
-   `current_arm_audit_id` already exist.)
+## Technical notes
 
-2. New table `comm_hub_scheduler_tick_leases` (id, started_at, expires_at,
-   arm_audit_id, automation_generation, configuration_version,
-   pinned_readiness_ids uuid[], readiness_hash, operating_mode,
-   automation_state, status enum(RUNNING,COMPLETED,FAILED,ABANDONED),
-   worker_version, processed_count, sent_count, retried_count,
-   failed_count, skipped_count, error jsonb, finished_at).
-   Grants: SELECT to `authenticated`, ALL to `service_role`.
-   No RLS (service-role only writes).
+- Reuse `_comm_hub_fingerprint_evidence_core_v2` — no new hashing helper.
+- Reuse `communication_hub_control_settings` for mode/automation gate reads.
+- Reuse `notification_providers` resolver for provider identity.
+- Reuse `_normalize_comm_hub_manual_production_controls` for gate validation.
+- Reuse existing legal / audit tables — audit rows are written via `_comm_hub_audit_write` where present.
+- All new tables use `updated_at` triggers; all status transitions enforced by trigger, not application code.
+- No changes to `src/integrations/supabase/*` (auto-generated).
+- Automated Readiness work in progress is untouched; the assessment RPC just reads its outputs.
 
-3. RPC `begin_comm_hub_scheduler_tick(p_worker_version text)` SECURITY
-   DEFINER, callable only when `has_role(auth.uid(),'service_role')` OR
-   caller JWT role = service_role. Locks control-settings row `FOR UPDATE`,
-   validates all 8 preconditions from Section B, inserts a lease row and
-   returns `{allowed, blockers[], lease_id, current_arm_audit_id,
-   automation_generation, configuration_version, pinned_readiness_ids,
-   readiness_hash, operating_mode, automation_state}`.
+## Sequencing
 
-4. RPC `complete_comm_hub_scheduler_tick(p_lease_id uuid, p_arm_audit_id
-   uuid, p_automation_generation bigint, p_readiness_hash text,
-   p_counts jsonb, p_error jsonb)`. Validates the lease is RUNNING and all
-   pinned identifiers still equal the current control-settings values and
-   the Arm audit action='ARMED'. Only then updates heartbeat columns and
-   marks lease COMPLETED. On mismatch: mark ABANDONED, do not update
-   heartbeat, return `{ok:false, blockers}`.
+1. Migration: enums + 4 new tables + triggers + GRANTs + RLS.
+2. Migration: 9 RPCs + immutability triggers on stage results.
+3. Migration: extend One Real Email transport for `send_context`.
+4. Migration: runtime release manifest table + `record_comm_hub_runtime_release`.
+5. Frontend: services (`revalidationCycleService.ts`, `changeAssessmentService.ts`, `runtimeReleaseService.ts`).
+6. Frontend: 4 panels + 8-step wizard, slotted into `GoLivePage.tsx` under Stage 6 once CONFIRMED.
+7. Tests: 24-case suite.
+8. Bootstrap: seed one DRAFT cycle for `APPEALS / APPEAL_RECEIVED_NOTICE / email`, run assessment against current runtime, advance to `READY_FOR_CONTROLLED_EMAIL`, and stop.
 
-**Edge function `comm-hub-automation-tick`**
-
-- Verifies JWT, then additionally requires `x-scheduler-secret` matching
-  `COMMUNICATION_HUB_SCHEDULER_SECRET` (added via `add_secret` — dedicated,
-  not the dispatch secret).
-- `action=probe`: writes an `automation_readiness_results` row of kind
-  `scheduler` with `{runtime_build, probe_time, worker_version}` and
-  returns `{ok, runtime_build, probed_at}`. No claim, no provider.
-- `action=run`: calls `begin_comm_hub_scheduler_tick`; if blocked, records
-  the blockers and returns without touching the queue. On allowed, invokes
-  the canonical queue runner (`comm-hub-dispatch` `operation=queue`)
-  bounded by `max_batch`, aggregates counts, then calls
-  `complete_comm_hub_scheduler_tick`. Errors are captured into `p_error`
-  and heartbeat is not written on failure.
-- Top-level try/catch → JSON + CORS + runtime build marker
-  `comm-hub-automation-tick@2026-07-26-slice-b`.
-
-**Secrets**
-
-- `add_secret` → `COMMUNICATION_HUB_SCHEDULER_SECRET` (new).
-
-**Client**
-
-- No UI wiring in this slice beyond exposing probe from an
-  Admin diagnostics button on `AutomatedProductionActivationPanel` labelled
-  "Run scheduler probe" (writes evidence; does not arm).
-
-**Tests**
-
-- I.3 scheduler run blocked before Arm.
-- I.4 scheduler run blocked in Manual Production.
-- I.6 blocked with old Arm audit id.
-- I.7 blocked with old automation generation.
-- I.9 heartbeat cannot be recorded for invented Arm context.
-- I.10 re-arm invalidates previous heartbeat.
-
----
-
-## Slice C — Bind generic queue dispatcher to Arm context
-
-**Edit `supabase/functions/comm-hub-dispatch/index.ts`**
-
-- When `operation=queue` (scheduled/automatic path only — not
-  `targeted`/`one_real_email`/`manual_production_observation`), require a
-  `x-scheduler-lease-id` header. Before any claim, call new RPC
-  `assert_comm_hub_queue_run_context(p_lease_id, p_module, p_event,
-  p_channel)` returning `{allowed, blockers}`. Refuse to claim on
-  disallowed.
-- Predicate: mode=AUTOMATED_PRODUCTION, state=ARMED, scheduler_enabled,
-  dispatch_enabled, no Emergency Stop, lease still RUNNING,
-  lease.arm_audit_id = current_arm_audit_id, lease.automation_generation =
-  current_automation_generation, event status=`live_cron_allowed`.
-
-**Migration `comm_hub_queue_arm_binding_v1`**
-
-- `assert_comm_hub_queue_run_context` RPC (SECURITY DEFINER,
-  service-role-only).
-
-**Tests**
-
-- I.5 scheduler run blocked during Emergency Stop simulated (rollback-only
-  txn setting `operating_mode='EMERGENCY_STOP'`).
-- I.8 blocked run claims zero messages.
-
----
-
-## Runtime evidence at end of slices A+B+C
-
-1. Migration versions from `supabase migrations list`.
-2. `comm-hub-automation-tick` deploy id + build marker.
-3. `action=probe` returns ok=true; a scheduler `automation_readiness_results`
-   row exists < 5 min old.
-4. `begin_comm_hub_scheduler_tick` called with system NOT ARMED returns
-   `allowed=false` with blocker `not_armed` (I.3).
-5. Pending Manual Production observation evidence view returns the pending
-   row unchanged (no second email).
-6. `batch_enabled=false`, `bulk_enabled=false` re-asserted.
-
-Slices D–J will be planned separately once A+B+C are green in runtime.
-
----
-
-## Non-goals in this slice
-
-- No canary creation (Slice F).
-- No Emergency Stop RPC (Slice G).
-- No changes to `get_comm_hub_go_live_completion` (Slice E).
-- No readiness probe rewrites beyond the scheduler probe wiring in B (D
-  hardens the other 8).
-- No UI redesign of Stage 8 / 9 (Slice H).
-- No canary or Stage-9-only tests (I.11–I.22, minus the ones listed above).
+Awaiting approval to build.

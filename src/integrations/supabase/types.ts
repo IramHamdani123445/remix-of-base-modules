@@ -42054,6 +42054,304 @@ export type Database = {
           },
         ]
       }
+      communication_hub_revalidation_cycle: {
+        Row: {
+          baseline_event_certification_id: string | null
+          baseline_evidence_core_v2: Json | null
+          baseline_evidence_fingerprint_v2: string | null
+          baseline_ore_certification_id: string | null
+          baseline_production_lineage_id: string | null
+          change_ticket_reference: string | null
+          changed_components: Json
+          channel: string
+          completed_at: string | null
+          configuration_version_at_start: number | null
+          controlled_email_certification_id: string | null
+          controlled_email_execution_id: string | null
+          created_at: string
+          current_evidence_core_v2: Json | null
+          current_evidence_fingerprint_v2: string | null
+          event_code: string
+          id: string
+          inbox_confirmation_status: string | null
+          module_code: string
+          promoted_at: string | null
+          promoted_by: string | null
+          promotion_status: string | null
+          provider_call_attempted: boolean
+          purpose: Database["public"]["Enums"]["comm_hub_revalidation_purpose"]
+          reason: string
+          recipient_email: string | null
+          recipient_set_hash: string | null
+          required_stages: Json
+          required_validation_level: Database["public"]["Enums"]["comm_hub_revalidation_level"]
+          runtime_changes: Json
+          runtime_release_id: string | null
+          started_at: string
+          started_by: string | null
+          status: Database["public"]["Enums"]["comm_hub_revalidation_status"]
+          superseded_cycle_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          baseline_event_certification_id?: string | null
+          baseline_evidence_core_v2?: Json | null
+          baseline_evidence_fingerprint_v2?: string | null
+          baseline_ore_certification_id?: string | null
+          baseline_production_lineage_id?: string | null
+          change_ticket_reference?: string | null
+          changed_components?: Json
+          channel?: string
+          completed_at?: string | null
+          configuration_version_at_start?: number | null
+          controlled_email_certification_id?: string | null
+          controlled_email_execution_id?: string | null
+          created_at?: string
+          current_evidence_core_v2?: Json | null
+          current_evidence_fingerprint_v2?: string | null
+          event_code: string
+          id?: string
+          inbox_confirmation_status?: string | null
+          module_code: string
+          promoted_at?: string | null
+          promoted_by?: string | null
+          promotion_status?: string | null
+          provider_call_attempted?: boolean
+          purpose: Database["public"]["Enums"]["comm_hub_revalidation_purpose"]
+          reason: string
+          recipient_email?: string | null
+          recipient_set_hash?: string | null
+          required_stages?: Json
+          required_validation_level?: Database["public"]["Enums"]["comm_hub_revalidation_level"]
+          runtime_changes?: Json
+          runtime_release_id?: string | null
+          started_at?: string
+          started_by?: string | null
+          status?: Database["public"]["Enums"]["comm_hub_revalidation_status"]
+          superseded_cycle_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          baseline_event_certification_id?: string | null
+          baseline_evidence_core_v2?: Json | null
+          baseline_evidence_fingerprint_v2?: string | null
+          baseline_ore_certification_id?: string | null
+          baseline_production_lineage_id?: string | null
+          change_ticket_reference?: string | null
+          changed_components?: Json
+          channel?: string
+          completed_at?: string | null
+          configuration_version_at_start?: number | null
+          controlled_email_certification_id?: string | null
+          controlled_email_execution_id?: string | null
+          created_at?: string
+          current_evidence_core_v2?: Json | null
+          current_evidence_fingerprint_v2?: string | null
+          event_code?: string
+          id?: string
+          inbox_confirmation_status?: string | null
+          module_code?: string
+          promoted_at?: string | null
+          promoted_by?: string | null
+          promotion_status?: string | null
+          provider_call_attempted?: boolean
+          purpose?: Database["public"]["Enums"]["comm_hub_revalidation_purpose"]
+          reason?: string
+          recipient_email?: string | null
+          recipient_set_hash?: string | null
+          required_stages?: Json
+          required_validation_level?: Database["public"]["Enums"]["comm_hub_revalidation_level"]
+          runtime_changes?: Json
+          runtime_release_id?: string | null
+          started_at?: string
+          started_by?: string | null
+          status?: Database["public"]["Enums"]["comm_hub_revalidation_status"]
+          superseded_cycle_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_hub_revalidation_cycle_runtime_release_id_fkey"
+            columns: ["runtime_release_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_runtime_release"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "communication_hub_revalidation_cycle_superseded_cycle_id_fkey"
+            columns: ["superseded_cycle_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_revalidation_cycle"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communication_hub_revalidation_send_authorisation: {
+        Row: {
+          bound_current_fingerprint: string
+          bound_event_certification_id: string
+          bound_production_lineage_id: string
+          consumed_at: string | null
+          consumed_execution_id: string | null
+          created_at: string
+          cycle_id: string
+          expires_at: string
+          id: string
+          issued_at: string
+          issued_by: string
+          recipient_email: string
+          revoke_reason: string | null
+          revoked_at: string | null
+        }
+        Insert: {
+          bound_current_fingerprint: string
+          bound_event_certification_id: string
+          bound_production_lineage_id: string
+          consumed_at?: string | null
+          consumed_execution_id?: string | null
+          created_at?: string
+          cycle_id: string
+          expires_at: string
+          id?: string
+          issued_at?: string
+          issued_by: string
+          recipient_email: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+        }
+        Update: {
+          bound_current_fingerprint?: string
+          bound_event_certification_id?: string
+          bound_production_lineage_id?: string
+          consumed_at?: string | null
+          consumed_execution_id?: string | null
+          created_at?: string
+          cycle_id?: string
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string
+          recipient_email?: string
+          revoke_reason?: string | null
+          revoked_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_hub_revalidation_send_authorisation_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_revalidation_cycle"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communication_hub_revalidation_stage_result: {
+        Row: {
+          automated_canary_id: string | null
+          completed_at: string
+          completed_by: string | null
+          controlled_stub_certification_id: string | null
+          created_at: string
+          cycle_id: string
+          dry_run_certification_id: string | null
+          evidence: Json
+          id: string
+          manual_observation_id: string | null
+          one_real_email_certification_id: string | null
+          preview_approval_id: string | null
+          preview_snapshot_id: string | null
+          reused_historical_evidence: boolean
+          stage_code: Database["public"]["Enums"]["comm_hub_revalidation_stage_code"]
+          status: Database["public"]["Enums"]["comm_hub_stage_result_status"]
+        }
+        Insert: {
+          automated_canary_id?: string | null
+          completed_at?: string
+          completed_by?: string | null
+          controlled_stub_certification_id?: string | null
+          created_at?: string
+          cycle_id: string
+          dry_run_certification_id?: string | null
+          evidence?: Json
+          id?: string
+          manual_observation_id?: string | null
+          one_real_email_certification_id?: string | null
+          preview_approval_id?: string | null
+          preview_snapshot_id?: string | null
+          reused_historical_evidence?: boolean
+          stage_code: Database["public"]["Enums"]["comm_hub_revalidation_stage_code"]
+          status: Database["public"]["Enums"]["comm_hub_stage_result_status"]
+        }
+        Update: {
+          automated_canary_id?: string | null
+          completed_at?: string
+          completed_by?: string | null
+          controlled_stub_certification_id?: string | null
+          created_at?: string
+          cycle_id?: string
+          dry_run_certification_id?: string | null
+          evidence?: Json
+          id?: string
+          manual_observation_id?: string | null
+          one_real_email_certification_id?: string | null
+          preview_approval_id?: string | null
+          preview_snapshot_id?: string | null
+          reused_historical_evidence?: boolean
+          stage_code?: Database["public"]["Enums"]["comm_hub_revalidation_stage_code"]
+          status?: Database["public"]["Enums"]["comm_hub_stage_result_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "communication_hub_revalidation_stage_result_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "communication_hub_revalidation_cycle"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communication_hub_runtime_release: {
+        Row: {
+          affected_surfaces: string[]
+          change_reason: string | null
+          component_build_ids: Json
+          created_at: string
+          deployed_at: string
+          deployed_by: string | null
+          git_commit_sha: string
+          id: string
+          release_reference: string
+          revalidation_impact: Json
+          updated_at: string
+        }
+        Insert: {
+          affected_surfaces?: string[]
+          change_reason?: string | null
+          component_build_ids?: Json
+          created_at?: string
+          deployed_at?: string
+          deployed_by?: string | null
+          git_commit_sha: string
+          id?: string
+          release_reference: string
+          revalidation_impact?: Json
+          updated_at?: string
+        }
+        Update: {
+          affected_surfaces?: string[]
+          change_reason?: string | null
+          component_build_ids?: Json
+          created_at?: string
+          deployed_at?: string
+          deployed_by?: string | null
+          git_commit_sha?: string
+          id?: string
+          release_reference?: string
+          revalidation_impact?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       communication_hub_send_decision_log: {
         Row: {
           allowed: boolean
@@ -95912,6 +96210,12 @@ export type Database = {
         }
         Returns: Json
       }
+      _chrc_derive_stages: { Args: { p_categories: Json }; Returns: Json }
+      _chrc_get_production_baseline: {
+        Args: { p_channel: string; p_event_code: string; p_module_code: string }
+        Returns: Json
+      }
+      _chrc_require_admin: { Args: never; Returns: string }
       _chub_assert_admin: { Args: never; Returns: undefined }
       _comm_hub_append_blocker: {
         Args: { p_arr: Json; p_code: string }
@@ -96255,6 +96559,16 @@ export type Database = {
       }
       assert_comm_hub_service_operation: {
         Args: { p_expected_transition?: string; p_operation: string }
+        Returns: Json
+      }
+      assess_comm_hub_revalidation_requirement: {
+        Args: {
+          p_channel?: string
+          p_declared_change_categories?: Json
+          p_event_code: string
+          p_module_code: string
+          p_runtime_release_reference?: string
+        }
         Returns: Json
       }
       assess_comm_hub_template_version_manifests: {
@@ -99797,6 +100111,16 @@ export type Database = {
       is_self_employed: { Args: { p_ssn: string }; Returns: boolean }
       is_service_role_caller: { Args: never; Returns: boolean }
       is_voluntary_contributor: { Args: { p_ssn: string }; Returns: boolean }
+      issue_comm_hub_revalidation_send_authorisation: {
+        Args: {
+          p_current_fingerprint: string
+          p_cycle_id: string
+          p_expires_minutes?: number
+          p_recipient_email: string
+          p_typed_phrase: string
+        }
+        Returns: Json
+      }
       jsonb_object_keys_count: { Args: { p: Json }; Returns: number }
       kb_search: {
         Args: { p_module?: string; p_query: string }
@@ -99988,6 +100312,58 @@ export type Database = {
           email: string
         }[]
       }
+      list_comm_hub_revalidation_cycles: {
+        Args: {
+          p_channel?: string
+          p_event_code?: string
+          p_limit?: number
+          p_module_code?: string
+        }
+        Returns: {
+          baseline_event_certification_id: string | null
+          baseline_evidence_core_v2: Json | null
+          baseline_evidence_fingerprint_v2: string | null
+          baseline_ore_certification_id: string | null
+          baseline_production_lineage_id: string | null
+          change_ticket_reference: string | null
+          changed_components: Json
+          channel: string
+          completed_at: string | null
+          configuration_version_at_start: number | null
+          controlled_email_certification_id: string | null
+          controlled_email_execution_id: string | null
+          created_at: string
+          current_evidence_core_v2: Json | null
+          current_evidence_fingerprint_v2: string | null
+          event_code: string
+          id: string
+          inbox_confirmation_status: string | null
+          module_code: string
+          promoted_at: string | null
+          promoted_by: string | null
+          promotion_status: string | null
+          provider_call_attempted: boolean
+          purpose: Database["public"]["Enums"]["comm_hub_revalidation_purpose"]
+          reason: string
+          recipient_email: string | null
+          recipient_set_hash: string | null
+          required_stages: Json
+          required_validation_level: Database["public"]["Enums"]["comm_hub_revalidation_level"]
+          runtime_changes: Json
+          runtime_release_id: string | null
+          started_at: string
+          started_by: string | null
+          status: Database["public"]["Enums"]["comm_hub_revalidation_status"]
+          superseded_cycle_id: string | null
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "communication_hub_revalidation_cycle"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       list_comm_hub_transition_log: {
         Args: { p_correlation_id?: string; p_limit?: number; p_offset?: number }
         Returns: {
@@ -100088,6 +100464,10 @@ export type Database = {
       }
       mark_comm_hub_dry_run_dispatching: {
         Args: { p_execution_id: string; p_requested_by: string }
+        Returns: Json
+      }
+      mark_comm_hub_revalidation_cycle_supplemental: {
+        Args: { p_cycle_id: string }
         Returns: Json
       }
       move_to_dlq: {
@@ -100211,6 +100591,10 @@ export type Database = {
           p_reason: string
           p_typed_confirmation: string
         }
+        Returns: Json
+      }
+      promote_comm_hub_revalidation_baseline: {
+        Args: { p_cycle_id: string; p_reason: string; p_typed_phrase: string }
         Returns: Json
       }
       public_api_c3_detail: {
@@ -100458,6 +100842,42 @@ export type Database = {
           p_idempotency_key: string
           p_module_code: string
           p_recipient_email: string
+        }
+        Returns: Json
+      }
+      record_comm_hub_revalidation_inbox_confirmation: {
+        Args: { p_cycle_id: string; p_notes?: string; p_status: string }
+        Returns: Json
+      }
+      record_comm_hub_revalidation_provider_result: {
+        Args: { p_cycle_id: string; p_execution_id: string; p_outcome: string }
+        Returns: Json
+      }
+      record_comm_hub_revalidation_stage: {
+        Args: {
+          p_automated_canary_id?: string
+          p_controlled_stub_certification_id?: string
+          p_cycle_id: string
+          p_dry_run_certification_id?: string
+          p_evidence?: Json
+          p_manual_observation_id?: string
+          p_one_real_email_certification_id?: string
+          p_preview_approval_id?: string
+          p_preview_snapshot_id?: string
+          p_reused_historical?: boolean
+          p_stage_code: Database["public"]["Enums"]["comm_hub_revalidation_stage_code"]
+          p_status: Database["public"]["Enums"]["comm_hub_stage_result_status"]
+        }
+        Returns: Json
+      }
+      record_comm_hub_runtime_release: {
+        Args: {
+          p_affected_surfaces?: string[]
+          p_change_reason?: string
+          p_component_build_ids?: Json
+          p_git_commit_sha: string
+          p_release_reference: string
+          p_revalidation_impact?: Json
         }
         Returns: Json
       }
@@ -100959,6 +101379,19 @@ export type Database = {
         Args: { provider_id: string }
         Returns: undefined
       }
+      start_comm_hub_revalidation_cycle: {
+        Args: {
+          p_change_ticket_reference?: string
+          p_channel: string
+          p_declared_change_categories?: Json
+          p_event_code: string
+          p_module_code: string
+          p_purpose: Database["public"]["Enums"]["comm_hub_revalidation_purpose"]
+          p_reason: string
+          p_runtime_release_reference?: string
+        }
+        Returns: Json
+      }
       start_comm_hub_trace: { Args: { p_payload: Json }; Returns: Json }
       submit_c3_record: {
         Args: { p_c3_id: string; p_user_id?: string }
@@ -101292,6 +101725,10 @@ export type Database = {
         }
         Returns: Json
       }
+      void_comm_hub_revalidation_cycle: {
+        Args: { p_cycle_id: string; p_reason: string }
+        Returns: Json
+      }
       write_comm_hub_operating_mode_audit: {
         Args: {
           p_actor: string
@@ -101611,6 +102048,52 @@ export type Database = {
         | "STALE"
         | "SUSPENDED"
         | "RETIRED"
+      comm_hub_revalidation_level:
+        | "NONE"
+        | "NON_SENDING_ONLY"
+        | "CONTROLLED_EMAIL"
+        | "FULL_CONTENT_AND_DELIVERY"
+        | "FULL_MANUAL_PRODUCTION"
+        | "AUTOMATED_CANARY"
+      comm_hub_revalidation_purpose:
+        | "CONFIGURATION_CHANGE"
+        | "PROVIDER_CHANGE"
+        | "SENDER_CHANGE"
+        | "TEMPLATE_CHANGE"
+        | "RUNTIME_CHANGE"
+        | "SECURITY_CHANGE"
+        | "INCIDENT_RECOVERY"
+        | "OPERATOR_ASSURANCE"
+      comm_hub_revalidation_stage_code:
+        | "CHANGE_ASSESSMENT"
+        | "CONTRACT_TESTS"
+        | "PREVIEW"
+        | "PREVIEW_APPROVAL"
+        | "DRY_RUN"
+        | "CONTROLLED_STUB"
+        | "CONTROLLED_REVALIDATION_EMAIL"
+        | "INBOX_CONFIRMATION"
+        | "MANUAL_PRODUCTION_ACCEPTANCE"
+        | "AUTOMATED_READINESS"
+        | "AUTOMATED_CANARY"
+        | "BASELINE_PROMOTION"
+      comm_hub_revalidation_status:
+        | "DRAFT"
+        | "ASSESSING"
+        | "REVALIDATION_REQUIRED"
+        | "NON_SENDING_CHECKS"
+        | "READY_FOR_CONTROLLED_EMAIL"
+        | "EMAIL_AUTHORISED"
+        | "PROVIDER_PROCESSING"
+        | "AWAITING_INBOX_CONFIRMATION"
+        | "CONFIRMED"
+        | "NOT_RECEIVED"
+        | "FAILED"
+        | "VOIDED"
+        | "VERIFIED_SUPPLEMENTAL"
+        | "READY_FOR_PROMOTION"
+        | "PROMOTED"
+        | "SUPERSEDED"
       comm_hub_scenario_lifecycle:
         | "DRAFT"
         | "SCHEMA_VALID"
@@ -101634,6 +102117,12 @@ export type Database = {
         | "REAL_EMAIL_READY"
         | "STALE"
         | "SUSPENDED"
+      comm_hub_stage_result_status:
+        | "PASSED"
+        | "FAILED"
+        | "SKIPPED"
+        | "ACCEPTED_UNCHANGED"
+        | "PENDING"
       comm_hub_template_lifecycle:
         | "DRAFT"
         | "DISCOVERED"
@@ -102271,6 +102760,56 @@ export const Constants = {
         "SUSPENDED",
         "RETIRED",
       ],
+      comm_hub_revalidation_level: [
+        "NONE",
+        "NON_SENDING_ONLY",
+        "CONTROLLED_EMAIL",
+        "FULL_CONTENT_AND_DELIVERY",
+        "FULL_MANUAL_PRODUCTION",
+        "AUTOMATED_CANARY",
+      ],
+      comm_hub_revalidation_purpose: [
+        "CONFIGURATION_CHANGE",
+        "PROVIDER_CHANGE",
+        "SENDER_CHANGE",
+        "TEMPLATE_CHANGE",
+        "RUNTIME_CHANGE",
+        "SECURITY_CHANGE",
+        "INCIDENT_RECOVERY",
+        "OPERATOR_ASSURANCE",
+      ],
+      comm_hub_revalidation_stage_code: [
+        "CHANGE_ASSESSMENT",
+        "CONTRACT_TESTS",
+        "PREVIEW",
+        "PREVIEW_APPROVAL",
+        "DRY_RUN",
+        "CONTROLLED_STUB",
+        "CONTROLLED_REVALIDATION_EMAIL",
+        "INBOX_CONFIRMATION",
+        "MANUAL_PRODUCTION_ACCEPTANCE",
+        "AUTOMATED_READINESS",
+        "AUTOMATED_CANARY",
+        "BASELINE_PROMOTION",
+      ],
+      comm_hub_revalidation_status: [
+        "DRAFT",
+        "ASSESSING",
+        "REVALIDATION_REQUIRED",
+        "NON_SENDING_CHECKS",
+        "READY_FOR_CONTROLLED_EMAIL",
+        "EMAIL_AUTHORISED",
+        "PROVIDER_PROCESSING",
+        "AWAITING_INBOX_CONFIRMATION",
+        "CONFIRMED",
+        "NOT_RECEIVED",
+        "FAILED",
+        "VOIDED",
+        "VERIFIED_SUPPLEMENTAL",
+        "READY_FOR_PROMOTION",
+        "PROMOTED",
+        "SUPERSEDED",
+      ],
       comm_hub_scenario_lifecycle: [
         "DRAFT",
         "SCHEMA_VALID",
@@ -102296,6 +102835,13 @@ export const Constants = {
         "REAL_EMAIL_READY",
         "STALE",
         "SUSPENDED",
+      ],
+      comm_hub_stage_result_status: [
+        "PASSED",
+        "FAILED",
+        "SKIPPED",
+        "ACCEPTED_UNCHANGED",
+        "PENDING",
       ],
       comm_hub_template_lifecycle: [
         "DRAFT",
