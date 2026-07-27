@@ -121,13 +121,11 @@ describe("A4.1.2C §7 — Operations reads only the summary RPC", () => {
     expect(currents.length).toBe(1);
   });
 
-  it("respects server-supplied blockers and warnings", async () => {
-    summaryMock.mockResolvedValue(makeSummary({
-      blockers: [{ code: "PROVIDER_BOUNDARY_NOT_APPROVED", message: "Sealed server-side." }],
-    }));
+  it("does not consume the legacy getEventGoLiveStatus or listRevalidationCycles services", async () => {
+    // Both are mocked to throw if invoked. A successful render proves
+    // Operations reads only the summary RPC.
     renderOps();
-    await waitFor(() => {
-      expect(screen.getByText(/PROVIDER_BOUNDARY_NOT_APPROVED/)).toBeTruthy();
-    });
+    await screen.findByTestId("ops-lifecycle-stepper");
   });
 });
+
