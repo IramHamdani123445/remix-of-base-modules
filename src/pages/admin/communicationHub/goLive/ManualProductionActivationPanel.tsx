@@ -193,9 +193,21 @@ export function ManualProductionActivationPanel({
           expectedRuntimeModeVersion: res.runtime_mode_version,
         });
         if (!promote.ok) {
+          if (promote.phase === "RUNTIME_MODE_VERSION_CONFLICT") {
+            setReconcileMsg(
+              "Operating mode changed after this screen was loaded. Review the refreshed state before continuing.",
+            );
+            toast.warning("Runtime mode version conflict — state refreshed");
+            onChanged();
+            return;
+          }
           toast.error(`Reconcile blocked: ${promote.error ?? promote.phase ?? "unknown"}`);
         } else {
-          toast.success("Event certified from existing Stage 6 evidence");
+          toast.success(
+            promote.no_change
+              ? "Event already certified — no changes"
+              : "Event certified from existing Stage 6 evidence",
+          );
         }
         onChanged();
         return;
