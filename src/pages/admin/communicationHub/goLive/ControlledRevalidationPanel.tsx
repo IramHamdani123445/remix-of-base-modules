@@ -651,7 +651,7 @@ export function ControlledRevalidationPanel({
                     >
                       <Button
                         size="sm"
-                        onClick={handlePrepare}
+                        onClick={prepAction.kind === "RECOVER" ? handleRecover : handlePrepare}
                         disabled={preparing || cycleAuthMismatch}
                         data-testid={
                           prepAction.kind === "PREPARE" ? "controlled-revalidation-prepare-button"
