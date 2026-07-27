@@ -91,10 +91,41 @@ export interface PromoteToManualProductionInput {
 
 export interface PromoteToManualProductionResult {
   ok: boolean;
-  next_action?: "DISPATCH_MANUAL_OBSERVATION";
+  /**
+   * Non-mutating structured result codes returned by the server:
+   *   - RUNTIME_MODE_VERSION_CONFLICT: expected != current runtime_mode_version.
+   *     The UI must NOT auto-retry; refresh state and show the operator.
+   *   - certify_event / normalize_failed / EMERGENCY_STOP_ACTIVE /
+   *     AUTOMATED_PRODUCTION_ACTIVE_REQUIRES_EXPLICIT_TRANSITION /
+   *     NOT_MANUAL_PRODUCTION
+   */
+  phase?:
+    | "RUNTIME_MODE_VERSION_CONFLICT"
+    | "certify_event"
+    | "normalize_failed"
+    | "EMERGENCY_STOP_ACTIVE"
+    | "AUTOMATED_PRODUCTION_ACTIVE_REQUIRES_EXPLICIT_TRANSITION"
+    | "NOT_MANUAL_PRODUCTION"
+    | string;
+  next_action?: "DISPATCH_MANUAL_OBSERVATION" | "REFRESH_AND_RECONCILE";
+  idempotent?: boolean;
+  no_change?: boolean;
+  event_certification_id?: string;
+  event_status?: "live_manual_only";
+  controls_normalized?: boolean;
+  changed_fields?: string[];
+  runtime_mode_version?: number;
+  configuration_version?: number;
+  automation_generation?: number;
+  operating_mode?: string;
+  automation_state?: string;
+  // Populated only on RUNTIME_MODE_VERSION_CONFLICT.
+  expected_runtime_mode_version?: number;
+  current_runtime_mode_version?: number;
+  current_operating_mode?: string;
   certification?: Record<string, unknown>;
   mode?: Record<string, unknown>;
-  phase?: string;
+  normalize?: Record<string, unknown>;
   error?: string;
   result?: unknown;
 }
