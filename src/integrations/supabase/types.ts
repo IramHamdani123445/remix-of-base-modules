@@ -99434,6 +99434,18 @@ export type Database = {
         Args: { p_cashier_user_id: string; p_date: string }
         Returns: Json
       }
+      get_comm_hub_active_revalidation_authorisation: {
+        Args: {
+          p_channel?: string
+          p_event_code: string
+          p_module_code: string
+        }
+        Returns: Json
+      }
+      get_comm_hub_active_revalidation_preparation: {
+        Args: { p_cycle_id: string }
+        Returns: Json
+      }
       get_comm_hub_controlled_live_execution: {
         Args: { p_execution_id: string }
         Returns: {
@@ -99586,6 +99598,14 @@ export type Database = {
       }
       get_comm_hub_one_real_email_recovery_status: {
         Args: { p_execution_id: string }
+        Returns: Json
+      }
+      get_comm_hub_operations_summary: {
+        Args: {
+          p_channel?: string
+          p_event_code: string
+          p_module_code: string
+        }
         Returns: Json
       }
       get_comm_hub_ore_evidence_snapshot: {

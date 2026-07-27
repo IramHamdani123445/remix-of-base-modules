@@ -38,6 +38,13 @@ import {
   type RevalidationCycle,
   type RevalidationPurpose,
 } from "@/platform/communication-hub/revalidationService";
+import {
+  getActiveRevalidationAuthorisation,
+  getActiveRevalidationPreparation,
+  type HydratedAuthorisation,
+  type HydratedPreparationExecution,
+} from "@/platform/communication-hub/operationsSummaryService";
+import { maskEmail } from "../utils/mask";
 
 const CHANGE_CATEGORIES: { code: ChangeCategory; label: string }[] = [
   { code: "UI_ONLY", label: "UI / reporting only" },
@@ -97,7 +104,13 @@ export function ControlledRevalidationPanel({
   const [promotePhrase, setPromotePhrase] = useState("");
   const [promoteReason, setPromoteReason] = useState("");
   const [promoting, setPromoting] = useState(false);
-  const [lastAuthorisationId, setLastAuthorisationId] = useState<string | null>(null);
+  // A4.1.2C — Server-hydrated authority. React state is NOT the source of
+  // truth for authorisation or preparation execution; both survive refresh,
+  // tab switch, deep link, and a second operator session.
+  const [hydratedAuth, setHydratedAuth] = useState<HydratedAuthorisation | null>(null);
+  const [authUnusableReason, setAuthUnusableReason] = useState<string | null>(null);
+  const [hydratedPrep, setHydratedPrep] = useState<HydratedPreparationExecution | null>(null);
+  const [prepUnavailableReason, setPrepUnavailableReason] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [prepareResult, setPrepareResult] = useState<Awaited<ReturnType<typeof prepareControlledRevalidation>> | null>(null);
 
@@ -108,7 +121,37 @@ export function ControlledRevalidationPanel({
       const unresolved = list.find(
         (c) => !["CONFIRMED","NOT_RECEIVED","FAILED","VOIDED","PROMOTED","SUPERSEDED","VERIFIED_SUPPLEMENTAL"].includes(c.status),
       );
-      setActiveCycle(unresolved ?? list[0] ?? null);
+      const active = unresolved ?? list[0] ?? null;
+      setActiveCycle(active);
+
+      // Hydrate authorisation from the server (authoritative).
+      try {
+        const authRes = await getActiveRevalidationAuthorisation({ moduleCode, eventCode, channel });
+        setHydratedAuth(authRes.authorisation);
+        setAuthUnusableReason(
+          authRes.authorisation && authRes.authorisation.usable
+            ? null
+            : (authRes.authorisation?.unusable_reason ?? authRes.unusable_reason ?? null),
+        );
+      } catch (e: any) {
+        setHydratedAuth(null);
+        setAuthUnusableReason("authorisation_unavailable");
+      }
+
+      // Hydrate active preparation execution from the server (authoritative).
+      if (active) {
+        try {
+          const prepRes = await getActiveRevalidationPreparation(active.id);
+          setHydratedPrep(prepRes.execution);
+          setPrepUnavailableReason(prepRes.unavailable_reason ?? null);
+        } catch {
+          setHydratedPrep(null);
+          setPrepUnavailableReason("execution_unavailable");
+        }
+      } else {
+        setHydratedPrep(null);
+        setPrepUnavailableReason("no_cycle");
+      }
     } catch (e: any) {
       console.error(e);
     }
@@ -158,8 +201,8 @@ export function ControlledRevalidationPanel({
         currentFingerprint: activeCycle.current_evidence_fingerprint_v2 ?? "",
         typedPhrase: phrase,
       });
-      const authId = res?.authorisation_id ?? res?.id ?? null;
-      setLastAuthorisationId(authId);
+      // Authorisation ID is intentionally NOT retained in React state — we
+      // refresh() to reload the server-authoritative authorisation.
       setPrepareResult(null);
       toast.success("Authorisation issued. You may now prepare the controlled delivery.");
       setPhrase("");
@@ -169,12 +212,12 @@ export function ControlledRevalidationPanel({
   }
 
   async function handlePrepare() {
-    if (!activeCycle || !lastAuthorisationId) return;
+    if (!activeCycle || !hydratedAuth?.id || !hydratedAuth.usable) return;
     setPreparing(true);
     try {
       const res = await prepareControlledRevalidation({
         cycleId: activeCycle.id,
-        authorisationId: lastAuthorisationId,
+        authorisationId: hydratedAuth.id,
       });
       setPrepareResult(res);
       if (res.status === "READY_FOR_PROVIDER") {
@@ -369,8 +412,28 @@ export function ControlledRevalidationPanel({
                 {activeCycle.required_stages.length ? activeCycle.required_stages.join(" → ") : "none"}</div>
             </div>
 
-            {/* Authorise send */}
-            {canAuthorise && (
+            {/* Server-hydrated authorisation card */}
+            {hydratedAuth && (
+              <div className="rounded border p-2 space-y-1 bg-muted/20" data-testid="hydrated-authorisation">
+                <div className="text-xs font-medium flex items-center gap-2">
+                  Authorisation <Badge variant={hydratedAuth.usable ? "default" : "destructive"}>{hydratedAuth.status}</Badge>
+                  {hydratedAuth.usable && <Badge variant="outline">usable</Badge>}
+                </div>
+                <div className="text-[11px] grid gap-x-4 gap-y-0.5 sm:grid-cols-2">
+                  <div><span className="text-muted-foreground">Recipient:</span> <code className="font-mono">{maskEmail(hydratedAuth.recipient)}</code></div>
+                  <div><span className="text-muted-foreground">Expires:</span> {hydratedAuth.expires_at ? new Date(hydratedAuth.expires_at).toLocaleString() : "—"}</div>
+                  <div className="sm:col-span-2"><span className="text-muted-foreground">Authorisation ID:</span> <code className="font-mono">{hydratedAuth.id}</code></div>
+                  {!hydratedAuth.usable && (
+                    <div className="sm:col-span-2 text-destructive">
+                      Not usable: {hydratedAuth.unusable_reason ?? "unknown"}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Authorise send — only when there is no usable authorisation */}
+            {canAuthorise && !hydratedAuth?.usable && (
               <div className="rounded border p-2 space-y-2">
                 <div className="text-xs font-medium">Controlled revalidation email authorisation</div>
                 <Input placeholder="Recipient email"
@@ -401,8 +464,33 @@ export function ControlledRevalidationPanel({
               </div>
             )}
 
+            {/* Server-hydrated active preparation execution */}
+            {hydratedPrep && (
+              <div className="rounded border p-2 space-y-1 text-[11px]" data-testid="hydrated-preparation">
+                <div className="font-medium text-xs flex items-center gap-2">
+                  Preparation execution
+                  <Badge variant={hydratedPrep.classified_state === "READY_FOR_PROVIDER" ? "default" : "destructive"}>
+                    {hydratedPrep.classified_state}
+                  </Badge>
+                  <Badge variant="outline">v{hydratedPrep.preparation_version}</Badge>
+                </div>
+                {hydratedPrep.classified_state === "PREPARING" && (
+                  <div className="text-destructive">Preparation incomplete — retry to finalise (no email will be sent).</div>
+                )}
+                {hydratedPrep.classified_state === "READY_FOR_PROVIDER" && (
+                  <div className="text-emerald-700 dark:text-emerald-300">Preparation complete. No email sent. Provider delivery remains disabled until A4.2.</div>
+                )}
+                {hydratedPrep.classified_state === "FAILED_PRE_PROVIDER" && (
+                  <div className="text-destructive">Failed before any provider call ({hydratedPrep.failure_code ?? "unknown"}). Authorisation preserved.</div>
+                )}
+                <div><span className="text-muted-foreground">Execution:</span> <code className="font-mono">{hydratedPrep.execution_id}</code></div>
+                <div><span className="text-muted-foreground">Idempotency key:</span> <code className="font-mono break-all">{hydratedPrep.canonical_idempotency_key ?? "—"}</code></div>
+                <div><span className="text-muted-foreground">Provider call attempted:</span> {String(hydratedPrep.provider_call_attempted)}</div>
+              </div>
+            )}
+
             {/* A4.1 — Prepare controlled delivery (no provider call) */}
-            {activeCycle && lastAuthorisationId && (
+            {activeCycle && hydratedAuth?.usable && (
               <div className="rounded border p-2 space-y-2 bg-muted/30">
                 <div className="text-xs font-medium">
                   Prepare controlled delivery <Badge variant="outline">no email sent</Badge>
