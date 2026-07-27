@@ -282,18 +282,18 @@ BEGIN
     (request_no, module_code, event_code, channels, priority, status,
      payload, context, idempotency_key)
   VALUES ('CREV-PREP-TEST-'||substr(v_prep.execution_id::text,1,8),
-     'TEST_MODULE', 'TEST_EVENT', ARRAY['email'], 'normal', 'prepared',
+     'TEST_MODULE', 'TEST_EVENT', ARRAY['email'], 'normal', 'pending',
      '{}'::jsonb, '{}'::jsonb, v_prep.canonical_idempotency_key)
   RETURNING id INTO v_req;
 
   INSERT INTO public.communication_message
     (request_id, channel, subject, body_text, body_html, status, send_context)
-  VALUES (v_req, 'email', 't', 't', '<p>t</p>', 'prepared', 'controlled_revalidation')
+  VALUES (v_req, 'email', 't', 't', '<p>t</p>', 'queued', 'controlled_revalidation')
   RETURNING id INTO v_msg;
 
   INSERT INTO public.communication_delivery_attempt
     (message_id, attempt_no, status, provider_call_attempted, send_context, attempt_type)
-  VALUES (v_msg, 0, 'prepared', false, 'controlled_revalidation',
+  VALUES (v_msg, 0, 'pending', false, 'controlled_revalidation',
           'controlled_revalidation_preparation')
   RETURNING id INTO v_att;
 
