@@ -201,8 +201,8 @@ export function ControlledRevalidationPanel({
         currentFingerprint: activeCycle.current_evidence_fingerprint_v2 ?? "",
         typedPhrase: phrase,
       });
-      const authId = res?.authorisation_id ?? res?.id ?? null;
-      setLastAuthorisationId(authId);
+      // Authorisation ID is intentionally NOT retained in React state — we
+      // refresh() to reload the server-authoritative authorisation.
       setPrepareResult(null);
       toast.success("Authorisation issued. You may now prepare the controlled delivery.");
       setPhrase("");
@@ -212,12 +212,12 @@ export function ControlledRevalidationPanel({
   }
 
   async function handlePrepare() {
-    if (!activeCycle || !lastAuthorisationId) return;
+    if (!activeCycle || !hydratedAuth?.id || !hydratedAuth.usable) return;
     setPreparing(true);
     try {
       const res = await prepareControlledRevalidation({
         cycleId: activeCycle.id,
-        authorisationId: lastAuthorisationId,
+        authorisationId: hydratedAuth.id,
       });
       setPrepareResult(res);
       if (res.status === "READY_FOR_PROVIDER") {
