@@ -412,6 +412,8 @@ BEGIN
     NULL, NULL, 'hash', NULL, 'test', '{}'::jsonb);
 
   -- Directly mark provider boundary as used (simulates a completed send).
+  -- Bypass RLS/grants for the simulation only. Reverts at ROLLBACK.
+  PERFORM set_config('role','postgres',true);
   UPDATE public.communication_hub_revalidation_execution
      SET provider_call_attempted = true,
          provider_boundary_state = 'ENTERED',
