@@ -153,9 +153,11 @@ describe('Omni-Comms Story 3 — no runtime implementation was created', () => {
     expect(files).not.toContain('sendCommunication.ts');
   });
 
-  it('no omni_comms_* migration exists beyond the approved Epic 2 Story 1 event tables, and no omni-comms-* edge function exists', () => {
+  it('no omni_comms_* migration exists beyond registry-approved AVAILABLE tables, and no omni-comms-* edge function exists', () => {
     const migrationsDir = path.join(REPO_ROOT, 'supabase', 'migrations');
-    const allowed = new Set(['omni_comms_event_definition', 'omni_comms_event_contract']);
+    const allowed = new Set(
+      OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.status === 'AVAILABLE').map((o) => o.name),
+    );
     if (existsSync(migrationsDir)) {
       const offenders: string[] = [];
       for (const file of readdirSync(migrationsDir)) {

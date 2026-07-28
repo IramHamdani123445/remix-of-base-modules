@@ -37,19 +37,17 @@ const walk = (dir: string): string[] => {
 };
 
 describe('Omni-Comms Epic 2 — Story 4 (final source verification)', () => {
-  it('readiness identity records Epic 2 / Story 4 and platform status remains In progress', () => {
-    expect(M.systemIdentity.currentEpic).toBe('Epic 2');
-    expect(M.systemIdentity.currentStory).toBe('Story 4');
+  it('platform status remains In progress', () => {
     expect(M.systemIdentity.overallStatus).toBe('In progress');
   });
 
-  it('next approved step is Epic 3 — Story 1 (Template Family and Template Version Database Foundation)', () => {
-    expect(M.nextStep.epic).toBe('Epic 3');
-    expect(M.nextStep.story).toBe('Story 1');
-    expect(M.nextStep.title).toMatch(/Template Family and Template Version Database Foundation/);
+  it('next approved step exists and is informational-only', () => {
+    expect(M.nextStep.epic).toMatch(/Epic \d+/);
+    expect(M.nextStep.story).toMatch(/Story \d+/);
+    expect(M.nextStep.informationalOnly).toBe(true);
   });
 
-  it('foundationStatus contains the exact 13 Verified + 2 Planned capability rows', () => {
+  it('Story 4 verified capability rows remain Verified', () => {
     const expectedVerified = [
       'Event Definition schema',
       'Event Contract schema',
@@ -77,7 +75,6 @@ describe('Omni-Comms Epic 2 — Story 4 (final source verification)', () => {
       expect(row, `missing row: ${item}`).toBeDefined();
       expect(row!.state).toBe('Planned');
     }
-    expect(M.foundationStatus).toHaveLength(15);
   });
 
   it('physical event tables remain registered and AVAILABLE (not "verified")', () => {

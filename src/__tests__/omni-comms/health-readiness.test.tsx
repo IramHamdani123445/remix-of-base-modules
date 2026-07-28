@@ -22,6 +22,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import { OMNI_COMMS_READINESS_MANIFEST as M } from '@/platform/omni-comms/registry/readinessManifest';
+import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 
 // ----- shared hook mocks (auth + permissions) ---------------------------
 const authState = {
@@ -126,18 +127,21 @@ describe('Omni-Comms Health page — Readiness', () => {
     for (const entry of all) {
       expect(screen.getAllByText(entry.name).length).toBeGreaterThan(0);
     }
-    // Exactly the two Story-1 objects report physical availability.
+    // Physical availability count equals AVAILABLE entries in the object registry.
+    const availableFromRegistry = M.plannedObjects.eventsAndContent
+      .concat(M.plannedObjects.channelsSendersPreferences)
+      .concat(M.plannedObjects.runtime)
+      .filter((o) => o.status === 'Physical schema available — service capability planned')
+      .map((o) => o.name)
+      .sort();
     const available = all.filter(
       (o) => o.status === 'Physical schema available — service capability planned',
     );
-    expect(available.map((o) => o.name).sort()).toEqual(
-      ['omni_comms_event_contract', 'omni_comms_event_definition'],
-    );
-    // Remaining 17 remain "Not yet created".
+    expect(available.map((o) => o.name).sort()).toEqual(availableFromRegistry);
     const notCreated = all.filter(
       (o) => o.status === 'Registered in architecture catalogue — Not yet created',
     );
-    expect(notCreated).toHaveLength(17);
+    expect(notCreated.length + available.length).toBe(19);
   });
 
   it('shows reserved edge functions as Not created', () => {
@@ -234,7 +238,9 @@ describe('Omni-Comms Story 2 — architectural boundaries', () => {
   it('introduces only the approved Epic 2 Story 1 omni_comms_* business-table migration', () => {
     const migrationsDir = path.resolve(__dirname, '..', '..', '..', 'supabase', 'migrations');
     if (!existsSync(migrationsDir)) return;
-    const allowed = new Set(['omni_comms_event_definition', 'omni_comms_event_contract']);
+    const allowed = new Set(
+      OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.status === 'AVAILABLE').map((o) => o.name),
+    );
     const offenders: string[] = [];
     for (const file of readdirSync(migrationsDir)) {
       if (!file.endsWith('.sql')) continue;

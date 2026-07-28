@@ -34,7 +34,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 3,
     writeAuthority: 'admin_rpc',
     purpose: 'Template family anchoring the event → department → organisation cascade.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Epic 3 — Story 1',
   },
   {
     name: 'omni_comms_template_version',
@@ -42,7 +43,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 3,
     writeAuthority: 'admin_rpc',
     purpose: 'Versioned template body per channel and locale, with approval state.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Epic 3 — Story 1',
   },
   {
     name: 'omni_comms_event_route',
