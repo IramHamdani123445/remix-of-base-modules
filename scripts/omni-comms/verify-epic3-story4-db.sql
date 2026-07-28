@@ -139,8 +139,8 @@ BEGIN
   ------------------------------------------------------------------
   SELECT count(*) INTO v_count FROM public.module_actions ma
     JOIN public.app_modules m ON m.id = ma.module_id
-   WHERE m.module_code='omni_comms'
-     AND ma.action_code IN ('view','configure','author_templates','approve_templates');
+   WHERE m.name = 'omni_comms'
+     AND ma.action_name IN ('view','configure','author_templates','approve_templates');
   IF v_count < 4 THEN
     RAISE EXCEPTION 'expected 4 omni_comms template capabilities (view/configure/author_templates/approve_templates), found %', v_count;
   END IF;
