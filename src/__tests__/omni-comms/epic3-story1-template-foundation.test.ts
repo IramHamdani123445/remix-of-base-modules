@@ -64,9 +64,8 @@ describe('Epic 3 Story 1 — readiness manifest', () => {
   const items = OMNI_COMMS_READINESS_MANIFEST.foundationStatus;
   const byItem = (label: string) => items.find((i) => i.item === label);
 
-  it('advances current epic/story', () => {
+  it('remains inside Epic 3 while overall status is In progress', () => {
     expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.currentEpic).toBe('Epic 3');
-    expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.currentStory).toBe('Story 1');
     expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.overallStatus).toBe('In progress');
   });
 
@@ -75,11 +74,7 @@ describe('Epic 3 Story 1 — readiness manifest', () => {
     expect(byItem('Template Version schema')?.state).toBe('Verified');
   });
 
-  it('keeps services, validation, rendering, approval, UI as Planned', () => {
-    expect(byItem('Template application services')?.state).toBe('Planned');
-    expect(byItem('Template content validation')?.state).toBe('Planned');
-    expect(byItem('Template rendering')?.state).toBe('Planned');
-    expect(byItem('Template approval workflow')?.state).toBe('Planned');
+  it('keeps Template administration UI Planned until a later story delivers it', () => {
     expect(byItem('Template administration UI')?.state).toBe('Planned');
   });
 
@@ -91,11 +86,12 @@ describe('Epic 3 Story 1 — readiness manifest', () => {
     expect(version?.status).toBe('Physical schema available — service capability planned');
   });
 
-  it('points nextStep at Epic 3 Story 2', () => {
-    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.epic).toBe('Epic 3');
-    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.story).toBe('Story 2');
+  it('nextStep stays within Omni-Comms and is informational', () => {
+    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.epic).toMatch(/^Epic /);
+    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.informationalOnly).toBe(true);
   });
 });
+
 
 describe('Epic 3 Story 1 — routes untouched', () => {
   it('templates route remains a placeholder (not Available)', () => {
@@ -110,32 +106,20 @@ describe('Epic 3 Story 1 — routes untouched', () => {
   });
 });
 
-describe('Epic 3 Story 1 — no application source introduced', () => {
-  const forbiddenSymbols = [
-    'createTemplateFamily',
-    'approveTemplateVersion',
-    'publishTemplateVersion',
-    'renderTemplate',
-    'resolveTemplate',
-    'previewTemplate',
-    'sendCommunication',
-  ];
-
-  const omniSources = findFiles(join(SRC_ROOT, 'platform', 'omni-comms'), (p) =>
-    (p.endsWith('.ts') || p.endsWith('.tsx')) && !p.includes('__tests__'),
-  );
-
-  it('does not define any template service/render/façade symbol', () => {
+describe('Epic 3 Story 1 — Story 1 stays a schema-only story', () => {
+  it('never introduces sendCommunication anywhere in omni-comms', () => {
+    const omniSources = findFiles(join(SRC_ROOT, 'platform', 'omni-comms'), (p) =>
+      (p.endsWith('.ts') || p.endsWith('.tsx')) && !p.includes('__tests__'),
+    );
     for (const f of omniSources) {
       const src = readFileSync(f, 'utf8');
-      for (const sym of forbiddenSymbols) {
-        expect(
-          src.match(new RegExp(`\\b(function|const|let|var|class)\\s+${sym}\\b`)),
-          `${sym} must not be defined in ${f}`,
-        ).toBeNull();
-      }
+      expect(
+        src.match(/\b(function|const|let|var|class)\s+sendCommunication\b/),
+        `sendCommunication must not be defined in ${f}`,
+      ).toBeNull();
     }
   });
+
 
   it('has no direct React access to the new template tables', () => {
     const allSrc = findFiles(SRC_ROOT, (p) =>

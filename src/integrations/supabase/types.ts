@@ -101202,8 +101202,26 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_priv_compute_template_checksum: {
+        Args: {
+          p_channel: string
+          p_content: Json
+          p_family_code: string
+          p_locale: string
+          p_version_number: number
+        }
+        Returns: string
+      }
       omni_comms_priv_escape_ilike: {
         Args: { p_input: string }
+        Returns: string
+      }
+      omni_comms_priv_extract_tokens: {
+        Args: { p_source: string }
+        Returns: string[]
+      }
+      omni_comms_priv_normalize_locale: {
+        Args: { p_locale: string }
         Returns: string
       }
       omni_comms_priv_normalize_reason: {
@@ -101218,8 +101236,16 @@ export type Database = {
         Args: { p_action: string }
         Returns: string
       }
+      omni_comms_priv_validate_channel_content: {
+        Args: { p_channel: string; p_content: Json }
+        Returns: undefined
+      }
       omni_comms_priv_validate_schema: {
         Args: { p_json_schema: Json; p_sample_payload: Json }
+        Returns: undefined
+      }
+      omni_comms_priv_verify_department_ownership: {
+        Args: { p_department_id: string; p_organization_id: string }
         Returns: undefined
       }
       omni_comms_priv_write_audit: {
@@ -101248,6 +101274,122 @@ export type Database = {
           p_reason: string
         }
         Returns: undefined
+      }
+      omni_comms_priv_write_template_audit: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_after: Json
+          p_before: Json
+          p_correlation_id: string
+          p_entity_display: string
+          p_entity_id: string
+          p_entity_type: string
+          p_notes: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      omni_comms_template_family_activate: {
+        Args: { p_correlation_id: string; p_id: string; p_reason: string }
+        Returns: Json
+      }
+      omni_comms_template_family_create: {
+        Args: {
+          p_code: string
+          p_correlation_id: string
+          p_department_id: string
+          p_description: string
+          p_event_definition_id: string
+          p_name: string
+          p_organization_id: string
+          p_scope_type: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_family_get: { Args: { p_id: string }; Returns: Json }
+      omni_comms_template_family_list: {
+        Args: {
+          p_limit: number
+          p_offset: number
+          p_organization_id: string
+          p_scope_type: string
+          p_search: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_family_retire: {
+        Args: { p_correlation_id: string; p_id: string; p_reason: string }
+        Returns: Json
+      }
+      omni_comms_template_family_update: {
+        Args: {
+          p_correlation_id: string
+          p_description: string
+          p_expected_updated_at: string
+          p_id: string
+          p_name: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_resolve_published: {
+        Args: {
+          p_channel: string
+          p_department_id: string
+          p_event_definition_id: string
+          p_locale: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_version_approve: {
+        Args: {
+          p_approval_note: string
+          p_correlation_id: string
+          p_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_version_create: {
+        Args: {
+          p_channel: string
+          p_content: Json
+          p_correlation_id: string
+          p_locale: string
+          p_template_family_id: string
+          p_version_number: number
+        }
+        Returns: Json
+      }
+      omni_comms_template_version_get: { Args: { p_id: string }; Returns: Json }
+      omni_comms_template_version_list: {
+        Args: {
+          p_channel: string
+          p_limit: number
+          p_locale: string
+          p_offset: number
+          p_status: string
+          p_template_family_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_version_publish: {
+        Args: { p_correlation_id: string; p_id: string; p_reason: string }
+        Returns: Json
+      }
+      omni_comms_template_version_retire: {
+        Args: { p_correlation_id: string; p_id: string; p_reason: string }
+        Returns: Json
+      }
+      omni_comms_template_version_update: {
+        Args: {
+          p_content: Json
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: Json
       }
       open_comm_hub_live_window: {
         Args: {
