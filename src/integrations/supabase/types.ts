@@ -80766,6 +80766,72 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_channel_setting: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          enabled: boolean
+          id: string
+          live_delivery_enabled: boolean
+          organization_id: string
+          per_minute_limit: number | null
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          quiet_hours_timezone: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          enabled?: boolean
+          id?: string
+          live_delivery_enabled?: boolean
+          organization_id: string
+          per_minute_limit?: number | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          quiet_hours_timezone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          enabled?: boolean
+          id?: string
+          live_delivery_enabled?: boolean
+          organization_id?: string
+          per_minute_limit?: number | null
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          quiet_hours_timezone?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_channel_setting_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "core_department"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_channel_setting_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_event_contract: {
         Row: {
           checksum: string | null
@@ -80875,6 +80941,313 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      omni_comms_provider: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          adapter_key: string
+          channel: string
+          code: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          id: string
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          adapter_key: string
+          channel: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          id?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          adapter_key?: string
+          channel?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      omni_comms_provider_account: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          health_checked_at: string | null
+          health_state: string
+          id: string
+          organization_id: string
+          provider_id: string
+          region: string | null
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          sandbox_mode: boolean
+          secret_ref: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          health_checked_at?: string | null
+          health_state?: string
+          id?: string
+          organization_id: string
+          provider_id: string
+          region?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          sandbox_mode?: boolean
+          secret_ref: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          health_checked_at?: string | null
+          health_state?: string
+          id?: string
+          organization_id?: string
+          provider_id?: string
+          region?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          sandbox_mode?: boolean
+          secret_ref?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_provider_account_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_provider_account_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_sender_identity: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          channel: string
+          code: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          display_name: string
+          event_definition_id: string | null
+          from_address: string | null
+          from_name: string | null
+          id: string
+          organization_id: string
+          print_config: Json | null
+          reply_to_address: string | null
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          channel: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          display_name: string
+          event_definition_id?: string | null
+          from_address?: string | null
+          from_name?: string | null
+          id?: string
+          organization_id: string
+          print_config?: Json | null
+          reply_to_address?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          channel?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          display_name?: string
+          event_definition_id?: string | null
+          from_address?: string | null
+          from_name?: string | null
+          id?: string
+          organization_id?: string
+          print_config?: Json | null
+          reply_to_address?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_sender_identity_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "core_department"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_sender_identity_event_definition_id_fkey"
+            columns: ["event_definition_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_event_definition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_sender_identity_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_sender_provider_binding: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          created_at: string
+          created_by: string | null
+          external_sender_ref: string | null
+          id: string
+          priority: number
+          provider_account_id: string
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          sender_identity_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          verification_status: string
+          verified_at: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          external_sender_ref?: string | null
+          id?: string
+          priority?: number
+          provider_account_id: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          sender_identity_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          external_sender_ref?: string | null
+          id?: string
+          priority?: number
+          provider_account_id?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          sender_identity_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          verification_status?: string
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_sender_provider_binding_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_sender_provider_binding_sender_identity_id_fkey"
+            columns: ["sender_identity_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_sender_identity"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       omni_comms_template_family: {
         Row: {
@@ -101243,6 +101616,10 @@ export type Database = {
       omni_comms_priv_validate_schema: {
         Args: { p_json_schema: Json; p_sample_payload: Json }
         Returns: undefined
+      }
+      omni_comms_priv_validate_timezone: {
+        Args: { p_tz: string }
+        Returns: boolean
       }
       omni_comms_priv_verify_department_ownership: {
         Args: { p_department_id: string; p_organization_id: string }
