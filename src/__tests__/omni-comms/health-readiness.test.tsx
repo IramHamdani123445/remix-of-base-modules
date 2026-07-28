@@ -181,12 +181,12 @@ describe('Omni-Comms Health page — Readiness', () => {
     }
   });
 
-  it('identifies the next step as Epic 1 — Story 5', () => {
+  it('identifies the next step as Epic 2 — Story 1', () => {
     permState.hasView = true;
     renderHealthAt();
     const nextStep = screen.getByTestId('omni-comms-next-step');
-    expect(within(nextStep).getByText(/Epic 1 — Story 5/)).toBeInTheDocument();
-    expect(within(nextStep).getByText(/Final foundation verification and evidence/)).toBeInTheDocument();
+    expect(within(nextStep).getByText(/Epic 2 — Story 1/)).toBeInTheDocument();
+    expect(within(nextStep).getByText(/Event Definition and Contract Database Design/)).toBeInTheDocument();
   });
 
   it('renders the Architecture boundaries section with all ten rules Enforced in CI', () => {
