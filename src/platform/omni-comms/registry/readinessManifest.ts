@@ -229,8 +229,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Communication business tables',          state: 'Planned',  note: 'None created; ceiling defined only' },
     { item: 'sendCommunication façade',               state: 'Planned',  note: 'Planned for Epic 7' },
     { item: 'Provider integrations',                  state: 'Planned',  note: 'Planned for Epic 9' },
-    { item: 'Runtime worker',                         state: 'Planned',  note: 'Planned alongside runtime tables' },
-    { item: 'First business event',                   state: 'Blocked',  note: 'Blocked until event-selection evidence is approved (Epic 11)' },
+    { item: 'Runtime worker',                         state: 'Planned',  note: 'Planned for Epic 8' },
+    { item: 'First business event',                   state: 'Blocked',  note: 'Blocked until Epic 11 evidence is approved' },
   ],
 
   blockers: [
@@ -252,9 +252,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
   ],
 
   nextStep: {
-    epic: 'Epic 1',
-    story: 'Story 5',
-    title: 'Final foundation verification and evidence',
+    epic: 'Epic 2',
+    story: 'Story 1',
+    title: 'Event Definition and Contract Database Design',
     informationalOnly: true,
   },
 };
