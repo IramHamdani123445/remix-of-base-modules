@@ -1,205 +1,220 @@
+## Epic 1 — Story 1: Omni-Comms Shell + Capability Registration + Navigation
 
-# Epic 1 · Story 3 — Registries (metadata only)
+Pre-implementation report as required by the task brief. **Nothing has been implemented.** Awaiting approval (plus resolution of the navigation blocker in §7) before Build begins.
 
-Create source-controlled TypeScript registries as the single source of truth for the 19 approved logical database objects, 7 permanent admin routes, 7 reserved server integrations, 5 reserved queues, and 2 deferred attachment objects. Wire the existing Readiness page to consume the registries. **No** DB migration, edge function, queue, worker, façade, provider adapter or new route is created.
+---
 
-## Files to create
+### 1. Exact files to create
 
-Under `src/platform/omni-comms/registry/`:
+**Source tree** (under `src/platform/omni-comms/`):
 
-1. `registry.types.ts` — shared types
-2. `objectRegistry.ts` — 19 active + 2 deferred entries
-3. `routeRegistry.ts` — 7 permanent routes + approved tab names
-4. `integrationRegistry.ts` — 7 reserved server integrations
-5. `queueRegistry.ts` — 5 reserved queues
-6. `validateRegistries.ts` — pure validator returning structured errors
-7. `index.ts` — barrel export
-
-Tests:
-
-8. `src/__tests__/omni-comms/registry.test.ts` — registry contents, epic ownership, validator positive path, and three fixture failure cases (duplicate, invalid prefix, banned-name)
-9. `src/__tests__/omni-comms/readiness-registry-integration.test.tsx` — Readiness page renders registry-sourced 19 objects / 7 routes / integrations / queues / deferred attachments; no edit control present
-
-## Files to modify
-
-10. `src/platform/omni-comms/registry/readinessManifest.ts` — drop the hardcoded `plannedObjects`, `reservedEdgeFunctions`, `reservedQueues`, and `permanentRoutes` arrays; re-export derived views sourced from the new registries. Bump `currentStory` to `Story 3` and set the `Object registry` foundation row to `Verified`. Update `nextStep` to Story 4.
-11. `src/platform/omni-comms/admin/views/readiness/ReadinessTab.tsx` — add a **Catalogues** area rendering: Object catalogue (grouped by category, showing status + owning epic + write authority), Route catalogue (7 rows with approved tabs), Reserved integrations, Reserved queues, Deferred attachments. Every row displays "Registered in architecture catalogue — Not yet created". Existing sections that are already registry-derived (routes/queues/edge functions/objects) switch to the new registry imports.
-12. `src/platform/omni-comms/README.md` — append the six registry-governance bullets required by the spec.
-
-No changes to `AppRoutes.tsx`, `OmniCommsAdminRoute.tsx`, permission files, DB, or any Legacy file.
-
-## Registry TypeScript interfaces (exact)
-
-```ts
-// registry.types.ts
-export type RegistryStatus =
-  | 'planned' | 'reserved' | 'available'
-  | 'verified' | 'deferred' | 'blocked' | 'retired';
-
-export type ObjectCategory =
-  | 'events_content' | 'channels_senders_preferences' | 'runtime' | 'bulk';
-
-export interface OmniCommsObjectEntry {
-  name: string;
-  objectType: 'table';
-  category: ObjectCategory;
-  purpose: string;
-  owningEpic: number;
-  introductionStory?: string;
-  currentStatus: RegistryStatus;      // active = 'planned'
-  writeAuthority: string;
-  readAuthority: string;
-  containsSensitiveData: boolean;
-  legacyDependency: 'none';
-  requiredForFirstProductionSlice: boolean;
-  notes?: string;
-}
-
-export interface OmniCommsDeferredObjectEntry {
-  name: string;
-  currentStatus: 'deferred';
-  intendedEpic: number;
-  reasonDeferred: string;
-}
-
-export interface OmniCommsRouteEntry {
-  routeId: string;
-  path: string;
-  label: string;
-  requiredPermission: 'omni_comms.view';
-  owningEpic: number;
-  currentStatus: RegistryStatus;      // 'available' for shell routes
-  purpose: string;
-  approvedTabs: string[];
-  pageWrapperPath: string;
-  moduleViewPath: string;
-}
-
-export type IntegrationType = 'edge_function' | 'webhook_handler' | 'worker_entrypoint';
-
-export interface OmniCommsIntegrationEntry {
-  name: string;
-  integrationType: IntegrationType;
-  owningEpic: number;
-  currentStatus: 'reserved';
-  purpose: string;
-  provider?: string;
-  publicExposure: 'internal' | 'public_webhook';
-  authenticationModel: string;
-  notes?: string;
-}
-
-export interface OmniCommsQueueEntry {
-  name: string;
-  purpose: string;
-  owningEpic: number;
-  currentStatus: 'reserved';
-  priorityClass: 'transactional' | 'bulk' | 'webhook' | 'retry' | 'dead-letter';
-  producer: string;
-  consumer: string;
-  retryAllowed: boolean;
-  notes?: string;
-}
-
-export interface RegistryValidationError {
-  registry: 'object' | 'route' | 'integration' | 'queue';
-  code: string;
-  entryName?: string;
-  message: string;
-}
+```
+src/platform/omni-comms/
+  README.md                        (architecture README, 10 required points)
+  application/.gitkeep
+  domain/.gitkeep
+  repositories/.gitkeep
+  rendering/.gitkeep
+  adapters/channels/.gitkeep
+  adapters/providers/.gitkeep
+  workers/.gitkeep
+  api/.gitkeep
+  registry/.gitkeep
+  __tests__/omniCommsShell.test.tsx           (route registration + guard-wiring test)
+  admin/components/OmniCommsNotImplemented.tsx (shared "Not yet implemented" empty state)
+  admin/views/OmniCommsLandingPage.tsx         (readiness placeholder — no metrics, no data)
+  admin/views/OmniCommsOperationsPage.tsx      (NotImplemented)
+  admin/views/OmniCommsEventsPage.tsx          (NotImplemented)
+  admin/views/OmniCommsTemplatesPage.tsx       (NotImplemented)
+  admin/views/OmniCommsChannelsPage.tsx        (NotImplemented)
+  admin/views/OmniCommsPreferencesPage.tsx     (NotImplemented)
+  admin/views/OmniCommsHealthPage.tsx          (NotImplemented)
 ```
 
-## Object entries (name → epic → category)
+No `sendCommunication.ts`, no adapters, no workers, no api clients, no repositories.
 
-Events & content — Epic 2/3/5:
-- `omni_comms_event_definition` — Epic 2 · events_content
-- `omni_comms_event_contract` — Epic 2 · events_content
-- `omni_comms_template_family` — Epic 3 · events_content
-- `omni_comms_template_version` — Epic 3 · events_content
-- `omni_comms_event_route` — Epic 5 · events_content
+**Permissions source file:**
 
-Channels, senders, preferences — Epic 4/5:
-- `omni_comms_provider` — Epic 4 · channels_senders_preferences
-- `omni_comms_provider_account` — Epic 4 · channels_senders_preferences
-- `omni_comms_sender_identity` — Epic 4 · channels_senders_preferences
-- `omni_comms_sender_provider_binding` — Epic 4 · channels_senders_preferences
-- `omni_comms_channel_setting` — Epic 4 · channels_senders_preferences
-- `omni_comms_preference` — Epic 5 · channels_senders_preferences
+- `src/platform/rbac/omniComms.permissions.ts` — new capability file following the existing `bn.permissions.ts` / `er.permissions.ts` pattern, exporting a `PermissionSourceDefinition[]`.
 
-Runtime — Epic 6:
-- `omni_comms_request`, `omni_comms_recipient`, `omni_comms_message`, `omni_comms_dispatch_job`, `omni_comms_delivery_attempt`, `omni_comms_message_event`, `omni_comms_webhook_event` — all `runtime`
+### 2. Exact files to modify
 
-Bulk — Epic 13:
-- `omni_comms_batch` — `bulk`
+- `src/platform/rbac/permissionRegistry.ts` — add `omniComms` entry to `PERMISSION_REGISTRY` and spread `OMNI_COMMS_PERMISSION_DEFINITIONS` into `ALL_PERMISSION_DEFINITIONS`.
+- `src/components/routing/AppRoutes.tsx` — add lazy imports and 7 routes under `/admin/omnichannel-communications/*`, each wrapped in the existing `CommHubAdminRoute` guard (see §4). Legacy `/admin/communication-hub/*` routes left untouched.
 
-Deferred (not counted in 19): `omni_comms_attachment`, `omni_comms_message_attachment` — intendedEpic per attachment epic, reason per spec.
+No changes to any Legacy file, service, table, function, provider adapter, edge function, or comm module.
 
-All 19 active entries: `currentStatus: 'planned'`, `legacyDependency: 'none'`, `writeAuthority`/`readAuthority` populated per the Write/Read Authority sections in the story.
+### 3. Exact permission-registry rows to add
 
-## Route entries (all `requiredPermission: 'omni_comms.view'`, `owningEpic: 1`, `currentStatus: 'available'`)
+New file `src/platform/rbac/omniComms.permissions.ts` publishes:
 
-| routeId | path | approvedTabs |
-|---|---|---|
-| root | /admin/omnichannel-communications | [overview] |
-| operations | .../operations | [requests, messages, batches] |
-| events | .../events | [definitions, contracts, routes, simulator] |
-| templates | .../templates | [library, versions, preview] |
-| channels | .../channels | [settings, senders, providers, bindings] |
-| preferences | .../preferences | [preferences] |
-| health | .../health | [readiness, data-model, queues, webhooks, audit, migration] |
 
-`pageWrapperPath` / `moduleViewPath` reference the existing Story 1 files.
+| permission_key                      | scope  | risk   | sensitive | admin | notes                                         |
+| ----------------------------------- | ------ | ------ | --------- | ----- | --------------------------------------------- |
+| `omni_comms.view`                   | PAGE   | LOW    | false     | true  | Route-guard capability for all 7 shell routes |
+| `omni_comms.operate`                | ACTION | HIGH   | true      | true  | Placeholder — no writer yet                   |
+| `omni_comms.configure`              | ADMIN  | HIGH   | true      | true  | Configuration authority (future)              |
+| `omni_comms.author_templates`       | ACTION | MEDIUM | true      | true  | Template authoring (future)                   |
+| `omni_comms.approve_templates`      | ACTION | HIGH   | true      | true  | Template approval (future)                    |
+| `omni_comms.view_sensitive_content` | FIELD  | HIGH   | true      | true  | Unmask PII in payloads (future)               |
 
-## Integration entries (all `currentStatus: 'reserved'`)
 
-| name | type | epic | exposure |
-|---|---|---|---|
-| omni-comms-send | edge_function | 7 | internal |
-| omni-comms-dispatch | worker_entrypoint | 8 | internal |
-| omni-comms-webhook-resend | webhook_handler | 9 | public_webhook (Resend) |
-| omni-comms-webhook-twilio | webhook_handler | SMS | public_webhook (Twilio) |
-| omni-comms-webhook-meta | webhook_handler | WhatsApp | public_webhook (Meta) |
-| omni-comms-webhook-fcm | webhook_handler | Push | public_webhook (FCM) |
-| omni-comms-print-materialise | worker_entrypoint | Print | internal |
+All rows: `module_code='OMNI_COMMS'`, `domain_code='COMMUNICATIONS'`, `lifecycle_status='PLANNED'` (except `view` which is `ACTIVE`), `source_file='src/platform/rbac/omniComms.permissions.ts'`.
 
-## Queue entries (all `currentStatus: 'reserved'`)
+Persistence into `core_permission_registry` happens through the existing **Sync Permissions from Registry** admin action (`syncPermissionsFromRegistry`) — no new sync path, no migration.
 
-| name | priorityClass | epic |
-|---|---|---|
-| omni-comms.transactional | transactional | 8 |
-| omni-comms.retry | retry | 8 |
-| omni-comms.dead-letter | dead-letter | 8 |
-| omni-comms.webhook | webhook | 9 |
-| omni-comms.bulk | bulk | 13 |
+### 4. Existing route-guard component to reuse
 
-Priority intent notes recorded per spec.
+- `src/components/auth/CommHubAdminRoute.tsx` — this is the sole reuse candidate today, but it hard-codes the `system_administration` / `communication_hub` capability checks. To honour the brief ("Every route must use the `omni_comms.view` capability through the existing route guard pattern"), I will introduce a small parallel gate `OmniCommsAdminRoute.tsx` in `src/components/auth/` that follows the identical pattern (same `useIsAdmin` + `useModulePermissions` hooks, same loading/denied UI) but checks `omni_comms.view`. This is a copy of the pattern, not a new framework — no changes to `CommHubAdminRoute`.
 
-## Validator rules (pure function, returns `RegistryValidationError[]`)
+If the reviewer prefers strict single-guard reuse, alternative is to parameterise `CommHubAdminRoute` — flag this as a review decision.
 
-Enforces every bullet in **PART 6 — REGISTRY VALIDATION**: count = 19 active objects, unique names, `omni_comms_` prefix, banned fragments (`advanced|new|next|v2|pilot|controlled|rehearsal|standby|phase`), owning epic present, write authority present, `legacyDependency === 'none'`, exactly 7 routes with correct prefix and permission, no approved tab is a top-level route path, integrations start with `omni-comms-`, no `omni-comms-render`, queues start with `omni-comms.` and unique, deferred attachments excluded from the 19 count, statuses within the shared union, no entry status of `live`/`production-ready`.
+### 5. Existing admin navigation component to modify
 
-## Readiness page integration
+**None can be modified in code to achieve the required nav entry** — see §7 blocker. The static `src/components/sidebar/menuItems/communicationHubMenuItems.ts` is explicitly marked `@deprecated` and does not render; the live sidebar is DB-driven via `useNavigationMenu` → `app_modules` + `module_actions` + `role_permissions`.
 
-- `readinessManifest.ts` re-exports arrays derived from the registries (`plannedObjects` grouping, `permanentRoutes`, `reservedEdgeFunctions`, `reservedQueues`) so no data is duplicated.
-- `ReadinessTab.tsx` adds a `Catalogues` block with four subsections (Objects · Routes · Integrations · Queues) plus a Deferred attachments note. Each row shows `Registered in architecture catalogue · Not yet created`. No edit controls.
+### 6. Existing role mappings proposed for the new capabilities
 
-## Tests to add / modify
+Inspection of `core.permissions.ts` and `rbacService.ts` shows role→permission grants live in DB tables `core_role` / `role_permissions`, not in source. There is no code-side "default role mapping" convention in this repo. Therefore, per the brief ("If the correct existing role mappings cannot be determined safely, register the capability definitions only and report the unmapped capabilities. Do not invent new roles."):
 
-- New `registry.test.ts`: counts, name presence, epic mapping, `legacyDependency: 'none'`, deferred exclusion, integration/queue exact sets, absence of `omni-comms-render`, all queues reserved, validator returns `[]` for canonical registry, validator returns errors for three inline fixture variants (duplicate object, `foo_bar` invalid prefix, `omni_comms_pilot_thing` banned fragment).
-- New `readiness-registry-integration.test.tsx`: render Readiness page under memory router, assert all 19 object names, all 7 routes, all 7 integrations, all 5 queues and both deferred attachment names appear; assert no button/textbox editing controls exist inside the catalogue sections; assert Legacy sidebar route file untouched (import remains resolvable).
-- Extend existing `health-readiness.test.tsx` only if manifest field renames break current assertions.
+- **Register capability definitions only.**
+- **Unmapped capabilities reported:** all six (`omni_comms.view`, `.operate`, `.configure`, `.author_templates`, `.approve_templates`, `.view_sensitive_content`).
+- Suggested (non-binding) future mapping for reviewer approval in a later story: `omni_comms.view` → existing System Administrator role; other five → deferred until Epic 2+.
 
-## Conflicts with Story 1 / Story 2
+### 7. Conflicts / Blockers
 
-None. No route, guard, permission or module seed is changed. Story 2 hardcoded arrays inside `readinessManifest.ts` are safely replaced by re-exports from the new registries — the manifest keeps the same public shape consumed by `ReadinessTab.tsx`.
+**BLOCKER — Navigation entry.**
+The brief requires "Add: Omnichannel Communications as a distinct admin navigation entry" and also forbids any DB change other than permission registration. These are mutually exclusive in this codebase: the sidebar is rendered from `app_modules` rows (see `useNavigationMenu.ts`), and the static menu file is documented as having no rendering effect. Options for reviewer:
 
-## Confirmation
+- **(a)** Authorise a single DB insert into `app_modules` (+ `module_actions` for `omni_comms.view`) to publish the "Omnichannel Communications" parent entry with 7 children. This is a one-row-per-route seed, no business tables. Recommended.
+- **(b)** Defer nav entry to Story 2; ship shell + routes + capabilities only, reachable by URL.
+- **(c)** Introduce a static-menu injection point (code-only) — rejected: would create a second navigation framework, explicitly forbidden.
 
-- No database migration is required.
-- No new top-level route.
-- No `sendCommunication` file, edge function, queue, worker or provider adapter.
-- No Legacy import.
+Implementation will not proceed on the nav entry until one of the above is chosen.
 
-## Rollback
+**No other conflicts.** No route collisions with `/admin/communication-hub/*`. Legacy remains untouched.
 
-Revert the eight new files and the three modified files (`readinessManifest.ts`, `ReadinessTab.tsx`, `README.md`). No DB or route state to unwind.
+---
+
+### Post-implementation report (to be produced after Build)
+
+Will include: every file changed, capabilities registered, capability→role mapping status (unmapped list), 7 route paths confirmed live, navigation entry status per §7 decision, Legacy routes/nav confirmed unchanged, tests executed with actual pass/fail counts, manual navigation verification steps, rollback (revert PR + `DELETE FROM core_permission_registry WHERE permission_key LIKE 'omni_comms.%'`), and explicit confirmation that no `sendCommunication` file, business table, provider adapter, edge function, or queue was created.
+
+---
+
+**Stop.** Awaiting: (i) approval of this plan and (ii) explicit decision on §7 navigation blocker before switching to Build mode.  
+  
+Epic 1 — Story 1 pre-implementation plan is approved with the following amendments.
+
+1. NAVIGATION DECISION
+
+Use option (a).
+
+You are authorised to add only the shared database navigation configuration required to expose Omnichannel Communications through the existing DB-driven navigation system.
+
+Use the repository’s existing migration/seed convention for:
+
+- one Omnichannel Communications module entry
+- seven approved child route/action entries
+- required permission: omni_comms.view
+
+Approved routes:
+
+- /admin/omnichannel-communications
+- /admin/omnichannel-communications/operations
+- /admin/omnichannel-communications/events
+- /admin/omnichannel-communications/templates
+- /admin/omnichannel-communications/channels
+- /admin/omnichannel-communications/preferences
+- /admin/omnichannel-communications/health
+
+Do not create another navigation mechanism.
+
+Before implementation, confirm the exact app_modules and module_actions columns and show the exact rows or seed objects to be added.
+
+2. PERMISSION MAPPING
+
+Register all six approved permission definitions.
+
+For this story, map only:
+
+- omni_comms.view
+
+to the existing System Administrator role, after verifying the exact existing role identifier.
+
+Do not create a new role.
+
+Leave the following capabilities unmapped:
+
+- omni_comms.operate
+- omni_comms.configure
+- omni_[comms.author](http://comms.author)_templates
+- omni_comms.approve_templates
+- omni_comms.view_sensitive_content
+
+3. ROUTE GUARD
+
+Do not use or modify CommHubAdminRoute.
+
+Create the new-system-specific guard at:
+
+src/platform/omni-comms/admin/components/OmniCommsAdminRoute.tsx
+
+It must reuse the existing shared authentication and permission hooks and shared loading/access-denied presentation, but it must check omni_comms.view.
+
+Do not copy Legacy permission names or create a new authorization framework.
+
+4. PAGE CONVENTION
+
+Inspect the existing admin page-wrapper convention.
+
+If AppRoutes normally imports wrappers from src/pages, create thin wrappers under:
+
+src/pages/admin/omnichannel-communications/
+
+The wrappers may only compose views from:
+
+src/platform/omni-comms/admin/views/
+
+They must contain no business logic.
+
+Include any required page wrappers in the final file list before implementation.
+
+5. LEGACY
+
+Do not rename, redirect, import, modify or disable Legacy routes or behavior.
+
+If the Legacy navigation item is already labelled Communication Hub — Legacy, retain it.
+
+If it is not already labelled Legacy, defer that display-label change to a separately authorised story.
+
+6. TESTS
+
+Add tests proving:
+
+- all seven routes exist
+- unauthenticated access is rejected
+- access without omni_comms.view is rejected
+- access with omni_comms.view succeeds
+- navigation appears only for authorised users
+- all unfinished routes show the shared empty state
+- Legacy routes remain unchanged
+- no sendCommunication file or export exists
+- no communication business table, provider adapter, edge function, worker or queue was created
+
+7. ROLLBACK
+
+The rollback must include:
+
+- reverting source permission definitions
+- running the standard permission-registry synchronisation
+- removing the exact Omnichannel module/action navigation records
+- removing the exact omni_comms.view System Administrator grant
+- removing new route registrations and source files
+- confirming Legacy routes and navigation remain operational
+
+Do not use only a broad DELETE WHERE permission_key LIKE pattern.
+
+Return the updated exact file list, navigation seed/ migration objects, verified System Administrator mapping and rollback plan before switching to Build mode.
+
+If these amendments are reflected without conflicts, proceed with implementation.
