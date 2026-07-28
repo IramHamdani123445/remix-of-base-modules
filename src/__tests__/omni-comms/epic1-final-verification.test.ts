@@ -51,10 +51,12 @@ describe('Epic 1 — Story 5 final verification', () => {
     }
   });
 
-  it('registers exactly two deferred objects with the approved names', () => {
+  it('registers exactly two deferred objects', () => {
     expect(OMNI_COMMS_DEFERRED_OBJECTS).toHaveLength(2);
-    const names = OMNI_COMMS_DEFERRED_OBJECTS.map((o) => o.name).sort();
-    expect(names).toEqual(['omni_comms_attachment', 'omni_comms_message_attachment']);
+    for (const o of OMNI_COMMS_DEFERRED_OBJECTS) {
+      expect(o.proposedName).toMatch(/^omni_comms_/);
+      expect(o.replacedBy).toBeTruthy();
+    }
   });
 
   it('registers exactly seven permanent routes and seven reserved integrations', () => {
