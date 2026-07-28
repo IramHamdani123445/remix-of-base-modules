@@ -58,7 +58,8 @@ BEGIN
   RAISE NOTICE 'Structural checks passed.';
 END$$;
 
--- 3. Lifecycle fixtures (rolled back).
+-- 3. Lifecycle fixtures (rolled back). Use service_role for RLS-bypassing DML.
+SET LOCAL ROLE service_role;
 DO $$
 DECLARE
   v_provider uuid;
