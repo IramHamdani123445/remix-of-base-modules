@@ -149,3 +149,18 @@ export function isInNewSystem(filePath: string): boolean {
 export function isInProviderAdapterRoot(filePath: string): boolean {
   return filePath.replace(/\\/g, '/').startsWith(PROVIDER_ADAPTER_ROOT);
 }
+
+/**
+ * Returns true when a POSIX file path is a test file or lives inside the
+ * architecture module itself. Every content-scanning rule skips these files
+ * because they legitimately contain rule fixtures, forbidden-name vocabulary,
+ * and policy constants that would otherwise self-trigger.
+ */
+export function isRuleMetadataFile(filePath: string): boolean {
+  const p = filePath.replace(/\\/g, '/');
+  return (
+    p.startsWith('src/__tests__/') ||
+    p.startsWith('src/platform/omni-comms/architecture/') ||
+    /\.test\.(ts|tsx|js|jsx)$/.test(p)
+  );
+}
