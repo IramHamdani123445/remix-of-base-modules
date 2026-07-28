@@ -1,4 +1,8 @@
 import { CORE_PERMISSIONS, CORE_PERMISSION_DEFINITIONS } from './core.permissions';
+import {
+  OMNI_COMMS_PERMISSIONS,
+  OMNI_COMMS_PERMISSION_DEFINITIONS,
+} from './omniComms.permissions';
 import type { PermissionSourceDefinition } from './permissionTypes';
 
 /**
@@ -7,10 +11,12 @@ import type { PermissionSourceDefinition } from './permissionTypes';
  */
 export const PERMISSION_REGISTRY = {
   core: CORE_PERMISSIONS,
+  omniComms: OMNI_COMMS_PERMISSIONS,
 } as const;
 
 export const ALL_PERMISSION_DEFINITIONS: PermissionSourceDefinition[] = [
   ...CORE_PERMISSION_DEFINITIONS,
+  ...OMNI_COMMS_PERMISSION_DEFINITIONS,
 ];
 
 export function flattenPermissionRegistry(): PermissionSourceDefinition[] {
