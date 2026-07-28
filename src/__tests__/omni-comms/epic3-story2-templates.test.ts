@@ -164,8 +164,9 @@ describe('Epic 3 Story 2 — service adapter argument marshalling', () => {
 
   it('publishTemplateVersion parses OC### errors into typed OmniCommsRpcError', async () => {
     const client = mockClient(() => ({ data: null, error: { message: 'OC409 duplicate_publication', details: 'publication_conflict' } }));
-    await expect(publishTemplateVersion(client, { id: 'v1' })).rejects.toBeInstanceOf(OmniCommsRpcError);
-    try { await publishTemplateVersion(client, { id: 'v1' }); } catch (e) {
+    const input = { id: 'v1', expectedUpdatedAt: '2026-01-01T00:00:00Z', confirmReplacement: false } as const;
+    await expect(publishTemplateVersion(client, input)).rejects.toBeInstanceOf(OmniCommsRpcError);
+    try { await publishTemplateVersion(client, input); } catch (e) {
       expect((e as OmniCommsRpcError).code).toBe('OC409');
       expect((e as OmniCommsRpcError).detail).toBe('publication_conflict');
     }

@@ -115,10 +115,24 @@ export const approveTemplateVersion = (
   p_correlation_id: i.correlationId ?? null,
 });
 
+export interface PublishTemplateVersionInput {
+  id: string;
+  /** Value of `updated_at` loaded with the version — enforces optimistic concurrency. */
+  expectedUpdatedAt: string;
+  /** Must be true iff replacing an existing published version. */
+  confirmReplacement: boolean;
+  /** Required (non-blank) only when confirmReplacement=true. */
+  replacementReason?: string | null;
+  correlationId?: string | null;
+}
 export const publishTemplateVersion = (
-  c: OmniCommsRpcClient, i: { id: string; reason?: string | null; correlationId?: string | null },
+  c: OmniCommsRpcClient, i: PublishTemplateVersionInput,
 ) => callOmniCommsRpc<TemplateVersionPublishResult>(c, 'omni_comms_template_version_publish', {
-  p_id: i.id, p_reason: i.reason ?? null, p_correlation_id: i.correlationId ?? null,
+  p_id: i.id,
+  p_expected_updated_at: i.expectedUpdatedAt,
+  p_confirm_replacement: i.confirmReplacement,
+  p_replacement_reason: i.replacementReason ?? null,
+  p_correlation_id: i.correlationId ?? null,
 });
 
 export const retireTemplateVersion = (

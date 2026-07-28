@@ -50,6 +50,11 @@ export const TEMPLATE_CATALOGUE_VALIDATION_DETAILS = [
   'template_token_path_invalid',
   // optimistic-concurrency
   'updated_at_mismatch',
+  'expected_updated_at_required',
+  // publication replacement (Story 2 hotfix)
+  'replacement_confirmation_required',
+  'replacement_reason_required',
+  'replacement_not_applicable',
 ] as const;
 
 export type TemplateCatalogueValidationDetail =

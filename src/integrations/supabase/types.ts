@@ -101375,7 +101375,13 @@ export type Database = {
         Returns: Json
       }
       omni_comms_template_version_publish: {
-        Args: { p_correlation_id: string; p_id: string; p_reason: string }
+        Args: {
+          p_confirm_replacement: boolean
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_replacement_reason: string
+        }
         Returns: Json
       }
       omni_comms_template_version_retire: {
