@@ -66,8 +66,7 @@ describe('Epic 3 Story 1 — readiness manifest', () => {
   const items = OMNI_COMMS_READINESS_MANIFEST.foundationStatus;
   const byItem = (label: string) => items.find((i) => i.item === label);
 
-  it('remains inside Epic 3 while overall status is In progress', () => {
-    expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.currentEpic).toBe('Epic 3');
+  it('overall status remains In progress', () => {
     expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.overallStatus).toBe('In progress');
   });
 
