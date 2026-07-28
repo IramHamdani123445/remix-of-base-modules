@@ -15,7 +15,7 @@ import type {
   ArchitectureViolation,
   RepositoryScan,
 } from '../architectureCheck.types';
-import { isInNewSystem } from '../architecturePolicy';
+import { isInNewSystem, isRuleMetadataFile } from '../architecturePolicy';
 
 const FORBIDDEN_EXPORT_RE =
   /\bexport\s+(?:async\s+)?(?:const|function|let|var|class)\s+(sendCommunication|sendOmniCommunication)\b|\bexport\s*\{\s*[^}]*\b(sendCommunication|sendOmniCommunication)\b/g;
@@ -30,6 +30,7 @@ const FORBIDDEN_FILE_BASENAMES = new Set([
 export function checkFacadeBoundary(scan: RepositoryScan): ArchitectureViolation[] {
   const out: ArchitectureViolation[] = [];
   for (const f of scan.files) {
+    if (isRuleMetadataFile(f.filePath)) continue;
     if (!isInNewSystem(f.filePath)) continue;
     const base = f.filePath.split('/').pop() ?? '';
     if (FORBIDDEN_FILE_BASENAMES.has(base)) {

@@ -11,7 +11,7 @@ import type {
 } from '../architectureCheck.types';
 import { OMNI_COMMS_QUEUE_REGISTRY } from '../../registry/queueRegistry';
 import { PROHIBITED_QUEUE_NAMES } from '../architecturePolicy';
-import { isInNewSystem } from '../architecturePolicy';
+import { isInNewSystem, isRuleMetadataFile } from '../architecturePolicy';
 
 const QUEUE_NAME_RE = /['"`](omni-comms\.[a-z][a-z0-9._-]*)['"`]/g;
 
@@ -46,12 +46,7 @@ export function checkQueueRegistry(scan: RepositoryScan): ArchitectureViolation[
     while ((m = QUEUE_NAME_RE.exec(f.content)) !== null) {
       const name = m[1];
 
-      // The architecture module and test suite reference queue names as
-      // metadata / fixtures — not as runtime usage. Skip both entirely.
-      const isPolicyOrTest =
-        f.filePath.startsWith('src/platform/omni-comms/architecture/') ||
-        f.filePath.startsWith('src/__tests__/');
-      if (isPolicyOrTest) continue;
+      if (isRuleMetadataFile(f.filePath)) continue;
 
       if (PROHIBITED_QUEUE_NAMES.includes(name)) {
         out.push({

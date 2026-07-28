@@ -13,6 +13,7 @@ import type {
 import {
   LEGACY_COMMUNICATION_TABLES,
   isInNewSystem,
+  isRuleMetadataFile,
 } from '../architecturePolicy';
 
 function scanFile(
@@ -57,6 +58,7 @@ export function checkLegacyTableReferences(
 ): ArchitectureViolation[] {
   const out: ArchitectureViolation[] = [];
   for (const f of scan.files) {
+    if (isRuleMetadataFile(f.filePath)) continue;
     if (!isInNewSystem(f.filePath)) continue;
     if (!/\.(ts|tsx|js|jsx|mjs|cjs|sql)$/.test(f.filePath)) continue;
     out.push(...scanFile(f));

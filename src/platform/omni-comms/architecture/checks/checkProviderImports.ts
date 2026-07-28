@@ -13,6 +13,7 @@ import type {
 import {
   PROVIDER_SDK_PACKAGES,
   isInProviderAdapterRoot,
+  isRuleMetadataFile,
 } from '../architecturePolicy';
 
 const IMPORT_RE =
@@ -32,6 +33,7 @@ function matchesProvider(spec: string): string | null {
 export function checkProviderImports(scan: RepositoryScan): ArchitectureViolation[] {
   const out: ArchitectureViolation[] = [];
   for (const f of scan.files) {
+    if (isRuleMetadataFile(f.filePath)) continue;
     if (!/\.(ts|tsx|js|jsx|mjs|cjs)$/.test(f.filePath)) continue;
     if (isInProviderAdapterRoot(f.filePath)) continue;
 

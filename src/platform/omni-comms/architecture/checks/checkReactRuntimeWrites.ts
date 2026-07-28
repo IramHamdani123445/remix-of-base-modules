@@ -10,7 +10,7 @@ import type {
   ArchitectureViolation,
   RepositoryScan,
 } from '../architectureCheck.types';
-import { RUNTIME_TABLES } from '../architecturePolicy';
+import { RUNTIME_TABLES, isRuleMetadataFile } from '../architecturePolicy';
 
 const MUTATORS = ['insert', 'update', 'upsert', 'delete'];
 
@@ -27,6 +27,7 @@ function isBrowserFile(filePath: string): boolean {
 export function checkReactRuntimeWrites(scan: RepositoryScan): ArchitectureViolation[] {
   const out: ArchitectureViolation[] = [];
   for (const f of scan.files) {
+    if (isRuleMetadataFile(f.filePath)) continue;
     if (!isBrowserFile(f.filePath)) continue;
     if (!/\.(ts|tsx|js|jsx)$/.test(f.filePath)) continue;
 
