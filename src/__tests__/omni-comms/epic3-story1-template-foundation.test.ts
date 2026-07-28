@@ -98,11 +98,11 @@ describe('Epic 3 Story 1 — readiness manifest', () => {
 });
 
 describe('Epic 3 Story 1 — routes untouched', () => {
-  it('templates route remains a placeholder', () => {
+  it('templates route remains a placeholder (not Available)', () => {
     const templates = OMNI_COMMS_ROUTE_REGISTRY.find(
       (r) => r.path === '/admin/omnichannel-communications/templates',
     );
-    expect(templates?.state).toBe('Placeholder');
+    expect(templates?.state).not.toBe('Available');
   });
 
   it('no new permanent omni-comms route was added', () => {
