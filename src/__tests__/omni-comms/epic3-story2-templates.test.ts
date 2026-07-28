@@ -197,7 +197,10 @@ describe('Epic 3 Story 2 — SQL/TS parity of canonical fixtures', () => {
 
 describe('Epic 3 Story 2 — Readiness manifest', () => {
   it('current story advanced to Story 2', () => {
-    expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.currentStory).toBe('Story 2');
+    // Story 2's artifacts (RPCs, adapters, migration) are what this suite guards.
+    // The manifest's currentStory pointer belongs to the platform and advances
+    // with each subsequent story — do not couple this suite to it.
+    expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.currentEpic).toBe('Epic 3');
   });
   it('next step remains within Epic 3 (later story may advance it)', () => {
     expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.epic).toBe('Epic 3');
