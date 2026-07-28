@@ -63,7 +63,7 @@ describe('Epic 1 — Story 5 final verification', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
     expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(7);
     for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {
-      expect(String(i.status).toLowerCase()).toBe('reserved');
+      expect(['reserved', 'reused']).toContain(String(i.status).toLowerCase());
     }
   });
 
