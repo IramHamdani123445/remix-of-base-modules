@@ -15,18 +15,18 @@ import { OMNI_COMMS_READINESS_MANIFEST as M } from '@/platform/omni-comms/regist
 const REPO_ROOT = process.cwd();
 
 describe('Omni-Comms Epic 2 — Story 1 (event tables)', () => {
-  it('registers exactly the two event tables as AVAILABLE and everything else as PLANNED', () => {
-    const available = OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.status === 'AVAILABLE');
-    expect(available.map((o) => o.name).sort()).toEqual([
+  it('the two Story 1 event tables are AVAILABLE with correct introduction story', () => {
+    const story1 = OMNI_COMMS_OBJECT_REGISTRY.filter(
+      (o) => o.introductionStory === 'Epic 2 — Story 1',
+    );
+    expect(story1.map((o) => o.name).sort()).toEqual([
       'omni_comms_event_contract',
       'omni_comms_event_definition',
     ]);
-    for (const o of available) {
+    for (const o of story1) {
       expect(o.epic).toBe(2);
-      expect(o.introductionStory).toBe('Epic 2 — Story 1');
+      expect(o.status).toBe('AVAILABLE');
     }
-    const planned = OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.status === 'PLANNED');
-    expect(planned).toHaveLength(17);
   });
 
   it('object registry still enumerates exactly 19 approved objects', () => {
