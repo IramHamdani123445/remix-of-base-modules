@@ -62,7 +62,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 4,
     writeAuthority: 'admin_rpc',
     purpose: 'Registered provider vendor (Resend is the only initial vendor).',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Epic 4 — Story 1',
   },
   {
     name: 'omni_comms_provider_account',
@@ -70,7 +71,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 4,
     writeAuthority: 'admin_rpc',
     purpose: 'Provider account holding non-secret metadata; secrets reside in the vault.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Epic 4 — Story 1',
   },
   {
     name: 'omni_comms_sender_identity',
@@ -78,7 +80,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 4,
     writeAuthority: 'admin_rpc',
     purpose: 'Verified sender identity (email address, SMS sender ID, WhatsApp number).',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Epic 4 — Story 1',
   },
   {
     name: 'omni_comms_sender_provider_binding',
@@ -86,7 +89,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 4,
     writeAuthority: 'admin_rpc',
     purpose: 'Binds a sender identity to the provider account that ships it.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Epic 4 — Story 1',
   },
   {
     name: 'omni_comms_channel_setting',
@@ -94,7 +98,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 4,
     writeAuthority: 'admin_rpc',
     purpose: 'Per-channel operational settings (enabled, rate limit, quiet hours).',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Epic 4 — Story 1',
   },
   {
     name: 'omni_comms_preference',

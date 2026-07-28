@@ -154,8 +154,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     adminPrefix: '/admin/omnichannel-communications',
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
-    currentEpic: 'Epic 3',
-    currentStory: 'Story 4',
+    currentEpic: 'Epic 4',
+    currentStory: 'Story 1',
     overallStatus: 'In progress',
 
   },
@@ -259,6 +259,12 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Template catalogue security evidence',      state: 'Verified', note: 'Epic 3 Story 4 — pg_proc-verified: 14 public template RPCs (owner postgres, SECURITY DEFINER, search_path=pg_catalog,public, EXECUTE granted only to authenticated); 6 template-scoped private helpers with no anon/authenticated EXECUTE; obsolete 3-arg publish overload absent; hardened 5-arg publish present. Corrective migration revoked PUBLIC grants from six private helpers.' },
     { item: 'Template catalogue rollback proof',         state: 'Verified', note: 'Epic 3 Story 4 — scripts/omni-comms/rollback/epic3-template-catalogue-rollback.sql documents dependency-safe reversal for Stories 1/2/2-hotfix/3 with exact identity arguments, no CASCADE, and explicit preservation of Epic 1, Epic 2, public.core_audit_log, navigation, Admin permissions and Legacy artefacts.' },
     { item: 'Epic 3 completion evidence',                state: 'Verified', note: 'Epic 3 Story 4 — src/platform/omni-comms/registry/evidence/epic-03-template-catalogue.md captures table inventory, exact 14 public + 6 private function inventory, permission model, lifecycle, concurrency, checksum, scope resolution, preview isolation, audit atomicity (public.core_audit_log), test/architecture/type-check/scoped-lint/build results, and next-step Epic 4 — Story 1.' },
+    { item: 'Provider schema',                           state: 'Verified', note: 'Epic 4 Story 1 — public.omni_comms_provider; UNIQUE(code); UNIQUE(adapter_key, channel); channel CHECK against email/sms/in_app/push/whatsapp/print; status CHECK draft/active/retired; lifecycle trigger enforces draft-only insert, terminal retirement, identity immutability after activation.' },
+    { item: 'Provider account schema',                   state: 'Verified', note: 'Epic 4 Story 1 — public.omni_comms_provider_account; FK organization/provider ON DELETE RESTRICT; UNIQUE(organization_id, code); secret_ref matches ^OMNI_COMMS_...$ (16–96); status draft/active/disabled/retired; health_state unknown/healthy/degraded/failed with checked_at consistency.' },
+    { item: 'Sender identity schema',                    state: 'Verified', note: 'Epic 4 Story 1 — public.omni_comms_sender_identity; per-channel field rules (email/sms/whatsapp require from_address, reply_to only for email, print_config only for print, event-scoped print prohibited); trigger verifies department & event belong to organisation via omni_comms_priv_verify_department_ownership.' },
+    { item: 'Sender-provider binding schema',            state: 'Verified', note: 'Epic 4 Story 1 — public.omni_comms_sender_provider_binding; UNIQUE(sender_identity_id, provider_account_id); active-priority uniqueness per sender; trigger enforces organisation and channel compatibility between sender_identity and provider_account/provider.' },
+    { item: 'Channel setting schema',                    state: 'Verified', note: 'Epic 4 Story 1 — public.omni_comms_channel_setting; organisation defaults with optional department override enforced via partial unique indexes; quiet-hours pair/timezone/distinct/live-requires-enabled checks; timezone validated against pg_timezone_names by trigger.' },
+    { item: 'Story 1 permission model',                  state: 'Verified', note: 'Epic 4 Story 1 — all five tables have RLS enabled + FORCE; PUBLIC/anon/authenticated revoked; only service_role granted; no policies (denied by default); no public administration RPCs introduced; secrets remain outside DB rows.' },
   ],
 
   blockers: [
@@ -281,8 +287,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Story 1',
-    title: 'Provider, Provider Account, Sender Identity, Sender Provider Binding, and Channel Setting Database Foundation',
+    story: 'Story 2',
+    title: 'Provider, Sender, and Channel Setting Application Services',
     informationalOnly: true,
   },
 };
