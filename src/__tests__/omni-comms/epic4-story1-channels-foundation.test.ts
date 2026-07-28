@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
-import { readinessManifest } from '@/platform/omni-comms/registry/readinessManifest';
+import { OMNI_COMMS_READINESS_MANIFEST as readinessManifest } from '@/platform/omni-comms/registry/readinessManifest';
 
 describe('Epic 4 — Story 1: Provider/Sender/Channel foundation', () => {
   it('object registry preserves 19 entries', () => {
