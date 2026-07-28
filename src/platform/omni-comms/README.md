@@ -51,9 +51,64 @@ to Legacy.
 - Queue/topic names: `omni-comms.*` (future).
 - Sole public façade: `sendCommunication()` (not yet implemented).
 
-## Current story scope (Epic 1 — Story 1)
+## Architecture boundary enforcement (Story 4)
 
-Only these are established in this story:
+Ten architecture rules are enforced locally and in pull-request CI. They are
+implemented under `src/platform/omni-comms/architecture/` and consumed by both
+Vitest and the local command below.
+
+**Local command**
+
+```bash
+bun run check:omni-comms-architecture
+```
+
+The command scans the repository read-only, prints file counts + baseline
+status, and exits non-zero on any new unbaselined violation, invalid baseline,
+or stale baseline entry.
+
+**CI**
+
+Wired into `.github/workflows/comm-hub-clean-db-ci.yml` as the
+`omni-comms-architecture` job. The job runs on every pull request that touches
+the new system, its tests, or the check script.
+
+**Zero-tolerance scopes**
+
+No architecture exception is allowed inside `src/platform/omni-comms/**` or
+`src/pages/admin/omnichannel-communications/**`. The baseline validator rejects
+any entry whose path falls inside these roots.
+
+**Baseline discipline**
+
+- Baseline entries record precise, pre-existing repository debt outside the
+  new system: exact path, exact rule id, exact evidence, and a written reason.
+- Baseline is technical-debt evidence, **not** approval.
+- Wildcards, directory-wide entries, and duplicates are rejected by the
+  validator.
+- Stale entries (baseline entries that no longer match any active violation)
+  fail the check.
+
+**Remediation guidance**
+
+When a rule fires, the printed remediation instructs how to remove the
+violation — typically by moving code into an approved location (adapter,
+edge function) or by adding an approved object to the correct registry. Do not
+disable checks to pass CI.
+
+**Registries do not bypass review.** Adding an entry to the object, route,
+integration, or queue registry represents architecture approval; the entries
+themselves are governed by the same review process as the code.
+
+**Epic 7 façade-rule change.** Rule 9 currently prohibits every send façade.
+Under Epic 7 this rule will be deliberately updated to allow exactly one
+approved `sendCommunication` façade. That change is out of scope for Epic 1.
+
+**Exceptions require architecture review.** Do not add baseline entries to
+work around a rule without an explicit architecture-review decision recorded
+in the reason field.
+
+## Current story scope (Epic 1 — Story 1 baseline)
 
 - Folder skeleton (this file + `.gitkeep` placeholders).
 - Six capability definitions in the shared permission registry.
