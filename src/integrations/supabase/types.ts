@@ -45287,6 +45287,221 @@ export type Database = {
         }
         Relationships: []
       }
+      core_comm_asset: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          active_version_id: string | null
+          asset_type: string
+          code: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          description: string | null
+          id: string
+          name: string
+          organization_id: string
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          active_version_id?: string | null
+          asset_type: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          active_version_id?: string | null
+          asset_type?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_comm_asset_active_version_fk"
+            columns: ["active_version_id"]
+            isOneToOne: false
+            referencedRelation: "core_comm_asset_version"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_comm_asset_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "core_department"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_comm_asset_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_comm_asset_version: {
+        Row: {
+          asset_id: string
+          checksum: string
+          content_html: string | null
+          content_json: Json | null
+          content_text: string | null
+          created_at: string
+          id: string
+          published_at: string
+          published_by: string | null
+          status: string
+          storage_bucket: string | null
+          storage_object_path: string | null
+          version_number: number
+        }
+        Insert: {
+          asset_id: string
+          checksum: string
+          content_html?: string | null
+          content_json?: Json | null
+          content_text?: string | null
+          created_at?: string
+          id?: string
+          published_at?: string
+          published_by?: string | null
+          status?: string
+          storage_bucket?: string | null
+          storage_object_path?: string | null
+          version_number: number
+        }
+        Update: {
+          asset_id?: string
+          checksum?: string
+          content_html?: string | null
+          content_json?: Json | null
+          content_text?: string | null
+          created_at?: string
+          id?: string
+          published_at?: string
+          published_by?: string | null
+          status?: string
+          storage_bucket?: string | null
+          storage_object_path?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_comm_asset_version_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "core_comm_asset"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_comm_assignment: {
+        Row: {
+          asset_id: string | null
+          assignment_kind: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          id: string
+          layout_id: string | null
+          organization_id: string
+          output_channel: string
+          slot_code: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          asset_id?: string | null
+          assignment_kind: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          layout_id?: string | null
+          organization_id: string
+          output_channel: string
+          slot_code?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          asset_id?: string | null
+          assignment_kind?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          layout_id?: string | null
+          organization_id?: string
+          output_channel?: string
+          slot_code?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_comm_assignment_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "core_comm_asset"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_comm_assignment_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "core_department"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_comm_assignment_layout_id_fkey"
+            columns: ["layout_id"]
+            isOneToOne: false
+            referencedRelation: "core_template_layout"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "core_comm_assignment_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       core_command_receipt: {
         Row: {
           actor_user_id: string
@@ -51723,6 +51938,53 @@ export type Database = {
             columns: ["theme_id"]
             isOneToOne: false
             referencedRelation: "app_themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      core_template_layout_version: {
+        Row: {
+          checksum: string
+          created_at: string
+          id: string
+          layout_id: string
+          published_at: string
+          published_by: string | null
+          slots: Json
+          status: string
+          version_number: number
+          wrapper_html: string | null
+        }
+        Insert: {
+          checksum: string
+          created_at?: string
+          id?: string
+          layout_id: string
+          published_at?: string
+          published_by?: string | null
+          slots: Json
+          status?: string
+          version_number: number
+          wrapper_html?: string | null
+        }
+        Update: {
+          checksum?: string
+          created_at?: string
+          id?: string
+          layout_id?: string
+          published_at?: string
+          published_by?: string | null
+          slots?: Json
+          status?: string
+          version_number?: number
+          wrapper_html?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "core_template_layout_version_layout_id_fkey"
+            columns: ["layout_id"]
+            isOneToOne: false
+            referencedRelation: "core_template_layout"
             referencedColumns: ["id"]
           },
         ]
@@ -81344,7 +81606,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          layout_id: string | null
+          layout_selection_mode: string | null
           locale: string
+          pinned_layout_version_id: string | null
           published_at: string | null
           published_by: string | null
           retired_at: string | null
@@ -81365,7 +81630,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          layout_id?: string | null
+          layout_selection_mode?: string | null
           locale: string
+          pinned_layout_version_id?: string | null
           published_at?: string | null
           published_by?: string | null
           retired_at?: string | null
@@ -81386,7 +81654,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          layout_id?: string | null
+          layout_selection_mode?: string | null
           locale?: string
+          pinned_layout_version_id?: string | null
           published_at?: string | null
           published_by?: string | null
           retired_at?: string | null
@@ -81399,6 +81670,20 @@ export type Database = {
           version_number?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "omni_comms_template_version_layout_id_fkey"
+            columns: ["layout_id"]
+            isOneToOne: false
+            referencedRelation: "core_template_layout"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_template_version_pinned_layout_version_id_fkey"
+            columns: ["pinned_layout_version_id"]
+            isOneToOne: false
+            referencedRelation: "core_template_layout_version"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omni_comms_template_version_template_family_id_fkey"
             columns: ["template_family_id"]
@@ -99118,6 +99403,94 @@ export type Database = {
         }
         Returns: string
       }
+      core_comm_asset_get: { Args: { p_id: string }; Returns: Json }
+      core_comm_asset_list_active: {
+        Args: { p_asset_type?: string; p_organization_id: string }
+        Returns: {
+          active_version_id: string
+          asset_type: string
+          code: string
+          department_id: string
+          id: string
+          name: string
+          updated_at: string
+        }[]
+      }
+      core_comm_assignment_list: {
+        Args: {
+          p_department_id?: string
+          p_organization_id: string
+          p_output_channel?: string
+        }
+        Returns: {
+          asset_id: string
+          assignment_kind: string
+          department_id: string
+          id: string
+          layout_id: string
+          organization_id: string
+          output_channel: string
+          slot_code: string
+          updated_at: string
+        }[]
+      }
+      core_comm_assignment_reset_dept_override: {
+        Args: {
+          p_assignment_kind: string
+          p_department_id: string
+          p_organization_id: string
+          p_output_channel: string
+          p_slot_code: string
+        }
+        Returns: boolean
+      }
+      core_comm_assignment_upsert_dept_override: {
+        Args: {
+          p_asset_id: string
+          p_assignment_kind: string
+          p_department_id: string
+          p_layout_id: string
+          p_organization_id: string
+          p_output_channel: string
+          p_slot_code: string
+        }
+        Returns: string
+      }
+      core_comm_assignment_upsert_org_default: {
+        Args: {
+          p_asset_id: string
+          p_assignment_kind: string
+          p_layout_id: string
+          p_organization_id: string
+          p_output_channel: string
+          p_slot_code: string
+        }
+        Returns: string
+      }
+      core_comm_pilot_migration_apply: {
+        Args: {
+          p_department_id: string
+          p_dept_signature_id: string
+          p_email_layout_id: string
+          p_footer_id: string
+          p_letterhead_id: string
+          p_organization_id: string
+          p_signature_id: string
+        }
+        Returns: Json
+      }
+      core_comm_pilot_migration_dry_run: {
+        Args: {
+          p_department_id: string
+          p_dept_signature_id: string
+          p_email_layout_id: string
+          p_footer_id: string
+          p_letterhead_id: string
+          p_organization_id: string
+          p_signature_id: string
+        }
+        Returns: Json
+      }
       core_generate_number: {
         Args: {
           p_branch_code?: string
@@ -99171,6 +99544,10 @@ export type Database = {
           p_module_code: string
         }
         Returns: string
+      }
+      core_priv_verify_department_ownership: {
+        Args: { p_department_id: string; p_organization_id: string }
+        Returns: undefined
       }
       core_record_number_override: {
         Args: {
@@ -99289,6 +99666,19 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      core_template_layout_list_active: {
+        Args: { p_layout_kind?: string }
+        Returns: {
+          code: string
+          id: string
+          layout_kind: string
+          name: string
+        }[]
+      }
+      core_template_layout_version_get: {
+        Args: { p_id: string }
+        Returns: Json
       }
       correct_comm_hub_legacy_baseline_attestation: {
         Args: {
@@ -101667,6 +102057,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      omni_comms_resolve_render_manifest: {
+        Args: {
+          p_department_id?: string
+          p_organization_id: string
+          p_template_version_id: string
+        }
+        Returns: Json
+      }
       omni_comms_template_family_activate: {
         Args: { p_correlation_id: string; p_id: string; p_reason: string }
         Returns: Json
@@ -101763,6 +102161,16 @@ export type Database = {
       }
       omni_comms_template_version_retire: {
         Args: { p_correlation_id: string; p_id: string; p_reason: string }
+        Returns: Json
+      }
+      omni_comms_template_version_set_layout_selection: {
+        Args: {
+          p_expected_updated_at: string
+          p_layout_id: string
+          p_mode: string
+          p_pinned_layout_version_id: string
+          p_version_id: string
+        }
         Returns: Json
       }
       omni_comms_template_version_update: {
