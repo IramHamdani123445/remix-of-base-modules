@@ -83,6 +83,12 @@ export interface NextStep {
   informationalOnly: true;
 }
 
+export interface ArchitectureBoundaryRow {
+  ruleId: string;
+  title: string;
+  status: 'Enforced in CI';
+}
+
 export interface OmniCommsReadinessManifest {
   systemIdentity: SystemIdentity;
   legacyIsolation: { rules: string[] };
@@ -91,6 +97,7 @@ export interface OmniCommsReadinessManifest {
   plannedObjects: PlannedObjects;
   reservedEdgeFunctions: string[];
   reservedQueues: string[];
+  architectureBoundaries: ArchitectureBoundaryRow[];
   foundationStatus: FoundationItem[];
   blockers: Blocker[];
   nextStep: NextStep;
@@ -133,7 +140,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 1',
-    currentStory: 'Story 3',
+    currentStory: 'Story 4',
     overallStatus: 'Foundation',
   },
 
@@ -195,6 +202,19 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   reservedQueues,
 
+  architectureBoundaries: [
+    { ruleId: 'OMNI_LEGACY_IMPORT',              title: 'Legacy import isolation',              status: 'Enforced in CI' },
+    { ruleId: 'OMNI_LEGACY_TABLE_REFERENCE',     title: 'Legacy table-reference isolation',     status: 'Enforced in CI' },
+    { ruleId: 'OMNI_PROVIDER_IMPORT_BOUNDARY',   title: 'Provider adapter isolation',           status: 'Enforced in CI' },
+    { ruleId: 'OMNI_REACT_RUNTIME_WRITE',        title: 'React runtime-write prohibition',      status: 'Enforced in CI' },
+    { ruleId: 'OMNI_MIGRATION_OBJECT_REGISTRY', title: 'Migration registry enforcement',       status: 'Enforced in CI' },
+    { ruleId: 'OMNI_ROUTE_REGISTRY',             title: 'Route registry enforcement',           status: 'Enforced in CI' },
+    { ruleId: 'OMNI_INTEGRATION_REGISTRY',       title: 'Integration registry enforcement',     status: 'Enforced in CI' },
+    { ruleId: 'OMNI_QUEUE_REGISTRY',             title: 'Queue registry enforcement',           status: 'Enforced in CI' },
+    { ruleId: 'OMNI_SEND_FACADE_BOUNDARY',       title: 'Send-façade boundary',                 status: 'Enforced in CI' },
+    { ruleId: 'OMNI_PERMANENT_NAME_POLICY',      title: 'Permanent-name policy',                status: 'Enforced in CI' },
+  ],
+
   foundationStatus: [
     { item: 'Isolated source namespace',              state: 'Verified', note: 'src/platform/omni-comms' },
     { item: 'Permanent route shell',                  state: 'Verified', note: 'Seven routes registered under /admin/omnichannel-communications' },
@@ -205,7 +225,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Readiness page',                         state: 'Verified', note: 'Source-controlled data only' },
     { item: 'Object registry',                        state: 'Verified', note: 'Story 3 — 19 approved objects, 2 deferred' },
     { item: 'Route / integration / queue registries', state: 'Verified', note: 'Story 3 — 7 routes, 7 integrations, 5 queues' },
-    { item: 'Architecture-boundary CI tests',         state: 'Planned',  note: 'Planned for Story 4' },
+    { item: 'Architecture-boundary CI tests',         state: 'Verified', note: 'Story 4 — 10 rules enforced locally and in pull-request CI' },
     { item: 'Communication business tables',          state: 'Planned',  note: 'None created; ceiling defined only' },
     { item: 'sendCommunication façade',               state: 'Planned',  note: 'Planned for Epic 7' },
     { item: 'Provider integrations',                  state: 'Planned',  note: 'Planned for Epic 9' },
@@ -233,8 +253,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 1',
-    story: 'Story 4',
-    title: 'Architecture-boundary CI tests',
+    story: 'Story 5',
+    title: 'Final foundation verification and evidence',
     informationalOnly: true,
   },
 };

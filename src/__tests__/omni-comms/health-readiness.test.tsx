@@ -181,12 +181,26 @@ describe('Omni-Comms Health page — Readiness', () => {
     }
   });
 
-  it('identifies the next step as Epic 1 — Story 4', () => {
+  it('identifies the next step as Epic 1 — Story 5', () => {
     permState.hasView = true;
     renderHealthAt();
     const nextStep = screen.getByTestId('omni-comms-next-step');
-    expect(within(nextStep).getByText(/Epic 1 — Story 4/)).toBeInTheDocument();
-    expect(within(nextStep).getByText(/Architecture-boundary CI tests/)).toBeInTheDocument();
+    expect(within(nextStep).getByText(/Epic 1 — Story 5/)).toBeInTheDocument();
+    expect(within(nextStep).getByText(/Final foundation verification and evidence/)).toBeInTheDocument();
+  });
+
+  it('renders the Architecture boundaries section with all ten rules Enforced in CI', () => {
+    permState.hasView = true;
+    renderHealthAt();
+    const section = screen.getByTestId('omni-comms-architecture-boundaries');
+    expect(section).toBeInTheDocument();
+    expect(M.architectureBoundaries).toHaveLength(10);
+    for (const row of M.architectureBoundaries) {
+      expect(within(section).getByText(row.title)).toBeInTheDocument();
+      expect(within(section).getByText(row.ruleId)).toBeInTheDocument();
+    }
+    // "Enforced in CI" label appears once per rule.
+    expect(within(section).getAllByText('Enforced in CI')).toHaveLength(10);
   });
 });
 
