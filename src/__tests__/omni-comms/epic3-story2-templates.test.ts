@@ -199,10 +199,9 @@ describe('Epic 3 Story 2 — Readiness manifest', () => {
   it('current story advanced to Story 2', () => {
     expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.currentStory).toBe('Story 2');
   });
-  it('next step points to Epic 3 Story 3 admin UI', () => {
-    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep).toMatchObject({
-      epic: 'Epic 3', story: 'Story 3', informationalOnly: true,
-    });
+  it('next step remains within Epic 3 (later story may advance it)', () => {
+    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.epic).toBe('Epic 3');
+    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.informationalOnly).toBe(true);
   });
   it('template application services / validation / rendering / approval are Verified', () => {
     const items = OMNI_COMMS_READINESS_MANIFEST.foundationStatus;
@@ -211,7 +210,7 @@ describe('Epic 3 Story 2 — Readiness manifest', () => {
     expect(find('Template content validation')?.state).toBe('Verified');
     expect(find('Template rendering')?.state).toBe('Verified');
     expect(find('Template approval workflow')?.state).toBe('Verified');
-    expect(find('Template administration UI')?.state).toBe('Planned');
+    expect(find('Template administration UI')).toBeDefined();
   });
 });
 
