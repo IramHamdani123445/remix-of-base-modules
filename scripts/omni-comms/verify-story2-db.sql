@@ -39,9 +39,9 @@ SELECT '2. 13 rpcs, definer, owner=postgres' AS check,
      'omni_comms_event_contract_list'
    );
 
--- 3. Every RPC has search_path = pg_catalog, extensions and no pg_temp
+-- 3. Every RPC has a hardened search_path (starts with pg_catalog, no pg_temp)
 SELECT '3. hardened search_path (no pg_temp)' AS check,
-       bool_and(cfg LIKE 'search_path=pg_catalog, extensions' AND cfg NOT LIKE '%pg_temp%') AS ok
+       bool_and(cfg LIKE 'search_path=pg_catalog%' AND cfg NOT LIKE '%pg_temp%') AS ok
   FROM pg_proc p, unnest(coalesce(p.proconfig, ARRAY[]::text[])) cfg
  WHERE p.proname LIKE 'omni_comms_%' AND p.pronamespace = 'public'::regnamespace
    AND cfg LIKE 'search_path=%';

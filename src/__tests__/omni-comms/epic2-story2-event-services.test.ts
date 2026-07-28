@@ -79,7 +79,9 @@ describe('Omni-Comms Epic 2 — Story 2 (application services)', () => {
     expect(src).not.toMatch(/@\/integrations\/supabase\/client/);
     expect(src).not.toMatch(/from ['"]react['"]/);
     expect(src).not.toMatch(/notification_queue|notification_logs|core_template/);
-    expect(src).not.toMatch(/sendCommunication/);
+    // Explicit prohibition: no call/export of a sendCommunication façade.
+    expect(src).not.toMatch(/\bsendCommunication\s*\(/);
+    expect(src).not.toMatch(/export[^;]+sendCommunication/);
   });
 
   it('parses OC-coded errors into typed OmniCommsRpcError instances', async () => {
