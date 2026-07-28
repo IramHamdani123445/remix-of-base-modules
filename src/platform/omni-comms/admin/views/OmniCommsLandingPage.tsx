@@ -9,7 +9,8 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Radio, Info } from "lucide-react";
+import { Radio, Info, HeartPulse, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const SHELL_ROUTES: Array<{ label: string; to: string }> = [
   { label: "Operations", to: "/admin/omnichannel-communications/operations" },
@@ -46,6 +47,26 @@ export const OmniCommsLandingPage: React.FC = () => {
           business events have been migrated yet.
         </AlertDescription>
       </Alert>
+
+      <Card data-testid="omni-comms-landing-readiness-card">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <HeartPulse className="h-4 w-4 text-primary" aria-hidden="true" />
+            Readiness
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            View architecture decisions, foundation status, planned objects and reserved integrations.
+          </p>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/admin/omnichannel-communications/health">
+              Open Readiness
+              <ArrowRight className="h-4 w-4 ml-1" aria-hidden="true" />
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
