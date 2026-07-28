@@ -66,7 +66,7 @@ export const ReadinessTab: React.FC = () => {
           {dt('Queue prefix', <code>{id.queuePrefix}</code>)}
           {dt('Current epic', id.currentEpic)}
           {dt('Current story', id.currentStory)}
-          {dt('Overall status', <ReadinessStatusBadge state="Verified" />)}
+          {dt('Overall status', <ReadinessStatusBadge state={id.overallStatus as 'Verified' | 'In progress'} />)}
         </dl>
       </ReadinessSection>
 
@@ -186,25 +186,38 @@ export const ReadinessTab: React.FC = () => {
       <ReadinessSection
         id="object-catalogue"
         title="Approved logical object catalogue"
-        description="19 approved objects. Nothing has been created; the Readiness page does not query these tables."
+        description="19 approved objects. Objects marked Available exist as physical schema; service capability may still be planned."
       >
         <div className="grid gap-4 md:grid-cols-3" data-testid="omni-comms-object-catalogue">
           {objectsByCategory.map((group) => (
             <div key={group.category}>
               <h3 className="font-medium mb-2">{group.title}</h3>
               <ul className="space-y-2">
-                {group.items.map((o) => (
-                  <li key={o.name} className="rounded border p-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <code className="text-xs break-all">{o.name}</code>
-                      <ReadinessStatusBadge state="Planned" />
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Epic {o.epic} · {o.writeAuthority.replace(/_/g, ' ')}
-                    </div>
-                    <div className="text-xs mt-1">{o.purpose}</div>
-                  </li>
-                ))}
+                {group.items.map((o) => {
+                  const isAvailable = o.status === 'AVAILABLE';
+                  return (
+                    <li
+                      key={o.name}
+                      className="rounded border p-2"
+                      data-testid={`omni-comms-object-${o.name}`}
+                      data-object-status={o.status}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <code className="text-xs break-all">{o.name}</code>
+                        <ReadinessStatusBadge state={isAvailable ? 'Available' : 'Planned'} />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Epic {o.epic} · {o.writeAuthority.replace(/_/g, ' ')}
+                      </div>
+                      <div className="text-xs mt-1">{o.purpose}</div>
+                      <div className="text-[11px] mt-1 text-muted-foreground">
+                        {isAvailable
+                          ? `Physical schema available — service capability planned${o.introductionStory ? ` (${o.introductionStory})` : ''}`
+                          : 'Registered in architecture catalogue — Not yet created'}
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

@@ -16,7 +16,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 2,
     writeAuthority: 'admin_rpc',
     purpose: 'Canonical business-event catalogue keyed by MODULE.ENTITY.ACTION.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Epic 2 — Story 1',
   },
   {
     name: 'omni_comms_event_contract',
@@ -24,7 +25,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 2,
     writeAuthority: 'admin_rpc',
     purpose: 'Payload schema and required tokens for a business event.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Epic 2 — Story 1',
   },
   {
     name: 'omni_comms_template_family',

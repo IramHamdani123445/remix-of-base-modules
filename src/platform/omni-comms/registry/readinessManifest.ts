@@ -57,10 +57,16 @@ export interface CapabilityEntry {
   intendedUse: string;
 }
 
+export interface PlannedObjectEntry {
+  name: string;
+  status: 'Physical schema available — service capability planned' | 'Registered in architecture catalogue — Not yet created';
+  introductionStory?: string;
+}
+
 export interface PlannedObjects {
-  eventsAndContent: string[];
-  channelsSendersPreferences: string[];
-  runtime: string[];
+  eventsAndContent: PlannedObjectEntry[];
+  channelsSendersPreferences: PlannedObjectEntry[];
+  runtime: PlannedObjectEntry[];
   note: string;
 }
 
@@ -110,18 +116,27 @@ const permanentRoutes: PermanentRoute[] = OMNI_COMMS_ROUTE_REGISTRY.map((r) => (
   state: r.state,
 }));
 
+const toPlannedEntry = (o: (typeof OMNI_COMMS_OBJECT_REGISTRY)[number]): PlannedObjectEntry => ({
+  name: o.name,
+  status:
+    o.status === 'AVAILABLE'
+      ? 'Physical schema available — service capability planned'
+      : 'Registered in architecture catalogue — Not yet created',
+  introductionStory: o.introductionStory,
+});
+
 const plannedObjects: PlannedObjects = {
   eventsAndContent: OMNI_COMMS_OBJECT_REGISTRY
     .filter((o) => o.category === 'events_and_content')
-    .map((o) => o.name),
+    .map(toPlannedEntry),
   channelsSendersPreferences: OMNI_COMMS_OBJECT_REGISTRY
     .filter((o) => o.category === 'channels_senders_preferences')
-    .map((o) => o.name),
+    .map(toPlannedEntry),
   runtime: OMNI_COMMS_OBJECT_REGISTRY
     .filter((o) => o.category === 'runtime')
-    .map((o) => o.name),
+    .map(toPlannedEntry),
   note:
-    'Approved 19-object ceiling. None of these tables exist and none are queried by this page.',
+    'Approved 19-object ceiling. Objects marked "Physical schema available" exist in the database; service capability may still be planned.',
 };
 
 const reservedEdgeFunctions: string[] = OMNI_COMMS_INTEGRATION_REGISTRY
@@ -139,9 +154,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     adminPrefix: '/admin/omnichannel-communications',
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
-    currentEpic: 'Epic 1',
-    currentStory: 'Story 5',
-    overallStatus: 'Verified',
+    currentEpic: 'Epic 2',
+    currentStory: 'Story 1',
+    overallStatus: 'In progress',
   },
 
   legacyIsolation: {
@@ -226,7 +241,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Object registry',                        state: 'Verified', note: 'Story 3 — 19 approved objects, 2 deferred' },
     { item: 'Route / integration / queue registries', state: 'Verified', note: 'Story 3 — 7 routes, 7 integrations, 5 queues' },
     { item: 'Architecture-boundary CI tests',         state: 'Verified', note: 'Story 4 — 10 rules enforced locally and in pull-request CI' },
-    { item: 'Communication business tables',          state: 'Planned',  note: 'None created; ceiling defined only' },
+    { item: 'Communication business tables',          state: 'In progress', note: 'omni_comms_event_definition and omni_comms_event_contract physical schema available (Epic 2 Story 1); remaining 17 planned.' },
     { item: 'sendCommunication façade',               state: 'Planned',  note: 'Planned for Epic 7' },
     { item: 'Provider integrations',                  state: 'Planned',  note: 'Planned for Epic 9' },
     { item: 'Runtime worker',                         state: 'Planned',  note: 'Planned for Epic 8' },
@@ -253,8 +268,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 2',
-    story: 'Story 1',
-    title: 'Event Definition and Contract Database Design',
+    story: 'Story 2',
+    title: 'Event Catalogue Application Services',
     informationalOnly: true,
   },
 };

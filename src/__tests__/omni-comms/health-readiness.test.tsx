@@ -114,7 +114,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     expect(M.permanentRoutes).toHaveLength(7);
   });
 
-  it('lists all 19 logical objects as Planned and not as created', () => {
+  it('lists all 19 logical objects with accurate physical-schema status', () => {
     permState.hasView = true;
     renderHealthAt();
     const all = [
@@ -123,12 +123,21 @@ describe('Omni-Comms Health page — Readiness', () => {
       ...M.plannedObjects.runtime,
     ];
     expect(all).toHaveLength(19);
-    for (const name of all) {
-      expect(screen.getAllByText(name).length).toBeGreaterThan(0);
+    for (const entry of all) {
+      expect(screen.getAllByText(entry.name).length).toBeGreaterThan(0);
     }
-    // Never described as created / live / deployed / available
-    const bodyText = document.body.textContent ?? '';
-    expect(bodyText).not.toMatch(/\bomni_comms_[a-z_]+\b[^.]*\b(created|deployed|live)\b/i);
+    // Exactly the two Story-1 objects report physical availability.
+    const available = all.filter(
+      (o) => o.status === 'Physical schema available — service capability planned',
+    );
+    expect(available.map((o) => o.name).sort()).toEqual(
+      ['omni_comms_event_contract', 'omni_comms_event_definition'],
+    );
+    // Remaining 17 remain "Not yet created".
+    const notCreated = all.filter(
+      (o) => o.status === 'Registered in architecture catalogue — Not yet created',
+    );
+    expect(notCreated).toHaveLength(17);
   });
 
   it('shows reserved edge functions as Not created', () => {
@@ -181,12 +190,12 @@ describe('Omni-Comms Health page — Readiness', () => {
     }
   });
 
-  it('identifies the next step as Epic 2 — Story 1', () => {
+  it('identifies the next step from the readiness manifest', () => {
     permState.hasView = true;
     renderHealthAt();
     const nextStep = screen.getByTestId('omni-comms-next-step');
-    expect(within(nextStep).getByText(/Epic 2 — Story 1/)).toBeInTheDocument();
-    expect(within(nextStep).getByText(/Event Definition and Contract Database Design/)).toBeInTheDocument();
+    expect(within(nextStep).getByText(new RegExp(`${M.nextStep.epic}.*${M.nextStep.story}`))).toBeInTheDocument();
+    expect(within(nextStep).getByText(new RegExp(M.nextStep.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))).toBeInTheDocument();
   });
 
   it('renders the Architecture boundaries section with all ten rules Enforced in CI', () => {
@@ -222,14 +231,16 @@ describe('Omni-Comms Story 2 — architectural boundaries', () => {
     expect(files).not.toContain('sendCommunication.ts');
   });
 
-  it('does not introduce any omni_comms_* business-table migration', () => {
+  it('introduces only the approved Epic 2 Story 1 omni_comms_* business-table migration', () => {
     const migrationsDir = path.resolve(__dirname, '..', '..', '..', 'supabase', 'migrations');
     if (!existsSync(migrationsDir)) return;
+    const allowed = new Set(['omni_comms_event_definition', 'omni_comms_event_contract']);
     const offenders: string[] = [];
     for (const file of readdirSync(migrationsDir)) {
       if (!file.endsWith('.sql')) continue;
       const sql = readFileSync(path.join(migrationsDir, file), 'utf8');
-      if (/create\s+table\s+(public\.)?omni_comms_/i.test(sql)) offenders.push(file);
+      const created = Array.from(sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?(omni_comms_[a-z_]+)/gi)).map((m) => m[1].toLowerCase());
+      if (created.some((t) => !allowed.has(t))) offenders.push(file);
     }
     expect(offenders).toEqual([]);
   });
