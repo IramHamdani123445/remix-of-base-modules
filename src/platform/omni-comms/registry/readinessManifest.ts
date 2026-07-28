@@ -1,16 +1,23 @@
 /**
  * Omnichannel Communications — Readiness Manifest
  *
- * SOURCE-CONTROLLED architecture and implementation-readiness data for the
- * new parallel Omnichannel Communications system.
- *
- * Every value in this file is a factual architecture decision or a static
- * implementation status. Nothing here is fetched at runtime. This file MUST
- * NOT read from the database, communication runtime tables, providers,
- * queues, Legacy Communication Hub, or any monitoring source.
- *
- * Updated per story. Story 2: introduces the Readiness page consumer.
+ * SOURCE-CONTROLLED readiness aggregate. Since Story 3, most values are
+ * derived from the dedicated registries in this folder. This file exists
+ * to preserve the public shape consumed by the Readiness page and Story 2
+ * tests while eliminating duplicated hard-coded architecture lists.
  */
+import {
+  OMNI_COMMS_OBJECT_REGISTRY,
+} from './objectRegistry';
+import {
+  OMNI_COMMS_ROUTE_REGISTRY,
+} from './routeRegistry';
+import {
+  OMNI_COMMS_INTEGRATION_REGISTRY,
+} from './integrationRegistry';
+import {
+  OMNI_COMMS_QUEUE_REGISTRY,
+} from './queueRegistry';
 
 export type ReadinessRouteState = 'Available' | 'Placeholder' | 'Not implemented';
 
@@ -89,6 +96,33 @@ export interface OmniCommsReadinessManifest {
   nextStep: NextStep;
 }
 
+// ─── Derived from registries ────────────────────────────────────────────
+const permanentRoutes: PermanentRoute[] = OMNI_COMMS_ROUTE_REGISTRY.map((r) => ({
+  path: r.path,
+  label: r.label,
+  state: r.state,
+}));
+
+const plannedObjects: PlannedObjects = {
+  eventsAndContent: OMNI_COMMS_OBJECT_REGISTRY
+    .filter((o) => o.category === 'events_and_content')
+    .map((o) => o.name),
+  channelsSendersPreferences: OMNI_COMMS_OBJECT_REGISTRY
+    .filter((o) => o.category === 'channels_senders_preferences')
+    .map((o) => o.name),
+  runtime: OMNI_COMMS_OBJECT_REGISTRY
+    .filter((o) => o.category === 'runtime')
+    .map((o) => o.name),
+  note:
+    'Approved 19-object ceiling. None of these tables exist and none are queried by this page.',
+};
+
+const reservedEdgeFunctions: string[] = OMNI_COMMS_INTEGRATION_REGISTRY
+  .filter((i) => i.kind === 'edge_function')
+  .map((i) => i.name);
+
+const reservedQueues: string[] = OMNI_COMMS_QUEUE_REGISTRY.map((q) => q.name);
+
 export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
   systemIdentity: {
     productName: 'Omnichannel Communications',
@@ -99,7 +133,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 1',
-    currentStory: 'Story 2',
+    currentStory: 'Story 3',
     overallStatus: 'Foundation',
   },
 
@@ -114,15 +148,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     ],
   },
 
-  permanentRoutes: [
-    { path: '/admin/omnichannel-communications',              label: 'Overview',    state: 'Available' },
-    { path: '/admin/omnichannel-communications/operations',   label: 'Operations',  state: 'Not implemented' },
-    { path: '/admin/omnichannel-communications/events',       label: 'Events',      state: 'Not implemented' },
-    { path: '/admin/omnichannel-communications/templates',    label: 'Templates',   state: 'Not implemented' },
-    { path: '/admin/omnichannel-communications/channels',     label: 'Channels',    state: 'Not implemented' },
-    { path: '/admin/omnichannel-communications/preferences',  label: 'Preferences', state: 'Not implemented' },
-    { path: '/admin/omnichannel-communications/health',       label: 'Health',      state: 'Available' },
-  ],
+  permanentRoutes,
 
   capabilities: [
     {
@@ -163,49 +189,11 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     },
   ],
 
-  plannedObjects: {
-    eventsAndContent: [
-      'omni_comms_event_definition',
-      'omni_comms_event_contract',
-      'omni_comms_template_family',
-      'omni_comms_template_version',
-      'omni_comms_event_route',
-    ],
-    channelsSendersPreferences: [
-      'omni_comms_provider',
-      'omni_comms_provider_account',
-      'omni_comms_sender_identity',
-      'omni_comms_sender_provider_binding',
-      'omni_comms_channel_setting',
-      'omni_comms_preference',
-    ],
-    runtime: [
-      'omni_comms_batch',
-      'omni_comms_request',
-      'omni_comms_recipient',
-      'omni_comms_message',
-      'omni_comms_dispatch_job',
-      'omni_comms_delivery_attempt',
-      'omni_comms_message_event',
-      'omni_comms_webhook_event',
-    ],
-    note:
-      'This is the APPROVED CEILING of logical database objects for the new system. It is not an instruction to create all 19 objects now. None of these tables exist and none are queried by this page.',
-  },
+  plannedObjects,
 
-  reservedEdgeFunctions: [
-    'omni-comms-send',
-    'omni-comms-dispatch',
-    'omni-comms-webhook-resend',
-  ],
+  reservedEdgeFunctions,
 
-  reservedQueues: [
-    'omni-comms.transactional',
-    'omni-comms.retry',
-    'omni-comms.dead-letter',
-    'omni-comms.webhook',
-    'omni-comms.bulk',
-  ],
+  reservedQueues,
 
   foundationStatus: [
     { item: 'Isolated source namespace',              state: 'Verified', note: 'src/platform/omni-comms' },
@@ -214,8 +202,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Permission capability registration',     state: 'Verified', note: 'Six omni_comms.* keys in the shared permission registry' },
     { item: 'DB-driven navigation',                   state: 'Verified', note: 'Menu entry seeded via app_modules (nav only)' },
     { item: 'Architecture README',                    state: 'Verified', note: 'src/platform/omni-comms/README.md' },
-    { item: 'Readiness page',                         state: 'Verified', note: 'This page — source-controlled data only' },
-    { item: 'Object registry',                        state: 'Planned',  note: 'Planned for Story 3' },
+    { item: 'Readiness page',                         state: 'Verified', note: 'Source-controlled data only' },
+    { item: 'Object registry',                        state: 'Verified', note: 'Story 3 — 19 approved objects, 2 deferred' },
+    { item: 'Route / integration / queue registries', state: 'Verified', note: 'Story 3 — 7 routes, 7 integrations, 5 queues' },
     { item: 'Architecture-boundary CI tests',         state: 'Planned',  note: 'Planned for Story 4' },
     { item: 'Communication business tables',          state: 'Planned',  note: 'None created; ceiling defined only' },
     { item: 'sendCommunication façade',               state: 'Planned',  note: 'Planned for Epic 7' },
@@ -244,8 +233,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 1',
-    story: 'Story 3',
-    title: 'Object, route, edge-function and queue registries',
+    story: 'Story 4',
+    title: 'Architecture-boundary CI tests',
     informationalOnly: true,
   },
 };

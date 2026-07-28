@@ -1,16 +1,23 @@
 /**
  * Readiness tab body for the Omnichannel Communications Health page.
- * All data comes from the source-controlled readiness manifest.
+ *
+ * Story 3: all architectural lists (routes, objects, integrations, queues)
+ * are derived from the source-controlled registries in
+ * `src/platform/omni-comms/registry`. The manifest no longer duplicates
+ * these lists.
  */
 import React from 'react';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info, ArrowRight } from 'lucide-react';
+import { Info, ArrowRight, CheckCircle2, XCircle } from 'lucide-react';
 import ReadinessSection from '../../components/ReadinessSection';
 import ReadinessStatusBadge from '../../components/ReadinessStatusBadge';
-import {
-  OMNI_COMMS_READINESS_MANIFEST as M,
-} from '@/platform/omni-comms/registry/readinessManifest';
+import { OMNI_COMMS_READINESS_MANIFEST as M } from '@/platform/omni-comms/registry/readinessManifest';
+import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
+import { OMNI_COMMS_DEFERRED_OBJECTS } from '@/platform/omni-comms/registry/deferredObjects';
+import { OMNI_COMMS_INTEGRATION_REGISTRY } from '@/platform/omni-comms/registry/integrationRegistry';
+import { OMNI_COMMS_QUEUE_REGISTRY } from '@/platform/omni-comms/registry/queueRegistry';
+import { validateOmniCommsRegistries } from '@/platform/omni-comms/registry/validateRegistries';
 
 const dt = (label: string, value: React.ReactNode) => (
   <div className="flex flex-col gap-1 sm:flex-row sm:gap-2">
@@ -19,8 +26,27 @@ const dt = (label: string, value: React.ReactNode) => (
   </div>
 );
 
+const CATEGORY_TITLES: Record<string, string> = {
+  events_and_content: 'Events and content',
+  channels_senders_preferences: 'Channels, senders and preferences',
+  runtime: 'Runtime',
+};
+
 export const ReadinessTab: React.FC = () => {
   const id = M.systemIdentity;
+  const validation = validateOmniCommsRegistries();
+
+  const objectsByCategory = (['events_and_content', 'channels_senders_preferences', 'runtime'] as const).map(
+    (cat) => ({
+      category: cat,
+      title: CATEGORY_TITLES[cat],
+      items: OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.category === cat),
+    }),
+  );
+
+  const edgeFunctions = OMNI_COMMS_INTEGRATION_REGISTRY.filter((i) => i.kind === 'edge_function');
+  const providers = OMNI_COMMS_INTEGRATION_REGISTRY.filter((i) => i.kind === 'provider');
+  const sharedPlatform = OMNI_COMMS_INTEGRATION_REGISTRY.filter((i) => i.ownership === 'shared_platform');
 
   return (
     <div className="space-y-6" data-testid="omni-comms-readiness-tab">
@@ -42,6 +68,42 @@ export const ReadinessTab: React.FC = () => {
           {dt('Current story', id.currentStory)}
           {dt('Overall status', <ReadinessStatusBadge state="Verified" />)}
         </dl>
+      </ReadinessSection>
+
+      {/* Registry validation */}
+      <ReadinessSection
+        id="registry-validation"
+        title="Registry validation"
+        description="Static invariant check across the Story 3 registries."
+      >
+        <div
+          data-testid="omni-comms-registry-validation"
+          data-ok={validation.ok ? 'true' : 'false'}
+          className="flex items-start gap-3"
+        >
+          {validation.ok ? (
+            <CheckCircle2 className="h-5 w-5 text-primary mt-0.5" aria-hidden="true" />
+          ) : (
+            <XCircle className="h-5 w-5 text-destructive mt-0.5" aria-hidden="true" />
+          )}
+          <div className="text-sm">
+            <div className="font-medium">
+              {validation.ok ? 'All registries valid' : `${validation.errors.length} validation error(s)`}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">
+              Active objects: {validation.counts.activeObjects} · Deferred: {validation.counts.deferredObjects} ·
+              Routes: {validation.counts.routes} · Integrations: {validation.counts.integrations} ·
+              Queues: {validation.counts.queues}
+            </div>
+            {!validation.ok ? (
+              <ul className="list-disc pl-5 mt-2 text-xs text-destructive">
+                {validation.errors.map((e) => (
+                  <li key={e}>{e}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        </div>
       </ReadinessSection>
 
       {/* Foundation status */}
@@ -79,13 +141,13 @@ export const ReadinessTab: React.FC = () => {
         </p>
       </ReadinessSection>
 
-      {/* Permanent routes */}
+      {/* Approved permanent routes — from routeRegistry */}
       <ReadinessSection
         id="permanent-routes"
         title="Approved permanent routes"
         description="The seven routes reserved for the new system."
       >
-        <ul className="divide-y">
+        <ul className="divide-y" data-testid="omni-comms-route-catalogue">
           {M.permanentRoutes.map((r) => (
             <li key={r.path} className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -120,25 +182,27 @@ export const ReadinessTab: React.FC = () => {
         </ul>
       </ReadinessSection>
 
-      {/* Planned objects */}
+      {/* Object catalogue — from objectRegistry, showing epic + write authority */}
       <ReadinessSection
-        id="planned-objects"
-        title="Approved logical object ceiling"
-        description={M.plannedObjects.note}
+        id="object-catalogue"
+        title="Approved logical object catalogue"
+        description="19 approved objects. Nothing has been created; the Readiness page does not query these tables."
       >
-        <div className="grid gap-4 md:grid-cols-3">
-          {[
-            { title: 'Events and content', items: M.plannedObjects.eventsAndContent },
-            { title: 'Channels, senders and preferences', items: M.plannedObjects.channelsSendersPreferences },
-            { title: 'Runtime', items: M.plannedObjects.runtime },
-          ].map((group) => (
-            <div key={group.title}>
+        <div className="grid gap-4 md:grid-cols-3" data-testid="omni-comms-object-catalogue">
+          {objectsByCategory.map((group) => (
+            <div key={group.category}>
               <h3 className="font-medium mb-2">{group.title}</h3>
-              <ul className="space-y-1">
-                {group.items.map((name) => (
-                  <li key={name} className="flex items-center justify-between gap-2">
-                    <code className="text-xs">{name}</code>
-                    <ReadinessStatusBadge state="Planned" />
+              <ul className="space-y-2">
+                {group.items.map((o) => (
+                  <li key={o.name} className="rounded border p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <code className="text-xs break-all">{o.name}</code>
+                      <ReadinessStatusBadge state="Planned" />
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Epic {o.epic} · {o.writeAuthority.replace(/_/g, ' ')}
+                    </div>
+                    <div className="text-xs mt-1">{o.purpose}</div>
                   </li>
                 ))}
               </ul>
@@ -147,23 +211,45 @@ export const ReadinessTab: React.FC = () => {
         </div>
         <Separator className="my-4" />
         <p className="text-xs text-muted-foreground">
-          None of these tables have been created. The Readiness page does not query the database for them.
+          Approved ceiling. Each object is mapped to a specific epic and write authority.
         </p>
       </ReadinessSection>
 
-      {/* Reserved integrations */}
+      {/* Deferred objects */}
+      <ReadinessSection
+        id="deferred-objects"
+        title="Deferred objects"
+        description="Proposed objects intentionally NOT created; satisfied by shared platform infrastructure."
+      >
+        <ul className="divide-y" data-testid="omni-comms-deferred-objects">
+          {OMNI_COMMS_DEFERRED_OBJECTS.map((d) => (
+            <li key={d.proposedName} className="py-2">
+              <div className="flex items-center justify-between gap-2">
+                <code className="text-xs">{d.proposedName}</code>
+                <ReadinessStatusBadge state="Not applicable" />
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Replaced by <code>{d.replacedBy}</code>
+              </div>
+              <div className="text-xs mt-1">{d.note}</div>
+            </li>
+          ))}
+        </ul>
+      </ReadinessSection>
+
+      {/* Reserved integrations — from integrationRegistry (7 entries) */}
       <ReadinessSection
         id="reserved-integrations"
         title="Reserved integrations"
-        description="Names reserved for the new system. Nothing has been deployed."
+        description="Seven external touchpoints reserved for the new system. Nothing has been deployed or wired."
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3" data-testid="omni-comms-integration-catalogue">
           <div>
             <h3 className="font-medium mb-2">Edge functions</h3>
             <ul className="space-y-1">
-              {M.reservedEdgeFunctions.map((name) => (
-                <li key={name} className="flex items-center justify-between gap-2">
-                  <code className="text-xs">{name}</code>
+              {edgeFunctions.map((i) => (
+                <li key={i.name} className="flex items-center justify-between gap-2">
+                  <code className="text-xs">{i.name}</code>
                   <div className="flex gap-1">
                     <ReadinessStatusBadge state="Reserved" />
                     <ReadinessStatusBadge state="Not created" />
@@ -173,20 +259,53 @@ export const ReadinessTab: React.FC = () => {
             </ul>
           </div>
           <div>
-            <h3 className="font-medium mb-2">Queues</h3>
+            <h3 className="font-medium mb-2">Providers</h3>
             <ul className="space-y-1">
-              {M.reservedQueues.map((name) => (
-                <li key={name} className="flex items-center justify-between gap-2">
-                  <code className="text-xs">{name}</code>
+              {providers.map((i) => (
+                <li key={i.name} className="flex items-center justify-between gap-2">
+                  <code className="text-xs">{i.name}</code>
                   <div className="flex gap-1">
                     <ReadinessStatusBadge state="Reserved" />
                     <ReadinessStatusBadge state="Not created" />
                   </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-medium mb-2">Shared platform assets (reused)</h3>
+            <ul className="space-y-1">
+              {sharedPlatform.map((i) => (
+                <li key={i.name} className="flex items-center justify-between gap-2">
+                  <code className="text-xs">{i.name}</code>
+                  <ReadinessStatusBadge state="Reused" />
                 </li>
               ))}
             </ul>
           </div>
         </div>
+      </ReadinessSection>
+
+      {/* Reserved queues — from queueRegistry (5 entries) */}
+      <ReadinessSection
+        id="reserved-queues"
+        title="Reserved queues"
+        description="Five logical queue names reserved for the new system."
+      >
+        <ul className="space-y-1" data-testid="omni-comms-queue-catalogue">
+          {OMNI_COMMS_QUEUE_REGISTRY.map((q) => (
+            <li key={q.name} className="flex items-center justify-between gap-2">
+              <div>
+                <code className="text-xs">{q.name}</code>
+                <div className="text-xs text-muted-foreground">{q.purpose}</div>
+              </div>
+              <div className="flex gap-1">
+                <ReadinessStatusBadge state="Reserved" />
+                <ReadinessStatusBadge state="Not created" />
+              </div>
+            </li>
+          ))}
+        </ul>
       </ReadinessSection>
 
       {/* Blockers */}
