@@ -275,8 +275,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 3',
-    story: 'Story 1',
-    title: 'Template Family and Template Version Database Foundation',
+    story: 'Story 2',
+    title: 'Template Application Services, Content Validation, Rendering, Approval, and Publication',
     informationalOnly: true,
   },
 };
