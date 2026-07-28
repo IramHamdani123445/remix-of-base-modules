@@ -33,17 +33,19 @@ describe('Omni-Comms Epic 2 — Story 1 (event tables)', () => {
     expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(19);
   });
 
-  it('readiness foundation row for communication business tables reflects Story 1 progress', () => {
-    const row = M.foundationStatus.find((r) => r.item === 'Communication business tables');
-    expect(row).toBeDefined();
-    expect(row!.state).toBe('In progress');
-    expect(row!.note).toMatch(/omni_comms_event_definition/);
-    expect(row!.note).toMatch(/omni_comms_event_contract/);
+  it('object registry marks both Story 1 event tables as AVAILABLE', () => {
+    const def = OMNI_COMMS_OBJECT_REGISTRY.find((o) => o.name === 'omni_comms_event_definition');
+    const con = OMNI_COMMS_OBJECT_REGISTRY.find((o) => o.name === 'omni_comms_event_contract');
+    expect(def?.status).toBe('AVAILABLE');
+    expect(con?.status).toBe('AVAILABLE');
+    expect(def?.introductionStory).toBe('Epic 2 — Story 1');
+    expect(con?.introductionStory).toBe('Epic 2 — Story 1');
   });
 
-  it('readiness nextStep advances beyond Epic 2 — Story 1', () => {
-    expect(M.nextStep.epic).toBe('Epic 2');
-    expect(M.nextStep.story).not.toBe('Story 1');
+  it('readiness nextStep has advanced beyond Epic 2 — Story 1', () => {
+    // Story 1 introduced the tables; nextStep must have moved on.
+    const isStill = M.nextStep.epic === 'Epic 2' && M.nextStep.story === 'Story 1';
+    expect(isStill).toBe(false);
   });
 
   it('a migration file exists that creates both event tables', () => {

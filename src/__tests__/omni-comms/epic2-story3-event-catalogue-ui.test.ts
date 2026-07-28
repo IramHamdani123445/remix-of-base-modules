@@ -20,10 +20,12 @@ const pageSrc = () => fs.readFileSync(path.join(ROOT, PAGE), 'utf8');
 const hookSrc = () => fs.readFileSync(path.join(ROOT, HOOK), 'utf8');
 
 describe('Omni-Comms Epic 2 — Story 3 (admin UI + hardening)', () => {
-  it('readiness manifest advances currentStory / nextStep to Story 3 / 4', () => {
-    expect(M.systemIdentity.currentStory).toBe('Story 3');
-    expect(M.nextStep.story).toBe('Story 4');
-    const row = M.foundationStatus.find((r) => r.item === 'Event Catalogue UI');
+  it('readiness manifest promotes Event Catalogue UI to Verified from Story 3', () => {
+    // Story 3 introduced the admin UI; later stories may advance currentStory/nextStep
+    // but the Story-3 promotion of 'Event Catalogue administration UI' must persist.
+    const row = M.foundationStatus.find(
+      (r) => r.item === 'Event Catalogue UI' || r.item === 'Event Catalogue administration UI',
+    );
     expect(row?.state).toBe('Verified');
   });
 
