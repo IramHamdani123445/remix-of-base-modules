@@ -161,10 +161,10 @@ DO $$
 DECLARE e text;
 BEGIN
   e := public.omni_comms_priv_escape_ilike('a%b_c\d');
-  IF e NOT LIKE '%\\%%' OR e NOT LIKE '%\\_%' OR e NOT LIKE '%\\\\%' THEN
+  IF position('\%' in e) = 0 OR position('\_' in e) = 0 OR position('\\' in e) = 0 THEN
     RAISE EXCEPTION 'FAIL: ILIKE escaper output = %', e;
   END IF;
-  RAISE NOTICE 'PASS: ILIKE escaper escaped %, _, backslash';
+  RAISE NOTICE 'PASS: ILIKE escaper escaped percent, underscore, backslash';
 END $$;
 
 ROLLBACK TO SAVEPOINT s0;
