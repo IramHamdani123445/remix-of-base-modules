@@ -80876,6 +80876,165 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_template_family: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          description: string | null
+          event_definition_id: string | null
+          id: string
+          name: string
+          organization_id: string
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          scope_type: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          event_definition_id?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          scope_type: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          event_definition_id?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          scope_type?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_template_family_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "core_department"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_template_family_event_definition_id_fkey"
+            columns: ["event_definition_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_event_definition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_template_family_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_template_version: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          channel: string
+          checksum: string | null
+          content: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          locale: string
+          published_at: string | null
+          published_by: string | null
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          status: string
+          template_family_id: string
+          updated_at: string
+          updated_by: string | null
+          version_number: number
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          channel: string
+          checksum?: string | null
+          content: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locale: string
+          published_at?: string | null
+          published_by?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          template_family_id: string
+          updated_at?: string
+          updated_by?: string | null
+          version_number: number
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          channel?: string
+          checksum?: string | null
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          locale?: string
+          published_at?: string | null
+          published_by?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          template_family_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_template_version_template_family_id_fkey"
+            columns: ["template_family_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_template_family"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       password_history: {
         Row: {
           created_at: string | null
