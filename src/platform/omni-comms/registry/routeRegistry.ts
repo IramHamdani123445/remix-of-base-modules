@@ -38,7 +38,7 @@ export const OMNI_COMMS_ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     pageWrapper: 'src/pages/admin/omnichannel-communications/TemplatesPage.tsx',
     moduleView: 'src/platform/omni-comms/admin/views/OmniCommsTemplatesPage.tsx',
     requiredPermission: 'omni_comms.view',
-    state: 'Not implemented',
+    state: 'Available',
   },
   {
     path: '/admin/omnichannel-communications/channels',

@@ -253,7 +253,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Template content validation',              state: 'Verified', note: 'Epic 3 Story 2 — omni_comms_priv_validate_channel_content enforces exact allowed keys per channel, UTF-8 256 KiB bound, non-empty trimmed strings, email body requirement, and token grammar on every field.' },
     { item: 'Template rendering',                       state: 'Verified', note: 'Epic 3 Story 2 — pure deterministic renderer under src/platform/omni-comms/rendering; strict {{path}} grammar mirrored in SQL; HTML escaping on html fields only; TextEncoder byte bound; no Node crypto/Buffer; inputs never mutated; payload values never re-parsed.' },
     { item: 'Template approval workflow',               state: 'Verified', note: 'Epic 3 Story 2 — approve requires omni_comms.approve_templates and approver != author; publish atomically retires prior published version under family-row lock; resolve_published applies event → department → organization precedence after department/organisation ownership validation.' },
-    { item: 'Template administration UI',               state: 'Planned',  note: 'Deferred to Epic 3 Story 3 — Templates route remains a placeholder; no admin views wired.' },
+    { item: 'Template administration UI',               state: 'Verified', note: 'Epic 3 Story 3 — /admin/omnichannel-communications/templates wired to the Story 2 adapter through useOmniCommsRpcClient with Library, Versions and Preview tabs; family create/edit/activate/retire and version create/edit/approve/publish/replace/retire flows; capability-gated actions (view/configure/author_templates/approve_templates) with denied-by-default loading; optimistic-concurrency and atomic publication-replacement UI; synthetic payload preview isolated to component memory and rendered through sandbox="" iframe with restrictive CSP plus escaped source view; departments resolved via organizationService.listActiveDepartmentsForOrganization.' },
+    { item: 'Template preview isolation',                state: 'Verified', note: 'Epic 3 Story 3 — HTML preview uses <iframe sandbox="" referrerPolicy="no-referrer" srcDoc=...> with meta-CSP default-src none, script-src none, connect-src none, frame-src none, form-action none, base-uri none, img-src restricted to data:; parent never uses dangerouslySetInnerHTML; escaped source view always available.' },
+    { item: 'Template navigation & permission setup',    state: 'Verified', note: 'Epic 3 Story 3 — app_modules(omni_comms) parent + Templates child (route /admin/omnichannel-communications/templates, visibility omni_comms.view) verified; six module_actions view/operate/configure/author_templates/approve_templates/view_sensitive_content mapped to Admin role via role_permissions (is_granted=true); admin@secureserve.gov holds Admin in public.user_roles; scripts/omni-comms/verify-story3-nav-permissions.sql is the source-controlled proof.' },
   ],
 
   blockers: [
@@ -276,8 +278,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 3',
-    story: 'Story 3',
-    title: 'Template Administration UI and Synthetic Preview',
+    story: 'Story 4',
+    title: 'Template Catalogue Final Verification, Security Evidence, and Rollback Proof',
     informationalOnly: true,
   },
 };

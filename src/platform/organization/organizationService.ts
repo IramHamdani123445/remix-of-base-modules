@@ -457,3 +457,48 @@ export async function updateCalendarHoliday(
 
 export const deactivateCalendarHoliday = (id: string) => updateCalendarHoliday(id, { isActive: false });
 export const reactivateCalendarHoliday = (id: string) => updateCalendarHoliday(id, { isActive: true });
+
+// ============== Departments — canonical core_department reader ==============
+/**
+ * Returns authoritative core_department rows for a given organisation.
+ *
+ * Used by cross-module admin surfaces (Omni-Comms Templates, etc.) that need
+ * true `core_department.id` UUIDs rather than the Legacy office-department
+ * composite. Feature components MUST call this instead of querying
+ * `core_department` directly.
+ *
+ * - Filters by organisation.
+ * - Excludes inactive departments unless `includeIds` names a specific row
+ *   (used when a stored reference points to a since-deactivated department).
+ */
+export interface ActiveDepartmentOption {
+  id: string;
+  code: string;
+  name: string;
+  isActive: boolean;
+}
+export async function listActiveDepartmentsForOrganization(
+  organizationId: string,
+  options: { includeIds?: readonly string[] } = {},
+): Promise<ActiveDepartmentOption[]> {
+  if (!organizationId) return [];
+  const includeIds = (options.includeIds ?? []).filter(Boolean);
+  const orClauses = ['is_active.eq.true'];
+  if (includeIds.length > 0) {
+    orClauses.push(`id.in.(${includeIds.join(',')})`);
+  }
+  const { data, error } = await anyClient
+    .from('core_department')
+    .select('id, code, name, is_active')
+    .eq('organization_id', organizationId)
+    .or(orClauses.join(','))
+    .order('sort_order', { ascending: true, nullsFirst: false })
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: String(row.id ?? ''),
+    code: String(row.code ?? ''),
+    name: String(row.name ?? ''),
+    isActive: Boolean(row.is_active),
+  }));
+}
