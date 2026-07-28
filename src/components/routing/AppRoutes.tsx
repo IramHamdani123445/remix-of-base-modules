@@ -2309,6 +2309,16 @@ export const AppRoutes = () => {
       <Route path="/admin/communication-hub/traces" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubTraceCenterPage /></Suspense></CommHubAdminRoute>} />
       <Route path="/admin/communication-hub/traces/:traceId" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubTraceDetailPage /></Suspense></CommHubAdminRoute>} />
 
+      {/* Omnichannel Communications — parallel replacement system (Epic 1 shell). Legacy Communication Hub above is unchanged. */}
+      <Route path="/admin/omnichannel-communications" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsLandingPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/operations" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsOperationsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/events" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsEventsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/templates" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsTemplatesPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/channels" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsChannelsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/preferences" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsPreferencesPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/health" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsHealthPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+
+
 
 
 
