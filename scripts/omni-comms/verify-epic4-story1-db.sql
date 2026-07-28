@@ -65,8 +65,9 @@ DECLARE
   v_provider uuid;
   v_org uuid;
 BEGIN
-  IF NOT has_table_privilege(current_user, 'public.omni_comms_provider', 'INSERT') THEN
-    RAISE NOTICE 'skip lifecycle fixtures: current_user % lacks INSERT on omni_comms_provider', current_user;
+  IF NOT (has_table_privilege(current_user, 'public.omni_comms_provider', 'INSERT')
+          AND has_table_privilege(current_user, 'public.omni_comms_provider', 'UPDATE')) THEN
+    RAISE NOTICE 'skip lifecycle fixtures: current_user % lacks INSERT/UPDATE on omni_comms_provider', current_user;
     RETURN;
   END IF;
 
