@@ -42,11 +42,11 @@ describe('Epic 4 — Story 1: Provider/Sender/Channel foundation', () => {
     expect(readinessManifest.nextStep.story).toBe('Story 2');
   });
 
-  it('Channels admin route remains a Placeholder', () => {
+  it('Channels admin route remains unchanged (not implemented)', () => {
     const channels = readinessManifest.permanentRoutes.find(
       (r) => r.path === '/admin/omnichannel-communications/channels',
     );
-    expect(channels?.state).toBe('Placeholder');
+    expect(channels?.state).toBe('Not implemented');
   });
 
   it('Story 1 verifier and rollback scripts exist', () => {
