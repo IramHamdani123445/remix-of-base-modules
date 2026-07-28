@@ -700,7 +700,7 @@ const ScopeResolutionCard: React.FC<{
             </AlertDescription>
           </Alert>
         )}
-        {result && !result.ok && (
+        {result && result.ok === false && (
           <Alert variant="destructive"><AlertDescription>{result.error}</AlertDescription></Alert>
         )}
       </CardContent>
