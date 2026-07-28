@@ -758,7 +758,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
           setDepartments(deps);
         }
         const evs = await ecSvc.listEventDefinitions(client, { limit: 200 });
-        setEvents(evs.items);
+        setEvents(evs);
       } catch (e) { toastError(e); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
