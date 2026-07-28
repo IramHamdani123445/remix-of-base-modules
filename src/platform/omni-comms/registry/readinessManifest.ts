@@ -155,8 +155,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 3',
-    currentStory: 'Story 1',
+    currentStory: 'Story 2',
     overallStatus: 'In progress',
+
   },
 
   legacyIsolation: {
@@ -248,11 +249,11 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Event Simulator',                         state: 'Planned',  note: 'Deferred until Epic 6 — Simulator tab remains a placeholder.' },
     { item: 'Template Family schema',                  state: 'Verified', note: 'Epic 3 Story 1 — public.omni_comms_template_family; organisation/department/event scope shape CHECK; partial unique indexes per scope; lifecycle trigger enforces draft-only insert, transitions, identity immutability, deletion protection.' },
     { item: 'Template Version schema',                 state: 'Verified', note: 'Epic 3 Story 1 — public.omni_comms_template_version; unique(family, channel, locale, version); one published per family/channel/locale (partial unique); approved/published/retired content immutable; independent-approver CHECK.' },
-    { item: 'Template application services',           state: 'Planned',  note: 'Deferred to Epic 3 Story 2 — no template RPCs, resolver, or repository exist yet.' },
-    { item: 'Template content validation',             state: 'Planned',  note: 'Deferred to Epic 3 Story 2 — channel-specific content schemas not yet enforced.' },
-    { item: 'Template rendering',                      state: 'Planned',  note: 'Deferred to Epic 3 Story 2 — no rendering, token extraction, or preview exists.' },
-    { item: 'Template approval workflow',              state: 'Planned',  note: 'Deferred to Epic 3 Story 2 — approval and publication RPCs not yet implemented.' },
-    { item: 'Template administration UI',              state: 'Planned',  note: 'Templates route remains a placeholder — no admin views wired.' },
+    { item: 'Template application services',           state: 'Verified', note: 'Epic 3 Story 2 — 14 SECURITY DEFINER RPCs (family create/update/activate/retire/list/get; version create/update/approve/publish/retire/list/get; resolve_published); owner postgres; search_path=pg_catalog,public; REVOKE anon; GRANT authenticated.' },
+    { item: 'Template content validation',              state: 'Verified', note: 'Epic 3 Story 2 — omni_comms_priv_validate_channel_content enforces exact allowed keys per channel, UTF-8 256 KiB bound, non-empty trimmed strings, email body requirement, and token grammar on every field.' },
+    { item: 'Template rendering',                       state: 'Verified', note: 'Epic 3 Story 2 — pure deterministic renderer under src/platform/omni-comms/rendering; strict {{path}} grammar mirrored in SQL; HTML escaping on html fields only; TextEncoder byte bound; no Node crypto/Buffer; inputs never mutated; payload values never re-parsed.' },
+    { item: 'Template approval workflow',               state: 'Verified', note: 'Epic 3 Story 2 — approve requires omni_comms.approve_templates and approver != author; publish atomically retires prior published version under family-row lock; resolve_published applies event → department → organization precedence after department/organisation ownership validation.' },
+    { item: 'Template administration UI',               state: 'Planned',  note: 'Deferred to Epic 3 Story 3 — Templates route remains a placeholder; no admin views wired.' },
   ],
 
   blockers: [
@@ -275,8 +276,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 3',
-    story: 'Story 2',
-    title: 'Template Application Services, Content Validation, Rendering, Approval, and Publication',
+    story: 'Story 3',
+    title: 'Template Administration UI and Synthetic Preview',
     informationalOnly: true,
   },
 };
+
