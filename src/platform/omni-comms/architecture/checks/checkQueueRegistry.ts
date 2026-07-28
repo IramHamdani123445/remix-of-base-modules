@@ -46,7 +46,14 @@ export function checkQueueRegistry(scan: RepositoryScan): ArchitectureViolation[
     while ((m = QUEUE_NAME_RE.exec(f.content)) !== null) {
       const name = m[1];
 
+      // Skip declarations and definitional references inside the architecture
+      // module itself and inside the test suite — those are metadata about the
+      // rule, not runtime usage.
+      const isPolicyOrTest =
+        f.filePath.startsWith('src/platform/omni-comms/architecture/') ||
+        f.filePath.startsWith('src/__tests__/');
       if (PROHIBITED_QUEUE_NAMES.includes(name)) {
+        if (isPolicyOrTest) continue;
         out.push({
           ruleId: 'OMNI_QUEUE_REGISTRY',
           severity: 'error',
