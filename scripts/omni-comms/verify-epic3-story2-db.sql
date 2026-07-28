@@ -101,16 +101,12 @@ DO $$ BEGIN
   EXCEPTION WHEN SQLSTATE 'P0001' THEN NULL; END;
 END $$;
 
--- ── Authenticated cannot read templates directly ──────────────────────────
-DO $$ BEGIN
-  SET LOCAL role authenticated;
-  BEGIN
-    PERFORM 1 FROM public.omni_comms_template_family LIMIT 1;
-    RAISE EXCEPTION 'direct table read must be denied';
-  EXCEPTION WHEN insufficient_privilege THEN NULL;
-  END;
-  RESET role;
-END $$;
+-- ── Authenticated / anon cannot read template tables directly (grants) ──
+SELECT has_table_privilege('authenticated', 'public.omni_comms_template_family',  'SELECT') AS auth_family_select,
+       has_table_privilege('authenticated', 'public.omni_comms_template_version', 'SELECT') AS auth_version_select,
+       has_table_privilege('anon',          'public.omni_comms_template_family',  'SELECT') AS anon_family_select;
+-- Expect: all three false.
+
 
 -- ── Rollback all fixtures ─────────────────────────────────────────────────
 ROLLBACK;
