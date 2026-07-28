@@ -140,7 +140,7 @@ describe('Omni-Comms Story 3 — Readiness consumes registry data', () => {
       'utf8',
     );
     expect(src).toMatch(/from '@\/platform\/omni-comms\/registry\/objectRegistry'/);
-    expect(src).toMatch(/from '@\/platform\/omni-comms\/registry\/routeRegistry'/);
+    // routeRegistry is consumed transitively via readinessManifest.permanentRoutes
     expect(src).toMatch(/from '@\/platform\/omni-comms\/registry\/integrationRegistry'/);
     expect(src).toMatch(/from '@\/platform\/omni-comms\/registry\/queueRegistry'/);
     expect(src).toMatch(/validateOmniCommsRegistries/);
