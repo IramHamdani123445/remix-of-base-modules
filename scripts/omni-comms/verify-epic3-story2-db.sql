@@ -22,7 +22,7 @@
 --   tok_reject_dot_trailing
 -- ============================================================================
 BEGIN;
-SET LOCAL role postgres;
+-- RESET role;
 SET LOCAL client_min_messages = warning;
 
 -- ── Private-helper security modes ─────────────────────────────────────────
@@ -109,7 +109,7 @@ DO $$ BEGIN
     RAISE EXCEPTION 'direct table read must be denied';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
-  SET LOCAL role postgres;
+  RESET role;
 END $$;
 
 -- ── Rollback all fixtures ─────────────────────────────────────────────────
