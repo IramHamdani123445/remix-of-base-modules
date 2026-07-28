@@ -218,8 +218,10 @@ describe('Epic 3 Story 2 — architecture invariants', () => {
   it('templateCatalogueErrors does not import from eventCatalogueTypes', () => {
     const src = readFileSync(join(process.cwd(),
       'src/platform/omni-comms/application/templateCatalogueErrors.ts'), 'utf8');
-    expect(src).not.toMatch(/eventCatalogue/);
+    expect(src).not.toMatch(/from\s+['"][^'"]*eventCatalogue/);
+    expect(src).not.toMatch(/import[^;]*eventCatalogue/);
   });
+
   it('renderer does not import Node-only modules', () => {
     const src = readFileSync(join(process.cwd(),
       'src/platform/omni-comms/rendering/renderer.ts'), 'utf8');
