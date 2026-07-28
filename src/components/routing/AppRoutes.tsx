@@ -914,6 +914,16 @@ const CommHubSendPoliciesPage = lazy(() => import('@/pages/admin/communicationHu
 const CommHubAutomationSettingsPage = lazy(() => import('@/pages/admin/communicationHub/CommHubAutomationSettingsPage'));
 const CommHubTraceCenterPage = lazy(() => import('@/pages/admin/communicationHub/traces/TraceCenterPage'));
 const CommHubTraceDetailPage = lazy(() => import('@/pages/admin/communicationHub/traces/TraceDetailPage'));
+
+// Omnichannel Communications (parallel replacement — Epic 1 shell only)
+const OmniCommsAdminRoute = lazy(() => import('@/platform/omni-comms/admin/components/OmniCommsAdminRoute'));
+const OmniCommsLandingPage = lazy(() => import('@/pages/admin/omnichannel-communications/LandingPage'));
+const OmniCommsOperationsPage = lazy(() => import('@/pages/admin/omnichannel-communications/OperationsPage'));
+const OmniCommsEventsPage = lazy(() => import('@/pages/admin/omnichannel-communications/EventsPage'));
+const OmniCommsTemplatesPage = lazy(() => import('@/pages/admin/omnichannel-communications/TemplatesPage'));
+const OmniCommsChannelsPage = lazy(() => import('@/pages/admin/omnichannel-communications/ChannelsPage'));
+const OmniCommsPreferencesPage = lazy(() => import('@/pages/admin/omnichannel-communications/PreferencesPage'));
+const OmniCommsHealthPage = lazy(() => import('@/pages/admin/omnichannel-communications/HealthPage'));
 const OrganizationDirectLeaf = lazy(() => import('@/pages/admin/organization/OrganizationDirectLeaf'));
 // OrgLocationsPage is rendered inside OfficesAdmin's "Locations" tab; route lazy import removed.
 // OrgDepartmentProfilesPage now rendered inside DepartmentsAdmin (Profiles tab).
@@ -2298,6 +2308,16 @@ export const AppRoutes = () => {
       <Route path="/admin/communication-hub/governance/automation-settings" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubAutomationSettingsPage /></Suspense></CommHubAdminRoute>} />
       <Route path="/admin/communication-hub/traces" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubTraceCenterPage /></Suspense></CommHubAdminRoute>} />
       <Route path="/admin/communication-hub/traces/:traceId" element={<CommHubAdminRoute><Suspense fallback={<div>Loading...</div>}><CommHubTraceDetailPage /></Suspense></CommHubAdminRoute>} />
+
+      {/* Omnichannel Communications — parallel replacement system (Epic 1 shell). Legacy Communication Hub above is unchanged. */}
+      <Route path="/admin/omnichannel-communications" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsLandingPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/operations" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsOperationsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/events" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsEventsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/templates" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsTemplatesPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/channels" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsChannelsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/preferences" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsPreferencesPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/health" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsHealthPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+
 
 
 
