@@ -287,8 +287,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Story 1',
-    title: 'Provider, Provider Account, Sender Identity, Sender Provider Binding, and Channel Setting Database Foundation',
+    story: 'Story 2',
+    title: 'Provider, Sender, and Channel Setting Application Services',
     informationalOnly: true,
   },
 };
