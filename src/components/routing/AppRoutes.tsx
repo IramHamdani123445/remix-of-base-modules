@@ -914,6 +914,16 @@ const CommHubSendPoliciesPage = lazy(() => import('@/pages/admin/communicationHu
 const CommHubAutomationSettingsPage = lazy(() => import('@/pages/admin/communicationHub/CommHubAutomationSettingsPage'));
 const CommHubTraceCenterPage = lazy(() => import('@/pages/admin/communicationHub/traces/TraceCenterPage'));
 const CommHubTraceDetailPage = lazy(() => import('@/pages/admin/communicationHub/traces/TraceDetailPage'));
+
+// Omnichannel Communications (parallel replacement — Epic 1 shell only)
+const OmniCommsAdminRoute = lazy(() => import('@/platform/omni-comms/admin/components/OmniCommsAdminRoute'));
+const OmniCommsLandingPage = lazy(() => import('@/pages/admin/omnichannel-communications/LandingPage'));
+const OmniCommsOperationsPage = lazy(() => import('@/pages/admin/omnichannel-communications/OperationsPage'));
+const OmniCommsEventsPage = lazy(() => import('@/pages/admin/omnichannel-communications/EventsPage'));
+const OmniCommsTemplatesPage = lazy(() => import('@/pages/admin/omnichannel-communications/TemplatesPage'));
+const OmniCommsChannelsPage = lazy(() => import('@/pages/admin/omnichannel-communications/ChannelsPage'));
+const OmniCommsPreferencesPage = lazy(() => import('@/pages/admin/omnichannel-communications/PreferencesPage'));
+const OmniCommsHealthPage = lazy(() => import('@/pages/admin/omnichannel-communications/HealthPage'));
 const OrganizationDirectLeaf = lazy(() => import('@/pages/admin/organization/OrganizationDirectLeaf'));
 // OrgLocationsPage is rendered inside OfficesAdmin's "Locations" tab; route lazy import removed.
 // OrgDepartmentProfilesPage now rendered inside DepartmentsAdmin (Profiles tab).
