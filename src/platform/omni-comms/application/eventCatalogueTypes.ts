@@ -74,21 +74,15 @@ export interface EventContractListItem {
   updated_at: string;
 }
 
-/** Stable error codes returned by every Event Catalogue RPC. */
-export const OMNI_COMMS_ERROR_CODES = [
-  'OC401', // authentication_required
-  'OC403', // permission_denied
-  'OC404', // not_found
-  'OC409', // duplicate_event_code
-  'OC410', // duplicate_contract_version
-  'OC412', // invalid_state
-  'OC413', // concurrent_update (optimistic-concurrency failure)
-  'OC422', // validation_error
-  'OC450', // audit_write_failed
-  'OC500', // unexpected_error
-] as const;
-
-export type OmniCommsErrorCode = (typeof OMNI_COMMS_ERROR_CODES)[number];
+/**
+ * Event Catalogue re-exports the neutral shared error model.
+ * Event-catalogue-specific validation details remain here.
+ */
+export {
+  OMNI_COMMS_ERROR_CODES,
+  OmniCommsRpcError,
+  type OmniCommsErrorCode,
+} from './omniCommsRpcErrors';
 
 /** Controlled validation detail values recognised by the schema pipeline. */
 export const OMNI_COMMS_VALIDATION_DETAILS = [
@@ -105,13 +99,3 @@ export const OMNI_COMMS_VALIDATION_DETAILS = [
 export type OmniCommsValidationDetail =
   (typeof OMNI_COMMS_VALIDATION_DETAILS)[number];
 
-export class OmniCommsRpcError extends Error {
-  readonly code: OmniCommsErrorCode;
-  readonly detail?: string;
-  constructor(code: OmniCommsErrorCode, detail?: string, message?: string) {
-    super(message ?? `${code}${detail ? `: ${detail}` : ''}`);
-    this.name = 'OmniCommsRpcError';
-    this.code = code;
-    this.detail = detail;
-  }
-}
