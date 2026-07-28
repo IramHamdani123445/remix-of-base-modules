@@ -237,7 +237,9 @@ describe('Omni-Comms Story 2 — architectural boundaries', () => {
   it('introduces only the approved Epic 2 Story 1 omni_comms_* business-table migration', () => {
     const migrationsDir = path.resolve(__dirname, '..', '..', '..', 'supabase', 'migrations');
     if (!existsSync(migrationsDir)) return;
-    const allowed = new Set(['omni_comms_event_definition', 'omni_comms_event_contract']);
+    const allowed = new Set(
+      OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.status === 'AVAILABLE').map((o) => o.name),
+    );
     const offenders: string[] = [];
     for (const file of readdirSync(migrationsDir)) {
       if (!file.endsWith('.sql')) continue;
