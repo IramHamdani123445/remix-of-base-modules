@@ -13,15 +13,17 @@ interface Props {
  * assistive tech can navigate the Readiness page by section.
  */
 export const ReadinessSection: React.FC<Props> = ({ id, title, description, children }) => (
-  <Card as="section" aria-labelledby={`${id}-heading`}>
-    <CardHeader>
-      <CardTitle id={`${id}-heading`} className="text-base">
-        {title}
-      </CardTitle>
-      {description ? <CardDescription>{description}</CardDescription> : null}
-    </CardHeader>
-    <CardContent className="text-sm">{children}</CardContent>
-  </Card>
+  <section aria-labelledby={`${id}-heading`}>
+    <Card>
+      <CardHeader>
+        <CardTitle id={`${id}-heading`} className="text-base">
+          {title}
+        </CardTitle>
+        {description ? <CardDescription>{description}</CardDescription> : null}
+      </CardHeader>
+      <CardContent className="text-sm">{children}</CardContent>
+    </Card>
+  </section>
 );
 
 export default ReadinessSection;
