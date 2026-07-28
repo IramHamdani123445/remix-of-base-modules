@@ -73,7 +73,7 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     for (const o of OMNI_COMMS_OBJECT_REGISTRY) {
       expect(o.name.startsWith('omni_comms_')).toBe(true);
       expect(approved.has(o.epic)).toBe(true);
-      expect(o.status).toBe('PLANNED');
+      expect(['PLANNED', 'AVAILABLE']).toContain(o.status);
     }
   });
 
@@ -118,7 +118,7 @@ describe('Omni-Comms Story 3 — Readiness consumes registry data', () => {
       ...M.plannedObjects.eventsAndContent,
       ...M.plannedObjects.channelsSendersPreferences,
       ...M.plannedObjects.runtime,
-    ].sort();
+    ].map((o) => o.name).sort();
     expect(combined).toEqual(OMNI_COMMS_OBJECT_REGISTRY.map((o) => o.name).sort());
   });
   it('reserved edge functions are derived from integrationRegistry', () => {
@@ -153,14 +153,16 @@ describe('Omni-Comms Story 3 — no runtime implementation was created', () => {
     expect(files).not.toContain('sendCommunication.ts');
   });
 
-  it('no omni_comms_* migration and no omni-comms-* edge function exists', () => {
+  it('no omni_comms_* migration exists beyond the approved Epic 2 Story 1 event tables, and no omni-comms-* edge function exists', () => {
     const migrationsDir = path.join(REPO_ROOT, 'supabase', 'migrations');
+    const allowed = new Set(['omni_comms_event_definition', 'omni_comms_event_contract']);
     if (existsSync(migrationsDir)) {
       const offenders: string[] = [];
       for (const file of readdirSync(migrationsDir)) {
         if (!file.endsWith('.sql')) continue;
         const sql = readFileSync(path.join(migrationsDir, file), 'utf8');
-        if (/create\s+table\s+(public\.)?omni_comms_/i.test(sql)) offenders.push(file);
+        const created = Array.from(sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?(omni_comms_[a-z_]+)/gi)).map((m) => m[1].toLowerCase());
+        if (created.some((t) => !allowed.has(t))) offenders.push(file);
       }
       expect(offenders).toEqual([]);
     }

@@ -42,7 +42,12 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
     if (seenObjects.has(o.name)) errors.push(`Duplicate object name ${o.name}.`);
     seenObjects.add(o.name);
     if (!APPROVED_EPICS.has(o.epic)) errors.push(`Object ${o.name} maps to unapproved epic ${o.epic}.`);
-    if (o.status !== 'PLANNED') errors.push(`Object ${o.name} must be PLANNED in Epic 1.`);
+    if (o.status !== 'PLANNED' && o.status !== 'AVAILABLE') {
+      errors.push(`Object ${o.name} has unknown status ${o.status}.`);
+    }
+    if (o.status === 'AVAILABLE' && !o.introductionStory) {
+      errors.push(`Object ${o.name} is AVAILABLE but has no introductionStory.`);
+    }
     if (o.category === 'runtime' && o.writeAuthority !== 'service_role_only') {
       errors.push(`Runtime object ${o.name} must be service_role_only.`);
     }

@@ -80766,6 +80766,116 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_event_contract: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          created_by: string | null
+          event_definition_id: string
+          id: string
+          json_schema: Json
+          published_at: string | null
+          published_by: string | null
+          retired_at: string | null
+          retired_by: string | null
+          sample_payload: Json
+          status: string
+          updated_at: string
+          updated_by: string | null
+          version_number: number
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_definition_id: string
+          id?: string
+          json_schema: Json
+          published_at?: string | null
+          published_by?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          sample_payload?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_number: number
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_definition_id?: string
+          id?: string
+          json_schema?: Json
+          published_at?: string | null
+          published_by?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          sample_payload?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_event_contract_event_definition_id_fkey"
+            columns: ["event_definition_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_event_definition"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_event_definition: {
+        Row: {
+          code: string
+          communication_class: string
+          created_at: string
+          created_by: string | null
+          default_priority: string
+          description: string | null
+          entity_type: string
+          id: string
+          module_code: string
+          name: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          code: string
+          communication_class: string
+          created_at?: string
+          created_by?: string | null
+          default_priority?: string
+          description?: string | null
+          entity_type: string
+          id?: string
+          module_code: string
+          name: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          code?: string
+          communication_class?: string
+          created_at?: string
+          created_by?: string | null
+          default_priority?: string
+          description?: string | null
+          entity_type?: string
+          id?: string
+          module_code?: string
+          name?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       password_history: {
         Row: {
           created_at: string | null

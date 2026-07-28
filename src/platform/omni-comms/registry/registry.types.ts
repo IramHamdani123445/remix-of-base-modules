@@ -12,7 +12,7 @@ export type ObjectCategory =
   | 'channels_senders_preferences'
   | 'runtime';
 
-export type ObjectStatus = 'PLANNED';
+export type ObjectStatus = 'PLANNED' | 'AVAILABLE';
 
 export type WriteAuthority =
   | 'admin_rpc'
@@ -30,8 +30,13 @@ export interface ObjectRegistryEntry {
   writeAuthority: WriteAuthority;
   /** One-sentence purpose statement. */
   purpose: string;
-  /** Always PLANNED for Epic 1. Nothing is created yet. */
+  /**
+   * PLANNED = registered in the architecture catalogue but not yet created.
+   * AVAILABLE = physical schema exists in the database (service capability may still be planned).
+   */
   status: ObjectStatus;
+  /** Story that introduced the physical schema, when status is AVAILABLE. */
+  introductionStory?: string;
 }
 
 export type DeferredReason =
