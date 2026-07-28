@@ -5,13 +5,15 @@
  * invalid baseline, or stale baseline.
  */
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   runArchitectureChecks,
   formatViolations,
 } from '../../src/platform/omni-comms/architecture';
 
 function main(): void {
-  const repoRoot = path.resolve(__dirname, '..', '..');
+  const here = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(here, '..', '..');
   const summary = runArchitectureChecks({ repoRoot });
 
   const failing = summary.violations.filter(
