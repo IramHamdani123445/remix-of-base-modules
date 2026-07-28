@@ -22,7 +22,8 @@ export type ReadinessState =
   | 'Mapped to Admin'
   | 'Unmapped'
   | 'Reserved'
-  | 'Not created';
+  | 'Not created'
+  | 'Reused';
 
 interface Props {
   state: ReadinessState;
@@ -38,6 +39,7 @@ const CONFIG: Record<ReadinessState, { icon: React.ComponentType<{ className?: s
   Placeholder:      { icon: PackageOpen,  variant: 'secondary' },
   Planned:          { icon: CircleDashed, variant: 'outline' },
   Reserved:         { icon: Lock,         variant: 'outline' },
+  Reused:           { icon: CheckCircle2, variant: 'secondary' },
   Unmapped:         { icon: CircleDashed, variant: 'outline' },
   'Not implemented':{ icon: MinusCircle,  variant: 'outline' },
   'Not created':    { icon: MinusCircle,  variant: 'outline' },

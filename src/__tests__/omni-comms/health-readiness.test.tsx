@@ -181,12 +181,12 @@ describe('Omni-Comms Health page — Readiness', () => {
     }
   });
 
-  it('identifies the next step as Epic 1 — Story 3', () => {
+  it('identifies the next step as Epic 1 — Story 4', () => {
     permState.hasView = true;
     renderHealthAt();
     const nextStep = screen.getByTestId('omni-comms-next-step');
-    expect(within(nextStep).getByText(/Epic 1 — Story 3/)).toBeInTheDocument();
-    expect(within(nextStep).getByText(/Object, route, edge-function and queue registries/)).toBeInTheDocument();
+    expect(within(nextStep).getByText(/Epic 1 — Story 4/)).toBeInTheDocument();
+    expect(within(nextStep).getByText(/Architecture-boundary CI tests/)).toBeInTheDocument();
   });
 });
 
