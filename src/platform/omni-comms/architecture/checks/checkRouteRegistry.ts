@@ -22,8 +22,10 @@ export function checkRouteRegistry(scan: RepositoryScan): ArchitectureViolation[
 
   const approved = new Set(OMNI_COMMS_ROUTE_REGISTRY.map((r) => r.path));
 
-  // Extract every <Route path="..."> attribute.
-  const routeRe = /<Route\b[^>]*\bpath\s*=\s*["']([^"']+)["'][^>]*>/g;
+  // Extract every <Route ... /> element that mentions our prefix. The
+  // element body may contain nested angle brackets (`<Suspense>` etc.) so we
+  // match non-greedily until the self-closing `/>`.
+  const routeRe = /<Route\b[\s\S]*?\bpath\s*=\s*["']([^"']+)["'][\s\S]*?\/>/g;
   const found = new Set<string>();
   let m: RegExpExecArray | null;
   while ((m = routeRe.exec(src.content)) !== null) {
