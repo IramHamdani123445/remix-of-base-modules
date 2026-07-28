@@ -163,18 +163,22 @@ describe('Omni-Comms Health page — Readiness', () => {
     }
   });
 
-  it('contains no fake runtime data words (metrics/provider status/queue depth/recipients)', () => {
+  it('contains no fake runtime data (metrics/provider status/queue depth/recipients) and no "Live" capability badge', () => {
     permState.hasView = true;
     renderHealthAt();
     const text = (document.body.textContent ?? '').toLowerCase();
-    // Should not use the word "Live" for any new-system capability
-    expect(text).not.toContain('live');
-    // No fabricated numeric metrics such as "queue depth", "delivered:", etc.
+    // No status badge with the value "Live" for any new-system capability.
+    expect(document.querySelector('[data-state="Live"]')).toBeNull();
+    // No fabricated numeric metrics.
     expect(text).not.toContain('queue depth');
     expect(text).not.toContain('delivered:');
     expect(text).not.toContain('bounce rate');
     expect(text).not.toContain('provider status:');
     expect(text).not.toContain('recipient:');
+    // Route states restricted to Available / Placeholder / Not implemented.
+    for (const r of M.permanentRoutes) {
+      expect(['Available', 'Placeholder', 'Not implemented']).toContain(r.state);
+    }
   });
 
   it('identifies the next step as Epic 1 — Story 3', () => {
