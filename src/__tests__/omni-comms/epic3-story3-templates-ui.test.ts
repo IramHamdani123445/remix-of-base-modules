@@ -163,8 +163,10 @@ describe('Omni-Comms Epic 3 — Story 3 (Template Admin UI)', () => {
   it('nav & permission verification SQL is present and free of write statements', () => {
     const sql = read(VERIFY_SQL);
     expect(sql).toContain('STORY 3 NAV & PERMISSIONS OK');
+    // Strip line comments before scanning so header prose doesn't trip the check.
+    const code = sql.split('\n').map((l) => l.replace(/--.*$/, '')).join('\n').toUpperCase();
     for (const w of ['INSERT ', 'UPDATE ', 'DELETE ', 'ALTER ', 'DROP ', 'CREATE TABLE', 'GRANT ', 'REVOKE ']) {
-      expect(sql.toUpperCase()).not.toContain(w);
+      expect(code).not.toContain(w);
     }
   });
 
