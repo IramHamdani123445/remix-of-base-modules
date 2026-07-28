@@ -155,7 +155,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 3',
-    currentStory: 'Story 3',
+    currentStory: 'Story 4',
     overallStatus: 'In progress',
 
   },
@@ -256,6 +256,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Template administration UI',               state: 'Verified', note: 'Epic 3 Story 3 — /admin/omnichannel-communications/templates wired to the Story 2 adapter through useOmniCommsRpcClient with Library, Versions and Preview tabs; family create/edit/activate/retire and version create/edit/approve/publish/replace/retire flows; capability-gated actions (view/configure/author_templates/approve_templates) with denied-by-default loading; optimistic-concurrency and atomic publication-replacement UI; synthetic payload preview isolated to component memory and rendered through sandbox="" iframe with restrictive CSP plus escaped source view; departments resolved via organizationService.listActiveDepartmentsForOrganization.' },
     { item: 'Template preview isolation',                state: 'Verified', note: 'Epic 3 Story 3 — HTML preview uses <iframe sandbox="" referrerPolicy="no-referrer" srcDoc=...> with meta-CSP default-src none, script-src none, connect-src none, frame-src none, form-action none, base-uri none, img-src restricted to data:; parent never uses dangerouslySetInnerHTML; escaped source view always available.' },
     { item: 'Template navigation & permission setup',    state: 'Verified', note: 'Epic 3 Story 3 — app_modules(omni_comms) parent + Templates child (route /admin/omnichannel-communications/templates, visibility omni_comms.view) verified; six module_actions view/operate/configure/author_templates/approve_templates/view_sensitive_content mapped to Admin role via role_permissions (is_granted=true); admin@secureserve.gov holds Admin in public.user_roles; scripts/omni-comms/verify-story3-nav-permissions.sql is the source-controlled proof.' },
+    { item: 'Template catalogue security evidence',      state: 'Verified', note: 'Epic 3 Story 4 — pg_proc-verified: 14 public template RPCs (owner postgres, SECURITY DEFINER, search_path=pg_catalog,public, EXECUTE granted only to authenticated); 6 template-scoped private helpers with no anon/authenticated EXECUTE; obsolete 3-arg publish overload absent; hardened 5-arg publish present. Corrective migration revoked PUBLIC grants from six private helpers.' },
+    { item: 'Template catalogue rollback proof',         state: 'Verified', note: 'Epic 3 Story 4 — scripts/omni-comms/rollback/epic3-template-catalogue-rollback.sql documents dependency-safe reversal for Stories 1/2/2-hotfix/3 with exact identity arguments, no CASCADE, and explicit preservation of Epic 1, Epic 2, public.core_audit_log, navigation, Admin permissions and Legacy artefacts.' },
+    { item: 'Epic 3 completion evidence',                state: 'Verified', note: 'Epic 3 Story 4 — src/platform/omni-comms/registry/evidence/epic-03-template-catalogue.md captures table inventory, exact 14 public + 6 private function inventory, permission model, lifecycle, concurrency, checksum, scope resolution, preview isolation, audit atomicity (public.core_audit_log), test/architecture/type-check/scoped-lint/build results, and next-step Epic 4 — Story 1.' },
   ],
 
   blockers: [
@@ -277,9 +280,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
   ],
 
   nextStep: {
-    epic: 'Epic 3',
-    story: 'Story 4',
-    title: 'Template Catalogue Final Verification, Security Evidence, and Rollback Proof',
+    epic: 'Epic 4',
+    story: 'Story 1',
+    title: 'Provider, Provider Account, Sender Identity, Sender Provider Binding, and Channel Setting Database Foundation',
     informationalOnly: true,
   },
 };

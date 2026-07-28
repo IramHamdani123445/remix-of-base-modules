@@ -202,8 +202,10 @@ describe('Epic 3 Story 2 — Readiness manifest', () => {
     // with each subsequent story — do not couple this suite to it.
     expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.currentEpic).toBe('Epic 3');
   });
-  it('next step remains within Epic 3 (later story may advance it)', () => {
-    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.epic).toBe('Epic 3');
+  it('next step is registered and informational only (platform pointer may advance)', () => {
+    // The nextStep pointer belongs to the platform and advances with each
+    // subsequent story — do not couple this suite to a specific epic/story.
+    expect(typeof OMNI_COMMS_READINESS_MANIFEST.nextStep.epic).toBe('string');
     expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.informationalOnly).toBe(true);
   });
   it('template application services / validation / rendering / approval are Verified', () => {

@@ -1,0 +1,134 @@
+-- ============================================================================
+-- Epic 3 — Template Catalogue full rollback (documentation & rehearsal only)
+--
+-- DO NOT EXECUTE this file against the active Test or Live environment.
+-- It exists to prove that Stories 1, 2, 2-hotfix, 3 and the Story 4 corrective
+-- migration can be reversed cleanly with exact identity arguments and without
+-- disturbing Epic 1 or Epic 2 artefacts, navigation, or Admin permissions.
+-- ============================================================================
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STORY 3 — Templates UI  (source-controlled)
+--   * Revert src/platform/omni-comms/admin/views/OmniCommsTemplatesPage.tsx
+--     to the pre-Story-3 placeholder shell.
+--   * Revert src/platform/omni-comms/admin/components/OmniCommsSandboxedPreview.tsx
+--     (delete file).
+--   * Revert routeRegistry: /admin/omnichannel-communications/templates
+--     state -> 'Placeholder'.
+--   * Restore readinessManifest.foundationStatus rows Template administration UI,
+--     Template preview isolation, Template navigation & permission setup -> 'Planned'.
+--   * Remove src/__tests__/omni-comms/epic3-story3-templates-ui.test.ts
+--     and src/__tests__/omni-comms/epic3-story4-final-verification.test.ts.
+--   * Preserve navigation entries and capability rows introduced in Epic 1.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STORY 4 — Corrective hardening (this epic only)
+--   The Story 4 corrective migration only revoked default PUBLIC grants
+--   on template private helpers. Reversal is intentionally NOT provided:
+--   restoring PUBLIC EXECUTE would reintroduce the defect. If a full
+--   Epic 3 rollback is executed, the helper functions themselves are
+--   dropped below, which supersedes any grant restoration.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STORY 2 hotfix — publish RPC
+--   For a *hotfix-only* rollback see:
+--     scripts/omni-comms/rollback/story2-publish-hotfix-rollback.sql
+--   For full Epic 3 rollback, dropping the entire Story 2 RPC surface below
+--   supersedes restoration of the historical 3-argument publish function.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STORY 2 — Public RPCs (14, exact identities)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_family_create(
+--   p_code text, p_name text, p_description text, p_scope_type text,
+--   p_organization_id uuid, p_department_id uuid, p_event_definition_id uuid,
+--   p_correlation_id text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_family_update(
+--   p_id uuid, p_name text, p_description text,
+--   p_expected_updated_at timestamp with time zone, p_correlation_id text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_family_activate(
+--   p_id uuid, p_reason text, p_correlation_id text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_family_retire(
+--   p_id uuid, p_reason text, p_correlation_id text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_family_get(p_id uuid);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_family_list(
+--   p_search text, p_status text, p_scope_type text, p_organization_id uuid,
+--   p_limit integer, p_offset integer);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_version_create(
+--   p_template_family_id uuid, p_channel text, p_locale text,
+--   p_version_number integer, p_content jsonb, p_correlation_id text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_version_update(
+--   p_id uuid, p_content jsonb,
+--   p_expected_updated_at timestamp with time zone, p_correlation_id text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_version_approve(
+--   p_id uuid, p_approval_note text, p_correlation_id text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_version_publish(
+--   p_id uuid, p_expected_updated_at timestamp with time zone,
+--   p_confirm_replacement boolean, p_replacement_reason text,
+--   p_correlation_id text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_version_retire(
+--   p_id uuid, p_reason text, p_correlation_id text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_version_get(p_id uuid);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_version_list(
+--   p_template_family_id uuid, p_channel text, p_locale text, p_status text,
+--   p_limit integer, p_offset integer);
+-- DROP FUNCTION IF EXISTS public.omni_comms_template_resolve_published(
+--   p_event_definition_id uuid, p_organization_id uuid,
+--   p_department_id uuid, p_channel text, p_locale text);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STORY 2 — Private helpers created for the Template Catalogue only
+-- (Shared helpers omni_comms_priv_normalize_reason / _require_capability /
+--  _escape_ilike / _write_audit / _write_lifecycle_audit are Epic 2 assets
+--  and MUST be preserved.)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- DROP FUNCTION IF EXISTS public.omni_comms_priv_compute_template_checksum(
+--   p_family_code text, p_version_number integer, p_channel text,
+--   p_locale text, p_content jsonb);
+-- DROP FUNCTION IF EXISTS public.omni_comms_priv_validate_channel_content(
+--   p_channel text, p_content jsonb);
+-- DROP FUNCTION IF EXISTS public.omni_comms_priv_extract_tokens(p_source text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_priv_normalize_locale(p_locale text);
+-- DROP FUNCTION IF EXISTS public.omni_comms_priv_verify_department_ownership(
+--   p_department_id uuid, p_organization_id uuid);
+-- DROP FUNCTION IF EXISTS public.omni_comms_priv_write_template_audit(
+--   p_actor_id uuid, p_action text, p_entity_type text, p_entity_id uuid,
+--   p_entity_display text, p_before jsonb, p_after jsonb,
+--   p_reason text, p_notes text, p_correlation_id text);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STORY 2 — Source rollback
+--   * Delete src/platform/omni-comms/application/templateCatalogueService.ts
+--   * Delete src/platform/omni-comms/application/templateCatalogueTypes.ts
+--   * Delete src/platform/omni-comms/application/templateCatalogueErrors.ts
+--   * Delete src/platform/omni-comms/rendering/*
+--   * Delete src/__tests__/omni-comms/epic3-story2-templates.test.ts
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- STORY 1 — Triggers, trigger functions, tables (exact identities, dependency-safe, no broad drop-cascades)
+-- ─────────────────────────────────────────────────────────────────────────────
+-- DROP TRIGGER IF EXISTS omni_comms_template_version_enforce_rules_trg
+--   ON public.omni_comms_template_version;
+-- DROP TRIGGER IF EXISTS omni_comms_template_family_enforce_rules_trg
+--   ON public.omni_comms_template_family;
+-- DROP FUNCTION IF EXISTS public.omni_comms_enforce_template_version_rules();
+-- DROP FUNCTION IF EXISTS public.omni_comms_enforce_template_family_rules();
+-- DROP TABLE IF EXISTS public.omni_comms_template_version;
+-- DROP TABLE IF EXISTS public.omni_comms_template_family;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- REGISTRY / MANIFEST source rollback
+--   * objectRegistry: omni_comms_template_family + omni_comms_template_version
+--     statuses -> PLANNED.
+--   * readinessManifest: revert all Template rows to 'Planned', reset
+--     systemIdentity.currentStory to the pre-Epic-3 pointer, restore prior
+--     nextStep entry.
+--   * Delete src/__tests__/omni-comms/epic3-story1-template-foundation.test.ts.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PRESERVED  (must NOT be touched by any Epic 3 rollback)
+--   * Epic 1 registries, routes, navigation, capability rows.
+--   * Epic 2 event catalogue tables, RPCs, private helpers, evidence.
+--   * public.core_audit_log and all shared organisation/department objects.
+--   * All Legacy Communication Hub objects.
+-- ─────────────────────────────────────────────────────────────────────────────
