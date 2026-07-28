@@ -246,6 +246,13 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Contract lifecycle audit',                state: 'Verified', note: 'Draft/publish/retire mutations emit OMNI_COMMS.EVENT_CONTRACT.* actions with safe before/after metadata; no schema or sample payload copied.' },
     { item: 'Event Routes administration',             state: 'Planned',  note: 'Deferred until Epic 4 — Routes tab remains a placeholder.' },
     { item: 'Event Simulator',                         state: 'Planned',  note: 'Deferred until Epic 6 — Simulator tab remains a placeholder.' },
+    { item: 'Template Family schema',                  state: 'Verified', note: 'Epic 3 Story 1 — public.omni_comms_template_family; organisation/department/event scope shape CHECK; partial unique indexes per scope; lifecycle trigger enforces draft-only insert, transitions, identity immutability, deletion protection.' },
+    { item: 'Template Version schema',                 state: 'Verified', note: 'Epic 3 Story 1 — public.omni_comms_template_version; unique(family, channel, locale, version); one published per family/channel/locale (partial unique); approved/published/retired content immutable; independent-approver CHECK.' },
+    { item: 'Template application services',           state: 'Planned',  note: 'Deferred to Epic 3 Story 2 — no template RPCs, resolver, or repository exist yet.' },
+    { item: 'Template content validation',             state: 'Planned',  note: 'Deferred to Epic 3 Story 2 — channel-specific content schemas not yet enforced.' },
+    { item: 'Template rendering',                      state: 'Planned',  note: 'Deferred to Epic 3 Story 2 — no rendering, token extraction, or preview exists.' },
+    { item: 'Template approval workflow',              state: 'Planned',  note: 'Deferred to Epic 3 Story 2 — approval and publication RPCs not yet implemented.' },
+    { item: 'Template administration UI',              state: 'Planned',  note: 'Templates route remains a placeholder — no admin views wired.' },
   ],
 
   blockers: [
