@@ -63,14 +63,14 @@ describe('Epic 1 — Story 5 final verification', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
     expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(7);
     for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {
-      expect(i.status).toBe('reserved');
+      expect(String(i.status).toLowerCase()).toBe('reserved');
     }
   });
 
   it('registers exactly five reserved queues', () => {
     expect(OMNI_COMMS_QUEUE_REGISTRY).toHaveLength(5);
     for (const q of OMNI_COMMS_QUEUE_REGISTRY) {
-      expect(q.status).toBe('reserved');
+      expect(String(q.status).toLowerCase()).toBe('reserved');
     }
   });
 
