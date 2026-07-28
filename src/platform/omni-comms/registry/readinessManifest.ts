@@ -278,8 +278,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 3',
-    story: 'Story 3',
-    title: 'Template Administration UI and Synthetic Preview',
+    story: 'Story 4',
+    title: 'Template Catalogue Final Verification, Security Evidence, and Rollback Proof',
     informationalOnly: true,
   },
 };
