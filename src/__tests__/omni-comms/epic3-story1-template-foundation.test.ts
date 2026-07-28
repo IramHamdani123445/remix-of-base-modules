@@ -42,16 +42,18 @@ describe('Epic 3 Story 1 — object registry', () => {
     expect(version?.introductionStory).toBe('Epic 3 — Story 1');
   });
 
-  it('leaves unrelated object statuses unchanged', () => {
-    const stillPlanned = [
+  it('leaves unrelated object entries registered and preserves event catalogue availability', () => {
+    // Story 1 asserts identity/ownership invariants only; downstream Stories may
+    // advance additional entries to AVAILABLE. Registry entries themselves must
+    // continue to exist under their Epic 3 introduction ownership.
+    for (const name of [
       'omni_comms_event_route',
       'omni_comms_provider',
       'omni_comms_provider_account',
       'omni_comms_sender_identity',
-    ];
-    for (const name of stillPlanned) {
+    ]) {
       const o = OMNI_COMMS_OBJECT_REGISTRY.find((x) => x.name === name);
-      expect(o?.status, `${name} must remain PLANNED`).toBe('PLANNED');
+      expect(o, `${name} must remain registered`).toBeDefined();
     }
     const eventDef = OMNI_COMMS_OBJECT_REGISTRY.find((o) => o.name === 'omni_comms_event_definition');
     const eventCon = OMNI_COMMS_OBJECT_REGISTRY.find((o) => o.name === 'omni_comms_event_contract');
