@@ -100865,6 +100865,202 @@ export type Database = {
         Args: { p_stage: string }
         Returns: string
       }
+      omni_comms_event_contract_create: {
+        Args: {
+          p_correlation_id: string
+          p_event_definition_id: string
+          p_json_schema: Json
+          p_sample_payload: Json
+          p_version_number: number
+        }
+        Returns: string
+      }
+      omni_comms_event_contract_get: {
+        Args: { p_id: string }
+        Returns: {
+          checksum: string
+          created_at: string
+          created_by: string
+          event_definition_id: string
+          id: string
+          json_schema: Json
+          published_at: string
+          published_by: string
+          retired_at: string
+          retired_by: string
+          sample_payload: Json
+          status: string
+          updated_at: string
+          updated_by: string
+          version_number: number
+        }[]
+      }
+      omni_comms_event_contract_list: {
+        Args: {
+          p_event_definition_id: string
+          p_limit: number
+          p_offset: number
+          p_status: string
+        }
+        Returns: {
+          checksum: string
+          event_definition_id: string
+          id: string
+          published_at: string
+          retired_at: string
+          status: string
+          updated_at: string
+          version_number: number
+        }[]
+      }
+      omni_comms_event_contract_publish: {
+        Args: {
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
+      omni_comms_event_contract_retire: {
+        Args: {
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
+      omni_comms_event_contract_update_draft: {
+        Args: {
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_json_schema: Json
+          p_sample_payload: Json
+        }
+        Returns: string
+      }
+      omni_comms_event_definition_activate: {
+        Args: {
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
+      omni_comms_event_definition_create: {
+        Args: {
+          p_code: string
+          p_communication_class: string
+          p_correlation_id: string
+          p_default_priority: string
+          p_description: string
+          p_entity_type: string
+          p_module_code: string
+          p_name: string
+        }
+        Returns: string
+      }
+      omni_comms_event_definition_get: {
+        Args: { p_id: string }
+        Returns: {
+          code: string
+          communication_class: string
+          created_at: string
+          created_by: string
+          default_priority: string
+          description: string
+          entity_type: string
+          id: string
+          module_code: string
+          name: string
+          status: string
+          updated_at: string
+          updated_by: string
+        }[]
+      }
+      omni_comms_event_definition_list: {
+        Args: {
+          p_limit: number
+          p_module_code: string
+          p_offset: number
+          p_status: string
+        }
+        Returns: {
+          code: string
+          communication_class: string
+          default_priority: string
+          entity_type: string
+          id: string
+          module_code: string
+          name: string
+          status: string
+          updated_at: string
+        }[]
+      }
+      omni_comms_event_definition_retire: {
+        Args: {
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
+      omni_comms_event_definition_suspend: {
+        Args: {
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
+      omni_comms_event_definition_update_draft: {
+        Args: {
+          p_code: string
+          p_communication_class: string
+          p_correlation_id: string
+          p_default_priority: string
+          p_description: string
+          p_entity_type: string
+          p_expected_updated_at: string
+          p_id: string
+          p_module_code: string
+          p_name: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_compute_checksum: {
+        Args: {
+          p_event_code: string
+          p_json_schema: Json
+          p_version_number: number
+        }
+        Returns: string
+      }
+      omni_comms_priv_reject_nonlocal_refs: {
+        Args: { p_schema: Json }
+        Returns: undefined
+      }
+      omni_comms_priv_require_capability: {
+        Args: { p_action: string }
+        Returns: string
+      }
+      omni_comms_priv_validate_schema: {
+        Args: { p_json_schema: Json; p_sample_payload: Json }
+        Returns: undefined
+      }
+      omni_comms_priv_write_audit: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_after: Json
+          p_before: Json
+          p_correlation_id: string
+          p_entity_display: string
+          p_entity_id: string
+          p_entity_type: string
+        }
+        Returns: undefined
+      }
       open_comm_hub_live_window: {
         Args: {
           p_duration_minutes: number

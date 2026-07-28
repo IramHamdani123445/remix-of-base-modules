@@ -155,7 +155,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 2',
-    currentStory: 'Story 1',
+    currentStory: 'Story 2',
     overallStatus: 'In progress',
   },
 
@@ -242,10 +242,15 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Route / integration / queue registries', state: 'Verified', note: 'Story 3 — 7 routes, 7 integrations, 5 queues' },
     { item: 'Architecture-boundary CI tests',         state: 'Verified', note: 'Story 4 — 10 rules enforced locally and in pull-request CI' },
     { item: 'Communication business tables',          state: 'In progress', note: 'omni_comms_event_definition and omni_comms_event_contract physical schema available (Epic 2 Story 1); remaining 17 planned.' },
-    { item: 'sendCommunication façade',               state: 'Planned',  note: 'Planned for Epic 7' },
-    { item: 'Provider integrations',                  state: 'Planned',  note: 'Planned for Epic 9' },
-    { item: 'Runtime worker',                         state: 'Planned',  note: 'Planned for Epic 8' },
-    { item: 'First business event',                   state: 'Blocked',  note: 'Blocked until Epic 11 evidence is approved' },
+    { item: 'Event Catalogue application services',    state: 'Verified',    note: 'Epic 2 Story 2 — 9 mutation + 4 read SECURITY DEFINER RPCs; audit-atomic; optimistic-concurrency enforced.' },
+    { item: 'Contract schema validation',              state: 'Verified',    note: 'pg_jsonschema.jsonschema_is_valid; rejects non-local $ref; 256 KB size limit.' },
+    { item: 'Contract sample validation',              state: 'Verified',    note: 'pg_jsonschema.jsonb_matches_schema; object-only sample payload; 256 KB size limit.' },
+    { item: 'Contract checksum generation',            state: 'Verified',    note: 'SHA-256 hex over eventCode + versionNumber + jsonSchema via extensions.digest.' },
+    { item: 'Event Catalogue UI',                      state: 'Planned',     note: 'Deferred until later epic; Story 2 exposes no React surface.' },
+    { item: 'sendCommunication façade',                state: 'Planned',  note: 'Planned for Epic 7' },
+    { item: 'Provider integrations',                   state: 'Planned',  note: 'Planned for Epic 9' },
+    { item: 'Runtime worker',                          state: 'Planned',  note: 'Planned for Epic 8' },
+    { item: 'First business event',                    state: 'Blocked',  note: 'Blocked until Epic 11 evidence is approved' },
   ],
 
   blockers: [
@@ -268,8 +273,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 2',
-    story: 'Story 2',
-    title: 'Event Catalogue Application Services',
+    story: 'Story 3',
+    title: 'Event Route Registration and Channel Obligations',
     informationalOnly: true,
   },
 };
