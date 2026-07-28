@@ -155,7 +155,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 2',
-    currentStory: 'Story 2',
+    currentStory: 'Story 3',
     overallStatus: 'In progress',
   },
 
@@ -188,8 +188,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     {
       key: 'omni_comms.configure',
       registration: 'Registered',
-      mapping: 'Unmapped',
-      intendedUse: 'Manage channels, providers, sender identities and recipient preferences.',
+      mapping: 'Mapped to Admin',
+      intendedUse: 'Manage channels, providers, sender identities and recipient preferences; required by Event Catalogue lifecycle mutations.',
     },
     {
       key: 'omni_comms.author_templates',
@@ -206,8 +206,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     {
       key: 'omni_comms.view_sensitive_content',
       registration: 'Registered',
-      mapping: 'Unmapped',
-      intendedUse: 'Unmask PII / sensitive payload content in trace and audit views.',
+      mapping: 'Mapped to Admin',
+      intendedUse: 'Unmask sensitive contract sample payloads and PII in trace and audit views.',
     },
   ],
 
@@ -246,7 +246,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Contract schema validation',              state: 'Verified',    note: 'pg_jsonschema.jsonschema_is_valid; rejects non-local $ref; 256 KB size limit.' },
     { item: 'Contract sample validation',              state: 'Verified',    note: 'pg_jsonschema.jsonb_matches_schema; object-only sample payload; 256 KB size limit.' },
     { item: 'Contract checksum generation',            state: 'Verified',    note: 'SHA-256 hex over eventCode + versionNumber + jsonSchema via extensions.digest.' },
-    { item: 'Event Catalogue UI',                      state: 'Planned',     note: 'Deferred until later epic; Story 2 exposes no React surface.' },
+    { item: 'Event Catalogue UI',                      state: 'Verified',    note: 'Epic 2 Story 3 — admin surface at /admin/omnichannel-communications/events wired to Story 2 RPCs; server-side reasons; sample payload redacted without omni_comms.view_sensitive_content.' },
     { item: 'sendCommunication façade',                state: 'Planned',  note: 'Planned for Epic 7' },
     { item: 'Provider integrations',                   state: 'Planned',  note: 'Planned for Epic 9' },
     { item: 'Runtime worker',                          state: 'Planned',  note: 'Planned for Epic 8' },
@@ -273,7 +273,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 2',
-    story: 'Story 3',
+    story: 'Story 4',
     title: 'Event Route Registration and Channel Obligations',
     informationalOnly: true,
   },

@@ -19,11 +19,9 @@ import * as svc from '@/platform/omni-comms/application/eventCatalogueService';
 const REPO_ROOT = process.cwd();
 
 describe('Omni-Comms Epic 2 — Story 2 (application services)', () => {
-  it('manifest currentStory and nextStep advance to Story 2 / Story 3', () => {
+  it('manifest identity remains within Epic 2', () => {
     expect(M.systemIdentity.currentEpic).toBe('Epic 2');
-    expect(M.systemIdentity.currentStory).toBe('Story 2');
     expect(M.nextStep.epic).toBe('Epic 2');
-    expect(M.nextStep.story).toBe('Story 3');
   });
 
   it('records the five Story-2 foundation-status rows', () => {
@@ -37,11 +35,9 @@ describe('Omni-Comms Epic 2 — Story 2 (application services)', () => {
     for (const item of items) {
       const row = M.foundationStatus.find((r) => r.item === item);
       expect(row, `missing foundation row: ${item}`).toBeDefined();
-      if (item === 'Event Catalogue UI') {
-        expect(row!.state).toBe('Planned');
-      } else {
-        expect(row!.state).toBe('Verified');
-      }
+      // Story 3 promotes 'Event Catalogue UI' to Verified; the four Story-2
+      // service rows must remain Verified.
+      expect(row!.state).toBe('Verified');
     }
   });
 
@@ -114,7 +110,7 @@ describe('Omni-Comms Epic 2 — Story 2 (application services)', () => {
     };
     await svc.listEventDefinitions(client, { limit: 25, offset: 10, status: 'active' });
     expect(calls[0].fn).toBe('omni_comms_event_definition_list');
-    expect(calls[0].args).toEqual({ p_limit: 25, p_offset: 10, p_status: 'active', p_module_code: null });
+    expect(calls[0].args).toEqual({ p_limit: 25, p_offset: 10, p_status: 'active', p_module_code: null, p_search: null });
 
     await svc.listEventContracts(client, {
       eventDefinitionId: '00000000-0000-0000-0000-000000000000',
