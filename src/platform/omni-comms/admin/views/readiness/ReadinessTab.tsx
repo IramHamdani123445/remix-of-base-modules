@@ -308,6 +308,26 @@ export const ReadinessTab: React.FC = () => {
         </ul>
       </ReadinessSection>
 
+      {/* Architecture boundaries — Story 4 */}
+      <ReadinessSection
+        id="architecture-boundaries"
+        title="Architecture boundaries"
+        description="Ten architecture rules enforced locally and in pull-request CI. This page does not execute repository scans."
+      >
+        <ul className="divide-y" data-testid="omni-comms-architecture-boundaries">
+          {M.architectureBoundaries.map((r) => (
+            <li key={r.ruleId} className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="font-medium">{r.title}</div>
+                <div className="text-xs text-muted-foreground"><code>{r.ruleId}</code></div>
+              </div>
+              <ReadinessStatusBadge state="Verified" />
+              <span className="text-xs text-muted-foreground sm:ml-3">Enforced in CI</span>
+            </li>
+          ))}
+        </ul>
+      </ReadinessSection>
+
       {/* Blockers */}
       <ReadinessSection
         id="blockers"
