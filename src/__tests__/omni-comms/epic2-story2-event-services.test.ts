@@ -19,27 +19,23 @@ import * as svc from '@/platform/omni-comms/application/eventCatalogueService';
 const REPO_ROOT = process.cwd();
 
 describe('Omni-Comms Epic 2 — Story 2 (application services)', () => {
-  it('manifest identity remains within Epic 2', () => {
-    expect(M.systemIdentity.currentEpic).toBe('Epic 2');
-    expect(M.nextStep.epic).toBe('Epic 2');
-  });
-
-  it('records the five Story-2 foundation-status rows', () => {
-    const items = [
+  it('manifest continues to advertise Story 2 service capabilities as Verified', () => {
+    // Story 2's identity within the manifest is preserved through later
+    // stories/epics: the four service rows must remain Verified even as
+    // currentEpic/currentStory/nextStep advance.
+    const serviceItems = [
       'Event Catalogue application services',
       'Contract schema validation',
       'Contract sample validation',
       'Contract checksum generation',
-      'Event Catalogue UI',
     ] as const;
-    for (const item of items) {
+    for (const item of serviceItems) {
       const row = M.foundationStatus.find((r) => r.item === item);
       expect(row, `missing foundation row: ${item}`).toBeDefined();
-      // Story 3 promotes 'Event Catalogue UI' to Verified; the four Story-2
-      // service rows must remain Verified.
       expect(row!.state).toBe('Verified');
     }
   });
+
 
   it('exposes stable error-code and validation-detail catalogues', () => {
     for (const code of ['OC401','OC403','OC404','OC409','OC410','OC412','OC413','OC422','OC450','OC500']) {
