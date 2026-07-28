@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/table";
 import { Loader2, ShieldAlert, Plus, RefreshCw, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { OmniCommsAssemblyTab } from "./OmniCommsAssemblyTab";
 
 const REASON_MAX = 2000;
 
@@ -856,6 +857,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
             Versions{selectedFamily ? ` · ${selectedFamily.code}` : ""}
           </TabsTrigger>
           <TabsTrigger value="preview" data-testid="tab-preview" disabled={!selectedVersion}>Preview</TabsTrigger>
+          <TabsTrigger value="assembly" data-testid="tab-assembly">Assembly</TabsTrigger>
         </TabsList>
 
         {/* ── Library ── */}
@@ -1064,6 +1066,11 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         {/* ── Preview ── */}
         <TabsContent value="preview">
           <PreviewTab version={selectedVersion} canViewSensitive={canViewSensitive} />
+        </TabsContent>
+
+        {/* ── Assembly (Build 1 shared assets) ── */}
+        <TabsContent value="assembly">
+          <OmniCommsAssemblyTab organizationId={organizationId} departments={departments} families={families} />
         </TabsContent>
       </Tabs>
 

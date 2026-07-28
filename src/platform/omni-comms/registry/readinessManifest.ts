@@ -155,7 +155,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 4',
-    currentStory: 'Story 1',
+    currentStory: 'Accelerated Build 1',
     overallStatus: 'In progress',
 
   },
@@ -265,6 +265,18 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Sender-provider binding schema',            state: 'Verified', note: 'Epic 4 Story 1 — public.omni_comms_sender_provider_binding; UNIQUE(sender_identity_id, provider_account_id); active-priority uniqueness per sender; trigger enforces organisation and channel compatibility between sender_identity and provider_account/provider.' },
     { item: 'Channel setting schema',                    state: 'Verified', note: 'Epic 4 Story 1 — public.omni_comms_channel_setting; organisation defaults with optional department override enforced via partial unique indexes; quiet-hours pair/timezone/distinct/live-requires-enabled checks; timezone validated against pg_timezone_names by trigger.' },
     { item: 'Story 1 permission model',                  state: 'Verified', note: 'Epic 4 Story 1 — all five tables have RLS enabled + FORCE; PUBLIC/anon/authenticated revoked; only service_role granted; no policies (denied by default); no public administration RPCs introduced; secrets remain outside DB rows.' },
+
+    { item: 'Shared communication asset model',           state: 'Verified', note: 'Build 1 — public.core_comm_asset (organisation-owned, optional department ownership, controlled asset types, stable codes, lifecycle draft/active/retired) + public.core_comm_asset_version (immutable, deterministic sha256 checksum, no destructive delete). RLS + FORCE RLS; only service_role granted.' },
+    { item: 'Shared layout version model',                state: 'Verified', note: 'Build 1 — public.core_template_layout_version stores immutable published versions with a strictly validated slot schema (unique codes/orders, required flag, allowed asset types, wrapper, fallback policy, no unknown keys). public.core_template_layout retains its current RLS state; compatibility debt tracked to move it behind the shared service boundary in a later build.' },
+    { item: 'Shared assignment model',                    state: 'Verified', note: 'Build 1 — public.core_comm_assignment with layout_default/asset_slot kinds and four explicit partial unique indexes; resolution department → organisation → unresolved; reset retires only the department row.' },
+    { item: 'Template-version layout selection',          state: 'Verified', note: 'Build 1 — omni_comms_template_version gains layout_selection_mode/layout_id/pinned_layout_version_id; editable only while draft, required before approval/publication, pinned enforces exact layout + version pairing.' },
+    { item: 'Neutral department-ownership helper',        state: 'Verified', note: 'Build 1 — public.core_priv_verify_department_ownership introduced; omni_comms_priv_verify_department_ownership signature preserved and now delegates.' },
+    { item: 'Shared assets RPC surface',                  state: 'Verified', note: 'Build 1 — exactly 12 SECURITY DEFINER RPCs (asset read x2, layout read x2, assignment read/upsert-org/upsert-dept/reset x4, layout selection x1, render manifest x1, pilot dry-run/apply x2); owner postgres; search_path=pg_catalog,public; PUBLIC/anon revoked; GRANT authenticated.' },
+    { item: 'Deterministic render manifest',              state: 'Verified', note: 'Build 1 — omni_comms_resolve_render_manifest returns template_family_id, template_version_id, layout_id, layout_version_id, layout_inheritance_source, resolved_assets (slot, asset_id, asset_version_id, asset_type, inheritance_source), and slot list. Client composer produces rendered_subject/html/text and a stable sha256 rendered_checksum with no I/O, time or randomness.' },
+    { item: 'Assembly admin surface',                     state: 'Verified', note: 'Build 1 — /admin/omnichannel-communications/templates gains an Assembly tab with layout selection, organisation/department preview context, resolved-layout metadata, asset-slot resolution table, inheritance-source badges, department override reset, unresolved-slot display, sandboxed assembled HTML preview, plain-text preview and rendered checksum. React does not query shared or Legacy asset tables directly.' },
+    { item: 'Pilot migration path',                       state: 'Verified', note: 'Build 1 — core_comm_pilot_migration_dry_run and core_comm_pilot_migration_apply are parameterised, idempotent, transactional, and reject ambiguous or missing sources. No source-row changes and no dual write.' },
+    { item: 'Legacy asset boundary',                      state: 'Verified', note: 'Build 1 — Omni-Comms React code reads assets/layouts exclusively via the 12 shared RPCs. Legacy comm_letterhead/comm_signature/comm_footer are only touched inside the controlled pilot migration RPC.' },
+    { item: 'core_template_layout RLS compatibility debt', state: 'In progress', note: 'Build 1 — core_template_layout retains its current RLS state to preserve existing Legacy/shared readers. Debt: move it fully behind the shared service boundary in a later build.' },
   ],
 
   blockers: [
@@ -287,8 +299,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Story 2',
-    title: 'Provider, Sender, and Channel Setting Application Services',
+    story: 'Build 2',
+    title: 'Provider, Sender and Channel Setting Application Services',
     informationalOnly: true,
   },
 };
