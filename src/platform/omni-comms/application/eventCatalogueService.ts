@@ -112,22 +112,26 @@ export function updateEventDefinitionDraft(
 interface LifecycleInput {
   id: string;
   expectedUpdatedAt: string;
+  reason?: string | null;
   correlationId?: string | null;
 }
 
 export const activateEventDefinition = (c: OmniCommsRpcClient, i: LifecycleInput) =>
   callRpc<string>(c, 'omni_comms_event_definition_activate', {
-    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt, p_correlation_id: i.correlationId ?? null,
+    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt,
+    p_reason: i.reason ?? null, p_correlation_id: i.correlationId ?? null,
   });
 
 export const suspendEventDefinition = (c: OmniCommsRpcClient, i: LifecycleInput) =>
   callRpc<string>(c, 'omni_comms_event_definition_suspend', {
-    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt, p_correlation_id: i.correlationId ?? null,
+    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt,
+    p_reason: i.reason ?? null, p_correlation_id: i.correlationId ?? null,
   });
 
 export const retireEventDefinition = (c: OmniCommsRpcClient, i: LifecycleInput) =>
   callRpc<string>(c, 'omni_comms_event_definition_retire', {
-    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt, p_correlation_id: i.correlationId ?? null,
+    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt,
+    p_reason: i.reason ?? null, p_correlation_id: i.correlationId ?? null,
   });
 
 // ─── Event contract mutations ─────────────────────────────────────────
@@ -176,12 +180,14 @@ export function updateEventContractDraft(
 
 export const publishEventContract = (c: OmniCommsRpcClient, i: LifecycleInput) =>
   callRpc<string>(c, 'omni_comms_event_contract_publish', {
-    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt, p_correlation_id: i.correlationId ?? null,
+    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt,
+    p_reason: i.reason ?? null, p_correlation_id: i.correlationId ?? null,
   });
 
 export const retireEventContract = (c: OmniCommsRpcClient, i: LifecycleInput) =>
   callRpc<string>(c, 'omni_comms_event_contract_retire', {
-    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt, p_correlation_id: i.correlationId ?? null,
+    p_id: i.id, p_expected_updated_at: i.expectedUpdatedAt,
+    p_reason: i.reason ?? null, p_correlation_id: i.correlationId ?? null,
   });
 
 // ─── Reads ────────────────────────────────────────────────────────────
@@ -201,6 +207,7 @@ export interface ListEventDefinitionsInput {
   offset?: number;
   status?: 'draft' | 'active' | 'suspended' | 'retired' | null;
   moduleCode?: string | null;
+  search?: string | null;
 }
 
 export function listEventDefinitions(
@@ -212,6 +219,7 @@ export function listEventDefinitions(
     p_offset: input.offset ?? 0,
     p_status: input.status ?? null,
     p_module_code: input.moduleCode ?? null,
+    p_search: input.search ?? null,
   });
 }
 

@@ -49,7 +49,8 @@ export interface EventContractRow {
   event_definition_id: string;
   version_number: number;
   json_schema: Record<string, unknown>;
-  sample_payload: Record<string, unknown>;
+  sample_payload: Record<string, unknown> | null;
+  sample_payload_redacted: boolean;
   status: EventContractStatus;
   checksum: string | null;
   published_at: string | null;

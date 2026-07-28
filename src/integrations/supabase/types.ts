@@ -100889,6 +100889,7 @@ export type Database = {
           retired_at: string
           retired_by: string
           sample_payload: Json
+          sample_payload_redacted: boolean
           status: string
           updated_at: string
           updated_by: string
@@ -100918,6 +100919,7 @@ export type Database = {
           p_correlation_id: string
           p_expected_updated_at: string
           p_id: string
+          p_reason: string
         }
         Returns: string
       }
@@ -100926,6 +100928,7 @@ export type Database = {
           p_correlation_id: string
           p_expected_updated_at: string
           p_id: string
+          p_reason: string
         }
         Returns: string
       }
@@ -100944,6 +100947,7 @@ export type Database = {
           p_correlation_id: string
           p_expected_updated_at: string
           p_id: string
+          p_reason: string
         }
         Returns: string
       }
@@ -100983,6 +100987,7 @@ export type Database = {
           p_limit: number
           p_module_code: string
           p_offset: number
+          p_search: string
           p_status: string
         }
         Returns: {
@@ -101002,6 +101007,7 @@ export type Database = {
           p_correlation_id: string
           p_expected_updated_at: string
           p_id: string
+          p_reason: string
         }
         Returns: string
       }
@@ -101010,6 +101016,7 @@ export type Database = {
           p_correlation_id: string
           p_expected_updated_at: string
           p_id: string
+          p_reason: string
         }
         Returns: string
       }
@@ -101036,6 +101043,14 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_priv_escape_ilike: {
+        Args: { p_input: string }
+        Returns: string
+      }
+      omni_comms_priv_normalize_reason: {
+        Args: { p_reason: string; p_required: boolean }
+        Returns: string
+      }
       omni_comms_priv_reject_nonlocal_refs: {
         Args: { p_schema: Json }
         Returns: undefined
@@ -101058,6 +101073,20 @@ export type Database = {
           p_entity_display: string
           p_entity_id: string
           p_entity_type: string
+        }
+        Returns: undefined
+      }
+      omni_comms_priv_write_lifecycle_audit: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_after: Json
+          p_before: Json
+          p_correlation_id: string
+          p_entity_display: string
+          p_entity_id: string
+          p_entity_type: string
+          p_reason: string
         }
         Returns: undefined
       }
