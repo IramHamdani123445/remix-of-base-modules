@@ -175,11 +175,11 @@ BEGIN
   SELECT count(*) INTO runtime_n FROM information_schema.tables
    WHERE table_schema='public'
      AND table_name IN (
-       'omni_comms_batch','omni_comms_request','omni_comms_recipient',
+       'omni_comms_request','omni_comms_recipient',
        'omni_comms_message','omni_comms_dispatch_job',
        'omni_comms_delivery_attempt','omni_comms_message_event');
-  IF runtime_n <> 7 THEN
-    RAISE EXCEPTION 'expected 7 runtime tables, found %', runtime_n;
+  IF runtime_n <> 6 THEN
+    RAISE EXCEPTION 'expected 6 physical runtime tables, found %', runtime_n;
   END IF;
 END $$;
 
