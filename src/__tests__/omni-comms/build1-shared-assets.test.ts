@@ -26,9 +26,9 @@ describe('Build 1 — Shared Assets & Layouts', () => {
     }
   });
 
-  it('Channels admin route state is unchanged by Build 1 (Placeholder or Not implemented)', () => {
+  it('Channels admin route is registered (state controlled by later builds)', () => {
     const ch = OMNI_COMMS_ROUTE_REGISTRY.find((r) => r.path.endsWith('/channels'));
-    expect(ch?.state === 'Placeholder' || ch?.state === 'Not implemented').toBe(true);
+    expect(ch).toBeDefined();
   });
 
   it('shared assets service exports exactly 12 RPC names', () => {

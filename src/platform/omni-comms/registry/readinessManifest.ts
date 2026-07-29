@@ -155,7 +155,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 4',
-    currentStory: 'Accelerated Build 1',
+    currentStory: 'Accelerated Build 2',
     overallStatus: 'In progress',
 
   },
@@ -277,6 +277,14 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Pilot migration path',                       state: 'Verified', note: 'Build 1 — core_comm_pilot_migration_dry_run and core_comm_pilot_migration_apply are parameterised, idempotent, transactional, and reject ambiguous or missing sources. No source-row changes and no dual write.' },
     { item: 'Legacy asset boundary',                      state: 'Verified', note: 'Build 1 — Omni-Comms React code reads assets/layouts exclusively via the 12 shared RPCs. Legacy comm_letterhead/comm_signature/comm_footer are only touched inside the controlled pilot migration RPC.' },
     { item: 'core_template_layout RLS compatibility debt', state: 'In progress', note: 'Build 1 — core_template_layout retains its current RLS state to preserve existing Legacy/shared readers. Debt: move it fully behind the shared service boundary in a later build.' },
+
+    { item: 'Email provider ensure/activate',             state: 'Verified', note: 'Build 2 — omni_comms_email_provider_ensure() and omni_comms_email_provider_activate(id, expected_updated_at) manage the canonical resend_email provider. SECURITY DEFINER, owner postgres, capability omni_comms.configure, optimistic concurrency, atomic channel-domain audit.' },
+    { item: 'Provider account application services',      state: 'Verified', note: 'Build 2 — omni_comms_provider_account_upsert_draft, _activate, _record_credential_check enforce draft-only edits, credential-check-before-activate gate, and record health_state (healthy|degraded|failed). Secret is stored only as OMNI_COMMS_* reference; no raw credentials in DB rows.' },
+    { item: 'Sender identity application services',       state: 'Verified', note: 'Build 2 — omni_comms_sender_identity_upsert_draft, _activate: channel forced to email in Build 2, org/department/event ownership enforced by Story 1 triggers, optimistic concurrency + audit.' },
+    { item: 'Binding application services',               state: 'Verified', note: 'Build 2 — omni_comms_binding_upsert_draft, _record_verification (pending/verified/failed), _activate (blocks unless verified). Active-priority uniqueness enforced; verification updates verified_at only when result is verified.' },
+    { item: 'Email channel setting service',              state: 'Verified', note: 'Build 2 — omni_comms_channel_setting_upsert accepts email only; delegates quiet-hours/rate/live-requires-enabled checks to Story 1 CHECK constraints and timezone trigger; optimistic concurrency + audit.' },
+    { item: 'Email configuration summary',                state: 'Verified', note: 'Build 2 — omni_comms_email_config_summary(p_organization_id) returns provider, provider_accounts, sender_identities, bindings, channel_setting and a computed email_send_ready boolean. Capability omni_comms.view; scoped strictly to the passed organisation.' },
+    { item: 'Channels admin surface',                     state: 'Verified', note: 'Build 2 — /admin/omnichannel-communications/channels now Available with tabs for Provider, Accounts, Senders, Bindings and Settings. Consumes the bound Omni-Comms RPC client only; no direct table reads, no provider SDK imports, no send behaviour.' },
   ],
 
   blockers: [
@@ -299,8 +307,8 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Build 2',
-    title: 'Provider, Sender and Channel Setting Application Services',
+    story: 'Build 3',
+    title: 'Sender verification and first synthetic email send',
     informationalOnly: true,
   },
 };

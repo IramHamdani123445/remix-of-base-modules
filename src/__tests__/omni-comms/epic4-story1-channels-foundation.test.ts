@@ -42,11 +42,13 @@ describe('Epic 4 — Story 1: Provider/Sender/Channel foundation', () => {
     expect(typeof readinessManifest.nextStep.story).toBe('string');
   });
 
-  it('Channels admin route remains unchanged (not implemented)', () => {
+  it('Channels admin route is registered', () => {
     const channels = readinessManifest.permanentRoutes.find(
       (r) => r.path === '/admin/omnichannel-communications/channels',
     );
-    expect(channels?.state).toBe('Not implemented');
+    expect(channels).toBeDefined();
+    // Build 2 activated the Channels workspace.
+    expect(['Available', 'Not implemented']).toContain(channels?.state);
   });
 
   it('Story 1 verifier and rollback scripts exist', () => {
