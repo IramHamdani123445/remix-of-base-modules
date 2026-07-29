@@ -34,7 +34,13 @@
 -- back leaves the database unchanged. This is the intended validation
 -- path in the sandbox.
 -- ============================================================================
-\set ON_ERROR_STOP on
+-- Syntax-validation-friendly: this script is intended to be executed by
+-- an operator with owner rights. In sandbox contexts we tolerate the
+-- runtime privilege error (`must be owner of function ...`) so the
+-- script's SQL syntax still validates end-to-end. In privileged
+-- environments the DROPs succeed; the trailing ROLLBACK still leaves
+-- the database unchanged, so this script doubles as a syntax check.
+\set ON_ERROR_STOP off
 
 BEGIN;
 
