@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
+import { OmniCommsTenantSelector } from "../components/OmniCommsTenantSelector";
+import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
 import {
   activateBinding,
   activateEmailProvider,
@@ -43,20 +45,6 @@ import type {
   SenderIdentityRow,
 } from "@/platform/omni-comms/application/channelManagementTypes";
 import { OmniCommsRpcError } from "@/platform/omni-comms/application/omniCommsRpcErrors";
-
-function useOrganizationId(): string | null {
-  // In this shell, the active org is read from window (dev/test shim).
-  // Real host apps replace this with the tenant selector; kept explicit
-  // so views do not silently mis-scope RPC calls.
-  const [id, setId] = useState<string | null>(null);
-  useEffect(() => {
-    const fromLocal = typeof window !== "undefined"
-      ? window.localStorage?.getItem("omni_comms.active_org_id")
-      : null;
-    setId(fromLocal && fromLocal.length > 0 ? fromLocal : null);
-  }, []);
-  return id;
-}
 
 function toastError(err: unknown, fallback: string): void {
   if (err instanceof OmniCommsRpcError) {
