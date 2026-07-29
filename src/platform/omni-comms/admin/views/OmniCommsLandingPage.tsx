@@ -4,7 +4,7 @@
  * Post-stabilization: shows an accurate status snapshot for every permanent
  * route (Events, Templates, Shared Assets & Layouts, Channels, Operations,
  * Preferences, Health) derived from the route registry, together with the
- * next approved work item. Removes obsolete "shell only" / "not operational"
+ * next approved work item. Replaces obsolete pre-operational placeholder copy
  * wording that predated Epics 2, 3 and Accelerated Builds 1–2.
  */
 import React from "react";
