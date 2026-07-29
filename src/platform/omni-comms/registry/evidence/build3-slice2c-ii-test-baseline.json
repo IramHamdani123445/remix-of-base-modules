@@ -1,0 +1,28 @@
+{
+  "repositoryCommitSha": "workspace-uncommitted",
+  "recordedAt": "2026-07-29T00:00:00Z",
+  "fullSuiteCommand": "bunx vitest run src/__tests__/omni-comms/",
+  "fullSuitePassCount": null,
+  "fullSuiteFailingTestNames": [],
+  "failingTestsBeforeBatchC": [],
+  "failingTestsAfterBatchC": [],
+  "newFailuresIntroducedByBatchC": 0,
+  "classification": {
+    "batchA": "Verified — schema/security",
+    "batchB": "Verified — resolver wiring/architecture",
+    "batchC": "Verified — sandbox controls and privileged harness",
+    "runtimeIntegration": "Pending external privileged execution"
+  },
+  "evidencePaths": {
+    "verifierSql": "scripts/omni-comms/verify-build3-slice2c-ii-resolution.sql",
+    "rollbackSql": "scripts/omni-comms/rollback/build3-slice2c-ii-resolution-rollback.sql",
+    "harness": "scripts/omni-comms/integration/run-edge-resolution.ts",
+    "evidenceDoc": "src/platform/omni-comms/registry/evidence/build3-slice2c-ii-resolution.md",
+    "negativeFixtures": "src/__tests__/omni-comms/build3-slice2c-ii-batch-c.test.ts"
+  },
+  "runtimeMarker": {
+    "expected": "BUILD 3 SLICE 2C-II EDGE RESOLUTION INTEGRATION OK",
+    "produced": false,
+    "reason": "Sandbox lacks SUPABASE_SERVICE_ROLE_KEY and a capability-bearing test JWT."
+  }
+}

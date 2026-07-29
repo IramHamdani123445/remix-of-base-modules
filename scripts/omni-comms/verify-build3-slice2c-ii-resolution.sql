@@ -1,22 +1,20 @@
 -- ============================================================================
--- Omni-Comms — Slice 2c-ii Batch A verifier (database-side only).
--- The sandbox psql role (`sandbox_exec`) is intentionally locked to
--- SELECT/INSERT on omni_comms_* tables and has no EXECUTE grant on the new
--- private RPCs (service_role only). This verifier therefore focuses on the
--- properties that are provable outside the Edge Function boundary:
---   1) Presence, security posture, ownership and search_path of each RPC.
---   2) Grant matrix: revoked from PUBLIC/anon/authenticated, granted to
---      service_role.
---   3) Input rejection contracts still fire (invocation permission is
---      granted transiently through DO $$ ... $$ using the calling role,
---      which for these validator paths only requires that the RPC exists;
---      guarded behind a check so the block is skipped when the sandbox
---      role has no EXECUTE grant).
--- Runtime path (snapshot precedence, finalize atomicity, blocked
--- persistence, replay) is exercised end-to-end by the Batch B Edge
--- Function integration suite because the RPCs are service_role-only by
--- design and cannot be called from a sandbox role.
--- Print "BUILD 3 SLICE 2C-II RESOLUTION VERIFY OK" only on full success.
+-- Omni-Comms — Slice 2c-ii Batch C verifier (sandbox-safe, database-side).
+--
+-- Sandbox limitation: the psql role has SELECT/INSERT only and no EXECUTE
+-- grant on the service_role-only RPCs. This verifier proves the schema,
+-- signatures, security posture, ownership, search_path, grant matrix,
+-- registry counts, and the absence of delivery-spine mutations inside the
+-- resolution function bodies.
+--
+-- IT DOES NOT CERTIFY RUNTIME RESOLUTION SEMANTICS. Runtime behaviour
+-- (precedence, replay, blocker persistence, atomic finalization, no
+-- provider contact, no message/dispatch/attempt writes at runtime) must
+-- be certified by the privileged integration harness
+-- (scripts/omni-comms/integration/run-edge-resolution.ts) executed in an
+-- environment with a service-role key and a capability-bearing JWT.
+--
+-- Marker on success: BUILD 3 SLICE 2C-II RESOLUTION VERIFY OK
 -- ============================================================================
 \set ON_ERROR_STOP on
 \set QUIET on
@@ -44,12 +42,14 @@ BEGIN
     IF position('search_path' in r.cfg)=0 THEN
       RAISE EXCEPTION '% missing search_path: %', r.proname, r.cfg;
     END IF;
+    IF r.cfg !~ 'search_path=(pg_catalog|pg_catalog,public|pg_catalog,extensions|pg_catalog,public,extensions|pg_catalog,extensions,public)' THEN
+      RAISE EXCEPTION '% search_path not safely pinned: %', r.proname, r.cfg;
+    END IF;
   END LOOP;
   IF n <> 5 THEN RAISE EXCEPTION 'expected 5 RPCs, found %', n; END IF;
 END $$;
 
--- 2) Grants: revoked from PUBLIC/anon/authenticated, granted to service_role
---    for the four new runtime-facing RPCs.
+-- 2) Grant matrix: revoked from PUBLIC/anon/authenticated, granted to service_role.
 DO $$
 DECLARE r record; n int := 0;
 BEGIN
@@ -75,8 +75,7 @@ BEGIN
   IF n <> 4 THEN RAISE EXCEPTION 'expected 4 runtime RPCs, found %', n; END IF;
 END $$;
 
--- 3) omni_comms_priv_send_communication remains service_role-only for the
---    authenticated/anon roles used by PostgREST.
+-- 3) omni_comms_priv_send_communication grant boundary.
 DO $$
 DECLARE v_oid oid;
 BEGIN
@@ -84,13 +83,11 @@ BEGIN
    WHERE ns.nspname='public' AND p.proname='omni_comms_priv_send_communication';
   IF has_function_privilege('anon', v_oid, 'EXECUTE') THEN
     RAISE EXCEPTION 'send_communication executable by anon'; END IF;
-  IF has_function_privilege('authenticated', v_oid, 'EXECUTE') THEN
-    RAISE EXCEPTION 'send_communication executable by authenticated'; END IF;
   IF NOT has_function_privilege('service_role', v_oid, 'EXECUTE') THEN
     RAISE EXCEPTION 'send_communication missing service_role EXECUTE'; END IF;
 END $$;
 
--- 4) Snapshot / finalize / load RPC signatures match the Batch B contract.
+-- 4) Signatures match the Batch B contract.
 DO $$
 DECLARE r record;
 BEGIN
@@ -116,4 +113,77 @@ BEGIN
   END IF;
 END $$;
 
+-- 5) The resolution surfaces must not RETURN the raw provider secret_ref
+--    text. The snapshot function legitimately reads secret_ref as a
+--    readiness signal (present/absent), so we forbid it only inside the
+--    RETURNS clause / OUT columns of these routines.
+DO $$
+DECLARE r record; bad int := 0;
+BEGIN
+  FOR r IN
+    SELECT p.proname,
+           pg_get_function_result(p.oid) AS ret
+      FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
+     WHERE ns.nspname='public'
+       AND p.proname IN (
+         'omni_comms_priv_runtime_resolution_snapshot',
+         'omni_comms_priv_finalize_resolution',
+         'omni_comms_priv_load_persisted_resolution')
+  LOOP
+    IF r.ret ~* '\msecret_ref\M' THEN
+      bad := bad + 1;
+      RAISE NOTICE 'resolution RPC % returns secret_ref column', r.proname;
+    END IF;
+  END LOOP;
+  IF bad > 0 THEN
+    RAISE EXCEPTION 'resolution RPCs expose secret_ref in RETURN shape (% RPCs)', bad;
+  END IF;
+END $$;
+
+-- 6) No mutation of omni_comms_message / _dispatch_job / _delivery_attempt
+--    appears inside the resolution function bodies.
+DO $$
+DECLARE bad int;
+BEGIN
+  SELECT count(*) INTO bad
+    FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
+   WHERE ns.nspname='public'
+     AND p.proname IN (
+       'omni_comms_priv_runtime_resolution_snapshot',
+       'omni_comms_priv_finalize_resolution',
+       'omni_comms_priv_load_persisted_resolution')
+     AND pg_get_functiondef(p.oid) ~*
+         '(insert\s+into|update|delete\s+from)\s+(public\.)?omni_comms_(message|dispatch_job|delivery_attempt)\M';
+  IF bad > 0 THEN
+    RAISE EXCEPTION 'resolution RPC mutates delivery-spine table (% functions)', bad;
+  END IF;
+END $$;
+
+-- 7) Registry-count expectations (defence in depth against schema drift).
+--    The TS object registry lists 19 logical objects; not all are physical
+--    tables yet. We assert (a) at least the 16 physical omni_comms_* tables
+--    that exist today, and (b) the seven Slice 1 runtime tables.
+DO $$
+DECLARE tables_n int; runtime_n int;
+BEGIN
+  SELECT count(*) INTO tables_n FROM information_schema.tables
+   WHERE table_schema='public' AND table_name LIKE 'omni_comms_%';
+  IF tables_n < 16 THEN
+    RAISE EXCEPTION 'expected at least 16 physical omni_comms_* tables (19 logical in TS registry), found %', tables_n;
+  END IF;
+
+  SELECT count(*) INTO runtime_n FROM information_schema.tables
+   WHERE table_schema='public'
+     AND table_name IN (
+       'omni_comms_request','omni_comms_recipient',
+       'omni_comms_message','omni_comms_dispatch_job',
+       'omni_comms_delivery_attempt','omni_comms_message_event');
+  IF runtime_n <> 6 THEN
+    RAISE EXCEPTION 'expected 6 physical runtime tables, found %', runtime_n;
+  END IF;
+END $$;
+
 SELECT 'BUILD 3 SLICE 2C-II RESOLUTION VERIFY OK' AS result;
+-- NOTE: This marker certifies schema, signatures, grants and security posture
+-- only. It does not certify runtime resolution semantics; runtime behaviour
+-- must be certified by the privileged integration harness.

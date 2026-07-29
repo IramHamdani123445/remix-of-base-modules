@@ -155,7 +155,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 4',
-    currentStory: 'Accelerated Build 3 — Slice 2c-ii Batch B',
+    currentStory: 'Accelerated Build 3 — Slice 2c-ii Batch C',
     overallStatus: 'In progress',
 
 
@@ -230,6 +230,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { ruleId: 'OMNI_QUEUE_REGISTRY',             title: 'Queue registry enforcement',           status: 'Enforced in CI' },
     { ruleId: 'OMNI_SEND_FACADE_BOUNDARY',       title: 'Send-façade boundary',                 status: 'Enforced in CI' },
     { ruleId: 'OMNI_PERMANENT_NAME_POLICY',      title: 'Permanent-name policy',                status: 'Enforced in CI' },
+    { ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',  title: 'Resolver runtime boundary (Rule 11)',  status: 'Enforced in CI' },
   ],
 
   foundationStatus: [
@@ -317,9 +318,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Accelerated Build 3 — Slice 2c-ii Batch C',
+    story: 'Accelerated Build 3 — Slice 2c-ii runtime certification',
     title:
-      'Architecture checks, integration tests, verifier hardening, rollback, and evidence for the Batch B resolution pipeline',
+      'Execute the privileged Slice 2c-ii Edge integration harness (scripts/omni-comms/integration/run-edge-resolution.ts) in a privileged environment to produce the BUILD 3 SLICE 2C-II EDGE RESOLUTION INTEGRATION OK marker. Do not advance to Slice 2c-iii before this marker is produced.',
     informationalOnly: true,
   },
 };
