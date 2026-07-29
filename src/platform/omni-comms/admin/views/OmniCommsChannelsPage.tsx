@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
+import { OmniCommsTenantSelector } from "../components/OmniCommsTenantSelector";
+import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
 import {
   activateBinding,
   activateEmailProvider,
@@ -44,20 +46,6 @@ import type {
 } from "@/platform/omni-comms/application/channelManagementTypes";
 import { OmniCommsRpcError } from "@/platform/omni-comms/application/omniCommsRpcErrors";
 
-function useOrganizationId(): string | null {
-  // In this shell, the active org is read from window (dev/test shim).
-  // Real host apps replace this with the tenant selector; kept explicit
-  // so views do not silently mis-scope RPC calls.
-  const [id, setId] = useState<string | null>(null);
-  useEffect(() => {
-    const fromLocal = typeof window !== "undefined"
-      ? window.localStorage?.getItem("omni_comms.active_org_id")
-      : null;
-    setId(fromLocal && fromLocal.length > 0 ? fromLocal : null);
-  }, []);
-  return id;
-}
-
 function toastError(err: unknown, fallback: string): void {
   if (err instanceof OmniCommsRpcError) {
     toast.error(`${err.code} ${err.detail ?? fallback}`);
@@ -68,10 +56,9 @@ function toastError(err: unknown, fallback: string): void {
 
 export const OmniCommsChannelsPage: React.FC = () => {
   const client = useOmniCommsRpcClient();
-  const orgId = useOrganizationId();
+  const { organizationId: orgId, organizationName } = useOmniCommsTenant();
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   const [loading, setLoading] = useState(false);
-  const [orgIdInput, setOrgIdInput] = useState("");
 
   const refresh = useCallback(async () => {
     if (!orgId) return;
@@ -94,41 +81,25 @@ export const OmniCommsChannelsPage: React.FC = () => {
         <h1 className="text-2xl font-semibold">Channels — Email</h1>
         <Alert>
           <ShieldAlert className="h-4 w-4" />
-          <AlertTitle>Organization not selected</AlertTitle>
+          <AlertTitle>Select an organisation</AlertTitle>
           <AlertDescription>
-            Configuration is scoped to a specific organisation. Set the active organisation id
-            below to load the email configuration summary.
+            Email channel configuration is scoped to a specific organisation.
+            Choose one below to load the email configuration summary.
           </AlertDescription>
         </Alert>
-        <div className="flex gap-2 max-w-lg">
-          <Input
-            placeholder="organization id (uuid)"
-            value={orgIdInput}
-            onChange={(e) => setOrgIdInput(e.target.value)}
-            data-testid="omni-comms-channels-org-input"
-          />
-          <Button
-            onClick={() => {
-              const trimmed = orgIdInput.trim();
-              if (!trimmed) return;
-              window.localStorage?.setItem("omni_comms.active_org_id", trimmed);
-              window.location.reload();
-            }}
-          >
-            Use organisation
-          </Button>
-        </div>
+        <OmniCommsTenantSelector showDepartment={false} />
       </div>
     );
   }
 
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="omni-comms-channels-page">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold">Channels — Email</h1>
           <p className="text-sm text-muted-foreground">
             Omnichannel Communications · Resend provider configuration
+            {organizationName ? ` · ${organizationName}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -139,6 +110,8 @@ export const OmniCommsChannelsPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <OmniCommsTenantSelector showDepartment={false} />
 
       <Tabs defaultValue="provider" className="w-full">
         <TabsList>

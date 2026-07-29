@@ -1,10 +1,11 @@
-/**
- * Thin page wrapper for AppRoutes. Composes the Omnichannel Communications
- * landing view from src/platform/omni-comms. No business logic here.
- */
 import React from "react";
+import OmniCommsShell from "@/platform/omni-comms/admin/components/OmniCommsShell";
 import OmniCommsLandingPage from "@/platform/omni-comms/admin/views/OmniCommsLandingPage";
 
 export default function OmnichannelCommunicationsLandingPage() {
-  return <OmniCommsLandingPage />;
+  return (
+    <OmniCommsShell>
+      <OmniCommsLandingPage />
+    </OmniCommsShell>
+  );
 }
