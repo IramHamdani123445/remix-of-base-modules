@@ -102734,6 +102734,7 @@ export type Database = {
         Args: { p_max_bytes: number; p_value: Json }
         Returns: undefined
       }
+      omni_comms_priv_slice1_verify: { Args: never; Returns: string }
       omni_comms_priv_validate_channel: {
         Args: { p_channel: string }
         Returns: undefined
