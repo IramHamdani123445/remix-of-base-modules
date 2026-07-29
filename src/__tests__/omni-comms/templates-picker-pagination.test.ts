@@ -88,7 +88,7 @@ describe('Omni-Comms Templates picker pagination hotfix', () => {
     // Server pathologically returns the same 100 ids forever.
     const dup = rows(100, 'dup');
     const client = {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+       
       rpc: async (_fn: string, _args: Record<string, unknown>) => ({ data: dup, error: null }),
     };
     const out = await svc.listAllEventDefinitionsForPicker(client, { maxItems: 500 });

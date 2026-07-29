@@ -766,7 +766,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
           // incomplete event catalogue. One friendly toast, no raw SQLSTATE.
           setEvents([]);
           toastError(new Error("Could not load the event catalogue. Try again."));
-          // eslint-disable-next-line no-console
+           
           console.warn("[omni-comms] event picker load failed", pickerErr);
         }
       } catch (e) { toastError(e); }
