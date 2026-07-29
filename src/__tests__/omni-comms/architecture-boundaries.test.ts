@@ -484,8 +484,8 @@ describe('Rule 8 — OMNI_QUEUE_REGISTRY', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
-describe('Rule 9 — OMNI_SEND_FACADE_BOUNDARY', () => {
-  it('current façade count is zero (canonical repo)', () => {
+describe('Rule 9 — OMNI_SEND_FACADE_BOUNDARY (Slice 2a: exactly one canonical façade)', () => {
+  it('canonical repo has zero unbaselined façade violations', () => {
     const summary = runArchitectureChecks();
     const facade = summary.violations.filter(
       (v) => v.ruleId === 'OMNI_SEND_FACADE_BOUNDARY' && v.baselineStatus !== 'existing_baseline',
@@ -493,14 +493,33 @@ describe('Rule 9 — OMNI_SEND_FACADE_BOUNDARY', () => {
     expect(facade).toHaveLength(0);
   });
 
-  it('fails for sendCommunication.ts fixture', () => {
+  it('accepts the canonical façade path exporting sendCommunication', () => {
     const v = checkFacadeBoundary(
-      makeScan([{ filePath: 'src/platform/omni-comms/sendCommunication.ts', content: `export const x = 1;` }]),
+      makeScan([
+        {
+          filePath: 'src/platform/omni-comms/sendCommunication.ts',
+          content: `export async function sendCommunication(input: any) { return null as any; }`,
+        },
+      ]),
     );
-    expect(v).toHaveLength(1);
+    expect(v).toHaveLength(0);
   });
 
-  it('fails for exported sendCommunication symbol', () => {
+  it('rejects a second sendCommunication.ts file elsewhere in the new system', () => {
+    const v = checkFacadeBoundary(
+      makeScan([
+        {
+          filePath: 'src/platform/omni-comms/nested/sendCommunication.ts',
+          content: `export async function sendCommunication() {}`,
+        },
+      ]),
+    );
+    // Both: duplicate file basename + duplicate exported symbol outside canonical.
+    expect(v.length).toBeGreaterThanOrEqual(1);
+    expect(v.some((x) => /Second sendCommunication/.test(x.message))).toBe(true);
+  });
+
+  it('rejects a second sendCommunication export in a non-canonical file', () => {
     const v = checkFacadeBoundary(
       makeScan([
         {
@@ -509,19 +528,58 @@ describe('Rule 9 — OMNI_SEND_FACADE_BOUNDARY', () => {
         },
       ]),
     );
-    expect(v).toHaveLength(1);
+    expect(v.some((x) => /Second sendCommunication export/.test(x.message))).toBe(true);
   });
 
-  it('fails for sendOmniCommunication export', () => {
+  it.each(['sendOmniCommunication', 'dispatchCommunication', 'queueCommunication'])(
+    'rejects forbidden alias export %s',
+    (alias) => {
+      const v = checkFacadeBoundary(
+        makeScan([
+          {
+            filePath: 'src/platform/omni-comms/foo.ts',
+            content: `export const ${alias} = () => null;`,
+          },
+        ]),
+      );
+      expect(v.some((x) => x.evidence?.includes(alias))).toBe(true);
+    },
+  );
+
+  it('rejects provider SDK import inside the canonical façade file', () => {
     const v = checkFacadeBoundary(
       makeScan([
         {
-          filePath: 'src/platform/omni-comms/foo.ts',
-          content: `export const sendOmniCommunication = () => null;`,
+          filePath: 'src/platform/omni-comms/sendCommunication.ts',
+          content: `import { Resend } from 'resend';\nexport async function sendCommunication() {}`,
         },
       ]),
     );
-    expect(v).toHaveLength(1);
+    expect(v.some((x) => /must not import provider SDKs/.test(x.message))).toBe(true);
+  });
+
+  it('rejects business-module import of runtime internals', () => {
+    const v = checkFacadeBoundary(
+      makeScan([
+        {
+          filePath: 'src/modules/benefits/communication/x.ts',
+          content: `import { runtime } from '@/platform/omni-comms/runtime/sendCommunicationRuntime';`,
+        },
+      ]),
+    );
+    expect(v.some((x) => /runtime internals/.test(x.message))).toBe(true);
+  });
+
+  it('permits business-module import of the canonical façade', () => {
+    const v = checkFacadeBoundary(
+      makeScan([
+        {
+          filePath: 'src/modules/benefits/communication/x.ts',
+          content: `import { sendCommunication } from '@/platform/omni-comms/sendCommunication';`,
+        },
+      ]),
+    );
+    expect(v).toHaveLength(0);
   });
 
   it('Legacy façade is out of new-system scope', () => {
