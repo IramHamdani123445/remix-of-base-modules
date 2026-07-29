@@ -204,18 +204,18 @@ describe('Omni-Comms Health page — Readiness', () => {
     expect(within(nextStep).getByText(new RegExp(M.nextStep.title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))).toBeInTheDocument();
   });
 
-  it('renders the Architecture boundaries section with all ten rules Enforced in CI', () => {
+  it('renders the Architecture boundaries section with every rule Enforced in CI', () => {
     permState.hasView = true;
     renderHealthAt();
     const section = screen.getByTestId('omni-comms-architecture-boundaries');
     expect(section).toBeInTheDocument();
-    expect(M.architectureBoundaries).toHaveLength(10);
+    const count = M.architectureBoundaries.length;
+    expect(count).toBeGreaterThanOrEqual(10);
     for (const row of M.architectureBoundaries) {
       expect(within(section).getByText(row.title)).toBeInTheDocument();
       expect(within(section).getByText(row.ruleId)).toBeInTheDocument();
     }
-    // "Enforced in CI" label appears once per rule.
-    expect(within(section).getAllByText('Enforced in CI')).toHaveLength(10);
+    expect(within(section).getAllByText('Enforced in CI')).toHaveLength(count);
   });
 });
 
