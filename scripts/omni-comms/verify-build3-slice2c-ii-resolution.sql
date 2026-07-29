@@ -160,13 +160,16 @@ BEGIN
 END $$;
 
 -- 7) Registry-count expectations (defence in depth against schema drift).
+--    The TS object registry lists 19 logical objects; not all are physical
+--    tables yet. We assert (a) at least the 16 physical omni_comms_* tables
+--    that exist today, and (b) the seven Slice 1 runtime tables.
 DO $$
 DECLARE tables_n int; runtime_n int;
 BEGIN
   SELECT count(*) INTO tables_n FROM information_schema.tables
    WHERE table_schema='public' AND table_name LIKE 'omni_comms_%';
-  IF tables_n < 19 THEN
-    RAISE EXCEPTION 'expected at least 19 omni_comms_* tables, found %', tables_n;
+  IF tables_n < 16 THEN
+    RAISE EXCEPTION 'expected at least 16 physical omni_comms_* tables (19 logical in TS registry), found %', tables_n;
   END IF;
 
   SELECT count(*) INTO runtime_n FROM information_schema.tables
