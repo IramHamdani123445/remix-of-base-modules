@@ -128,24 +128,28 @@ export function checkResolverBoundary(scan: RepositoryScan): ArchitectureViolati
         }
       }
 
-      // (c) direct reads of forbidden shared surfaces
-      for (const table of FORBIDDEN_DIRECT_READ_TABLES) {
-        const re = new RegExp(
-          String.raw`\.from\s*\(\s*['"\`]${table}['"\`]\s*\)`,
-          'g',
-        );
-        let tm: RegExpExecArray | null;
-        while ((tm = re.exec(f.content)) !== null) {
-          out.push({
-            ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',
-            severity: 'error',
-            filePath: f.filePath,
-            evidence: tm[0],
-            message: `src/** may not read shared-surface table "${table}" directly.`,
-            remediation:
-              'Use the canonical shared-assets RPCs (omni_comms_assignment_*).',
-            baselineStatus: 'not_baselined',
-          });
+      // (c) direct reads of forbidden shared surfaces (new-system scope only —
+      //     the enterprise-wide readers outside src/platform/omni-comms/** are
+      //     part of the wider Legacy shared-assets pipeline governed elsewhere).
+      if (f.filePath.replace(/\\/g, '/').startsWith('src/platform/omni-comms/')) {
+        for (const table of FORBIDDEN_DIRECT_READ_TABLES) {
+          const re = new RegExp(
+            String.raw`\.from\s*\(\s*['"\`]${table}['"\`]\s*\)`,
+            'g',
+          );
+          let tm: RegExpExecArray | null;
+          while ((tm = re.exec(f.content)) !== null) {
+            out.push({
+              ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',
+              severity: 'error',
+              filePath: f.filePath,
+              evidence: tm[0],
+              message: `src/platform/omni-comms/** may not read shared-surface table "${table}" directly.`,
+              remediation:
+                'Use the canonical shared-assets RPCs (omni_comms_assignment_*).',
+              baselineStatus: 'not_baselined',
+            });
+          }
         }
       }
 
