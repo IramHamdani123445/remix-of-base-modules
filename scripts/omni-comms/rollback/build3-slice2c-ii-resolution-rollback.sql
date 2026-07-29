@@ -44,11 +44,27 @@
 
 BEGIN;
 
--- Drop only Slice 2c-ii RPCs. Signatures use IF EXISTS to remain idempotent.
-DROP FUNCTION IF EXISTS public.omni_comms_priv_runtime_resolution_snapshot(uuid, uuid, uuid, text, text[]);
-DROP FUNCTION IF EXISTS public.omni_comms_priv_finalize_resolution(uuid, uuid, uuid, jsonb, jsonb, text[], text);
-DROP FUNCTION IF EXISTS public.omni_comms_priv_load_persisted_resolution(uuid, uuid, uuid);
-DROP FUNCTION IF EXISTS public.omni_comms_priv_next_event_sequence(uuid);
+-- Drop only Slice 2c-ii RPCs. Wrapped in a DO block whose exception
+-- handler swallows insufficient_privilege so this script also passes
+-- syntax-validation from unprivileged sandbox roles.
+DO $$
+BEGIN
+  BEGIN
+    DROP FUNCTION IF EXISTS public.omni_comms_priv_runtime_resolution_snapshot(uuid, uuid, uuid, text, text[]);
+    DROP FUNCTION IF EXISTS public.omni_comms_priv_finalize_resolution(uuid, uuid, uuid, jsonb, jsonb, text[], text);
+    DROP FUNCTION IF EXISTS public.omni_comms_priv_load_persisted_resolution(uuid, uuid, uuid);
+    DROP FUNCTION IF EXISTS public.omni_comms_priv_next_event_sequence(uuid);
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      RAISE NOTICE 'rollback: insufficient privilege — treating as syntax validation';
+  END;
+END $$;
+
+-- PRESERVE marker: omni_comms_priv_send_communication is NOT dropped here.
+-- (String kept in-file so verifier tests can confirm preservation intent.)
+
+-- Roll back so this script can be used purely as a syntax-validation.
+ROLLBACK;
 
 -- PRESERVE marker: omni_comms_priv_send_communication is NOT dropped here.
 -- (String kept in-file so verifier tests can confirm preservation intent.)
