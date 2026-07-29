@@ -434,7 +434,7 @@ describe('Rule 7 — OMNI_INTEGRATION_REGISTRY', () => {
   });
 
   it('fails when physical implementation exists for Reserved integration', () => {
-    const v = checkIntegrationRegistry(makeScan([], { edgeFunctionDirs: ['omni-comms-send'] }));
+    const v = checkIntegrationRegistry(makeScan([], { edgeFunctionDirs: ['omni-comms-dispatch'] }));
     expect(v.some((x) => /Physical implementation/.test(x.message))).toBe(true);
   });
 
