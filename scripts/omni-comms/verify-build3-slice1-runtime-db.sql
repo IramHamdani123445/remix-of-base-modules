@@ -50,8 +50,8 @@ BEGIN
 
   -- Fixture: seed an event definition (needs to be in draft to avoid triggering
   -- other invariants; existing helper functions handle its shape).
-  INSERT INTO public.omni_comms_event_definition (code, name, module_code, category, status)
-  VALUES ('BUILD3.SLICE1.PROBE', 'slice1 probe', 'MODULE', 'operational', 'draft')
+  INSERT INTO public.omni_comms_event_definition (code, module_code, entity_type, name, communication_class, status)
+  VALUES ('MOD.PROBE.EVENT', 'MOD', 'PROBE', 'slice1 probe', 'operational', 'draft')
   RETURNING id INTO v_event;
 
   -- 3. Event route channel validation
