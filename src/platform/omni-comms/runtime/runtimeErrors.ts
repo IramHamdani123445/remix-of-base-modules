@@ -20,8 +20,10 @@ export const OMNI_COMMS_RUNTIME_ERROR_CODES = [
   'idempotency_key_required',
   'idempotency_key_too_long',
   'idempotency_payload_mismatch',
+  'canonical_fingerprint_mismatch',
   'event_code_not_found',
   'runtime_persistence_failed',
+  'runtime_transport_failed',
   'permission_denied',
 ] as const;
 

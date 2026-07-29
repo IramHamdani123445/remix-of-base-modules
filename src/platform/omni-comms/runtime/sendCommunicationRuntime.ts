@@ -1,59 +1,65 @@
 /**
- * Omni-Comms Slice 2b — trusted send-communication runtime service.
+ * Omni-Comms Slice 2c-i — trusted send-communication runtime service.
  *
- * The public façade at src/platform/omni-comms/sendCommunication.ts
- * calls ONLY this entrypoint. Business modules must not import from
+ * The public façade at src/platform/omni-comms/sendCommunication.ts calls
+ * ONLY this entrypoint. Business modules must not import from
  * src/platform/omni-comms/runtime/** directly (enforced by the
  * architecture checker).
  *
- * Responsibilities:
- *  - Public input validation (light — server RPC re-validates).
- *  - Canonicalize the request into a deterministic representation.
- *  - Compute the SHA-256 fingerprint (correlationId excluded).
- *  - Invoke the SECURITY DEFINER persistence RPC
- *    public.omni_comms_priv_send_communication which atomically:
- *      * locks the idempotency scope (org + caller_module + key),
- *      * returns replay on identical fingerprint,
- *      * rejects on fingerprint mismatch,
- *      * inserts the request + request_accepted event on first arrival.
- *  - Return the bounded public result. No provider is called.
+ * Slice 2c-i change: authoritative canonicalization, fingerprinting and
+ * persistence moved BEHIND the trusted Edge Function boundary
+ * `omni-comms-runtime`. The browser side of the runtime performs only:
+ *
+ *   - cheap public-shape validation (server re-validates authoritatively),
+ *   - transport invocation of the Edge Function with the raw input,
+ *   - shielded mapping of transport errors to bounded blocker codes.
+ *
+ * The browser MUST NOT call the SECURITY DEFINER persistence RPC
+ * directly — the RPC's EXECUTE grant has been revoked from
+ * `authenticated` and moved to `service_role` only. The Edge Function is
+ * the only path that reaches it.
  */
 import { supabase } from '@/integrations/supabase/client';
 import {
-  OMNI_COMMS_DEFAULT_CALLER_MODULE,
   validateSendCommunicationInput,
   type SendCommunicationInput,
   type SendCommunicationResult,
   type OmniCommsSendMode,
 } from '../sendCommunication';
-import {
-  canonicalizeRequest,
-  CanonicalizationError,
-} from './canonicalize';
-import { computeRequestFingerprint } from './fingerprint';
-import {
-  mapRpcErrorToRuntimeCode,
-  type OmniCommsRuntimeErrorCode,
-} from './runtimeErrors';
+import type { OmniCommsRuntimeErrorCode } from './runtimeErrors';
 
-export interface RuntimeRpcClient {
-  rpc: (
-    fn: string,
-    args: Record<string, unknown>,
-  ) => Promise<{
-    data: unknown;
-    error: { message?: string; details?: string; code?: string } | null;
+/**
+ * Transport contract for the trusted runtime boundary. In production
+ * this is the Supabase Functions client invocation of
+ * `omni-comms-runtime`. Tests inject a mock transport to exercise
+ * shielded error mapping without a live network call.
+ */
+export interface RuntimeTransport {
+  invoke: (input: SendCommunicationInput) => Promise<{
+    data: SendCommunicationResult | null;
+    error: { message?: string; name?: string; status?: number } | null;
   }>;
 }
 
-const DEFAULT_RPC_CLIENT: RuntimeRpcClient = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rpc: async (fn, args) => (supabase as any).rpc(fn, args),
+const OMNI_COMMS_RUNTIME_FUNCTION = 'omni-comms-runtime';
+
+const DEFAULT_TRANSPORT: RuntimeTransport = {
+  invoke: async (input) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).functions.invoke(
+      OMNI_COMMS_RUNTIME_FUNCTION,
+      { body: input },
+    );
+    return {
+      data: (data ?? null) as SendCommunicationResult | null,
+      error: error ?? null,
+    };
+  },
 };
 
 function blockedResult(
   input: SendCommunicationInput,
-  blocker: OmniCommsRuntimeErrorCode,
+  blockers: OmniCommsRuntimeErrorCode[],
 ): SendCommunicationResult {
   return {
     requestId: '',
@@ -62,99 +68,64 @@ function blockedResult(
     status: 'blocked',
     recipients: [],
     messages: [],
-    blockers: [blocker],
+    blockers,
     createdAt: new Date(0).toISOString(),
     replayed: false,
   };
 }
 
-interface PersistenceRpcResult {
-  request_id: string;
-  idempotency_key: string;
-  mode: string;
-  status: string;
-  created_at: string;
-  replayed: boolean;
-}
-
 /**
- * Execute the trusted runtime pipeline. Called from the public façade.
- * Accepts an optional RPC client for test injection; production
- * callers use the default supabase client.
+ * Execute the trusted runtime pipeline via the Edge Function boundary.
+ * Called from the public façade. Tests inject `transport` to bypass the
+ * network layer while still exercising validation + error mapping.
  */
 export async function executeSendCommunication(
   input: SendCommunicationInput,
-  rpcClient: RuntimeRpcClient = DEFAULT_RPC_CLIENT,
+  transport: RuntimeTransport = DEFAULT_TRANSPORT,
 ): Promise<SendCommunicationResult> {
-  // 1) Cheap public-shape validation.
+  // 1) Cheap public-shape validation. Server re-validates authoritatively.
   const shapeBlockers = validateSendCommunicationInput(input);
   if (shapeBlockers.length > 0) {
-    return {
-      requestId: '',
-      idempotencyKey: input?.idempotencyKey ?? '',
-      mode: (input?.mode ?? 'dry_run') as OmniCommsSendMode,
-      status: 'blocked',
-      recipients: [],
-      messages: [],
-      blockers: shapeBlockers,
-      createdAt: new Date(0).toISOString(),
-      replayed: false,
-    };
+    return blockedResult(input, shapeBlockers as OmniCommsRuntimeErrorCode[]);
   }
 
-  // 2) Canonicalize + fingerprint. Canonicalization errors are already
-  //    controlled codes (e.g. payload_too_large, channel_invalid).
-  let canonical;
+  // 2) Invoke the trusted Edge Function boundary. It authenticates,
+  //    canonicalizes, fingerprints, and persists via service_role.
+  let result: {
+    data: SendCommunicationResult | null;
+    error: { message?: string; name?: string; status?: number } | null;
+  };
   try {
-    canonical = canonicalizeRequest(input);
-  } catch (err) {
-    if (err instanceof CanonicalizationError) {
-      return blockedResult(input, err.code as OmniCommsRuntimeErrorCode);
-    }
-    return blockedResult(input, 'invalid_input');
-  }
-  const fingerprint = await computeRequestFingerprint(canonical);
-
-  // 3) Persistence RPC.
-  const callerModule =
-    canonical.callerContext.moduleCode ?? OMNI_COMMS_DEFAULT_CALLER_MODULE;
-
-  const { data, error } = await rpcClient.rpc(
-    'omni_comms_priv_send_communication',
-    {
-      p_organization_id: canonical.organizationId,
-      p_department_id: canonical.departmentId,
-      p_event_code: canonical.eventCode,
-      p_mode: canonical.mode,
-      p_idempotency_key: input.idempotencyKey,
-      p_caller_module_code: callerModule,
-      p_caller_entity_type: canonical.callerContext.entityType,
-      p_caller_entity_id: canonical.callerContext.entityId,
-      p_correlation_id: input.correlationId ?? null,
-      p_request_fingerprint: fingerprint,
-      p_payload: canonical.payload,
-      p_requested_channels: canonical.requestedChannels,
-    },
-  );
-
-  if (error) {
-    return blockedResult(input, mapRpcErrorToRuntimeCode(error));
+    result = await transport.invoke(input);
+  } catch {
+    return blockedResult(input, ['runtime_transport_failed']);
   }
 
-  const row = data as PersistenceRpcResult | null;
-  if (!row || typeof row !== 'object' || !row.request_id) {
-    return blockedResult(input, 'runtime_persistence_failed');
+  if (result.error && !result.data) {
+    // Transport-level failure (network, 5xx without body). Never leak.
+    const status = result.error.status ?? 0;
+    if (status === 401) return blockedResult(input, ['authentication_required']);
+    if (status === 403) return blockedResult(input, ['permission_denied']);
+    return blockedResult(input, ['runtime_transport_failed']);
   }
 
+  const row = result.data;
+  if (!row || typeof row !== 'object' || typeof row.status !== 'string') {
+    return blockedResult(input, ['runtime_persistence_failed']);
+  }
+
+  // The Edge Function returns an already-bounded SendCommunicationResult.
+  // We defensively normalize array fields so a partial payload never
+  // reaches the caller with undefined lists.
   return {
-    requestId: row.request_id,
-    idempotencyKey: row.idempotency_key,
-    mode: row.mode as OmniCommsSendMode,
+    requestId: row.requestId ?? '',
+    idempotencyKey: row.idempotencyKey ?? (input.idempotencyKey ?? ''),
+    mode: (row.mode ?? input.mode) as OmniCommsSendMode,
     status: row.status,
-    recipients: [],
-    messages: [],
-    blockers: ['runtime_resolution_pending'],
-    createdAt: row.created_at,
+    recipients: Array.isArray(row.recipients) ? row.recipients : [],
+    messages: Array.isArray(row.messages) ? row.messages : [],
+    blockers: Array.isArray(row.blockers) ? row.blockers : [],
+    createdAt: row.createdAt ?? new Date(0).toISOString(),
     replayed: row.replayed === true,
   };
 }

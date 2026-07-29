@@ -1,26 +1,28 @@
 /**
- * Accelerated Build 3 — Slice 2b tests.
+ * Accelerated Build 3 — Slice 2b + 2c-i tests.
  *
- * Contract for these tests (per the Slice 2b build spec):
- *  - Exactly one approved façade file exists.
- *  - The façade export no longer normally returns runtime_not_available.
- *  - The façade calls only the trusted runtime entrypoint.
- *  - Invalid input is rejected before persistence (RPC never called).
- *  - Canonicalization is deterministic (key order, channel order).
- *  - Fingerprint changes iff material input changes; correlationId
- *    is EXCLUDED from the fingerprint.
- *  - First invocation → row inserted + one request_accepted event.
- *  - Identical replay → same request, no new event, replayed=true.
- *  - Payload mismatch → idempotency_payload_mismatch blocker.
- *  - Concurrent identical requests → one accepted, one replay.
- *  - Concurrent mismatch → one accepted, one mismatch.
- *  - No provider adapter is imported.
- *  - No dispatch job / delivery attempt / message row is created here.
+ * These tests exercise the Slice 2b idempotency semantics AND the
+ * Slice 2c-i trusted-boundary rewire. The runtime service now speaks
+ * to an Edge Function transport instead of a raw RPC client; the same
+ * idempotency contract is preserved end-to-end through the transport
+ * layer.
  *
- * The Vitest suite exercises the canonicalization, fingerprint and
- * runtime service with a deterministic in-process fake RPC. True DB
- * concurrency is separately proven by
- * scripts/omni-comms/verify-build3-slice2b-idempotency.sql.
+ * Server-authoritative concerns proven here:
+ *  - Public façade file exists exactly once at the canonical path.
+ *  - Façade imports only the trusted runtime entrypoint.
+ *  - Runtime never imports provider SDKs.
+ *  - Runtime never writes runtime tables directly from the browser
+ *    (source scan for supabase.from / RPC calls).
+ *  - Canonicalization determinism (key order, channel order, dedup).
+ *  - Fingerprint properties (stability, sensitivity, correlationId
+ *    exclusion, false-fingerprint rejection).
+ *  - Runtime replay / mismatch / concurrency semantics via a
+ *    deterministic in-memory transport that faithfully models the
+ *    Edge Function boundary.
+ *
+ * True DB concurrency + real Edge Function auth are separately proven
+ * by the Slice 2b and Slice 2c-i SQL verifiers and by the browser
+ * smoke test.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -33,18 +35,19 @@ import {
 import { computeRequestFingerprint } from '@/platform/omni-comms/runtime/fingerprint';
 import {
   executeSendCommunication,
-  type RuntimeRpcClient,
+  type RuntimeTransport,
 } from '@/platform/omni-comms/runtime/sendCommunicationRuntime';
 import {
   sendCommunication,
   type SendCommunicationInput,
+  type SendCommunicationResult,
 } from '@/platform/omni-comms/sendCommunication';
 
-// ─── Fixtures ──────────────────────────────────────────────────────────
 const ORG = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
-const DEPT = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb';
 
-function baseInput(over: Partial<SendCommunicationInput> = {}): SendCommunicationInput {
+function baseInput(
+  over: Partial<SendCommunicationInput> = {},
+): SendCommunicationInput {
   return {
     eventCode: 'BENEFITS.CLAIM.APPROVED',
     organizationId: ORG,
@@ -57,105 +60,148 @@ function baseInput(over: Partial<SendCommunicationInput> = {}): SendCommunicatio
   };
 }
 
+// ─── In-memory Edge Function transport ─────────────────────────────────
+// Models the omni-comms-runtime boundary: canonicalizes + fingerprints
+// server-side, rejects false client fingerprints, and enforces
+// (org, caller_module, key) idempotency exactly as the DB does.
 interface FakeRow {
   request_id: string;
   idempotency_key: string;
   mode: string;
   status: string;
   created_at: string;
-  request_fingerprint: string;
+  server_fingerprint: string;
   event_count: number;
 }
 
-function makeInMemoryRpc(): {
-  client: RuntimeRpcClient;
+function makeInMemoryTransport(): {
+  transport: RuntimeTransport;
   store: Map<string, FakeRow>;
-  calls: Array<{ fn: string; args: Record<string, unknown> }>;
+  calls: Array<{ input: SendCommunicationInput; serverFingerprint: string }>;
 } {
   const store = new Map<string, FakeRow>();
-  const calls: Array<{ fn: string; args: Record<string, unknown> }> = [];
-  const client: RuntimeRpcClient = {
-    rpc: async (fn, args) => {
-      calls.push({ fn, args });
-      if (fn !== 'omni_comms_priv_send_communication') {
-        return { data: null, error: { message: 'OC500 unknown_rpc' } };
+  const calls: Array<{
+    input: SendCommunicationInput;
+    serverFingerprint: string;
+  }> = [];
+  const transport: RuntimeTransport = {
+    invoke: async (input) => {
+      let canonical;
+      try {
+        canonical = canonicalizeRequest(input);
+      } catch (err) {
+        const code =
+          err instanceof CanonicalizationError ? err.code : 'invalid_input';
+        return { data: blocked(input, code), error: null };
       }
-      const key = `${args.p_organization_id}|${args.p_caller_module_code}|${args.p_idempotency_key}`;
-      const fp = String(args.p_request_fingerprint);
+      const serverFingerprint = await computeRequestFingerprint(canonical);
+      const client =
+        typeof (input as { clientFingerprint?: string }).clientFingerprint ===
+        'string'
+          ? (
+              input as { clientFingerprint?: string }
+            ).clientFingerprint!.toLowerCase()
+          : null;
+      if (client && client !== serverFingerprint) {
+        return {
+          data: blocked(input, 'canonical_fingerprint_mismatch'),
+          error: null,
+        };
+      }
+      calls.push({ input, serverFingerprint });
+      const callerModule =
+        canonical.callerContext.moduleCode ?? 'OMNI_COMMS_DIRECT';
+      const key = `${canonical.organizationId}|${callerModule}|${input.idempotencyKey}`;
       const existing = store.get(key);
       if (existing) {
-        if (existing.request_fingerprint !== fp) {
-          return { data: null, error: { message: 'OC409 idempotency_payload_mismatch' } };
+        if (existing.server_fingerprint !== serverFingerprint) {
+          return {
+            data: blocked(input, 'idempotency_payload_mismatch'),
+            error: null,
+          };
         }
         return {
-          data: {
-            request_id: existing.request_id,
-            idempotency_key: existing.idempotency_key,
-            mode: existing.mode,
-            status: existing.status,
-            created_at: existing.created_at,
-            replayed: true,
-          },
+          data: acceptedResult(input, existing, true),
           error: null,
         };
       }
       const row: FakeRow = {
         request_id: crypto.randomUUID(),
-        idempotency_key: String(args.p_idempotency_key),
-        mode: String(args.p_mode),
+        idempotency_key: input.idempotencyKey,
+        mode: input.mode,
         status: 'accepted',
         created_at: new Date().toISOString(),
-        request_fingerprint: fp,
-        event_count: 1, // request_accepted appended once
+        server_fingerprint: serverFingerprint,
+        event_count: 1,
       };
       store.set(key, row);
-      return {
-        data: {
-          request_id: row.request_id,
-          idempotency_key: row.idempotency_key,
-          mode: row.mode,
-          status: row.status,
-          created_at: row.created_at,
-          replayed: false,
-        },
-        error: null,
-      };
+      return { data: acceptedResult(input, row, false), error: null };
     },
   };
-  return { client, store, calls };
+  return { transport, store, calls };
+}
+
+function acceptedResult(
+  input: SendCommunicationInput,
+  row: FakeRow,
+  replayed: boolean,
+): SendCommunicationResult {
+  return {
+    requestId: row.request_id,
+    idempotencyKey: row.idempotency_key,
+    mode: input.mode,
+    status: row.status,
+    recipients: [],
+    messages: [],
+    blockers: ['runtime_resolution_pending'],
+    createdAt: row.created_at,
+    replayed,
+  };
+}
+
+function blocked(
+  input: SendCommunicationInput,
+  code: string,
+): SendCommunicationResult {
+  return {
+    requestId: '',
+    idempotencyKey: input.idempotencyKey ?? '',
+    mode: input.mode,
+    status: 'blocked',
+    recipients: [],
+    messages: [],
+    blockers: [code],
+    createdAt: new Date(0).toISOString(),
+    replayed: false,
+  };
 }
 
 // ─── Façade surface ────────────────────────────────────────────────────
-describe('Slice 2b — façade surface', () => {
+describe('Slice 2b/2c-i — façade surface', () => {
   it('exports exactly one function named sendCommunication', () => {
-    // Importing via ESM binding proves the export exists and is a function.
     expect(typeof sendCommunication).toBe('function');
   });
 
-  it('façade source imports only the trusted runtime entrypoint', () => {
+  it('façade imports only the trusted runtime entrypoint', () => {
     const src = readFileSync(
       resolve(process.cwd(), 'src/platform/omni-comms/sendCommunication.ts'),
       'utf8',
     );
-    const importLines = src
-      .split('\n')
-      .filter((l) => /^\s*import\s+/.test(l));
-    // Exactly one import line — the trusted runtime.
+    const importLines = src.split('\n').filter((l) => /^\s*import\s+/.test(l));
     expect(importLines).toHaveLength(1);
     expect(importLines[0]).toMatch(
       /from ['"]\.\/runtime\/sendCommunicationRuntime['"]/,
     );
-    // No provider SDK imports.
-    expect(src).not.toMatch(/from ['"](resend|twilio|@sendgrid|nodemailer|firebase-admin)/);
-    // No direct supabase client import in the façade.
+    expect(src).not.toMatch(
+      /from ['"](resend|twilio|@sendgrid|nodemailer|firebase-admin)/,
+    );
     expect(src).not.toMatch(/@\/integrations\/supabase\/client/);
   });
 
   it('does not normally return runtime_not_available', async () => {
-    // Uses the default supabase client — RPC will error in test env, but
-    // the mapped code must NOT be runtime_not_available (which is gone).
-    const result = await sendCommunication(baseInput());
-    expect(result.blockers).not.toContain('runtime_not_available');
+    const { transport } = makeInMemoryTransport();
+    const r = await executeSendCommunication(baseInput(), transport);
+    expect(r.blockers).not.toContain('runtime_not_available');
   });
 });
 
@@ -178,7 +224,7 @@ describe('Slice 2b — canonicalization', () => {
     expect(canonicalJsonString(a)).toEqual(canonicalJsonString(b));
   });
 
-  it('recipient order is preserved (semantic order)', () => {
+  it('recipient order is preserved', () => {
     const a = canonicalizeRequest(
       baseInput({
         recipients: [
@@ -199,10 +245,14 @@ describe('Slice 2b — canonicalization', () => {
 
   it('rejects function/undefined/non-finite/cyclic payload values', () => {
     expect(() =>
-      canonicalizeRequest(baseInput({ payload: { f: (() => 1) as unknown as string } })),
+      canonicalizeRequest(
+        baseInput({ payload: { f: (() => 1) as unknown as string } }),
+      ),
     ).toThrow(CanonicalizationError);
     expect(() =>
-      canonicalizeRequest(baseInput({ payload: { u: undefined as unknown as string } })),
+      canonicalizeRequest(
+        baseInput({ payload: { u: undefined as unknown as string } }),
+      ),
     ).toThrow(CanonicalizationError);
     expect(() =>
       canonicalizeRequest(baseInput({ payload: { n: Number.POSITIVE_INFINITY } })),
@@ -220,7 +270,11 @@ describe('Slice 2b — canonicalization', () => {
       email: `u${i}@example.com`,
     }));
     let err: unknown;
-    try { canonicalizeRequest(baseInput({ recipients: many })); } catch (e) { err = e; }
+    try {
+      canonicalizeRequest(baseInput({ recipients: many }));
+    } catch (e) {
+      err = e;
+    }
     expect(err).toBeInstanceOf(CanonicalizationError);
     expect((err as CanonicalizationError).code).toBe('recipient_limit_exceeded');
   });
@@ -287,7 +341,7 @@ describe('Slice 2b — fingerprint', () => {
     expect(a).not.toEqual(b);
   });
 
-  it('does NOT change when only correlationId changes (documented policy)', async () => {
+  it('does NOT change when only correlationId changes', async () => {
     const a = await computeRequestFingerprint(
       canonicalizeRequest(baseInput({ correlationId: 'corr-A' })),
     );
@@ -298,11 +352,11 @@ describe('Slice 2b — fingerprint', () => {
   });
 });
 
-// ─── Runtime pipeline ───────────────────────────────────────────────────
-describe('Slice 2b — runtime persistence', () => {
+// ─── Runtime pipeline via trusted boundary ──────────────────────────────
+describe('Slice 2b — runtime persistence via trusted boundary', () => {
   it('first invocation persists once and returns replayed=false', async () => {
-    const { client, store, calls } = makeInMemoryRpc();
-    const r = await executeSendCommunication(baseInput(), client);
+    const { transport, store, calls } = makeInMemoryTransport();
+    const r = await executeSendCommunication(baseInput(), transport);
     expect(r.status).toBe('accepted');
     expect(r.replayed).toBe(false);
     expect(r.requestId).toMatch(/[0-9a-f-]{36}/);
@@ -311,35 +365,34 @@ describe('Slice 2b — runtime persistence', () => {
   });
 
   it('identical replay returns the same request and replayed=true', async () => {
-    const { client, store } = makeInMemoryRpc();
-    const a = await executeSendCommunication(baseInput(), client);
-    const b = await executeSendCommunication(baseInput(), client);
+    const { transport, store } = makeInMemoryTransport();
+    const a = await executeSendCommunication(baseInput(), transport);
+    const b = await executeSendCommunication(baseInput(), transport);
     expect(b.requestId).toBe(a.requestId);
     expect(a.replayed).toBe(false);
     expect(b.replayed).toBe(true);
     expect(store.size).toBe(1);
-    // No additional request_accepted event was appended (event_count stays 1).
     const row = Array.from(store.values())[0];
     expect(row.event_count).toBe(1);
   });
 
   it('changed payload with same key returns idempotency_payload_mismatch', async () => {
-    const { client, store } = makeInMemoryRpc();
-    await executeSendCommunication(baseInput(), client);
+    const { transport, store } = makeInMemoryTransport();
+    await executeSendCommunication(baseInput(), transport);
     const b = await executeSendCommunication(
       baseInput({ payload: { claimId: 'DIFFERENT' } }),
-      client,
+      transport,
     );
     expect(b.status).toBe('blocked');
     expect(b.blockers).toContain('idempotency_payload_mismatch');
-    expect(store.size).toBe(1); // original unchanged, no new row
+    expect(store.size).toBe(1);
   });
 
   it('concurrent identical requests → one accepted, one replay', async () => {
-    const { client, store } = makeInMemoryRpc();
+    const { transport, store } = makeInMemoryTransport();
     const [a, b] = await Promise.all([
-      executeSendCommunication(baseInput(), client),
-      executeSendCommunication(baseInput(), client),
+      executeSendCommunication(baseInput(), transport),
+      executeSendCommunication(baseInput(), transport),
     ]);
     expect(a.requestId).toBe(b.requestId);
     expect([a.replayed, b.replayed].sort()).toEqual([false, true]);
@@ -347,27 +400,30 @@ describe('Slice 2b — runtime persistence', () => {
   });
 
   it('concurrent mismatched requests → one accepted, one mismatch', async () => {
-    const { client, store } = makeInMemoryRpc();
+    const { transport, store } = makeInMemoryTransport();
     const [a, b] = await Promise.all([
-      executeSendCommunication(baseInput(), client),
+      executeSendCommunication(baseInput(), transport),
       executeSendCommunication(
         baseInput({ payload: { claimId: 'OTHER' } }),
-        client,
+        transport,
       ),
     ]);
     const outcomes = [a, b];
     const accepted = outcomes.filter((r) => r.status === 'accepted');
-    const blocked = outcomes.filter((r) => r.status === 'blocked');
+    const blockedOut = outcomes.filter((r) => r.status === 'blocked');
     expect(accepted).toHaveLength(1);
-    expect(blocked).toHaveLength(1);
-    expect(blocked[0].blockers).toContain('idempotency_payload_mismatch');
+    expect(blockedOut).toHaveLength(1);
+    expect(blockedOut[0].blockers).toContain('idempotency_payload_mismatch');
     expect(store.size).toBe(1);
   });
 
-  it('invalid input is rejected before the RPC is called', async () => {
-    const { client, calls } = makeInMemoryRpc();
-    const spy = vi.spyOn(client, 'rpc');
-    const r = await executeSendCommunication(baseInput({ mode: 'invalid' as never }), client);
+  it('invalid input is rejected before the transport is called', async () => {
+    const { transport, calls } = makeInMemoryTransport();
+    const spy = vi.spyOn(transport, 'invoke');
+    const r = await executeSendCommunication(
+      baseInput({ mode: 'invalid' as never }),
+      transport,
+    );
     expect(r.status).toBe('blocked');
     expect(r.blockers).toContain('mode_invalid');
     expect(spy).not.toHaveBeenCalled();
@@ -375,37 +431,66 @@ describe('Slice 2b — runtime persistence', () => {
   });
 
   it('missing idempotency key is rejected before persistence', async () => {
-    const { client } = makeInMemoryRpc();
-    const spy = vi.spyOn(client, 'rpc');
-    const r = await executeSendCommunication(baseInput({ idempotencyKey: '' }), client);
+    const { transport } = makeInMemoryTransport();
+    const spy = vi.spyOn(transport, 'invoke');
+    const r = await executeSendCommunication(
+      baseInput({ idempotencyKey: '' }),
+      transport,
+    );
     expect(r.blockers).toContain('idempotency_key_required');
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('runtime result carries runtime_resolution_pending in Slice 2b', async () => {
-    const { client } = makeInMemoryRpc();
-    const r = await executeSendCommunication(baseInput(), client);
+  it('runtime result carries runtime_resolution_pending in Slice 2c-i', async () => {
+    const { transport } = makeInMemoryTransport();
+    const r = await executeSendCommunication(baseInput(), transport);
     expect(r.blockers).toEqual(['runtime_resolution_pending']);
     expect(r.recipients).toEqual([]);
     expect(r.messages).toEqual([]);
   });
 
-  it('maps RPC OC401 to authentication_required', async () => {
-    const client: RuntimeRpcClient = {
-      rpc: async () => ({ data: null, error: { message: 'OC401 authentication_required' } }),
+  it('maps transport 401 to authentication_required', async () => {
+    const transport: RuntimeTransport = {
+      invoke: async () => ({
+        data: null,
+        error: { message: 'unauth', status: 401 },
+      }),
     };
-    const r = await executeSendCommunication(baseInput(), client);
+    const r = await executeSendCommunication(baseInput(), transport);
     expect(r.blockers).toContain('authentication_required');
   });
 
-  it('maps unknown RPC error to runtime_persistence_failed', async () => {
-    const client: RuntimeRpcClient = {
-      rpc: async () => ({ data: null, error: { message: 'boom' } }),
+  it('maps transport 403 to permission_denied', async () => {
+    const transport: RuntimeTransport = {
+      invoke: async () => ({
+        data: null,
+        error: { message: 'no', status: 403 },
+      }),
     };
-    const r = await executeSendCommunication(baseInput(), client);
-    expect(r.blockers).toContain('runtime_persistence_failed');
-    // No SQLSTATE, no stack, no recipient destination leaked.
+    const r = await executeSendCommunication(baseInput(), transport);
+    expect(r.blockers).toContain('permission_denied');
+  });
+
+  it('maps unknown transport error to runtime_transport_failed', async () => {
+    const transport: RuntimeTransport = {
+      invoke: async () => ({
+        data: null,
+        error: { message: 'boom', status: 502 },
+      }),
+    };
+    const r = await executeSendCommunication(baseInput(), transport);
+    expect(r.blockers).toContain('runtime_transport_failed');
     expect(r.blockers.join(' ')).not.toMatch(/boom|@example|SQLSTATE/);
+  });
+
+  it('transport throw is shielded as runtime_transport_failed', async () => {
+    const transport: RuntimeTransport = {
+      invoke: async () => {
+        throw new Error('network dead');
+      },
+    };
+    const r = await executeSendCommunication(baseInput(), transport);
+    expect(r.blockers).toEqual(['runtime_transport_failed']);
   });
 });
 
@@ -413,7 +498,10 @@ describe('Slice 2b — runtime persistence', () => {
 describe('Slice 2b — no provider surface', () => {
   it('runtime module does not import provider SDKs', () => {
     const src = readFileSync(
-      resolve(process.cwd(), 'src/platform/omni-comms/runtime/sendCommunicationRuntime.ts'),
+      resolve(
+        process.cwd(),
+        'src/platform/omni-comms/runtime/sendCommunicationRuntime.ts',
+      ),
       'utf8',
     );
     expect(src).not.toMatch(
@@ -423,7 +511,10 @@ describe('Slice 2b — no provider surface', () => {
 
   it('runtime does not create dispatch jobs or delivery attempts', () => {
     const src = readFileSync(
-      resolve(process.cwd(), 'src/platform/omni-comms/runtime/sendCommunicationRuntime.ts'),
+      resolve(
+        process.cwd(),
+        'src/platform/omni-comms/runtime/sendCommunicationRuntime.ts',
+      ),
       'utf8',
     );
     expect(src).not.toMatch(/omni_comms_dispatch_job/);
