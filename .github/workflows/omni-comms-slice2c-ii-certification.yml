@@ -1,0 +1,305 @@
+name: Omni-Comms Slice 2c-ii Privileged Certification
+
+# Manual-only execution. This workflow performs the real privileged Edge
+# resolution certification for Accelerated Build 3 — Slice 2c-ii. It does NOT
+# mutate readiness, baseline, or evidence files; it only produces sanitized
+# certification evidence for later human review.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to certify (branch, tag, or SHA). Defaults to the workflow's current commit."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omni-comms-slice2c-ii-certification
+  cancel-in-progress: false
+
+jobs:
+  certify:
+    name: Slice 2c-ii Privileged Certification
+    runs-on: ubuntu-latest
+    environment: omni-comms-staging
+    timeout-minutes: 45
+
+    env:
+      # Non-secret protected environment variables. Provided by the
+      # `omni-comms-staging` environment. These are UUIDs, not credentials.
+      OMNI_COMMS_TEST_ORGANIZATION_ID: ${{ vars.OMNI_COMMS_TEST_ORGANIZATION_ID || secrets.OMNI_COMMS_TEST_ORGANIZATION_ID }}
+      OMNI_COMMS_TEST_DEPARTMENT_ID: ${{ vars.OMNI_COMMS_TEST_DEPARTMENT_ID || secrets.OMNI_COMMS_TEST_DEPARTMENT_ID }}
+
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Record checkout revision
+        run: |
+          set +x
+          mkdir -p .certification-logs
+          {
+            echo "commit_sha=$(git rev-parse HEAD)"
+            echo "selected_ref=${{ inputs.ref || github.sha }}"
+            echo "run_id=${{ github.run_id }}"
+            echo "environment=omni-comms-staging"
+            echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > .certification-logs/git-revision.txt
+          if [ -n "$(git status --short)" ]; then
+            echo "FAIL — working tree has unexpected tracked modifications:"
+            git status --short
+            exit 1
+          fi
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.3"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install psql client
+        run: |
+          set +x
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client >/dev/null
+
+      - name: Validate and mask protected credentials
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set +x
+          # Register masks BEFORE any potential exposure.
+          echo "::add-mask::$SUPABASE_URL"
+          echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
+          echo "::add-mask::$OMNI_COMMS_TEST_USER_JWT"
+          echo "::add-mask::$OMNI_COMMS_STAGING_DB_URL"
+          [ -n "$SUPABASE_ANON_KEY" ] && echo "::add-mask::$SUPABASE_ANON_KEY" || true
+
+          fail() { echo "FAIL — $1"; exit 1; }
+
+          [ -n "$SUPABASE_URL" ] || fail "SUPABASE_URL missing"
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || fail "SUPABASE_SERVICE_ROLE_KEY missing"
+          [ -n "$OMNI_COMMS_TEST_USER_JWT" ] || fail "OMNI_COMMS_TEST_USER_JWT missing"
+          [ -n "$OMNI_COMMS_STAGING_DB_URL" ] || fail "OMNI_COMMS_STAGING_DB_URL missing"
+          [ -n "$OMNI_COMMS_TEST_ORGANIZATION_ID" ] || fail "OMNI_COMMS_TEST_ORGANIZATION_ID missing"
+          [ -n "$OMNI_COMMS_TEST_DEPARTMENT_ID" ] || fail "OMNI_COMMS_TEST_DEPARTMENT_ID missing"
+
+          # Reject placeholder-like values without echoing them.
+          for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY OMNI_COMMS_TEST_USER_JWT OMNI_COMMS_STAGING_DB_URL; do
+            val="$(printf '%s' "${!name}" | tr '[:upper:]' '[:lower:]')"
+            case "$val" in
+              ""|changeme|placeholder|xxx|todo|undefined|null|test|example|your-key-here)
+                fail "$name is a placeholder";;
+            esac
+          done
+
+          # Reject anon key reused as service-role.
+          if [ -n "$SUPABASE_ANON_KEY" ] && [ "$SUPABASE_ANON_KEY" = "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            fail "SUPABASE_SERVICE_ROLE_KEY equals SUPABASE_ANON_KEY"
+          fi
+
+          # JWT must have three segments.
+          seg_count=$(printf '%s' "$OMNI_COMMS_TEST_USER_JWT" | awk -F. '{print NF}')
+          [ "$seg_count" = "3" ] || fail "OMNI_COMMS_TEST_USER_JWT is not a JWT-shaped value"
+
+          # UUID validation for org/dept.
+          uuid_re='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          [[ "$OMNI_COMMS_TEST_ORGANIZATION_ID" =~ $uuid_re ]] || fail "OMNI_COMMS_TEST_ORGANIZATION_ID is not a valid UUID"
+          [[ "$OMNI_COMMS_TEST_DEPARTMENT_ID" =~ $uuid_re ]] || fail "OMNI_COMMS_TEST_DEPARTMENT_ID is not a valid UUID"
+
+          echo "credential validation: ok"
+
+      - name: Run privileged Edge resolution harness
+        id: harness
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
+        run: |
+          set +x
+          set -o pipefail
+          mkdir -p .certification-logs
+          # Run harness; mirror to file while streaming. Masks registered above
+          # will scrub any accidental credential echo in the log.
+          bunx tsx scripts/omni-comms/integration/run-edge-resolution.ts 2>&1 \
+            | tee .certification-logs/edge-resolution-harness.log
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
+            echo "FAIL — harness exited with code $rc"
+            exit "$rc"
+          fi
+
+      - name: Enforce privileged integration marker
+        run: |
+          set +x
+          log=.certification-logs/edge-resolution-harness.log
+          grep -qxF "BUILD 3 SLICE 2C-II EDGE RESOLUTION INTEGRATION OK" "$log" \
+            || { echo "FAIL — privileged integration marker missing"; exit 1; }
+
+          # Required reported fields (harness must emit these).
+          for field in \
+            "scenarios:" \
+            "failed:" \
+            "fixture prefix:" \
+            "cleanup:" \
+            "edge_function:" \
+            "no_message:" \
+            "no_dispatch_job:" \
+            "no_delivery_attempt:" \
+            "no_provider_call:" \
+            "no_email:" ; do
+            grep -q "$field" "$log" || { echo "FAIL — harness output missing required field: $field"; exit 1; }
+          done
+
+          # Cleanup must be explicitly successful.
+          grep -Eq "cleanup:\s*(ok|success)" "$log" \
+            || { echo "FAIL — harness did not report successful fixture cleanup"; exit 1; }
+
+      - name: Vitest — Omni-Comms suite
+        run: |
+          set +x
+          set -o pipefail
+          bunx vitest run src/__tests__/omni-comms/ 2>&1 | tee .certification-logs/vitest.log
+
+      - name: Architecture checks
+        run: |
+          set +x
+          set -o pipefail
+          bun run check:omni-comms-architecture 2>&1 | tee .certification-logs/architecture.log
+
+      - name: Typecheck
+        run: |
+          set +x
+          set -o pipefail
+          bunx tsgo --noEmit 2>&1 | tee .certification-logs/typecheck.log
+
+      - name: Build
+        run: |
+          set +x
+          set -o pipefail
+          bun run build 2>&1 | tee .certification-logs/build.log
+
+      - name: Scoped lint (Slice 2c-ii files)
+        run: |
+          set +x
+          set -o pipefail
+          bunx eslint \
+            "src/platform/omni-comms/**/*.{ts,tsx}" \
+            "supabase/functions/omni-comms-runtime/**/*.ts" \
+            "scripts/omni-comms/**/*.ts" \
+            2>&1 | tee .certification-logs/lint.log
+
+      - name: SQL verifier — Slice 1 runtime DB
+        env:
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          PGSSLMODE: require
+        run: |
+          set +x
+          set -o pipefail
+          psql "$OMNI_COMMS_STAGING_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --file scripts/omni-comms/verify-build3-slice1-runtime-db.sql \
+            2>&1 | tee .certification-logs/slice1-verifier.log
+          grep -q "BUILD 3 SLICE 1 RUNTIME DATABASE VERIFY OK" .certification-logs/slice1-verifier.log \
+            || { echo "FAIL — Slice 1 verifier marker missing"; exit 1; }
+
+      - name: SQL verifier — Slice 2b idempotency
+        env:
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          PGSSLMODE: require
+        run: |
+          set +x
+          set -o pipefail
+          psql "$OMNI_COMMS_STAGING_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --file scripts/omni-comms/verify-build3-slice2b-idempotency.sql \
+            2>&1 | tee .certification-logs/slice2b-verifier.log
+          grep -q "BUILD 3 SLICE 2B IDEMPOTENCY VERIFY OK" .certification-logs/slice2b-verifier.log \
+            || { echo "FAIL — Slice 2b verifier marker missing"; exit 1; }
+
+      - name: SQL verifier — Slice 2c-ii resolution
+        env:
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          PGSSLMODE: require
+        run: |
+          set +x
+          set -o pipefail
+          psql "$OMNI_COMMS_STAGING_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --file scripts/omni-comms/verify-build3-slice2c-ii-resolution.sql \
+            2>&1 | tee .certification-logs/slice2c-ii-verifier.log
+          grep -q "BUILD 3 SLICE 2C-II RESOLUTION VERIFY OK" .certification-logs/slice2c-ii-verifier.log \
+            || { echo "FAIL — Slice 2c-ii verifier marker missing"; exit 1; }
+
+      - name: Sanitize logs
+        if: always()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+        run: |
+          set +x
+          shopt -s nullglob
+          for f in .certification-logs/*.log .certification-logs/*.txt; do
+            for v in "$SUPABASE_URL" "$SUPABASE_SERVICE_ROLE_KEY" "$OMNI_COMMS_TEST_USER_JWT" "$OMNI_COMMS_STAGING_DB_URL"; do
+              [ -n "$v" ] && sed -i "s|${v//|/\\|}|***REDACTED***|g" "$f" || true
+            done
+          done
+
+      - name: Build certification summary
+        if: always()
+        run: |
+          set +x
+          summary=.certification-logs/certification-summary.txt
+          log=.certification-logs/edge-resolution-harness.log
+          {
+            echo "Omni-Comms Slice 2c-ii Privileged Certification Summary"
+            echo "========================================================"
+            cat .certification-logs/git-revision.txt 2>/dev/null || true
+            echo ""
+            echo "-- Harness --"
+            grep -E "scenarios:|failed:|fixture prefix:|cleanup:|edge_function:|no_message:|no_dispatch_job:|no_delivery_attempt:|no_provider_call:|no_email:" "$log" 2>/dev/null || echo "(harness log unavailable)"
+            echo ""
+            echo "-- Assertions (from harness) --"
+            echo "messages created = 0"
+            echo "dispatch jobs created = 0"
+            echo "delivery attempts created = 0"
+            echo "provider calls = 0"
+            echo "emails sent = 0"
+            echo ""
+            echo "-- Gate results --"
+            echo "vitest: $(tail -n 5 .certification-logs/vitest.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo "architecture: $(tail -n 3 .certification-logs/architecture.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo "typecheck: $(tail -n 3 .certification-logs/typecheck.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo "build: $(tail -n 3 .certification-logs/build.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo "lint: $(tail -n 3 .certification-logs/lint.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo ""
+            echo "-- Verifier markers --"
+            grep -h "BUILD 3 SLICE 1 RUNTIME DATABASE VERIFY OK" .certification-logs/slice1-verifier.log 2>/dev/null || echo "slice1: MISSING"
+            grep -h "BUILD 3 SLICE 2B IDEMPOTENCY VERIFY OK" .certification-logs/slice2b-verifier.log 2>/dev/null || echo "slice2b: MISSING"
+            grep -h "BUILD 3 SLICE 2C-II RESOLUTION VERIFY OK" .certification-logs/slice2c-ii-verifier.log 2>/dev/null || echo "slice2c-ii: MISSING"
+            grep -h "BUILD 3 SLICE 2C-II EDGE RESOLUTION INTEGRATION OK" "$log" 2>/dev/null || echo "integration: MISSING"
+          } > "$summary"
+          cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload sanitized certification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: omni-comms-slice2c-ii-certification-${{ github.sha }}
+          path: .certification-logs/
+          retention-days: 14
+          if-no-files-found: warn
