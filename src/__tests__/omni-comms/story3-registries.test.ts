@@ -177,7 +177,10 @@ describe('Omni-Comms Story 3 — no runtime implementation was created', () => {
       const dirs = readdirSync(functionsDir).filter((d) =>
         statSync(path.join(functionsDir, d)).isDirectory(),
       );
-      expect(dirs.filter((d) => d.startsWith('omni-comms-'))).toEqual([]);
+      // Slice 2c-i introduced the trusted server boundary as the only
+      // physical omni-comms-* edge function. Any additional directory would
+      // violate Story 3 invariants.
+      expect(dirs.filter((d) => d.startsWith('omni-comms-'))).toEqual(['omni-comms-runtime']);
     }
   });
 
