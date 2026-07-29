@@ -75,8 +75,8 @@ describe('Slice 2c-ii Batch B — resolver package layout', () => {
       'recipient_destination_invalid',
       'template_family_unresolved',
       'layout_unresolved',
-      'asset_required_missing',
-      'sender_binding_unresolved',
+      'asset_slot_unresolved',
+      'sender_provider_binding_unresolved',
     ]) {
       expect(src).toContain(code);
     }
