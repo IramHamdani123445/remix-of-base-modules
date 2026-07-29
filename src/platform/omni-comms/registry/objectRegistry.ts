@@ -126,7 +126,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 6,
     writeAuthority: 'service_role_only',
     purpose: 'One row per sendCommunication() invocation with idempotency key.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Accelerated Build 3 — Slice 1',
   },
   {
     name: 'omni_comms_recipient',
@@ -134,7 +135,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 6,
     writeAuthority: 'service_role_only',
     purpose: 'Resolved recipient(s) for a request, with channel eligibility snapshot.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Accelerated Build 3 — Slice 1',
   },
   {
     name: 'omni_comms_message',
@@ -142,7 +144,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 6,
     writeAuthority: 'service_role_only',
     purpose: 'Per-recipient per-channel rendered message record.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Accelerated Build 3 — Slice 1',
   },
   {
     name: 'omni_comms_dispatch_job',
@@ -150,7 +153,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 6,
     writeAuthority: 'service_role_only',
     purpose: 'Queue-visible dispatch job coordinating provider send attempts.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Accelerated Build 3 — Slice 1',
   },
   {
     name: 'omni_comms_delivery_attempt',
@@ -158,7 +162,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 6,
     writeAuthority: 'service_role_only',
     purpose: 'One row per provider attempt with response code and latency.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Accelerated Build 3 — Slice 1',
   },
   {
     name: 'omni_comms_message_event',
@@ -166,7 +171,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 6,
     writeAuthority: 'service_role_only',
     purpose: 'Lifecycle events for a message (queued, sent, delivered, opened, failed).',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Accelerated Build 3 — Slice 1',
   },
   {
     name: 'omni_comms_webhook_event',
