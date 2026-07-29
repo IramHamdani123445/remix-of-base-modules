@@ -82,7 +82,7 @@ export interface IntegrationRegistryEntry {
   /** Whether the integration is a new Omni-Comms asset or a shared/reused one. */
   ownership: 'omni_comms' | 'shared_platform';
   purpose: string;
-  status: 'Reserved' | 'Reused';
+  status: 'Reserved' | 'Reused' | 'Available';
 }
 
 export type QueueDeliveryClass =
