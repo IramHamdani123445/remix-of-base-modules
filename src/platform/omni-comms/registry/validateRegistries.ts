@@ -88,8 +88,8 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
     if (i.kind === 'edge_function' && !i.name.startsWith(EDGE_PREFIX)) {
       errors.push(`Edge function ${i.name} missing ${EDGE_PREFIX} prefix.`);
     }
-    if (i.ownership === 'omni_comms' && i.status !== 'Reserved') {
-      errors.push(`Omni-Comms integration ${i.name} must be Reserved.`);
+    if (i.ownership === 'omni_comms' && i.status !== 'Reserved' && i.status !== 'Available') {
+      errors.push(`Omni-Comms integration ${i.name} must be Reserved or Available.`);
     }
     if (i.ownership === 'shared_platform' && i.status !== 'Reused') {
       errors.push(`Shared platform integration ${i.name} must be Reused.`);
