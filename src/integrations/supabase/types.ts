@@ -101787,6 +101787,68 @@ export type Database = {
         Args: { p_stage: string }
         Returns: string
       }
+      omni_comms_binding_activate: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
+      omni_comms_binding_record_verification: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_status: string
+        }
+        Returns: string
+      }
+      omni_comms_binding_upsert_draft: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_external_sender_ref: string
+          p_id: string
+          p_priority: number
+          p_provider_account_id: string
+          p_sender_identity_id: string
+        }
+        Returns: string
+      }
+      omni_comms_channel_setting_upsert: {
+        Args: {
+          p_channel: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_enabled: boolean
+          p_expected_updated_at: string
+          p_id: string
+          p_live_delivery_enabled: boolean
+          p_organization_id: string
+          p_per_minute_limit: number
+          p_quiet_hours_end: string
+          p_quiet_hours_start: string
+          p_quiet_hours_timezone: string
+        }
+        Returns: string
+      }
+      omni_comms_email_config_summary: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_email_provider_activate: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
+      omni_comms_email_provider_ensure: {
+        Args: { p_correlation_id?: string }
+        Returns: string
+      }
       omni_comms_event_contract_create: {
         Args: {
           p_correlation_id: string
@@ -101975,6 +102037,7 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_priv_email_provider_id: { Args: never; Returns: string }
       omni_comms_priv_escape_ilike: {
         Args: { p_input: string }
         Returns: string
@@ -102028,6 +102091,19 @@ export type Database = {
         }
         Returns: undefined
       }
+      omni_comms_priv_write_channel_audit: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_after: Json
+          p_before: Json
+          p_correlation_id: string
+          p_entity_display: string
+          p_entity_id: string
+          p_entity_type: string
+        }
+        Returns: undefined
+      }
       omni_comms_priv_write_lifecycle_audit: {
         Args: {
           p_action: string
@@ -102057,6 +102133,37 @@ export type Database = {
         }
         Returns: undefined
       }
+      omni_comms_provider_account_activate: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
+      omni_comms_provider_account_record_credential_check: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_result: string
+        }
+        Returns: string
+      }
+      omni_comms_provider_account_upsert_draft: {
+        Args: {
+          p_code: string
+          p_correlation_id?: string
+          p_display_name: string
+          p_expected_updated_at: string
+          p_id: string
+          p_organization_id: string
+          p_region: string
+          p_sandbox_mode: boolean
+          p_secret_ref: string
+        }
+        Returns: string
+      }
       omni_comms_resolve_render_manifest: {
         Args: {
           p_department_id?: string
@@ -102064,6 +102171,30 @@ export type Database = {
           p_template_version_id: string
         }
         Returns: Json
+      }
+      omni_comms_sender_identity_activate: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
+      omni_comms_sender_identity_upsert_draft: {
+        Args: {
+          p_code: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_display_name: string
+          p_event_definition_id: string
+          p_expected_updated_at: string
+          p_from_address: string
+          p_from_name: string
+          p_id: string
+          p_organization_id: string
+          p_reply_to_address: string
+        }
+        Returns: string
       }
       omni_comms_template_family_activate: {
         Args: { p_correlation_id: string; p_id: string; p_reason: string }
