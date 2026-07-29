@@ -121,6 +121,18 @@ async def main():
 
         await restore_session(context, page)
 
+        # Warm-up: first navigation after localStorage.setItem races against
+        # early boot-time fetches (SecurityPolicy config, themes, roles) that
+        # fire before the Supabase JS client rehydrates. Do an unmeasured
+        # pre-visit to let the session settle, then wait until dashboard-ish
+        # bootstrap has quiesced.
+        await page.goto(BASE + ROUTES[0][1], wait_until="domcontentloaded")
+        try:
+            await page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception:
+            pass
+        await page.wait_for_timeout(500)
+
         console_errors, bad_responses = {}, {}
         results = []
         for slug, path, heading in ROUTES:
