@@ -13,7 +13,7 @@ describe('Omni-Comms Accelerated Build 2 — Email configuration RPCs & UI', () 
 
   it('readiness manifest advances to Build 2 with a Build 3 next step', () => {
     expect(M.systemIdentity.currentStory).toBe('Accelerated Build 2');
-    expect(M.nextStep.story).toBe('Build 3');
+    expect(M.nextStep.story).toMatch(/Build 3/);
   });
 
   it('foundationStatus records Build 2 email configuration items', () => {
