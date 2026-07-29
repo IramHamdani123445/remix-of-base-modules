@@ -155,8 +155,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 4',
-    currentStory: 'Accelerated Build 2',
+    currentStory: 'Accelerated Build 3 — Slice 1',
     overallStatus: 'In progress',
+
 
   },
 
@@ -307,9 +308,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Accelerated Build 3',
+    story: 'Accelerated Build 3 — Slice 2',
     title:
-      'Channel-neutral runtime and sendCommunication() vertical slice (post UI stabilization)',
+      'Runtime service, sendCommunication(), idempotency, read RPCs and synthetic vertical slice',
     informationalOnly: true,
   },
 };

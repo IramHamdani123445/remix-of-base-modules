@@ -81094,6 +81094,194 @@ export type Database = {
           },
         ]
       }
+      omni_comms_delivery_attempt: {
+        Row: {
+          attempt_number: number
+          completed_at: string | null
+          created_at: string
+          dispatch_job_id: string
+          failure_category: string | null
+          id: string
+          is_retriable: boolean | null
+          latency_ms: number | null
+          message_id: string
+          organization_id: string
+          provider_account_id: string | null
+          provider_id: string | null
+          provider_message_id: string | null
+          response_category: string | null
+          response_code: string | null
+          safe_request_metadata: Json
+          safe_response_metadata: Json
+          started_at: string
+          status: string
+        }
+        Insert: {
+          attempt_number: number
+          completed_at?: string | null
+          created_at?: string
+          dispatch_job_id: string
+          failure_category?: string | null
+          id?: string
+          is_retriable?: boolean | null
+          latency_ms?: number | null
+          message_id: string
+          organization_id: string
+          provider_account_id?: string | null
+          provider_id?: string | null
+          provider_message_id?: string | null
+          response_category?: string | null
+          response_code?: string | null
+          safe_request_metadata?: Json
+          safe_response_metadata?: Json
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          attempt_number?: number
+          completed_at?: string | null
+          created_at?: string
+          dispatch_job_id?: string
+          failure_category?: string | null
+          id?: string
+          is_retriable?: boolean | null
+          latency_ms?: number | null
+          message_id?: string
+          organization_id?: string
+          provider_account_id?: string | null
+          provider_id?: string | null
+          provider_message_id?: string | null
+          response_category?: string | null
+          response_code?: string | null
+          safe_request_metadata?: Json
+          safe_response_metadata?: Json
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_delivery_attempt_dispatch_job_id_fkey"
+            columns: ["dispatch_job_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_dispatch_job"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_delivery_attempt_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_delivery_attempt_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_delivery_attempt_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_dispatch_job: {
+        Row: {
+          attempt_count: number
+          cancelled_at: string | null
+          channel: string
+          completed_at: string | null
+          correlation_id: string | null
+          created_at: string
+          hold_reason: string | null
+          id: string
+          is_runnable: boolean
+          lease_expires_at: string | null
+          lock_token: string | null
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          message_id: string
+          mode: string
+          next_attempt_at: string | null
+          organization_id: string
+          priority: number
+          request_id: string
+          scheduled_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          cancelled_at?: string | null
+          channel: string
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          hold_reason?: string | null
+          id?: string
+          is_runnable?: boolean
+          lease_expires_at?: string | null
+          lock_token?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          message_id: string
+          mode: string
+          next_attempt_at?: string | null
+          organization_id: string
+          priority?: number
+          request_id: string
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          cancelled_at?: string | null
+          channel?: string
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          hold_reason?: string | null
+          id?: string
+          is_runnable?: boolean
+          lease_expires_at?: string | null
+          lock_token?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          message_id?: string
+          mode?: string
+          next_attempt_at?: string | null
+          organization_id?: string
+          priority?: number
+          request_id?: string
+          scheduled_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_dispatch_job_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_dispatch_job_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_request"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_event_contract: {
         Row: {
           checksum: string | null
@@ -81203,6 +81391,335 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      omni_comms_event_route: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          event_definition_id: string
+          id: string
+          is_enabled: boolean
+          is_required: boolean
+          lifecycle_state: string
+          organization_id: string
+          preference_policy: string
+          priority: number
+          retired_at: string | null
+          retired_by: string | null
+          sender_identity_id: string | null
+          sender_resolution_policy: string
+          template_family_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          event_definition_id: string
+          id?: string
+          is_enabled?: boolean
+          is_required?: boolean
+          lifecycle_state?: string
+          organization_id: string
+          preference_policy?: string
+          priority?: number
+          retired_at?: string | null
+          retired_by?: string | null
+          sender_identity_id?: string | null
+          sender_resolution_policy?: string
+          template_family_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          event_definition_id?: string
+          id?: string
+          is_enabled?: boolean
+          is_required?: boolean
+          lifecycle_state?: string
+          organization_id?: string
+          preference_policy?: string
+          priority?: number
+          retired_at?: string | null
+          retired_by?: string | null
+          sender_identity_id?: string | null
+          sender_resolution_policy?: string
+          template_family_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_event_route_event_definition_id_fkey"
+            columns: ["event_definition_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_event_definition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_event_route_sender_identity_id_fkey"
+            columns: ["sender_identity_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_sender_identity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_event_route_template_family_id_fkey"
+            columns: ["template_family_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_template_family"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_message: {
+        Row: {
+          blockers: Json
+          channel: string
+          channel_setting_snapshot: Json
+          completed_at: string | null
+          created_at: string
+          department_id: string | null
+          destination_snapshot: Json
+          event_definition_id: string
+          event_route_id: string | null
+          failed_at: string | null
+          id: string
+          layout_id: string | null
+          layout_version_id: string | null
+          organization_id: string
+          provider_account_id: string | null
+          provider_id: string | null
+          queued_at: string | null
+          recipient_id: string
+          rendered_at: string | null
+          rendered_checksum: string | null
+          rendered_html: string | null
+          rendered_subject: string | null
+          rendered_text: string | null
+          request_id: string
+          resolved_asset_manifest: Json
+          sender_identity_id: string | null
+          status: string
+          template_family_id: string | null
+          template_version_id: string | null
+          unresolved_required_slots: Json
+          unresolved_tokens: Json
+          updated_at: string
+        }
+        Insert: {
+          blockers?: Json
+          channel: string
+          channel_setting_snapshot?: Json
+          completed_at?: string | null
+          created_at?: string
+          department_id?: string | null
+          destination_snapshot?: Json
+          event_definition_id: string
+          event_route_id?: string | null
+          failed_at?: string | null
+          id?: string
+          layout_id?: string | null
+          layout_version_id?: string | null
+          organization_id: string
+          provider_account_id?: string | null
+          provider_id?: string | null
+          queued_at?: string | null
+          recipient_id: string
+          rendered_at?: string | null
+          rendered_checksum?: string | null
+          rendered_html?: string | null
+          rendered_subject?: string | null
+          rendered_text?: string | null
+          request_id: string
+          resolved_asset_manifest?: Json
+          sender_identity_id?: string | null
+          status?: string
+          template_family_id?: string | null
+          template_version_id?: string | null
+          unresolved_required_slots?: Json
+          unresolved_tokens?: Json
+          updated_at?: string
+        }
+        Update: {
+          blockers?: Json
+          channel?: string
+          channel_setting_snapshot?: Json
+          completed_at?: string | null
+          created_at?: string
+          department_id?: string | null
+          destination_snapshot?: Json
+          event_definition_id?: string
+          event_route_id?: string | null
+          failed_at?: string | null
+          id?: string
+          layout_id?: string | null
+          layout_version_id?: string | null
+          organization_id?: string
+          provider_account_id?: string | null
+          provider_id?: string | null
+          queued_at?: string | null
+          recipient_id?: string
+          rendered_at?: string | null
+          rendered_checksum?: string | null
+          rendered_html?: string | null
+          rendered_subject?: string | null
+          rendered_text?: string | null
+          request_id?: string
+          resolved_asset_manifest?: Json
+          sender_identity_id?: string | null
+          status?: string
+          template_family_id?: string | null
+          template_version_id?: string | null
+          unresolved_required_slots?: Json
+          unresolved_tokens?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_message_event_definition_id_fkey"
+            columns: ["event_definition_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_event_definition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_event_route_id_fkey"
+            columns: ["event_route_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_event_route"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_recipient"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_request"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_sender_identity_id_fkey"
+            columns: ["sender_identity_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_sender_identity"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_template_family_id_fkey"
+            columns: ["template_family_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_template_family"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_template_version_id_fkey"
+            columns: ["template_version_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_template_version"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_message_event: {
+        Row: {
+          actor_id: string | null
+          actor_type: string | null
+          correlation_id: string | null
+          created_at: string
+          event_sequence: number
+          event_type: string
+          id: string
+          message_id: string | null
+          organization_id: string
+          request_id: string
+          safe_metadata: Json
+          status_after: string | null
+          status_before: string | null
+          summary: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_type?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          event_sequence: number
+          event_type: string
+          id?: string
+          message_id?: string | null
+          organization_id: string
+          request_id: string
+          safe_metadata?: Json
+          status_after?: string | null
+          status_before?: string | null
+          summary?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_type?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          event_sequence?: number
+          event_type?: string
+          id?: string
+          message_id?: string | null
+          organization_id?: string
+          request_id?: string
+          safe_metadata?: Json
+          status_after?: string | null
+          status_before?: string | null
+          summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_message_event_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_event_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_request"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       omni_comms_provider: {
         Row: {
@@ -81338,6 +81855,157 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_recipient: {
+        Row: {
+          blockers: Json
+          created_at: string
+          destination_snapshot: Json
+          display_name: string | null
+          eligibility_status: string
+          email_destination: string | null
+          id: string
+          locale: string | null
+          organization_id: string
+          phone_destination: string | null
+          push_destination: string | null
+          recipient_reference: string | null
+          recipient_type: string
+          request_id: string
+          resolution_snapshot: Json
+          resolved_channels: string[]
+          updated_at: string
+        }
+        Insert: {
+          blockers?: Json
+          created_at?: string
+          destination_snapshot?: Json
+          display_name?: string | null
+          eligibility_status?: string
+          email_destination?: string | null
+          id?: string
+          locale?: string | null
+          organization_id: string
+          phone_destination?: string | null
+          push_destination?: string | null
+          recipient_reference?: string | null
+          recipient_type: string
+          request_id: string
+          resolution_snapshot?: Json
+          resolved_channels?: string[]
+          updated_at?: string
+        }
+        Update: {
+          blockers?: Json
+          created_at?: string
+          destination_snapshot?: Json
+          display_name?: string | null
+          eligibility_status?: string
+          email_destination?: string | null
+          id?: string
+          locale?: string | null
+          organization_id?: string
+          phone_destination?: string | null
+          push_destination?: string | null
+          recipient_reference?: string | null
+          recipient_type?: string
+          request_id?: string
+          resolution_snapshot?: Json
+          resolved_channels?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_recipient_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_request"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_request: {
+        Row: {
+          accepted_at: string | null
+          blockers: Json
+          caller_entity_id: string | null
+          caller_entity_type: string | null
+          caller_module_code: string
+          completed_at: string | null
+          correlation_id: string | null
+          created_at: string
+          department_id: string | null
+          event_definition_id: string
+          failed_at: string | null
+          id: string
+          idempotency_key: string
+          idempotency_scope: string
+          mode: string
+          organization_id: string
+          payload_snapshot: Json
+          request_fingerprint: string
+          requested_by: string | null
+          requested_channels: string[]
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          blockers?: Json
+          caller_entity_id?: string | null
+          caller_entity_type?: string | null
+          caller_module_code: string
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          event_definition_id: string
+          failed_at?: string | null
+          id?: string
+          idempotency_key: string
+          idempotency_scope?: string
+          mode: string
+          organization_id: string
+          payload_snapshot: Json
+          request_fingerprint: string
+          requested_by?: string | null
+          requested_channels: string[]
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          blockers?: Json
+          caller_entity_id?: string | null
+          caller_entity_type?: string | null
+          caller_module_code?: string
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          event_definition_id?: string
+          failed_at?: string | null
+          id?: string
+          idempotency_key?: string
+          idempotency_scope?: string
+          mode?: string
+          organization_id?: string
+          payload_snapshot?: Json
+          request_fingerprint?: string
+          requested_by?: string | null
+          requested_channels?: string[]
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_request_event_definition_id_fkey"
+            columns: ["event_definition_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_event_definition"
             referencedColumns: ["id"]
           },
         ]
@@ -102061,6 +102729,19 @@ export type Database = {
       omni_comms_priv_require_capability: {
         Args: { p_action: string }
         Returns: string
+      }
+      omni_comms_priv_require_json_object: {
+        Args: { p_max_bytes: number; p_value: Json }
+        Returns: undefined
+      }
+      omni_comms_priv_slice1_verify: { Args: never; Returns: string }
+      omni_comms_priv_validate_channel: {
+        Args: { p_channel: string }
+        Returns: undefined
+      }
+      omni_comms_priv_validate_channel_array: {
+        Args: { p_channels: string[] }
+        Returns: undefined
       }
       omni_comms_priv_validate_channel_content: {
         Args: { p_channel: string; p_content: Json }

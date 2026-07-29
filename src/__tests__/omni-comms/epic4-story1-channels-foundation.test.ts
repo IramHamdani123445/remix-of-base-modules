@@ -25,14 +25,9 @@ describe('Epic 4 — Story 1: Provider/Sender/Channel foundation', () => {
     }
   });
 
-  it('unrelated registry entries did not change state', () => {
-    const eventRoute = OMNI_COMMS_OBJECT_REGISTRY.find((e) => e.name === 'omni_comms_event_route');
-    expect(eventRoute?.status).toBe('PLANNED');
+  it('preference registry entry remains PLANNED (advanced independently by later stories)', () => {
     const preference = OMNI_COMMS_OBJECT_REGISTRY.find((e) => e.name === 'omni_comms_preference');
     expect(preference?.status).toBe('PLANNED');
-    // Runtime tables remain planned.
-    const runtimePlanned = OMNI_COMMS_OBJECT_REGISTRY.filter((e) => e.category === 'runtime');
-    expect(runtimePlanned.every((e) => e.status === 'PLANNED')).toBe(true);
   });
 
   it('readiness manifest is on Epic 4 (Story pointer advanced by later builds)', () => {
