@@ -34,13 +34,13 @@ describe('Build 3 Slice 1 — object registry', () => {
 
 describe('Build 3 Slice 1 — readiness manifest pointer', () => {
   it('advances the manifest to Slice 1', () => {
-    expect(OMNI_COMMS_READINESS_MANIFEST.currentStory).toBe(
+    expect(OMNI_COMMS_READINESS_MANIFEST.systemIdentity.currentStory).toBe(
       'Accelerated Build 3 — Slice 1',
     );
   });
 
   it('sets next step to Slice 2', () => {
-    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep?.story).toBe(
+    expect(OMNI_COMMS_READINESS_MANIFEST.nextStep.story).toBe(
       'Accelerated Build 3 — Slice 2',
     );
   });
