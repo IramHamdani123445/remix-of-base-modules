@@ -116,24 +116,24 @@ BEGIN
   RAISE NOTICE 'Slice 2b auth-guard fixture passed';
 END $$;
 
--- Confirm no Slice-2b provider function, worker, edge integration or
--- new runtime table was introduced.
+-- Confirm the Slice 2b RPC's body does NOT touch dispatch/message/attempt tables.
 DO $$
 DECLARE
-  v_count int;
+  v_src text;
 BEGIN
-  SELECT count(*) INTO v_count
-  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public'
-    AND p.proname ILIKE 'omni_comms_%provider%send%';
-  ASSERT v_count = 0, 'unexpected Slice 2b provider-send function present';
-
-  -- Confirm no accidental writer function that could bypass the RPC.
-  SELECT count(*) INTO v_count
-  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public'
-    AND p.proname ILIKE 'omni_comms_%dispatch%';
-  ASSERT v_count = 0, 'unexpected dispatch function present in Slice 2b';
+  SELECT prosrc INTO v_src
+  FROM pg_proc
+  WHERE oid = 'public.omni_comms_priv_send_communication(uuid,uuid,text,text,text,text,text,text,text,text,jsonb,text[])'::regprocedure;
+  IF v_src ILIKE '%omni_comms_dispatch_job%' THEN
+    RAISE EXCEPTION 'Slice 2b RPC must not touch omni_comms_dispatch_job';
+  END IF;
+  IF v_src ILIKE '%omni_comms_delivery_attempt%' THEN
+    RAISE EXCEPTION 'Slice 2b RPC must not touch omni_comms_delivery_attempt';
+  END IF;
+  IF v_src ~* '\yomni_comms_message\y' THEN
+    RAISE EXCEPTION 'Slice 2b RPC must not touch omni_comms_message';
+  END IF;
+  RAISE NOTICE 'Slice 2b RPC body scope check passed';
 END $$;
 
 SELECT 'BUILD 3 SLICE 2B IDEMPOTENCY VERIFY OK' AS status;
