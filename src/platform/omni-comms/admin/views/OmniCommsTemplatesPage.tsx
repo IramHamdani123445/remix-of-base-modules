@@ -758,8 +758,17 @@ export const OmniCommsTemplatesPage: React.FC = () => {
           const deps = await listActiveDepartmentsForOrganization(orgId);
           setDepartments(deps);
         }
-        const evs = await ecSvc.listEventDefinitions(client, { limit: 200 });
-        setEvents(evs);
+        try {
+          const evs = await ecSvc.listAllEventDefinitionsForPicker(client, { maxItems: 1000 });
+          setEvents(evs);
+        } catch (pickerErr) {
+          // Treat picker load as failed rather than silently presenting an
+          // incomplete event catalogue. One friendly toast, no raw SQLSTATE.
+          setEvents([]);
+          toastError(new Error("Could not load the event catalogue. Try again."));
+          // eslint-disable-next-line no-console
+          console.warn("[omni-comms] event picker load failed", pickerErr);
+        }
       } catch (e) { toastError(e); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
