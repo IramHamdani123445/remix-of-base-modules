@@ -17,7 +17,8 @@ export type ArchitectureRuleId =
   | 'OMNI_INTEGRATION_REGISTRY'
   | 'OMNI_QUEUE_REGISTRY'
   | 'OMNI_SEND_FACADE_BOUNDARY'
-  | 'OMNI_PERMANENT_NAME_POLICY';
+  | 'OMNI_PERMANENT_NAME_POLICY'
+  | 'OMNI_RESOLVER_RUNTIME_BOUNDARY';
 
 export type BaselineStatus =
   | 'not_baselined'
