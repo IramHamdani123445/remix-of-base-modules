@@ -307,8 +307,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Build 3',
-    title: 'Sender verification and first synthetic email send',
+    story: 'Accelerated Build 3',
+    title:
+      'Channel-neutral runtime and sendCommunication() vertical slice (post UI stabilization)',
     informationalOnly: true,
   },
 };
