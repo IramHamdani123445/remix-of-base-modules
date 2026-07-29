@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { OMNI_COMMS_READINESS_MANIFEST as M } from '@/platform/omni-comms/registry/readinessManifest';
 import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
 
@@ -65,7 +65,7 @@ describe('Omni-Comms Accelerated Build 2 — Email configuration RPCs & UI', () 
     // contains our public function names to prove SQL is in the tree.
     const dir = 'supabase/migrations';
     if (!existsSync(dir)) return;
-    const files = require('node:fs').readdirSync(dir) as string[];
+    const files = readdirSync(dir) as string[];
     const found = files.some((f) => {
       if (!f.endsWith('.sql')) return false;
       const src = readFileSync(`${dir}/${f}`, 'utf8');
