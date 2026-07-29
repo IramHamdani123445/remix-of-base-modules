@@ -102736,6 +102736,7 @@ export type Database = {
       }
       omni_comms_priv_send_communication: {
         Args: {
+          p_actor_id: string
           p_caller_entity_id: string
           p_caller_entity_type: string
           p_caller_module_code: string

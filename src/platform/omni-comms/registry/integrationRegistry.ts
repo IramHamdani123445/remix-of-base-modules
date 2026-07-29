@@ -11,11 +11,11 @@ import type { IntegrationRegistryEntry } from './registry.types';
 export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[] = [
   // Edge functions (3) — Omni-Comms-owned
   {
-    name: 'omni-comms-send',
+    name: 'omni-comms-runtime',
     kind: 'edge_function',
     ownership: 'omni_comms',
-    purpose: 'Server entry point for sendCommunication(); persists request + recipients.',
-    status: 'Reserved',
+    purpose: 'Trusted server boundary for sendCommunication(): authenticates callers, canonicalizes and fingerprints requests, and persists via the SECURITY DEFINER runtime RPC using service_role.',
+    status: 'Available',
   },
   {
     name: 'omni-comms-dispatch',

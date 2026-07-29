@@ -144,17 +144,19 @@ describe('Omni-Comms Health page — Readiness', () => {
     expect(notCreated.length + available.length).toBe(19);
   });
 
-  it('shows reserved edge functions as Not created', () => {
+  it('shows reserved edge functions as Not created and Available ones as Available', () => {
     permState.hasView = true;
     renderHealthAt();
-    for (const fn of ['omni-comms-send', 'omni-comms-dispatch', 'omni-comms-webhook-resend']) {
+    for (const fn of ['omni-comms-dispatch', 'omni-comms-webhook-resend']) {
       const el = screen.getByText(fn);
-      // walk up to its list-item row and confirm both Reserved and Not created badges are present
       const row = el.closest('li');
       expect(row).not.toBeNull();
       expect(within(row!).getByText('Reserved')).toBeInTheDocument();
       expect(within(row!).getByText('Not created')).toBeInTheDocument();
     }
+    const runtime = screen.getByText('omni-comms-runtime').closest('li');
+    expect(runtime).not.toBeNull();
+    expect(within(runtime!).getByText('Available')).toBeInTheDocument();
   });
 
   it('shows reserved queues as Not created', () => {
