@@ -264,8 +264,14 @@ export const ReadinessTab: React.FC = () => {
                 <li key={i.name} className="flex items-center justify-between gap-2">
                   <code className="text-xs">{i.name}</code>
                   <div className="flex gap-1">
-                    <ReadinessStatusBadge state="Reserved" />
-                    <ReadinessStatusBadge state="Not created" />
+                    {i.status === 'Available' ? (
+                      <ReadinessStatusBadge state="Available" />
+                    ) : (
+                      <>
+                        <ReadinessStatusBadge state="Reserved" />
+                        <ReadinessStatusBadge state="Not created" />
+                      </>
+                    )}
                   </div>
                 </li>
               ))}
@@ -278,8 +284,14 @@ export const ReadinessTab: React.FC = () => {
                 <li key={i.name} className="flex items-center justify-between gap-2">
                   <code className="text-xs">{i.name}</code>
                   <div className="flex gap-1">
-                    <ReadinessStatusBadge state="Reserved" />
-                    <ReadinessStatusBadge state="Not created" />
+                    {i.status === 'Available' ? (
+                      <ReadinessStatusBadge state="Available" />
+                    ) : (
+                      <>
+                        <ReadinessStatusBadge state="Reserved" />
+                        <ReadinessStatusBadge state="Not created" />
+                      </>
+                    )}
                   </div>
                 </li>
               ))}
