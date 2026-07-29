@@ -56,10 +56,9 @@ function toastError(err: unknown, fallback: string): void {
 
 export const OmniCommsChannelsPage: React.FC = () => {
   const client = useOmniCommsRpcClient();
-  const orgId = useOrganizationId();
+  const { organizationId: orgId, organizationName } = useOmniCommsTenant();
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   const [loading, setLoading] = useState(false);
-  const [orgIdInput, setOrgIdInput] = useState("");
 
   const refresh = useCallback(async () => {
     if (!orgId) return;
@@ -82,30 +81,13 @@ export const OmniCommsChannelsPage: React.FC = () => {
         <h1 className="text-2xl font-semibold">Channels — Email</h1>
         <Alert>
           <ShieldAlert className="h-4 w-4" />
-          <AlertTitle>Organization not selected</AlertTitle>
+          <AlertTitle>Select an organisation</AlertTitle>
           <AlertDescription>
-            Configuration is scoped to a specific organisation. Set the active organisation id
-            below to load the email configuration summary.
+            Email channel configuration is scoped to a specific organisation.
+            Choose one below to load the email configuration summary.
           </AlertDescription>
         </Alert>
-        <div className="flex gap-2 max-w-lg">
-          <Input
-            placeholder="organization id (uuid)"
-            value={orgIdInput}
-            onChange={(e) => setOrgIdInput(e.target.value)}
-            data-testid="omni-comms-channels-org-input"
-          />
-          <Button
-            onClick={() => {
-              const trimmed = orgIdInput.trim();
-              if (!trimmed) return;
-              window.localStorage?.setItem("omni_comms.active_org_id", trimmed);
-              window.location.reload();
-            }}
-          >
-            Use organisation
-          </Button>
-        </div>
+        <OmniCommsTenantSelector showDepartment={false} />
       </div>
     );
   }
