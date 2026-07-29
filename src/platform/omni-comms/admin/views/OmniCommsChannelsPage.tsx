@@ -94,11 +94,12 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="omni-comms-channels-page">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold">Channels — Email</h1>
           <p className="text-sm text-muted-foreground">
             Omnichannel Communications · Resend provider configuration
+            {organizationName ? ` · ${organizationName}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -109,6 +110,8 @@ export const OmniCommsChannelsPage: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      <OmniCommsTenantSelector showDepartment={false} />
 
       <Tabs defaultValue="provider" className="w-full">
         <TabsList>
