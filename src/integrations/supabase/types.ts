@@ -102714,6 +102714,30 @@ export type Database = {
         Args: { p_source: string }
         Returns: string[]
       }
+      omni_comms_priv_finalize_resolution: {
+        Args: {
+          p_actor_id: string
+          p_final_status: string
+          p_organization_id: string
+          p_recipients: Json
+          p_request_blockers: string[]
+          p_request_id: string
+          p_resolution_snapshot: Json
+        }
+        Returns: Json
+      }
+      omni_comms_priv_load_persisted_resolution: {
+        Args: {
+          p_actor_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_next_event_sequence: {
+        Args: { p_request_id: string }
+        Returns: number
+      }
       omni_comms_priv_normalize_locale: {
         Args: { p_locale: string }
         Returns: string
@@ -102733,6 +102757,16 @@ export type Database = {
       omni_comms_priv_require_json_object: {
         Args: { p_max_bytes: number; p_value: Json }
         Returns: undefined
+      }
+      omni_comms_priv_runtime_resolution_snapshot: {
+        Args: {
+          p_actor_id: string
+          p_department_id: string
+          p_event_code: string
+          p_organization_id: string
+          p_requested_channels: string[]
+        }
+        Returns: Json
       }
       omni_comms_priv_send_communication: {
         Args: {
