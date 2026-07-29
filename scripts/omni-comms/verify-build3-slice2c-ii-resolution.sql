@@ -74,7 +74,7 @@ BEGIN
 
   INSERT INTO public.omni_comms_event_definition
     (id, code, module_code, entity_type, name, communication_class, status)
-  VALUES (v_event, 'VERIFY.SLICE2CII.EV', 'VERIFY', 'entity', 'verify', 'transactional', 'draft');
+  VALUES (v_event, 'VERIFY.ENTITY.EV', 'VERIFY', 'entity', 'verify', 'transactional', 'draft');
   UPDATE public.omni_comms_event_definition SET status='active' WHERE id=v_event;
 
   INSERT INTO public.omni_comms_event_contract
@@ -99,9 +99,9 @@ BEGIN
   RETURNING id INTO v_route_dept;
 
   v_snap := public.omni_comms_priv_runtime_resolution_snapshot(
-    v_actor, v_org, v_dept, 'VERIFY.SLICE2CII.EV', ARRAY['email']::text[]);
+    v_actor, v_org, v_dept, 'VERIFY.ENTITY.EV', ARRAY['email']::text[]);
   IF v_snap IS NULL THEN RAISE EXCEPTION 'snapshot null'; END IF;
-  IF v_snap->'event'->>'code' <> 'VERIFY.SLICE2CII.EV' THEN RAISE EXCEPTION 'event mismatch'; END IF;
+  IF v_snap->'event'->>'code' <> 'VERIFY.ENTITY.EV' THEN RAISE EXCEPTION 'event mismatch'; END IF;
   IF jsonb_array_length(v_snap->'event_contracts') < 1 THEN RAISE EXCEPTION 'no contract'; END IF;
   v_routes := v_snap->'routes';
   IF jsonb_array_length(v_routes) <> 1 THEN
@@ -110,13 +110,13 @@ BEGIN
     RAISE EXCEPTION 'dept precedence failed, winner=% expected=%', v_routes->0->>'id', v_route_dept; END IF;
 
   v_snap := public.omni_comms_priv_runtime_resolution_snapshot(
-    v_actor, v_org, NULL, 'VERIFY.SLICE2CII.EV', ARRAY['email']::text[]);
+    v_actor, v_org, NULL, 'VERIFY.ENTITY.EV', ARRAY['email']::text[]);
   v_routes := v_snap->'routes';
   IF jsonb_array_length(v_routes) <> 1 OR (v_routes->0->>'id')::uuid <> v_route_org THEN
     RAISE EXCEPTION 'org fallback failed: %', v_routes; END IF;
 
   v_snap := public.omni_comms_priv_runtime_resolution_snapshot(
-    v_actor, v_org, v_dept, 'VERIFY.SLICE2CII.EV', ARRAY['sms']::text[]);
+    v_actor, v_org, v_dept, 'VERIFY.ENTITY.EV', ARRAY['sms']::text[]);
   IF jsonb_array_length(v_snap->'routes') <> 0 THEN
     RAISE EXCEPTION 'sms filter should be empty: %', v_snap->'routes'; END IF;
 END $$;
@@ -135,11 +135,11 @@ BEGIN
 
   INSERT INTO public.omni_comms_event_definition
     (id, code, module_code, entity_type, name, communication_class, status)
-  VALUES (v_event, 'VERIFY.SLICE2CII.FIN', 'VERIFY', 'entity', 'verify', 'transactional', 'draft');
+  VALUES (v_event, 'VERIFY.ENTITY.FIN', 'VERIFY', 'entity', 'verify', 'transactional', 'draft');
   UPDATE public.omni_comms_event_definition SET status='active' WHERE id=v_event;
 
   v_send := public.omni_comms_priv_send_communication(
-    v_actor, v_org, NULL, 'VERIFY.SLICE2CII.FIN', 'dry_run',
+    v_actor, v_org, NULL, 'VERIFY.ENTITY.FIN', 'dry_run',
     'verify-key-12345678', 'VERIFY', NULL, NULL, NULL,
     repeat('a',64), '{"x":"y"}'::jsonb, ARRAY['email']::text[]);
   v_req_id := (v_send->>'request_id')::uuid;
@@ -204,11 +204,11 @@ BEGIN
 
   INSERT INTO public.omni_comms_event_definition
     (id, code, module_code, entity_type, name, communication_class, status)
-  VALUES (v_event, 'VERIFY.SLICE2CII.BLK', 'VERIFY', 'entity', 'verify', 'transactional', 'draft');
+  VALUES (v_event, 'VERIFY.ENTITY.BLK', 'VERIFY', 'entity', 'verify', 'transactional', 'draft');
   UPDATE public.omni_comms_event_definition SET status='active' WHERE id=v_event;
 
   v_send := public.omni_comms_priv_send_communication(
-    v_actor, v_org, NULL, 'VERIFY.SLICE2CII.BLK', 'dry_run',
+    v_actor, v_org, NULL, 'VERIFY.ENTITY.BLK', 'dry_run',
     'verify-blk-12345678', 'VERIFY', NULL, NULL, NULL,
     repeat('b',64), '{"x":"y"}'::jsonb, ARRAY['email']::text[]);
   v_req_id := (v_send->>'request_id')::uuid;
