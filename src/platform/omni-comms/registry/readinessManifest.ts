@@ -318,9 +318,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Accelerated Build 3 — Slice 2c-ii Batch C',
+    story: 'Accelerated Build 3 — Slice 2c-ii runtime certification',
     title:
-      'Architecture checks, integration tests, verifier hardening, rollback, and evidence for the Batch B resolution pipeline',
+      'Execute the privileged Slice 2c-ii Edge integration harness (scripts/omni-comms/integration/run-edge-resolution.ts) in a privileged environment to produce the BUILD 3 SLICE 2C-II EDGE RESOLUTION INTEGRATION OK marker. Do not advance to Slice 2c-iii before this marker is produced.',
     informationalOnly: true,
   },
 };
