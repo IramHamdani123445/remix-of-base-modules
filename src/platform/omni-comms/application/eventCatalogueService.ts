@@ -223,6 +223,63 @@ export function listEventDefinitions(
   });
 }
 
+/**
+ * Bounded, paginated event-definition loader for picker UIs.
+ *
+ * The deployed RPC `omni_comms_event_definition_list` enforces
+ * `1 <= p_limit <= 100`. This helper fetches the full picker set by
+ * requesting successive pages of 100 rows and stops when:
+ *   - a page returns fewer than 100 rows (final page),
+ *   - the bounded maximum (`maxItems`, default 1000) is reached, or
+ *   - a page returns no new IDs (defensive against server-side repeats).
+ *
+ * Server ordering is preserved. Duplicates by id are removed. No direct
+ * table access. Never calls the RPC with a limit above 100. Callers that
+ * only need one page should keep using `listEventDefinitions`.
+ */
+export async function listAllEventDefinitionsForPicker(
+  client: OmniCommsRpcClient,
+  options: {
+    status?: 'draft' | 'active' | 'suspended' | 'retired' | null;
+    moduleCode?: string | null;
+    search?: string | null;
+    maxItems?: number;
+  } = {},
+): Promise<EventDefinitionListItem[]> {
+  const PAGE_SIZE = 100;
+  const maxItems = Math.max(1, options.maxItems ?? 1000);
+  const seen = new Set<string>();
+  const out: EventDefinitionListItem[] = [];
+  let offset = 0;
+  const maxIterations = Math.ceil(maxItems / PAGE_SIZE) + 1;
+
+  for (let i = 0; i < maxIterations; i++) {
+    const page = await listEventDefinitions(client, {
+      limit: PAGE_SIZE,
+      offset,
+      status: options.status ?? null,
+      moduleCode: options.moduleCode ?? null,
+      search: options.search ?? null,
+    });
+
+    let added = 0;
+    for (const row of page) {
+      if (seen.has(row.id)) continue;
+      seen.add(row.id);
+      out.push(row);
+      added++;
+      if (out.length >= maxItems) break;
+    }
+
+    if (out.length >= maxItems) break;
+    if (page.length < PAGE_SIZE) break;
+    if (added === 0) break;
+    offset += PAGE_SIZE;
+  }
+
+  return out;
+}
+
 export async function getEventContract(
   client: OmniCommsRpcClient,
   id: string,
