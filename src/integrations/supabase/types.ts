@@ -102734,6 +102734,23 @@ export type Database = {
         Args: { p_max_bytes: number; p_value: Json }
         Returns: undefined
       }
+      omni_comms_priv_send_communication: {
+        Args: {
+          p_caller_entity_id: string
+          p_caller_entity_type: string
+          p_caller_module_code: string
+          p_correlation_id: string
+          p_department_id: string
+          p_event_code: string
+          p_idempotency_key: string
+          p_mode: string
+          p_organization_id: string
+          p_payload: Json
+          p_request_fingerprint: string
+          p_requested_channels: string[]
+        }
+        Returns: Json
+      }
       omni_comms_priv_slice1_verify: { Args: never; Returns: string }
       omni_comms_priv_validate_channel: {
         Args: { p_channel: string }

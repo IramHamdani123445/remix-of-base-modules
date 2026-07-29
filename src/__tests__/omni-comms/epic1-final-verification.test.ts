@@ -126,10 +126,13 @@ describe('Epic 1 — Story 5 final verification', () => {
   });
 
 
-  it('has no sendCommunication implementation and no communication runtime files in the shell', () => {
+  it('the canonical façade exists exactly once and no adapter/worker files are added', () => {
     const files = walk(OMNI_ROOT);
-    const forbidden = files.filter((f) => /sendCommunication\.(ts|tsx)$/.test(f));
-    expect(forbidden, `unexpected façade files: ${forbidden.join(', ')}`).toEqual([]);
+    const facades = files.filter((f) => /sendCommunication\.(ts|tsx)$/.test(f));
+    expect(facades).toHaveLength(1);
+    expect(facades[0].replace(/\\/g, '/')).toMatch(
+      /src\/platform\/omni-comms\/sendCommunication\.ts$/,
+    );
 
     // No provider adapter, worker, edge function, or queue implementation files.
     const adapters = files.filter((f) => f.includes(`${path.sep}adapters${path.sep}`) && !f.endsWith('.gitkeep') && !f.endsWith('.md'));

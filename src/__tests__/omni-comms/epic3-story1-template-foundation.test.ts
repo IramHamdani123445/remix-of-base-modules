@@ -108,15 +108,19 @@ describe('Epic 3 Story 1 — routes untouched', () => {
 });
 
 describe('Epic 3 Story 1 — Story 1 stays a schema-only story', () => {
-  it('never introduces sendCommunication anywhere in omni-comms', () => {
+  it('sendCommunication is defined only in the canonical façade path (post-Slice-2a/2b)', () => {
     const omniSources = findFiles(join(SRC_ROOT, 'platform', 'omni-comms'), (p) =>
       (p.endsWith('.ts') || p.endsWith('.tsx')) && !p.includes('__tests__'),
     );
+    const canonical = join(SRC_ROOT, 'platform', 'omni-comms', 'sendCommunication.ts');
     for (const f of omniSources) {
+      if (f === canonical) continue;
       const src = readFileSync(f, 'utf8');
+      // Function/const/let/var/class definitions of the identifier are forbidden
+      // outside the canonical file. Referencing the exported symbol is allowed.
       expect(
         src.match(/\b(function|const|let|var|class)\s+sendCommunication\b/),
-        `sendCommunication must not be defined in ${f}`,
+        `sendCommunication must not be redefined in ${f}`,
       ).toBeNull();
     }
   });

@@ -155,7 +155,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 4',
-    currentStory: 'Accelerated Build 3 — Slice 1',
+    currentStory: 'Accelerated Build 3 — Slice 2b',
     overallStatus: 'In progress',
 
 
@@ -286,6 +286,15 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Email channel setting service',              state: 'Verified', note: 'Build 2 — omni_comms_channel_setting_upsert accepts email only; delegates quiet-hours/rate/live-requires-enabled checks to Story 1 CHECK constraints and timezone trigger; optimistic concurrency + audit.' },
     { item: 'Email configuration summary',                state: 'Verified', note: 'Build 2 — omni_comms_email_config_summary(p_organization_id) returns provider, provider_accounts, sender_identities, bindings, channel_setting and a computed email_send_ready boolean. Capability omni_comms.view; scoped strictly to the passed organisation.' },
     { item: 'Channels admin surface',                     state: 'Verified', note: 'Build 2 — /admin/omnichannel-communications/channels now Available with tabs for Provider, Accounts, Senders, Bindings and Settings. Consumes the bound Omni-Comms RPC client only; no direct table reads, no provider SDK imports, no send behaviour.' },
+
+    { item: 'Send-façade boundary (Slice 2a)',            state: 'Verified', note: 'Slice 2a — architecture rule OMNI_SEND_FACADE_BOUNDARY amended: exactly one canonical façade file src/platform/omni-comms/sendCommunication.ts with the single export sendCommunication; aliases sendOmniCommunication/dispatchCommunication/queueCommunication remain forbidden; provider SDK imports in the façade forbidden; business-module (src/modules/**) imports of src/platform/omni-comms/runtime/** forbidden.' },
+    { item: 'Trusted runtime entrypoint (Slice 2b)',       state: 'Verified', note: 'Slice 2b — src/platform/omni-comms/runtime/sendCommunicationRuntime.ts is the sole entrypoint the façade calls. Owns canonicalization, fingerprinting, RPC invocation and controlled error mapping. Never imports a provider SDK.' },
+    { item: 'Canonical request representation (Slice 2b)', state: 'Verified', note: 'Slice 2b — canonicalizeRequest normalises eventCode (trim), organisation/department UUIDs (lowercase), sorts + deduplicates requestedChannels, preserves recipient order, normalises recipient destinations (email lowercased), sorts payload object keys recursively (arrays preserve order), trims callerContext, rejects functions/symbols/undefined/cyclic/non-finite/depth>20, enforces recipient limit 500 and payload byte bound 262144.' },
+    { item: 'Request fingerprint (Slice 2b)',              state: 'Verified', note: 'Slice 2b — SHA-256(canonical UTF-8 JSON) lowercase hex via crypto.subtle (no Node crypto/Buffer). correlationId is EXCLUDED from the fingerprint (operational tracing metadata). Material changes to eventCode/org/dept/recipient/destination/payload/mode/requestedChannels/callerContext all change the fingerprint.' },
+    { item: 'Idempotency scope (Slice 2b)',                state: 'Verified', note: 'Slice 2b — scope = (organization_id, caller_module_code, idempotency_key) matching the Slice 1 UNIQUE index omni_comms_request_idempotency_uk. Missing callerContext.moduleCode defaults to OMNI_COMMS_DIRECT.' },
+    { item: 'Atomic persistence RPC (Slice 2b)',           state: 'Verified', note: 'Slice 2b — public.omni_comms_priv_send_communication (SECURITY DEFINER, owner postgres, search_path=pg_catalog,public). Authenticates auth.uid(), resolves event_definition_id, locks the idempotency scope FOR UPDATE, replays identical fingerprint, rejects mismatched fingerprint (OC409 idempotency_payload_mismatch), inserts request + request_accepted event (sequence=1, message_id=null, status_before=null, status_after=accepted) in a single transaction. EXECUTE revoked from PUBLIC/anon; granted to authenticated + service_role.' },
+    { item: 'Concurrency safety (Slice 2b)',               state: 'Verified', note: 'Slice 2b — concurrency handled by (a) FOR UPDATE lock inside the RPC, (b) DB UNIQUE(organization_id, caller_module_code, idempotency_key), (c) EXCEPTION WHEN unique_violation re-select + FOR UPDATE + fingerprint compare. Two concurrent identical requests yield one persisted row + one request_accepted event + one replayed=true. Two concurrent mismatched requests yield one accepted row + one idempotency_payload_mismatch.' },
+    { item: 'Controlled runtime error mapping (Slice 2b)', state: 'Verified', note: 'Slice 2b — controlled codes: invalid_input, authentication_required, organization_required, department_organization_mismatch, recipients_required, recipient_limit_exceeded, payload_invalid, payload_too_large, mode_invalid, channel_invalid, idempotency_key_required, idempotency_key_too_long, idempotency_payload_mismatch, event_code_not_found, runtime_persistence_failed, permission_denied. Raw SQLSTATE/constraint/table/recipient/payload/stack never surface to callers.' },
   ],
 
   blockers: [
@@ -308,9 +317,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Accelerated Build 3 — Slice 2',
+    story: 'Accelerated Build 3 — Slice 2c',
     title:
-      'Runtime service, sendCommunication(), idempotency, read RPCs and synthetic vertical slice',
+      'Resolution, rendering, recipient/message snapshots, mode-aware dispatch jobs and synthetic vertical slice',
     informationalOnly: true,
   },
 };

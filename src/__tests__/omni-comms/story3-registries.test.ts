@@ -148,9 +148,13 @@ describe('Omni-Comms Story 3 — Readiness consumes registry data', () => {
 });
 
 describe('Omni-Comms Story 3 — no runtime implementation was created', () => {
-  it('no sendCommunication.ts under omni-comms', () => {
-    const files = walk(OMNI_ROOT).map((f) => path.basename(f));
-    expect(files).not.toContain('sendCommunication.ts');
+  it('the canonical façade exists exactly once at the approved path (post-Slice-2a/2b)', () => {
+    const files = walk(OMNI_ROOT);
+    const facades = files.filter((f) => path.basename(f) === 'sendCommunication.ts');
+    expect(facades).toHaveLength(1);
+    expect(facades[0].replace(/\\/g, '/')).toMatch(
+      /src\/platform\/omni-comms\/sendCommunication\.ts$/,
+    );
   });
 
   it('no omni_comms_* migration exists beyond registry-approved AVAILABLE tables, and no omni-comms-* edge function exists', () => {
