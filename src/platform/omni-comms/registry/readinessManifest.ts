@@ -230,6 +230,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { ruleId: 'OMNI_QUEUE_REGISTRY',             title: 'Queue registry enforcement',           status: 'Enforced in CI' },
     { ruleId: 'OMNI_SEND_FACADE_BOUNDARY',       title: 'Send-façade boundary',                 status: 'Enforced in CI' },
     { ruleId: 'OMNI_PERMANENT_NAME_POLICY',      title: 'Permanent-name policy',                status: 'Enforced in CI' },
+    { ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',  title: 'Resolver runtime boundary (Rule 11)',  status: 'Enforced in CI' },
   ],
 
   foundationStatus: [
