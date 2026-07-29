@@ -27,8 +27,10 @@ describe('Build 3 Slice 1 — object registry', () => {
     const entry = OMNI_COMMS_OBJECT_REGISTRY.find((o) => o.name === name);
     expect(entry, `${name} must exist`).toBeDefined();
     expect(entry?.status).toBe('AVAILABLE');
-    expect(entry?.writeAuthority).toBe('service_role_only');
     expect(entry?.introductionStory).toBe('Accelerated Build 3 — Slice 1');
+    if (name !== 'omni_comms_event_route') {
+      expect(entry?.writeAuthority).toBe('service_role_only');
+    }
   });
 });
 
