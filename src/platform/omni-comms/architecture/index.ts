@@ -16,3 +16,4 @@ export { checkIntegrationRegistry } from './checks/checkIntegrationRegistry';
 export { checkQueueRegistry } from './checks/checkQueueRegistry';
 export { checkFacadeBoundary } from './checks/checkFacadeBoundary';
 export { checkPermanentNames } from './checks/checkPermanentNames';
+export { checkResolverBoundary } from './checks/checkResolverBoundary';

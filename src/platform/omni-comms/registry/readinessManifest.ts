@@ -155,7 +155,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 4',
-    currentStory: 'Accelerated Build 3 — Slice 2b',
+    currentStory: 'Accelerated Build 3 — Slice 2c-ii Batch B',
     overallStatus: 'In progress',
 
 
@@ -317,9 +317,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Accelerated Build 3 — Slice 2c',
+    story: 'Accelerated Build 3 — Slice 2c-ii Batch C',
     title:
-      'Resolution, rendering, recipient/message snapshots, mode-aware dispatch jobs and synthetic vertical slice',
+      'Architecture checks, integration tests, verifier hardening, rollback, and evidence for the Batch B resolution pipeline',
     informationalOnly: true,
   },
 };

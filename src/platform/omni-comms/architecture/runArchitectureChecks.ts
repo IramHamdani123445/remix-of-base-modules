@@ -39,6 +39,7 @@ import { checkIntegrationRegistry } from './checks/checkIntegrationRegistry';
 import { checkQueueRegistry } from './checks/checkQueueRegistry';
 import { checkFacadeBoundary } from './checks/checkFacadeBoundary';
 import { checkPermanentNames } from './checks/checkPermanentNames';
+import { checkResolverBoundary } from './checks/checkResolverBoundary';
 
 export interface RunArchitectureChecksOptions {
   repoRoot?: string;
@@ -57,6 +58,7 @@ const CHECKS = [
   checkQueueRegistry,
   checkFacadeBoundary,
   checkPermanentNames,
+  checkResolverBoundary,
 ] as const;
 
 function toPosix(p: string): string {
