@@ -219,16 +219,22 @@ describe('Slice 2b — canonicalization', () => {
       recipientType: 'user',
       email: `u${i}@example.com`,
     }));
-    expect(() => canonicalizeRequest(baseInput({ recipients: many }))).toThrow(
-      /recipient_limit_exceeded/,
-    );
+    let err: unknown;
+    try { canonicalizeRequest(baseInput({ recipients: many })); } catch (e) { err = e; }
+    expect(err).toBeInstanceOf(CanonicalizationError);
+    expect((err as CanonicalizationError).code).toBe('recipient_limit_exceeded');
   });
 
   it('rejects oversized payload', () => {
     const big = 'x'.repeat(300_000);
-    expect(() => canonicalizeRequest(baseInput({ payload: { big } }))).toThrow(
-      /payload_too_large/,
-    );
+    let err: unknown;
+    try {
+      canonicalizeRequest(baseInput({ payload: { big } }));
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeInstanceOf(CanonicalizationError);
+    expect((err as CanonicalizationError).code).toBe('payload_too_large');
   });
 
   it('rejects invalid UUID', () => {
