@@ -52,7 +52,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     epic: 2,
     writeAuthority: 'admin_rpc',
     purpose: 'Channel obligation, preference rule and activation for an event.',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
+    introductionStory: 'Accelerated Build 3 — Slice 1',
   },
 
   // ─── Channels, senders and preferences ───────────────────────────────
