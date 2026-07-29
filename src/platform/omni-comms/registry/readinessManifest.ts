@@ -155,8 +155,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 4',
-    currentStory: 'Accelerated Build 2',
+    currentStory: 'Accelerated Build 3 — Slice 1',
     overallStatus: 'In progress',
+
 
   },
 
