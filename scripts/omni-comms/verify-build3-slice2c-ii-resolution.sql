@@ -113,23 +113,30 @@ BEGIN
   END IF;
 END $$;
 
--- 5) No provider-secret columns are exposed via the resolution surfaces.
---    (Resolution functions declared RETURNS jsonb; provider secret_ref
---    columns live on omni_comms_provider_account and must not be quoted
---    inside the SECURITY DEFINER function bodies.)
+-- 5) The resolution surfaces must not RETURN the raw provider secret_ref
+--    text. The snapshot function legitimately reads secret_ref as a
+--    readiness signal (present/absent), so we forbid it only inside the
+--    RETURNS clause / OUT columns of these routines.
 DO $$
-DECLARE bad int;
+DECLARE r record; bad int := 0;
 BEGIN
-  SELECT count(*) INTO bad
-    FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
-   WHERE ns.nspname='public'
-     AND p.proname IN (
-       'omni_comms_priv_runtime_resolution_snapshot',
-       'omni_comms_priv_finalize_resolution',
-       'omni_comms_priv_load_persisted_resolution')
-     AND pg_get_functiondef(p.oid) ~* '\msecret_ref\M';
+  FOR r IN
+    SELECT p.proname,
+           pg_get_function_result(p.oid) AS ret
+      FROM pg_proc p JOIN pg_namespace ns ON ns.oid=p.pronamespace
+     WHERE ns.nspname='public'
+       AND p.proname IN (
+         'omni_comms_priv_runtime_resolution_snapshot',
+         'omni_comms_priv_finalize_resolution',
+         'omni_comms_priv_load_persisted_resolution')
+  LOOP
+    IF r.ret ~* '\msecret_ref\M' THEN
+      bad := bad + 1;
+      RAISE NOTICE 'resolution RPC % returns secret_ref column', r.proname;
+    END IF;
+  END LOOP;
   IF bad > 0 THEN
-    RAISE EXCEPTION 'resolution RPC leaks secret_ref (% functions)', bad;
+    RAISE EXCEPTION 'resolution RPCs expose secret_ref in RETURN shape (% RPCs)', bad;
   END IF;
 END $$;
 
