@@ -1,25 +1,30 @@
 /**
- * Omni-Comms — Canonical send façade.
+ * Omni-Comms — Canonical send façade (Slice 2b wired).
  *
- * Milestone: Accelerated Build 3 — Slice 2a introduces this file as the
- * SINGLE authorised entrypoint for business callers. The typed contract
- * is complete and stable; the runtime service that fulfils it lands in
- * Slice 2b (server-authoritative persistence RPC) and Slice 2c
- * (TypeScript resolvers / canonicalization / fingerprint / rendering
- * pipeline).
+ * The SINGLE authorised entrypoint for business callers.
+ * Business modules import ONLY this file — never the runtime internals
+ * under src/platform/omni-comms/runtime/**.
  *
- * Until the trusted runtime service is wired, invoking this façade
- * returns a bounded result carrying a single controlled blocker
- * `runtime_not_available` — it never throws raw errors, never touches
- * a provider, never inserts runtime rows.
+ * Slice 2b behaviour:
+ *  - Validates the public input shape.
+ *  - Delegates to the trusted runtime service which canonicalizes,
+ *    fingerprints, and atomically persists through the SECURITY DEFINER
+ *    RPC `public.omni_comms_priv_send_communication`.
+ *  - Returns the bounded public result. Recipients/messages remain
+ *    empty and blockers include `runtime_resolution_pending` until
+ *    Slice 2c wires resolution, rendering and dispatch jobs.
+ *  - Never touches a provider SDK. Never sends email. Never writes to
+ *    runtime tables from the browser.
  *
  * Rules enforced by the architecture checker (Rule 9):
- *  - This file is the ONLY permitted location for the export
+ *  - This is the ONLY permitted location for the export
  *    `sendCommunication` under src/platform/omni-comms/**.
- *  - Business modules may import ONLY this file — runtime internals
- *    under src/platform/omni-comms/runtime/ are off-limits.
  *  - Provider SDKs may not be imported here.
+ *  - Aliases (sendOmniCommunication / dispatchCommunication /
+ *    queueCommunication) are prohibited.
  */
+
+import { executeSendCommunication } from './runtime/sendCommunicationRuntime';
 
 export type OmniCommsSendMode = 'dry_run' | 'shadow' | 'queued';
 
@@ -87,34 +92,43 @@ export interface SendCommunicationResult {
   replayed: boolean;
 }
 
-/** Bounded default caller-module when the caller omits callerContext.moduleCode. */
+/** Default caller-module used when callerContext.moduleCode is omitted. */
 export const OMNI_COMMS_DEFAULT_CALLER_MODULE = 'OMNI_COMMS_DIRECT';
 
+/** Minimum idempotency key length. Mirrors the DB CHECK constraint. */
+const IDEMPOTENCY_KEY_MIN = 8;
+const IDEMPOTENCY_KEY_MAX = 200;
+
 /**
- * Minimal, deterministic input validation the façade performs BEFORE
- * delegating to the trusted runtime service. Returns a list of bounded
- * blocker codes; empty means the input is well-formed enough to enter
- * the runtime pipeline.
- *
- * Runtime-side (server) will re-validate everything authoritatively —
- * this pre-check exists so the façade can return a controlled result
- * on obvious misuse without a round-trip.
+ * Public-shape validation the façade performs BEFORE handing off to the
+ * trusted runtime. Returns a list of bounded blocker codes. Empty means
+ * the input is well-formed enough to enter the runtime pipeline —
+ * server-side then re-validates authoritatively.
  */
 export function validateSendCommunicationInput(
   input: SendCommunicationInput,
 ): string[] {
   const blockers: string[] = [];
-  if (!input || typeof input !== 'object') {
-    return ['invalid_input'];
-  }
+  if (!input || typeof input !== 'object') return ['invalid_input'];
+
   if (!input.eventCode || typeof input.eventCode !== 'string') {
-    blockers.push('event_code_required');
+    blockers.push('invalid_input');
   }
   if (!input.organizationId || typeof input.organizationId !== 'string') {
-    blockers.push('organization_id_required');
+    blockers.push('organization_required');
   }
-  if (!input.idempotencyKey || typeof input.idempotencyKey !== 'string') {
+  if (
+    !input.idempotencyKey ||
+    typeof input.idempotencyKey !== 'string' ||
+    input.idempotencyKey.length < IDEMPOTENCY_KEY_MIN
+  ) {
     blockers.push('idempotency_key_required');
+  }
+  if (
+    typeof input.idempotencyKey === 'string' &&
+    input.idempotencyKey.length > IDEMPOTENCY_KEY_MAX
+  ) {
+    blockers.push('idempotency_key_too_long');
   }
   if (!input.mode || !['dry_run', 'shadow', 'queued'].includes(input.mode)) {
     blockers.push('mode_invalid');
@@ -122,36 +136,26 @@ export function validateSendCommunicationInput(
   if (!Array.isArray(input.recipients) || input.recipients.length === 0) {
     blockers.push('recipients_required');
   }
-  if (!input.payload || typeof input.payload !== 'object' || Array.isArray(input.payload)) {
+  if (
+    !input.payload ||
+    typeof input.payload !== 'object' ||
+    Array.isArray(input.payload)
+  ) {
     blockers.push('payload_invalid');
   }
   return blockers;
 }
 
 /**
- * Canonical façade — Slice 2a skeleton.
+ * Canonical façade — Slice 2b.
  *
- * The stable typed contract is implemented; delegation into the trusted
- * runtime service is deliberately not yet wired. Until Slice 2b lands
- * the persistence RPC, every invocation returns a bounded result with a
- * single `runtime_not_available` blocker so callers observe the exact
- * public shape they will consume in Slice 2c and beyond.
+ * Delegates to the trusted internal runtime entrypoint. Returns the
+ * bounded public result. Never throws for controlled conditions; all
+ * failures surface as bounded `blockers[]` codes on a `status:"blocked"`
+ * result.
  */
 export async function sendCommunication(
   input: SendCommunicationInput,
 ): Promise<SendCommunicationResult> {
-  const preBlockers = validateSendCommunicationInput(input);
-  const blockers =
-    preBlockers.length > 0 ? preBlockers : ['runtime_not_available'];
-  return {
-    requestId: '',
-    idempotencyKey: input?.idempotencyKey ?? '',
-    mode: input?.mode ?? 'dry_run',
-    status: 'blocked',
-    recipients: [],
-    messages: [],
-    blockers,
-    createdAt: new Date(0).toISOString(),
-    replayed: false,
-  };
+  return executeSendCommunication(input);
 }
