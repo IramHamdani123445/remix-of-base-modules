@@ -228,7 +228,7 @@ describe('Slice 2c-iii — verifier and readiness', () => {
   });
 
   it('records the Slice 2c-iii foundation rows', () => {
-    const items = OMNI_COMMS_READINESS_MANIFEST.foundation.map((f) => f.item);
+    const items = OMNI_COMMS_READINESS_MANIFEST.foundationStatus.map((f) => f.item);
     for (const item of [
       'Deterministic rendering package (Slice 2c-iii)',
       'Snapshot revalidation (Slice 2c-iii)',
@@ -243,7 +243,7 @@ describe('Slice 2c-iii — verifier and readiness', () => {
   });
 
   it('keeps runtime certification outstanding and claims no live send', () => {
-    const cert = OMNI_COMMS_READINESS_MANIFEST.foundation.find(
+    const cert = OMNI_COMMS_READINESS_MANIFEST.foundationStatus.find(
       (f) => f.item === 'Slice 2c-iii runtime certification',
     );
     expect(cert?.state).not.toBe('Verified');
