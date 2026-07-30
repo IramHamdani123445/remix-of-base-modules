@@ -158,7 +158,7 @@ export const EventContractEditorDialog: React.FC<EventContractEditorProps> = ({
               className="font-mono text-xs"
               disabled={redacted}
             />
-            {!schemaParsed.ok && (
+            {schemaParsed.ok ? null : (
               <p className="text-xs text-destructive mt-1">{schemaParsed.error}</p>
             )}
           </div>
@@ -173,7 +173,7 @@ export const EventContractEditorDialog: React.FC<EventContractEditorProps> = ({
               className="font-mono text-xs"
               disabled={redacted}
             />
-            {!sampleParsed.ok && (
+            {sampleParsed.ok ? null : (
               <p className="text-xs text-destructive mt-1">{sampleParsed.error}</p>
             )}
           </div>
