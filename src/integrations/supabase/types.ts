@@ -102501,6 +102501,10 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_diagnostics: {
+        Args: { p_organization_id?: string }
+        Returns: Json
+      }
       omni_comms_email_config_summary: {
         Args: { p_organization_id: string }
         Returns: Json
@@ -102686,6 +102690,72 @@ export type Database = {
           p_name: string
         }
         Returns: string
+      }
+      omni_comms_event_route_get: { Args: { p_id: string }; Returns: Json }
+      omni_comms_event_route_list: {
+        Args: {
+          p_channel?: string
+          p_department_id?: string
+          p_event_definition_id?: string
+          p_lifecycle_state?: string
+          p_limit?: number
+          p_offset?: number
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_event_route_set_lifecycle: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
+          p_target_state: string
+        }
+        Returns: undefined
+      }
+      omni_comms_event_route_upsert_draft: {
+        Args: {
+          p_channel: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_event_definition_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_is_enabled: boolean
+          p_is_required: boolean
+          p_organization_id: string
+          p_preference_policy: string
+          p_priority: number
+          p_sender_identity_id: string
+          p_sender_resolution_policy: string
+          p_template_family_id: string
+        }
+        Returns: string
+      }
+      omni_comms_ops_request_detail: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
+      omni_comms_ops_request_list: {
+        Args: {
+          p_department_id?: string
+          p_limit?: number
+          p_mode?: string
+          p_offset?: number
+          p_organization_id?: string
+          p_search?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
+      omni_comms_ops_summary: {
+        Args: {
+          p_department_id?: string
+          p_organization_id?: string
+          p_since_hours?: number
+        }
+        Returns: Json
       }
       omni_comms_priv_compute_checksum: {
         Args: {
