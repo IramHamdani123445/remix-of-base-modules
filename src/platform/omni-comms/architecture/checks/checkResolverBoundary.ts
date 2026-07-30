@@ -136,6 +136,24 @@ export function checkResolverBoundary(scan: RepositoryScan): ArchitectureViolati
         });
       }
 
+      // (a2) imports of the Slice 2c-iii rendering package
+      let rmi: RegExpExecArray | null;
+      RENDERING_IMPORT_RE.lastIndex = 0;
+      while ((rmi = RENDERING_IMPORT_RE.exec(f.content)) !== null) {
+        out.push({
+          ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',
+          severity: 'error',
+          filePath: f.filePath,
+          evidence: rmi[0],
+          message: 'src/** may not import the omni-comms-runtime rendering package.',
+          remediation:
+            'The rendering modules are Edge-Function-only. Call the trusted omni-comms-runtime Edge Function through the canonical façade instead.',
+          baselineStatus: 'not_baselined',
+        });
+      }
+
+
+
       // (b) direct .rpc(...) to service_role-only RPCs
       for (const rpc of FORBIDDEN_RPC_NAMES) {
         const rpcRe = new RegExp(
