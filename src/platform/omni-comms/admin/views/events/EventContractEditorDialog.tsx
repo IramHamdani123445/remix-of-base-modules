@@ -61,22 +61,23 @@ export const EventContractEditorDialog: React.FC<EventContractEditorProps> = ({
     setBusy(false);
   }, [open, existing, nextVersionNumber]);
 
-  const parse = (t: string): { ok: true; value: Record<string, unknown> } | { ok: false; error: string } => {
+  type ParseResult = { ok: boolean; value: Record<string, unknown>; error: string | null };
+  const parse = (t: string): ParseResult => {
     try {
       const v = JSON.parse(t);
       if (v === null || typeof v !== "object" || Array.isArray(v)) {
-        return { ok: false, error: "Must be a JSON object." };
+        return { ok: false, value: {}, error: "Must be a JSON object." };
       }
-      return { ok: true, value: v as Record<string, unknown> };
+      return { ok: true, value: v as Record<string, unknown>, error: null };
     } catch (e) {
-      return { ok: false, error: (e as Error).message };
+      return { ok: false, value: {}, error: (e as Error).message };
     }
   };
 
   const schemaParsed = parse(schemaText);
   const sampleParsed = parse(sampleText);
-  const schemaError = schemaParsed.ok ? null : schemaParsed.error;
-  const sampleError = sampleParsed.ok ? null : sampleParsed.error;
+  const schemaError = schemaParsed.error;
+  const sampleError = sampleParsed.error;
   const tooBig = byteLen(schemaText) > MAX_BYTES || byteLen(sampleText) > MAX_BYTES;
   const redacted = existing?.sample_payload_redacted === true;
 
