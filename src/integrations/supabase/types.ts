@@ -102501,6 +102501,7 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_controlled_dry_run_gate: { Args: never; Returns: Json }
       omni_comms_diagnostics: {
         Args: { p_organization_id?: string }
         Returns: Json
@@ -102798,6 +102799,15 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_admin_dry_run_guard: {
+        Args: {
+          p_actor_id: string
+          p_channels: string[]
+          p_mode: string
+          p_recipients: Json
+        }
+        Returns: Json
+      }
       omni_comms_priv_compute_checksum: {
         Args: {
           p_event_code: string
@@ -102816,6 +102826,7 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_priv_dry_run_gate_state: { Args: never; Returns: string }
       omni_comms_priv_email_provider_id: { Args: never; Returns: string }
       omni_comms_priv_escape_ilike: {
         Args: { p_input: string }
@@ -103191,6 +103202,15 @@ export type Database = {
           p_correlation_id: string
           p_expected_updated_at: string
           p_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_validate_dry_run_payload: {
+        Args: {
+          p_department_id?: string
+          p_event_definition_id?: string
+          p_organization_id: string
+          p_payload?: Json
         }
         Returns: Json
       }

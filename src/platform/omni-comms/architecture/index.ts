@@ -19,3 +19,7 @@ export { checkPermanentNames } from './checks/checkPermanentNames';
 export { checkResolverBoundary } from './checks/checkResolverBoundary';
 export { checkHealthBoundary, isHealthSurfaceFile } from './checks/checkHealthBoundary';
 export { checkSetupWizardBoundary, isSetupWizardFile } from './checks/checkSetupWizardBoundary';
+export {
+  checkControlledDryRunBoundary,
+  isControlledDryRunFile,
+} from './checks/checkControlledDryRunBoundary';
