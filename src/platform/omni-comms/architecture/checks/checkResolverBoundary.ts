@@ -267,6 +267,49 @@ export function checkResolverBoundary(scan: RepositoryScan): ArchitectureViolati
         }
       }
     }
+
+    // ─── rendering package internal checks (Slice 2c-iii) ─────────────
+    if (isInRenderingPackage(f.filePath)) {
+      // (g) provider SDK imports
+      for (const pkg of RESOLUTION_FORBIDDEN_PROVIDER_SDKS) {
+        const pkgRe = new RegExp(
+          String.raw`from\s+['"]${pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\/[^'"]*)?['"]`,
+          'g',
+        );
+        let gm: RegExpExecArray | null;
+        while ((gm = pkgRe.exec(f.content)) !== null) {
+          out.push({
+            ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',
+            severity: 'error',
+            filePath: f.filePath,
+            evidence: gm[0],
+            message: `Provider SDK "${pkg}" may not be imported inside the rendering package.`,
+            remediation:
+              'Rendering is snapshot-in / string-out. Provider SDKs must live behind adapters/providers/**.',
+            baselineStatus: 'not_baselined',
+          });
+        }
+      }
+
+      // (h) determinism + no-I/O guards
+      for (const guard of RENDERING_FORBIDDEN_PATTERNS) {
+        guard.re.lastIndex = 0;
+        let hm: RegExpExecArray | null;
+        while ((hm = guard.re.exec(f.content)) !== null) {
+          out.push({
+            ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',
+            severity: 'error',
+            filePath: f.filePath,
+            evidence: hm[0].slice(0, 120),
+            message: `Rendering package determinism violation: ${guard.message}`,
+            remediation:
+              'The rendering package must be a pure function of persisted snapshots. Move clocks, randomness and I/O to the orchestrating Edge Function boundary.',
+            baselineStatus: 'not_baselined',
+          });
+        }
+      }
+    }
+  }
   }
   return out;
 }
