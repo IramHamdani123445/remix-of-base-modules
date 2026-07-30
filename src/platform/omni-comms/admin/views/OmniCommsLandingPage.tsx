@@ -123,6 +123,16 @@ function StatusBadge({ kind }: { kind: StatusKind }): JSX.Element {
 
 export const OmniCommsLandingPage: React.FC = () => {
   const next = OMNI_COMMS_READINESS_MANIFEST.nextStep;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const view = searchParams.get("view") === "setup" ? "setup" : "overview";
+
+  const onTabChange = (value: string): void => {
+    const params = new URLSearchParams(searchParams);
+    if (value === "setup") params.set("view", "setup");
+    else params.delete("view");
+    setSearchParams(params, { replace: true });
+  };
+
   return (
     <div
       data-testid="omni-comms-landing"
