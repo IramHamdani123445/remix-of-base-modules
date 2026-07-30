@@ -334,3 +334,40 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
   },
 };
 
+
+// ─── Derived operational posture (Operations console banner) ─────────────
+/**
+ * Single derived source of truth for the Operations console badges.
+ *
+ * Every field is computed from the registries / foundation status above —
+ * it is deliberately NOT a second hand-maintained product status.
+ */
+export interface OmniCommsOperationalPosture {
+  schemaAvailable: boolean;
+  runtimeImplemented: boolean;
+  runtimeCertified: boolean;
+  liveDeliveryEnabled: boolean;
+  operationalMutations: 'Not implemented';
+  retryResendCancelSuppress: 'Not implemented';
+  providerDispatch: 'Not implemented';
+  privilegedRuntimeCertification: 'Pending' | 'Certified';
+}
+
+const runtimeObjectsAvailable = OMNI_COMMS_OBJECT_REGISTRY
+  .filter((o) => o.category === 'runtime')
+  .every((o) => o.status === 'AVAILABLE');
+
+const runtimeCertified = OMNI_COMMS_READINESS_MANIFEST.foundationStatus
+  .filter((f) => /certification/i.test(f.item))
+  .every((f) => f.state === 'Verified');
+
+export const OMNI_COMMS_OPERATIONAL_POSTURE: OmniCommsOperationalPosture = {
+  schemaAvailable: runtimeObjectsAvailable,
+  runtimeImplemented: true,
+  runtimeCertified,
+  liveDeliveryEnabled: false,
+  operationalMutations: 'Not implemented',
+  retryResendCancelSuppress: 'Not implemented',
+  providerDispatch: 'Not implemented',
+  privilegedRuntimeCertification: runtimeCertified ? 'Certified' : 'Pending',
+};
