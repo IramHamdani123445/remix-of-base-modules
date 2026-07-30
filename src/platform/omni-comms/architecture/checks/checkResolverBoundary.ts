@@ -100,6 +100,12 @@ function isInResolutionPackage(filePath: string): boolean {
   );
 }
 
+function isInRenderingPackage(filePath: string): boolean {
+  return filePath.replace(/\\/g, '/').includes(
+    'supabase/functions/omni-comms-runtime/rendering/',
+  );
+}
+
 function isInProviderAdapterRoot(filePath: string): boolean {
   return filePath
     .replace(/\\/g, '/')
