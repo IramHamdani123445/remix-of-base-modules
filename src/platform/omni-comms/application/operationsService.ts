@@ -1,133 +1,26 @@
 /**
- * Omni-Comms Operations & Diagnostics — typed RPC adapter (read-only).
+ * Omni-Comms Operations & Diagnostics — typed read-only RPC adapter.
  *
- * Every function here is a read. No retry, resend, cancel or suppress
- * operation exists yet; those require `omni_comms.operate` and a future
- * story. Sensitive content is redacted server-side unless the caller holds
- * `omni_comms.view_sensitive_content`.
+ * Every function here is a read executed through the bound Omni-Comms RPC
+ * client. There is no retry, resend, cancel or suppress operation: those are
+ * deliberately not implemented in this phase. The adapter never imports the
+ * browser Supabase singleton and never touches runtime tables with `.from()`.
+ * Sensitive content is masked server-side unless the caller both holds
+ * `omni_comms.view_sensitive_content` and explicitly requests disclosure.
  */
 import type { OmniCommsRpcClient } from './eventCatalogueService';
 import { callOmniCommsRpc } from './omniCommsRpcCall';
-import type { OmniCommsChannel } from './eventRouteService';
+import {
+  OPS_PAGE_SIZE_DEFAULT,
+  OPS_PAGE_SIZE_MAX,
+  type OpsMessageContent,
+  type OpsRequestDetail,
+  type OpsRequestFilters,
+  type OpsRequestPage,
+  type OpsSummary,
+} from './operationsTypes';
 
-export type RequestStatus =
-  | 'accepted' | 'processing' | 'completed' | 'completed_with_blockers'
-  | 'blocked' | 'failed';
-
-export type RequestMode = 'dry_run' | 'shadow' | 'queued';
-
-export interface OpsSummary {
-  since: string;
-  organization_id: string | null;
-  department_id: string | null;
-  requests_by_status: Record<string, number>;
-  messages_by_status: Record<string, number>;
-  dispatch_jobs_by_status: Record<string, number>;
-  delivery_attempts_by_status: Record<string, number>;
-  generated_at: string;
-}
-
-export interface OpsRequestListItem {
-  id: string;
-  created_at: string;
-  status: RequestStatus;
-  mode: RequestMode;
-  event_code: string | null;
-  caller_module_code: string;
-  caller_entity_type: string | null;
-  caller_entity_id: string | null;
-  correlation_id: string | null;
-  requested_channels: string[] | null;
-  blocker_count: number;
-  message_count: number;
-}
-
-export interface OpsRecipient {
-  id: string;
-  recipient_type: string;
-  display_name: string | null;
-  email_destination: string | null;
-  phone_destination: string | null;
-  locale: string | null;
-  eligibility_status: string;
-  resolved_channels: string[] | null;
-  blockers: unknown;
-}
-
-export interface OpsMessage {
-  id: string;
-  recipient_id: string | null;
-  channel: OmniCommsChannel;
-  status: string;
-  template_version_id: string | null;
-  rendered_checksum: string | null;
-  rendered_subject: string | null;
-  rendered_html: string | null;
-  rendered_text: string | null;
-  content_redacted: boolean;
-  unresolved_tokens: unknown;
-  unresolved_required_slots: unknown;
-  blockers: unknown;
-  created_at: string;
-}
-
-export interface OpsDispatchJob {
-  id: string;
-  message_id: string | null;
-  channel: OmniCommsChannel;
-  mode: RequestMode;
-  status: string;
-  priority: number;
-  attempt_count: number;
-  max_attempts: number;
-  is_runnable: boolean;
-  hold_reason: string | null;
-  scheduled_at: string | null;
-  next_attempt_at: string | null;
-  created_at: string;
-}
-
-export interface OpsTimelineEntry {
-  id: string;
-  message_id: string | null;
-  event_type: string;
-  event_sequence: number;
-  status_before: string | null;
-  status_after: string | null;
-  summary: string | null;
-  safe_metadata: unknown;
-  actor_type: string | null;
-  created_at: string;
-}
-
-export interface OpsRequestDetail {
-  request: {
-    id: string;
-    organization_id: string;
-    department_id: string | null;
-    status: RequestStatus;
-    mode: RequestMode;
-    event_definition_id: string | null;
-    event_code: string | null;
-    caller_module_code: string;
-    caller_entity_type: string | null;
-    caller_entity_id: string | null;
-    correlation_id: string | null;
-    idempotency_key: string;
-    requested_channels: string[] | null;
-    blockers: unknown;
-    payload_snapshot: unknown;
-    payload_redacted: boolean;
-    created_at: string;
-    completed_at: string | null;
-  };
-  recipients: OpsRecipient[];
-  messages: OpsMessage[];
-  dispatch_jobs: OpsDispatchJob[];
-  timeline: OpsTimelineEntry[];
-  sensitive_visible: boolean;
-  generated_at: string;
-}
+export * from './operationsTypes';
 
 export interface DiagnosticsCheck {
   id: string;
@@ -168,46 +61,70 @@ export interface OmniCommsDiagnostics {
   generated_at: string;
 }
 
+function clampLimit(limit?: number): number {
+  const n = Number.isFinite(limit) ? Number(limit) : OPS_PAGE_SIZE_DEFAULT;
+  return Math.min(Math.max(Math.trunc(n), 1), OPS_PAGE_SIZE_MAX);
+}
+
+function clampOffset(offset?: number): number {
+  const n = Number.isFinite(offset) ? Number(offset) : 0;
+  return Math.max(Math.trunc(n), 0);
+}
+
 export function getOpsSummary(
   client: OmniCommsRpcClient,
-  input: { organizationId?: string | null; departmentId?: string | null; sinceHours?: number },
+  input: { organizationId: string; departmentId?: string | null; sinceHours?: number },
 ): Promise<OpsSummary> {
   return callOmniCommsRpc<OpsSummary>(client, 'omni_comms_ops_summary', {
-    p_organization_id: input.organizationId ?? null,
+    p_organization_id: input.organizationId,
     p_department_id: input.departmentId ?? null,
-    p_since_hours: input.sinceHours ?? 168,
+    p_since_hours: input.sinceHours ?? 720,
   });
 }
 
 export function listOpsRequests(
   client: OmniCommsRpcClient,
-  input: {
-    organizationId?: string | null;
-    departmentId?: string | null;
-    status?: RequestStatus | null;
-    mode?: RequestMode | null;
-    search?: string | null;
+  input: OpsRequestFilters & {
+    organizationId: string;
     limit?: number;
     offset?: number;
   },
-): Promise<OpsRequestListItem[]> {
-  return callOmniCommsRpc<OpsRequestListItem[]>(client, 'omni_comms_ops_request_list', {
-    p_organization_id: input.organizationId ?? null,
+): Promise<OpsRequestPage> {
+  return callOmniCommsRpc<OpsRequestPage>(client, 'omni_comms_ops_request_list', {
+    p_organization_id: input.organizationId,
     p_department_id: input.departmentId ?? null,
-    p_status: input.status ?? null,
     p_mode: input.mode ?? null,
+    p_status: input.status ?? null,
+    p_event_code: input.eventCode ?? null,
+    p_caller_module_code: input.callerModuleCode ?? null,
+    p_date_from: input.dateFrom ?? null,
+    p_date_to: input.dateTo ?? null,
+    p_has_blockers: input.hasBlockers ?? null,
     p_search: input.search ?? null,
-    p_limit: input.limit ?? 50,
-    p_offset: input.offset ?? 0,
+    p_limit: clampLimit(input.limit),
+    p_offset: clampOffset(input.offset),
   });
 }
 
 export function getOpsRequestDetail(
   client: OmniCommsRpcClient,
-  requestId: string,
+  input: { requestId: string; organizationId: string; revealSensitive?: boolean },
 ): Promise<OpsRequestDetail> {
   return callOmniCommsRpc<OpsRequestDetail>(client, 'omni_comms_ops_request_detail', {
-    p_request_id: requestId,
+    p_request_id: input.requestId,
+    p_organization_id: input.organizationId,
+    p_reveal_sensitive: input.revealSensitive ?? false,
+  });
+}
+
+export function getOpsMessageContent(
+  client: OmniCommsRpcClient,
+  input: { messageId: string; organizationId: string; revealSensitive?: boolean },
+): Promise<OpsMessageContent> {
+  return callOmniCommsRpc<OpsMessageContent>(client, 'omni_comms_ops_message_content', {
+    p_message_id: input.messageId,
+    p_organization_id: input.organizationId,
+    p_reveal_sensitive: input.revealSensitive ?? true,
   });
 }
 

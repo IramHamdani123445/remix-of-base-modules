@@ -303,6 +303,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Atomic message persistence (Slice 2c-iii)',      state: 'In progress', note: 'Slice 2c-iii Batch B — public.omni_comms_priv_persist_rendered_messages: single transaction writing omni_comms_message rows, message_rendered/message_blocked timeline events, per-mode terminal status, held dispatch jobs, dispatch_held events, request blockers and the request_completed event. Replay-safe (existing messages short-circuit), requires status=processing, service_role EXECUTE only.' },
     { item: 'Mode-aware dispatch behaviour (Slice 2c-iii)',   state: 'In progress', note: 'Slice 2c-iii Batch C — dry_run creates NO dispatch job and completes messages as dry_run_completed; shadow creates held jobs with hold_reason=shadow_mode and completes messages as shadow_completed; queued creates held jobs only, message status held. The RPC raises OC422 runnable_job_forbidden for any job that is not status=held/is_runnable=false, and OC422 dry_run_jobs_forbidden for any dry_run job. No provider is contacted and no delivery attempt is created anywhere in this build.' },
     { item: 'Rendering boundary enforcement (Slice 2c-iii)',  state: 'Verified', note: 'Slice 2c-iii Batch D — architecture Rule 11 OMNI_RESOLVER_RUNTIME_BOUNDARY extended: src/** may not import the rendering package; omni_comms_priv_load_render_context and omni_comms_priv_persist_rendered_messages added to the browser-forbidden RPC list; the rendering package is guarded against clock reads, randomness, fetch, Supabase clients, .rpc/.from access and provider SDK imports. Architecture check reports 0 unbaselined violations.' },
+    { item: 'Read-only Operations console (Phase 2)',        state: 'Verified', note: 'Phase 2 — /admin/omnichannel-communications/operations is Available and reads real runtime records through omni_comms_ops_summary, _request_list, _request_detail and _message_content only. Request detail is a panel driven by ?request=<id>, so the permanent route count stays at seven. No retry, resend, cancel, suppress or dispatch control exists; destinations and payloads are masked server-side unless omni_comms.view_sensitive_content is held and disclosure is explicitly requested; rendered HTML is only shown inside the sandboxed iframe.' },
     { item: 'Slice 2c-iii runtime certification',             state: 'In progress', note: 'Slice 2c-iii is implementation-only. End-to-end rendering, held-job and timeline behaviour against the deployed Edge Function still requires a privileged run, exactly as for Slice 2c-ii. No live send capability exists or is claimed.' },
   ],
 
@@ -334,3 +335,50 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
   },
 };
 
+
+// ─── Derived operational posture (Operations console banner) ─────────────
+/**
+ * Single derived source of truth for the Operations console badges.
+ *
+ * Every field is computed from the registries / foundation status above —
+ * it is deliberately NOT a second hand-maintained product status.
+ */
+export interface OmniCommsOperationalPosture {
+  schemaAvailable: boolean;
+  runtimeImplemented: boolean;
+  runtimeCertified: boolean;
+  liveDeliveryEnabled: boolean;
+  operationalMutations: 'Not implemented';
+  retryResendCancelSuppress: 'Not implemented';
+  providerDispatch: 'Not implemented';
+  privilegedRuntimeCertification: 'Pending' | 'Certified';
+}
+
+const CORE_RUNTIME_OBJECTS = [
+  'omni_comms_event_route',
+  'omni_comms_request',
+  'omni_comms_recipient',
+  'omni_comms_message',
+  'omni_comms_dispatch_job',
+  'omni_comms_delivery_attempt',
+  'omni_comms_message_event',
+];
+
+const runtimeObjectsAvailable = CORE_RUNTIME_OBJECTS.every((name) =>
+  OMNI_COMMS_OBJECT_REGISTRY.some((o) => o.name === name && o.status === 'AVAILABLE'),
+);
+
+const runtimeCertified = OMNI_COMMS_READINESS_MANIFEST.foundationStatus
+  .filter((f) => /certification/i.test(f.item))
+  .every((f) => f.state === 'Verified');
+
+export const OMNI_COMMS_OPERATIONAL_POSTURE: OmniCommsOperationalPosture = {
+  schemaAvailable: runtimeObjectsAvailable,
+  runtimeImplemented: true,
+  runtimeCertified,
+  liveDeliveryEnabled: false,
+  operationalMutations: 'Not implemented',
+  retryResendCancelSuppress: 'Not implemented',
+  providerDispatch: 'Not implemented',
+  privilegedRuntimeCertification: runtimeCertified ? 'Certified' : 'Pending',
+};

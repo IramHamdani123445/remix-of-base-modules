@@ -40,7 +40,7 @@ describe('Omni-Comms UI Stabilization', () => {
       'Available',
     );
     expect(byPath.get('/admin/omnichannel-communications/operations')).toBe(
-      'Not implemented',
+      'Available',
     );
     expect(byPath.get('/admin/omnichannel-communications/preferences')).toBe(
       'Not implemented',

@@ -102733,17 +102733,34 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_ops_message_content: {
+        Args: {
+          p_message_id: string
+          p_organization_id: string
+          p_reveal_sensitive?: boolean
+        }
+        Returns: Json
+      }
       omni_comms_ops_request_detail: {
-        Args: { p_request_id: string }
+        Args: {
+          p_organization_id: string
+          p_request_id: string
+          p_reveal_sensitive?: boolean
+        }
         Returns: Json
       }
       omni_comms_ops_request_list: {
         Args: {
+          p_caller_module_code?: string
+          p_date_from?: string
+          p_date_to?: string
           p_department_id?: string
+          p_event_code?: string
+          p_has_blockers?: boolean
           p_limit?: number
           p_mode?: string
           p_offset?: number
-          p_organization_id?: string
+          p_organization_id: string
           p_search?: string
           p_status?: string
         }
@@ -102752,7 +102769,7 @@ export type Database = {
       omni_comms_ops_summary: {
         Args: {
           p_department_id?: string
-          p_organization_id?: string
+          p_organization_id: string
           p_since_hours?: number
         }
         Returns: Json
@@ -102811,6 +102828,12 @@ export type Database = {
           p_request_id: string
         }
         Returns: Json
+      }
+      omni_comms_priv_mask_email: { Args: { p_value: string }; Returns: string }
+      omni_comms_priv_mask_phone: { Args: { p_value: string }; Returns: string }
+      omni_comms_priv_mask_reference: {
+        Args: { p_value: string }
+        Returns: string
       }
       omni_comms_priv_next_event_sequence: {
         Args: { p_request_id: string }
