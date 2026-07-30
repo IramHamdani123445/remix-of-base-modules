@@ -86,7 +86,7 @@ const ROWS: StatusRow[] = [
     key: "operations",
     title: "Operations (runtime)",
     summary:
-      "Runtime requests, messages and dispatch processing will be introduced in Accelerated Build 3.",
+      "Runtime requests, recipients, messages, dispatch jobs and the full request timeline are visible read-only on the Operations console.",
     to: "/admin/omnichannel-communications/operations",
     kind: toKind("/admin/omnichannel-communications/operations"),
   },
@@ -102,7 +102,7 @@ const ROWS: StatusRow[] = [
     key: "health",
     title: "Health / Readiness",
     summary:
-      "Verified foundation, current build status, registries and architecture rule results are reported on the Health screen.",
+      "Static Readiness plus Live Diagnostics of the actual deployed configuration and runtime state are reported on the Health screen.",
     to: "/admin/omnichannel-communications/health",
     kind: toKind("/admin/omnichannel-communications/health"),
   },
