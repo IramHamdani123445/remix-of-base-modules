@@ -40,7 +40,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OMNI_COMMS_DEFAULT_CALLER_MODULE = "OMNI_COMMS_DIRECT";
-const BUILD_TAG = "omni-comms-runtime@2c-ii-b";
+const BUILD_TAG = "omni-comms-runtime@2c-iii";
 
 type Mode = "dry_run" | "shadow" | "queued";
 
