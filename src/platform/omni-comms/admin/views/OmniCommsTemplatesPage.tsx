@@ -734,7 +734,9 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const [versionsLoading, setVersionsLoading] = React.useState(false);
   const [selectedVersion, setSelectedVersion] = React.useState<TemplateVersionGetResult | null>(null);
 
-  const [organizationId, setOrganizationId] = React.useState<string>("");
+  // Organisation now comes from the shared Omni-Comms tenant context.
+  const { organizationId: tenantOrganizationId } = useOmniCommsTenant();
+  const organizationId = tenantOrganizationId ?? "";
   const [departments, setDepartments] = React.useState<ActiveDepartmentOption[]>([]);
   const [events, setEvents] = React.useState<EventDefinitionListItem[]>([]);
 
@@ -743,41 +745,39 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const [publishState, setPublishState] = React.useState<PublishDialogState>({ open: false, version: null, hasExistingPublished: false });
   const [reasonDialog, setReasonDialog] = React.useState<ReasonDialogState>(CLOSED_REASON);
 
-  // ── Load organisation + departments + events once ──
+  // ── Load the event catalogue once ──
   React.useEffect(() => {
     if (!canView) return;
     (async () => {
       try {
-        const profile = await getOrganizationProfile();
-        // profile shape may vary; look for org id fields
-        const orgId = (profile as unknown as { id?: string; organizationId?: string } | null)?.id
-          ?? (profile as unknown as { organizationId?: string } | null)?.organizationId
-          ?? "";
-        setOrganizationId(orgId);
-        if (orgId) {
-          const deps = await listActiveDepartmentsForOrganization(orgId);
-          setDepartments(deps);
-        }
-        try {
-          const evs = await ecSvc.listAllEventDefinitionsForPicker(client, { maxItems: 1000 });
-          setEvents(evs);
-        } catch (pickerErr) {
-          // Treat picker load as failed rather than silently presenting an
-          // incomplete event catalogue. One friendly toast, no raw SQLSTATE.
-          setEvents([]);
-          toastError(new Error("Could not load the event catalogue. Try again."));
-           
-          console.warn("[omni-comms] event picker load failed", pickerErr);
-        }
-      } catch (e) { toastError(e); }
+        const evs = await ecSvc.listAllEventDefinitionsForPicker(client, { maxItems: 1000 });
+        setEvents(evs);
+      } catch (pickerErr) {
+        // Treat picker load as failed rather than silently presenting an
+        // incomplete event catalogue. One friendly toast, no raw SQLSTATE.
+        setEvents([]);
+        toastError(new Error("Could not load the event catalogue. Try again."));
+
+        console.warn("[omni-comms] event picker load failed", pickerErr);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canView]);
 
-  // ── Clear invalid department selection whenever organisation changes ──
+  // ── Load departments for the tenant-selected organisation ──
   React.useEffect(() => {
-    setDepartments((d) => d.filter((x) => x.isActive));
-  }, [organizationId]);
+    if (!canView || !organizationId) { setDepartments([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const deps = await listActiveDepartmentsForOrganization(organizationId);
+        if (!cancelled) setDepartments(deps.filter((d) => d.isActive));
+      } catch (e) {
+        if (!cancelled) { setDepartments([]); toastError(e); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [canView, organizationId]);
 
   // ── Load families ──
   const reloadFamilies = React.useCallback(async () => {
