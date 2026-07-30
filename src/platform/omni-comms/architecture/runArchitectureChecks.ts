@@ -62,6 +62,7 @@ const CHECKS = [
   checkPermanentNames,
   checkResolverBoundary,
   checkHealthBoundary,
+  checkSetupWizardBoundary,
 ] as const;
 
 function toPosix(p: string): string {
