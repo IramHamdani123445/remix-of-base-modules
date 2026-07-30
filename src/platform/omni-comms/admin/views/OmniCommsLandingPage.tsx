@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OMNI_COMMS_ROUTE_REGISTRY } from "../../registry/routeRegistry";
 import { OMNI_COMMS_READINESS_MANIFEST } from "../../registry/readinessManifest";
 import SetupWizardPanel from "./setup/SetupWizardPanel";
+import ControlledDryRunPanel from "./dryrun/ControlledDryRunPanel";
 
 type StatusKind = "available" | "coming-soon";
 
@@ -126,11 +127,13 @@ function StatusBadge({ kind }: { kind: StatusKind }): JSX.Element {
 export const OmniCommsLandingPage: React.FC = () => {
   const next = OMNI_COMMS_READINESS_MANIFEST.nextStep;
   const [searchParams, setSearchParams] = useSearchParams();
-  const view = searchParams.get("view") === "setup" ? "setup" : "overview";
+  const rawView = searchParams.get("view");
+  const view =
+    rawView === "setup" || rawView === "dry-run" ? rawView : "overview";
 
   const onTabChange = (value: string): void => {
     const params = new URLSearchParams(searchParams);
-    if (value === "setup") params.set("view", "setup");
+    if (value === "setup" || value === "dry-run") params.set("view", value);
     else params.delete("view");
     setSearchParams(params, { replace: true });
   };
@@ -159,6 +162,9 @@ export const OmniCommsLandingPage: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="setup" data-testid="omni-comms-landing-tab-setup">
             Setup Wizard
+          </TabsTrigger>
+          <TabsTrigger value="dry-run" data-testid="omni-comms-landing-tab-dry-run">
+            Dry Run
           </TabsTrigger>
         </TabsList>
 
@@ -234,6 +240,10 @@ export const OmniCommsLandingPage: React.FC = () => {
 
         <TabsContent value="setup" className="mt-4">
           <SetupWizardPanel />
+        </TabsContent>
+
+        <TabsContent value="dry-run" className="mt-4">
+          <ControlledDryRunPanel />
         </TabsContent>
       </Tabs>
     </div>
