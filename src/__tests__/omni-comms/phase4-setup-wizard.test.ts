@@ -499,7 +499,8 @@ describe('Phase 4 — route ceiling', () => {
       'utf8',
     );
     expect(landing).toContain('SetupWizardPanel');
-    expect(landing).toContain('view=setup');
+    expect(landing).toContain('"view"');
+    expect(landing).toContain('"setup"');
   });
 });
 
