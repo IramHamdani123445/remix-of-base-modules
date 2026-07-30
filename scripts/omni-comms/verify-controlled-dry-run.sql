@@ -100,14 +100,22 @@ JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND p.proname = 'omni_comms_priv_admin_dry_run_guard';
 
-\echo '== 6b. Administration caller guard is invoked from the trusted send boundary =='
+\echo '== 6b. Guard is server-only (service_role/postgres) and the gate state helper exists =='
+-- The guard is invoked before runtime persistence by the trusted edge boundary
+-- (supabase/functions/omni-comms-runtime), never by a browser role.
 SELECT p.proname,
-       (p.prosrc ~* 'OMNI_COMMS_ADMIN_DRY_RUN')              AS admin_caller_module_guard,
-       (p.prosrc ~* 'omni_comms_priv_admin_dry_run_guard')   AS invokes_admin_guard
+       bool_or(a.grantee IN ('anon','authenticated','PUBLIC')) AS browser_role_can_execute
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
+CROSS JOIN LATERAL aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) ax
+JOIN LATERAL (
+  SELECT COALESCE(pg_get_userbyid(NULLIF(ax.grantee, 0)), 'PUBLIC') AS grantee
+) a ON TRUE
 WHERE n.nspname = 'public'
-  AND p.proname = 'omni_comms_priv_send_communication';
+  AND p.proname IN ('omni_comms_priv_admin_dry_run_guard',
+                    'omni_comms_priv_dry_run_gate_state')
+GROUP BY p.proname
+ORDER BY p.proname;
 
 \echo '== 7. No Legacy Communication Hub reference in any controlled dry-run function =='
 SELECT p.proname,
