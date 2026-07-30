@@ -202,6 +202,16 @@ function blocker(
   return { code: `${step}_missing`, step, severity, message: `${step} is not ready` };
 }
 
+function scan(files: { filePath: string; content: string }[]) {
+  return {
+    files,
+    routeSource: null,
+    migrations: [],
+    edgeFunctionDirs: [],
+    dependencies: {},
+  };
+}
+
 function readFiles(dir: string): { filePath: string; content: string }[] {
   const abs = path.join(REPO_ROOT, dir);
   if (!fs.existsSync(abs)) return [];
@@ -518,92 +528,92 @@ describe('Phase 4 — Rule 13 OMNI_SETUP_WIZARD_BOUNDARY', () => {
 
   it('37. reports zero violations for the real Setup Wizard surface', () => {
     expect(wizardFiles.length).toBeGreaterThan(0);
-    expect(checkSetupWizardBoundary({ files: wizardFiles })).toEqual([]);
+    expect(checkSetupWizardBoundary(scan(wizardFiles))).toEqual([]);
   });
 
   it('38. rejects a direct configuration-table read', () => {
-    const v = checkSetupWizardBoundary({
-      files: [
+    const v = checkSetupWizardBoundary(
+      scan([
         {
           filePath: 'src/platform/omni-comms/admin/views/setup/Bad.tsx',
           content: "const x = client.from('omni_comms_event_route').select('*');",
         },
-      ],
-    });
+      ]),
+    );
     expect(v.length).toBeGreaterThan(0);
     expect(v[0].ruleId).toBe('OMNI_SETUP_WIZARD_BOUNDARY');
   });
 
   it('39. rejects a non-approved RPC reference', () => {
-    const v = checkSetupWizardBoundary({
-      files: [
+    const v = checkSetupWizardBoundary(
+      scan([
         {
           filePath: 'src/platform/omni-comms/admin/views/setup/Bad.tsx',
           content: "await client.rpc('omni_comms_priv_send_communication', {});",
         },
-      ],
-    });
+      ]),
+    );
     expect(v.some((x) => x.evidence.includes('omni_comms_priv_send_communication'))).toBe(true);
   });
 
   it('40. rejects a configuration write from the wizard', () => {
-    const v = checkSetupWizardBoundary({
-      files: [
+    const v = checkSetupWizardBoundary(
+      scan([
         {
           filePath: 'src/platform/omni-comms/admin/views/setup/Bad.tsx',
           content: 'await table.insert({ a: 1 });',
         },
-      ],
-    });
+      ]),
+    );
     expect(v.some((x) => x.message.includes('data write'))).toBe(true);
   });
 
   it('41. rejects a provider SDK import', () => {
-    const v = checkSetupWizardBoundary({
-      files: [
+    const v = checkSetupWizardBoundary(
+      scan([
         {
           filePath: 'src/platform/omni-comms/admin/views/setup/Bad.tsx',
           content: "import { Resend } from 'resend';",
         },
-      ],
-    });
+      ]),
+    );
     expect(v.some((x) => x.message.includes('provider SDK'))).toBe(true);
   });
 
   it('42. rejects a Legacy Communication Hub reference', () => {
-    const v = checkSetupWizardBoundary({
-      files: [
+    const v = checkSetupWizardBoundary(
+      scan([
         {
           filePath: 'src/platform/omni-comms/admin/views/setup/Bad.tsx',
           content: "import x from 'src/platform/communication-hub/foo';",
         },
-      ],
-    });
+      ]),
+    );
     expect(v.some((x) => x.message.includes('Legacy'))).toBe(true);
   });
 
   it('43. rejects secret exposure', () => {
-    const v = checkSetupWizardBoundary({
-      files: [
+    const v = checkSetupWizardBoundary(
+      scan([
         {
           filePath: 'src/platform/omni-comms/admin/views/setup/Bad.tsx',
           content: 'const s = account.secret_ref;',
         },
-      ],
-    });
+      ]),
+    );
     expect(v.some((x) => x.message.includes('secret'))).toBe(true);
   });
 
   it('44. ignores files outside the Setup Wizard surface', () => {
     expect(
-      checkSetupWizardBoundary({
-        files: [
+      checkSetupWizardBoundary(
+        scan([
           {
             filePath: 'src/platform/omni-comms/admin/views/OmniCommsChannelsPage.tsx',
             content: 'await client.rpc("omni_comms_channel_setting_upsert", {});',
           },
-        ],
-      }),
+        ]),
+      ),
     ).toEqual([]);
   });
 });
