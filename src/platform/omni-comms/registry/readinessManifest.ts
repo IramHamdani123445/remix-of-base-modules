@@ -327,9 +327,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Accelerated Build 3 — Slice 2c-ii runtime certification',
+    story: 'Accelerated Build 3 — Slice 2c-ii / 2c-iii runtime certification',
     title:
-      'Execute the privileged Slice 2c-ii Edge integration harness (scripts/omni-comms/integration/run-edge-resolution.ts) in a privileged environment to produce the BUILD 3 SLICE 2C-II EDGE RESOLUTION INTEGRATION OK marker. Do not advance to Slice 2c-iii before this marker is produced.',
+      'Slice 2c-iii rendering, message persistence, held jobs and the timeline are implemented and boundary-enforced, but remain uncertified. Run the privileged Edge integration harness (scripts/omni-comms/integration/run-edge-resolution.ts) in a privileged environment to certify Slice 2c-ii and 2c-iii end to end. No live send capability exists; every dispatch job produced by this build is held and non-runnable.',
     informationalOnly: true,
   },
 };
