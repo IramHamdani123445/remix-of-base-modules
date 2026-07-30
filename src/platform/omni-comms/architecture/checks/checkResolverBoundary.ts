@@ -310,6 +310,5 @@ export function checkResolverBoundary(scan: RepositoryScan): ArchitectureViolati
       }
     }
   }
-  }
   return out;
 }
