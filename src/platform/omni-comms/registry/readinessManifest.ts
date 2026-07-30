@@ -231,7 +231,10 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { ruleId: 'OMNI_SEND_FACADE_BOUNDARY',       title: 'Send-façade boundary',                 status: 'Enforced in CI' },
     { ruleId: 'OMNI_PERMANENT_NAME_POLICY',      title: 'Permanent-name policy',                status: 'Enforced in CI' },
     { ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',  title: 'Resolver runtime boundary (Rule 11)',  status: 'Enforced in CI' },
+    { ruleId: 'OMNI_HEALTH_DIAGNOSTIC_BOUNDARY', title: 'Health diagnostic boundary (Rule 12)', status: 'Enforced in CI' },
+    { ruleId: 'OMNI_SETUP_WIZARD_BOUNDARY',      title: 'Setup Wizard boundary (Rule 13)',      status: 'Enforced in CI' },
   ],
+
 
   foundationStatus: [
     { item: 'Event Definition schema',                 state: 'Verified', note: 'Epic 2 Story 1 — public.omni_comms_event_definition; unique code; segment/format CHECKs; lifecycle CHECK; before-insert/update rules trigger.' },
