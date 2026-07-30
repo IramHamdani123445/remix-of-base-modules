@@ -33,8 +33,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, ShieldAlert, EyeOff, Radio } from "lucide-react";
+import { Loader2, ShieldAlert, EyeOff, Radio, Plus } from "lucide-react";
 import { toast } from "sonner";
+import EventDefinitionEditorDialog from "./events/EventDefinitionEditorDialog";
+import EventContractEditorDialog from "./events/EventContractEditorDialog";
+import EventRoutesTab from "./events/EventRoutesTab";
+import { OmniCommsEmptyState } from "../components/OmniCommsEmptyState";
+import { useHasPermission } from "@/hooks/useHasPermission";
 
 const REASON_MAX = 2000;
 const PAYLOAD_MAX_BYTES = 256 * 1024;
@@ -162,6 +167,9 @@ const DefinitionsTab: React.FC = () => {
   const [selected, setSelected] = React.useState<EventDefinitionRow | null>(null);
   const [action, setAction] = React.useState<"activate" | "suspend" | "retire" | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [editor, setEditor] = React.useState<{ open: boolean; row: EventDefinitionRow | null }>({
+    open: false, row: null,
+  });
 
   const load = React.useCallback(async () => {
     setLoading(true); setError(null);
@@ -184,6 +192,14 @@ const DefinitionsTab: React.FC = () => {
     const h = setTimeout(load, 250);
     return () => clearTimeout(h);
   }, [load]);
+
+  const openEditor = async (id: string) => {
+    try {
+      const row = await svc.getEventDefinition(client, id);
+      if (!row) { toast.error("Event not found"); return; }
+      setEditor({ open: true, row });
+    } catch (e) { toast.error(friendly(e)); }
+  };
 
   const openAction = async (id: string, act: "activate" | "suspend" | "retire") => {
     try {
@@ -241,6 +257,10 @@ const DefinitionsTab: React.FC = () => {
           {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Refresh
         </Button>
+        <div className="flex-1" />
+        <Button onClick={() => setEditor({ open: true, row: null })} data-testid="oc-definition-new">
+          <Plus className="h-4 w-4 mr-1" />New event
+        </Button>
       </div>
 
       {error && (
@@ -265,7 +285,14 @@ const DefinitionsTab: React.FC = () => {
           </thead>
           <tbody>
             {rows.length === 0 && !loading && (
-              <tr><td colSpan={6} className="text-center py-6 text-muted-foreground">No events</td></tr>
+              <tr><td colSpan={6} className="p-0">
+                <OmniCommsEmptyState
+                  title="No events defined yet"
+                  description="Event definitions describe the business moments the hub can communicate about. Create the first one to begin."
+                  actionLabel="Create an event"
+                  onAction={() => setEditor({ open: true, row: null })}
+                />
+              </td></tr>
             )}
             {rows.map((r) => (
               <tr key={r.id} className="border-t">
@@ -279,6 +306,11 @@ const DefinitionsTab: React.FC = () => {
                   </Badge>
                 </td>
                 <td className="px-3 py-2 text-right space-x-1">
+                  {r.status === "draft" && (
+                    <Button size="sm" variant="outline" onClick={() => openEditor(r.id)}>
+                      Edit
+                    </Button>
+                  )}
                   {(r.status === "draft" || r.status === "suspended") && (
                     <Button size="sm" variant="outline" onClick={() => openAction(r.id, "activate")}>
                       Activate
@@ -319,6 +351,19 @@ const DefinitionsTab: React.FC = () => {
         onCancel={() => { setSelected(null); setAction(null); }}
         onConfirm={runAction}
       />
+
+      <EventDefinitionEditorDialog
+        open={editor.open}
+        client={client}
+        existing={editor.row}
+        onCancel={() => setEditor({ open: false, row: null })}
+        onSaved={() => {
+          setEditor({ open: false, row: null });
+          toast.success("Event definition saved");
+          void load();
+        }}
+        onError={(e) => toast.error(friendly(e))}
+      />
     </div>
   );
 };
@@ -336,6 +381,14 @@ const ContractsTab: React.FC = () => {
   const [selected, setSelected] = React.useState<EventContractRow | null>(null);
   const [action, setAction] = React.useState<"publish" | "retire" | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [editor, setEditor] = React.useState<{ open: boolean; row: EventContractRow | null }>({
+    open: false, row: null,
+  });
+
+  const nextVersion = React.useMemo(
+    () => contracts.reduce((m, c) => Math.max(m, c.version_number), 0) + 1,
+    [contracts],
+  );
 
   React.useEffect(() => {
     (async () => {
@@ -360,6 +413,14 @@ const ContractsTab: React.FC = () => {
   }, [client, selectedDef]);
 
   React.useEffect(() => { load(); }, [load]);
+
+  const openContractEditor = async (id: string) => {
+    try {
+      const row = await svc.getEventContract(client, id);
+      if (!row) { toast.error("Contract not found"); return; }
+      setEditor({ open: true, row });
+    } catch (e) { toast.error(friendly(e)); }
+  };
 
   const openContract = async (id: string, act: "publish" | "retire") => {
     try {
@@ -404,6 +465,14 @@ const ContractsTab: React.FC = () => {
           {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
           Refresh
         </Button>
+        <div className="flex-1" />
+        <Button
+          disabled={!selectedDef}
+          onClick={() => setEditor({ open: true, row: null })}
+          data-testid="oc-contract-new"
+        >
+          <Plus className="h-4 w-4 mr-1" />New contract draft
+        </Button>
       </div>
 
       {error && (
@@ -438,7 +507,14 @@ const ContractsTab: React.FC = () => {
           </thead>
           <tbody>
             {contracts.length === 0 && !loading && (
-              <tr><td colSpan={4} className="text-center py-6 text-muted-foreground">No contracts</td></tr>
+              <tr><td colSpan={4} className="p-0">
+                <OmniCommsEmptyState
+                  title="No contract versions"
+                  description="A contract defines the JSON payload shape producers must send for this event. Draft version 1 to get started."
+                  actionLabel={selectedDef ? "Draft a contract" : undefined}
+                  onAction={selectedDef ? () => setEditor({ open: true, row: null }) : undefined}
+                />
+              </td></tr>
             )}
             {contracts.map((c) => (
               <tr key={c.id} className="border-t">
@@ -450,6 +526,11 @@ const ContractsTab: React.FC = () => {
                   {c.checksum ?? "—"}
                 </td>
                 <td className="px-3 py-2 text-right space-x-1">
+                  {c.status === "draft" && (
+                    <Button size="sm" variant="outline" onClick={() => openContractEditor(c.id)}>
+                      Edit
+                    </Button>
+                  )}
                   {c.status === "draft" && (
                     <Button size="sm" variant="outline" onClick={() => openContract(c.id, "publish")}>
                       Publish
@@ -485,6 +566,23 @@ const ContractsTab: React.FC = () => {
         onCancel={() => { setSelected(null); setAction(null); }}
         onConfirm={runAction}
       />
+
+      {selectedDef && (
+        <EventContractEditorDialog
+          open={editor.open}
+          client={client}
+          eventDefinitionId={selectedDef}
+          nextVersionNumber={nextVersion}
+          existing={editor.row}
+          onCancel={() => setEditor({ open: false, row: null })}
+          onSaved={() => {
+            setEditor({ open: false, row: null });
+            toast.success("Contract draft saved");
+            void load();
+          }}
+          onError={(e) => toast.error(friendly(e))}
+        />
+      )}
     </div>
   );
 };
@@ -492,6 +590,11 @@ const ContractsTab: React.FC = () => {
 // ─────────────────────────────────────────────────────────────────────
 // Page
 // ─────────────────────────────────────────────────────────────────────
+const RoutesTabHost: React.FC = () => {
+  const canConfigure = useHasPermission("omni_comms.configure");
+  return <EventRoutesTab canConfigure={canConfigure} friendly={friendly} />;
+};
+
 export const OmniCommsEventsPage: React.FC = () => {
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="oc-events-page">
@@ -514,22 +617,7 @@ export const OmniCommsEventsPage: React.FC = () => {
         </TabsList>
         <TabsContent value="definitions"><DefinitionsTab /></TabsContent>
         <TabsContent value="contracts"><ContractsTab /></TabsContent>
-        <TabsContent value="routes">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Routes</CardTitle></CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Event routing is planned for a later Epic 2 story. This tab is a
-              placeholder — no writes, no reads, no data.
-              <div className="mt-2">
-                <Badge variant="outline">
-                  Payload budget notice: contract sample payloads are capped at{" "}
-                  {(PAYLOAD_MAX_BYTES / 1024).toFixed(0)} KB (UTF-8).
-                </Badge>
-              </div>
-              <div className="mt-2 text-xs">byteLen helper reserved: {byteLen("")}</div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <TabsContent value="routes"><RoutesTabHost /></TabsContent>
         <TabsContent value="simulator">
           <Card>
             <CardHeader><CardTitle className="text-base">Simulator</CardTitle></CardHeader>
