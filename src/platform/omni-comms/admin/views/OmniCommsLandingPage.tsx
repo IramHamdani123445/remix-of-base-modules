@@ -150,73 +150,92 @@ export const OmniCommsLandingPage: React.FC = () => {
         </div>
       </div>
 
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>Current status</AlertTitle>
-        <AlertDescription>
-          Events, Templates, Shared Assets &amp; Layouts and Channels are
-          available. Operations and Preferences are Coming Soon. Communication
-          Hub — Legacy continues to run in parallel until cutover.
-        </AlertDescription>
-      </Alert>
+      <Tabs value={view} onValueChange={onTabChange} className="w-full">
+        <TabsList aria-label="Omnichannel Communications overview tabs">
+          <TabsTrigger value="overview" data-testid="omni-comms-landing-tab-overview">
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="setup" data-testid="omni-comms-landing-tab-setup">
+            Setup Wizard
+          </TabsTrigger>
+        </TabsList>
 
-      <Card data-testid="omni-comms-landing-status-grid">
-        <CardHeader>
-          <CardTitle className="text-base">Capability status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {ROWS.map((row) => (
-              <li
-                key={row.key}
-                data-testid={`omni-comms-landing-row-${row.key}`}
-                className="rounded-md border p-3 flex flex-col gap-2"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-medium">{row.title}</span>
-                  <StatusBadge kind={row.kind} />
-                </div>
-                <p className="text-sm text-muted-foreground">{row.summary}</p>
-                {row.to ? (
-                  <div>
-                    <Button asChild size="sm" variant="ghost">
-                      <Link to={row.to}>
-                        Open <ArrowRight className="h-3 w-3 ml-1" />
-                      </Link>
-                    </Button>
-                  </div>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+        <TabsContent value="overview" className="mt-4 space-y-6">
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertTitle>Current status</AlertTitle>
+            <AlertDescription>
+              Events, Templates, Shared Assets &amp; Layouts, Channels,
+              Operations and Health are available. Preferences is Coming Soon.
+              Communication Hub — Legacy continues to run in parallel until
+              cutover.
+            </AlertDescription>
+          </Alert>
 
-      <Card data-testid="omni-comms-landing-next-card">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <HeartPulse className="h-4 w-4 text-primary" aria-hidden="true" />
-            Next approved work
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>
-            <strong>{next.epic} — {next.story}:</strong> {next.title}
-          </p>
-          <p className="text-muted-foreground">
-            Detailed foundation state, registries and architecture-check
-            results are available on the Health screen.
-          </p>
-          <div>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/admin/omnichannel-communications/health">
-                Open Readiness <ArrowRight className="h-4 w-4 ml-1" />
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          <Card data-testid="omni-comms-landing-status-grid">
+            <CardHeader>
+              <CardTitle className="text-base">Capability status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {ROWS.map((row) => (
+                  <li
+                    key={row.key}
+                    data-testid={`omni-comms-landing-row-${row.key}`}
+                    className="rounded-md border p-3 flex flex-col gap-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{row.title}</span>
+                      <StatusBadge kind={row.kind} />
+                    </div>
+                    <p className="text-sm text-muted-foreground">{row.summary}</p>
+                    {row.to ? (
+                      <div>
+                        <Button asChild size="sm" variant="ghost">
+                          <Link to={row.to}>
+                            Open <ArrowRight className="h-3 w-3 ml-1" />
+                          </Link>
+                        </Button>
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="omni-comms-landing-next-card">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <HeartPulse className="h-4 w-4 text-primary" aria-hidden="true" />
+                Next approved work
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p>
+                <strong>{next.epic} — {next.story}:</strong> {next.title}
+              </p>
+              <p className="text-muted-foreground">
+                Detailed foundation state, registries and architecture-check
+                results are available on the Health screen.
+              </p>
+              <div>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/admin/omnichannel-communications/health">
+                    Open Readiness <ArrowRight className="h-4 w-4 ml-1" />
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="setup" className="mt-4">
+          <SetupWizardPanel />
+        </TabsContent>
+      </Tabs>
     </div>
+
   );
 };
 
