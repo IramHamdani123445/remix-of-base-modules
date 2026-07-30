@@ -102733,6 +102733,30 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_health_catalogue: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_health_permissions: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_health_runtime: {
+        Args: {
+          p_department_id?: string
+          p_organization_id: string
+          p_since_hours?: number
+        }
+        Returns: Json
+      }
+      omni_comms_health_summary: {
+        Args: {
+          p_department_id?: string
+          p_organization_id: string
+          p_since_hours?: number
+        }
+        Returns: Json
+      }
       omni_comms_ops_message_content: {
         Args: {
           p_message_id: string

@@ -1,15 +1,18 @@
 /**
  * Omnichannel Communications — Health page.
  *
- * Renders a tabbed shell whose only tab in Story 2 is Readiness. The
- * Readiness tab consumes the source-controlled readiness manifest and does
- * NOT reach out to providers, queues, communication runtime tables, Legacy
- * tables, or monitoring backends.
+ * Two clearly separated views on ONE permanent route:
+ *   - Readiness: source-controlled, static architecture/implementation facts.
+ *   - Live Diagnostics: actual deployed configuration and runtime state for
+ *     the selected organisation (and optional department).
+ *
+ * Static and live status are never merged.
  */
 import React from 'react';
 import { Radio } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ReadinessTab from './readiness/ReadinessTab';
+import LiveDiagnosticsTab from './health/LiveDiagnosticsTab';
 
 export const OmniCommsHealthPage: React.FC = () => {
   return (
@@ -22,7 +25,8 @@ export const OmniCommsHealthPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-semibold">Health</h1>
           <p className="text-sm text-muted-foreground">
-            Omnichannel Communications — architecture and implementation readiness.
+            Omnichannel Communications — architecture readiness and live
+            environment diagnostics.
           </p>
         </div>
       </header>
@@ -30,9 +34,15 @@ export const OmniCommsHealthPage: React.FC = () => {
       <Tabs defaultValue="readiness" className="w-full">
         <TabsList aria-label="Health tabs">
           <TabsTrigger value="readiness">Readiness</TabsTrigger>
+          <TabsTrigger value="live" data-testid="omni-comms-health-tab-live">
+            Live Diagnostics
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="readiness" className="mt-4">
           <ReadinessTab />
+        </TabsContent>
+        <TabsContent value="live" className="mt-4">
+          <LiveDiagnosticsTab />
         </TabsContent>
       </Tabs>
     </div>
@@ -40,3 +50,4 @@ export const OmniCommsHealthPage: React.FC = () => {
 };
 
 export default OmniCommsHealthPage;
+

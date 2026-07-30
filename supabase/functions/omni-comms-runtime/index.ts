@@ -33,7 +33,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-correlation-id",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
@@ -107,7 +107,28 @@ function mapRpcErrorToCode(raw: {
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Safe, non-mutating health probe (Phase 3 Live Diagnostics).
+  // GET only. Creates no request, contacts no provider, reads no secret and
+  // returns no environment values — only bounded readiness facts.
+  if (req.method === "GET") {
+    const url = new URL(req.url);
+    if (url.pathname.endsWith("/health")) {
+      return json({
+        function: "omni-comms-runtime",
+        buildTag: BUILD_TAG,
+        runtimeVersion: "2c-iii",
+        available: true,
+        certificationState: "not_certified",
+        liveDeliveryEnabled: false,
+        checkedAt: new Date().toISOString(),
+      });
+    }
+    return blocked(null, "invalid_input", 404);
+  }
+
   if (req.method !== "POST") return blocked(null, "invalid_input", 405);
+
 
   // 1. Auth.
   const authHeader = req.headers.get("Authorization");
