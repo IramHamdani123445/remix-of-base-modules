@@ -404,6 +404,46 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       allEmployers = allEmployers.slice(0, employerLimit);
     }
 
+    // ── Bulk prefetch of filed C3 periods ──
+    // Previously the missing-period rules issued ONE query per employer per
+    // rule (thousands of sequential round trips), which blew past the edge
+    // worker wall-clock and left the run stuck in "Running" forever. Fetch
+    // every relevant period once, paginated, and index it by payer.
+    const maxLookback = Math.max(
+      12,
+      ...enrichedRules.map((r) => Number(r.parameters?.lookback_months ?? 12)),
+    );
+    const filedCutoff = new Date();
+    filedCutoff.setMonth(filedCutoff.getMonth() - (maxLookback + 1));
+    const filedPeriodsByEmp = new Map<string, Set<string>>();
+    {
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("cn_c3_reported")
+          .select("payer_id, period")
+          .gte("period", filedCutoff.toISOString().slice(0, 10))
+          .order("payer_id")
+          .range(from, from + PAGE - 1);
+        if (employerFilter) q = q.eq("payer_id", employerFilter);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const r of data) {
+          const key = String(r.payer_id);
+          let set = filedPeriodsByEmp.get(key);
+          if (!set) {
+            set = new Set<string>();
+            filedPeriodsByEmp.set(key, set);
+          }
+          set.add(String(r.period).slice(0, 7));
+        }
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+
     // Process each rule
     for (const rule of enrichedRules) {
       const initialStatus = rule.auto_create_violation ? "OPEN" : "UNDER_REVIEW";
