@@ -265,7 +265,7 @@ Deno.serve(async (req: Request) => {
   const finalStatus = anyRenderable && result.blockers.length === 0 ? "processing" : "blocked";
 
   const requestBlockers = [...result.blockers];
-  if (finalStatus === "processing") requestBlockers.push("runtime_rendering_pending");
+
 
   const finalizeRecipients = result.recipients.map((r) => {
     const status = recipientEligibilityStatus(r);
