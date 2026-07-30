@@ -26,8 +26,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OMNI_COMMS_ROUTE_REGISTRY } from "../../registry/routeRegistry";
 import { OMNI_COMMS_READINESS_MANIFEST } from "../../registry/readinessManifest";
+import SetupWizardPanel from "./setup/SetupWizardPanel";
 
 type StatusKind = "available" | "coming-soon";
 
