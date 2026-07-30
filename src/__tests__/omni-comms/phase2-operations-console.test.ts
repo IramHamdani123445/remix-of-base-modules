@@ -195,7 +195,7 @@ describe('Phase 2 — timeline correctness', () => {
 
   it('surfaces server-reported gap and duplicate warnings', () => {
     const src = read(`${OPS_DIR}/OpsTimeline.tsx`);
-    expect(src).toContain('timeline_warnings');
+    expect(src).toContain('OpsTimelineWarning');
     expect(src).toContain('omni-comms-ops-timeline-warnings');
   });
 });

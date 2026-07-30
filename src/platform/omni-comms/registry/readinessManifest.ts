@@ -353,9 +353,19 @@ export interface OmniCommsOperationalPosture {
   privilegedRuntimeCertification: 'Pending' | 'Certified';
 }
 
-const runtimeObjectsAvailable = OMNI_COMMS_OBJECT_REGISTRY
-  .filter((o) => o.category === 'runtime')
-  .every((o) => o.status === 'AVAILABLE');
+const CORE_RUNTIME_OBJECTS = [
+  'omni_comms_event_route',
+  'omni_comms_request',
+  'omni_comms_recipient',
+  'omni_comms_message',
+  'omni_comms_dispatch_job',
+  'omni_comms_delivery_attempt',
+  'omni_comms_message_event',
+];
+
+const runtimeObjectsAvailable = CORE_RUNTIME_OBJECTS.every((name) =>
+  OMNI_COMMS_OBJECT_REGISTRY.some((o) => o.name === name && o.status === 'AVAILABLE'),
+);
 
 const runtimeCertified = OMNI_COMMS_READINESS_MANIFEST.foundationStatus
   .filter((f) => /certification/i.test(f.item))

@@ -3,8 +3,8 @@
  *
  * Content is fetched on demand via `omni_comms_ops_message_content`, which
  * enforces `omni_comms.view_sensitive_content` server-side. HTML is only ever
- * displayed inside the hardened sandboxed iframe — never with
- * dangerouslySetInnerHTML.
+ * displayed inside the hardened sandboxed iframe — never inserted into the parent
+ * document.
  */
 import React, { useCallback, useEffect, useState } from "react";
 import {
