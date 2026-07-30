@@ -860,6 +860,20 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         </div>
       </div>
 
+      <Card>
+        <CardContent className="pt-4">
+          <OmniCommsTenantSelector />
+          {!organizationId && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Select an organisation to enable scope resolution, assembly and
+              department-scoped template creation.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+
+
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="library" data-testid="tab-library">Library</TabsTrigger>
