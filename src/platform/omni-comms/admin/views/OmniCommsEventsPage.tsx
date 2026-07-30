@@ -39,7 +39,7 @@ import EventDefinitionEditorDialog from "./events/EventDefinitionEditorDialog";
 import EventContractEditorDialog from "./events/EventContractEditorDialog";
 import EventRoutesTab from "./events/EventRoutesTab";
 import { OmniCommsEmptyState } from "../components/OmniCommsEmptyState";
-import { useHasPermission } from "@/hooks/useHasPermission";
+import { useModulePermissions } from "@/hooks/useNavigationMenu";
 
 const REASON_MAX = 2000;
 const PAYLOAD_MAX_BYTES = 256 * 1024;
@@ -591,7 +591,8 @@ const ContractsTab: React.FC = () => {
 // Page
 // ─────────────────────────────────────────────────────────────────────
 const RoutesTabHost: React.FC = () => {
-  const canConfigure = useHasPermission("omni_comms.configure");
+  const perms = useModulePermissions("omni_comms");
+  const canConfigure = !perms.isLoading && perms.hasPermission("configure");
   return <EventRoutesTab canConfigure={canConfigure} friendly={friendly} />;
 };
 
