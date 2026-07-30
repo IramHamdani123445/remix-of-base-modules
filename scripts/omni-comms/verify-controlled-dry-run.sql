@@ -77,11 +77,11 @@ ORDER BY p.proname;
 \echo '== 5. Validation RPC enforcement: authentication, operate capability, tenant scoping, size bound =='
 SELECT p.proname,
        (p.prosrc ~* 'omni_comms_priv_require_capability')          AS enforces_capability,
-       (p.prosrc ~* 'omni_comms\.operate')                         AS requires_operate,
+       (p.prosrc ~* 'require_capability\(''operate''\)')            AS requires_operate,
        (p.prosrc ~* 'omni_comms_priv_verify_department_ownership') AS verifies_department,
        (p.prosrc ~* 'organization')                                AS organisation_scoped,
-       (p.prosrc ~* '262144|256')                                  AS enforces_size_limit,
-       (p.prosrc ~* 'jsonb_matches_schema|json_matches_schema')    AS validates_schema
+       (p.prosrc ~* '262144')                                      AS enforces_size_limit,
+       (p.prosrc ~* 'json_schema|jsonb_matches_schema')            AS validates_schema
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
@@ -89,16 +89,25 @@ WHERE n.nspname = 'public'
 
 \echo '== 6. Administration caller guard: dry_run only, email only, one recipient, example.com =='
 SELECT p.proname,
-       (p.prosrc ~* 'OMNI_COMMS_ADMIN_DRY_RUN')      AS admin_caller_guard,
-       (p.prosrc ~* 'dry_run')                       AS forces_dry_run,
-       (p.prosrc ~* 'example\.com')                  AS enforces_example_domain,
-       (p.prosrc ~* 'email')                         AS email_only,
-       (p.prosrc ~* 'admin_dry_run_recipient_limit') AS one_recipient_guard,
-       (p.prosrc ~* 'omni_comms\.operate')           AS requires_operate
+       (p.prosrc ~* 'dry_run')                          AS forces_dry_run,
+       (p.prosrc ~* 'example[\\]?\.com')                AS enforces_example_domain,
+       (p.prosrc ~* '''email''')                        AS email_only,
+       (p.prosrc ~* 'admin_dry_run_recipient_limit')    AS one_recipient_guard,
+       (p.prosrc ~* 'has_permission\([^)]*''operate''') AS requires_operate,
+       (p.prosrc ~* 'dry_run_gate_state')               AS checks_server_gate
 FROM pg_proc p
 JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public'
   AND p.proname = 'omni_comms_priv_admin_dry_run_guard';
+
+\echo '== 6b. Administration caller guard is invoked from the trusted send boundary =='
+SELECT p.proname,
+       (p.prosrc ~* 'OMNI_COMMS_ADMIN_DRY_RUN')              AS admin_caller_module_guard,
+       (p.prosrc ~* 'omni_comms_priv_admin_dry_run_guard')   AS invokes_admin_guard
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'omni_comms_priv_send_communication';
 
 \echo '== 7. No Legacy Communication Hub reference in any controlled dry-run function =='
 SELECT p.proname,
