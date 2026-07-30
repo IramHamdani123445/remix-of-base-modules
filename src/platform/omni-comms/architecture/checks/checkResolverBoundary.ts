@@ -38,12 +38,19 @@ import { isRuleMetadataFile } from '../architecturePolicy';
 const RESOLVER_IMPORT_RE =
   /from\s+['"](?:[^'"]*\/)?supabase\/functions\/omni-comms-runtime\/resolution(?:\/[^'"]*)?['"]/g;
 
+/** Slice 2c-iii: the rendering package is equally Edge-Function-only. */
+const RENDERING_IMPORT_RE =
+  /from\s+['"](?:[^'"]*\/)?supabase\/functions\/omni-comms-runtime\/rendering(?:\/[^'"]*)?['"]/g;
+
 const FORBIDDEN_RPC_NAMES = [
   'omni_comms_priv_runtime_resolution_snapshot',
   'omni_comms_priv_finalize_resolution',
   'omni_comms_priv_load_persisted_resolution',
   'omni_comms_priv_next_event_sequence',
   'omni_comms_priv_send_communication',
+  // Slice 2c-iii trusted rendering RPCs (service_role only).
+  'omni_comms_priv_load_render_context',
+  'omni_comms_priv_persist_rendered_messages',
 ];
 
 /** Direct-read-forbidden shared surfaces (must go through shared RPCs). */
@@ -64,7 +71,23 @@ const RESOLUTION_FORBIDDEN_PROVIDER_SDKS = [
   '@sendgrid', 'firebase-admin', 'whatsapp-web.js',
 ];
 
+/**
+ * Slice 2c-iii determinism guards. The rendering package is a pure function of
+ * persisted snapshots: no clock, no randomness, no I/O, no database access.
+ */
+const RENDERING_FORBIDDEN_PATTERNS: Array<{ re: RegExp; message: string }> = [
+  { re: /\bDate\s*\.\s*now\s*\(/g, message: 'Date.now() is non-deterministic.' },
+  { re: /\bnew\s+Date\s*\(/g, message: 'new Date() is non-deterministic.' },
+  { re: /\bMath\s*\.\s*random\s*\(/g, message: 'Math.random() is non-deterministic.' },
+  { re: /\bcrypto\s*\.\s*randomUUID\s*\(/g, message: 'crypto.randomUUID() is non-deterministic.' },
+  { re: /(?<![.\w])fetch\s*\(/g, message: 'Network access is forbidden during rendering.' },
+  { re: /\.rpc\s*\(/g, message: 'Database access is forbidden inside the rendering package.' },
+  { re: /\.from\s*\(\s*['"`]/g, message: 'Database access is forbidden inside the rendering package.' },
+  { re: /\bcreateClient\s*\(/g, message: 'Supabase clients are forbidden inside the rendering package.' },
+];
+
 const MUTATORS = ['insert', 'update', 'upsert', 'delete'];
+
 
 function isBrowserOrServiceFile(filePath: string): boolean {
   const p = filePath.replace(/\\/g, '/');
