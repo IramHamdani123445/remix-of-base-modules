@@ -1,6 +1,6 @@
 // Omni-Comms Runtime — Slice 2c-iii single-message deterministic renderer.
 //
-// Inputs are EXACT persisted snapshots. There is no Date.now(), no random
+// Inputs are EXACT persisted snapshots. There is no clock read, no random
 // value, no browser API, no provider SDK, no network request, and no
 // current-configuration lookup anywhere in this pipeline.
 

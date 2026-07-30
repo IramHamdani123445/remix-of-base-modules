@@ -1,6 +1,6 @@
 // Omni-Comms Runtime — Slice 2c-iii deterministic checksum utilities.
 //
-// No Date.now(), no randomness, no network, no provider SDK.
+// No clock reads, no randomness, no network, no provider SDK.
 
 /** Stable, deterministic JSON serialization: object keys sorted, arrays kept. */
 export function canonicalJson(value: unknown): string {
