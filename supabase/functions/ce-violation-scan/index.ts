@@ -404,6 +404,46 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       allEmployers = allEmployers.slice(0, employerLimit);
     }
 
+    // ── Bulk prefetch of filed C3 periods ──
+    // Previously the missing-period rules issued ONE query per employer per
+    // rule (thousands of sequential round trips), which blew past the edge
+    // worker wall-clock and left the run stuck in "Running" forever. Fetch
+    // every relevant period once, paginated, and index it by payer.
+    const maxLookback = Math.max(
+      12,
+      ...enrichedRules.map((r) => Number(r.parameters?.lookback_months ?? 12)),
+    );
+    const filedCutoff = new Date();
+    filedCutoff.setMonth(filedCutoff.getMonth() - (maxLookback + 1));
+    const filedPeriodsByEmp = new Map<string, Set<string>>();
+    {
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("cn_c3_reported")
+          .select("payer_id, period")
+          .gte("period", filedCutoff.toISOString().slice(0, 10))
+          .order("payer_id")
+          .range(from, from + PAGE - 1);
+        if (employerFilter) q = q.eq("payer_id", employerFilter);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const r of data) {
+          const key = String(r.payer_id);
+          let set = filedPeriodsByEmp.get(key);
+          if (!set) {
+            set = new Set<string>();
+            filedPeriodsByEmp.set(key, set);
+          }
+          set.add(String(r.period).slice(0, 7));
+        }
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+
     // Process each rule
     for (const rule of enrichedRules) {
       const initialStatus = rule.auto_create_violation ? "OPEN" : "UNDER_REVIEW";
@@ -440,14 +480,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             const graceDays = Number(rule.parameters?.days_past_deadline ?? 30);
             const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
 
-            // Build set of filed YYYY-MM periods for this employer from the filing view's raw data
-            // (filing view exposes last_filing_period + missed_filings_12m only; we need granular periods).
-            const { data: filedRows } = await supabase
-              .from("cn_c3_reported")
-              .select("period")
-              .eq("payer_id", emp.regno)
-              .gte("period", new Date(new Date().setMonth(new Date().getMonth() - lookback - 1)).toISOString().slice(0, 10));
-            const filedSet = new Set((filedRows || []).map((r: any) => String(r.period).slice(0, 7)));
+            // Filed periods come from the bulk prefetch above — no per-employer query.
+            const filedSet = filedPeriodsByEmp.get(emp.regno) ?? new Set<string>();
+
 
             const today = new Date(asOfDate);
             const missing: string[] = [];
