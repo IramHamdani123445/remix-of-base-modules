@@ -17,3 +17,4 @@ export { checkQueueRegistry } from './checks/checkQueueRegistry';
 export { checkFacadeBoundary } from './checks/checkFacadeBoundary';
 export { checkPermanentNames } from './checks/checkPermanentNames';
 export { checkResolverBoundary } from './checks/checkResolverBoundary';
+export { checkHealthBoundary, isHealthSurfaceFile } from './checks/checkHealthBoundary';
