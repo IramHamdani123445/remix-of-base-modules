@@ -155,7 +155,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     dbPrefix: 'omni_comms_',
     queuePrefix: 'omni-comms.',
     currentEpic: 'Epic 4',
-    currentStory: 'Accelerated Build 3 — Slice 2c-ii Batch C',
+    currentStory: 'Accelerated Build 3 — Slice 2c-iii (implementation-only)',
     overallStatus: 'In progress',
 
 
@@ -296,7 +296,16 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Atomic persistence RPC (Slice 2b)',           state: 'Verified', note: 'Slice 2b — public.omni_comms_priv_send_communication (SECURITY DEFINER, owner postgres, search_path=pg_catalog,public). Authenticates auth.uid(), resolves event_definition_id, locks the idempotency scope FOR UPDATE, replays identical fingerprint, rejects mismatched fingerprint (OC409 idempotency_payload_mismatch), inserts request + request_accepted event (sequence=1, message_id=null, status_before=null, status_after=accepted) in a single transaction. EXECUTE revoked from PUBLIC/anon; granted to authenticated + service_role.' },
     { item: 'Concurrency safety (Slice 2b)',               state: 'Verified', note: 'Slice 2b — concurrency handled by (a) FOR UPDATE lock inside the RPC, (b) DB UNIQUE(organization_id, caller_module_code, idempotency_key), (c) EXCEPTION WHEN unique_violation re-select + FOR UPDATE + fingerprint compare. Two concurrent identical requests yield one persisted row + one request_accepted event + one replayed=true. Two concurrent mismatched requests yield one accepted row + one idempotency_payload_mismatch.' },
     { item: 'Controlled runtime error mapping (Slice 2b)', state: 'Verified', note: 'Slice 2b — controlled codes: invalid_input, authentication_required, organization_required, department_organization_mismatch, recipients_required, recipient_limit_exceeded, payload_invalid, payload_too_large, mode_invalid, channel_invalid, idempotency_key_required, idempotency_key_too_long, idempotency_payload_mismatch, event_code_not_found, runtime_persistence_failed, permission_denied. Raw SQLSTATE/constraint/table/recipient/payload/stack never surface to callers.' },
+
+    { item: 'Deterministic rendering package (Slice 2c-iii)', state: 'In progress', note: 'Slice 2c-iii Batch A — supabase/functions/omni-comms-runtime/rendering/** (renderingTypes, renderingErrors, checksum, tokenResolver, slotRenderer, layoutRenderer, snapshotRevalidator, renderMessage, renderOrchestrator). Pure snapshot-in / string-out: no clock read, no randomness, no network, no database access, no provider SDK. Required tokens {{path}} and optional tokens {{path?}}; HTML fields are escaped, subject/text are not. Render checksum = sha256: over canonical JSON of template/layout/asset/sender identifiers + checksums + rendered subject/html/text, assets sorted by asset_version_id.' },
+    { item: 'Snapshot revalidation (Slice 2c-iii)',           state: 'In progress', note: 'Slice 2c-iii — rendering never re-resolves configuration. snapshotRevalidator asserts the persisted Slice 2c-ii identifiers still exist, still match their persisted checksums, remain in an immutable state, and remain owned by the request organisation/department. Failure blocks the message with resolution_snapshot_missing / snapshot_row_missing / snapshot_checksum_mismatch / snapshot_version_mutated / snapshot_ownership_mismatch.' },
+    { item: 'Render context RPC (Slice 2c-iii)',              state: 'In progress', note: 'Slice 2c-iii Batch B — public.omni_comms_priv_load_render_context(actor, request, organisation): STABLE SECURITY DEFINER, search_path=pg_catalog,public, service_role EXECUTE only. Returns ONLY rows addressed by persisted snapshot identifiers (template_version_id, layout_version_id, asset_version_id, sender_identity_id) plus the request, recipients and organisation channel settings.' },
+    { item: 'Atomic message persistence (Slice 2c-iii)',      state: 'In progress', note: 'Slice 2c-iii Batch B — public.omni_comms_priv_persist_rendered_messages: single transaction writing omni_comms_message rows, message_rendered/message_blocked timeline events, per-mode terminal status, held dispatch jobs, dispatch_held events, request blockers and the request_completed event. Replay-safe (existing messages short-circuit), requires status=processing, service_role EXECUTE only.' },
+    { item: 'Mode-aware dispatch behaviour (Slice 2c-iii)',   state: 'In progress', note: 'Slice 2c-iii Batch C — dry_run creates NO dispatch job and completes messages as dry_run_completed; shadow creates held jobs with hold_reason=shadow_mode and completes messages as shadow_completed; queued creates held jobs only, message status held. The RPC raises OC422 runnable_job_forbidden for any job that is not status=held/is_runnable=false, and OC422 dry_run_jobs_forbidden for any dry_run job. No provider is contacted and no delivery attempt is created anywhere in this build.' },
+    { item: 'Rendering boundary enforcement (Slice 2c-iii)',  state: 'Verified', note: 'Slice 2c-iii Batch D — architecture Rule 11 OMNI_RESOLVER_RUNTIME_BOUNDARY extended: src/** may not import the rendering package; omni_comms_priv_load_render_context and omni_comms_priv_persist_rendered_messages added to the browser-forbidden RPC list; the rendering package is guarded against clock reads, randomness, fetch, Supabase clients, .rpc/.from access and provider SDK imports. Architecture check reports 0 unbaselined violations.' },
+    { item: 'Slice 2c-iii runtime certification',             state: 'In progress', note: 'Slice 2c-iii is implementation-only. End-to-end rendering, held-job and timeline behaviour against the deployed Edge Function still requires a privileged run, exactly as for Slice 2c-ii. No live send capability exists or is claimed.' },
   ],
+
 
   blockers: [
     {
@@ -318,9 +327,9 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
 
   nextStep: {
     epic: 'Epic 4',
-    story: 'Accelerated Build 3 — Slice 2c-ii runtime certification',
+    story: 'Accelerated Build 3 — Slice 2c-ii / 2c-iii runtime certification',
     title:
-      'Execute the privileged Slice 2c-ii Edge integration harness (scripts/omni-comms/integration/run-edge-resolution.ts) in a privileged environment to produce the BUILD 3 SLICE 2C-II EDGE RESOLUTION INTEGRATION OK marker. Do not advance to Slice 2c-iii before this marker is produced.',
+      'Slice 2c-iii rendering, message persistence, held jobs and the timeline are implemented and boundary-enforced, but remain uncertified. Run the privileged Edge integration harness (scripts/omni-comms/integration/run-edge-resolution.ts) in a privileged environment to certify Slice 2c-ii and 2c-iii end to end. No live send capability exists; every dispatch job produced by this build is held and non-runnable.',
     informationalOnly: true,
   },
 };

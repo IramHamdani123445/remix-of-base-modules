@@ -27,6 +27,7 @@ import {
 } from "./resolution/snapshotOrchestrator.ts";
 import type { RecipientInput } from "./resolution/resolutionTypes.ts";
 import { RuntimeResolutionError } from "./resolution/runtimeResolutionErrors.ts";
+import { RenderStageError, runRenderStage } from "./renderStage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +40,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OMNI_COMMS_DEFAULT_CALLER_MODULE = "OMNI_COMMS_DIRECT";
-const BUILD_TAG = "omni-comms-runtime@2c-ii-b";
+const BUILD_TAG = "omni-comms-runtime@2c-iii";
 
 type Mode = "dry_run" | "shadow" | "queued";
 
@@ -264,7 +265,7 @@ Deno.serve(async (req: Request) => {
   const finalStatus = anyRenderable && result.blockers.length === 0 ? "processing" : "blocked";
 
   const requestBlockers = [...result.blockers];
-  if (finalStatus === "processing") requestBlockers.push("runtime_rendering_pending");
+
 
   const finalizeRecipients = result.recipients.map((r) => {
     const status = recipientEligibilityStatus(r);
@@ -338,6 +339,37 @@ Deno.serve(async (req: Request) => {
   if (finErr) {
     console.log(`[${BUILD_TAG}] finalize_error`);
     return blocked(input, mapRpcErrorToCode(finErr));
+  }
+
+  // 6. Slice 2c-iii rendering stage — only for requests that reached
+  //    `processing`. Never contacts a provider and never creates a runnable job.
+  if (finalStatus === "processing") {
+    try {
+      const render = await runRenderStage(
+        admin as unknown as Parameters<typeof runRenderStage>[0],
+        userId,
+        row.request_id,
+        canonical.organizationId,
+      );
+      const base = buildResolvedResponse(row, finData, result, requestBlockers);
+      return json({
+        ...base,
+        status: render.status,
+        messages: render.messages,
+        blockers: render.blockers,
+        rendering: {
+          renderedCount: render.renderedCount,
+          blockedCount: render.blockedCount,
+          heldJobCount: render.heldJobCount,
+          runnableJobCount: 0,
+        },
+      });
+    } catch (err) {
+      const code = err instanceof RenderStageError ? err.code : "render_stage_failed";
+      console.log(`[${BUILD_TAG}] render_stage_error`);
+      const base = buildResolvedResponse(row, finData, result, requestBlockers);
+      return json({ ...base, status: "blocked", blockers: [...requestBlockers, code] });
+    }
   }
 
   return json(buildResolvedResponse(row, finData, result, requestBlockers));

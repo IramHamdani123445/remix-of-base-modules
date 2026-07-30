@@ -102734,6 +102734,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_load_render_context: {
+        Args: {
+          p_actor_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_next_event_sequence: {
         Args: { p_request_id: string }
         Returns: number
@@ -102745,6 +102753,19 @@ export type Database = {
       omni_comms_priv_normalize_reason: {
         Args: { p_reason: string; p_required: boolean }
         Returns: string
+      }
+      omni_comms_priv_persist_rendered_messages: {
+        Args: {
+          p_actor_id: string
+          p_final_status: string
+          p_jobs: Json
+          p_messages: Json
+          p_organization_id: string
+          p_request_blockers: string[]
+          p_request_id: string
+          p_success_status: string
+        }
+        Returns: Json
       }
       omni_comms_priv_reject_nonlocal_refs: {
         Args: { p_schema: Json }

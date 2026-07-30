@@ -38,12 +38,19 @@ import { isRuleMetadataFile } from '../architecturePolicy';
 const RESOLVER_IMPORT_RE =
   /from\s+['"](?:[^'"]*\/)?supabase\/functions\/omni-comms-runtime\/resolution(?:\/[^'"]*)?['"]/g;
 
+/** Slice 2c-iii: the rendering package is equally Edge-Function-only. */
+const RENDERING_IMPORT_RE =
+  /from\s+['"](?:[^'"]*\/)?supabase\/functions\/omni-comms-runtime\/rendering(?:\/[^'"]*)?['"]/g;
+
 const FORBIDDEN_RPC_NAMES = [
   'omni_comms_priv_runtime_resolution_snapshot',
   'omni_comms_priv_finalize_resolution',
   'omni_comms_priv_load_persisted_resolution',
   'omni_comms_priv_next_event_sequence',
   'omni_comms_priv_send_communication',
+  // Slice 2c-iii trusted rendering RPCs (service_role only).
+  'omni_comms_priv_load_render_context',
+  'omni_comms_priv_persist_rendered_messages',
 ];
 
 /** Direct-read-forbidden shared surfaces (must go through shared RPCs). */
@@ -64,7 +71,23 @@ const RESOLUTION_FORBIDDEN_PROVIDER_SDKS = [
   '@sendgrid', 'firebase-admin', 'whatsapp-web.js',
 ];
 
+/**
+ * Slice 2c-iii determinism guards. The rendering package is a pure function of
+ * persisted snapshots: no clock, no randomness, no I/O, no database access.
+ */
+const RENDERING_FORBIDDEN_PATTERNS: Array<{ re: RegExp; message: string }> = [
+  { re: /\bDate\s*\.\s*now\s*\(/g, message: 'Date.now() is non-deterministic.' },
+  { re: /\bnew\s+Date\s*\(/g, message: 'new Date() is non-deterministic.' },
+  { re: /\bMath\s*\.\s*random\s*\(/g, message: 'Math.random() is non-deterministic.' },
+  { re: /\bcrypto\s*\.\s*randomUUID\s*\(/g, message: 'crypto.randomUUID() is non-deterministic.' },
+  { re: /(?<![.\w])fetch\s*\(/g, message: 'Network access is forbidden during rendering.' },
+  { re: /\.rpc\s*\(/g, message: 'Database access is forbidden inside the rendering package.' },
+  { re: /\.from\s*\(\s*['"`]/g, message: 'Database access is forbidden inside the rendering package.' },
+  { re: /\bcreateClient\s*\(/g, message: 'Supabase clients are forbidden inside the rendering package.' },
+];
+
 const MUTATORS = ['insert', 'update', 'upsert', 'delete'];
+
 
 function isBrowserOrServiceFile(filePath: string): boolean {
   const p = filePath.replace(/\\/g, '/');
@@ -74,6 +97,12 @@ function isBrowserOrServiceFile(filePath: string): boolean {
 function isInResolutionPackage(filePath: string): boolean {
   return filePath.replace(/\\/g, '/').includes(
     'supabase/functions/omni-comms-runtime/resolution/',
+  );
+}
+
+function isInRenderingPackage(filePath: string): boolean {
+  return filePath.replace(/\\/g, '/').includes(
+    'supabase/functions/omni-comms-runtime/rendering/',
   );
 }
 
@@ -106,6 +135,24 @@ export function checkResolverBoundary(scan: RepositoryScan): ArchitectureViolati
           baselineStatus: 'not_baselined',
         });
       }
+
+      // (a2) imports of the Slice 2c-iii rendering package
+      let rmi: RegExpExecArray | null;
+      RENDERING_IMPORT_RE.lastIndex = 0;
+      while ((rmi = RENDERING_IMPORT_RE.exec(f.content)) !== null) {
+        out.push({
+          ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',
+          severity: 'error',
+          filePath: f.filePath,
+          evidence: rmi[0],
+          message: 'src/** may not import the omni-comms-runtime rendering package.',
+          remediation:
+            'The rendering modules are Edge-Function-only. Call the trusted omni-comms-runtime Edge Function through the canonical façade instead.',
+          baselineStatus: 'not_baselined',
+        });
+      }
+
+
 
       // (b) direct .rpc(...) to service_role-only RPCs
       for (const rpc of FORBIDDEN_RPC_NAMES) {
@@ -217,6 +264,48 @@ export function checkResolverBoundary(scan: RepositoryScan): ArchitectureViolati
               baselineStatus: 'not_baselined',
             });
           }
+        }
+      }
+    }
+
+    // ─── rendering package internal checks (Slice 2c-iii) ─────────────
+    if (isInRenderingPackage(f.filePath)) {
+      // (g) provider SDK imports
+      for (const pkg of RESOLUTION_FORBIDDEN_PROVIDER_SDKS) {
+        const pkgRe = new RegExp(
+          String.raw`from\s+['"]${pkg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:\/[^'"]*)?['"]`,
+          'g',
+        );
+        let gm: RegExpExecArray | null;
+        while ((gm = pkgRe.exec(f.content)) !== null) {
+          out.push({
+            ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',
+            severity: 'error',
+            filePath: f.filePath,
+            evidence: gm[0],
+            message: `Provider SDK "${pkg}" may not be imported inside the rendering package.`,
+            remediation:
+              'Rendering is snapshot-in / string-out. Provider SDKs must live behind adapters/providers/**.',
+            baselineStatus: 'not_baselined',
+          });
+        }
+      }
+
+      // (h) determinism + no-I/O guards
+      for (const guard of RENDERING_FORBIDDEN_PATTERNS) {
+        guard.re.lastIndex = 0;
+        let hm: RegExpExecArray | null;
+        while ((hm = guard.re.exec(f.content)) !== null) {
+          out.push({
+            ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',
+            severity: 'error',
+            filePath: f.filePath,
+            evidence: hm[0].slice(0, 120),
+            message: `Rendering package determinism violation: ${guard.message}`,
+            remediation:
+              'The rendering package must be a pure function of persisted snapshots. Move clocks, randomness and I/O to the orchestrating Edge Function boundary.',
+            baselineStatus: 'not_baselined',
+          });
         }
       }
     }
