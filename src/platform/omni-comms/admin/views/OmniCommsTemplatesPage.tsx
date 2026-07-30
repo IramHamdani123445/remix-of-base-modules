@@ -39,9 +39,10 @@ import { renderTemplate } from "@/platform/omni-comms/rendering";
 import { OmniCommsSandboxedPreview } from "../components/OmniCommsSandboxedPreview";
 import {
   listActiveDepartmentsForOrganization,
-  getOrganizationProfile,
   type ActiveDepartmentOption,
 } from "@/platform/organization/organizationService";
+import { useOmniCommsTenant } from "@/platform/omni-comms/context/OmniCommsTenantContext";
+import { OmniCommsTenantSelector } from "../components/OmniCommsTenantSelector";
 import { useModulePermissions } from "@/hooks/useNavigationMenu";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
