@@ -480,14 +480,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             const graceDays = Number(rule.parameters?.days_past_deadline ?? 30);
             const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
 
-            // Build set of filed YYYY-MM periods for this employer from the filing view's raw data
-            // (filing view exposes last_filing_period + missed_filings_12m only; we need granular periods).
-            const { data: filedRows } = await supabase
-              .from("cn_c3_reported")
-              .select("period")
-              .eq("payer_id", emp.regno)
-              .gte("period", new Date(new Date().setMonth(new Date().getMonth() - lookback - 1)).toISOString().slice(0, 10));
-            const filedSet = new Set((filedRows || []).map((r: any) => String(r.period).slice(0, 7)));
+            // Filed periods come from the bulk prefetch above — no per-employer query.
+            const filedSet = filedPeriodsByEmp.get(emp.regno) ?? new Set<string>();
+
 
             const today = new Date(asOfDate);
             const missing: string[] = [];
