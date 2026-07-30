@@ -75,6 +75,8 @@ export const EventContractEditorDialog: React.FC<EventContractEditorProps> = ({
 
   const schemaParsed = parse(schemaText);
   const sampleParsed = parse(sampleText);
+  const schemaError = schemaParsed.ok ? null : schemaParsed.error;
+  const sampleError = sampleParsed.ok ? null : sampleParsed.error;
   const tooBig = byteLen(schemaText) > MAX_BYTES || byteLen(sampleText) > MAX_BYTES;
   const redacted = existing?.sample_payload_redacted === true;
 
@@ -158,9 +160,9 @@ export const EventContractEditorDialog: React.FC<EventContractEditorProps> = ({
               className="font-mono text-xs"
               disabled={redacted}
             />
-            {schemaParsed.ok ? null : (
-              <p className="text-xs text-destructive mt-1">{schemaParsed.error}</p>
-            )}
+            {schemaError ? (
+              <p className="text-xs text-destructive mt-1">{schemaError}</p>
+            ) : null}
           </div>
           <div>
             <Label htmlFor="oc-contract-sample">Sample payload</Label>
@@ -173,9 +175,9 @@ export const EventContractEditorDialog: React.FC<EventContractEditorProps> = ({
               className="font-mono text-xs"
               disabled={redacted}
             />
-            {sampleParsed.ok ? null : (
-              <p className="text-xs text-destructive mt-1">{sampleParsed.error}</p>
-            )}
+            {sampleError ? (
+              <p className="text-xs text-destructive mt-1">{sampleError}</p>
+            ) : null}
           </div>
           {tooBig && (
             <p className="text-xs text-destructive">
