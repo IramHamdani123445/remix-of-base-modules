@@ -27,6 +27,7 @@ import {
 } from "./resolution/snapshotOrchestrator.ts";
 import type { RecipientInput } from "./resolution/resolutionTypes.ts";
 import { RuntimeResolutionError } from "./resolution/runtimeResolutionErrors.ts";
+import { RenderStageError, runRenderStage } from "./renderStage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
