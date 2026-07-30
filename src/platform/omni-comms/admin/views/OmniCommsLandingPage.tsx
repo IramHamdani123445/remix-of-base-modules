@@ -8,7 +8,7 @@
  * wording that predated Epics 2, 3 and Accelerated Builds 1–2.
  */
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   CheckCircle2,
