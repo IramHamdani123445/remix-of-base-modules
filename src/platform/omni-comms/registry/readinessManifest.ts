@@ -231,7 +231,10 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { ruleId: 'OMNI_SEND_FACADE_BOUNDARY',       title: 'Send-façade boundary',                 status: 'Enforced in CI' },
     { ruleId: 'OMNI_PERMANENT_NAME_POLICY',      title: 'Permanent-name policy',                status: 'Enforced in CI' },
     { ruleId: 'OMNI_RESOLVER_RUNTIME_BOUNDARY',  title: 'Resolver runtime boundary (Rule 11)',  status: 'Enforced in CI' },
+    { ruleId: 'OMNI_HEALTH_DIAGNOSTIC_BOUNDARY', title: 'Health diagnostic boundary (Rule 12)', status: 'Enforced in CI' },
+    { ruleId: 'OMNI_SETUP_WIZARD_BOUNDARY',      title: 'Setup Wizard boundary (Rule 13)',      status: 'Enforced in CI' },
   ],
+
 
   foundationStatus: [
     { item: 'Event Definition schema',                 state: 'Verified', note: 'Epic 2 Story 1 — public.omni_comms_event_definition; unique code; segment/format CHECKs; lifecycle CHECK; before-insert/update rules trigger.' },
@@ -309,7 +312,10 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { item: 'Health boundary enforcement (Phase 3)',         state: 'Verified', note: 'Phase 3 — architecture Rule 12 OMNI_HEALTH_DIAGNOSTIC_BOUNDARY rejects direct omni_comms_*/provider metadata table reads from the Health surface, runtime mutation imports, provider SDK imports, Legacy Communication Hub references, secret exposure, and any eighth permanent Omni-Comms admin route. Negative fixtures prove detection.' },
     { item: 'Runtime health probe (Phase 3)',                state: 'Verified', note: 'Phase 3 — omni-comms-runtime exposes a GET /health path returning function name, build tag, runtime version, availability, certification state and live-delivery state. It creates no request, contacts no provider, uses no service-role credential from the browser and returns no environment values.' },
     { item: 'Slice 2c-iii runtime certification',             state: 'In progress', note: 'Slice 2c-iii is implementation-only. End-to-end rendering, held-job and timeline behaviour against the deployed Edge Function still requires a privileged run, exactly as for Slice 2c-ii. No live send capability exists or is claimed.' },
-    { item: 'Authenticated browser smoke (Phase 3)',          state: 'In progress', note: 'Not executed — the preview session is signed out (LOVABLE_BROWSER_AUTH_STATUS=signed_out). Not passed and not failed; the Playwright additions are prepared and will run once an authenticated preview session exists.' },
+    { item: 'Guided Setup Wizard (Phase 4)',                 state: 'Verified', note: 'Phase 4 — a read-only, 14-step guided Setup Wizard is available as a tab on the existing Overview route (?view=setup); the permanent route count remains seven. It uses the shared OmniCommsTenantContext and reads only the bounded SECURITY DEFINER RPC omni_comms_setup_readiness (owner postgres, pinned search_path, PUBLIC/anon revoked, omni_comms.view enforced, mandatory organisation scope, department ownership validated, no mutation, no provider contact, no secret return; sender addresses masked unless omni_comms.view_sensitive_content is held). Every step reports state, evidence and a deep link to the owning admin screen; the wizard performs no configuration writes of its own and distinguishes dry-run readiness from live-send readiness.' },
+    { item: 'Setup Wizard boundary enforcement (Phase 4)',   state: 'Verified', note: 'Phase 4 — architecture Rule 13 OMNI_SETUP_WIZARD_BOUNDARY rejects direct configuration-table reads, non-approved RPC references, runtime mutation imports, data writes, provider SDK imports, Legacy Communication Hub references and secret exposure anywhere on the Setup Wizard surface. Negative fixtures prove detection; the architecture check reports 0 unbaselined violations.' },
+    { item: 'Authenticated browser smoke (Phases 3–4)',       state: 'In progress', note: 'Not executed — the preview session is signed out (LOVABLE_BROWSER_AUTH_STATUS=signed_out). Not passed and not failed; the Playwright additions are prepared and will run once an authenticated preview session exists.' },
+
 
   ],
 

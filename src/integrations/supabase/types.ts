@@ -103067,6 +103067,16 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_setup_readiness: {
+        Args: {
+          p_channel?: string
+          p_department_id?: string
+          p_event_definition_id?: string
+          p_locale?: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       omni_comms_template_family_activate: {
         Args: { p_correlation_id: string; p_id: string; p_reason: string }
         Returns: Json
