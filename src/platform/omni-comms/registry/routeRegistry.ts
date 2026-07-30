@@ -22,7 +22,7 @@ export const OMNI_COMMS_ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     pageWrapper: 'src/pages/admin/omnichannel-communications/OperationsPage.tsx',
     moduleView: 'src/platform/omni-comms/admin/views/OmniCommsOperationsPage.tsx',
     requiredPermission: 'omni_comms.view',
-    state: 'Not implemented',
+    state: 'Available',
   },
   {
     path: '/admin/omnichannel-communications/events',
