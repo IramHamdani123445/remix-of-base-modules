@@ -39,9 +39,10 @@ import { renderTemplate } from "@/platform/omni-comms/rendering";
 import { OmniCommsSandboxedPreview } from "../components/OmniCommsSandboxedPreview";
 import {
   listActiveDepartmentsForOrganization,
-  getOrganizationProfile,
   type ActiveDepartmentOption,
 } from "@/platform/organization/organizationService";
+import { useOmniCommsTenant } from "@/platform/omni-comms/context/OmniCommsTenantContext";
+import { OmniCommsTenantSelector } from "../components/OmniCommsTenantSelector";
 import { useModulePermissions } from "@/hooks/useNavigationMenu";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -734,7 +735,9 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const [versionsLoading, setVersionsLoading] = React.useState(false);
   const [selectedVersion, setSelectedVersion] = React.useState<TemplateVersionGetResult | null>(null);
 
-  const [organizationId, setOrganizationId] = React.useState<string>("");
+  // Organisation now comes from the shared Omni-Comms tenant context.
+  const { organizationId: tenantOrganizationId } = useOmniCommsTenant();
+  const organizationId = tenantOrganizationId ?? "";
   const [departments, setDepartments] = React.useState<ActiveDepartmentOption[]>([]);
   const [events, setEvents] = React.useState<EventDefinitionListItem[]>([]);
 
@@ -743,41 +746,39 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const [publishState, setPublishState] = React.useState<PublishDialogState>({ open: false, version: null, hasExistingPublished: false });
   const [reasonDialog, setReasonDialog] = React.useState<ReasonDialogState>(CLOSED_REASON);
 
-  // ── Load organisation + departments + events once ──
+  // ── Load the event catalogue once ──
   React.useEffect(() => {
     if (!canView) return;
     (async () => {
       try {
-        const profile = await getOrganizationProfile();
-        // profile shape may vary; look for org id fields
-        const orgId = (profile as unknown as { id?: string; organizationId?: string } | null)?.id
-          ?? (profile as unknown as { organizationId?: string } | null)?.organizationId
-          ?? "";
-        setOrganizationId(orgId);
-        if (orgId) {
-          const deps = await listActiveDepartmentsForOrganization(orgId);
-          setDepartments(deps);
-        }
-        try {
-          const evs = await ecSvc.listAllEventDefinitionsForPicker(client, { maxItems: 1000 });
-          setEvents(evs);
-        } catch (pickerErr) {
-          // Treat picker load as failed rather than silently presenting an
-          // incomplete event catalogue. One friendly toast, no raw SQLSTATE.
-          setEvents([]);
-          toastError(new Error("Could not load the event catalogue. Try again."));
-           
-          console.warn("[omni-comms] event picker load failed", pickerErr);
-        }
-      } catch (e) { toastError(e); }
+        const evs = await ecSvc.listAllEventDefinitionsForPicker(client, { maxItems: 1000 });
+        setEvents(evs);
+      } catch (pickerErr) {
+        // Treat picker load as failed rather than silently presenting an
+        // incomplete event catalogue. One friendly toast, no raw SQLSTATE.
+        setEvents([]);
+        toastError(new Error("Could not load the event catalogue. Try again."));
+
+        console.warn("[omni-comms] event picker load failed", pickerErr);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canView]);
 
-  // ── Clear invalid department selection whenever organisation changes ──
+  // ── Load departments for the tenant-selected organisation ──
   React.useEffect(() => {
-    setDepartments((d) => d.filter((x) => x.isActive));
-  }, [organizationId]);
+    if (!canView || !organizationId) { setDepartments([]); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const deps = await listActiveDepartmentsForOrganization(organizationId);
+        if (!cancelled) setDepartments(deps.filter((d) => d.isActive));
+      } catch (e) {
+        if (!cancelled) { setDepartments([]); toastError(e); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [canView, organizationId]);
 
   // ── Load families ──
   const reloadFamilies = React.useCallback(async () => {
@@ -858,6 +859,20 @@ export const OmniCommsTemplatesPage: React.FC = () => {
           {!canApprove && <CapabilityDeniedInline capability="omni_comms.approve_templates" />}
         </div>
       </div>
+
+      <Card>
+        <CardContent className="pt-4">
+          <OmniCommsTenantSelector />
+          {!organizationId && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Select an organisation to enable scope resolution, assembly and
+              department-scoped template creation.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
