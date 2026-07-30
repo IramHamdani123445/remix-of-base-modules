@@ -127,7 +127,8 @@ JOIN public.omni_comms_request r ON r.id = m.request_id
 WHERE r.mode = 'dry_run';
 
 \echo '== 9. Permanent route ceiling remains seven =='
-SELECT COUNT(*) AS omni_comms_menu_routes
+SELECT COUNT(DISTINCT route) AS omni_comms_menu_routes,
+       COUNT(*)              AS omni_comms_menu_rows
 FROM app_modules
 WHERE route LIKE '/admin/omnichannel-communications%';
 
