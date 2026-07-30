@@ -340,6 +340,37 @@ Deno.serve(async (req: Request) => {
     return blocked(input, mapRpcErrorToCode(finErr));
   }
 
+  // 6. Slice 2c-iii rendering stage — only for requests that reached
+  //    `processing`. Never contacts a provider and never creates a runnable job.
+  if (finalStatus === "processing") {
+    try {
+      const render = await runRenderStage(
+        admin as unknown as Parameters<typeof runRenderStage>[0],
+        userId,
+        row.request_id,
+        canonical.organizationId,
+      );
+      const base = buildResolvedResponse(row, finData, result, requestBlockers);
+      return json({
+        ...base,
+        status: render.status,
+        messages: render.messages,
+        blockers: render.blockers,
+        rendering: {
+          renderedCount: render.renderedCount,
+          blockedCount: render.blockedCount,
+          heldJobCount: render.heldJobCount,
+          runnableJobCount: 0,
+        },
+      });
+    } catch (err) {
+      const code = err instanceof RenderStageError ? err.code : "render_stage_failed";
+      console.log(`[${BUILD_TAG}] render_stage_error`);
+      const base = buildResolvedResponse(row, finData, result, requestBlockers);
+      return json({ ...base, status: "blocked", blockers: [...requestBlockers, code] });
+    }
+  }
+
   return json(buildResolvedResponse(row, finData, result, requestBlockers));
 });
 
