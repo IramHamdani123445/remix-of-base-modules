@@ -73,23 +73,6 @@ END $$;
 
 -- 3) EXECUTE is granted to service_role only.
 DO $$
-DECLARE r record;
-BEGIN
-  FOR r IN
-    SELECT p.proname, p.proacl
-    FROM pg_proc p JOIN pg_namespace ns ON ns.oid = p.pronamespace
-    WHERE ns.nspname = 'public'
-      AND p.proname IN (
-        'omni_comms_priv_load_render_context',
-        'omni_comms_priv_persist_rendered_messages')
-  LOOP
-    IF has_function_privilege('anon', p_oid_of(r.proname), 'EXECUTE') THEN
-      NULL; -- placeholder, replaced below
-    END IF;
-  END LOOP;
-END $$;
-
-DO $$
 DECLARE r record; acl text;
 BEGIN
   FOR r IN
