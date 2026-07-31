@@ -500,7 +500,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             if (missing.length >= minMissed) {
               for (const ym of missing) {
                 const periodFromYm = `${ym}-01`;
-                const dedupeKey = `${emp.regno}|${rule.violation_type_id}|${periodFromYm}`;
+                const dedupeKey = `${emp.regno}|${rule.violation_type_id}|${periodKey(periodFromYm)}`;
                 if (existingSet.has(dedupeKey)) continue;
                 detected.push({
                   rule_code: rule.rule_code,
