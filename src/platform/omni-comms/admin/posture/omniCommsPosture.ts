@@ -259,16 +259,27 @@ export function normaliseCertificationOutcome(
   return 'unknown';
 }
 
-/** Compare a recorded certified commit with the deployed runtime revision. */
+/** Full 40-character revision identifier. Nothing shorter is accepted. */
+export const OMNI_COMMS_REVISION_PATTERN = /^[0-9a-fA-F]{40}$/;
+
+export function isFullRevision(value: string | null | undefined): boolean {
+  return OMNI_COMMS_REVISION_PATTERN.test((value ?? '').trim());
+}
+
+/**
+ * Compare a recorded certified commit with the deployed runtime revision.
+ *
+ * EXACT, case-insensitive, full-SHA equality only. Prefix matching is not
+ * permitted: a shortened, malformed or absent revision is never a match.
+ */
 export function compareRevision(
   certifiedCommit: string | null,
   deployedRevision: string | null,
 ): OmniCommsRevisionMatch {
-  if (!certifiedCommit || !deployedRevision) return 'unknown';
-  const a = certifiedCommit.trim().toLowerCase();
-  const b = deployedRevision.trim().toLowerCase();
-  if (!a || !b) return 'unknown';
-  return a.startsWith(b) || b.startsWith(a) ? 'match' : 'mismatch';
+  const a = (certifiedCommit ?? '').trim().toLowerCase();
+  const b = (deployedRevision ?? '').trim().toLowerCase();
+  if (!isFullRevision(a) || !isFullRevision(b)) return 'unknown';
+  return a === b ? 'match' : 'mismatch';
 }
 
 export interface CertificationPostureInput {
@@ -310,6 +321,8 @@ export function deriveCertificationPosture(
   const recorded = normaliseCertificationOutcome(input.recordedState);
   const reported = normaliseCertificationOutcome(input.edgeCertificationState);
   const revision = compareRevision(input.certifiedCommit, input.deployedRevision);
+  const commitValid = isFullRevision(input.certifiedCommit);
+  const revisionValid = isFullRevision(input.deployedRevision);
 
   let state: OmniCommsCertificationOutcome;
   if (recorded === 'failed' || reported === 'failed') {
@@ -318,33 +331,56 @@ export function deriveCertificationPosture(
     state = 'unknown';
   } else if (recorded === 'unknown' || reported === 'unknown') {
     state = input.edgeAvailable === null ? recorded : 'unknown';
-  } else if (recorded === 'certified' && reported === 'certified' && revision === 'match') {
+  } else if (
+    recorded === 'certified' &&
+    reported === 'certified' &&
+    commitValid &&
+    revisionValid &&
+    revision === 'match'
+  ) {
     state = 'certified';
   } else {
     state = 'pending';
   }
 
-  const production = input.environment === 'production';
-  const blockedByState = state === 'failed' || state === 'unknown';
-  const blockedByRevision = revision === 'mismatch';
-  const safeTestPermitted = !production && !blockedByState && !blockedByRevision;
+  // FAIL CLOSED. Everything below must be true before the presentation layer
+  // may even offer the safe dry test. The trusted server guard remains the
+  // final authority and cannot be bypassed from here.
+  const safeTestPermitted =
+    input.environment === 'non_production' &&
+    input.edgeAvailable === true &&
+    recorded === 'certified' &&
+    reported === 'certified' &&
+    commitValid &&
+    revisionValid &&
+    revision === 'match' &&
+    state === 'certified';
 
   let reason: string;
-  if (production) {
+  if (input.environment === 'production') {
     reason =
       'The safe dry test is not offered in production. Non-production tooling is withheld here.';
+  } else if (input.environment !== 'non_production') {
+    reason =
+      'The environment could not be classified as non-production, so the safe dry test is withheld.';
   } else if (state === 'failed') {
     reason =
       'Privileged certification failed for the deployed runtime. The safe dry test is withheld until certification is repaired.';
+  } else if (input.edgeAvailable !== true) {
+    reason =
+      'The deployed runtime did not report a usable certification state, so the safe dry test is withheld.';
   } else if (state === 'unknown') {
     reason =
       'The deployed runtime did not report a usable certification state, so the safe dry test is withheld.';
-  } else if (blockedByRevision) {
-    reason =
-      'The certified commit does not match the deployed runtime revision. Treat the deployed runtime as uncertified.';
   } else if (state === 'certified') {
     reason =
       'The deployed runtime is certified. Live delivery remains disabled and no provider dispatch exists.';
+  } else if (revision === 'mismatch') {
+    reason =
+      'The certified commit does not match the deployed runtime revision. Treat the deployed runtime as uncertified.';
+  } else if (!commitValid || !revisionValid) {
+    reason =
+      'The certified commit or the deployed runtime revision is missing or malformed. Treat the deployed runtime as uncertified.';
   } else {
     reason =
       'Privileged certification is pending. The safe dry test validates configuration only — nothing is sent.';
