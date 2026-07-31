@@ -1151,18 +1151,23 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         if (insertError) throw insertError;
         insertedCount += inserted?.length || 0;
 
-        // Auto-route each newly created violation
-        for (const ins of (inserted || [])) {
-          const { error: routeErr } = await supabase.rpc("fn_ce_route_violation", {
-            p_violation_id: ins.id,
-          });
-          if (!routeErr) routedCount++;
+        // Auto-route the whole batch in a single database round trip.
+        // Routing each violation individually meant tens of thousands of
+        // sequential RPC calls, which exhausted the edge worker wall-clock
+        // and left the run stuck in "Running".
+        const insertedIds = (inserted || []).map((ins: any) => ins.id);
+        if (insertedIds.length > 0) {
+          const { data: routed, error: routeErr } = await supabase.rpc(
+            "fn_ce_route_violations_bulk",
+            { p_violation_ids: insertedIds },
+          );
+          if (!routeErr) routedCount += Number(routed || 0);
         }
       }
     }
 
-    // Build by-rule breakdown
-    const byRule = enrichedRules.map((r) => ({
+    // Build by-rule breakdown for this slice, merged with earlier slices
+    const batchByRule = enrichedRules.map((r) => ({
       rule_code: r.rule_code,
       rule_name: r.name,
       detected: detected.filter((d) => d.rule_code === r.rule_code && !d.skipped).length,
@@ -1170,30 +1175,90 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       total: detected.filter((d) => d.rule_code === r.rule_code).length,
     }));
 
-    const runResult = {
-      total_employers_scanned: allEmployers.length,
-      rules_evaluated: enrichedRules.length,
-      violations_detected: detected.length,
-      violations_created: dryRun ? 0 : insertedCount,
-      violations_routed: dryRun ? 0 : routedCount,
-      violations_skipped_dedupe: skippedCount,
-      violations_would_create: newViolations.length,
-      by_rule: byRule,
+    const cumulative: ScanCarry = {
+      total_employers_scanned: carry.total_employers_scanned + batchEmployers.length,
+      violations_detected: carry.violations_detected + detected.length,
+      violations_created: carry.violations_created + (dryRun ? 0 : insertedCount),
+      violations_routed: carry.violations_routed + (dryRun ? 0 : routedCount),
+      violations_skipped_dedupe: carry.violations_skipped_dedupe + skippedCount,
+      violations_would_create: carry.violations_would_create + newViolations.length,
+      by_rule: mergeByRule(carry.by_rule, batchByRule),
+      sample_violations:
+        carry.sample_violations.length >= 20
+          ? carry.sample_violations
+          : carry.sample_violations.concat(detected.slice(0, 20 - carry.sample_violations.length)),
     };
 
-  // Update run record
+    const runResult = {
+      ...cumulative,
+      rules_evaluated: enrichedRules.length,
+    };
+
+  if (hasMore) {
+    // Persist progress and hand the next slice to a fresh worker.
+    await supabase
+      .from("ce_automation_runs")
+      .update({
+        status: "Running",
+        records_processed: cumulative.total_employers_scanned,
+        records_affected: cumulative.violations_created,
+        execution_log: {
+          ...runResult,
+          dry_run: dryRun,
+          force,
+          in_progress: true,
+          employers_total: totalEmployers,
+          employers_done: sliceEnd,
+          progress_percent: Math.round((sliceEnd / Math.max(1, totalEmployers)) * 100),
+          sample_violations: cumulative.sample_violations,
+        },
+      })
+      .eq("id", runId);
+
+    const nextUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ce-violation-scan`;
+    const res = await fetch(nextUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({
+        continue_run_id: runId,
+        employer_offset: sliceEnd,
+        batch_size: batchSize,
+        carry: cumulative,
+        dry_run: dryRun,
+        force,
+        as_of_date: asOfDate,
+        employer_id: employerFilter,
+        limit: employerLimit,
+        triggered_by: triggeredBy,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to chain next employer batch (HTTP ${res.status})`);
+    }
+    return;
+  }
+
+  // Update run record — final slice
   await supabase
     .from("ce_automation_runs")
     .update({
       completed_at: new Date().toISOString(),
       status: "Completed",
-      records_processed: allEmployers.length,
-      records_affected: dryRun ? 0 : insertedCount,
+      records_processed: cumulative.total_employers_scanned,
+      records_affected: dryRun ? 0 : cumulative.violations_created,
       execution_log: {
         ...runResult,
         dry_run: dryRun,
         force,
-        sample_violations: detected.slice(0, 20),
+        in_progress: false,
+        employers_total: totalEmployers,
+        employers_done: sliceEnd,
+        progress_percent: 100,
+        sample_violations: cumulative.sample_violations,
         details: detected.slice(0, 100),
       },
     })
@@ -1210,4 +1275,5 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       .eq("id", jobId);
   }
 }
+
 
