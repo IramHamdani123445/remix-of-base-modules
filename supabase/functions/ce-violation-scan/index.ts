@@ -172,6 +172,68 @@ Deno.serve(async (req) => {
     const employerFilter: string | null = body.employer_id || null;
     const employerLimit: number | null = body.limit ? Number(body.limit) : null;
     const triggeredBy: string = body.triggered_by || "SYSTEM";
+    // Employers are scanned in slices so no single worker invocation exceeds
+    // the edge CPU/wall-clock budget. Each slice chains the next one.
+    const batchSize: number = Math.max(50, Number(body.batch_size ?? 300));
+    const continueRunId: string | null = body.continue_run_id || null;
+    const employerOffset: number = Number(body.employer_offset ?? 0);
+    const carry = body.carry ?? null;
+
+    // ── Continuation invocation: reuse the existing run row, no idempotency ──
+    if (continueRunId) {
+      const { data: contRun } = await supabase
+        .from("ce_automation_runs")
+        .select("id, job_id")
+        .eq("id", continueRunId)
+        .maybeSingle();
+
+      if (!contRun) {
+        return new Response(JSON.stringify({ error: "continue_run_id not found" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      const contPromise = (async () => {
+        try {
+          await executeScan({
+            supabase,
+            runId: contRun.id,
+            jobId: contRun.job_id,
+            dryRun,
+            force,
+            asOfDate,
+            employerFilter,
+            employerLimit,
+            employerOffset,
+            batchSize,
+            carry,
+            triggeredBy,
+          });
+        } catch (err) {
+          await supabase
+            .from("ce_automation_runs")
+            .update({
+              completed_at: new Date().toISOString(),
+              status: "Failed",
+              error_message: (err as Error).message,
+              execution_log: { error: (err as Error).message },
+            })
+            .eq("id", contRun.id);
+        }
+      })();
+
+      // @ts-ignore — EdgeRuntime is provided by Supabase Edge Runtime
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(contPromise);
+      }
+
+      return new Response(
+        JSON.stringify({ run_id: contRun.id, status: "Running", accepted: true, continued: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 }
+      );
+    }
 
     // Idempotency check (skip if force=true or dry_run)
     const runKey = `VIOLATION-SCAN-${asOfDate}`;
@@ -241,7 +303,7 @@ Deno.serve(async (req) => {
         triggered_by: triggeredBy,
         idempotency_key: idempKey,
         is_dry_run: dryRun,
-        parameters: { as_of_date: asOfDate, employer_id: employerFilter, force, limit: employerLimit },
+        parameters: { as_of_date: asOfDate, employer_id: employerFilter, force, limit: employerLimit, batch_size: batchSize },
       })
       .select("id")
       .single();
@@ -265,6 +327,10 @@ Deno.serve(async (req) => {
           asOfDate,
           employerFilter,
           employerLimit,
+          employerOffset: 0,
+          batchSize,
+          carry: null,
+          triggeredBy,
         });
       } catch (err) {
         await supabase
@@ -272,6 +338,7 @@ Deno.serve(async (req) => {
           .update({
             completed_at: new Date().toISOString(),
             status: "Failed",
+            error_message: (err as Error).message,
             execution_log: { error: (err as Error).message },
           })
           .eq("id", run.id);
@@ -294,6 +361,7 @@ Deno.serve(async (req) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 }
     );
+
   } catch (error) {
     return new Response(JSON.stringify({ error: (error as Error).message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
