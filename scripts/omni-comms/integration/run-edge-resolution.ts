@@ -380,6 +380,81 @@ async function main(): Promise<void> {
   }
   console.log('');
 
+  /* ── PREFLIGHT: tenant-isolation fixtures must be REAL ─────────────────
+   * A rejection of a nonexistent organisation or department proves nothing
+   * about tenant isolation. Both foreign fixtures must exist in staging
+   * before the corresponding negative scenario is allowed to run.
+   */
+  const actorId = decodeJwtSubject(env.OMNI_COMMS_TEST_USER_JWT);
+  if (!actorId) refuse('OMNI_COMMS_TEST_USER_JWT carries no subject claim');
+
+  const foreignOrg = await admin
+    .from('core_organization')
+    .select('id')
+    .eq('id', env.OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID)
+    .maybeSingle();
+  if (foreignOrg.error) {
+    refuse('foreign organisation lookup failed');
+  }
+  if (!foreignOrg.data) {
+    refuse(
+      'OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID does not exist in staging — ' +
+        'a nonexistent id cannot prove tenant isolation',
+    );
+  }
+
+  const foreignDept = await admin
+    .from('core_department')
+    .select('id, organization_id')
+    .eq('id', env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID)
+    .maybeSingle();
+  if (foreignDept.error) {
+    refuse('foreign department lookup failed');
+  }
+  if (!foreignDept.data) {
+    refuse(
+      'OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID does not exist in staging — ' +
+        'a nonexistent id cannot prove department entitlement enforcement',
+    );
+  }
+  console.log('  preflight: foreign organisation and department fixtures exist');
+
+  /* ── PREFLIGHT: the certified caller module must be the real pilot path ── */
+  const { data: callerReg, error: callerRegErr } = await admin
+    .from('omni_comms_caller_module_registry')
+    .select('module_code, permission_module, permission_action, is_active')
+    .eq('module_code', callerModule)
+    .maybeSingle();
+  if (callerRegErr) refuse('caller-module registry lookup failed');
+  if (!callerReg) {
+    refuse(`OMNI_COMMS_TEST_CALLER_MODULE ${callerModule} is not registered`);
+  }
+  const reg = callerReg as {
+    permission_module: string;
+    permission_action: string;
+    is_active: boolean;
+  };
+  if (reg.is_active !== true) {
+    refuse(`OMNI_COMMS_TEST_CALLER_MODULE ${callerModule} is registered but inactive`);
+  }
+  const { data: hasCap, error: capErr } = await admin.rpc('has_permission', {
+    _user_id: actorId,
+    _module_name: reg.permission_module,
+    _action_name: reg.permission_action,
+  });
+  if (capErr) refuse('caller-module capability check failed');
+  if (hasCap !== true) {
+    refuse(
+      `the authorised test actor does not hold the capability required by ` +
+        `caller module ${callerModule}`,
+    );
+  }
+  console.log(
+    `  preflight: caller module ${callerModule} is registered, active and authorised`,
+  );
+  console.log('');
+
+
   let firstRequestId = '';
   let firstMessages: Array<Record<string, unknown>> = [];
   let firstRecipientIds: string[] = [];
