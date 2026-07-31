@@ -147,6 +147,8 @@ const edgeOk = {
   available: true,
   functionName: 'omni-comms-runtime',
   buildTag: 'omni-comms-runtime@2c-iii',
+  revision: 'abc1234',
+  revisionVerified: true,
   runtimeVersion: '2c-iii',
   certificationState: 'not_certified',
   liveDeliveryEnabled: false,
