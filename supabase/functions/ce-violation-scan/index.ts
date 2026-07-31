@@ -615,7 +615,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         }
 
         if (shouldFlag) {
-          const dedupeKey = `${emp.regno}|${rule.violation_type_id}|${periodFrom || ""}`;
+          const dedupeKey = `${emp.regno}|${rule.violation_type_id}|${periodKey(periodFrom)}`;
           if (existingSet.has(dedupeKey)) {
             detected.push({
               rule_code: rule.rule_code,
