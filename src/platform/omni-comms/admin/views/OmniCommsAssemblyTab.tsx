@@ -60,6 +60,10 @@ function InheritanceBadge({ source }: { source: string | null | undefined }) {
   return <Badge variant={v as never}>{source}</Badge>;
 }
 
+const ORG_ONLY_DEPARTMENT = '__organisation_only__';
+
+
+
 export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departments, families }) => {
   const client = useOmniCommsRpcClient();
   const [familyId, setFamilyId] = React.useState<string>('');
