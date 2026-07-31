@@ -118,6 +118,10 @@ jobs:
           [ -n "$OMNI_COMMS_TEST_ORGANIZATION_ID" ] || fail "OMNI_COMMS_TEST_ORGANIZATION_ID missing"
           [ -n "$OMNI_COMMS_TEST_DEPARTMENT_ID" ] || fail "OMNI_COMMS_TEST_DEPARTMENT_ID missing"
           [ -n "$OMNI_COMMS_TEST_EVENT_CODE" ] || fail "OMNI_COMMS_TEST_EVENT_CODE missing"
+          [ -n "$OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID" ] || fail "OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID missing"
+          [ -n "$OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID" ] || fail "OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID missing"
+          [ -n "$OMNI_COMMS_TEST_CALLER_MODULE" ] || fail "OMNI_COMMS_TEST_CALLER_MODULE missing"
+          [ -n "$OMNI_COMMS_TEST_UNAUTHORISED_MODULE" ] || fail "OMNI_COMMS_TEST_UNAUTHORISED_MODULE missing"
 
 
           # Reject placeholder-like values without echoing them.
@@ -138,10 +142,21 @@ jobs:
           seg_count=$(printf '%s' "$OMNI_COMMS_TEST_USER_JWT" | awk -F. '{print NF}')
           [ "$seg_count" = "3" ] || fail "OMNI_COMMS_TEST_USER_JWT is not a JWT-shaped value"
 
-          # UUID validation for org/dept.
+          # UUID validation for every tenant fixture.
           uuid_re='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
-          [[ "$OMNI_COMMS_TEST_ORGANIZATION_ID" =~ $uuid_re ]] || fail "OMNI_COMMS_TEST_ORGANIZATION_ID is not a valid UUID"
-          [[ "$OMNI_COMMS_TEST_DEPARTMENT_ID" =~ $uuid_re ]] || fail "OMNI_COMMS_TEST_DEPARTMENT_ID is not a valid UUID"
+          for name in OMNI_COMMS_TEST_ORGANIZATION_ID OMNI_COMMS_TEST_DEPARTMENT_ID \
+                      OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID; do
+            [[ "${!name}" =~ $uuid_re ]] || fail "$name is not a valid UUID"
+          done
+
+          # Tenant-isolation fixtures must be genuinely distinct.
+          [ "$OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID" != "$OMNI_COMMS_TEST_ORGANIZATION_ID" ] \
+            || fail "OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID equals the primary organisation"
+          [ "$OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID" != "$OMNI_COMMS_TEST_DEPARTMENT_ID" ] \
+            || fail "OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID equals the primary department"
+          [ "$OMNI_COMMS_TEST_CALLER_MODULE" != "$OMNI_COMMS_TEST_UNAUTHORISED_MODULE" ] \
+            || fail "OMNI_COMMS_TEST_UNAUTHORISED_MODULE equals the authorised caller module"
+
 
           echo "credential validation: ok"
 
