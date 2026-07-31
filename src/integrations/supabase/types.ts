@@ -100348,6 +100348,17 @@ export type Database = {
         Args: { p_id: string }
         Returns: Json
       }
+      core_template_layout_version_list_published: {
+        Args: { p_layout_id: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          checksum: string
+          id: string
+          layout_id: string
+          published_at: string
+          status: string
+          version_number: number
+        }[]
+      }
       correct_comm_hub_legacy_baseline_attestation: {
         Args: {
           p_channel: string
@@ -102847,6 +102858,19 @@ export type Database = {
           p_resolution_snapshot: Json
         }
         Returns: Json
+      }
+      omni_comms_priv_layout_kind_matches_channel: {
+        Args: { p_channel: string; p_layout_kind: string }
+        Returns: boolean
+      }
+      omni_comms_priv_layout_selection_valid: {
+        Args: {
+          p_channel: string
+          p_layout_id: string
+          p_mode: string
+          p_pinned_layout_version_id: string
+        }
+        Returns: boolean
       }
       omni_comms_priv_load_persisted_resolution: {
         Args: {

@@ -201,6 +201,34 @@ export const pilotMigrationApply = (
     p_email_layout_id: i.emailLayoutId,
   });
 
+/**
+ * 13. Bounded, read-only listing of PUBLISHED layout versions for one layout.
+ * Used by the template-version layout selection dialog so an administrator
+ * never has to type a layout-version identifier by hand.
+ */
+export interface PublishedLayoutVersionRow {
+  id: string;
+  layout_id: string;
+  version_number: number;
+  status: string;
+  checksum: string | null;
+  published_at: string | null;
+}
+
+export const listPublishedLayoutVersions = (
+  c: OmniCommsRpcClient,
+  i: { layoutId: string; limit?: number; offset?: number },
+) =>
+  callOmniCommsRpc<PublishedLayoutVersionRow[]>(
+    c,
+    'core_template_layout_version_list_published',
+    {
+      p_layout_id: i.layoutId,
+      p_limit: i.limit ?? 50,
+      p_offset: i.offset ?? 0,
+    },
+  );
+
 export const SHARED_ASSETS_RPC_NAMES = [
   'core_comm_asset_list_active',
   'core_comm_asset_get',
@@ -214,4 +242,5 @@ export const SHARED_ASSETS_RPC_NAMES = [
   'omni_comms_resolve_render_manifest',
   'core_comm_pilot_migration_dry_run',
   'core_comm_pilot_migration_apply',
+  'core_template_layout_version_list_published',
 ] as const;
