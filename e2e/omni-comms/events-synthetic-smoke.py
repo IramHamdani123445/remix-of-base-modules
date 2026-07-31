@@ -197,13 +197,33 @@ async def main() -> int:
         await page.screenshot(path=str(SCREENSHOTS / "events_1b_activated.png"))
 
 
-        # ── 3. Routes tab loads and offers lifecycle controls ─────────────
+        # ── 4. Routes tab loads and offers lifecycle controls ─────────────
         await page.get_by_role("tab", name="Routes").click()
         await page.wait_for_selector('[data-testid="oc-routes-tab"]', timeout=20000)
         await page.wait_for_timeout(2000)
+
+        # Routes are tenant-scoped: pick the first real organisation (skip "—").
+        org = page.locator('[data-testid="omni-comms-tenant-selector-org"]')
+        if await org.count():
+            await org.first.click()
+            await page.wait_for_timeout(700)
+            options = page.locator('[role="option"]')
+            picked = False
+            for i in range(await options.count()):
+                label = ((await options.nth(i).inner_text()) or "").strip()
+                if label and label != "—":
+                    await options.nth(i).click()
+                    picked = True
+                    break
+            if not picked:
+                await page.keyboard.press("Escape")
+                failures.append("No organisation available in the tenant selector")
+            await page.wait_for_timeout(2500)
+
         await page.screenshot(path=str(SCREENSHOTS / "events_3_routes.png"))
         if not await page.locator('[data-testid="oc-route-lifecycle-filter"]').count():
             failures.append("Routes tab did not render its lifecycle filter")
+
         new_route = page.locator('[data-testid="oc-route-new"]')
         if await new_route.count() and await new_route.is_enabled():
             await new_route.click()
