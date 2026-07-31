@@ -854,6 +854,45 @@ export const OmniCommsTemplatesPage: React.FC = () => {
     } catch (e) { toastError(e); }
   };
 
+  /** Open the layout configuration dialog for one draft version. */
+  const openLayoutDialog = async (versionId: string) => {
+    try {
+      const v = await svc.getTemplateVersion(client, versionId);
+      setLayoutDialogVersion(v);
+    } catch (e) { toastError(e); }
+  };
+
+  /**
+   * Approval is gated in the UI by the persisted layout selection so the
+   * administrator is never sent into an unavoidable server rejection. The
+   * database remains the final authority.
+   */
+  const startApproval = (versionId: string) => {
+    const row = versions.find((v) => v.id === versionId);
+    if (row && !isLayoutSelectionApprovable(row)) {
+      toast.error(LAYOUT_REQUIRED_MESSAGE);
+      return;
+    }
+    setReasonDialog({
+      open: true, required: false,
+      title: "Approve version",
+      description: "Approval is recorded with your identity. A note is optional.",
+      submitLabel: "Approve",
+      onSubmit: async (note) => {
+        try {
+          await svc.approveTemplateVersion(client, { id: versionId, approvalNote: note || null });
+          toast.success("Approved");
+          await reloadVersions(selectedFamilyId);
+        } catch (e) {
+          const mapped = e instanceof OmniCommsRpcError ? mapLayoutErrorDetail(e.detail) : null;
+          if (mapped) { toast.error(mapped); await reloadVersions(selectedFamilyId); return; }
+          throw e;
+        }
+      },
+    });
+  };
+
+
   return (
     <div className="space-y-4" data-testid="omni-comms-templates-page">
       <div className="flex items-center justify-between">
