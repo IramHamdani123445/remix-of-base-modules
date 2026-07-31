@@ -45,7 +45,8 @@ export const TEMPLATE_LAYOUT_ALLOWED_RPCS = new Set([
   'omni_comms_template_version_get',
 ]);
 
-const RPC_LITERAL_RE = /['"`((](core_template_[a-z0-9_]+|omni_comms_[a-z0-9_]+)['"`)]/g;
+// Only true string literals count; backticked prose in comments does not.
+const RPC_LITERAL_RE = /['"](core_template_[a-z0-9_]+|omni_comms_[a-z0-9_]+)['"]/g;
 const PRIVATE_RPC_RE = /omni_comms_priv_[a-z0-9_]+/g;
 const TABLE_ACCESS_RE = /\.from\(\s*['"`][a-z0-9_]+['"`]\s*\)/g;
 const EDGE_INVOKE_RE = /functions\s*\.\s*invoke\s*\(/g;
