@@ -67,7 +67,23 @@ export function useJobRunHistory(jobId: string | null) {
   });
 }
 
-async function pollAutomationRun(runId: string, timeoutMs = 5 * 60_000): Promise<any> {
+/** Sentinel thrown when the scan is still progressing when polling gives up. */
+export const RUN_STILL_PROGRESSING = 'RUN_STILL_PROGRESSING';
+
+/**
+ * Polls a background automation run until it leaves "Running".
+ *
+ * The violation scan processes employers in chained slices, so it can legally
+ * run for many minutes on a full-tenant scan. Progress is reported through
+ * `execution_log.progress_percent`; a run that is still making progress is
+ * never treated as an error — the caller downgrades it to an informational
+ * "still running in the background" message.
+ */
+async function pollAutomationRun(
+  runId: string,
+  timeoutMs = 12 * 60_000,
+  onProgress?: (pct: number, done: number, total: number) => void,
+): Promise<any> {
   const start = Date.now();
   let delay = 1500;
   while (Date.now() - start < timeoutMs) {
@@ -80,11 +96,18 @@ async function pollAutomationRun(runId: string, timeoutMs = 5 * 60_000): Promise
     if (data && data.status && data.status !== 'Running') {
       return data;
     }
+    const log: any = data?.execution_log || {};
+    if (onProgress && typeof log.progress_percent === 'number') {
+      onProgress(log.progress_percent, log.employers_done ?? 0, log.employers_total ?? 0);
+    }
     await new Promise((r) => setTimeout(r, delay));
     delay = Math.min(delay + 500, 4000);
   }
-  throw new Error('Detection is still running. Check Automation Job History for results.');
+  const err = new Error(RUN_STILL_PROGRESSING);
+  err.name = RUN_STILL_PROGRESSING;
+  throw err;
 }
+
 
 export function useRunComplianceJob() {
   const queryClient = useQueryClient();
