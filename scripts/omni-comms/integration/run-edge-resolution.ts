@@ -962,31 +962,54 @@ async function main(): Promise<void> {
     });
   }
 
-  /* 14. Atomic failure — an invalid event code persists nothing. */
+  /* 14. Atomic failure — an invalid event code persists nothing at all.
+   * The assertion is exact in every dimension: an arbitrary non-empty blocker
+   * array is NOT accepted as evidence of a controlled atomic refusal.
+   */
   await scenario('atomic_failure_no_partial_records', async () => {
     const body = {
       ...baseRequest(env, prefix, 'atomic', 'dry_run'),
       eventCode: `${prefix.toUpperCase()}.NO.SUCH.EVENT`,
     };
     const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
-    const b = blockersOf(r.body);
-    assert(b.length > 0, 'invalid event code was accepted without a blocker');
+    assertEqual(r.httpStatus, 200, 'http status');
+    assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
+    assertEqual(r.body.status, 'blocked', 'top-level status');
+    assertEqual(blockersOf(r.body), ['event_code_not_found'], 'blockers');
+    assertEqual(messagesOf(r.body).length, 0, 'response messages');
+
+    // Persistence must be untouched across EVERY runtime table.
     const ids = await requestIdsForPrefix(admin, `${prefix}-atomic`);
-    if (ids.length > 0) {
-      // A request row may exist, but it must be terminal-blocked with no
-      // messages and no jobs — never a partial success.
-      const { data } = await admin
-        .from('omni_comms_request').select('status').in('id', ids);
-      for (const row of (data ?? []) as Array<{ status: string }>) {
-        assertEqual(row.status, 'blocked', 'aborted request status');
-      }
-      const msgs = await countRows(admin, 'omni_comms_message', (q) =>
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (q as any).in('request_id', ids));
-      assertEqual(msgs, 0, 'messages for aborted request');
-    }
-    return `blocked (${b.join(',')}), no partial records`;
+    assertEqual(ids.length, 0, 'persisted request rows');
+
+    const scoped = async (
+      table: string,
+      column: 'request_id' | 'message_id',
+      values: string[],
+    ) => (values.length === 0
+      ? 0
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      : countRows(admin, table, (q) => (q as any).in(column, values)));
+
+    assertEqual(await scoped('omni_comms_recipient', 'request_id', ids), 0, 'recipients');
+    assertEqual(await scoped('omni_comms_message', 'request_id', ids), 0, 'messages');
+    assertEqual(
+      await scoped('omni_comms_message_event', 'request_id', ids), 0, 'message events');
+
+    const atomicMessageIds: string[] = [];
+    assertEqual(
+      await scoped('omni_comms_dispatch_job', 'message_id', atomicMessageIds),
+      0,
+      'dispatch jobs',
+    );
+    assertEqual(
+      await scoped('omni_comms_delivery_attempt', 'message_id', atomicMessageIds),
+      0,
+      'delivery attempts',
+    );
+    return 'HTTP 200, blocked ["event_code_not_found"], zero rows in every runtime table';
   });
+
 
   /* 15-18. Global safety invariants across every fixture request. */
   const allRequestIds = await requestIdsForPrefix(admin, prefix);
