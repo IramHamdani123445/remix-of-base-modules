@@ -89,7 +89,7 @@ async def main() -> int:
             await page.wait_for_timeout(600)
             await page.locator('[data-testid="oc-def-code"]').fill(SYNTHETIC_CODE)
             await page.locator('[data-testid="oc-def-module"]').fill("OMNI")
-            await page.locator('[data-testid="oc-def-entity"]').fill("ADMIN_TEST")
+            await page.locator('[data-testid="oc-def-entity"]').fill("TEST")
             await page.locator('[data-testid="oc-def-name"]').fill(
                 "Synthetic controlled dry-run test event")
             save = page.locator('[data-testid="oc-def-save"]')
