@@ -102823,6 +102823,15 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_authorize_runtime_actor: {
+        Args: {
+          p_actor_id: string
+          p_caller_module_code: string
+          p_department_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_compute_checksum: {
         Args: {
           p_event_code: string
@@ -102875,6 +102884,14 @@ export type Database = {
           p_pinned_layout_version_id: string
         }
         Returns: boolean
+      }
+      omni_comms_priv_load_persisted_messages: {
+        Args: {
+          p_actor_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
       }
       omni_comms_priv_load_persisted_resolution: {
         Args: {

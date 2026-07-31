@@ -33,6 +33,7 @@ import {
   CanonicalizationError,
 } from '@/platform/omni-comms/runtime/canonicalize';
 import { computeRequestFingerprint } from '@/platform/omni-comms/runtime/fingerprint';
+import { OMNI_COMMS_RESULT_CONTRACT_VERSION } from '@/platform/omni-comms/runtime/responseContract';
 import {
   executeSendCommunication,
   type RuntimeTransport,
@@ -147,6 +148,7 @@ function acceptedResult(
   replayed: boolean,
 ): SendCommunicationResult {
   return {
+    contractVersion: OMNI_COMMS_RESULT_CONTRACT_VERSION,
     requestId: row.request_id,
     idempotencyKey: row.idempotency_key,
     mode: input.mode,
@@ -164,6 +166,7 @@ function blocked(
   code: string,
 ): SendCommunicationResult {
   return {
+    contractVersion: OMNI_COMMS_RESULT_CONTRACT_VERSION,
     requestId: '',
     idempotencyKey: input.idempotencyKey ?? '',
     mode: input.mode,
@@ -187,11 +190,17 @@ describe('Slice 2b/2c-i — façade surface', () => {
       resolve(process.cwd(), 'src/platform/omni-comms/sendCommunication.ts'),
       'utf8',
     );
+    // The façade may import ONLY from its own trusted runtime folder:
+    // the runtime entrypoint and the canonical response contract.
     const importLines = src.split('\n').filter((l) => /^\s*import\s+/.test(l));
-    expect(importLines).toHaveLength(1);
-    expect(importLines[0]).toMatch(
+    expect(importLines.length).toBeGreaterThan(0);
+    for (const line of importLines) {
+      expect(line).toMatch(/from ['"]\.\/runtime\/[a-zA-Z]+['"]/);
+    }
+    expect(src).toMatch(
       /from ['"]\.\/runtime\/sendCommunicationRuntime['"]/,
     );
+    expect(src).toMatch(/from ['"]\.\/runtime\/responseContract['"]/);
     expect(src).not.toMatch(
       /from ['"](resend|twilio|@sendgrid|nodemailer|firebase-admin)/,
     );

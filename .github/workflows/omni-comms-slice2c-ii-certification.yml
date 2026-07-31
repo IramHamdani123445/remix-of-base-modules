@@ -76,25 +76,35 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
+          OMNI_COMMS_TEST_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_TEST_UNPRIVILEGED_JWT }}
           OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          OMNI_COMMS_TEST_EVENT_CODE: ${{ vars.OMNI_COMMS_TEST_EVENT_CODE || secrets.OMNI_COMMS_TEST_EVENT_CODE }}
         run: |
           set +x
           # Register masks BEFORE any potential exposure.
           echo "::add-mask::$SUPABASE_URL"
           echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
           echo "::add-mask::$OMNI_COMMS_TEST_USER_JWT"
+          echo "::add-mask::$OMNI_COMMS_TEST_UNPRIVILEGED_JWT"
           echo "::add-mask::$OMNI_COMMS_STAGING_DB_URL"
           [ -n "$SUPABASE_ANON_KEY" ] && echo "::add-mask::$SUPABASE_ANON_KEY" || true
+
 
           fail() { echo "FAIL — $1"; exit 1; }
 
           [ -n "$SUPABASE_URL" ] || fail "SUPABASE_URL missing"
           [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || fail "SUPABASE_SERVICE_ROLE_KEY missing"
+          [ -n "$SUPABASE_ANON_KEY" ] || fail "SUPABASE_ANON_KEY missing"
           [ -n "$OMNI_COMMS_TEST_USER_JWT" ] || fail "OMNI_COMMS_TEST_USER_JWT missing"
+          [ -n "$OMNI_COMMS_TEST_UNPRIVILEGED_JWT" ] || fail "OMNI_COMMS_TEST_UNPRIVILEGED_JWT missing"
+          [ "$OMNI_COMMS_TEST_USER_JWT" != "$OMNI_COMMS_TEST_UNPRIVILEGED_JWT" ] \
+            || fail "privileged and unprivileged JWTs are identical"
           [ -n "$OMNI_COMMS_STAGING_DB_URL" ] || fail "OMNI_COMMS_STAGING_DB_URL missing"
           [ -n "$OMNI_COMMS_TEST_ORGANIZATION_ID" ] || fail "OMNI_COMMS_TEST_ORGANIZATION_ID missing"
           [ -n "$OMNI_COMMS_TEST_DEPARTMENT_ID" ] || fail "OMNI_COMMS_TEST_DEPARTMENT_ID missing"
+          [ -n "$OMNI_COMMS_TEST_EVENT_CODE" ] || fail "OMNI_COMMS_TEST_EVENT_CODE missing"
+
 
           # Reject placeholder-like values without echoing them.
           for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY OMNI_COMMS_TEST_USER_JWT OMNI_COMMS_STAGING_DB_URL; do
@@ -126,7 +136,11 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
+          OMNI_COMMS_TEST_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_TEST_UNPRIVILEGED_JWT }}
+          OMNI_COMMS_TEST_EVENT_CODE: ${{ vars.OMNI_COMMS_TEST_EVENT_CODE || secrets.OMNI_COMMS_TEST_EVENT_CODE }}
+
         run: |
           set +x
           set -o pipefail
@@ -248,15 +262,19 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
+          OMNI_COMMS_TEST_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_TEST_UNPRIVILEGED_JWT }}
           OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
         run: |
           set +x
           shopt -s nullglob
           for f in .certification-logs/*.log .certification-logs/*.txt; do
-            for v in "$SUPABASE_URL" "$SUPABASE_SERVICE_ROLE_KEY" "$OMNI_COMMS_TEST_USER_JWT" "$OMNI_COMMS_STAGING_DB_URL"; do
+            for v in "$SUPABASE_URL" "$SUPABASE_SERVICE_ROLE_KEY" "$SUPABASE_ANON_KEY" "$OMNI_COMMS_TEST_USER_JWT" "$OMNI_COMMS_TEST_UNPRIVILEGED_JWT" "$OMNI_COMMS_STAGING_DB_URL"; do
               [ -n "$v" ] && sed -i "s|${v//|/\\|}|***REDACTED***|g" "$f" || true
             done
+          done
+
           done
 
       - name: Build certification summary
@@ -273,12 +291,10 @@ jobs:
             echo "-- Harness --"
             grep -E "scenarios:|failed:|fixture prefix:|cleanup:|edge_function:|no_message:|no_dispatch_job:|no_delivery_attempt:|no_provider_call:|no_email:" "$log" 2>/dev/null || echo "(harness log unavailable)"
             echo ""
-            echo "-- Assertions (from harness) --"
-            echo "messages created = 0"
-            echo "dispatch jobs created = 0"
-            echo "delivery attempts created = 0"
-            echo "provider calls = 0"
-            echo "emails sent = 0"
+            echo "-- Assertions (measured by the harness, not assumed) --"
+            sed -n '/OMNI_COMMS_HARNESS_SUMMARY_JSON_BEGIN/,/OMNI_COMMS_HARNESS_SUMMARY_JSON_END/p' "$log" 2>/dev/null \
+              || echo "(harness summary unavailable)"
+
             echo ""
             echo "-- Gate results --"
             echo "vitest: $(tail -n 5 .certification-logs/vitest.log 2>/dev/null | tr '\n' ' ' || echo n/a)"

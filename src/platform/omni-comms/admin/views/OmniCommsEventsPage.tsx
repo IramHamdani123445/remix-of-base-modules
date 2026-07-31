@@ -10,6 +10,10 @@
  */
 import React from "react";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
+import {
+  OMNI_COMMS_EVENT_TABS,
+  useOmniCommsTabParam,
+} from "../hooks/useOmniCommsTabParam";
 import * as svc from "@/platform/omni-comms/application/eventCatalogueService";
 import type {
   EventDefinitionListItem,
@@ -597,6 +601,11 @@ const RoutesTabHost: React.FC = () => {
 };
 
 export const OmniCommsEventsPage: React.FC = () => {
+  // URL-controlled: ?tab=definitions|contracts|routes|simulator
+  const [eventTab, setEventTab] = useOmniCommsTabParam(
+    OMNI_COMMS_EVENT_TABS,
+    "definitions",
+  );
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="oc-events-page">
       <div className="flex items-center gap-3">
@@ -609,7 +618,7 @@ export const OmniCommsEventsPage: React.FC = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="definitions" className="space-y-4">
+      <Tabs value={eventTab} onValueChange={setEventTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="definitions">Definitions</TabsTrigger>
           <TabsTrigger value="contracts">Contracts</TabsTrigger>

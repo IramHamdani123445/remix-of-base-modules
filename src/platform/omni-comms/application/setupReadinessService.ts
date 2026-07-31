@@ -153,7 +153,7 @@ const STEP_META: Record<SetupStepId, StepMeta> = {
   template_family: {
     title: 'Template family',
     purpose: 'The active family the route resolves its content from.',
-    target: { route: TEMPLATES, query: '?tab=families', label: 'Open Templates' },
+    target: { route: TEMPLATES, query: '?tab=library', label: 'Open Templates' },
   },
   template_version: {
     title: 'Published template version',

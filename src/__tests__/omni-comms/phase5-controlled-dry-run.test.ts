@@ -39,6 +39,7 @@ import {
 import { runArchitectureChecks } from '@/platform/omni-comms/architecture/runArchitectureChecks';
 import type { RepositoryScan } from '@/platform/omni-comms/architecture/architectureCheck.types';
 import type { SendCommunicationResult } from '@/platform/omni-comms/sendCommunication';
+import { OMNI_COMMS_RESULT_CONTRACT_VERSION } from '@/platform/omni-comms/runtime/responseContract';
 
 const REPO_ROOT = process.cwd();
 const SERVICE = 'src/platform/omni-comms/application/controlledDryRunService.ts';
@@ -76,11 +77,21 @@ const OK_GATE: DryRunGate = {
 
 function result(over: Partial<SendCommunicationResult> = {}): SendCommunicationResult {
   return {
+    contractVersion: OMNI_COMMS_RESULT_CONTRACT_VERSION,
     requestId: 'req-1',
     idempotencyKey: 'k',
     mode: 'dry_run',
     status: 'completed',
-    recipients: [{ recipientId: 'r1', resolvedChannels: ['email'], blockers: [] }],
+    recipients: [
+      {
+        recipientId: 'r1',
+        inputIndex: 0,
+        recipientReference: null,
+        resolvedChannels: ['email'],
+        eligibilityStatus: 'eligible',
+        blockers: [],
+      },
+    ],
     messages: [
       {
         messageId: 'm1',
@@ -88,6 +99,8 @@ function result(over: Partial<SendCommunicationResult> = {}): SendCommunicationR
         channel: 'email',
         status: 'rendered',
         renderedChecksum: 'abc',
+        dispatchJobId: null,
+        blockers: [],
       },
     ],
     blockers: [],

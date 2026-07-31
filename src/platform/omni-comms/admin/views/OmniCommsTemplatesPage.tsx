@@ -19,6 +19,10 @@
  */
 import React from "react";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
+import {
+  OMNI_COMMS_TEMPLATE_TABS,
+  useOmniCommsTabParam,
+} from "../hooks/useOmniCommsTabParam";
 import * as svc from "@/platform/omni-comms/application/templateCatalogueService";
 import {
   TEMPLATE_CHANNELS,
@@ -731,7 +735,8 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const canApprove = can("approve_templates");
   const canViewSensitive = can("view_sensitive_content");
 
-  const [tab, setTab] = React.useState("library");
+  // URL-controlled: /admin/omnichannel-communications/templates?tab=library|versions|preview|assembly
+  const [tab, setTab] = useOmniCommsTabParam(OMNI_COMMS_TEMPLATE_TABS, "library");
   const [families, setFamilies] = React.useState<TemplateFamilyListItem[]>([]);
   const [familiesLoading, setFamiliesLoading] = React.useState(false);
   const [search, setSearch] = React.useState("");
