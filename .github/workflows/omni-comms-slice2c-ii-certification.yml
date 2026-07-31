@@ -187,8 +187,11 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
           OMNI_COMMS_TEST_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_TEST_UNPRIVILEGED_JWT }}
-          OMNI_COMMS_TEST_EVENT_CODE: ${{ vars.OMNI_COMMS_TEST_EVENT_CODE || secrets.OMNI_COMMS_TEST_EVENT_CODE }}
-          OMNI_COMMS_TEST_UNAUTHORISED_MODULE: ${{ vars.OMNI_COMMS_TEST_UNAUTHORISED_MODULE }}
+          # Remaining fixture identifiers (event code, organisation,
+          # department, foreign tenant fixtures, caller modules) are inherited
+          # from the job-level env block so a single definition governs both
+          # validation and execution.
+
           # Certification is bound to the EXACT checked-out revision and the
           # deployed Edge revision must equal it.
           OMNI_COMMS_REQUIRE_EDGE_REVISION: "1"
