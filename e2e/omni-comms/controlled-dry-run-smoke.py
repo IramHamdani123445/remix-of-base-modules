@@ -173,7 +173,7 @@ async def main() -> int:
             failures.append("Validate payload control not found or disabled")
 
         # 5. Execute with confirmation
-        run = page.get_by_role("button", name=re.compile("run controlled dry run|start dry run|submit dry run", re.I))
+        run = page.get_by_test_id("omni-comms-dry-run-execute")
         request_id = None
         if await run.count() and await run.first.is_enabled():
             await run.first.click()
