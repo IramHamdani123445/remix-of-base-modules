@@ -385,9 +385,13 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         v.is_deleted === false
     );
 
+    // Period is persisted as 'YYYY-MM'; normalise every key to that form so
+    // detection keys ('YYYY-MM-01') and stored keys always compare equal.
+    const periodKey = (p?: string | null) => (p ? String(p).slice(0, 7) : "");
+
     const existingSet = new Set(
       unresolvedViolations.map(
-        (v: any) => `${v.employer_id}|${v.violation_type_id}|${v.period_from || ""}`
+        (v: any) => `${v.employer_id}|${v.violation_type_id}|${periodKey(v.period_from)}`
       )
     );
 
