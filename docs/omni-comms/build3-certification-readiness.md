@@ -21,7 +21,7 @@ readiness. No provider is contacted anywhere in this build.
 | 11 | Browser result contract coerced malformed payloads | `parseSendCommunicationResult` now enforces the contract version, rejects a payload with any malformed element, requires a valid `createdAt`, a boolean `replayed`, a valid mode, and a `requestId` on non-blocked results |
 | 12 | Slice 2c-iii rendering verifier was not part of certification | Added as a required workflow step with its own marker |
 
-## 2. Scenario inventory (18 executed, enforced)
+## 2. Scenario inventory (19 executed, enforced)
 
 `missing_jwt_rejection`, `permission_rejection`, `cross_tenant_rejection`,
 `spoofed_caller_module_rejection`, `department_access_rejection`,
