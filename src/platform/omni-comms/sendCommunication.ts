@@ -1,20 +1,29 @@
 /**
- * Omni-Comms — Canonical send façade (Slice 2b wired).
+ * Omni-Comms — Canonical send façade.
  *
  * The SINGLE authorised entrypoint for business callers.
  * Business modules import ONLY this file — never the runtime internals
  * under src/platform/omni-comms/runtime/**.
  *
- * Slice 2b behaviour:
- *  - Validates the public input shape.
- *  - Delegates to the trusted runtime service which canonicalizes,
- *    fingerprints, and atomically persists through the SECURITY DEFINER
- *    RPC `public.omni_comms_priv_send_communication`.
- *  - Returns the bounded public result. Recipients/messages remain
- *    empty and blockers include `runtime_resolution_pending` until
- *    Slice 2c wires resolution, rendering and dispatch jobs.
- *  - Never touches a provider SDK. Never sends email. Never writes to
- *    runtime tables from the browser.
+ * Current implementation state (do not overstate this in docs or UI):
+ *  - Source implemented: canonicalization, fingerprinting, authorisation,
+ *    resolution, deterministic rendering, held (non-runnable) dispatch jobs.
+ *  - Staging verified: SQL verifiers + vitest suites.
+ *  - Privileged runtime certification: NOT certified (requires the
+ *    privileged harness run against staging).
+ *  - Live provider delivery: unavailable. No provider is ever contacted.
+ *
+ * Behaviour:
+ *  - Validates the public input shape (cheap, non-authoritative).
+ *  - Delegates to the trusted runtime service, which invokes the
+ *    `omni-comms-runtime` Edge Function. The Edge Function authenticates,
+ *    AUTHORISES the actor server-side (organisation, department, capability,
+ *    caller module), canonicalizes, fingerprints and persists.
+ *  - Returns the versioned canonical result contract
+ *    (`OMNI_COMMS_RESULT_CONTRACT_VERSION`). Fresh and replay responses carry
+ *    the same bounded messages and statuses.
+ *  - Never touches a provider SDK. Never sends email. Never writes to runtime
+ *    tables from the browser.
  *
  * Rules enforced by the architecture checker (Rule 9):
  *  - This is the ONLY permitted location for the export
@@ -26,15 +35,23 @@
 
 import { executeSendCommunication } from './runtime/sendCommunicationRuntime';
 
-export type OmniCommsSendMode = 'dry_run' | 'shadow' | 'queued';
+export {
+  OMNI_COMMS_RESULT_CONTRACT_VERSION,
+  OMNI_COMMS_SEND_MODES,
+  OMNI_COMMS_CHANNELS,
+  parseSendCommunicationResult,
+  buildBlockedResult,
+} from './runtime/responseContract';
 
-export type OmniCommsChannel =
-  | 'email'
-  | 'sms'
-  | 'whatsapp'
-  | 'push'
-  | 'in_app'
-  | 'print';
+export type {
+  OmniCommsSendMode,
+  OmniCommsChannel,
+  SendCommunicationRecipientResult,
+  SendCommunicationMessageResult,
+  SendCommunicationResult,
+} from './runtime/responseContract';
+
+import type { OmniCommsSendMode, OmniCommsChannel, SendCommunicationResult } from './runtime/responseContract';
 
 export interface SendCommunicationRecipientInput {
   recipientType: string;
@@ -65,32 +82,6 @@ export interface SendCommunicationInput {
   callerContext?: SendCommunicationCallerContext;
 }
 
-export interface SendCommunicationRecipientResult {
-  recipientId: string;
-  resolvedChannels: string[];
-  blockers: string[];
-}
-
-export interface SendCommunicationMessageResult {
-  messageId: string;
-  recipientId: string;
-  channel: string;
-  status: string;
-  renderedChecksum: string;
-  dispatchJobId?: string | null;
-}
-
-export interface SendCommunicationResult {
-  requestId: string;
-  idempotencyKey: string;
-  mode: OmniCommsSendMode;
-  status: string;
-  recipients: SendCommunicationRecipientResult[];
-  messages: SendCommunicationMessageResult[];
-  blockers: string[];
-  createdAt: string;
-  replayed: boolean;
-}
 
 /** Default caller-module used when callerContext.moduleCode is omitted. */
 export const OMNI_COMMS_DEFAULT_CALLER_MODULE = 'OMNI_COMMS_DIRECT';
