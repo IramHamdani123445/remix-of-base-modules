@@ -126,7 +126,11 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
+          OMNI_COMMS_TEST_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_TEST_UNPRIVILEGED_JWT }}
+          OMNI_COMMS_TEST_EVENT_CODE: ${{ vars.OMNI_COMMS_TEST_EVENT_CODE || secrets.OMNI_COMMS_TEST_EVENT_CODE }}
+
         run: |
           set +x
           set -o pipefail
