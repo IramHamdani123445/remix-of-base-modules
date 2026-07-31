@@ -627,15 +627,34 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
 
         switch (rule.trigger_event) {
           case "c3_deadline_passed": {
-            if (filing && filing.last_filing_date) {
-              if (filing.missed_filings_12m > 0 && filing.total_filings_12m > 0) {
-                shouldFlag = true;
-                summary = `Late C3 submission detected. ${filing.missed_filings_12m} period(s) with delayed filing in last 12 months.`;
-                periodFrom = asOfPeriod;
+            // Per-period: every C3 that WAS filed but arrived after its
+            // statutory deadline (+ grace) raises its own late-filing row.
+            const cap = Math.min(
+              ABSOLUTE_CAP_MONTHS,
+              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
+            );
+            const graceDays = Number(rule.parameters?.grace_period_days ?? 0);
+            const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
+            const c3 = c3ByEmp.get(emp.regno);
+            if (c3) {
+              for (const ym of periodsInScope(emp.regno, cap)) {
+                const rec = c3.get(ym);
+                if (!rec || !rec.received) continue;
+                const [y, m] = ym.split("-").map((n) => parseInt(n, 10));
+                const deadline = new Date(y, m, dueDay + graceDays);
+                if (rec.received > deadline) {
+                  pushPeriod(
+                    emp,
+                    ym,
+                    `Late filing: C3 for ${ym} received ${rec.received.toISOString().slice(0, 10)}, after the ${deadline.toISOString().slice(0, 10)} deadline (${graceDays}d grace).`,
+                  );
+                }
               }
             }
+            shouldFlag = false;
             break;
           }
+
 
           case "c3_missing_30_days":
           case "contribution_gap_detected": {
