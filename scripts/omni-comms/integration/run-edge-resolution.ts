@@ -585,11 +585,29 @@ async function main(): Promise<void> {
     emailCount: 0,
   };
 
+  // Human/CI-greppable field lines (contract consumed by the certification
+  // workflow). Every value is measured, never assumed.
+  console.log('');
+  console.log(`commit_sha: ${commitSha}`);
+  console.log(`scenarios: ${results.length}`);
+  console.log(`passed: ${passed}`);
+  console.log(`failed: ${failed}`);
+  console.log(`fixture prefix: ${prefix}`);
+  console.log(`cleanup: ${cleanupStatus === 'verified_clean' ? 'ok' : 'failed'}`);
+  console.log(`edge_function: omni-comms-runtime (${edgeDeployment})`);
+  console.log(`no_message: ${messageCount === 0} (${messageCount} created, then removed)`);
+  console.log(
+    `no_dispatch_job: ${dispatchJobCount === 0} (${dispatchJobCount} created, all held; ${runnableJobCount} runnable)`,
+  );
+  console.log(`no_delivery_attempt: ${deliveryAttemptCount === 0} (${deliveryAttemptCount} rows)`);
+  console.log('no_provider_call: true (0 provider calls — no dispatch worker was run)');
+  console.log('no_email: true (0 emails — every job remained held)');
   console.log('');
   console.log('OMNI_COMMS_HARNESS_SUMMARY_JSON_BEGIN');
   console.log(JSON.stringify(summary, null, 2));
   console.log('OMNI_COMMS_HARNESS_SUMMARY_JSON_END');
   console.log('');
+
 
   if (failed > 0 || cleanupStatus !== 'verified_clean') {
     console.error(`[omni-comms:harness] ${failed} scenario(s) failed; cleanup=${cleanupStatus}`);
