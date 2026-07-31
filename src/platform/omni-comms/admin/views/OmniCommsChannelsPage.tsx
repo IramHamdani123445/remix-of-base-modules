@@ -19,6 +19,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  OMNI_COMMS_CHANNEL_TABS,
+  useOmniCommsTabParam,
+} from "../hooks/useOmniCommsTabParam";
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
@@ -113,16 +117,16 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
       <OmniCommsTenantSelector showDepartment={false} />
 
-      <Tabs defaultValue="provider" className="w-full">
+      <Tabs value={channelTab} onValueChange={setChannelTab} className="w-full">
         <TabsList>
-          <TabsTrigger value="provider">Provider</TabsTrigger>
+          <TabsTrigger value="providers">Provider</TabsTrigger>
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
           <TabsTrigger value="senders">Senders</TabsTrigger>
           <TabsTrigger value="bindings">Bindings</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="provider">
+        <TabsContent value="providers">
           <ProviderTab client={client} summary={summary} onChanged={refresh} />
         </TabsContent>
         <TabsContent value="accounts">

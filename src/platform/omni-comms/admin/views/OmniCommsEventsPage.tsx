@@ -609,7 +609,7 @@ export const OmniCommsEventsPage: React.FC = () => {
         </div>
       </div>
 
-      <Tabs defaultValue="definitions" className="space-y-4">
+      <Tabs value={eventTab} onValueChange={setEventTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="definitions">Definitions</TabsTrigger>
           <TabsTrigger value="contracts">Contracts</TabsTrigger>
