@@ -323,9 +323,9 @@ async function main(): Promise<void> {
     refuse('COMMIT_SHA/GITHUB_SHA must be a full 40-character git revision');
   }
   const requireEdgeRevision = process.env.OMNI_COMMS_REQUIRE_EDGE_REVISION === '1';
-  const unauthorisedModule = (
-    process.env.OMNI_COMMS_TEST_UNAUTHORISED_MODULE ?? 'FINANCE'
-  ).trim().toUpperCase();
+  const callerModule = env.OMNI_COMMS_TEST_CALLER_MODULE;
+  const unauthorisedModule = env.OMNI_COMMS_TEST_UNAUTHORISED_MODULE;
+
 
   const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
