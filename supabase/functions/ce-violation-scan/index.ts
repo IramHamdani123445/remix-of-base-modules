@@ -731,9 +731,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             const c3 = c3ByEmp.get(emp.regno);
             const paid = payByEmp.get(emp.regno);
             if (c3) {
-              for (const ym of periodsInScope(emp.regno, cap)) {
-                const rec = c3.get(ym);
-                if (!rec || rec.declared <= 0) continue;
+              const win = windowFor(emp.regno, cap);
+              for (const [ym, rec] of c3) {
+                if (rec.declared <= 0 || ym < win.from || ym > win.to) continue;
                 const [y, m] = ym.split("-").map((n) => parseInt(n, 10));
                 const dueDate = new Date(y, m, dueDay + graceDays);
                 if (today < dueDate) continue;
@@ -762,9 +762,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             const c3 = c3ByEmp.get(emp.regno);
             const paid = payByEmp.get(emp.regno);
             if (c3 && paid) {
-              for (const ym of periodsInScope(emp.regno, cap)) {
-                const rec = c3.get(ym);
-                if (!rec || rec.declared <= 0) continue;
+              const win = windowFor(emp.regno, cap);
+              for (const [ym, rec] of c3) {
+                if (rec.declared <= 0 || ym < win.from || ym > win.to) continue;
                 const amountPaid = paid.get(ym) || 0;
                 if (amountPaid <= 0) continue; // handled by non-payment rule
                 const shortfall = rec.declared - amountPaid;
@@ -778,6 +778,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
                 );
               }
             }
+
             shouldFlag = false;
             break;
           }
