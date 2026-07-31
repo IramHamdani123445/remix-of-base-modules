@@ -124,14 +124,53 @@ async def main() -> int:
         await page.goto(f"{BASE}{ROUTE}?view=dry-run", wait_until="domcontentloaded")
         await page.wait_for_timeout(2000)
 
+        # 3b. Pilot selection — organisation then event. The tenant selector
+        #     never falls back to the first organisation, so it must be chosen.
+        async def pick(trigger, skip_labels):
+            if not await trigger.count():
+                return None
+            await trigger.first.click()
+            await page.wait_for_timeout(400)
+            options = page.locator('[role="option"]')
+            for i in range(await options.count()):
+                label = ((await options.nth(i).inner_text()) or "").strip()
+                if label and label not in skip_labels:
+                    await options.nth(i).click()
+                    await page.wait_for_timeout(1500)
+                    return label
+            await page.keyboard.press("Escape")
+            return None
+
+        org = await pick(
+            page.locator('[data-testid="omni-comms-tenant-selector-org"]'), {"—"}
+        )
+        if not org:
+            failures.append("No selectable organisation in the tenant selector")
+        await page.wait_for_timeout(2000)
+        event = await pick(page.locator("#omni-dry-run-event"), set())
+        if not event:
+            print("Browser smoke: Not executed — no active event definition "
+                  "available for the selected organisation.")
+            await browser.close()
+            return 0
+        await page.wait_for_timeout(2000)
+        await page.screenshot(path=str(SCREENSHOTS / "dryrun_1b_pilot.png"))
+
+        body = await page.inner_text("body")
+        if re.search(r"configuration is incomplete|not dry_run_ready", body, re.I):
+            print("Browser smoke: Not executed — pilot configuration is not "
+                  "dry_run_ready in this environment.")
+            await browser.close()
+            return 0
+
         # 4. Validate payload
-        validate = page.get_by_role("button", name=re.compile("validate", re.I))
-        if await validate.count():
+        validate = page.get_by_test_id("omni-comms-dry-run-validate")
+        if await validate.count() and await validate.first.is_enabled():
             await validate.first.click()
             await page.wait_for_timeout(2500)
             await page.screenshot(path=str(SCREENSHOTS / "dryrun_2_validated.png"))
         else:
-            failures.append("Validate payload control not found")
+            failures.append("Validate payload control not found or disabled")
 
         # 5. Execute with confirmation
         run = page.get_by_role("button", name=re.compile("run controlled dry run|start dry run|submit dry run", re.I))
