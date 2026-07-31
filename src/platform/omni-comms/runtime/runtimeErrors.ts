@@ -16,6 +16,11 @@ export const OMNI_COMMS_RUNTIME_ERROR_CODES = [
   'payload_invalid',
   'payload_too_large',
   'mode_invalid',
+  // Authoritative server-side authorisation refusals (never browser-decided).
+  'organization_access_denied',
+  'department_access_denied',
+  'caller_module_not_registered',
+
   'channel_invalid',
   'idempotency_key_required',
   'idempotency_key_too_long',
