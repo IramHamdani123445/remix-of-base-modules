@@ -171,7 +171,7 @@ def main():
 
     # 6. Template family + version ------------------------------------------
     fams = rpc("omni_comms_template_family_list", {
-        "p_search": "OMNI.TEST.CONTROLLED_DRY_RUN",
+        "p_search": "omni_test_controlled_dry_run_email",
         "p_status": None, "p_scope_type": None,
         "p_organization_id": ORG, "p_limit": 50, "p_offset": 0})
     items = fams["items"] if isinstance(fams, dict) else fams
