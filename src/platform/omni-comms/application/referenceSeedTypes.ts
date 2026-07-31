@@ -43,21 +43,32 @@ export type ReferenceSeedObjectType =
   | 'template_version'
   | 'event_route';
 
-export type ReferenceSeedActionKind = 'planned' | 'created' | 'existing';
+export type ReferenceSeedActionKind =
+  | 'planned'
+  | 'created'
+  | 'existing'
+  | 'existing_compatible'
+  | 'conflict'
+  | 'blocked';
 
 export interface ReferenceSeedAction {
   object_type: ReferenceSeedObjectType;
   key: string;
   action: ReferenceSeedActionKind;
+  reason?: string | null;
 }
+
+export type ReferenceSeedMode = 'preview' | 'apply' | 'reconcile';
 
 export interface ReferenceSeedRunResult {
   organization_id: string;
   catalogue_version: number;
-  mode: 'preview' | 'apply';
+  mode: ReferenceSeedMode;
   created: number;
   planned: number;
   existing: number;
+  conflicts: number;
+  blocked: number;
   skipped: number;
   actions: ReferenceSeedAction[];
   generated_at: string;
@@ -66,18 +77,42 @@ export interface ReferenceSeedRunResult {
 export interface ReferenceSeedStatus {
   organization_id: string;
   catalogue_version: number;
+
   expected_events: number;
   present_events: number;
+  expected_contracts: number;
+  present_published_contracts: number;
+  expected_families: number;
+  present_families: number;
   expected_channel_bindings: number;
   present_routes: number;
   present_published_versions: number;
+  valid_layout_selections: number;
   expected_senders: number;
   present_senders: number;
+  expected_bindings: number;
+  present_bindings: number;
   expected_accounts: number;
   present_accounts: number;
+  expected_providers: number;
+  present_providers: number;
+  expected_channel_settings: number;
+  present_channel_settings: number;
+
+  unresolved_required_assets: number;
+  conflicts: number;
+
   seeded: boolean;
+  catalogue_complete: boolean;
   live_delivery_enabled_channels: number;
   live_requests: number;
+  reference_dry_run_requests: number;
+  completed_reference_dry_runs: number;
+
+  reference_configuration_ready: boolean;
+  controlled_dry_run_ready: boolean;
+  controlled_dry_run_verified: boolean;
+  live_send_ready: boolean;
   safe_to_seed: boolean;
   checked_at: string;
 }
@@ -90,7 +125,26 @@ export interface ReferenceSeedGroup {
   planned: number;
   created: number;
   existing: number;
+  conflicts: number;
+  blocked: number;
   keys: string[];
+}
+
+/** A single row of the "is the catalogue complete?" verification matrix. */
+export interface ReferenceSeedCoverageRow {
+  key: string;
+  label: string;
+  expected: number;
+  present: number;
+  complete: boolean;
+}
+
+/** A single readiness gate shown on the panel. */
+export interface ReferenceSeedReadinessRow {
+  key: string;
+  label: string;
+  ready: boolean;
+  detail: string;
 }
 
 export type ReferenceSeedPanelState =
@@ -112,7 +166,7 @@ export const REFERENCE_SEED_OBJECT_LABELS: Record<
   sender_binding: 'Sender / provider bindings',
   channel_setting: 'Channel settings',
   event_definition: 'Event definitions',
-  event_contract: 'Event contracts',
+  event_contract: 'Published event contracts',
   template_family: 'Template families',
   template_version: 'Published template versions',
   event_route: 'Event routes',
