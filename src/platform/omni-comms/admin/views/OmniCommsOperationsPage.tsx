@@ -177,17 +177,16 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   if (!tenantLoading && !organizationId) {
     return (
-      <div className="p-6">
-        <OmniCommsEmptyState
-          title="Select an organisation"
-          description="Operations records are scoped to a single organisation. Choose one from the tenant selector to view runtime activity."
-        />
-      </div>
+      <OmniCommsEmptyState
+        title="Select an organisation"
+        description="Operations records are scoped to a single organisation. Choose one in the module header to view runtime activity."
+      />
     );
   }
 
   return (
-    <div className="p-6 space-y-6" data-testid="omni-comms-operations-page">
+    <div className="space-y-6" data-testid="omni-comms-operations-page">
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Operations</h1>
