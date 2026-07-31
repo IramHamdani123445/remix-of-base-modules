@@ -1197,6 +1197,15 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         state={reasonDialog}
         onOpenChange={(o) => setReasonDialog((s) => ({ ...s, open: o }))}
       />
+      <OmniCommsLayoutSelectionDialog
+        open={layoutDialogVersion !== null}
+        version={layoutDialogVersion}
+        familyCode={selectedFamily?.code ?? ""}
+        canAuthor={canAuthor}
+        onClose={() => setLayoutDialogVersion(null)}
+        onSaved={async () => { await reloadVersions(selectedFamilyId); }}
+      />
+
     </div>
   );
 };
