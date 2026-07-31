@@ -1,7 +1,12 @@
-// Omni-Comms Runtime — Slice 2c-ii Batch B trusted boundary.
+// Omni-Comms Runtime — trusted boundary (authorisation-hardened).
 //
 // End-to-end pipeline:
 //   1. Authenticate caller via JWT.
+//   1b. AUTHORISE the actor server-side via
+//      omni_comms_priv_authorize_runtime_actor: organisation access,
+//      department access, Omni-Comms execution capability and registered
+//      caller module. organizationId / departmentId / callerContext.moduleCode
+//      supplied by the browser are treated as CLAIMS, never as facts.
 //   2. Canonicalize + fingerprint server-side (Slice 2c-i).
 //   3. Persist request through the SECURITY DEFINER RPC
 //      omni_comms_priv_send_communication.
@@ -28,6 +33,14 @@ import {
 import type { RecipientInput } from "./resolution/resolutionTypes.ts";
 import { RuntimeResolutionError } from "./resolution/runtimeResolutionErrors.ts";
 import { RenderStageError, runRenderStage } from "./renderStage.ts";
+import {
+  buildBlockedResult,
+  buildResult,
+  messagesFromPersistedProjection,
+  type SendCommunicationMessageResult,
+  type SendCommunicationRecipientResult,
+  type SendCommunicationResult,
+} from "./responseContract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,21 +53,11 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OMNI_COMMS_DEFAULT_CALLER_MODULE = "OMNI_COMMS_DIRECT";
-const BUILD_TAG = "omni-comms-runtime@2c-iii";
+const BUILD_TAG = "omni-comms-runtime@2c-iii-auth";
 
 type Mode = "dry_run" | "shadow" | "queued";
 
-interface PublicResult {
-  requestId: string;
-  idempotencyKey: string;
-  mode: Mode;
-  status: string;
-  recipients: unknown[];
-  messages: unknown[];
-  blockers: string[];
-  createdAt: string;
-  replayed: boolean;
-}
+type PublicResult = SendCommunicationResult;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -69,17 +72,10 @@ function blocked(
   status = 200,
 ): Response {
   return json(
-    {
-      requestId: "",
+    buildBlockedResult([blocker], {
       idempotencyKey: (input?.idempotencyKey as string) ?? "",
       mode: (input?.mode as Mode) ?? "dry_run",
-      status: "blocked",
-      recipients: [],
-      messages: [],
-      blockers: [blocker],
-      createdAt: new Date(0).toISOString(),
-      replayed: false,
-    } satisfies PublicResult,
+    }),
     status,
   );
 }
@@ -187,7 +183,31 @@ Deno.serve(async (req: Request) => {
     ? (input.correlationId as string).trim()
     : null;
 
-  // 3a. Trusted administration dry-run guard. Applies ONLY to the bounded
+  // 3a. AUTHORITATIVE server-side authorisation. Nothing is persisted until
+  // the actor is proven to hold the Omni-Comms execution capability and to be
+  // entitled to the submitted organisation, department and caller module.
+  const { data: authzData, error: authzError } = await admin.rpc(
+    "omni_comms_priv_authorize_runtime_actor",
+    {
+      p_actor_id: userId,
+      p_organization_id: canonical.organizationId,
+      p_department_id: canonical.departmentId,
+      p_caller_module_code: callerModule,
+    },
+  );
+  if (authzError) {
+    console.log(`[${BUILD_TAG}] authorize_rpc_error`);
+    return blocked(input, mapRpcErrorToCode(authzError), 403);
+  }
+  const authz = (authzData ?? {}) as { allowed?: boolean; code?: string };
+  if (authz.allowed !== true) {
+    const code = authz.code ?? "permission_denied";
+    // 401 only for a genuinely absent actor; every other refusal is a 403.
+    const httpStatus = code === "authentication_required" ? 401 : 403;
+    return blocked(input, code, httpStatus);
+  }
+
+  // 3b. Trusted administration dry-run guard. Applies ONLY to the bounded
   // administration test caller; business-module behaviour is unchanged.
   // Enforced BEFORE any runtime persistence occurs.
   if (callerModule === "OMNI_COMMS_ADMIN_DRY_RUN") {
@@ -259,7 +279,22 @@ Deno.serve(async (req: Request) => {
     if (loadErr) {
       return blocked(input, mapRpcErrorToCode(loadErr));
     }
-    return json(buildReplayResponse(row, loaded));
+    // A replay MUST return the same bounded messages and statuses as the
+    // original call — never an empty messages array just because it replayed.
+    const { data: msgData, error: msgErr } = await admin.rpc(
+      "omni_comms_priv_load_persisted_messages",
+      {
+        p_actor_id: userId,
+        p_request_id: row.request_id,
+        p_organization_id: canonical.organizationId,
+      },
+    );
+    if (msgErr) {
+      return blocked(input, mapRpcErrorToCode(msgErr));
+    }
+    return json(
+      buildReplayResponse(row, loaded, messagesFromPersistedProjection(msgData)),
+    );
   }
 
   // 5. Fresh resolution.
@@ -408,10 +443,12 @@ Deno.serve(async (req: Request) => {
       );
       const base = buildResolvedResponse(row, finData, result, requestBlockers);
       return json({
-        ...base,
-        status: render.status,
-        messages: render.messages,
-        blockers: render.blockers,
+        ...buildResult({
+          ...base,
+          status: render.status,
+          messages: render.messages,
+          blockers: render.blockers,
+        }),
         rendering: {
           renderedCount: render.renderedCount,
           blockedCount: render.blockedCount,
@@ -423,7 +460,9 @@ Deno.serve(async (req: Request) => {
       const code = err instanceof RenderStageError ? err.code : "render_stage_failed";
       console.log(`[${BUILD_TAG}] render_stage_error`);
       const base = buildResolvedResponse(row, finData, result, requestBlockers);
-      return json({ ...base, status: "blocked", blockers: [...requestBlockers, code] });
+      return json(
+        buildResult({ ...base, status: "blocked", blockers: [...requestBlockers, code] }),
+      );
     }
   }
 
@@ -439,7 +478,8 @@ function projectRecipients(result: {
     channelResolutions: Array<{ senderChannelReady: boolean; liveDeliveryReady: boolean; blockers: string[] }>;
   }>;
 }) {
-  return result.recipients.map((r) => ({
+  return result.recipients.map((r): SendCommunicationRecipientResult => ({
+    recipientId: null,
     inputIndex: r.inputIndex,
     recipientReference: r.recipientReference,
     resolvedChannels: r.resolvedChannels,
@@ -462,7 +502,7 @@ function buildResolvedResponse(
   requestBlockers: string[],
 ) {
   const fin = (finData ?? {}) as { status?: string };
-  return {
+  return buildResult({
     requestId: row.request_id,
     idempotencyKey: row.idempotency_key,
     mode: row.mode,
@@ -472,12 +512,13 @@ function buildResolvedResponse(
     blockers: requestBlockers,
     createdAt: row.created_at,
     replayed: false,
-  } satisfies PublicResult;
+  });
 }
 
 function buildReplayResponse(
   row: { request_id: string; idempotency_key: string; mode: Mode; status: string; created_at: string },
   loaded: unknown,
+  messages: SendCommunicationMessageResult[],
 ): PublicResult {
   const l = (loaded ?? {}) as { recipients?: unknown[]; blockers?: unknown };
   const recipients = Array.isArray(l.recipients) ? l.recipients : [];
@@ -486,25 +527,26 @@ function buildReplayResponse(
     const rc = Array.isArray(r.resolved_channels) ? (r.resolved_channels as string[]) : [];
     const bl = Array.isArray(r.blockers) ? (r.blockers as string[]) : [];
     return {
+      recipientId: (r.recipient_id as string | null) ?? null,
       inputIndex: typeof r.input_index === "number" ? (r.input_index as number) : i,
       recipientReference: (r.recipient_reference as string | null) ?? null,
       resolvedChannels: rc,
       blockers: bl,
       eligibilityStatus: (r.eligibility_status as string) ?? "eligible",
-    };
+    } satisfies SendCommunicationRecipientResult;
   });
   const blockers = Array.isArray(l.blockers) ? (l.blockers as string[]) : [];
-  return {
+  return buildResult({
     requestId: row.request_id,
     idempotencyKey: row.idempotency_key,
     mode: row.mode,
     status: row.status,
     recipients: projected,
-    messages: [],
+    messages,
     blockers,
     createdAt: row.created_at,
     replayed: true,
-  };
+  });
 }
 
 async function finalizeBlocked(
@@ -523,15 +565,18 @@ async function finalizeBlocked(
     p_request_blockers: [blocker],
     p_final_status: "blocked",
   });
-  return json({
-    requestId: row.request_id,
-    idempotencyKey: row.idempotency_key,
-    mode: row.mode,
-    status: "blocked",
-    recipients: [],
-    messages: [],
-    blockers: [blocker],
-    createdAt: row.created_at,
-    replayed: false,
-  } satisfies PublicResult);
+  return json(
+    buildResult({
+      requestId: row.request_id,
+      idempotency_key: row.idempotency_key,
+      idempotencyKey: row.idempotency_key,
+      mode: row.mode,
+      status: "blocked",
+      recipients: [],
+      messages: [],
+      blockers: [blocker],
+      createdAt: row.created_at,
+      replayed: false,
+    } as unknown as Parameters<typeof buildResult>[0]),
+  );
 }
