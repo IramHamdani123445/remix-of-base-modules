@@ -475,10 +475,147 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       }
     }
 
+    // ── Bulk prefetch of per-period C3 declarations and payments ──
+    // Late-filing / non-payment / partial-payment detection must be evaluated
+    // period-by-period (like non-filing) instead of emitting a single
+    // aggregate row at the scan date.
+    const c3ByEmp = new Map<string, Map<string, { received: Date | null; declared: number }>>();
+    {
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("cn_c3_reported")
+          .select(
+            "payer_id, period, date_received, posting_status, emp_ss_amt_calc, emp_levy_amt_calc, emp_pe_amt_calc",
+          )
+          .gte("period", filedCutoff.toISOString().slice(0, 10))
+          .order("payer_id")
+          .range(from, from + PAGE - 1);
+        if (employerFilter) q = q.eq("payer_id", employerFilter);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const r of data) {
+          if (String(r.posting_status ?? "") === "CANCELLED") continue;
+          const key = String(r.payer_id);
+          let m = c3ByEmp.get(key);
+          if (!m) {
+            m = new Map();
+            c3ByEmp.set(key, m);
+          }
+          const ym = String(r.period).slice(0, 7);
+          const declared =
+            Number(r.emp_ss_amt_calc || 0) +
+            Number(r.emp_levy_amt_calc || 0) +
+            Number(r.emp_pe_amt_calc || 0);
+          const received = r.date_received ? new Date(r.date_received) : null;
+          const prev = m.get(ym);
+          if (prev) {
+            prev.declared += declared;
+            if (received && (!prev.received || received > prev.received)) prev.received = received;
+          } else {
+            m.set(ym, { received, declared });
+          }
+        }
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+
+    // Payments: cn_payment holds the period + amount, cn_payment_header the payer.
+    const payByEmp = new Map<string, Map<string, number>>();
+    {
+      const PAGE = 1000;
+      const payerByPaymentId = new Map<string, string>();
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("cn_payment_header")
+          .select("payment_id, payer_id")
+          .order("payment_id")
+          .range(from, from + PAGE - 1);
+        if (employerFilter) q = q.eq("payer_id", employerFilter);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const h of data) payerByPaymentId.set(String(h.payment_id), String(h.payer_id));
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+
+      from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("cn_payment")
+          .select("payment_id, period, payment_amount")
+          .gte("period", filedCutoff.toISOString().slice(0, 10))
+          .order("payment_id")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const p of data) {
+          const regno = payerByPaymentId.get(String(p.payment_id));
+          if (!regno || !p.period) continue;
+          let m = payByEmp.get(regno);
+          if (!m) {
+            m = new Map();
+            payByEmp.set(regno, m);
+          }
+          const ym = String(p.period).slice(0, 7);
+          m.set(ym, (m.get(ym) || 0) + Number(p.payment_amount || 0));
+        }
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+
+    /**
+     * Period window for an employer: [startYm, lastCompleteYm].
+     * Rules driven by actual C3 rows iterate their own (small) period set and
+     * only test membership here — iterating up to 120 synthetic months per
+     * employer per rule blew the edge CPU budget on full-tenant scans.
+     */
+    const asOfToday = new Date(asOfDate);
+    const lastCompleteYm = (() => {
+      const d = new Date(asOfToday.getFullYear(), asOfToday.getMonth() - 1, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    })();
+    const windowFor = (regno: string, cap: number): { from: string; to: string } => {
+      const startYm = complianceStartByEmp.get(regno);
+      const capStart = new Date(asOfToday.getFullYear(), asOfToday.getMonth() - cap, 1);
+      const capYm = `${capStart.getFullYear()}-${String(capStart.getMonth() + 1).padStart(2, "0")}`;
+      return { from: startYm && startYm > capYm ? startYm : capYm, to: lastCompleteYm };
+    };
+
+
+
     // Process each rule
     for (const rule of enrichedRules) {
       const initialStatus = rule.auto_create_violation ? "OPEN" : "UNDER_REVIEW";
       const asOfPeriod = asOfDate.slice(0, 7);
+
+      /** Emit one violation row per qualifying period (deduped). */
+      const pushPeriod = (emp: any, ym: string, summary: string) => {
+        const periodFromYm = `${ym}-01`;
+        const dedupeKey = `${emp.regno}|${rule.violation_type_id}|${periodKey(periodFromYm)}`;
+        if (existingSet.has(dedupeKey)) return;
+        detected.push({
+          rule_code: rule.rule_code,
+          rule_name: rule.name,
+          employer_id: emp.regno,
+          employer_name: emp.name,
+          violation_type_id: rule.violation_type_id,
+          violation_type_code: rule.violation_type_code || "UNKNOWN",
+          status: initialStatus,
+          priority: rule.priority || "Medium",
+          summary,
+          period_from: periodFromYm,
+          source_type: "DETECTION_RULE",
+          source_rule_id: rule.id,
+        });
+        existingSet.add(dedupeKey);
+      };
 
       for (const emp of allEmployers) {
         const filing = filingMap.get(emp.regno) as any;
@@ -486,21 +623,42 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         const arrear = arrearMap.get(emp.regno) as any;
         const wf = workforceMap.get(emp.regno) as any;
 
+
         let shouldFlag = false;
         let summary = "";
         let periodFrom: string | undefined;
 
         switch (rule.trigger_event) {
           case "c3_deadline_passed": {
-            if (filing && filing.last_filing_date) {
-              if (filing.missed_filings_12m > 0 && filing.total_filings_12m > 0) {
-                shouldFlag = true;
-                summary = `Late C3 submission detected. ${filing.missed_filings_12m} period(s) with delayed filing in last 12 months.`;
-                periodFrom = asOfPeriod;
+            // Per-period: every C3 that WAS filed but arrived after its
+            // statutory deadline (+ grace) raises its own late-filing row.
+            const cap = Math.min(
+              ABSOLUTE_CAP_MONTHS,
+              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
+            );
+            const graceDays = Number(rule.parameters?.grace_period_days ?? 0);
+            const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
+            const c3 = c3ByEmp.get(emp.regno);
+            if (c3) {
+              const win = windowFor(emp.regno, cap);
+              for (const [ym, rec] of c3) {
+                if (!rec.received || ym < win.from || ym > win.to) continue;
+                const [y, m] = ym.split("-").map((n) => parseInt(n, 10));
+                const deadline = new Date(y, m, dueDay + graceDays);
+                if (rec.received > deadline) {
+                  pushPeriod(
+                    emp,
+                    ym,
+                    `Late filing: C3 for ${ym} received ${rec.received.toISOString().slice(0, 10)}, after the ${deadline.toISOString().slice(0, 10)} deadline (${graceDays}d grace).`,
+                  );
+                }
               }
             }
+
+            shouldFlag = false;
             break;
           }
+
 
           case "c3_missing_30_days":
           case "contribution_gap_detected": {
@@ -561,22 +719,70 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "payment_not_received": {
-            if (payment && !payment.has_recent_payment && filing?.total_filings_12m > 0) {
-              shouldFlag = true;
-              summary = `Non-payment: No payment received in last 60 days despite active filing. Last payment: ${payment.last_payment_date || "Never"}.`;
-              periodFrom = asOfPeriod;
+            // Per-period: a declared C3 with no money received for that period
+            // once the payment due date (+ grace) has passed.
+            const cap = Math.min(
+              ABSOLUTE_CAP_MONTHS,
+              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
+            );
+            const graceDays = Number(rule.parameters?.grace_period_days ?? 0);
+            const dueDay = Number(rule.parameters?.payment_due_day ?? 28);
+            const today = new Date(asOfDate);
+            const c3 = c3ByEmp.get(emp.regno);
+            const paid = payByEmp.get(emp.regno);
+            if (c3) {
+              const win = windowFor(emp.regno, cap);
+              for (const [ym, rec] of c3) {
+                if (rec.declared <= 0 || ym < win.from || ym > win.to) continue;
+                const [y, m] = ym.split("-").map((n) => parseInt(n, 10));
+                const dueDate = new Date(y, m, dueDay + graceDays);
+                if (today < dueDate) continue;
+                const amountPaid = paid?.get(ym) || 0;
+                if (amountPaid <= 0) {
+                  pushPeriod(
+                    emp,
+                    ym,
+                    `Non-payment: contributions of $${rec.declared.toLocaleString()} declared for ${ym} but no payment received by ${dueDate.toISOString().slice(0, 10)}.`,
+                  );
+                }
+              }
             }
+            shouldFlag = false;
             break;
           }
 
           case "payment_partial": {
-            if (arrear?.has_arrears && payment?.has_recent_payment && arrear.total_outstanding > 0) {
-              shouldFlag = true;
-              summary = `Partial payment: Outstanding balance of $${Number(arrear.total_outstanding).toLocaleString()} despite recent payments.`;
-              periodFrom = asOfPeriod;
+            // Per-period shortfall between declared C3 and money received.
+            const cap = Math.min(
+              ABSOLUTE_CAP_MONTHS,
+              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
+            );
+            const minAmt = Number(rule.parameters?.min_shortfall_amount_xcd ?? 0);
+            const minPct = Number(rule.parameters?.min_shortfall_percent ?? 0);
+            const c3 = c3ByEmp.get(emp.regno);
+            const paid = payByEmp.get(emp.regno);
+            if (c3 && paid) {
+              const win = windowFor(emp.regno, cap);
+              for (const [ym, rec] of c3) {
+                if (rec.declared <= 0 || ym < win.from || ym > win.to) continue;
+                const amountPaid = paid.get(ym) || 0;
+                if (amountPaid <= 0) continue; // handled by non-payment rule
+                const shortfall = rec.declared - amountPaid;
+                if (shortfall <= 0) continue;
+                const pct = (shortfall / rec.declared) * 100;
+                if (shortfall < minAmt || pct < minPct) continue;
+                pushPeriod(
+                  emp,
+                  ym,
+                  `Partial payment: ${ym} declared $${rec.declared.toLocaleString()}, paid $${amountPaid.toLocaleString()}, shortfall $${shortfall.toLocaleString()} (${pct.toFixed(1)}%).`,
+                );
+              }
             }
+
+            shouldFlag = false;
             break;
           }
+
 
           case "repeat_violation_check": {
             const threshold = rule.parameters?.repeat_threshold ?? 3;
