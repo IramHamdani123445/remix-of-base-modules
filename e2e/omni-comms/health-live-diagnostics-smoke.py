@@ -120,8 +120,12 @@ async def main() -> int:
         if not await page.locator('[data-testid="omni-comms-health-category-event_catalogue"]').count():
             failures.append("Live diagnostics returned no event catalogue category")
 
-        # Refresh.
-        await page.locator('[data-testid="omni-comms-health-refresh"]').click()
+        # Refresh (read-only re-query). Only meaningful once a tenant is set.
+        refresh = page.locator('[data-testid="omni-comms-health-refresh"]')
+        if await refresh.is_enabled():
+            await refresh.click()
+        else:
+            failures.append("Refresh diagnostics stayed disabled after tenant selection")
         await page.wait_for_timeout(3000)
         await page.screenshot(path=str(SCREENSHOTS / "health_3_refresh.png"))
 
