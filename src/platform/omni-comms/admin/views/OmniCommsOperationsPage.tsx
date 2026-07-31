@@ -304,13 +304,17 @@ export const OmniCommsOperationsPage: React.FC = () => {
           ) : (
             <>
               <Table data-testid="omni-comms-ops-request-table">
+                <caption className="caption-bottom pt-3 text-left text-xs text-muted-foreground">
+                  Timestamps are shown in {zone === "utc" ? "UTC" : "your local time"}.
+                  Select a row to open the full request timeline.
+                </caption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Created</TableHead>
                     <TableHead>Event</TableHead>
                     <TableHead>Module</TableHead>
                     <TableHead>Mode</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Outcome</TableHead>
                     <TableHead className="text-right">Recipients</TableHead>
                     <TableHead className="text-right">Messages</TableHead>
                     <TableHead className="text-right">Held jobs</TableHead>
@@ -321,18 +325,32 @@ export const OmniCommsOperationsPage: React.FC = () => {
                   {page.items.map((r) => (
                     <TableRow
                       key={r.id}
-                      className="cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open request ${r.event_code ?? r.id}`}
+                      className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => openRequest(r.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openRequest(r.id);
+                        }
+                      }}
                       data-testid={`omni-comms-ops-request-row-${r.id}`}
                     >
-                      <TableCell className="text-xs">{ts(r.created_at)}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {ts(r.created_at, zone)}
+                      </TableCell>
                       <TableCell className="text-xs">{r.event_code ?? "—"}</TableCell>
                       <TableCell className="text-xs">{r.caller_module_code}</TableCell>
                       <TableCell className="text-xs">
                         <Badge variant="outline">{r.mode}</Badge>
                       </TableCell>
                       <TableCell className="text-xs">
-                        <Badge variant="outline">{r.status}</Badge>
+                        <span className="block font-medium">{r.status}</span>
+                        <span className="text-muted-foreground">
+                          {outcomeOf(r.mode, r.status)}
+                        </span>
                       </TableCell>
                       <TableCell className="text-xs text-right">{r.recipient_count}</TableCell>
                       <TableCell className="text-xs text-right">{r.message_count}</TableCell>
@@ -342,6 +360,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+
 
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
