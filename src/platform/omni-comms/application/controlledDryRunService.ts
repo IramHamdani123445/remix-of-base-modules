@@ -41,6 +41,7 @@ import {
   ADMIN_DRY_RUN_PAYLOAD_MAX_BYTES,
   ADMIN_DRY_RUN_RECIPIENT_LIMIT,
   ADMIN_DRY_RUN_RECIPIENT_TYPE,
+  DRY_RUN_BLOCK_REASON_MESSAGE,
   type DryRunGate,
   type DryRunGuidance,
   type DryRunInvariants,
@@ -66,7 +67,14 @@ export function getControlledDryRunGate(
   );
 }
 
-/** Execution may only be offered when the server says `enabled`. */
+/**
+ * Execution may only be offered when the SERVER says so.
+ *
+ * `execution_permitted` is the authoritative decision — it already accounts
+ * for the feature flag, the operate capability, the server-classified
+ * environment and the recorded certification state. The browser adds nothing
+ * of its own beyond configuration readiness for the selected path.
+ */
 export function isExecutionPermitted(
   gate: DryRunGate | null,
   dryRunReady: boolean,
@@ -74,7 +82,20 @@ export function isExecutionPermitted(
   if (!gate) return false;
   if (gate.state !== 'enabled') return false;
   if (!gate.can_operate) return false;
+  // Older deployments omit the field; absence must not silently permit.
+  if (gate.execution_permitted === false) return false;
   return dryRunReady === true;
+}
+
+/** The server's reason for withholding execution, in operator language. */
+export function executionBlockedMessage(gate: DryRunGate | null): string | null {
+  if (!gate) return null;
+  if (gate.execution_permitted !== false) return null;
+  const code = gate.execution_blocked_reason ?? '';
+  return (
+    DRY_RUN_BLOCK_REASON_MESSAGE[code] ??
+    'The server did not permit the safe dry test for this environment.'
+  );
 }
 
 // ─── Authoritative payload validation ───────────────────────────────────

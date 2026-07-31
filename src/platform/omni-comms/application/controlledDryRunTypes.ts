@@ -46,8 +46,35 @@ export interface DryRunGate {
   can_view: boolean;
   can_operate: boolean;
   can_view_sensitive_content: boolean;
+  /** Server-held certification state for the deployed runtime. */
+  certification_state?: 'certified' | 'pending' | 'failed' | string | null;
+  /** Commit recorded as certified, when one exists. */
+  certified_commit?: string | null;
+  /** Server-held environment classification. Authoritative. */
+  environment?: 'production' | 'non_production' | string | null;
+  /**
+   * The AUTHORITATIVE decision. When false the surface must not offer
+   * execution, whatever the browser believes about the environment.
+   */
+  execution_permitted?: boolean | null;
+  /** Bounded reason code when execution is not permitted. */
+  execution_blocked_reason?: string | null;
   checked_at: string;
 }
+
+/** Operator-safe wording for each server-supplied block reason. */
+export const DRY_RUN_BLOCK_REASON_MESSAGE: Readonly<Record<string, string>> = {
+  admin_dry_run_disabled:
+    'The safe dry test is switched off in server configuration.',
+  permission_denied:
+    'You do not hold the Omnichannel Communications operate capability.',
+  admin_dry_run_environment_blocked:
+    'The server classifies this environment as production. The safe dry test is never offered in production.',
+  admin_dry_run_certification_blocked:
+    'Privileged certification is recorded as failed for the deployed runtime.',
+  admin_dry_run_revision_mismatch:
+    'The certified commit does not match the deployed runtime revision.',
+};
 
 // ─── Authoritative payload validation ───────────────────────────────────
 
