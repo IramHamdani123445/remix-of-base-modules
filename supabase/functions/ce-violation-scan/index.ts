@@ -757,7 +757,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
         existingSet.add(dedupeKey);
       };
 
-      for (const emp of allEmployers) {
+      for (const emp of batchEmployers) {
         const filing = filingMap.get(emp.regno) as any;
         const payment = paymentMap.get(emp.regno) as any;
         const arrear = arrearMap.get(emp.regno) as any;
