@@ -129,7 +129,8 @@ describe('Omni-Comms result contract — browser/Edge mirror drift', () => {
   it('never lets the Edge mirror import from the browser tree', () => {
     expect(edgeSrc).not.toMatch(/from ['"](@\/|\.\.\/\.\.\/\.\.\/src)/);
   });
-  });
+
+
 
 
   const MIRRORED_INTERFACES = [
