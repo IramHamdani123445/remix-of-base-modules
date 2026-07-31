@@ -294,26 +294,98 @@ export const SetupWizardPanel: React.FC = () => {
       )}
 
       {plan && (
-        <Card>
+        <>
+          <Card data-testid="omni-comms-setup-next-action">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Next required action</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <SetupProgressSummary plan={plan} />
+              {plan.nextRequiredStep ? (
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="font-medium">
+                    Step {plan.nextRequiredStep.index}: {plan.nextRequiredStep.title}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {plan.nextRequiredStep.purpose}
+                  </p>
+                  {plan.nextRequiredStep.target ? (
+                    <Button asChild size="sm">
+                      <Link to={stepTargetHref(plan.nextRequiredStep)}>
+                        {plan.nextRequiredStep.target.label}
+                        <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                  ) : null}
+                </div>
+              ) : (
+                <p>
+                  Every configuration step is complete for this path. Live
+                  delivery remains disabled and no provider dispatch exists.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {OMNI_COMMS_SETUP_STAGES.map((stage) => {
+            const steps = plan.steps.filter((s) => stage.steps.includes(s.id));
+            if (steps.length === 0) return null;
+            const done = steps.filter((s) => s.state === "complete").length;
+            return (
+              <Card key={stage.id} data-testid={`omni-comms-setup-stage-${stage.id}`}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                    <span>{stage.title}</span>
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {done} of {steps.length} complete
+                    </span>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">{stage.purpose}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3" data-testid="omni-comms-setup-steps">
+                    {steps.map((s) => (
+                      <SetupStepCard
+                        key={s.id}
+                        step={s}
+                        isNextRequired={plan.nextRequiredStep?.id === s.id}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </>
+      )}
+
+      {isNonProduction(currentOmniCommsEnvironment()) ? (
+        <Card data-testid="omni-comms-setup-non-production-tools">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Configuration steps</CardTitle>
+            <CardTitle className="text-base">Non-production tools</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <SetupProgressSummary plan={plan} />
-            <div className="space-y-3" data-testid="omni-comms-setup-steps">
-              {plan.steps.map((s) => (
-                <SetupStepCard
-                  key={s.id}
-                  step={s}
-                  isNextRequired={plan.nextRequiredStep?.id === s.id}
-                />
-              ))}
-            </div>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Reference data seeding creates demonstration configuration only.
+              It is not part of the administrator workflow and is unavailable in
+              production.
+            </p>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/admin/omnichannel-communications?view=reference-data">
+                Open reference data
+                <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+            <OmniCommsInlineWarning>
+              Seeded configuration is synthetic and must never be treated as
+              production configuration.
+            </OmniCommsInlineWarning>
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   );
 };
+
 
 export default SetupWizardPanel;
