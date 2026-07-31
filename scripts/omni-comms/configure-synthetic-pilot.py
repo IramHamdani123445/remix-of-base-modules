@@ -137,6 +137,14 @@ def main():
         bind = next(b for b in s["bindings"]
                     if b["sender_identity_id"] == snd["id"]
                     and b["provider_account_id"] == acct["id"])
+    if bind.get("verification_status") != "verified":
+        rpc("omni_comms_binding_record_verification", {
+            "p_id": bind["id"], "p_expected_updated_at": bind["updated_at"],
+            "p_status": "verified", "p_correlation_id": CORR})
+        s = summary()
+        bind = next(b for b in s["bindings"]
+                    if b["sender_identity_id"] == snd["id"]
+                    and b["provider_account_id"] == acct["id"])
     if bind["status"] == "draft":
         rpc("omni_comms_binding_activate", {
             "p_id": bind["id"], "p_expected_updated_at": bind["updated_at"],
