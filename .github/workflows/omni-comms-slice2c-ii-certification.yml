@@ -277,12 +277,10 @@ jobs:
             echo "-- Harness --"
             grep -E "scenarios:|failed:|fixture prefix:|cleanup:|edge_function:|no_message:|no_dispatch_job:|no_delivery_attempt:|no_provider_call:|no_email:" "$log" 2>/dev/null || echo "(harness log unavailable)"
             echo ""
-            echo "-- Assertions (from harness) --"
-            echo "messages created = 0"
-            echo "dispatch jobs created = 0"
-            echo "delivery attempts created = 0"
-            echo "provider calls = 0"
-            echo "emails sent = 0"
+            echo "-- Assertions (measured by the harness, not assumed) --"
+            sed -n '/OMNI_COMMS_HARNESS_SUMMARY_JSON_BEGIN/,/OMNI_COMMS_HARNESS_SUMMARY_JSON_END/p' "$log" 2>/dev/null \
+              || echo "(harness summary unavailable)"
+
             echo ""
             echo "-- Gate results --"
             echo "vitest: $(tail -n 5 .certification-logs/vitest.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
