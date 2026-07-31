@@ -285,7 +285,9 @@ export const OmniCommsLandingPage: React.FC = () => {
   // Safe test is a non-production surface. In production it is not rendered
   // AND a direct `?view=safe-test` deep link falls back to the Dashboard.
   const view: OmniCommsOverviewView =
-    requested === "safe-test" && !nonProduction ? "dashboard" : requested;
+    (requested === "safe-test" || requested === "reference-data") && !nonProduction
+      ? "dashboard"
+      : requested;
 
   const onTabChange = (value: string): void => {
     const params = new URLSearchParams(searchParams);

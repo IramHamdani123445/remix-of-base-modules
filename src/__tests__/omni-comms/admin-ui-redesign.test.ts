@@ -72,3 +72,166 @@ describe('Omni-Comms admin UI redesign', () => {
     }
   });
 });
+
+// ── Final acceptance corrections ─────────────────────────────────────────
+
+describe('Omni-Comms admin UI acceptance corrections', () => {
+  it('the canonical view parser resolves every Safe test deep link', async () => {
+    const nav = await import('@/platform/omni-comms/admin/navigation/omniCommsNavigation');
+    expect(nav.resolveOverviewView('safe-test')).toBe('safe-test');
+    expect(nav.resolveOverviewView('dry-run')).toBe('safe-test');
+    expect(nav.resolveOverviewView('SAFE-TEST')).toBe('safe-test');
+    // Reference data is a real surface, not an alias of Setup.
+    expect(nav.resolveOverviewView('reference-data')).toBe('reference-data');
+    expect(nav.resolveOverviewView('nonsense')).toBe('dashboard');
+    expect(nav.resolveOverviewView(null)).toBe('dashboard');
+  });
+
+  it('reference data highlights Setup in the module navigation', async () => {
+    const nav = await import('@/platform/omni-comms/admin/navigation/omniCommsNavigation');
+    const active = nav.resolveActiveNavItem(
+      '/admin/omnichannel-communications',
+      'reference-data',
+    );
+    expect(active.id).toBe('setup');
+    expect(
+      nav.resolveActiveNavItem('/admin/omnichannel-communications', 'dry-run').id,
+    ).toBe('safe-test');
+  });
+
+  it('Safe test is withheld from navigation in production', async () => {
+    const nav = await import('@/platform/omni-comms/admin/navigation/omniCommsNavigation');
+    expect(nav.omniCommsNavItems('non_production').map((i) => i.id)).toContain('safe-test');
+    expect(nav.omniCommsNavItems('production').map((i) => i.id)).not.toContain('safe-test');
+    expect(nav.omniCommsNavItems('unknown').map((i) => i.id)).not.toContain('safe-test');
+  });
+
+  it('the Overview page renders no Safe test surface in production', () => {
+    const src = read('src/platform/omni-comms/admin/views/OmniCommsLandingPage.tsx');
+    expect(src).toContain('resolveOverviewView');
+    // Deep link falls back to the Dashboard rather than rendering the tab.
+    expect(src).toMatch(/requested === "safe-test"[\s\S]*?"dashboard"/);
+    expect(src).toContain('nonProduction ? (');
+  });
+
+  it('certification posture is derived in exactly one place', async () => {
+    const posture = await import('@/platform/omni-comms/admin/posture/omniCommsPosture');
+    const base = {
+      recordedState: 'pending',
+      certifiedCommit: null,
+      deployedRevision: 'abc123',
+      edgeCertificationState: 'pending',
+      edgeAvailable: true,
+      environment: 'non_production' as const,
+    };
+    expect(posture.deriveCertificationPosture(base).state).toBe('pending');
+    expect(posture.deriveCertificationPosture(base).safeTestPermitted).toBe(true);
+
+    expect(
+      posture.deriveCertificationPosture({ ...base, environment: 'production' })
+        .safeTestPermitted,
+    ).toBe(false);
+    expect(
+      posture.deriveCertificationPosture({ ...base, recordedState: 'failed' }).state,
+    ).toBe('failed');
+    expect(
+      posture.deriveCertificationPosture({ ...base, recordedState: 'failed' })
+        .safeTestPermitted,
+    ).toBe(false);
+    expect(
+      posture.deriveCertificationPosture({ ...base, edgeAvailable: false }).state,
+    ).toBe('unknown');
+
+    const mismatch = posture.deriveCertificationPosture({
+      ...base,
+      recordedState: 'certified',
+      edgeCertificationState: 'certified',
+      certifiedCommit: 'deadbeefcafe',
+      deployedRevision: 'abc123',
+    });
+    expect(mismatch.revision).toBe('mismatch');
+    expect(mismatch.state).toBe('pending');
+    expect(mismatch.safeTestPermitted).toBe(false);
+
+    const certified = posture.deriveCertificationPosture({
+      ...base,
+      recordedState: 'certified',
+      edgeCertificationState: 'certified',
+      certifiedCommit: 'abc123def456',
+      deployedRevision: 'abc123',
+    });
+    expect(certified.revision).toBe('match');
+    expect(certified.state).toBe('certified');
+  });
+
+  it('every certification surface consumes the shared derivation', () => {
+    const files = [
+      'src/platform/omni-comms/admin/components/OmniCommsModuleHeader.tsx',
+      'src/platform/omni-comms/admin/views/OmniCommsLandingPage.tsx',
+      'src/platform/omni-comms/admin/views/health/CertificationEvidenceTab.tsx',
+      'src/platform/omni-comms/admin/views/dryrun/ControlledDryRunPanel.tsx',
+    ];
+    for (const f of files) {
+      expect(read(f), `${f} must use the shared certification posture hook`)
+        .toContain('useOmniCommsCertificationPosture');
+    }
+    // No screen may hardcode a certification verdict.
+    expect(read('src/platform/omni-comms/admin/components/OmniCommsModuleHeader.tsx'))
+      .not.toContain("certification: 'pending'");
+  });
+
+  it('the Edge health contract keeps revision separate from the build tag', () => {
+    const types = read('src/platform/omni-comms/application/healthDiagnosticsTypes.ts');
+    expect(types).toContain('revision: string | null;');
+    expect(types).toContain('revisionVerified: boolean | null;');
+
+    const hook = read('src/platform/omni-comms/admin/hooks/useOmniCommsEdgeHealthProbe.ts');
+    expect(hook).toContain('body.revision');
+    expect(hook).toContain('body.revisionVerified');
+
+    const cert = read('src/platform/omni-comms/admin/views/health/CertificationEvidenceTab.tsx');
+    // The build tag must never masquerade as the deployed revision.
+    expect(cert).not.toContain('result?.buildTag');
+    expect(cert).toContain('edge?.revision');
+
+    const edge = read('supabase/functions/omni-comms-runtime/index.ts');
+    expect(edge).toContain('CERTIFICATION_STATE');
+    expect(edge).not.toContain('certificationState: "certified"');
+  });
+
+  it('Safe test execution is decided by the server, not the browser', () => {
+    const service = read('src/platform/omni-comms/application/controlledDryRunService.ts');
+    expect(service).toContain('gate.execution_permitted === false');
+    expect(service).toContain('executionBlockedMessage');
+
+    const panel = read('src/platform/omni-comms/admin/views/dryrun/ControlledDryRunPanel.tsx');
+    expect(panel).toContain('omni-comms-dry-run-execution-blocked');
+    expect(panel).toContain('executionBlockedMessage');
+  });
+
+  it('Safe test wording is consistent', () => {
+    const panel = read('src/platform/omni-comms/admin/views/dryrun/ControlledDryRunPanel.tsx');
+    expect(panel).toContain('Run safe dry test');
+    expect(panel).toContain('Run the safe dry test?');
+    expect(panel).toContain('Start a new safe test');
+    expect(panel).not.toContain('Run dry-run test');
+    expect(panel).not.toContain('Start a new dry run');
+    expect(panel).not.toContain('Controlled dry run is disabled');
+  });
+
+  it('Operations offers an explicit view action and filter reset', () => {
+    const ops = read('src/platform/omni-comms/admin/views/OmniCommsOperationsPage.tsx');
+    expect(ops).toContain('omni-comms-ops-clear-filters');
+    expect(ops).toContain('omni-comms-ops-active-filters');
+    expect(ops).toContain('omni-comms-ops-request-view-');
+    expect(ops).toContain('e.stopPropagation()');
+  });
+
+  it('Setup stages collapse when complete and open on the next action', () => {
+    const setup = read('src/platform/omni-comms/admin/views/setup/SetupWizardPanel.tsx');
+    expect(setup).toContain('omni-comms-setup-stages');
+    expect(setup).toContain('openStages');
+    expect(setup).toContain('Action required');
+    expect(setup).toContain('s.state !== "complete"');
+  });
+});
