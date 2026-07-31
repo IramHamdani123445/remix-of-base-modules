@@ -502,6 +502,22 @@ describe('Phase 4 — route ceiling', () => {
     expect(landing).toContain('"view"');
     expect(landing).toContain('"setup"');
   });
+
+  it('36. channel setup links target the canonical channel tabs', () => {
+    const expectedTabs: Partial<Record<(typeof OMNI_COMMS_SETUP_STEP_IDS)[number], string>> = {
+      provider: 'providers',
+      provider_account: 'accounts',
+      sender: 'senders',
+      binding: 'bindings',
+      channel_setting: 'settings',
+    };
+
+    for (const step of buildSetupPlan(completePayload()).steps) {
+      const tab = expectedTabs[step.id];
+      if (!tab) continue;
+      expect(stepTargetHref(step)).toContain(`tab=${tab}`);
+    }
+  });
 });
 
 // ─── 7. Rule 13 boundary ─────────────────────────────────────────────────

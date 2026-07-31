@@ -176,7 +176,7 @@ const STEP_META: Record<SetupStepId, StepMeta> = {
   provider: {
     title: 'Email provider',
     purpose: 'An active email provider must be registered for the platform.',
-    target: { route: CHANNELS, query: '?tab=provider', label: 'Open Channels' },
+    target: { route: CHANNELS, query: '?tab=providers', label: 'Open Channels' },
   },
   provider_account: {
     title: 'Provider account',
