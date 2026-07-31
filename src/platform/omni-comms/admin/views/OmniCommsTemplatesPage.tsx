@@ -65,6 +65,14 @@ import {
 import { Loader2, ShieldAlert, Plus, RefreshCw, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { OmniCommsAssemblyTab } from "./OmniCommsAssemblyTab";
+import { OmniCommsLayoutSelectionDialog } from "../components/OmniCommsLayoutSelectionDialog";
+import {
+  describeLayoutSelection,
+  isLayoutSelectionApprovable,
+  LAYOUT_REQUIRED_BADGE,
+  LAYOUT_REQUIRED_MESSAGE,
+  mapLayoutErrorDetail,
+} from "@/platform/omni-comms/application/templateLayoutSelection";
 
 const REASON_MAX = 2000;
 
