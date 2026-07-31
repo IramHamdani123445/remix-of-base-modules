@@ -506,7 +506,10 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           case "contribution_gap_detected": {
             // Per-period emission: flag every missing month independently so each
             // gap (e.g. February only) gets its own violation row.
-            const lookback = Number(rule.parameters?.lookback_months ?? 12);
+            const cap = Math.min(
+              ABSOLUTE_CAP_MONTHS,
+              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
+            );
             const minMissed = Number(rule.parameters?.min_missed_months ?? 1);
             const graceDays = Number(rule.parameters?.days_past_deadline ?? 30);
             const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
@@ -514,15 +517,21 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             // Filed periods come from the bulk prefetch above — no per-employer query.
             const filedSet = filedPeriodsByEmp.get(emp.regno) ?? new Set<string>();
 
-
             const today = new Date(asOfDate);
+            // Window starts at the employer's compliance start (registration /
+            // first wages paid), bounded by the rule's safety cap.
+            const startYm = complianceStartByEmp.get(emp.regno);
+            const sinceStart = startYm ? monthsBetween(startYm, today) : cap;
+            const lookback = Math.max(0, Math.min(cap, sinceStart));
             const missing: string[] = [];
             for (let i = 1; i <= lookback; i++) {
               const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
               const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+              if (startYm && ym < startYm) continue;
               const deadline = new Date(d.getFullYear(), d.getMonth() + 1, dueDay + graceDays);
               if (today >= deadline && !filedSet.has(ym)) missing.push(ym);
             }
+
 
             if (missing.length >= minMissed) {
               for (const ym of missing) {
