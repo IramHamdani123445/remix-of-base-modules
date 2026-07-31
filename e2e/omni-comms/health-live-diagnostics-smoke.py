@@ -99,9 +99,19 @@ async def main() -> int:
         selector = page.locator('[data-testid="omni-comms-tenant-selector-org"]')
         if await selector.count():
             await selector.click()
-            option = page.locator('[role="option"]').first
-            if await option.count():
-                await option.click()
+            # Skip the "—" placeholder option; pick a real organisation.
+            options = page.locator('[role="option"]')
+            total = await options.count()
+            picked = False
+            for i in range(total):
+                label = (await options.nth(i).inner_text()).strip()
+                if label and label != "—":
+                    await options.nth(i).click()
+                    picked = True
+                    break
+            if not picked:
+                failures.append("No selectable organisation in the tenant selector")
+                await page.keyboard.press("Escape")
         await page.wait_for_timeout(3000)
         await page.screenshot(path=str(SCREENSHOTS / "health_2_live.png"))
 
