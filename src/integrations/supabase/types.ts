@@ -102926,6 +102926,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_load_persisted_recipients: {
+        Args: {
+          p_actor_id: string
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_load_persisted_resolution: {
         Args: {
           p_actor_id: string

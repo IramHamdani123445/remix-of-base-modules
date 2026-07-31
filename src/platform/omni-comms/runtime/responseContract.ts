@@ -39,6 +39,55 @@ export const OMNI_COMMS_CHANNELS = [
 ] as const;
 export type OmniCommsChannel = (typeof OMNI_COMMS_CHANNELS)[number];
 
+/**
+ * Complete message-status vocabulary. `rendered` is transient; the terminal
+ * status is mode-derived: `dry_run_completed`, `shadow_completed` or `held`.
+ */
+export const OMNI_COMMS_MESSAGE_STATUSES = [
+  'pending',
+  'rendered',
+  'blocked',
+  'dry_run_completed',
+  'shadow_completed',
+  'held',
+] as const;
+export type OmniCommsMessageStatus = (typeof OMNI_COMMS_MESSAGE_STATUSES)[number];
+
+/** Terminal message status for a successfully rendered message, per mode. */
+export const OMNI_COMMS_TERMINAL_MESSAGE_STATUS: Record<OmniCommsSendMode, string> = {
+  dry_run: 'dry_run_completed',
+  shadow: 'shadow_completed',
+  queued: 'held',
+};
+
+/** Complete request-status vocabulary returned on the public contract. */
+export const OMNI_COMMS_REQUEST_STATUSES = [
+  'received',
+  // `accepted` is the persisted status the runtime writes on first admission,
+  // before resolution runs. It is part of the real vocabulary and must not be
+  // rejected by contract validation.
+  'accepted',
+  'processing',
+  'completed',
+  'completed_with_blockers',
+  'blocked',
+] as const;
+export type OmniCommsRequestStatus = (typeof OMNI_COMMS_REQUEST_STATUSES)[number];
+
+/** Complete recipient-eligibility vocabulary. */
+export const OMNI_COMMS_ELIGIBILITY_STATUSES = [
+  'eligible',
+  'partially_eligible',
+  'blocked',
+  'invalid',
+] as const;
+export type OmniCommsEligibilityStatus = (typeof OMNI_COMMS_ELIGIBILITY_STATUSES)[number];
+
+function inVocabulary(v: unknown, vocab: readonly string[]): boolean {
+  return typeof v === 'string' && vocab.includes(v);
+}
+
+
 /** Bounded recipient projection. Never carries a destination value. */
 export interface SendCommunicationRecipientResult {
   /** Persisted recipient id. `null` before persistence (blocked results). */
@@ -100,24 +149,49 @@ export function isOmniCommsSendMode(v: unknown): v is OmniCommsSendMode {
   return typeof v === 'string' && (OMNI_COMMS_SEND_MODES as readonly string[]).includes(v);
 }
 
+/**
+ * A recipient projection must carry a complete, in-vocabulary shape:
+ *   * `eligibilityStatus` MUST be one of the four known values;
+ *   * every `resolvedChannels` entry MUST be a known channel;
+ *   * `inputIndex`, when present, MUST be a non-negative integer.
+ * Anything else invalidates the element (and therefore the whole payload).
+ */
 export function normalizeRecipientResult(
   raw: unknown,
 ): SendCommunicationRecipientResult | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
+
+  if (!inVocabulary(r.eligibilityStatus, OMNI_COMMS_ELIGIBILITY_STATUSES)) return null;
+
+  if (r.resolvedChannels !== undefined && !Array.isArray(r.resolvedChannels)) return null;
+  const resolvedChannels = strArray(r.resolvedChannels);
+  if (resolvedChannels.length !== ((r.resolvedChannels ?? []) as unknown[]).length) return null;
+  for (const c of resolvedChannels) {
+    if (!inVocabulary(c, OMNI_COMMS_CHANNELS)) return null;
+  }
+
+  const inputIndex = nullableInt(r.inputIndex);
+  if (inputIndex !== null && (!Number.isInteger(inputIndex) || inputIndex < 0)) return null;
+
+  if (r.blockers !== undefined && !Array.isArray(r.blockers)) return null;
+  const blockers = strArray(r.blockers);
+  if (blockers.length !== ((r.blockers ?? []) as unknown[]).length) return null;
+
   return {
     recipientId: nullableStr(r.recipientId),
-    inputIndex: nullableInt(r.inputIndex),
+    inputIndex,
     recipientReference: nullableStr(r.recipientReference),
-    resolvedChannels: strArray(r.resolvedChannels),
-    eligibilityStatus: str(r.eligibilityStatus, 'unknown'),
-    blockers: strArray(r.blockers),
+    resolvedChannels,
+    eligibilityStatus: r.eligibilityStatus as string,
+    blockers,
   };
 }
 
 /**
- * A message projection is only valid with a real message id and channel.
- * Anything else is dropped rather than surfaced as a half-formed record.
+ * A message projection is only valid with a real message id, a KNOWN channel
+ * and a KNOWN status. A rendered-checksum, when present, must be a sha-256
+ * digest. Anything else invalidates the element.
  */
 export function normalizeMessageResult(
   raw: unknown,
@@ -125,19 +199,28 @@ export function normalizeMessageResult(
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const m = raw as Record<string, unknown>;
   const messageId = str(m.messageId);
-  const channel = str(m.channel);
-  const status = str(m.status);
-  if (messageId === '' || channel === '' || status === '') return null;
+  if (messageId === '') return null;
+  if (!inVocabulary(m.channel, OMNI_COMMS_CHANNELS)) return null;
+  if (!inVocabulary(m.status, OMNI_COMMS_MESSAGE_STATUSES)) return null;
+
+  const renderedChecksum = nullableStr(m.renderedChecksum);
+  if (renderedChecksum !== null && !/^[0-9a-f]{64}$/i.test(renderedChecksum)) return null;
+
+  if (m.blockers !== undefined && !Array.isArray(m.blockers)) return null;
+  const blockers = strArray(m.blockers);
+  if (blockers.length !== ((m.blockers ?? []) as unknown[]).length) return null;
+
   return {
     messageId,
     recipientId: nullableStr(m.recipientId),
-    channel,
-    status,
-    renderedChecksum: nullableStr(m.renderedChecksum),
+    channel: m.channel as string,
+    status: m.status as string,
+    renderedChecksum,
     dispatchJobId: nullableStr(m.dispatchJobId),
-    blockers: strArray(m.blockers),
+    blockers,
   };
 }
+
 
 export interface ParseResultFallback {
   idempotencyKey?: string;
@@ -165,8 +248,10 @@ export function parseSendCommunicationResult(
 
   if (r.contractVersion !== OMNI_COMMS_RESULT_CONTRACT_VERSION) return null;
 
-  const status = str(r.status);
-  if (status === '') return null;
+  // Request status must be in the complete, closed vocabulary.
+  if (!inVocabulary(r.status, OMNI_COMMS_REQUEST_STATUSES)) return null;
+  const status = r.status as string;
+
 
   if (!isOmniCommsSendMode(r.mode)) return null;
   const mode = r.mode;

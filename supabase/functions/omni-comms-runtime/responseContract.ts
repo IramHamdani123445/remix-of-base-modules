@@ -164,3 +164,38 @@ export function normalizeRecipientResult(
     blockers: strArray(r.blockers),
   };
 }
+
+/* ─── canonical persisted RECIPIENT projection ──────────────────────────── */
+
+/**
+ * Normalise one persisted recipient row (snake_case, from
+ * `omni_comms_priv_load_persisted_recipients`) into the public contract.
+ * The source RPC returns no destination value of any kind.
+ */
+export function recipientFromPersistedRow(
+  raw: unknown,
+): SendCommunicationRecipientResult | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const recipientId = nullableStr(r.recipient_id);
+  if (recipientId === null) return null;
+  return {
+    recipientId,
+    inputIndex: nullableInt(r.input_index),
+    recipientReference: nullableStr(r.recipient_reference),
+    resolvedChannels: strArray(r.resolved_channels),
+    eligibilityStatus: str(r.eligibility_status, "unknown"),
+    blockers: strArray(r.blockers),
+  };
+}
+
+export function recipientsFromPersistedProjection(
+  raw: unknown,
+): SendCommunicationRecipientResult[] {
+  if (!raw || typeof raw !== "object") return [];
+  const list = (raw as Record<string, unknown>).recipients;
+  if (!Array.isArray(list)) return [];
+  return list
+    .map(recipientFromPersistedRow)
+    .filter((r): r is SendCommunicationRecipientResult => r !== null);
+}

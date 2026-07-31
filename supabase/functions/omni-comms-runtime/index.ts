@@ -37,6 +37,7 @@ import {
   buildBlockedResult,
   buildResult,
   messagesFromPersistedProjection,
+  recipientsFromPersistedProjection,
   type SendCommunicationMessageResult,
   type SendCommunicationRecipientResult,
   type SendCommunicationResult,
@@ -299,10 +300,24 @@ Deno.serve(async (req: Request) => {
     if (msgErr) {
       return blocked(input, mapRpcErrorToCode(msgErr));
     }
+    // Recipients come from the SAME canonical projection the fresh path uses.
+    const replayRecipients = await loadPersistedRecipients(
+      admin,
+      userId,
+      row.request_id,
+      canonical.organizationId,
+    );
+    if (replayRecipients === null) return blocked(input, "runtime_persistence_failed");
     return json(
-      buildReplayResponse(row, loaded, messagesFromPersistedProjection(msgData)),
+      buildReplayResponse(
+        row,
+        loaded,
+        replayRecipients,
+        messagesFromPersistedProjection(msgData),
+      ),
     );
   }
+
 
   // 5. Fresh resolution.
   const { data: snapData, error: snapErr } = await admin.rpc(
@@ -438,6 +453,18 @@ Deno.serve(async (req: Request) => {
     return blocked(input, mapRpcErrorToCode(finErr));
   }
 
+  // 6a. Canonical persisted recipient projection. Fresh responses MUST carry
+  //     the same recipient identity as a replay, so both read the recipients
+  //     back through the single bounded projection RPC instead of echoing the
+  //     in-memory resolver output (which has no persisted recipient id).
+  const persistedRecipients = await loadPersistedRecipients(
+    admin,
+    userId,
+    row.request_id,
+    canonical.organizationId,
+  );
+  if (persistedRecipients === null) return blocked(input, "runtime_persistence_failed");
+
   // 6. Slice 2c-iii rendering stage — only for requests that reached
   //    `processing`. Never contacts a provider and never creates a runnable job.
   if (finalStatus === "processing") {
@@ -448,7 +475,7 @@ Deno.serve(async (req: Request) => {
         row.request_id,
         canonical.organizationId,
       );
-      const base = buildResolvedResponse(row, finData, result, requestBlockers);
+      const base = buildResolvedResponse(row, finData, persistedRecipients, requestBlockers);
       return json({
         ...buildResult({
           ...base,
@@ -466,46 +493,46 @@ Deno.serve(async (req: Request) => {
     } catch (err) {
       const code = err instanceof RenderStageError ? err.code : "render_stage_failed";
       console.log(`[${BUILD_TAG}] render_stage_error`);
-      const base = buildResolvedResponse(row, finData, result, requestBlockers);
+      const base = buildResolvedResponse(row, finData, persistedRecipients, requestBlockers);
       return json(
         buildResult({ ...base, status: "blocked", blockers: [...requestBlockers, code] }),
       );
     }
   }
 
-  return json(buildResolvedResponse(row, finData, result, requestBlockers));
+  return json(buildResolvedResponse(row, finData, persistedRecipients, requestBlockers));
 });
 
-function projectRecipients(result: {
-  recipients: Array<{
-    inputIndex: number;
-    recipientReference: string | null;
-    resolvedChannels: string[];
-    blockers: string[];
-    channelResolutions: Array<{ senderChannelReady: boolean; liveDeliveryReady: boolean; blockers: string[] }>;
-  }>;
-}) {
-  return result.recipients.map((r): SendCommunicationRecipientResult => ({
-    recipientId: null,
-    inputIndex: r.inputIndex,
-    recipientReference: r.recipientReference,
-    resolvedChannels: r.resolvedChannels,
-    blockers: r.blockers,
-    eligibilityStatus:
-      r.blockers.includes("recipient_destination_invalid")
-        ? "invalid"
-        : r.resolvedChannels.length === 0
-          ? "blocked"
-          : r.resolvedChannels.length < r.channelResolutions.length
-            ? "partially_eligible"
-            : "eligible",
-  }));
+/**
+ * Reads persisted recipients through the canonical bounded projection.
+ * Returns `null` when the projection is unavailable — the caller then emits a
+ * bounded blocker rather than a half-formed response.
+ */
+async function loadPersistedRecipients(
+  admin: ReturnType<typeof createClient>,
+  actorId: string,
+  requestId: string,
+  organizationId: string,
+): Promise<SendCommunicationRecipientResult[] | null> {
+  const { data, error } = await admin.rpc(
+    "omni_comms_priv_load_persisted_recipients",
+    {
+      p_actor_id: actorId,
+      p_request_id: requestId,
+      p_organization_id: organizationId,
+    },
+  );
+  if (error) {
+    console.log(`[${BUILD_TAG}] load_persisted_recipients_error`);
+    return null;
+  }
+  return recipientsFromPersistedProjection(data);
 }
 
 function buildResolvedResponse(
   row: { request_id: string; idempotency_key: string; mode: Mode; created_at: string },
   finData: unknown,
-  result: Parameters<typeof projectRecipients>[0],
+  recipients: SendCommunicationRecipientResult[],
   requestBlockers: string[],
 ) {
   const fin = (finData ?? {}) as { status?: string };
@@ -514,7 +541,7 @@ function buildResolvedResponse(
     idempotencyKey: row.idempotency_key,
     mode: row.mode,
     status: fin.status ?? "processing",
-    recipients: projectRecipients(result),
+    recipients,
     messages: [],
     blockers: requestBlockers,
     createdAt: row.created_at,
@@ -525,36 +552,24 @@ function buildResolvedResponse(
 function buildReplayResponse(
   row: { request_id: string; idempotency_key: string; mode: Mode; status: string; created_at: string },
   loaded: unknown,
+  recipients: SendCommunicationRecipientResult[],
   messages: SendCommunicationMessageResult[],
 ): PublicResult {
-  const l = (loaded ?? {}) as { recipients?: unknown[]; blockers?: unknown };
-  const recipients = Array.isArray(l.recipients) ? l.recipients : [];
-  const projected = recipients.map((rec, i) => {
-    const r = rec as Record<string, unknown>;
-    const rc = Array.isArray(r.resolved_channels) ? (r.resolved_channels as string[]) : [];
-    const bl = Array.isArray(r.blockers) ? (r.blockers as string[]) : [];
-    return {
-      recipientId: (r.recipient_id as string | null) ?? null,
-      inputIndex: typeof r.input_index === "number" ? (r.input_index as number) : i,
-      recipientReference: (r.recipient_reference as string | null) ?? null,
-      resolvedChannels: rc,
-      blockers: bl,
-      eligibilityStatus: (r.eligibility_status as string) ?? "eligible",
-    } satisfies SendCommunicationRecipientResult;
-  });
+  const l = (loaded ?? {}) as { blockers?: unknown };
   const blockers = Array.isArray(l.blockers) ? (l.blockers as string[]) : [];
   return buildResult({
     requestId: row.request_id,
     idempotencyKey: row.idempotency_key,
     mode: row.mode,
     status: row.status,
-    recipients: projected,
+    recipients,
     messages,
     blockers,
     createdAt: row.created_at,
     replayed: true,
   });
 }
+
 
 async function finalizeBlocked(
   admin: ReturnType<typeof createClient>,
