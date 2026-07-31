@@ -408,17 +408,44 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       allEmployers = allEmployers.slice(0, employerLimit);
     }
 
+    // ── Compliance start per employer ──
+    // Detection must cover every eligible period since the employer began
+    // trading (date_wages_first_paid / registration_date), NOT a flat 12-month
+    // window. `lookback_months` on a rule now acts only as an absolute safety
+    // cap (default 120 months) — the effective window per employer is
+    // min(months since compliance start, cap).
+    const ABSOLUTE_CAP_MONTHS = 120;
+    const monthsBetween = (fromYm: string, to: Date) => {
+      const [fy, fm] = fromYm.split("-").map((n) => parseInt(n, 10));
+      return (to.getFullYear() - fy) * 12 + (to.getMonth() + 1 - fm);
+    };
+    const complianceStartByEmp = new Map<string, string>();
+    for (const f of filings as any[]) {
+      if (f.compliance_start_period) {
+        complianceStartByEmp.set(f.regno, String(f.compliance_start_period).slice(0, 7));
+      }
+    }
+
     // ── Bulk prefetch of filed C3 periods ──
     // Previously the missing-period rules issued ONE query per employer per
     // rule (thousands of sequential round trips), which blew past the edge
     // worker wall-clock and left the run stuck in "Running" forever. Fetch
     // every relevant period once, paginated, and index it by payer.
-    const maxLookback = Math.max(
+    const ruleCap = Math.max(
       12,
-      ...enrichedRules.map((r) => Number(r.parameters?.lookback_months ?? 12)),
+      ...enrichedRules.map((r) =>
+        Math.min(ABSOLUTE_CAP_MONTHS, Number(r.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS)),
+      ),
     );
+    const asOfRef = new Date(asOfDate);
+    let widestLookback = ruleCap;
+    for (const ym of complianceStartByEmp.values()) {
+      widestLookback = Math.max(widestLookback, Math.min(ruleCap, monthsBetween(ym, asOfRef)));
+    }
+    const maxLookback = Math.min(ABSOLUTE_CAP_MONTHS, widestLookback);
     const filedCutoff = new Date();
     filedCutoff.setMonth(filedCutoff.getMonth() - (maxLookback + 1));
+
     const filedPeriodsByEmp = new Map<string, Set<string>>();
     {
       const PAGE = 1000;
