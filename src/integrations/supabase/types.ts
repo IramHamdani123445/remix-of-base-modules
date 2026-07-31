@@ -100875,6 +100875,10 @@ export type Database = {
         }[]
       }
       fn_ce_route_violation: { Args: { p_violation_id: string }; Returns: Json }
+      fn_ce_route_violations_bulk: {
+        Args: { p_violation_ids: string[] }
+        Returns: number
+      }
       fn_ce_run_audit_priority_refresh: {
         Args: {
           p_batch_size?: number
