@@ -40,7 +40,7 @@ import SetupStepCard from "./SetupStepCard";
 
 const NONE = "__none__";
 
-const LOCALES = ["en", "en-GB", "es", "fr"];
+const LOCALES = ["en", "en-US", "en-GB", "es", "fr"];
 
 export const SetupWizardPanel: React.FC = () => {
   const {
