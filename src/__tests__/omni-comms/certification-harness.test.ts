@@ -81,6 +81,34 @@ describe('Omni-Comms privileged certification harness', () => {
     expect(src).toMatch(/replay recipient identity/);
   });
 
+  it('requires real, distinct tenant-isolation fixtures', () => {
+    expect(src).toContain('OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID');
+    expect(src).toContain('OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID');
+    expect(src).not.toContain('RANDOM_ORG_ID');
+    expect(src).not.toContain('RANDOM_DEPARTMENT_ID');
+    expect(src).toMatch(/equals the primary test organisation/);
+    expect(src).toMatch(/equals the primary test department/);
+    // Fixtures must be proven to exist before the negative scenarios run.
+    expect(src).toContain('core_organization');
+    expect(src).toContain('core_department');
+    expect(src).toMatch(/does not exist in staging/);
+  });
+
+  it('certifies the real pilot caller module through the registry', () => {
+    expect(src).toContain('OMNI_COMMS_TEST_CALLER_MODULE');
+    expect(src).toContain('omni_comms_caller_module_registry');
+    expect(src).toMatch(/is not registered/);
+    expect(src).toMatch(/registered but inactive/);
+    expect(src).toMatch(/has_permission/);
+    expect(src).not.toMatch(/moduleCode:\s*'OMNI_COMMS_DIRECT'/);
+  });
+
+  it('asserts the atomic-failure scenario exactly', () => {
+    expect(src).toMatch(/assertEqual\(blockersOf\(r\.body\), \['event_code_not_found'\]/);
+    expect(src).toMatch(/assertEqual\(r\.body\.status, 'blocked'/);
+    expect(src).toMatch(/assertEqual\(ids\.length, 0, 'persisted request rows'\)/);
+  });
+
 
   it('measures provider calls and emails instead of hardcoding zero', () => {
     expect(src).not.toMatch(/providerCallCount:\s*0\s*,/);
