@@ -65,6 +65,14 @@ import {
 import { Loader2, ShieldAlert, Plus, RefreshCw, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { OmniCommsAssemblyTab } from "./OmniCommsAssemblyTab";
+import { OmniCommsLayoutSelectionDialog } from "../components/OmniCommsLayoutSelectionDialog";
+import {
+  describeLayoutSelection,
+  isLayoutSelectionApprovable,
+  LAYOUT_REQUIRED_BADGE,
+  LAYOUT_REQUIRED_MESSAGE,
+  mapLayoutErrorDetail,
+} from "@/platform/omni-comms/application/templateLayoutSelection";
 
 const REASON_MAX = 2000;
 
@@ -745,6 +753,8 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const [versionCreate, setVersionCreate] = React.useState(false);
   const [publishState, setPublishState] = React.useState<PublishDialogState>({ open: false, version: null, hasExistingPublished: false });
   const [reasonDialog, setReasonDialog] = React.useState<ReasonDialogState>(CLOSED_REASON);
+  const [layoutDialogVersion, setLayoutDialogVersion] =
+    React.useState<TemplateVersionGetResult | null>(null);
 
   // ── Load the event catalogue once ──
   React.useEffect(() => {
@@ -845,6 +855,45 @@ export const OmniCommsTemplatesPage: React.FC = () => {
       setPublishState({ open: true, version: v, hasExistingPublished: hasExisting });
     } catch (e) { toastError(e); }
   };
+
+  /** Open the layout configuration dialog for one draft version. */
+  const openLayoutDialog = async (versionId: string) => {
+    try {
+      const v = await svc.getTemplateVersion(client, versionId);
+      setLayoutDialogVersion(v);
+    } catch (e) { toastError(e); }
+  };
+
+  /**
+   * Approval is gated in the UI by the persisted layout selection so the
+   * administrator is never sent into an unavoidable server rejection. The
+   * database remains the final authority.
+   */
+  const startApproval = (versionId: string) => {
+    const row = versions.find((v) => v.id === versionId);
+    if (row && !isLayoutSelectionApprovable(row)) {
+      toast.error(LAYOUT_REQUIRED_MESSAGE);
+      return;
+    }
+    setReasonDialog({
+      open: true, required: false,
+      title: "Approve version",
+      description: "Approval is recorded with your identity. A note is optional.",
+      submitLabel: "Approve",
+      onSubmit: async (note) => {
+        try {
+          await svc.approveTemplateVersion(client, { id: versionId, approvalNote: note || null });
+          toast.success("Approved");
+          await reloadVersions(selectedFamilyId);
+        } catch (e) {
+          const mapped = e instanceof OmniCommsRpcError ? mapLayoutErrorDetail(e.detail) : null;
+          if (mapped) { toast.error(mapped); await reloadVersions(selectedFamilyId); return; }
+          throw e;
+        }
+      },
+    });
+  };
+
 
   return (
     <div className="space-y-4" data-testid="omni-comms-templates-page">
@@ -1016,27 +1065,40 @@ export const OmniCommsTemplatesPage: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>#</TableHead><TableHead>Channel</TableHead><TableHead>Locale</TableHead>
-                  <TableHead>Status</TableHead><TableHead>Updated</TableHead>
+                  <TableHead>Status</TableHead><TableHead>Layout</TableHead><TableHead>Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {versionsLoading && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-6">
+                  <TableRow><TableCell colSpan={7} className="text-center py-6">
                     <Loader2 className="h-4 w-4 animate-spin inline mr-2" />Loading…
                   </TableCell></TableRow>
                 )}
                 {!versionsLoading && versions.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-6 text-sm text-muted-foreground">
+                  <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-muted-foreground">
                     No versions yet.
                   </TableCell></TableRow>
                 )}
-                {versions.map((v) => (
+                {versions.map((v) => {
+                  const layout = describeLayoutSelection(v);
+                  const layoutReady = isLayoutSelectionApprovable(v);
+                  return (
                   <TableRow key={v.id} data-testid={`version-row-${v.id}`}>
                     <TableCell>v{v.version_number}</TableCell>
                     <TableCell>{v.channel}</TableCell>
                     <TableCell>{v.locale}</TableCell>
                     <TableCell><VersionStatusBadge s={v.status} /></TableCell>
+                    <TableCell data-testid={`version-layout-${v.id}`}>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className="text-xs">{layout.label}</span>
+                        {v.status === "draft" && !layoutReady && (
+                          <Badge variant="destructive" data-testid={`layout-required-${v.id}`}>
+                            {LAYOUT_REQUIRED_BADGE}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-xs">{new Date(v.updated_at).toLocaleString()}</TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button size="sm" variant="ghost"
@@ -1048,23 +1110,24 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                         }}>
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {v.status === "draft" && (
+                        <Button size="sm" variant="outline" disabled={!canAuthor}
+                          data-testid={`configure-layout-btn-${v.id}`}
+                          onClick={() => openLayoutDialog(v.id)}>
+                          Configure Layout
+                        </Button>
+                      )}
                       {v.status === "approved" && (
                         <Button size="sm" disabled={!canApprove}
                           data-testid={`publish-btn-${v.id}`}
                           onClick={() => openPublishDialog(v.id)}>Publish</Button>
                       )}
                       {v.status === "draft" && (
-                        <Button size="sm" variant="ghost" disabled={!canApprove}
-                          onClick={() => setReasonDialog({
-                            open: true, required: false,
-                            title: "Approve version",
-                            description: "The approver must differ from the author.",
-                            submitLabel: "Approve",
-                            onSubmit: async (reason) => {
-                              await svc.approveTemplateVersion(client, { id: v.id, approvalNote: reason || null });
-                              toast.success("Approved"); await reloadVersions(selectedFamilyId);
-                            },
-                          })}>Approve</Button>
+                        <Button size="sm" variant="ghost"
+                          disabled={!canApprove || !layoutReady}
+                          data-testid={`approve-btn-${v.id}`}
+                          title={layoutReady ? undefined : LAYOUT_REQUIRED_MESSAGE}
+                          onClick={() => startApproval(v.id)}>Approve</Button>
                       )}
                       {(v.status === "approved" || v.status === "published") && (
                         <Button size="sm" variant="ghost" disabled={!canApprove}
@@ -1081,10 +1144,20 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </Card>
+          {versions.some((v) => v.status === "draft" && !isLayoutSelectionApprovable(v)) && (
+            <Alert variant="destructive" data-testid="layout-required-alert">
+              <AlertTitle>Layout selection required</AlertTitle>
+              <AlertDescription>
+                {LAYOUT_REQUIRED_MESSAGE} Use <strong>Configure Layout</strong> on the
+                draft version, save the selection, then approve.
+              </AlertDescription>
+            </Alert>
+          )}
         </TabsContent>
 
         {/* ── Preview ── */}
@@ -1124,6 +1197,15 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         state={reasonDialog}
         onOpenChange={(o) => setReasonDialog((s) => ({ ...s, open: o }))}
       />
+      <OmniCommsLayoutSelectionDialog
+        open={layoutDialogVersion !== null}
+        version={layoutDialogVersion}
+        familyCode={selectedFamily?.code ?? ""}
+        canAuthor={canAuthor}
+        onClose={() => setLayoutDialogVersion(null)}
+        onSaved={async () => { await reloadVersions(selectedFamilyId); }}
+      />
+
     </div>
   );
 };

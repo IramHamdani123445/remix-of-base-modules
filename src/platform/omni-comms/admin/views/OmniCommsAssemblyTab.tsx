@@ -21,7 +21,13 @@ import type {
   ResolvedAsset,
 } from '@/platform/omni-comms/application/sharedAssetsTypes';
 import type { ActiveDepartmentOption } from '@/platform/organization/organizationService';
-import type { TemplateFamilyListItem, TemplateVersionListItem } from '@/platform/omni-comms/application/templateCatalogueTypes';
+import type { TemplateFamilyListItem, TemplateVersionListItem, TemplateVersionGetResult } from '@/platform/omni-comms/application/templateCatalogueTypes';
+import { OmniCommsLayoutSelectionDialog } from '../components/OmniCommsLayoutSelectionDialog';
+import {
+  describeLayoutSelection,
+  isLayoutSelectionApprovable,
+  LAYOUT_REQUIRED_MESSAGE,
+} from '@/platform/omni-comms/application/templateLayoutSelection';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +68,29 @@ export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departme
   const [departmentId, setDepartmentId] = React.useState<string>('');
   const [state, setState] = React.useState<AssemblyState>({ loading: false, manifest: null, assembled: null });
   const [resetting, setResetting] = React.useState(false);
+  const [layoutDialogVersion, setLayoutDialogVersion] =
+    React.useState<TemplateVersionGetResult | null>(null);
+
+  const selectedVersionRow = React.useMemo(
+    () => versions.find((v) => v.id === versionId) ?? null,
+    [versions, versionId],
+  );
+  const layoutDisplay = selectedVersionRow ? describeLayoutSelection(selectedVersionRow) : null;
+
+  const reloadVersions = React.useCallback(async () => {
+    if (!familyId) return;
+    const r = await svc.listTemplateVersions(client, { templateFamilyId: familyId });
+    setVersions(r.items ?? []);
+  }, [familyId, client]);
+
+  /** Open the persisted layout configuration dialog for the selected draft. */
+  const openLayoutDialog = async () => {
+    if (!versionId) return;
+    try {
+      const full = await svc.getTemplateVersion(client, versionId);
+      setLayoutDialogVersion(full);
+    } catch (e) { toast.error(friendly(e)); }
+  };
 
   // Load versions for family
   React.useEffect(() => {
@@ -186,6 +215,50 @@ export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departme
         </CardContent>
       </Card>
 
+      {/* ── Layout configuration (persisted) — separate from preview ── */}
+      {selectedVersionRow && (
+        <Card data-testid="assembly-layout-configuration">
+          <CardHeader>
+            <CardTitle>Layout configuration</CardTitle>
+            <CardDescription>
+              This is the layout selection persisted on the template version. It is
+              required before approval and is editable while the version is a draft.
+              The assembled preview below is a diagnostic view and never changes
+              stored configuration.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-3 text-sm">
+            <Badge
+              variant={
+                layoutDisplay && (layoutDisplay.kind === 'not_selected' || layoutDisplay.kind === 'invalid')
+                  ? 'destructive'
+                  : 'secondary'
+              }
+              data-testid="assembly-layout-state"
+            >
+              {layoutDisplay?.label ?? 'Not selected'}
+            </Badge>
+            <span className="text-muted-foreground">
+              Version status: {selectedVersionRow.status}
+            </span>
+            {selectedVersionRow.status === 'draft' && (
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="assembly-configure-layout"
+                onClick={() => void openLayoutDialog()}
+              >
+                Configure Layout
+              </Button>
+            )}
+            {selectedVersionRow.status === 'draft' &&
+              layoutDisplay && !isLayoutSelectionApprovable(selectedVersionRow) && (
+                <span className="text-xs text-destructive">{LAYOUT_REQUIRED_MESSAGE}</span>
+              )}
+          </CardContent>
+        </Card>
+      )}
+
       {state.manifest && state.assembled && (
         <>
           <Card>
@@ -262,6 +335,15 @@ export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departme
           </Card>
         </>
       )}
+
+      <OmniCommsLayoutSelectionDialog
+        open={layoutDialogVersion !== null}
+        version={layoutDialogVersion}
+        familyCode={families.find((f) => f.id === familyId)?.code ?? ''}
+        canAuthor
+        onClose={() => setLayoutDialogVersion(null)}
+        onSaved={async () => { await reloadVersions(); }}
+      />
     </div>
   );
 };

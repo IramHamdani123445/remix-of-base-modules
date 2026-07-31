@@ -78,7 +78,25 @@ export interface TemplateVersionPublishResult {
 export interface TemplateVersionRetireResult {
   id: string; status: TemplateVersionStatus; retired_at: string;
 }
-export interface TemplateVersionListItem {
+/**
+ * Layout selection is persisted on the template VERSION and is required before
+ * approval or publication. `null` means "not selected yet".
+ */
+export type TemplateLayoutSelectionMode = 'resolved_default' | 'pinned';
+
+/** Layout-selection state returned by both the list and get RPCs. */
+export interface TemplateVersionLayoutSelectionFields {
+  layout_selection_mode: TemplateLayoutSelectionMode | null;
+  layout_id: string | null;
+  pinned_layout_version_id: string | null;
+  /** Safe display metadata — nullable when nothing is selected. */
+  layout_name?: string | null;
+  layout_code?: string | null;
+  pinned_layout_version_number?: number | null;
+  layout_selection_valid?: boolean | null;
+}
+
+export interface TemplateVersionListItem extends TemplateVersionLayoutSelectionFields {
   id: string; template_family_id: string; version_number: number;
   channel: TemplateChannel; locale: string; status: TemplateVersionStatus;
   checksum: string | null;
@@ -88,7 +106,7 @@ export interface TemplateVersionListItem {
 export interface TemplateVersionListResult {
   items: TemplateVersionListItem[]; total: number; limit: number; offset: number;
 }
-export interface TemplateVersionGetResult {
+export interface TemplateVersionGetResult extends TemplateVersionLayoutSelectionFields {
   id: string; template_family_id: string; version_number: number;
   channel: TemplateChannel; locale: string; status: TemplateVersionStatus;
   checksum: string | null; content: Record<string, string>;
