@@ -536,6 +536,18 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       allEmployers = allEmployers.slice(0, employerLimit);
     }
 
+    // ── Deterministic slice for this invocation ──
+    // The full tenant (4k+ employers × 120 periods × rules) cannot be scanned
+    // inside a single edge worker. Sort for a stable order, then process only
+    // [employerOffset, employerOffset + batchSize) and chain the next slice.
+    allEmployers.sort((a: any, b: any) => (String(a.regno) < String(b.regno) ? -1 : 1));
+    const totalEmployers: number = allEmployers.length;
+    const sliceStart = Math.max(0, employerOffset);
+    const sliceEnd = Math.min(totalEmployers, sliceStart + batchSize);
+    const batchEmployers = allEmployers.slice(sliceStart, sliceEnd);
+    const hasMore = sliceEnd < totalEmployers;
+
+
     // ── Compliance start per employer ──
     // Detection must cover every eligible period since the employer began
     // trading (date_wages_first_paid / registration_date), NOT a flat 12-month
