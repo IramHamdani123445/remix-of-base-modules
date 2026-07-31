@@ -220,10 +220,21 @@ export interface HealthSummaryPayload {
 }
 
 /** Result of the safe, non-mutating `omni-comms-runtime` health probe. */
+/**
+ * Bounded facts returned by the deployed runtime's non-mutating `/health`
+ * probe. Every field is preserved exactly as reported — the build tag is a
+ * human-readable label and must never be substituted for `revision`, which is
+ * the deployed source revision used for certification binding.
+ */
 export interface EdgeHealthProbeResult {
   available: boolean;
   functionName: string;
+  /** Human-readable build label. Not a source revision. */
   buildTag: string | null;
+  /** Deployed source revision, when the runtime was deployed with one. */
+  revision: string | null;
+  /** Whether the runtime could report a revision at all. */
+  revisionVerified: boolean | null;
   runtimeVersion: string | null;
   certificationState: string | null;
   liveDeliveryEnabled: boolean | null;

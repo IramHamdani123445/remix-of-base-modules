@@ -52,6 +52,8 @@ export function useOmniCommsEdgeHealthProbe(): UseEdgeHealthProbe {
           available: false,
           functionName: FUNCTION_NAME,
           buildTag: null,
+          revision: null,
+          revisionVerified: null,
           runtimeVersion: null,
           certificationState: null,
           liveDeliveryEnabled: null,
@@ -70,6 +72,9 @@ export function useOmniCommsEdgeHealthProbe(): UseEdgeHealthProbe {
         available: body.available === true,
         functionName: FUNCTION_NAME,
         buildTag: typeof body.buildTag === "string" ? body.buildTag : null,
+        revision: typeof body.revision === "string" ? body.revision : null,
+        revisionVerified:
+          typeof body.revisionVerified === "boolean" ? body.revisionVerified : null,
         runtimeVersion: typeof body.runtimeVersion === "string" ? body.runtimeVersion : null,
         certificationState:
           typeof body.certificationState === "string" ? body.certificationState : null,
@@ -85,6 +90,8 @@ export function useOmniCommsEdgeHealthProbe(): UseEdgeHealthProbe {
         available: false,
         functionName: FUNCTION_NAME,
         buildTag: null,
+        revision: null,
+        revisionVerified: null,
         runtimeVersion: null,
         certificationState: null,
         liveDeliveryEnabled: null,
