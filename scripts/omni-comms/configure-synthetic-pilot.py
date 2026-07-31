@@ -208,9 +208,18 @@ def main():
             },
             "p_correlation_id": CORR})
     if ver["status"] == "draft":
-        rpc("omni_comms_template_version_approve", {
-            "p_id": ver["id"], "p_approval_note": "Synthetic dry-run pilot",
-            "p_correlation_id": CORR})
+        # Segregation of duties: the approver MUST differ from the author.
+        # If the signed-in operator authored the draft, this step is left to a
+        # second authorised approver in the Templates UI.
+        try:
+            rpc("omni_comms_template_version_approve", {
+                "p_id": ver["id"], "p_approval_note": "Synthetic dry-run pilot",
+                "p_correlation_id": CORR})
+        except SystemExit as e:
+            if "approver_must_differ_from_author" not in str(e):
+                raise
+            print("  [hold] template version awaiting a second authorised approver "
+                  "(segregation of duties enforced)")
         ver = rpc("omni_comms_template_version_get", {"p_id": ver["id"]})
     if ver["status"] == "approved":
         rpc("omni_comms_template_version_publish", {
