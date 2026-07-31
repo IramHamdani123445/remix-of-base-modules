@@ -423,6 +423,11 @@ async function main(): Promise<void> {
     );
   }
 
+  /* The department fixture must isolate ENTITLEMENT, not tenancy: it has to
+   * live inside the primary test organisation (cross-organisation ownership
+   * is certified separately by cross_tenant_rejection), differ from the
+   * primary department, and the authorised actor must hold no active
+   * core_staff_assignments entitlement to it. */
   const foreignDept = await admin
     .from('core_department')
     .select('id, organization_id')
@@ -437,7 +442,44 @@ async function main(): Promise<void> {
         'a nonexistent id cannot prove department entitlement enforcement',
     );
   }
-  console.log('  preflight: foreign organisation and department fixtures exist');
+  const foreignDeptRow = foreignDept.data as { id: string; organization_id: string | null };
+  if (
+    (foreignDeptRow.organization_id ?? '').toLowerCase() !==
+    env.OMNI_COMMS_TEST_ORGANIZATION_ID.toLowerCase()
+  ) {
+    refuse(
+      'OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID does not belong to ' +
+        'OMNI_COMMS_TEST_ORGANIZATION_ID — that is a cross-organisation fixture, ' +
+        'already certified by cross_tenant_rejection',
+    );
+  }
+  if (
+    foreignDeptRow.id.toLowerCase() === env.OMNI_COMMS_TEST_DEPARTMENT_ID.toLowerCase()
+  ) {
+    refuse('OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID equals the primary test department');
+  }
+  const deptEntitlement = await admin
+    .from('core_staff_assignments')
+    .select('id')
+    .eq('user_id', actorId)
+    .eq('department_id', env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID)
+    .eq('is_active', true)
+    .limit(1);
+  if (deptEntitlement.error) {
+    refuse('department entitlement lookup failed');
+  }
+  if ((deptEntitlement.data ?? []).length > 0) {
+    refuse(
+      'the authorised test actor holds an active core_staff_assignments ' +
+        'entitlement to OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID — the ' +
+        'department_access_rejection scenario would certify nothing',
+    );
+  }
+  console.log(
+    '  preflight: foreign organisation exists; foreign department is in-tenant, ' +
+      'distinct and unentitled',
+  );
+
 
   /* ── PREFLIGHT: the certified caller module must be the real pilot path ── */
   const { data: callerReg, error: callerRegErr } = await admin
