@@ -151,6 +151,26 @@ function readEnv(): Env {
   return out;
 }
 
+/**
+ * Read the `sub` claim from a JWT WITHOUT verifying it. Used only to identify
+ * the actor for read-only preflight capability checks performed with the
+ * service role. The token itself is never printed and never logged.
+ */
+function decodeJwtSubject(jwt: string): string | null {
+  try {
+    const [, payload] = jwt.split('.');
+    if (!payload) return null;
+    const json = Buffer.from(
+      payload.replace(/-/g, '+').replace(/_/g, '/'),
+      'base64',
+    ).toString('utf8');
+    const sub = (JSON.parse(json) as { sub?: unknown }).sub;
+    return typeof sub === 'string' && UUID_RE.test(sub) ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
 
 /* ── scenario bookkeeping ──────────────────────────────────────────────── */
 
