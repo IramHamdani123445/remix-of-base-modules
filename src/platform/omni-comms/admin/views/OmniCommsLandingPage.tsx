@@ -171,6 +171,12 @@ export const OmniCommsLandingPage: React.FC = () => {
           <TabsTrigger value="dry-run" data-testid="omni-comms-landing-tab-dry-run">
             Dry Run
           </TabsTrigger>
+          <TabsTrigger
+            value="reference-data"
+            data-testid="omni-comms-landing-tab-reference-data"
+          >
+            Reference Data
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4 space-y-6">
