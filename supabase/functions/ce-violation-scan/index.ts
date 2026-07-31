@@ -640,9 +640,9 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
             const c3 = c3ByEmp.get(emp.regno);
             if (c3) {
-              for (const ym of periodsInScope(emp.regno, cap)) {
-                const rec = c3.get(ym);
-                if (!rec || !rec.received) continue;
+              const win = windowFor(emp.regno, cap);
+              for (const [ym, rec] of c3) {
+                if (!rec.received || ym < win.from || ym > win.to) continue;
                 const [y, m] = ym.split("-").map((n) => parseInt(n, 10));
                 const deadline = new Date(y, m, dueDay + graceDays);
                 if (rec.received > deadline) {
@@ -654,6 +654,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
                 }
               }
             }
+
             shouldFlag = false;
             break;
           }
