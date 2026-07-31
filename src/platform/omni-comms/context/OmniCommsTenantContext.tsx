@@ -18,7 +18,11 @@
  *
  * Data sources are the canonical enterprise tables already used by the ERP:
  *   - `core_organization` for authorised organisations
- *   - `core_department_profile` for departments belonging to the selected org
+ *   - `core_department` for departments belonging to the selected org.
+ *     This is the same table the Omni-Comms department-ownership guard
+ *     validates against, so selected department ids always match the ids
+ *     stored on Omni-Comms configuration rows.
+
  *
  * Selection state is held in React state (no page reload) and mirrored to
  * sessionStorage for cross-tab stability inside a single Omni-Comms session.
