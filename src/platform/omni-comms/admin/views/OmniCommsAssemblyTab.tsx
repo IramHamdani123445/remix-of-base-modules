@@ -186,6 +186,50 @@ export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departme
         </CardContent>
       </Card>
 
+      {/* ── Layout configuration (persisted) — separate from preview ── */}
+      {selectedVersionRow && (
+        <Card data-testid="assembly-layout-configuration">
+          <CardHeader>
+            <CardTitle>Layout configuration</CardTitle>
+            <CardDescription>
+              This is the layout selection persisted on the template version. It is
+              required before approval and is editable while the version is a draft.
+              The assembled preview below is a diagnostic view and never changes
+              stored configuration.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-3 text-sm">
+            <Badge
+              variant={
+                layoutDisplay && (layoutDisplay.kind === 'not_selected' || layoutDisplay.kind === 'invalid')
+                  ? 'destructive'
+                  : 'secondary'
+              }
+              data-testid="assembly-layout-state"
+            >
+              {layoutDisplay?.label ?? 'Not selected'}
+            </Badge>
+            <span className="text-muted-foreground">
+              Version status: {selectedVersionRow.status}
+            </span>
+            {selectedVersionRow.status === 'draft' && (
+              <Button
+                size="sm"
+                variant="outline"
+                data-testid="assembly-configure-layout"
+                onClick={() => void openLayoutDialog()}
+              >
+                Configure Layout
+              </Button>
+            )}
+            {selectedVersionRow.status === 'draft' &&
+              layoutDisplay && !isLayoutSelectionApprovable(selectedVersionRow) && (
+                <span className="text-xs text-destructive">{LAYOUT_REQUIRED_MESSAGE}</span>
+              )}
+          </CardContent>
+        </Card>
+      )}
+
       {state.manifest && state.assembled && (
         <>
           <Card>
