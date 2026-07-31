@@ -265,7 +265,10 @@ function baseRequest(env: Env, prefix: string, suffix: string, mode: string) {
     mode,
     idempotencyKey: `${prefix}-${suffix}`,
     requestedChannels: ['email'],
-    callerContext: { moduleCode: 'OMNI_COMMS_DIRECT' },
+    // Every valid request certifies the ACTUAL pilot business-module caller
+    // path, never a generic direct-caller placeholder.
+    callerContext: { moduleCode: env.OMNI_COMMS_TEST_CALLER_MODULE },
+
     recipients: [
       {
         recipientType: 'primary',
