@@ -103008,7 +103008,7 @@ export type Database = {
       }
       omni_comms_priv_verify_department_ownership: {
         Args: { p_department_id: string; p_organization_id: string }
-        Returns: undefined
+        Returns: boolean
       }
       omni_comms_priv_write_audit: {
         Args: {
