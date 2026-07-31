@@ -10,6 +10,10 @@
  */
 import React from "react";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
+import {
+  OMNI_COMMS_EVENT_TABS,
+  useOmniCommsTabParam,
+} from "../hooks/useOmniCommsTabParam";
 import * as svc from "@/platform/omni-comms/application/eventCatalogueService";
 import type {
   EventDefinitionListItem,
