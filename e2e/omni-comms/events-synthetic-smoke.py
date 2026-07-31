@@ -107,29 +107,9 @@ async def main() -> int:
 
         await page.screenshot(path=str(SCREENSHOTS / "events_1_definitions.png"))
 
-        if await row.count():
-            status_text = (await row.first.inner_text()).lower()
-            if "active" not in status_text:
-                activate = row.first.get_by_role("button", name=re.compile("activate", re.I))
-                if await activate.count():
-                    await activate.first.click()
-                    await page.wait_for_timeout(800)
-                    await page.locator('[data-testid="oc-reason-input"]').fill(
-                        "Authenticated browser verification — synthetic test event.")
-                    synth = page.locator('[data-testid="oc-synth-confirm"]')
-                    if await synth.count():
-                        await synth.click()
-                    await page.locator('[data-testid="oc-reason-confirm"]').click()
-                    await page.wait_for_timeout(3500)
-                    if await search.count():
-                        await search.fill(SYNTHETIC_CODE)
-                        await page.wait_for_timeout(1800)
-                    row = page.locator("tr", has_text=SYNTHETIC_CODE)
-                    status_text = (await row.first.inner_text()).lower()
-            if "active" not in status_text:
-                failures.append(f"Synthetic event is not active: {status_text.strip()[:120]}")
-
         # ── 2. Contract (draft v1 then publish) ────────────────────────────
+        # A definition can only be activated once it has a published contract,
+        # so the contract lifecycle is exercised first.
         await page.get_by_role("tab", name="Contracts").click()
         await page.wait_for_selector('[data-testid="oc-contracts-tab"]', timeout=20000)
         await page.wait_for_timeout(2000)
@@ -181,6 +161,41 @@ async def main() -> int:
             failures.append("Synthetic contract is not published")
         if not re.search(r"[0-9a-f]{16,}", body):
             failures.append("Contract checksum not displayed")
+
+        # ── 3. Activate the synthetic definition ───────────────────────────
+        await page.get_by_role("tab", name="Definitions").click()
+        await page.wait_for_timeout(1500)
+        if await search.count():
+            await search.fill(SYNTHETIC_CODE)
+            await page.wait_for_timeout(1800)
+        row = page.locator("tr", has_text=SYNTHETIC_CODE)
+        if await row.count() == 0:
+            failures.append("Synthetic event definition row disappeared")
+        else:
+            status_text = (await row.first.inner_text()).lower()
+            if "active" not in status_text:
+                activate = row.first.get_by_role("button", name=re.compile("activate", re.I))
+                if await activate.count():
+                    await activate.first.click()
+                    await page.wait_for_timeout(900)
+                    await page.locator('[data-testid="oc-reason-input"]').fill(
+                        "Authenticated browser verification — synthetic test event.")
+                    synth = page.locator('[data-testid="oc-synth-confirm"]')
+                    if await synth.count():
+                        await synth.click()
+                    await page.locator('[data-testid="oc-reason-confirm"]').click()
+                    await page.wait_for_timeout(3500)
+                    if await search.count():
+                        await search.fill(SYNTHETIC_CODE)
+                        await page.wait_for_timeout(1800)
+                    row = page.locator("tr", has_text=SYNTHETIC_CODE)
+                    status_text = (await row.first.inner_text()).lower()
+                else:
+                    failures.append("Activate control not offered")
+            if "active" not in status_text:
+                failures.append(f"Synthetic event is not active: {status_text.strip()[:120]}")
+        await page.screenshot(path=str(SCREENSHOTS / "events_1b_activated.png"))
+
 
         # ── 3. Routes tab loads and offers lifecycle controls ─────────────
         await page.get_by_role("tab", name="Routes").click()
