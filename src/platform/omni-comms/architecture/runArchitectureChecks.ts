@@ -43,6 +43,7 @@ import { checkResolverBoundary } from './checks/checkResolverBoundary';
 import { checkHealthBoundary } from './checks/checkHealthBoundary';
 import { checkSetupWizardBoundary } from './checks/checkSetupWizardBoundary';
 import { checkControlledDryRunBoundary } from './checks/checkControlledDryRunBoundary';
+import { checkTemplateLayoutBoundary } from './checks/checkTemplateLayoutBoundary';
 
 export interface RunArchitectureChecksOptions {
   repoRoot?: string;
@@ -65,6 +66,7 @@ const CHECKS = [
   checkHealthBoundary,
   checkSetupWizardBoundary,
   checkControlledDryRunBoundary,
+  checkTemplateLayoutBoundary,
 ] as const;
 
 function toPosix(p: string): string {

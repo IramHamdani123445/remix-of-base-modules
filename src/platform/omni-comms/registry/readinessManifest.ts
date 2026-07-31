@@ -234,6 +234,7 @@ export const OMNI_COMMS_READINESS_MANIFEST: OmniCommsReadinessManifest = {
     { ruleId: 'OMNI_HEALTH_DIAGNOSTIC_BOUNDARY', title: 'Health diagnostic boundary (Rule 12)', status: 'Enforced in CI' },
     { ruleId: 'OMNI_SETUP_WIZARD_BOUNDARY',      title: 'Setup Wizard boundary (Rule 13)',      status: 'Enforced in CI' },
     { ruleId: 'OMNI_CONTROLLED_DRY_RUN_BOUNDARY', title: 'Controlled dry-run boundary (Rule 14)', status: 'Enforced in CI' },
+    { ruleId: 'OMNI_TEMPLATE_LAYOUT_BOUNDARY',   title: 'Template layout boundary (Rule 15)',    status: 'Enforced in CI' },
   ],
 
 
