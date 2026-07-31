@@ -56,7 +56,10 @@ vi.mock('@/hooks/useNavigationMenu', () => ({
 import OmniCommsAdminRoute from '@/platform/omni-comms/admin/components/OmniCommsAdminRoute';
 import OmniCommsHealthPage from '@/platform/omni-comms/admin/views/OmniCommsHealthPage';
 
-function renderHealthAt(path = '/admin/omnichannel-communications/health') {
+// Readiness now lives on the Health screen's `?view=engineering` view.
+function renderHealthAt(
+  path = '/admin/omnichannel-communications/health?view=engineering',
+) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
