@@ -602,7 +602,7 @@ export const ControlledDryRunPanel: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Execute controlled dry run</CardTitle>
+          <CardTitle className="text-base">Step 3 · Run the safe test</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <Button
@@ -638,10 +638,15 @@ export const ControlledDryRunPanel: React.FC = () => {
               ) : (
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               )}
-              Dry-run result
+              Step 4 · Result
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <p className="text-sm">
+              {invariants?.safetyViolated
+                ? "A safety invariant was violated. Report this immediately."
+                : "Validation completed. Nothing was sent, no provider was contacted and no dispatch job was created."}
+            </p>
             <div className="rounded-md border p-3">
               <Line label="Request" value={result.requestId || "—"} />
               <Line label="Mode" value={result.mode} />
