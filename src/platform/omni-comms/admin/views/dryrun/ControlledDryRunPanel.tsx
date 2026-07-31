@@ -2,7 +2,7 @@
  * Omni-Comms — Controlled Dry-Run Test Surface (Phase 5).
  *
  * Rendered as a tab inside the existing Overview permanent route
- * (`/admin/omnichannel-communications?view=dry-run`). It adds no new route.
+ * (`/admin/omnichannel-communications?view=safe-test`). It adds no new route.
  *
  * This surface submits exactly one `mode = dry_run` request through the
  * canonical `sendCommunication()` façade using a single synthetic

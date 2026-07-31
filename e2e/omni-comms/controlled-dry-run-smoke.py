@@ -6,7 +6,7 @@ Read-only except for a single deliberate dry-run submission, which creates
 Omni-Comms runtime evidence only and never contacts a provider.
 
 Verifies:
-  - Overview loads and the Controlled Dry Run tab opens (?view=dry-run);
+  - Overview loads and the Controlled Dry Run tab opens (?view=safe-test);
   - no eighth permanent Omni-Comms admin route exists;
   - tenant and pilot event selection work;
   - setup readiness loads;
@@ -91,13 +91,13 @@ async def main() -> int:
             )
 
         # 1. Overview + Controlled Dry Run tab
-        await page.goto(f"{BASE}{ROUTE}?view=dry-run", wait_until="domcontentloaded")
+        await page.goto(f"{BASE}{ROUTE}?view=safe-test", wait_until="domcontentloaded")
         await page.wait_for_timeout(2500)
         await page.screenshot(path=str(SCREENSHOTS / "dryrun_1_panel.png"))
         body = await page.inner_text("body")
 
         if "Controlled Dry Run" not in body and "controlled dry run" not in body.lower():
-            failures.append("Controlled Dry Run panel did not render on ?view=dry-run")
+            failures.append("Controlled Dry Run panel did not render on ?view=safe-test")
 
         # 2. Server feature gate
         if re.search(r"disabled in this environment", body, re.I):
@@ -121,7 +121,7 @@ async def main() -> int:
             if "not found" not in txt and "404" not in txt:
                 failures.append(f"Unexpected route resolved: {ROUTE}{forbidden}")
 
-        await page.goto(f"{BASE}{ROUTE}?view=dry-run", wait_until="domcontentloaded")
+        await page.goto(f"{BASE}{ROUTE}?view=safe-test", wait_until="domcontentloaded")
         await page.wait_for_timeout(2000)
 
         # 3b. Pilot selection — organisation then event. The tenant selector

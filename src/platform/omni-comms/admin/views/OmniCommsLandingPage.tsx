@@ -331,13 +331,15 @@ export const OmniCommsLandingPage: React.FC = () => {
           administration destination. It stays URL-addressable
           (`?view=reference-data`) and is reached from Setup readiness.
         */}
-        <TabsContent
-          value="reference-data"
-          className="mt-4"
-          data-testid="omni-comms-landing-tab-reference-data"
-        >
-          <ReferenceSeedPanel />
-        </TabsContent>
+        {nonProduction ? (
+          <TabsContent
+            value="reference-data"
+            className="mt-4"
+            data-testid="omni-comms-landing-tab-reference-data"
+          >
+            <ReferenceSeedPanel />
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );
