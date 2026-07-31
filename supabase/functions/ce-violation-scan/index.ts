@@ -592,11 +592,34 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       const initialStatus = rule.auto_create_violation ? "OPEN" : "UNDER_REVIEW";
       const asOfPeriod = asOfDate.slice(0, 7);
 
+      /** Emit one violation row per qualifying period (deduped). */
+      const pushPeriod = (emp: any, ym: string, summary: string) => {
+        const periodFromYm = `${ym}-01`;
+        const dedupeKey = `${emp.regno}|${rule.violation_type_id}|${periodKey(periodFromYm)}`;
+        if (existingSet.has(dedupeKey)) return;
+        detected.push({
+          rule_code: rule.rule_code,
+          rule_name: rule.name,
+          employer_id: emp.regno,
+          employer_name: emp.name,
+          violation_type_id: rule.violation_type_id,
+          violation_type_code: rule.violation_type_code || "UNKNOWN",
+          status: initialStatus,
+          priority: rule.priority || "Medium",
+          summary,
+          period_from: periodFromYm,
+          source_type: "DETECTION_RULE",
+          source_rule_id: rule.id,
+        });
+        existingSet.add(dedupeKey);
+      };
+
       for (const emp of allEmployers) {
         const filing = filingMap.get(emp.regno) as any;
         const payment = paymentMap.get(emp.regno) as any;
         const arrear = arrearMap.get(emp.regno) as any;
         const wf = workforceMap.get(emp.regno) as any;
+
 
         let shouldFlag = false;
         let summary = "";
