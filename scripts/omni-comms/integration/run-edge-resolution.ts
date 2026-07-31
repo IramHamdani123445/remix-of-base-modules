@@ -32,6 +32,15 @@
  *   OMNI_COMMS_TEST_ORGANIZATION_ID
  *   OMNI_COMMS_TEST_DEPARTMENT_ID
  *   OMNI_COMMS_TEST_EVENT_CODE           fully configured pilot event
+ *   COMMIT_SHA | GITHUB_SHA              full 40-char certified revision
+ *
+ * Optional environment:
+ *   OMNI_COMMS_REQUIRE_EDGE_REVISION=1   fail unless the deployed Edge
+ *                                        revision equals COMMIT_SHA
+ *   OMNI_COMMS_TEST_UNAUTHORISED_MODULE  registered caller module the test
+ *                                        actor must NOT be able to act for
+ *                                        (default FINANCE)
+
  *
  * On refusal (missing/placeholder credentials) exits non-zero with:
  *   PRIVILEGED EDGE RESOLUTION INTEGRATION NOT EXECUTED
@@ -173,6 +182,8 @@ function messagesOf(body: Record<string, unknown>): Array<Record<string, unknown
 /* ── fixtures ──────────────────────────────────────────────────────────── */
 
 const RANDOM_ORG_ID = '00000000-0000-4000-8000-0000000000ff';
+const RANDOM_DEPARTMENT_ID = '00000000-0000-4000-8000-0000000000fe';
+const CONTRACT_VERSION = 'omni_comms.result.v1';
 
 function baseRequest(env: Env, prefix: string, suffix: string, mode: string) {
   return {
@@ -229,8 +240,17 @@ async function requestIdsForPrefix(admin: SupabaseClient, prefix: string): Promi
 
 async function main(): Promise<void> {
   const env = readEnv();
-  const commitSha =
-    process.env.GITHUB_SHA ?? process.env.COMMIT_SHA ?? 'unknown';
+
+  // Certification is bound to an EXACT source revision. Without it the run
+  // certifies nothing identifiable and is refused.
+  const commitSha = (process.env.COMMIT_SHA ?? process.env.GITHUB_SHA ?? '').trim();
+  if (!/^[0-9a-f]{40}$/i.test(commitSha)) {
+    refuse('COMMIT_SHA/GITHUB_SHA must be a full 40-character git revision');
+  }
+  const requireEdgeRevision = process.env.OMNI_COMMS_REQUIRE_EDGE_REVISION === '1';
+  const unauthorisedModule = (
+    process.env.OMNI_COMMS_TEST_UNAUTHORISED_MODULE ?? 'FINANCE'
+  ).trim().toUpperCase();
 
   const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -243,19 +263,47 @@ async function main(): Promise<void> {
 
   // Edge deployment identity — proves WHICH build was certified.
   let edgeDeployment = 'unknown';
+  let edgeRevision = 'unknown';
   try {
     const res = await fetch(
       `${env.SUPABASE_URL}/functions/v1/omni-comms-runtime/health`,
       { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: `Bearer ${env.OMNI_COMMS_TEST_USER_JWT}` } },
     );
-    const health = (await res.json()) as { buildTag?: string };
+    const health = (await res.json()) as { buildTag?: string; revision?: string | null };
     edgeDeployment = health.buildTag ?? 'unknown';
+    edgeRevision = typeof health.revision === 'string' && health.revision.length > 0
+      ? health.revision
+      : 'unset';
   } catch {
     edgeDeployment = 'unreachable';
+    edgeRevision = 'unreachable';
   }
+  const edgeRevisionMatchesCommit =
+    edgeRevision.toLowerCase() === commitSha.toLowerCase();
 
   let firstRequestId = '';
   let firstMessages: Array<Record<string, unknown>> = [];
+
+  /* 0. The deployed Edge revision must equal the certified source revision. */
+  await scenario('edge_revision_binding', async () => {
+    assert(
+      edgeRevision !== 'unreachable',
+      'the deployed Edge Function health probe is unreachable',
+    );
+    if (!requireEdgeRevision && edgeRevision === 'unset') {
+      return 'edge revision not published (non-enforcing run)';
+    }
+    assert(
+      edgeRevision !== 'unset',
+      'deployed Edge Function does not publish OMNI_COMMS_EDGE_REVISION',
+    );
+    assert(
+      edgeRevisionMatchesCommit,
+      'deployed Edge revision does not equal the certified commit',
+    );
+    return 'deployed Edge revision equals the certified commit';
+  });
+
 
   /* 1. Missing JWT must be rejected at the boundary. */
   await scenario('missing_jwt_rejection', async () => {
@@ -314,6 +362,51 @@ async function main(): Promise<void> {
     return 'HTTP 403, caller_module_not_registered, nothing persisted';
   });
 
+  /* 4b. Department the actor is not entitled to must be refused. */
+  await scenario('department_access_rejection', async () => {
+    const body = {
+      ...baseRequest(env, prefix, 'xdept', 'dry_run'),
+      departmentId: RANDOM_DEPARTMENT_ID,
+    };
+    const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
+    assertEqual(r.httpStatus, 403, 'http status');
+    const b = blockersOf(r.body);
+    assert(
+      b.length === 1 &&
+        (b[0] === 'department_access_denied' || b[0] === 'department_organization_mismatch'),
+      `expected a single department refusal code, got ${JSON.stringify(b)}`,
+    );
+    assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
+    const persisted = await requestIdsForPrefix(admin, `${prefix}-xdept`);
+    assertEqual(persisted.length, 0, 'persisted requests');
+    return `HTTP 403, ${b[0]}, nothing persisted`;
+  });
+
+  /* 4c. A REGISTERED caller module the actor may not act for must be refused. */
+  await scenario('registered_but_unauthorised_module_rejection', async () => {
+    const { data: reg, error: regErr } = await admin
+      .from('omni_comms_caller_module_registry')
+      .select('module_code, is_active')
+      .eq('module_code', unauthorisedModule)
+      .maybeSingle();
+    assert(!regErr, `caller-module registry read failed: ${regErr?.message ?? ''}`);
+    assert(
+      reg != null && (reg as { is_active: boolean }).is_active === true,
+      `${unauthorisedModule} is not an active registered caller module — the scenario cannot prove anything`,
+    );
+
+    const body = {
+      ...baseRequest(env, prefix, 'unauthmod', 'dry_run'),
+      callerContext: { moduleCode: unauthorisedModule },
+    };
+    const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
+    assertEqual(r.httpStatus, 403, 'http status');
+    assertEqual(blockersOf(r.body), ['permission_denied'], 'blockers');
+    const persisted = await requestIdsForPrefix(admin, `${prefix}-unauthmod`);
+    assertEqual(persisted.length, 0, 'persisted requests');
+    return `HTTP 403, permission_denied for registered module ${unauthorisedModule}`;
+  });
+
   /* 5. Valid first request — full resolution + rendering. */
   await scenario('valid_first_request', async () => {
     const r = await invokeRuntime(
@@ -353,49 +446,104 @@ async function main(): Promise<void> {
   await scenario('deterministic_resolution', async () => {
     const { data, error } = await admin
       .from('omni_comms_recipient')
-      .select('per_recipient_snapshot')
+      .select('resolution_snapshot')
       .eq('request_id', firstRequestId)
       .limit(1)
       .maybeSingle();
     assert(!error, `snapshot read failed: ${error?.message ?? ''}`);
-    const snap = (data as { per_recipient_snapshot?: Record<string, unknown> } | null)
-      ?.per_recipient_snapshot;
-    assert(snap != null, 'no per-recipient resolution snapshot persisted');
+    const stored = (data as { resolution_snapshot?: Record<string, unknown> } | null)
+      ?.resolution_snapshot;
+    assert(stored != null, 'no per-recipient resolution snapshot persisted');
+    // The finalize RPC may store the per-recipient snapshot directly or nested.
+    const snap = (
+      (stored as Record<string, unknown>).channel_resolutions
+        ? stored
+        : ((stored as Record<string, unknown>).per_recipient_snapshot as Record<string, unknown>)
+    ) as Record<string, unknown> | undefined;
+    assert(snap != null, 'resolution snapshot carries no channel resolutions');
     const chans = (snap!.channel_resolutions ?? []) as Array<Record<string, unknown>>;
     assert(Array.isArray(chans) && chans.length > 0, 'no channel resolutions persisted');
     const email = chans.find((c) => c.channel === 'email');
     assert(email != null, 'email channel was not resolved');
     for (const key of [
       'route_id',
+      'template_family_id',
       'template_version_id',
+      'template_version_number',
       'template_version_checksum',
+      'layout_id',
       'layout_version_id',
+      'layout_checksum',
       'sender_identity_id',
+      'sender_provider_binding_id',
+      'provider_id',
       'provider_account_id',
     ]) {
       assert(email![key] != null, `resolution missing ${key}`);
     }
-    return 'route, template, layout, asset, sender all pinned';
+    // Checksums must be real sha-256 digests, not placeholders.
+    for (const key of ['template_version_checksum', 'layout_checksum']) {
+      const v = String(email![key]);
+      assert(/^[0-9a-f]{64}$/i.test(v), `${key} is not a sha-256 digest`);
+    }
+    const assets = (email!.assets ?? []) as Array<Record<string, unknown>>;
+    assert(Array.isArray(assets), 'assets must be an array');
+    for (const a of assets) {
+      if (a.required === true) {
+        assert(a.asset_version_id != null, `required asset slot ${String(a.slot)} not pinned`);
+        assert(
+          typeof a.asset_checksum === 'string' && /^[0-9a-f]{64}$/i.test(a.asset_checksum),
+          `required asset slot ${String(a.slot)} has no sha-256 checksum`,
+        );
+      }
+    }
+    assert(email!.live_delivery_ready !== true, 'live delivery must never be reported ready');
+    return `route, template v${String(email!.template_version_number)}, layout, ${assets.length} asset(s), sender all pinned`;
   });
 
   /* 8. Deterministic rendering — persisted checksum present and stable. */
   await scenario('deterministic_rendering', async () => {
     const { data, error } = await admin
       .from('omni_comms_message')
-      .select('id, rendered_checksum, status')
+      .select('id, rendered_checksum, status, unresolved_tokens, unresolved_required_slots, blockers')
       .eq('request_id', firstRequestId);
     assert(!error, `message read failed: ${error?.message ?? ''}`);
-    const rows = (data ?? []) as Array<{ rendered_checksum: string | null; status: string }>;
-    assert(rows.length === firstMessages.length, 'persisted message count differs from response');
+    const rows = (data ?? []) as Array<{
+      id: string;
+      rendered_checksum: string | null;
+      status: string;
+      unresolved_tokens: unknown;
+      unresolved_required_slots: unknown;
+      blockers: unknown;
+    }>;
+    assertEqual(rows.length, firstMessages.length, 'persisted message count vs response');
+    const responseIds = firstMessages.map((m) => String(m.messageId)).sort();
+    assertEqual(rows.map((r) => r.id).sort(), responseIds, 'persisted message ids vs response');
+    let rendered = 0;
     for (const row of rows) {
-      if (row.status === 'rendered') {
-        assert(
-          typeof row.rendered_checksum === 'string' && row.rendered_checksum.length === 64,
-          'rendered message has no sha-256 checksum',
-        );
-      }
+      assertEqual(row.status, 'rendered', `message ${row.id.slice(0, 8)} status`);
+      assert(
+        typeof row.rendered_checksum === 'string' && /^[0-9a-f]{64}$/i.test(row.rendered_checksum),
+        'rendered message has no sha-256 checksum',
+      );
+      assertEqual(
+        Array.isArray(row.unresolved_required_slots) ? row.unresolved_required_slots : [],
+        [],
+        'unresolved required slots',
+      );
+      assertEqual(Array.isArray(row.blockers) ? row.blockers : [], [], 'message blockers');
+      rendered += 1;
     }
-    return `${rows.length} message(s) rendered deterministically`;
+    // Response projection must carry the same checksums as persistence.
+    const byId = new Map(rows.map((r) => [r.id, r.rendered_checksum]));
+    for (const m of firstMessages) {
+      assertEqual(
+        m.renderedChecksum,
+        byId.get(String(m.messageId)),
+        'response checksum vs persisted checksum',
+      );
+    }
+    return `${rendered} message(s) rendered deterministically with matching checksums`;
   });
 
   /* 9. Identical replay returns the SAME bounded messages. */
@@ -406,21 +554,27 @@ async function main(): Promise<void> {
       baseRequest(env, prefix, 'main', 'dry_run'),
     );
     assertEqual(r.httpStatus, 200, 'http status');
+    assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
     assertEqual(r.body.replayed, true, 'replayed flag');
     assertEqual(r.body.requestId, firstRequestId, 'replay requestId');
+    assertEqual(blockersOf(r.body), [], 'replay blockers');
     const replayMessages = messagesOf(r.body);
-    assert(
-      replayMessages.length === firstMessages.length,
-      `replay returned ${replayMessages.length} messages, original returned ${firstMessages.length}`,
-    );
+    assertEqual(replayMessages.length, firstMessages.length, 'replay message count');
     const norm = (m: Array<Record<string, unknown>>) =>
-      m.map((x) => `${x.messageId}|${x.channel}|${x.status}|${x.dispatchJobId ?? ''}`).sort();
+      m
+        .map((x) =>
+          `${x.messageId}|${x.channel}|${x.status}|${x.renderedChecksum ?? ''}|${x.dispatchJobId ?? ''}`)
+        .sort();
     assertEqual(norm(replayMessages), norm(firstMessages), 'replay message projection');
     const total = await countRows(admin, 'omni_comms_request', (q) =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (q as any).like('idempotency_key', `${prefix}-main`));
     assertEqual(total, 1, 'replay must not create a second request');
-    return 'same messages, same statuses, no duplicate request';
+    const msgs = await countRows(admin, 'omni_comms_message', (q) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (q as any).eq('request_id', firstRequestId));
+    assertEqual(msgs, firstMessages.length, 'replay must not create additional messages');
+    return 'same messages, same checksums, no duplicate request';
   });
 
   /* 10. Mismatched replay (same key, different payload) must be rejected. */
@@ -428,12 +582,61 @@ async function main(): Promise<void> {
     const body = baseRequest(env, prefix, 'main', 'dry_run');
     body.payload = { ...body.payload, approvedAmount: '999.99' };
     const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
+    assertEqual(r.httpStatus, 200, 'http status');
+    assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
+    assertEqual(r.body.status, 'blocked', 'status');
     assertEqual(blockersOf(r.body), ['idempotency_payload_mismatch'], 'blockers');
+    assertEqual(messagesOf(r.body).length, 0, 'rejected replay messages');
     const total = await countRows(admin, 'omni_comms_request', (q) =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (q as any).like('idempotency_key', `${prefix}-main`));
     assertEqual(total, 1, 'rejected replay must not persist');
+    const msgs = await countRows(admin, 'omni_comms_message', (q) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (q as any).eq('request_id', firstRequestId));
+    assertEqual(msgs, firstMessages.length, 'rejected replay must not create messages');
     return 'idempotency_payload_mismatch, nothing persisted';
+  });
+
+  /* 10b. Concurrent identical submissions collapse to exactly one request. */
+  await scenario('concurrent_idempotency_semantics', async () => {
+    const body = baseRequest(env, prefix, 'concurrent', 'dry_run');
+    const responses = await Promise.all(
+      Array.from({ length: 4 }, () => invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body)),
+    );
+    for (const r of responses) {
+      assertEqual(r.httpStatus, 200, 'http status');
+      assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
+      assertEqual(blockersOf(r.body), [], 'blockers');
+    }
+    const ids = new Set(responses.map((r) => String(r.body.requestId)));
+    assertEqual(ids.size, 1, 'distinct requestIds across concurrent submissions');
+    const requestId = [...ids][0];
+    assert(requestId.length > 0, 'concurrent submissions produced no requestId');
+
+    const persisted = await requestIdsForPrefix(admin, `${prefix}-concurrent`);
+    assertEqual(persisted.length, 1, 'persisted request rows');
+
+    const projections = responses.map((r) =>
+      messagesOf(r.body)
+        .map((m) => `${m.messageId}|${m.channel}|${m.status}|${m.renderedChecksum ?? ''}`)
+        .sort()
+        .join(','));
+    assertEqual(new Set(projections).size, 1, 'divergent message projections');
+
+    const msgCount = await countRows(admin, 'omni_comms_message', (q) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (q as any).eq('request_id', requestId));
+    assertEqual(
+      msgCount,
+      messagesOf(responses[0].body).length,
+      'duplicate messages created under concurrency',
+    );
+    const jobs = await countRows(admin, 'omni_comms_dispatch_job', (q) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (q as any).eq('request_id', requestId));
+    assertEqual(jobs, 0, 'dry_run concurrency must not create dispatch jobs');
+    return '4 concurrent submissions → 1 request, identical projections, no duplicates';
   });
 
   /* 11. dry_run creates messages but NO dispatch jobs. */
@@ -461,20 +664,49 @@ async function main(): Promise<void> {
         baseRequest(env, prefix, mode, mode),
       );
       assertEqual(r.httpStatus, 200, 'http status');
+      assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
+      assertEqual(r.body.mode, mode, 'mode echoed');
+      assertEqual(blockersOf(r.body), [], 'blockers');
       const requestId = r.body.requestId as string;
       assert(typeof requestId === 'string' && requestId.length > 0, 'no requestId');
       const { data: msgRows } = await admin
         .from('omni_comms_message').select('id').eq('request_id', requestId);
       const ids = (msgRows ?? []).map((m) => (m as { id: string }).id);
       assert(ids.length > 0, `${mode} produced no messages`);
+      assertEqual(messagesOf(r.body).length, ids.length, 'response vs persisted message count');
       const { data: jobRows, error: jobErr } = await admin
-        .from('omni_comms_dispatch_job').select('id, status').in('message_id', ids);
+        .from('omni_comms_dispatch_job')
+        .select('id, status, is_runnable, hold_reason, attempt_count, locked_at, lease_expires_at')
+        .in('message_id', ids);
       assert(!jobErr, `job read failed: ${jobErr?.message ?? ''}`);
-      const jobs = (jobRows ?? []) as Array<{ status: string }>;
+      const jobs = (jobRows ?? []) as Array<{
+        status: string;
+        is_runnable: boolean | null;
+        hold_reason: string | null;
+        attempt_count: number | null;
+        locked_at: string | null;
+        lease_expires_at: string | null;
+      }>;
       assert(jobs.length > 0, `${mode} produced no dispatch job`);
-      const runnable = jobs.filter((j) => j.status !== 'held');
-      assertEqual(runnable.length, 0, 'runnable jobs');
-      return `${jobs.length} held job(s), 0 runnable`;
+      for (const j of jobs) {
+        assertEqual(j.status, 'held', 'job status');
+        assertEqual(j.is_runnable, false, 'job is_runnable');
+        assert(j.hold_reason != null && j.hold_reason !== '', 'held job carries no hold reason');
+        assertEqual(j.attempt_count ?? 0, 0, 'job attempt count');
+        assertEqual(j.locked_at, null, 'job locked_at');
+        assertEqual(j.lease_expires_at, null, 'job lease_expires_at');
+      }
+      // Every message must have an auditable timeline entry.
+      const events = await countRows(admin, 'omni_comms_message_event', (q) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q as any).in('message_id', ids));
+      assert(events > 0, `${mode} produced no message timeline events`);
+      // And no delivery attempt may exist for them.
+      const attempts = await countRows(admin, 'omni_comms_delivery_attempt', (q) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q as any).in('message_id', ids));
+      assertEqual(attempts, 0, 'delivery attempts');
+      return `${jobs.length} held job(s), 0 runnable, ${events} timeline event(s), 0 attempts`;
     });
   }
 
@@ -510,57 +742,99 @@ async function main(): Promise<void> {
   let dispatchJobCount = 0;
   let runnableJobCount = 0;
   let deliveryAttemptCount = 0;
+  let providerCallCount = 0;
+  let emailCount = 0;
+  let fixtureMessageIds: string[] = [];
 
   await scenario('safety_invariants', async () => {
     const { data: msgRows } = await admin
-      .from('omni_comms_message').select('id').in('request_id', allRequestIds);
-    const msgIds = (msgRows ?? []).map((m) => (m as { id: string }).id);
-    messageCount = msgIds.length;
+      .from('omni_comms_message').select('id, channel').in('request_id', allRequestIds);
+    const msgs = (msgRows ?? []) as Array<{ id: string; channel: string }>;
+    fixtureMessageIds = msgs.map((m) => m.id);
+    messageCount = msgs.length;
 
     const { data: jobRows } = await admin
-      .from('omni_comms_dispatch_job').select('id, status').in('message_id', msgIds);
-    const jobs = (jobRows ?? []) as Array<{ id: string; status: string }>;
+      .from('omni_comms_dispatch_job')
+      .select('id, status, is_runnable')
+      .in('message_id', fixtureMessageIds);
+    const jobs = (jobRows ?? []) as Array<{ id: string; status: string; is_runnable: boolean | null }>;
     dispatchJobCount = jobs.length;
-    runnableJobCount = jobs.filter((j) => j.status !== 'held').length;
+    runnableJobCount = jobs.filter((j) => j.status !== 'held' || j.is_runnable === true).length;
     assertEqual(runnableJobCount, 0, 'runnable dispatch jobs');
 
-    const { count: attempts } = await admin
+    // Provider contact is measured, never assumed: a provider call can only
+    // exist as a delivery attempt row, and an email can only exist as an
+    // attempt against an email-channel message.
+    const { data: attemptRows, count: attempts } = await admin
       .from('omni_comms_delivery_attempt')
-      .select('id', { count: 'exact', head: true });
+      .select('id, message_id, provider_id', { count: 'exact' });
     deliveryAttemptCount = attempts ?? 0;
     assertEqual(deliveryAttemptCount, 0, 'delivery attempts (global)');
+    providerCallCount = ((attemptRows ?? []) as Array<{ provider_id: string | null }>).length;
+    const emailMessageIds = new Set(
+      msgs.filter((m) => m.channel === 'email').map((m) => m.id),
+    );
+    emailCount = ((attemptRows ?? []) as Array<{ message_id: string | null }>)
+      .filter((a) => a.message_id != null && emailMessageIds.has(a.message_id)).length;
+    assertEqual(providerCallCount, 0, 'provider calls');
+    assertEqual(emailCount, 0, 'emails');
 
-    return `${messageCount} message(s), ${dispatchJobCount} held job(s), 0 runnable, 0 delivery attempts`;
+    return `${messageCount} message(s), ${dispatchJobCount} held job(s), 0 runnable, 0 delivery attempts, 0 provider calls, 0 emails`;
   });
 
   /* 19. Cleanup — remove exactly the fixture rows, then verify counts are 0. */
   let cleanupStatus = 'not_attempted';
   await scenario('cleanup_verified', async () => {
-    const { data: msgRows } = await admin
-      .from('omni_comms_message').select('id').in('request_id', allRequestIds);
-    const msgIds = (msgRows ?? []).map((m) => (m as { id: string }).id);
+    const msgIds = fixtureMessageIds;
+
+    const check = (label: string, error: { message?: string } | null) => {
+      if (error) throw new AssertionFailure(`${label} delete failed: ${error.message ?? ''}`);
+    };
 
     if (msgIds.length > 0) {
-      await admin.from('omni_comms_dispatch_job').delete().in('message_id', msgIds);
-      await admin.from('omni_comms_message_event').delete().in('message_id', msgIds);
-      await admin.from('omni_comms_message').delete().in('id', msgIds);
+      check('dispatch_job', (await admin
+        .from('omni_comms_dispatch_job').delete().in('message_id', msgIds)).error);
+      check('message_event(message)', (await admin
+        .from('omni_comms_message_event').delete().in('message_id', msgIds)).error);
+      check('message', (await admin
+        .from('omni_comms_message').delete().in('id', msgIds)).error);
     }
     if (allRequestIds.length > 0) {
-      await admin.from('omni_comms_request_event').delete().in('request_id', allRequestIds);
-      await admin.from('omni_comms_recipient').delete().in('request_id', allRequestIds);
-      await admin.from('omni_comms_request').delete().in('id', allRequestIds);
+      check('message_event(request)', (await admin
+        .from('omni_comms_message_event').delete().in('request_id', allRequestIds)).error);
+      check('recipient', (await admin
+        .from('omni_comms_recipient').delete().in('request_id', allRequestIds)).error);
+      check('request', (await admin
+        .from('omni_comms_request').delete().in('id', allRequestIds)).error);
     }
 
+    // Post-cleanup verification across EVERY fixture-owned table.
     const remainingRequests = (await requestIdsForPrefix(admin, prefix)).length;
     assertEqual(remainingRequests, 0, 'requests remaining after cleanup');
-    const remainingMessages = msgIds.length === 0 ? 0 : await countRows(
-      admin, 'omni_comms_message',
+
+    const remaining = async (
+      table: string,
+      column: 'id' | 'message_id' | 'request_id',
+      ids: string[],
+    ) => (ids.length === 0
+      ? 0
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (q) => (q as any).in('id', msgIds),
+      : countRows(admin, table, (q) => (q as any).in(column, ids)));
+
+    assertEqual(await remaining('omni_comms_message', 'id', msgIds), 0, 'messages remaining');
+    assertEqual(
+      await remaining('omni_comms_dispatch_job', 'message_id', msgIds), 0, 'dispatch jobs remaining');
+    assertEqual(
+      await remaining('omni_comms_message_event', 'message_id', msgIds), 0, 'message events remaining');
+    assertEqual(
+      await remaining('omni_comms_recipient', 'request_id', allRequestIds), 0, 'recipients remaining');
+    assertEqual(
+      await remaining('omni_comms_message_event', 'request_id', allRequestIds),
+      0,
+      'request-scoped events remaining',
     );
-    assertEqual(remainingMessages, 0, 'messages remaining after cleanup');
     cleanupStatus = 'verified_clean';
-    return 'all fixture rows removed, post-cleanup counts are zero';
+    return 'all fixture rows removed; post-cleanup counts are zero across every fixture table';
   });
   if (cleanupStatus !== 'verified_clean') cleanupStatus = 'failed';
 
@@ -571,18 +845,20 @@ async function main(): Promise<void> {
 
   const summary = {
     commitSha,
+    edgeRevision,
+    edgeRevisionMatchesCommit,
     scenarioCount: results.length,
     passedCount: passed,
     failedCount: failed,
     fixturePrefix: prefix,
     cleanupStatus,
     edgeDeployment,
-    messageCount,
-    dispatchJobCount,
+    messagesCreatedThenRemoved: messageCount,
+    dispatchJobsCreatedAllHeld: dispatchJobCount,
     runnableJobCount,
     deliveryAttemptCount,
-    providerCallCount: 0,
-    emailCount: 0,
+    providerCallCount,
+    emailCount,
   };
 
   // Human/CI-greppable field lines (contract consumed by the certification
@@ -595,13 +871,20 @@ async function main(): Promise<void> {
   console.log(`fixture prefix: ${prefix}`);
   console.log(`cleanup: ${cleanupStatus === 'verified_clean' ? 'ok' : 'failed'}`);
   console.log(`edge_function: omni-comms-runtime (${edgeDeployment})`);
-  console.log(`no_message: ${messageCount === 0} (${messageCount} created, then removed)`);
+  console.log(`edge_revision: ${edgeRevision}`);
+  console.log(`edge_revision_matches_commit: ${edgeRevisionMatchesCommit}`);
   console.log(
-    `no_dispatch_job: ${dispatchJobCount === 0} (${dispatchJobCount} created, all held; ${runnableJobCount} runnable)`,
+    `messages_created_then_removed: ${messageCount}`,
+  );
+  console.log(
+    `no_message_remaining: ${cleanupStatus === 'verified_clean'} (${messageCount} created, then removed)`,
+  );
+  console.log(
+    `no_runnable_dispatch_job: ${runnableJobCount === 0} (${dispatchJobCount} created, all held; ${runnableJobCount} runnable)`,
   );
   console.log(`no_delivery_attempt: ${deliveryAttemptCount === 0} (${deliveryAttemptCount} rows)`);
-  console.log('no_provider_call: true (0 provider calls — no dispatch worker was run)');
-  console.log('no_email: true (0 emails — every job remained held)');
+  console.log(`no_provider_call: ${providerCallCount === 0} (${providerCallCount} measured provider calls)`);
+  console.log(`no_email: ${emailCount === 0} (${emailCount} measured email deliveries)`);
   console.log('');
   console.log('OMNI_COMMS_HARNESS_SUMMARY_JSON_BEGIN');
   console.log(JSON.stringify(summary, null, 2));
@@ -609,8 +892,23 @@ async function main(): Promise<void> {
   console.log('');
 
 
-  if (failed > 0 || cleanupStatus !== 'verified_clean') {
-    console.error(`[omni-comms:harness] ${failed} scenario(s) failed; cleanup=${cleanupStatus}`);
+
+  const safetyBreached =
+    runnableJobCount > 0 ||
+    deliveryAttemptCount > 0 ||
+    providerCallCount > 0 ||
+    emailCount > 0;
+
+  if (
+    failed > 0 ||
+    cleanupStatus !== 'verified_clean' ||
+    safetyBreached ||
+    (requireEdgeRevision && !edgeRevisionMatchesCommit)
+  ) {
+    console.error(
+      `[omni-comms:harness] ${failed} scenario(s) failed; cleanup=${cleanupStatus}; ` +
+        `safetyBreached=${safetyBreached}; edgeRevisionMatchesCommit=${edgeRevisionMatchesCommit}`,
+    );
     console.error('PRIVILEGED EDGE RESOLUTION INTEGRATION NOT EXECUTED');
     process.exit(3);
   }

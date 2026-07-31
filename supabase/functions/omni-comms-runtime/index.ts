@@ -54,6 +54,11 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OMNI_COMMS_DEFAULT_CALLER_MODULE = "OMNI_COMMS_DIRECT";
 const BUILD_TAG = "omni-comms-runtime@2c-iii-auth";
+// Source revision this deployment was built from. Set as a function secret at
+// deploy time (OMNI_COMMS_EDGE_REVISION=<git sha>). Certification binds the
+// harness run to this value; when absent the deployment is UNVERIFIED and the
+// privileged workflow refuses to certify.
+const DEPLOYED_REVISION = Deno.env.get("OMNI_COMMS_EDGE_REVISION") ?? null;
 
 type Mode = "dry_run" | "shadow" | "queued";
 
@@ -114,6 +119,8 @@ Deno.serve(async (req: Request) => {
         function: "omni-comms-runtime",
         buildTag: BUILD_TAG,
         runtimeVersion: "2c-iii",
+        revision: DEPLOYED_REVISION,
+        revisionVerified: DEPLOYED_REVISION !== null,
         available: true,
         certificationState: "not_certified",
         liveDeliveryEnabled: false,

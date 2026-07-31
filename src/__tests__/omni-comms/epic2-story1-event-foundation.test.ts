@@ -29,8 +29,8 @@ describe('Omni-Comms Epic 2 — Story 1 (event tables)', () => {
     }
   });
 
-  it('object registry still enumerates exactly 19 approved objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(19);
+  it('object registry still enumerates exactly 20 approved objects', () => {
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(20);
   });
 
   it('object registry marks both Story 1 event tables as AVAILABLE', () => {

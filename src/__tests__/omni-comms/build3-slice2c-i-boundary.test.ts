@@ -189,7 +189,9 @@ describe('Slice 2c-i — server fingerprint authority', () => {
         if (client && client !== server) {
           return {
             data: {
+              contractVersion: 'omni_comms.result.v1',
               requestId: '',
+
               idempotencyKey: raw.idempotencyKey,
               mode: raw.mode,
               status: 'blocked',

@@ -115,7 +115,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     expect(M.permanentRoutes).toHaveLength(7);
   });
 
-  it('lists all 19 logical objects with accurate physical-schema status', () => {
+  it('lists all 20 logical objects with accurate physical-schema status', () => {
     permState.hasView = true;
     renderHealthAt();
     const all = [
@@ -123,7 +123,7 @@ describe('Omni-Comms Health page — Readiness', () => {
       ...M.plannedObjects.channelsSendersPreferences,
       ...M.plannedObjects.runtime,
     ];
-    expect(all).toHaveLength(19);
+    expect(all).toHaveLength(20);
     for (const entry of all) {
       expect(screen.getAllByText(entry.name).length).toBeGreaterThan(0);
     }
@@ -141,7 +141,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     const notCreated = all.filter(
       (o) => o.status === 'Registered in architecture catalogue — Not yet created',
     );
-    expect(notCreated.length + available.length).toBe(19);
+    expect(notCreated.length + available.length).toBe(20);
   });
 
   it('shows reserved edge functions as Not created and Available ones as Available', () => {

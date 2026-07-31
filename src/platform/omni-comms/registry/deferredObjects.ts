@@ -2,7 +2,7 @@
  * Omni-Comms — Deferred objects.
  *
  * Two objects were proposed during the audit but are NOT part of the
- * approved 19-object catalogue because they are satisfied by existing
+ * approved object catalogue because they are satisfied by existing
  * shared platform infrastructure.
  */
 import type { DeferredObjectEntry } from './registry.types';
