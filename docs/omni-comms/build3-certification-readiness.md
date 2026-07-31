@@ -125,7 +125,3 @@ Artifacts are named after the **actual checked-out revision**
 
 No provider dispatch, live delivery, retry, webhook or legacy cutover work is
 introduced by this round.
-
-
-No provider dispatch, live delivery, retry, webhook or legacy cutover work is
-introduced by this round.
