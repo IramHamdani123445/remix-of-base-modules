@@ -607,7 +607,7 @@ export const OmniCommsEventsPage: React.FC = () => {
     "definitions",
   );
   return (
-    <div className="container mx-auto p-6 space-y-6" data-testid="oc-events-page">
+    <div className="space-y-6" data-testid="oc-events-page">
       <div className="flex items-center gap-3">
         <Radio className="h-6 w-6 text-primary" />
         <div>

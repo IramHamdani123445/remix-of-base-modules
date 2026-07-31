@@ -1,17 +1,19 @@
 /**
- * Omni-Comms Setup Wizard — guided configuration panel.
+ * Omni-Comms Setup readiness — grouped configuration checklist.
  *
  * Lives INSIDE the existing Overview permanent route
- * (`/admin/omnichannel-communications`) as a tab. It adds no new route.
+ * (`/admin/omnichannel-communications`) as a view. It adds no new route.
  *
- * The wizard is read-only guidance. It reads exactly one bounded aggregate
- * RPC (`omni_comms_setup_readiness`), renders fourteen guided steps and deep
- * links to the permanent screen that owns each change. It never mutates
- * configuration, never enqueues a job, never contacts a provider and never
- * re-implements resolution precedence.
+ * The screen is read-only guidance. It reads exactly one bounded aggregate
+ * RPC (`omni_comms_setup_readiness`), renders the fourteen guided steps
+ * grouped into four administrator stages, states the single next required
+ * action first, and deep links to the permanent screen that owns each change.
+ * It never mutates configuration, never enqueues a job, never contacts a
+ * provider and never re-implements resolution precedence.
  */
 import React from "react";
-import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertCircle, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOmniCommsTenant } from "@/platform/omni-comms/context/OmniCommsTenantContext";
-import { OmniCommsTenantSelector } from "@/platform/omni-comms/admin/components/OmniCommsTenantSelector";
 import { useOmniCommsRpcClient } from "@/platform/omni-comms/admin/hooks/useOmniCommsRpcClient";
 import { listAllEventDefinitionsForPicker } from "@/platform/omni-comms/application/eventCatalogueService";
 import type { EventDefinitionListItem } from "@/platform/omni-comms/application/eventCatalogueTypes";
@@ -32,11 +33,18 @@ import {
   buildSetupPlan,
   getSetupReadiness,
   mapSetupError,
+  stepTargetHref,
   type SetupError,
   type SetupPlan,
 } from "@/platform/omni-comms/application/setupReadinessService";
+import {
+  currentOmniCommsEnvironment,
+  isNonProduction,
+} from "@/platform/omni-comms/admin/posture/omniCommsPosture";
+import { OmniCommsInlineWarning } from "@/platform/omni-comms/admin/components/OmniCommsPostureBadge";
 import SetupProgressSummary from "./SetupProgressSummary";
 import SetupStepCard from "./SetupStepCard";
+import { OMNI_COMMS_SETUP_STAGES } from "./setupStages";
 
 const NONE = "__none__";
 
@@ -125,20 +133,23 @@ export const SetupWizardPanel: React.FC = () => {
   return (
     <div className="space-y-6" data-testid="omni-comms-setup-wizard">
       <Alert>
-        <AlertTitle>Guided setup</AlertTitle>
+        <AlertTitle>Setup readiness</AlertTitle>
         <AlertDescription className="text-sm">
-          Configure one complete email path — organisation, department, pilot
-          event and locale — one step at a time. Every status below is read
-          from the deployed configuration, not from source code.
+          A read-only checklist for one complete email path. Every status below
+          is read from the deployed configuration, not from source code. Nothing
+          on this screen changes configuration.
         </AlertDescription>
       </Alert>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Pilot scope</CardTitle>
+          <CardTitle className="text-base">Evaluated path</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <OmniCommsTenantSelector />
+          <p className="text-sm text-muted-foreground">
+            Organisation and department are selected in the module header.
+          </p>
+
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1 min-w-[240px]">
@@ -283,26 +294,98 @@ export const SetupWizardPanel: React.FC = () => {
       )}
 
       {plan && (
-        <Card>
+        <>
+          <Card data-testid="omni-comms-setup-next-action">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Next required action</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <SetupProgressSummary plan={plan} />
+              {plan.nextRequiredStep ? (
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="font-medium">
+                    Step {plan.nextRequiredStep.index}: {plan.nextRequiredStep.title}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {plan.nextRequiredStep.purpose}
+                  </p>
+                  {plan.nextRequiredStep.target ? (
+                    <Button asChild size="sm">
+                      <Link to={stepTargetHref(plan.nextRequiredStep)}>
+                        {plan.nextRequiredStep.target.label}
+                        <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                  ) : null}
+                </div>
+              ) : (
+                <p>
+                  Every configuration step is complete for this path. Live
+                  delivery remains disabled and no provider dispatch exists.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {OMNI_COMMS_SETUP_STAGES.map((stage) => {
+            const steps = plan.steps.filter((s) => stage.steps.includes(s.id));
+            if (steps.length === 0) return null;
+            const done = steps.filter((s) => s.state === "complete").length;
+            return (
+              <Card key={stage.id} data-testid={`omni-comms-setup-stage-${stage.id}`}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                    <span>{stage.title}</span>
+                    <span className="text-sm font-normal text-muted-foreground">
+                      {done} of {steps.length} complete
+                    </span>
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">{stage.purpose}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3" data-testid="omni-comms-setup-steps">
+                    {steps.map((s) => (
+                      <SetupStepCard
+                        key={s.id}
+                        step={s}
+                        isNextRequired={plan.nextRequiredStep?.id === s.id}
+                      />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </>
+      )}
+
+      {isNonProduction(currentOmniCommsEnvironment()) ? (
+        <Card data-testid="omni-comms-setup-non-production-tools">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Configuration steps</CardTitle>
+            <CardTitle className="text-base">Non-production tools</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <SetupProgressSummary plan={plan} />
-            <div className="space-y-3" data-testid="omni-comms-setup-steps">
-              {plan.steps.map((s) => (
-                <SetupStepCard
-                  key={s.id}
-                  step={s}
-                  isNextRequired={plan.nextRequiredStep?.id === s.id}
-                />
-              ))}
-            </div>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-muted-foreground">
+              Reference data seeding creates demonstration configuration only.
+              It is not part of the administrator workflow and is unavailable in
+              production.
+            </p>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/admin/omnichannel-communications?view=reference-data">
+                Open reference data
+                <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+              </Link>
+            </Button>
+            <OmniCommsInlineWarning>
+              Seeded configuration is synthetic and must never be treated as
+              production configuration.
+            </OmniCommsInlineWarning>
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   );
 };
+
 
 export default SetupWizardPanel;

@@ -87,7 +87,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   if (!orgId) {
     return (
-      <div className="container mx-auto p-6 space-y-4" data-testid="omni-comms-channels-page">
+      <div className="space-y-4" data-testid="omni-comms-channels-page">
         <h1 className="text-2xl font-semibold">Channels — Email</h1>
         <Alert>
           <ShieldAlert className="h-4 w-4" />
@@ -103,7 +103,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6" data-testid="omni-comms-channels-page">
+    <div className="space-y-6" data-testid="omni-comms-channels-page">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold">Channels — Email</h1>

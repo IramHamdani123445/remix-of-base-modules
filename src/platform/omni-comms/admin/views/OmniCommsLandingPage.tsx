@@ -1,253 +1,304 @@
 /**
- * Omnichannel Communications — Overview / landing page.
+ * Omnichannel Communications — administrator Dashboard (Overview route).
  *
- * Post-stabilization: shows an accurate status snapshot for every permanent
- * route (Events, Templates, Shared Assets & Layouts, Channels, Operations,
- * Preferences, Health) derived from the route registry, together with the
- * next approved work item. Replaces obsolete pre-operational placeholder copy
- * wording that predated Epics 2, 3 and Accelerated Builds 1–2.
+ * Answers, in order:
+ *   1. What is this module and what is its current posture?
+ *   2. Is the selected tenant configured?
+ *   3. What is the single next required action?
+ *   4. Where do I go to do it?
+ *
+ * The dashboard renders only facts returned by the bounded read-only setup
+ * readiness RPC and the safe Edge health probe. It invents no metrics, shows
+ * no delivery counts and never mutates anything.
  */
 import React from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  HeartPulse,
-  Info,
-  Radio,
-} from "lucide-react";
+import { ArrowRight, Info, LayoutDashboard, Loader2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { OMNI_COMMS_ROUTE_REGISTRY } from "../../registry/routeRegistry";
-import { OMNI_COMMS_READINESS_MANIFEST } from "../../registry/readinessManifest";
+import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
+import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
+import { useOmniCommsEdgeHealthProbe } from "../hooks/useOmniCommsEdgeHealthProbe";
+import {
+  buildPostureFacets,
+  currentOmniCommsEnvironment,
+  isNonProduction,
+  normaliseCertificationState,
+  OMNI_COMMS_PENDING_POSTURE_LINES,
+} from "../posture/omniCommsPosture";
+import {
+  OmniCommsPostureBadgeList,
+  OmniCommsInlineWarning,
+} from "../components/OmniCommsPostureBadge";
+import { OMNI_COMMS_NAV_ITEMS } from "../navigation/omniCommsNavigation";
+import {
+  buildSetupPlan,
+  getSetupReadiness,
+  mapSetupError,
+  stepTargetHref,
+  type SetupError,
+  type SetupPlan,
+} from "../../application/setupReadinessService";
 import SetupWizardPanel from "./setup/SetupWizardPanel";
 import ControlledDryRunPanel from "./dryrun/ControlledDryRunPanel";
 import ReferenceSeedPanel from "./seed/ReferenceSeedPanel";
 
-type StatusKind = "available" | "coming-soon";
+type LandingView = "overview" | "setup" | "dry-run" | "reference-data";
 
-interface StatusRow {
-  key: string;
-  title: string;
-  summary: string;
-  to?: string;
-  kind: StatusKind;
+const VIEWS: LandingView[] = ["overview", "setup", "dry-run", "reference-data"];
+
+function resolveView(raw: string | null): LandingView {
+  return (VIEWS as string[]).includes(raw ?? "") ? (raw as LandingView) : "overview";
 }
 
-function statusFor(path: string): "Available" | "Not implemented" | "Placeholder" | undefined {
-  return OMNI_COMMS_ROUTE_REGISTRY.find((r) => r.path === path)?.state;
-}
+// ── Dashboard body ────────────────────────────────────────────────────────
 
-function toKind(path: string): StatusKind {
-  return statusFor(path) === "Available" ? "available" : "coming-soon";
-}
+const DashboardView: React.FC = () => {
+  const { organizationId, departmentId, availableOrganizations } = useOmniCommsTenant();
+  const rpc = useOmniCommsRpcClient();
+  const { result: edge, probe, probing } = useOmniCommsEdgeHealthProbe();
 
-const ROWS: StatusRow[] = [
-  {
-    key: "events",
-    title: "Events",
-    summary:
-      "Event definitions and JSON contracts are authored, validated, approved and versioned through the Events administration screen.",
-    to: "/admin/omnichannel-communications/events",
-    kind: toKind("/admin/omnichannel-communications/events"),
-  },
-  {
-    key: "templates",
-    title: "Templates",
-    summary:
-      "Template families and versions are authored, previewed with synthetic data and lifecycle-managed via the Templates administration screen.",
-    to: "/admin/omnichannel-communications/templates",
-    kind: toKind("/admin/omnichannel-communications/templates"),
-  },
-  {
-    key: "assets",
-    title: "Shared Assets and Layouts",
-    summary:
-      "Shared branding assets, layout versions and organisation / department inheritance are managed inside the Templates Assembly tab.",
-    to: "/admin/omnichannel-communications/templates",
-    kind: "available",
-  },
-  {
-    key: "channels",
-    title: "Channels",
-    summary:
-      "Email provider (Resend), provider accounts, sender identities, provider bindings and channel settings are configured on the Channels workspace.",
-    to: "/admin/omnichannel-communications/channels",
-    kind: toKind("/admin/omnichannel-communications/channels"),
-  },
-  {
-    key: "operations",
-    title: "Operations (runtime)",
-    summary:
-      "Runtime requests, recipients, messages, dispatch jobs and the full request timeline are visible read-only on the Operations console.",
-    to: "/admin/omnichannel-communications/operations",
-    kind: toKind("/admin/omnichannel-communications/operations"),
-  },
-  {
-    key: "preferences",
-    title: "Preferences",
-    summary:
-      "Recipient preferences, channel opt-outs and preference resolution are planned for a later build.",
-    to: "/admin/omnichannel-communications/preferences",
-    kind: toKind("/admin/omnichannel-communications/preferences"),
-  },
-  {
-    key: "health",
-    title: "Health / Readiness",
-    summary:
-      "Static Readiness plus Live Diagnostics of the actual deployed configuration and runtime state are reported on the Health screen.",
-    to: "/admin/omnichannel-communications/health",
-    kind: toKind("/admin/omnichannel-communications/health"),
-  },
-];
+  const [plan, setPlan] = React.useState<SetupPlan | null>(null);
+  const [error, setError] = React.useState<SetupError | null>(null);
+  const [loading, setLoading] = React.useState(false);
 
-function StatusBadge({ kind }: { kind: StatusKind }): JSX.Element {
-  if (kind === "available") {
-    return (
-      <Badge className="bg-emerald-600 hover:bg-emerald-700">
-        <CheckCircle2 className="h-3 w-3 mr-1" /> Available
-      </Badge>
-    );
-  }
+  const environment = currentOmniCommsEnvironment();
+  const orgName =
+    availableOrganizations.find((o) => o.id === organizationId)?.name ?? null;
+
+  const load = React.useCallback(async () => {
+    if (!organizationId) {
+      setPlan(null);
+      setError(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      const payload = await getSetupReadiness(rpc, { organizationId, departmentId });
+      setPlan(buildSetupPlan(payload));
+      setError(null);
+    } catch (err) {
+      setError(mapSetupError(err));
+      setPlan(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [organizationId, departmentId, rpc]);
+
+  React.useEffect(() => {
+    void load();
+    void probe();
+  }, [load, probe]);
+
+  const facets = buildPostureFacets({
+    screenAvailable: true,
+    configurationReady: plan ? plan.dryRunReady : null,
+    runtimeAvailable: edge ? edge.available : null,
+    certification: normaliseCertificationState(edge?.certificationState ?? null),
+    liveDeliveryEnabled: edge?.liveDeliveryEnabled === true,
+    environment,
+  });
+
+  const nextStep = plan?.nextRequiredStep ?? null;
+
   return (
-    <Badge variant="secondary">
-      <Clock className="h-3 w-3 mr-1" /> Coming soon
-    </Badge>
+    <div className="space-y-6" data-testid="omni-comms-dashboard">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <LayoutDashboard className="h-4 w-4 text-primary" aria-hidden="true" />
+            Module posture
+          </CardTitle>
+          <CardDescription>
+            Screen availability, configuration readiness, runtime, certification
+            and delivery are independent states.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <OmniCommsPostureBadgeList facets={facets} />
+          <ul className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+            {OMNI_COMMS_PENDING_POSTURE_LINES.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Card data-testid="omni-comms-dashboard-next-action">
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-base">Next required action</CardTitle>
+            <CardDescription>
+              {organizationId
+                ? `Configuration path for ${orgName ?? "the selected organisation"}.`
+                : "Select an organisation in the header to evaluate configuration."}
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void load();
+              void probe();
+            }}
+            disabled={loading || probing}
+            aria-label="Refresh dashboard"
+          >
+            {loading || probing ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
+            )}
+            Refresh
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          {error ? (
+            <Alert variant="destructive">
+              <AlertTitle>Configuration readiness unavailable</AlertTitle>
+              <AlertDescription>{error.message}</AlertDescription>
+            </Alert>
+          ) : !organizationId ? (
+            <p className="text-muted-foreground">
+              No organisation selected. Nothing is evaluated and no state is
+              assumed.
+            </p>
+          ) : loading && !plan ? (
+            <p className="text-muted-foreground">Evaluating configuration…</p>
+          ) : plan ? (
+            <>
+              <p>
+                <strong>
+                  {plan.completedSteps} of {plan.totalSteps}
+                </strong>{" "}
+                configuration steps are complete for this scope.
+              </p>
+              {nextStep ? (
+                <div className="rounded-md border p-3 space-y-2">
+                  <p className="font-medium">
+                    Step {nextStep.index}: {nextStep.title}
+                  </p>
+                  <p className="text-muted-foreground">{nextStep.purpose}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild size="sm">
+                      <Link to="/admin/omnichannel-communications?view=setup">
+                        Open Setup readiness
+                        <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                    {nextStep.target ? (
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={stepTargetHref(nextStep)}>
+                          {nextStep.target.label}
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <p>
+                  Every configuration step for this scope is complete. Live
+                  delivery remains disabled.
+                </p>
+              )}
+            </>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Where to go next</CardTitle>
+          <CardDescription>
+            Every administration destination in this module.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {OMNI_COMMS_NAV_ITEMS.map((item) => (
+              <li
+                key={item.id}
+                data-testid={`omni-comms-dashboard-link-${item.id}`}
+                className="rounded-md border p-3"
+              >
+                <p className="font-medium">{item.label}</p>
+                <p className="mb-2 text-sm text-muted-foreground">
+                  {item.description}
+                </p>
+                <Button asChild size="sm" variant="ghost">
+                  <Link to={item.href}>
+                    Open
+                    <ArrowRight className="ml-1 h-3 w-3" aria-hidden="true" />
+                  </Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      <Alert>
+        <Info className="h-4 w-4" aria-hidden="true" />
+        <AlertTitle>Legacy remains active</AlertTitle>
+        <AlertDescription>
+          Communication Hub — Legacy continues to operate unchanged. No cutover,
+          redirect or deprecation has been applied.
+        </AlertDescription>
+      </Alert>
+
+      {!isNonProduction(environment) ? (
+        <OmniCommsInlineWarning>
+          Non-production tooling (safe test, reference data) is hidden outside
+          non-production environments.
+        </OmniCommsInlineWarning>
+      ) : null}
+    </div>
   );
-}
+};
+
+// ── Page ──────────────────────────────────────────────────────────────────
 
 export const OmniCommsLandingPage: React.FC = () => {
-  const next = OMNI_COMMS_READINESS_MANIFEST.nextStep;
   const [searchParams, setSearchParams] = useSearchParams();
-  const rawView = searchParams.get("view");
-  const view =
-    rawView === "setup" || rawView === "dry-run" || rawView === "reference-data"
-      ? rawView
-      : "overview";
+  const view = resolveView(searchParams.get("view"));
+  const environment = currentOmniCommsEnvironment();
+  const nonProduction = isNonProduction(environment);
 
   const onTabChange = (value: string): void => {
     const params = new URLSearchParams(searchParams);
-    if (value === "setup" || value === "dry-run" || value === "reference-data") {
-      params.set("view", value);
-    } else {
-      params.delete("view");
-    }
+    const next = resolveView(value);
+    if (next === "overview") params.delete("view");
+    else params.set("view", next);
     setSearchParams(params, { replace: true });
   };
 
   return (
-    <div
-      data-testid="omni-comms-landing"
-      className="container mx-auto p-6 space-y-6"
-    >
-      <div className="flex items-center gap-3">
-        <Radio className="h-6 w-6 text-primary" />
-        <div>
-          <h1 className="text-2xl font-semibold">Omnichannel Communications</h1>
-          <p className="text-sm text-muted-foreground">
-            Event catalogue, templates, shared assets and email channel
-            configuration are operational. Runtime dispatch and recipient
-            preferences are planned.
-          </p>
-        </div>
-      </div>
-
+    <div data-testid="omni-comms-landing" className="space-y-6">
       <Tabs value={view} onValueChange={onTabChange} className="w-full">
-        <TabsList aria-label="Omnichannel Communications overview tabs">
+        <TabsList aria-label="Omnichannel Communications views">
           <TabsTrigger value="overview" data-testid="omni-comms-landing-tab-overview">
-            Overview
+            Dashboard
           </TabsTrigger>
           <TabsTrigger value="setup" data-testid="omni-comms-landing-tab-setup">
-            Setup Wizard
+            Setup readiness
           </TabsTrigger>
-          <TabsTrigger value="dry-run" data-testid="omni-comms-landing-tab-dry-run">
-            Dry Run
-          </TabsTrigger>
-          <TabsTrigger
-            value="reference-data"
-            data-testid="omni-comms-landing-tab-reference-data"
-          >
-            Reference Data
-          </TabsTrigger>
+          {nonProduction ? (
+            <TabsTrigger value="dry-run" data-testid="omni-comms-landing-tab-dry-run">
+              Safe test
+            </TabsTrigger>
+          ) : null}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-4 space-y-6">
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertTitle>Current status</AlertTitle>
-            <AlertDescription>
-              Events, Templates, Shared Assets &amp; Layouts, Channels,
-              Operations and Health are available. Preferences is Coming Soon.
-              Communication Hub — Legacy continues to run in parallel until
-              cutover.
-            </AlertDescription>
-          </Alert>
-
-          <Card data-testid="omni-comms-landing-status-grid">
-            <CardHeader>
-              <CardTitle className="text-base">Capability status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {ROWS.map((row) => (
-                  <li
-                    key={row.key}
-                    data-testid={`omni-comms-landing-row-${row.key}`}
-                    className="rounded-md border p-3 flex flex-col gap-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{row.title}</span>
-                      <StatusBadge kind={row.kind} />
-                    </div>
-                    <p className="text-sm text-muted-foreground">{row.summary}</p>
-                    {row.to ? (
-                      <div>
-                        <Button asChild size="sm" variant="ghost">
-                          <Link to={row.to}>
-                            Open <ArrowRight className="h-3 w-3 ml-1" />
-                          </Link>
-                        </Button>
-                      </div>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="omni-comms-landing-next-card">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <HeartPulse className="h-4 w-4 text-primary" aria-hidden="true" />
-                Next approved work
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p>
-                <strong>{next.epic} — {next.story}:</strong> {next.title}
-              </p>
-              <p className="text-muted-foreground">
-                Detailed foundation state, registries and architecture-check
-                results are available on the Health screen.
-              </p>
-              <div>
-                <Button asChild size="sm" variant="outline">
-                  <Link to="/admin/omnichannel-communications/health">
-                    Open Readiness <ArrowRight className="h-4 w-4 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="overview" className="mt-4">
+          <DashboardView />
         </TabsContent>
 
         <TabsContent value="setup" className="mt-4">
@@ -258,12 +309,20 @@ export const OmniCommsLandingPage: React.FC = () => {
           <ControlledDryRunPanel />
         </TabsContent>
 
-        <TabsContent value="reference-data" className="mt-4">
+        {/*
+          Reference data is a non-production configuration tool, not a primary
+          administration destination. It stays URL-addressable
+          (`?view=reference-data`) and is reached from Setup readiness.
+        */}
+        <TabsContent
+          value="reference-data"
+          className="mt-4"
+          data-testid="omni-comms-landing-tab-reference-data"
+        >
           <ReferenceSeedPanel />
         </TabsContent>
       </Tabs>
     </div>
-
   );
 };
 

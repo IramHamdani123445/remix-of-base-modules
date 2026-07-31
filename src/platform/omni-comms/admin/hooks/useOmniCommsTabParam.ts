@@ -80,3 +80,40 @@ export function useOmniCommsTabParam<T extends string>(
 
   return [current, setTab];
 }
+
+/** Health screen views, addressable via `?view=`. */
+export const OMNI_COMMS_HEALTH_VIEWS = [
+  'operational',
+  'certification',
+  'engineering',
+] as const;
+
+export type OmniCommsHealthView = (typeof OMNI_COMMS_HEALTH_VIEWS)[number];
+
+/**
+ * Bind a view switcher to `?view=`. Behaves exactly like
+ * {@link useOmniCommsTabParam} but reads and writes the `view` parameter, so a
+ * screen can carry both a coarse view and a nested `?tab=` selection.
+ */
+export function useOmniCommsViewParam<T extends string>(
+  allowed: readonly T[],
+  fallback: T,
+): [T, (next: string) => void] {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const current = useMemo(
+    () => resolveTabParam(searchParams.get('view'), allowed, fallback),
+    [searchParams, allowed, fallback],
+  );
+
+  const setView = useCallback(
+    (next: string) => {
+      const resolved = resolveTabParam(next, allowed, fallback);
+      const params = new URLSearchParams(searchParams);
+      params.set('view', resolved);
+      setSearchParams(params, { replace: true });
+    },
+    [allowed, fallback, searchParams, setSearchParams],
+  );
+
+  return [current, setView];
+}

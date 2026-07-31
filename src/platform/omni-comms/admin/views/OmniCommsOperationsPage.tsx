@@ -51,14 +51,41 @@ import RequestDetailPanel from "./operations/RequestDetailPanel";
 
 const ALL = "__all__";
 
-function ts(v: string | null): string {
+/** Quick relative windows offered instead of a free-form date picker. */
+const RANGES = [
+  { id: "24h", label: "Last 24 hours", hours: 24 },
+  { id: "7d", label: "Last 7 days", hours: 24 * 7 },
+  { id: "30d", label: "Last 30 days", hours: 24 * 30 },
+  { id: "all", label: "All time", hours: null },
+] as const;
+
+type RangeId = (typeof RANGES)[number]["id"];
+
+/** Explicit timezone rendering — operators must never guess the zone. */
+function ts(v: string | null, zone: "local" | "utc"): string {
   if (!v) return "—";
   try {
-    return new Date(v).toLocaleString();
+    const d = new Date(v);
+    if (zone === "utc") {
+      return `${d.toISOString().replace("T", " ").slice(0, 19)} UTC`;
+    }
+    return d.toLocaleString(undefined, { timeZoneName: "short" });
   } catch {
     return v;
   }
 }
+
+/** Plain-language outcome for a request row. Never invents delivery. */
+function outcomeOf(mode: string, status: string): string {
+  if (status === "blocked") return "Blocked before any message was created";
+  if (status === "failed") return "Failed during processing";
+  if (mode === "dry_run") return "Validated only — nothing was sent";
+  if (mode === "shadow") return "Rendered and held — nothing was sent";
+  if (status === "held") return "Held — awaiting a dispatch capability that does not exist yet";
+  if (status === "completed") return "Processed — no provider dispatch exists";
+  return "In progress";
+}
+
 
 export const OmniCommsOperationsPage: React.FC = () => {
   const { organizationId, departmentId, loading: tenantLoading } = useOmniCommsTenant();
@@ -72,6 +99,8 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   const [mode, setMode] = useState<string>(ALL);
   const [status, setStatus] = useState<string>(ALL);
+  const [range, setRange] = useState<RangeId>("30d");
+  const [zone, setZone] = useState<"local" | "utc">("local");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -82,6 +111,12 @@ export const OmniCommsOperationsPage: React.FC = () => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
     return () => window.clearTimeout(t);
   }, [search]);
+
+  const dateFrom = useMemo(() => {
+    const hours = RANGES.find((r) => r.id === range)?.hours ?? null;
+    if (hours === null) return null;
+    return new Date(Date.now() - hours * 3600_000).toISOString();
+  }, [range]);
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -95,6 +130,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
           departmentId,
           mode: mode === ALL ? null : (mode as RequestMode),
           status: status === ALL ? null : (status as RequestStatus),
+          dateFrom,
           search: debouncedSearch.length > 0 ? debouncedSearch : null,
           limit: OPS_PAGE_SIZE_DEFAULT,
           offset,
@@ -109,7 +145,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [client, organizationId, departmentId, mode, status, debouncedSearch, offset]);
+  }, [client, organizationId, departmentId, mode, status, dateFrom, debouncedSearch, offset]);
 
   useEffect(() => {
     void load();
@@ -117,7 +153,8 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   useEffect(() => {
     setOffset(0);
-  }, [mode, status, debouncedSearch, organizationId, departmentId]);
+  }, [mode, status, dateFrom, debouncedSearch, organizationId, departmentId]);
+
 
   const openRequest = (id: string) => {
     const next = new URLSearchParams(searchParams);
@@ -140,17 +177,16 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   if (!tenantLoading && !organizationId) {
     return (
-      <div className="p-6">
-        <OmniCommsEmptyState
-          title="Select an organisation"
-          description="Operations records are scoped to a single organisation. Choose one from the tenant selector to view runtime activity."
-        />
-      </div>
+      <OmniCommsEmptyState
+        title="Select an organisation"
+        description="Operations records are scoped to a single organisation. Choose one in the module header to view runtime activity."
+      />
     );
   }
 
   return (
-    <div className="p-6 space-y-6" data-testid="omni-comms-operations-page">
+    <div className="space-y-6" data-testid="omni-comms-operations-page">
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Operations</h1>
@@ -181,16 +217,21 @@ export const OmniCommsOperationsPage: React.FC = () => {
           <CardTitle className="text-base">Request register</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Search event, module, correlation or idempotency key"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
+              aria-label="Search requests"
               data-testid="omni-comms-ops-search"
             />
             <Select value={mode} onValueChange={setMode}>
-              <SelectTrigger className="w-[160px]" data-testid="omni-comms-ops-mode-filter">
+              <SelectTrigger
+                className="w-[160px]"
+                aria-label="Filter by mode"
+                data-testid="omni-comms-ops-mode-filter"
+              >
                 <SelectValue placeholder="Mode" />
               </SelectTrigger>
               <SelectContent>
@@ -201,7 +242,11 @@ export const OmniCommsOperationsPage: React.FC = () => {
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[200px]" data-testid="omni-comms-ops-status-filter">
+              <SelectTrigger
+                className="w-[200px]"
+                aria-label="Filter by status"
+                data-testid="omni-comms-ops-status-filter"
+              >
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -211,7 +256,35 @@ export const OmniCommsOperationsPage: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={range} onValueChange={(v) => setRange(v as RangeId)}>
+              <SelectTrigger
+                className="w-[170px]"
+                aria-label="Filter by time range"
+                data-testid="omni-comms-ops-range-filter"
+              >
+                <SelectValue placeholder="Time range" />
+              </SelectTrigger>
+              <SelectContent>
+                {RANGES.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={zone} onValueChange={(v) => setZone(v as "local" | "utc")}>
+              <SelectTrigger
+                className="w-[150px]"
+                aria-label="Timestamp timezone"
+                data-testid="omni-comms-ops-timezone"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="local">Local time</SelectItem>
+                <SelectItem value="utc">UTC</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
 
           {error ? (
             <OmniCommsEmptyState
@@ -231,13 +304,17 @@ export const OmniCommsOperationsPage: React.FC = () => {
           ) : (
             <>
               <Table data-testid="omni-comms-ops-request-table">
+                <caption className="caption-bottom pt-3 text-left text-xs text-muted-foreground">
+                  Timestamps are shown in {zone === "utc" ? "UTC" : "your local time"}.
+                  Select a row to open the full request timeline.
+                </caption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Created</TableHead>
                     <TableHead>Event</TableHead>
                     <TableHead>Module</TableHead>
                     <TableHead>Mode</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Outcome</TableHead>
                     <TableHead className="text-right">Recipients</TableHead>
                     <TableHead className="text-right">Messages</TableHead>
                     <TableHead className="text-right">Held jobs</TableHead>
@@ -248,18 +325,32 @@ export const OmniCommsOperationsPage: React.FC = () => {
                   {page.items.map((r) => (
                     <TableRow
                       key={r.id}
-                      className="cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open request ${r.event_code ?? r.id}`}
+                      className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => openRequest(r.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          openRequest(r.id);
+                        }
+                      }}
                       data-testid={`omni-comms-ops-request-row-${r.id}`}
                     >
-                      <TableCell className="text-xs">{ts(r.created_at)}</TableCell>
+                      <TableCell className="text-xs whitespace-nowrap">
+                        {ts(r.created_at, zone)}
+                      </TableCell>
                       <TableCell className="text-xs">{r.event_code ?? "—"}</TableCell>
                       <TableCell className="text-xs">{r.caller_module_code}</TableCell>
                       <TableCell className="text-xs">
                         <Badge variant="outline">{r.mode}</Badge>
                       </TableCell>
                       <TableCell className="text-xs">
-                        <Badge variant="outline">{r.status}</Badge>
+                        <span className="block font-medium">{r.status}</span>
+                        <span className="text-muted-foreground">
+                          {outcomeOf(r.mode, r.status)}
+                        </span>
                       </TableCell>
                       <TableCell className="text-xs text-right">{r.recipient_count}</TableCell>
                       <TableCell className="text-xs text-right">{r.message_count}</TableCell>
@@ -269,6 +360,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+
 
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
