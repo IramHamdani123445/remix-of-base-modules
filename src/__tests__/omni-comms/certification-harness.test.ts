@@ -13,7 +13,6 @@ const HARNESS_PATH = path.resolve(
 const src = readFileSync(HARNESS_PATH, 'utf8');
 
 const REQUIRED_SCENARIOS = [
-  'edge_revision_binding',
   'missing_jwt_rejection',
   'permission_rejection',
   'cross_tenant_rejection',
@@ -42,16 +41,46 @@ describe('Omni-Comms privileged certification harness', () => {
     expect(src).toMatch(/\$\{mode\}_creates_held_jobs_only/);
   });
 
+  it('reports a truthful, drift-proof scenario count', () => {
+    expect(src).toContain('EXPECTED_SCENARIO_COUNT');
+    expect(src).toMatch(/scenarioCountTruthful\s*=\s*results\.length === EXPECTED_SCENARIO_COUNT/);
+    expect(src).toMatch(/!scenarioCountTruthful/);
+    expect(src).toContain('duplicateScenarioNames');
+  });
+
   it('refuses to run without a full git revision', () => {
     expect(src).toMatch(/\^\[0-9a-f\]\{40\}\$/);
     expect(src).toMatch(/COMMIT_SHA.*GITHUB_SHA/s);
   });
 
-  it('binds certification to the deployed Edge revision', () => {
+  it('treats edge-revision binding as a precondition, not a scenario', () => {
     expect(src).toContain('edgeRevisionMatchesCommit');
     expect(src).toContain('OMNI_COMMS_REQUIRE_EDGE_REVISION');
     expect(src).toMatch(/requireEdgeRevision && !edgeRevisionMatchesCommit/);
+    // It must refuse before creating fixtures, never be counted as a pass.
+    expect(src).not.toContain("scenario('edge_revision_binding'");
+    expect(src).toMatch(/refuse\('deployed Edge revision does not equal the certified commit'\)/);
   });
+
+  it('asserts terminal message statuses, never the transient rendered state', () => {
+    expect(src).toContain('TERMINAL_MESSAGE_STATUS');
+    expect(src).toContain('dry_run_completed');
+    expect(src).toContain('shadow_completed');
+    expect(src).not.toMatch(/assertEqual\(row\.status, 'rendered'/);
+  });
+
+  it('scopes safety measurement to this run\'s fixtures', () => {
+    expect(src).toContain('harness_fixtures_only');
+    expect(src).toMatch(/delivery attempts \(fixture-scoped\)/);
+    expect(src).not.toMatch(/delivery attempts \(global\)/);
+  });
+
+  it('verifies recipients come from the persisted projection', () => {
+    expect(src).toContain('firstRecipientIds');
+    expect(src).toMatch(/projected vs persisted recipient ids/);
+    expect(src).toMatch(/replay recipient identity/);
+  });
+
 
   it('measures provider calls and emails instead of hardcoding zero', () => {
     expect(src).not.toMatch(/providerCallCount:\s*0\s*,/);

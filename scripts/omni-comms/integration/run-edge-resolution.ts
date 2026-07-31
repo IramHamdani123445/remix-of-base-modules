@@ -185,6 +185,25 @@ const RANDOM_ORG_ID = '00000000-0000-4000-8000-0000000000ff';
 const RANDOM_DEPARTMENT_ID = '00000000-0000-4000-8000-0000000000fe';
 const CONTRACT_VERSION = 'omni_comms.result.v1';
 
+/**
+ * The number of scenarios this harness is CONTRACTUALLY required to execute.
+ * The run fails when the executed count differs, so the reported figure can
+ * never overstate (or understate) what was actually proven.
+ */
+const EXPECTED_SCENARIO_COUNT = 19;
+
+/**
+ * Terminal message status per execution mode. A message is only transiently
+ * `rendered`; persistence immediately advances it to the mode-derived
+ * terminal status. Asserting `rendered` would certify the wrong state.
+ */
+const TERMINAL_MESSAGE_STATUS: Record<string, string> = {
+  dry_run: 'dry_run_completed',
+  shadow: 'shadow_completed',
+  queued: 'held',
+};
+
+
 function baseRequest(env: Env, prefix: string, suffix: string, mode: string) {
   return {
     eventCode: env.OMNI_COMMS_TEST_EVENT_CODE,
@@ -281,28 +300,35 @@ async function main(): Promise<void> {
   const edgeRevisionMatchesCommit =
     edgeRevision.toLowerCase() === commitSha.toLowerCase();
 
+  /* ── PREFLIGHT: source/deployment binding ──────────────────────────────
+   * Revision binding is NOT a scenario. It is a precondition: a run against
+   * an unidentified or mismatched deployment certifies nothing, so it is
+   * refused before a single fixture is created.
+   */
+  if (edgeRevision === 'unreachable') {
+    refuse('the deployed Edge Function health probe is unreachable');
+  }
+  if (requireEdgeRevision) {
+    if (edgeRevision === 'unset') {
+      refuse('deployed Edge Function does not publish OMNI_COMMS_EDGE_REVISION');
+    }
+    if (!edgeRevisionMatchesCommit) {
+      refuse('deployed Edge revision does not equal the certified commit');
+    }
+    console.log('  preflight: deployed Edge revision equals the certified commit');
+  } else {
+    console.log(
+      `  preflight: edge revision ${edgeRevision === 'unset' ? 'not published' : 'published'} ` +
+        `(non-enforcing run; matches_commit=${edgeRevisionMatchesCommit})`,
+    );
+  }
+  console.log('');
+
   let firstRequestId = '';
   let firstMessages: Array<Record<string, unknown>> = [];
+  let firstRecipientIds: string[] = [];
 
-  /* 0. The deployed Edge revision must equal the certified source revision. */
-  await scenario('edge_revision_binding', async () => {
-    assert(
-      edgeRevision !== 'unreachable',
-      'the deployed Edge Function health probe is unreachable',
-    );
-    if (!requireEdgeRevision && edgeRevision === 'unset') {
-      return 'edge revision not published (non-enforcing run)';
-    }
-    assert(
-      edgeRevision !== 'unset',
-      'deployed Edge Function does not publish OMNI_COMMS_EDGE_REVISION',
-    );
-    assert(
-      edgeRevisionMatchesCommit,
-      'deployed Edge revision does not equal the certified commit',
-    );
-    return 'deployed Edge revision equals the certified commit';
-  });
+
 
 
   /* 1. Missing JWT must be rejected at the boundary. */
@@ -425,22 +451,44 @@ async function main(): Promise<void> {
     for (const m of firstMessages) {
       assert(typeof m.messageId === 'string' && m.messageId.length > 0, 'message missing messageId');
       assert(typeof m.channel === 'string' && m.channel.length > 0, 'message missing channel');
-      assert(typeof m.status === 'string' && m.status.length > 0, 'message missing status');
+      assertEqual(m.status, TERMINAL_MESSAGE_STATUS.dry_run, 'message terminal status');
       assert('renderedChecksum' in m, 'message missing renderedChecksum key');
       assert('dispatchJobId' in m, 'message missing dispatchJobId key');
+      assertEqual(m.dispatchJobId, null, 'dry_run message must carry no dispatch job');
     }
+    // Recipients must be projected from PERSISTENCE, not echoed from input.
+    const recips = Array.isArray(r.body.recipients)
+      ? (r.body.recipients as Array<Record<string, unknown>>)
+      : [];
+    assert(recips.length > 0, 'no recipients projected on the fresh response');
+    for (const rc of recips) {
+      assert(
+        typeof rc.recipientId === 'string' && rc.recipientId.length > 0,
+        'fresh response recipient carries no persisted recipientId',
+      );
+      assert(!('email' in rc) && !('phone' in rc), 'recipient projection leaked a destination');
+    }
+    firstRecipientIds = recips.map((rc) => String(rc.recipientId));
+
+
     return `request ${firstRequestId.slice(0, 8)}…, ${firstMessages.length} message(s)`;
   });
 
   /* 6. Recipient persistence. */
   await scenario('recipient_persistence', async () => {
     assert(firstRequestId !== '', 'no first request to inspect');
-    const n = await countRows(admin, 'omni_comms_recipient', (q) =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (q as any).eq('request_id', firstRequestId));
-    assertEqual(n, 1, 'persisted recipient count');
-    return '1 recipient persisted';
+    const { data, error } = await admin
+      .from('omni_comms_recipient')
+      .select('id')
+      .eq('request_id', firstRequestId);
+    assert(!error, `recipient read failed: ${error?.message ?? ''}`);
+    const ids = ((data ?? []) as Array<{ id: string }>).map((x) => x.id).sort();
+    assertEqual(ids.length, 1, 'persisted recipient count');
+    // The response projection must be the persisted identity, not an echo.
+    assertEqual(firstRecipientIds.slice().sort(), ids, 'projected vs persisted recipient ids');
+    return '1 recipient persisted, identity matches the response projection';
   });
+
 
   /* 7. Deterministic resolution (route/template/layout/asset/sender). */
   await scenario('deterministic_resolution', async () => {
@@ -521,7 +569,14 @@ async function main(): Promise<void> {
     assertEqual(rows.map((r) => r.id).sort(), responseIds, 'persisted message ids vs response');
     let rendered = 0;
     for (const row of rows) {
-      assertEqual(row.status, 'rendered', `message ${row.id.slice(0, 8)} status`);
+      // `rendered` is transient. The persisted terminal status for a dry_run
+      // is `dry_run_completed`; asserting `rendered` would certify a state the
+      // runtime never leaves behind.
+      assertEqual(
+        row.status,
+        TERMINAL_MESSAGE_STATUS.dry_run,
+        `message ${row.id.slice(0, 8)} terminal status`,
+      );
       assert(
         typeof row.rendered_checksum === 'string' && /^[0-9a-f]{64}$/i.test(row.rendered_checksum),
         'rendered message has no sha-256 checksum',
@@ -534,6 +589,7 @@ async function main(): Promise<void> {
       assertEqual(Array.isArray(row.blockers) ? row.blockers : [], [], 'message blockers');
       rendered += 1;
     }
+
     // Response projection must carry the same checksums as persistence.
     const byId = new Map(rows.map((r) => [r.id, r.rendered_checksum]));
     for (const m of firstMessages) {
@@ -566,6 +622,17 @@ async function main(): Promise<void> {
           `${x.messageId}|${x.channel}|${x.status}|${x.renderedChecksum ?? ''}|${x.dispatchJobId ?? ''}`)
         .sort();
     assertEqual(norm(replayMessages), norm(firstMessages), 'replay message projection');
+    // Recipient projection must be identical to the fresh response and must
+    // come from the same canonical persisted source.
+    const replayRecips = Array.isArray(r.body.recipients)
+      ? (r.body.recipients as Array<Record<string, unknown>>)
+      : [];
+    assertEqual(
+      replayRecips.map((x) => String(x.recipientId)).sort(),
+      firstRecipientIds.slice().sort(),
+      'replay recipient identity',
+    );
+
     const total = await countRows(admin, 'omni_comms_request', (q) =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (q as any).like('idempotency_key', `${prefix}-main`));
@@ -670,10 +737,23 @@ async function main(): Promise<void> {
       const requestId = r.body.requestId as string;
       assert(typeof requestId === 'string' && requestId.length > 0, 'no requestId');
       const { data: msgRows } = await admin
-        .from('omni_comms_message').select('id').eq('request_id', requestId);
-      const ids = (msgRows ?? []).map((m) => (m as { id: string }).id);
+        .from('omni_comms_message').select('id, status').eq('request_id', requestId);
+      const rows = (msgRows ?? []) as Array<{ id: string; status: string }>;
+      const ids = rows.map((m) => m.id);
       assert(ids.length > 0, `${mode} produced no messages`);
       assertEqual(messagesOf(r.body).length, ids.length, 'response vs persisted message count');
+      // Terminal status is mode-derived, never the transient `rendered`.
+      for (const row of rows) {
+        assertEqual(row.status, TERMINAL_MESSAGE_STATUS[mode], `${mode} terminal message status`);
+      }
+      for (const m of messagesOf(r.body)) {
+        assertEqual(m.status, TERMINAL_MESSAGE_STATUS[mode], `${mode} response message status`);
+        assert(
+          typeof m.dispatchJobId === 'string' && m.dispatchJobId.length > 0,
+          `${mode} message carries no held dispatch job id`,
+        );
+      }
+
       const { data: jobRows, error: jobErr } = await admin
         .from('omni_comms_dispatch_job')
         .select('id, status, is_runnable, hold_reason, attempt_count, locked_at, lease_expires_at')
@@ -765,22 +845,36 @@ async function main(): Promise<void> {
     // Provider contact is measured, never assumed: a provider call can only
     // exist as a delivery attempt row, and an email can only exist as an
     // attempt against an email-channel message.
-    const { data: attemptRows, count: attempts } = await admin
-      .from('omni_comms_delivery_attempt')
-      .select('id, message_id, provider_id', { count: 'exact' });
-    deliveryAttemptCount = attempts ?? 0;
-    assertEqual(deliveryAttemptCount, 0, 'delivery attempts (global)');
-    providerCallCount = ((attemptRows ?? []) as Array<{ provider_id: string | null }>).length;
+    //
+    // The measurement is SCOPED TO THIS RUN'S FIXTURES. A global count would
+    // make the result depend on unrelated rows in the shared staging project
+    // and could fail (or pass) for reasons this harness did not cause.
+    const { data: attemptRows, error: attemptErr } = fixtureMessageIds.length
+      ? await admin
+          .from('omni_comms_delivery_attempt')
+          .select('id, message_id, provider_id')
+          .in('message_id', fixtureMessageIds)
+      : { data: [] as Array<Record<string, unknown>>, error: null };
+    assert(!attemptErr, `delivery attempt read failed: ${attemptErr?.message ?? ''}`);
+    const attempts = (attemptRows ?? []) as Array<{
+      message_id: string | null;
+      provider_id: string | null;
+    }>;
+    deliveryAttemptCount = attempts.length;
+    assertEqual(deliveryAttemptCount, 0, 'delivery attempts (fixture-scoped)');
+    providerCallCount = attempts.filter((a) => a.provider_id != null).length;
     const emailMessageIds = new Set(
       msgs.filter((m) => m.channel === 'email').map((m) => m.id),
     );
-    emailCount = ((attemptRows ?? []) as Array<{ message_id: string | null }>)
-      .filter((a) => a.message_id != null && emailMessageIds.has(a.message_id)).length;
+    emailCount = attempts.filter(
+      (a) => a.message_id != null && emailMessageIds.has(a.message_id),
+    ).length;
     assertEqual(providerCallCount, 0, 'provider calls');
     assertEqual(emailCount, 0, 'emails');
 
-    return `${messageCount} message(s), ${dispatchJobCount} held job(s), 0 runnable, 0 delivery attempts, 0 provider calls, 0 emails`;
+    return `${messageCount} message(s), ${dispatchJobCount} held job(s), 0 runnable, 0 delivery attempts, 0 provider calls, 0 emails (all fixture-scoped)`;
   });
+
 
   /* 19. Cleanup — remove exactly the fixture rows, then verify counts are 0. */
   let cleanupStatus = 'not_attempted';
@@ -843,11 +937,23 @@ async function main(): Promise<void> {
   const passed = results.filter((r) => r.passed).length;
   const failed = results.length - passed;
 
+  // The reported scenario count must be the number ACTUALLY executed, and it
+  // must equal the contractual inventory. Any drift (a scenario added, removed
+  // or silently skipped) invalidates the run rather than misreporting coverage.
+  const scenarioCountTruthful = results.length === EXPECTED_SCENARIO_COUNT;
+  const executedScenarioNames = results.map((r) => r.name);
+  const duplicateScenarioNames = executedScenarioNames.filter(
+    (n, i) => executedScenarioNames.indexOf(n) !== i,
+  );
+
   const summary = {
     commitSha,
     edgeRevision,
     edgeRevisionMatchesCommit,
+    expectedScenarioCount: EXPECTED_SCENARIO_COUNT,
     scenarioCount: results.length,
+    scenarioCountTruthful,
+    executedScenarios: executedScenarioNames,
     passedCount: passed,
     failedCount: failed,
     fixturePrefix: prefix,
@@ -859,13 +965,17 @@ async function main(): Promise<void> {
     deliveryAttemptCount,
     providerCallCount,
     emailCount,
+    safetyMeasurementScope: 'harness_fixtures_only',
   };
+
 
   // Human/CI-greppable field lines (contract consumed by the certification
   // workflow). Every value is measured, never assumed.
   console.log('');
   console.log(`commit_sha: ${commitSha}`);
-  console.log(`scenarios: ${results.length}`);
+  console.log(`scenarios: ${results.length} (expected ${EXPECTED_SCENARIO_COUNT})`);
+  console.log(`scenario_count_truthful: ${scenarioCountTruthful}`);
+  console.log(`executed_scenarios: ${executedScenarioNames.join(', ')}`);
   console.log(`passed: ${passed}`);
   console.log(`failed: ${failed}`);
   console.log(`fixture prefix: ${prefix}`);
@@ -903,15 +1013,21 @@ async function main(): Promise<void> {
     failed > 0 ||
     cleanupStatus !== 'verified_clean' ||
     safetyBreached ||
+    !scenarioCountTruthful ||
+    duplicateScenarioNames.length > 0 ||
     (requireEdgeRevision && !edgeRevisionMatchesCommit)
   ) {
     console.error(
       `[omni-comms:harness] ${failed} scenario(s) failed; cleanup=${cleanupStatus}; ` +
-        `safetyBreached=${safetyBreached}; edgeRevisionMatchesCommit=${edgeRevisionMatchesCommit}`,
+        `safetyBreached=${safetyBreached}; scenarioCountTruthful=${scenarioCountTruthful} ` +
+        `(${results.length}/${EXPECTED_SCENARIO_COUNT}); ` +
+        `duplicates=[${duplicateScenarioNames.join(',')}]; ` +
+        `edgeRevisionMatchesCommit=${edgeRevisionMatchesCommit}`,
     );
     console.error('PRIVILEGED EDGE RESOLUTION INTEGRATION NOT EXECUTED');
     process.exit(3);
   }
+
 
   // Only reachable when every semantic assertion AND cleanup verification passed.
   console.log('BUILD 3 SLICE 2C-II EDGE RESOLUTION INTEGRATION OK');

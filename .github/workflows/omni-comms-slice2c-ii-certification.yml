@@ -41,16 +41,22 @@ jobs:
           persist-credentials: false
 
       - name: Record checkout revision
+        id: revision
         run: |
           set +x
           mkdir -p .certification-logs
+          CERTIFIED_SHA="$(git rev-parse HEAD)"
           {
-            echo "commit_sha=$(git rev-parse HEAD)"
+            echo "commit_sha=$CERTIFIED_SHA"
             echo "selected_ref=${{ inputs.ref || github.sha }}"
             echo "run_id=${{ github.run_id }}"
             echo "environment=omni-comms-staging"
             echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } > .certification-logs/git-revision.txt
+          # Artifacts are named after the ACTUAL checked-out revision, never
+          # github.sha, which differs whenever `ref` selects another commit.
+          echo "certified_sha=$CERTIFIED_SHA" >> "$GITHUB_OUTPUT"
+
           if [ -n "$(git status --short)" ]; then
             echo "FAIL — working tree has unexpected tracked modifications:"
             git status --short
@@ -379,7 +385,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: omni-comms-slice2c-ii-certification-${{ github.sha }}
+          name: omni-comms-slice2c-ii-certification-${{ steps.revision.outputs.certified_sha || github.sha }}
           path: .certification-logs/
           retention-days: 14
           if-no-files-found: warn
