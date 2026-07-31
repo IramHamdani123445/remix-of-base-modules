@@ -39,6 +39,7 @@ import {
 import { runArchitectureChecks } from '@/platform/omni-comms/architecture/runArchitectureChecks';
 import type { RepositoryScan } from '@/platform/omni-comms/architecture/architectureCheck.types';
 import type { SendCommunicationResult } from '@/platform/omni-comms/sendCommunication';
+import { OMNI_COMMS_RESULT_CONTRACT_VERSION } from '@/platform/omni-comms/runtime/responseContract';
 
 const REPO_ROOT = process.cwd();
 const SERVICE = 'src/platform/omni-comms/application/controlledDryRunService.ts';

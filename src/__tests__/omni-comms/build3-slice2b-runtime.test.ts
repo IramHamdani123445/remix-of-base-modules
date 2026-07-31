@@ -33,6 +33,7 @@ import {
   CanonicalizationError,
 } from '@/platform/omni-comms/runtime/canonicalize';
 import { computeRequestFingerprint } from '@/platform/omni-comms/runtime/fingerprint';
+import { OMNI_COMMS_RESULT_CONTRACT_VERSION } from '@/platform/omni-comms/runtime/responseContract';
 import {
   executeSendCommunication,
   type RuntimeTransport,

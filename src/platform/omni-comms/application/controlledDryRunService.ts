@@ -23,6 +23,7 @@ import {
   sendCommunication,
   type SendCommunicationInput,
   type SendCommunicationResult,
+  buildBlockedResult,
 } from '../sendCommunication';
 import type { OmniCommsRpcClient } from './eventCatalogueService';
 import { callOmniCommsRpc } from './omniCommsRpcCall';
