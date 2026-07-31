@@ -102924,10 +102924,23 @@ export type Database = {
         Returns: undefined
       }
       omni_comms_priv_reference_seed_catalogue: { Args: never; Returns: Json }
+      omni_comms_priv_reference_seed_catalogue_v2: {
+        Args: never
+        Returns: Json
+      }
       omni_comms_priv_reference_seed_run: {
         Args: {
           p_actor_id: string
           p_apply: boolean
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_reference_seed_run_v2: {
+        Args: {
+          p_actor_id: string
+          p_correlation_id?: string
+          p_mode: string
           p_organization_id: string
         }
         Returns: Json
@@ -102995,7 +103008,7 @@ export type Database = {
       }
       omni_comms_priv_verify_department_ownership: {
         Args: { p_department_id: string; p_organization_id: string }
-        Returns: undefined
+        Returns: boolean
       }
       omni_comms_priv_write_audit: {
         Args: {
@@ -103093,6 +103106,14 @@ export type Database = {
       }
       omni_comms_reference_seed_preview: {
         Args: { p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_reference_seed_reconcile: {
+        Args: {
+          p_confirm_non_production: boolean
+          p_correlation_id: string
+          p_organization_id: string
+        }
         Returns: Json
       }
       omni_comms_reference_seed_status: {

@@ -18,8 +18,10 @@ import { OmniCommsRpcError } from './eventCatalogueTypes';
 import {
   REFERENCE_SEED_OBJECT_LABELS,
   type ReferenceSeedAction,
+  type ReferenceSeedCoverageRow,
   type ReferenceSeedGroup,
   type ReferenceSeedObjectType,
+  type ReferenceSeedReadinessRow,
   type ReferenceSeedRunResult,
   type ReferenceSeedStatus,
 } from './referenceSeedTypes';
@@ -72,6 +74,27 @@ export function applyReferenceSeed(
   );
 }
 
+/**
+ * Repairs seed-owned records that exist but are incomplete (unpublished
+ * contracts or templates, draft families/routes, missing layout selection).
+ * Administrator-owned records are never modified — they are reported as
+ * conflicts instead.
+ */
+export function reconcileReferenceSeed(
+  client: OmniCommsRpcClient,
+  input: ApplyReferenceSeedInput,
+): Promise<ReferenceSeedRunResult> {
+  return callOmniCommsRpc<ReferenceSeedRunResult>(
+    client,
+    'omni_comms_reference_seed_reconcile',
+    {
+      p_organization_id: input.organizationId,
+      p_confirm_non_production: input.confirmNonProduction === true,
+      p_correlation_id: input.correlationId ?? null,
+    },
+  );
+}
+
 // ─── Pure derivation ─────────────────────────────────────────────────────
 
 const GROUP_ORDER: ReferenceSeedObjectType[] = [
@@ -99,6 +122,8 @@ export function groupReferenceSeedActions(
       planned: 0,
       created: 0,
       existing: 0,
+      conflicts: 0,
+      blocked: 0,
       keys: [],
     });
   }
@@ -107,11 +132,24 @@ export function groupReferenceSeedActions(
     if (!group) continue;
     if (action.action === 'planned') group.planned += 1;
     if (action.action === 'created') group.created += 1;
-    if (action.action === 'existing') group.existing += 1;
+    if (action.action === 'existing' || action.action === 'existing_compatible')
+      group.existing += 1;
+    if (action.action === 'conflict') group.conflicts += 1;
+    if (action.action === 'blocked') group.blocked += 1;
     group.keys.push(action.key);
   }
   return GROUP_ORDER.map((t) => groups.get(t) as ReferenceSeedGroup).filter(
-    (g) => g.planned + g.created + g.existing > 0,
+    (g) => g.planned + g.created + g.existing + g.conflicts + g.blocked > 0,
+  );
+}
+
+/** Every action that needs an operator decision, in display order. */
+export function reconcilableActions(
+  result: ReferenceSeedRunResult | null,
+): ReferenceSeedAction[] {
+  if (!result) return [];
+  return result.actions.filter(
+    (a) => a.action === 'conflict' || a.action === 'blocked',
   );
 }
 
@@ -127,14 +165,76 @@ export function isSeedSafe(status: ReferenceSeedStatus | null): boolean {
 
 /** True when the catalogue is fully present for the selected organisation. */
 export function isSeedComplete(status: ReferenceSeedStatus | null): boolean {
-  if (!status) return false;
-  return (
-    status.present_events >= status.expected_events &&
-    status.present_routes >= status.expected_channel_bindings &&
-    status.present_published_versions >= status.expected_channel_bindings &&
-    status.present_senders >= status.expected_senders &&
-    status.present_accounts >= status.expected_accounts
-  );
+  return status?.catalogue_complete === true;
+}
+
+/** Per-object coverage matrix: expected vs present. */
+export function referenceSeedCoverage(
+  status: ReferenceSeedStatus | null,
+): ReferenceSeedCoverageRow[] {
+  if (!status) return [];
+  const row = (
+    key: string,
+    label: string,
+    expected: number,
+    present: number,
+  ): ReferenceSeedCoverageRow => ({
+    key,
+    label,
+    expected,
+    present,
+    complete: present >= expected,
+  });
+  return [
+    row('providers', 'Simulation providers', status.expected_providers, status.present_providers),
+    row('accounts', 'Simulation provider accounts', status.expected_accounts, status.present_accounts),
+    row('senders', 'Sender identities', status.expected_senders, status.present_senders),
+    row('bindings', 'Sender / provider bindings', status.expected_bindings, status.present_bindings),
+    row('channel_settings', 'Channel settings', status.expected_channel_settings, status.present_channel_settings),
+    row('events', 'Active event definitions', status.expected_events, status.present_events),
+    row('contracts', 'Published event contracts', status.expected_contracts, status.present_published_contracts),
+    row('families', 'Template families', status.expected_families, status.present_families),
+    row('versions', 'Published template versions', status.expected_channel_bindings, status.present_published_versions),
+    row('layouts', 'Valid layout selections', status.expected_channel_bindings, status.valid_layout_selections),
+    row('routes', 'Active event routes', status.expected_channel_bindings, status.present_routes),
+  ];
+}
+
+/** Readiness gates, deliberately keeping live sending permanently unready. */
+export function referenceSeedReadiness(
+  status: ReferenceSeedStatus | null,
+): ReferenceSeedReadinessRow[] {
+  if (!status) return [];
+  return [
+    {
+      key: 'configuration',
+      label: 'Reference configuration complete',
+      ready: status.reference_configuration_ready,
+      detail: `${status.present_routes}/${status.expected_channel_bindings} routes, ${status.conflicts} conflicts, ${status.unresolved_required_assets} unresolved assets`,
+    },
+    {
+      key: 'dry_run_ready',
+      label: 'Controlled dry-run ready',
+      ready: status.controlled_dry_run_ready,
+      detail:
+        status.live_delivery_enabled_channels === 0
+          ? 'At least one published template and route with live delivery disabled'
+          : 'Live delivery must be disabled',
+    },
+    {
+      key: 'dry_run_verified',
+      label: 'Controlled dry-run verified',
+      ready: status.controlled_dry_run_verified,
+      detail: `${status.completed_reference_dry_runs}/${status.reference_dry_run_requests} reference dry-runs completed`,
+    },
+    {
+      key: 'live',
+      label: 'Live sending readiness',
+      ready: false,
+      detail:
+        'Permanently not ready — simulation providers can never satisfy live sending.',
+    },
+  ];
 }
 
 /** Total number of records the seed would create for a preview result. */

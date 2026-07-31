@@ -18,7 +18,11 @@
  *
  * Data sources are the canonical enterprise tables already used by the ERP:
  *   - `core_organization` for authorised organisations
- *   - `core_department_profile` for departments belonging to the selected org
+ *   - `core_department` for departments belonging to the selected org.
+ *     This is the same table the Omni-Comms department-ownership guard
+ *     validates against, so selected department ids always match the ids
+ *     stored on Omni-Comms configuration rows.
+
  *
  * Selection state is held in React state (no page reload) and mirrored to
  * sessionStorage for cross-tab stability inside a single Omni-Comms session.
@@ -151,23 +155,25 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
     }
     try {
       const { data, error: err } = await sb
-        .from("core_department_profile")
-        .select("id, department_code, department_name, organization_id")
+        .from("core_department")
+        .select("id, code, name, organization_id, is_active")
         .eq("organization_id", orgId)
-        .order("department_name", { ascending: true });
+        .eq("is_active", true)
+        .order("name", { ascending: true });
       if (err) throw err;
       const rows = (data ?? []) as Array<{
         id: string;
-        department_code: string | null;
-        department_name: string | null;
+        code: string | null;
+        name: string | null;
         organization_id: string;
       }>;
       const mapped: OmniCommsDepartmentOption[] = rows.map((r) => ({
         id: r.id,
-        name: r.department_name ?? r.department_code ?? r.id,
-        code: r.department_code ?? null,
+        name: r.name ?? r.code ?? r.id,
+        code: r.code ?? null,
         organizationId: r.organization_id,
       }));
+
       setDepts(mapped);
       // Reset department if it no longer belongs to the selected org.
       if (departmentId && !mapped.some((d) => d.id === departmentId)) {

@@ -48,6 +48,7 @@ export const REFERENCE_SEED_ALLOWED_RPCS = new Set([
   'omni_comms_reference_seed_status',
   'omni_comms_reference_seed_preview',
   'omni_comms_reference_seed_apply',
+  'omni_comms_reference_seed_reconcile',
 ]);
 
 const RPC_LITERAL_RE = /['"`](omni_comms_[a-z0-9_]+)['"`]/g;
