@@ -57,18 +57,60 @@ const OMNI_COMMS_DEFAULT_CALLER_MODULE = "OMNI_COMMS_DIRECT";
 const BUILD_TAG = "omni-comms-runtime@2c-iii-auth";
 // Source revision this deployment was built from. Set as a function secret at
 // deploy time (OMNI_COMMS_EDGE_REVISION=<git sha>). Certification binds the
-// harness run to this value; when absent the deployment is UNVERIFIED and the
-// privileged workflow refuses to certify.
-const DEPLOYED_REVISION = Deno.env.get("OMNI_COMMS_EDGE_REVISION") ?? null;
-/**
- * Recorded certification state for THIS deployed revision. Only the
- * privileged certification workflow sets this value; the default is
- * "pending" so an unset environment can never imply certification.
- */
-const CERTIFICATION_STATE = (() => {
-  const raw = (Deno.env.get("OMNI_COMMS_CERTIFICATION_STATE") ?? "").trim().toLowerCase();
-  return raw === "certified" || raw === "failed" ? raw : "pending";
+// harness run to this value; when absent, shortened or malformed the
+// deployment is UNVERIFIED and can never be treated as certified.
+const OMNI_COMMS_REVISION_PATTERN = /^[0-9a-fA-F]{40}$/;
+const DEPLOYED_REVISION = (() => {
+  const raw = (Deno.env.get("OMNI_COMMS_EDGE_REVISION") ?? "").trim();
+  return raw === "" ? null : raw;
 })();
+const REVISION_VERIFIED = DEPLOYED_REVISION !== null &&
+  OMNI_COMMS_REVISION_PATTERN.test(DEPLOYED_REVISION);
+/**
+ * Certification is NOT read from a function secret. The database certification
+ * record is the single authoritative source; this runtime only reports the
+ * bounded posture returned by a service-role-only, read-only RPC.
+ */
+const FAIL_CLOSED_POSTURE = {
+  certificationState: "pending",
+  certifiedCommit: null as string | null,
+  environment: "unknown",
+  revisionMatch: "unknown",
+  safeTestPermitted: false,
+  safeTestBlockedReason: "runtime_certification_required",
+};
+
+async function readServerCertificationPosture(): Promise<
+  typeof FAIL_CLOSED_POSTURE
+> {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return FAIL_CLOSED_POSTURE;
+  try {
+    const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data, error } = await svc.rpc(
+      "omni_comms_priv_runtime_health_posture",
+      { p_deployed_revision: REVISION_VERIFIED ? DEPLOYED_REVISION : null },
+    );
+    if (error || !data || typeof data !== "object") return FAIL_CLOSED_POSTURE;
+    const row = data as Record<string, unknown>;
+    return {
+      certificationState: typeof row.certificationState === "string"
+        ? row.certificationState
+        : "pending",
+      certifiedCommit: typeof row.certifiedCommit === "string"
+        ? row.certifiedCommit
+        : null,
+      environment: typeof row.environment === "string" ? row.environment : "unknown",
+      revisionMatch: typeof row.revisionMatch === "string" ? row.revisionMatch : "unknown",
+      safeTestPermitted: row.safeTestPermitted === true && REVISION_VERIFIED,
+      safeTestBlockedReason: typeof row.safeTestBlockedReason === "string"
+        ? row.safeTestBlockedReason
+        : null,
+    } as typeof FAIL_CLOSED_POSTURE;
+  } catch {
+    return FAIL_CLOSED_POSTURE;
+  }
+}
+
 
 type Mode = "dry_run" | "shadow" | "queued";
 
