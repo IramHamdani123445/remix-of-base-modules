@@ -217,16 +217,21 @@ export const OmniCommsOperationsPage: React.FC = () => {
           <CardTitle className="text-base">Request register</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Input
               placeholder="Search event, module, correlation or idempotency key"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
+              aria-label="Search requests"
               data-testid="omni-comms-ops-search"
             />
             <Select value={mode} onValueChange={setMode}>
-              <SelectTrigger className="w-[160px]" data-testid="omni-comms-ops-mode-filter">
+              <SelectTrigger
+                className="w-[160px]"
+                aria-label="Filter by mode"
+                data-testid="omni-comms-ops-mode-filter"
+              >
                 <SelectValue placeholder="Mode" />
               </SelectTrigger>
               <SelectContent>
@@ -237,7 +242,11 @@ export const OmniCommsOperationsPage: React.FC = () => {
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[200px]" data-testid="omni-comms-ops-status-filter">
+              <SelectTrigger
+                className="w-[200px]"
+                aria-label="Filter by status"
+                data-testid="omni-comms-ops-status-filter"
+              >
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -247,7 +256,35 @@ export const OmniCommsOperationsPage: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={range} onValueChange={(v) => setRange(v as RangeId)}>
+              <SelectTrigger
+                className="w-[170px]"
+                aria-label="Filter by time range"
+                data-testid="omni-comms-ops-range-filter"
+              >
+                <SelectValue placeholder="Time range" />
+              </SelectTrigger>
+              <SelectContent>
+                {RANGES.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={zone} onValueChange={(v) => setZone(v as "local" | "utc")}>
+              <SelectTrigger
+                className="w-[150px]"
+                aria-label="Timestamp timezone"
+                data-testid="omni-comms-ops-timezone"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="local">Local time</SelectItem>
+                <SelectItem value="utc">UTC</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
 
           {error ? (
             <OmniCommsEmptyState
