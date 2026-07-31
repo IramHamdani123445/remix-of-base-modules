@@ -597,6 +597,11 @@ const RoutesTabHost: React.FC = () => {
 };
 
 export const OmniCommsEventsPage: React.FC = () => {
+  // URL-controlled: ?tab=definitions|contracts|routes|simulator
+  const [eventTab, setEventTab] = useOmniCommsTabParam(
+    OMNI_COMMS_EVENT_TABS,
+    "definitions",
+  );
   return (
     <div className="container mx-auto p-6 space-y-6" data-testid="oc-events-page">
       <div className="flex items-center gap-3">

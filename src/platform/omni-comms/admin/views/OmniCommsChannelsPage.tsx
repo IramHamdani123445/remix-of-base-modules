@@ -79,6 +79,12 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // URL-controlled: ?tab=providers|accounts|senders|bindings|settings
+  const [channelTab, setChannelTab] = useOmniCommsTabParam(
+    OMNI_COMMS_CHANNEL_TABS,
+    "providers",
+  );
+
   if (!orgId) {
     return (
       <div className="container mx-auto p-6 space-y-4" data-testid="omni-comms-channels-page">
