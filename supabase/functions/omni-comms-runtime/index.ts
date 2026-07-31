@@ -60,6 +60,15 @@ const BUILD_TAG = "omni-comms-runtime@2c-iii-auth";
 // harness run to this value; when absent the deployment is UNVERIFIED and the
 // privileged workflow refuses to certify.
 const DEPLOYED_REVISION = Deno.env.get("OMNI_COMMS_EDGE_REVISION") ?? null;
+/**
+ * Recorded certification state for THIS deployed revision. Only the
+ * privileged certification workflow sets this value; the default is
+ * "pending" so an unset environment can never imply certification.
+ */
+const CERTIFICATION_STATE = (() => {
+  const raw = (Deno.env.get("OMNI_COMMS_CERTIFICATION_STATE") ?? "").trim().toLowerCase();
+  return raw === "certified" || raw === "failed" ? raw : "pending";
+})();
 
 type Mode = "dry_run" | "shadow" | "queued";
 
@@ -123,7 +132,10 @@ Deno.serve(async (req: Request) => {
         revision: DEPLOYED_REVISION,
         revisionVerified: DEPLOYED_REVISION !== null,
         available: true,
-        certificationState: "not_certified",
+        // Certification is recorded by the privileged workflow, never by this
+        // function. Absent an explicit recorded state the runtime reports
+        // "pending" — it never reports itself as certified.
+        certificationState: CERTIFICATION_STATE,
         liveDeliveryEnabled: false,
         checkedAt: new Date().toISOString(),
       });
@@ -226,6 +238,7 @@ Deno.serve(async (req: Request) => {
         p_mode: canonical.mode,
         p_channels: canonical.requestedChannels,
         p_recipients: canonical.recipients,
+        p_deployed_revision: DEPLOYED_REVISION,
       },
     );
     if (guardError) {
