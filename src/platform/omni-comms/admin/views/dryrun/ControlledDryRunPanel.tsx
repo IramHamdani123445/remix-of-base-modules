@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useOmniCommsTenant } from "@/platform/omni-comms/context/OmniCommsTenantContext";
 import { useOmniCommsRpcClient } from "@/platform/omni-comms/admin/hooks/useOmniCommsRpcClient";
+import { useOmniCommsCertificationPosture } from "@/platform/omni-comms/admin/hooks/useOmniCommsCertificationPosture";
 import {
   getEventContract,
   listAllEventDefinitionsForPicker,
@@ -62,6 +63,7 @@ import {
   buildSafeSkeletonPayload,
   buildSyntheticRecipient,
   executeControlledDryRun,
+  executionBlockedMessage,
   getControlledDryRunGate,
   isExecutionPermitted,
   isValidationStale,
@@ -117,6 +119,9 @@ export const ControlledDryRunPanel: React.FC = () => {
   const { organizationId, departmentId, loading: tenantLoading } =
     useOmniCommsTenant();
   const rpc = useOmniCommsRpcClient();
+  // Certification wording comes from the shared derivation; the AUTHORITATIVE
+  // permission to execute comes from the server gate below.
+  const { posture: certification } = useOmniCommsCertificationPosture();
 
   const [gate, setGate] = React.useState<DryRunGate | null>(null);
   const [gateLoading, setGateLoading] = React.useState(true);
@@ -283,6 +288,8 @@ export const ControlledDryRunPanel: React.FC = () => {
 
   const parsed = parsePayloadText(payloadText);
 
+  const serverBlockedMessage = executionBlockedMessage(gate);
+
   const executionPermitted =
     isExecutionPermitted(gate, dryRunReady) &&
     Boolean(organizationId) &&
@@ -400,13 +407,38 @@ export const ControlledDryRunPanel: React.FC = () => {
         </AlertDescription>
       </Alert>
 
+      {serverBlockedMessage ? (
+        <Alert
+          variant="destructive"
+          data-testid="omni-comms-dry-run-execution-blocked"
+        >
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>The server did not permit the safe dry test</AlertTitle>
+          <AlertDescription className="space-y-1">
+            <p>{serverBlockedMessage}</p>
+            <p className="text-xs">
+              This decision is made on the server. Nothing on this screen can
+              override it.
+            </p>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <Alert data-testid="omni-comms-dry-run-certification-posture">
+        <FlaskConical className="h-4 w-4" />
+        <AlertTitle>Certification posture</AlertTitle>
+        <AlertDescription className="text-sm">
+          {certification.reason}
+        </AlertDescription>
+      </Alert>
+
       {!gateEnabled ? (
         <Alert variant="destructive" data-testid="omni-comms-dry-run-gate-closed">
           <ShieldAlert className="h-4 w-4" />
           <AlertTitle>
             {gate?.state === "disabled"
-              ? "Controlled dry run is disabled"
-              : "Controlled dry run is unavailable"}
+              ? "The safe dry test is disabled"
+              : "The safe dry test is unavailable"}
           </AlertTitle>
           <AlertDescription>
             {gate?.reason ?? "The server did not permit this surface."}
@@ -615,7 +647,7 @@ export const ControlledDryRunPanel: React.FC = () => {
             ) : (
               <FlaskConical className="h-4 w-4 mr-1" />
             )}
-            Run dry-run test
+            Run safe dry test
           </Button>
           <p className="text-xs text-muted-foreground">
             Idempotency key:{" "}
@@ -721,7 +753,7 @@ export const ControlledDryRunPanel: React.FC = () => {
                 </Button>
               ) : null}
               <Button size="sm" variant="ghost" onClick={onNewRun}>
-                Start a new dry run
+                Start a new safe test
               </Button>
             </div>
           </CardContent>
@@ -731,7 +763,7 @@ export const ControlledDryRunPanel: React.FC = () => {
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Run a controlled dry-run test?</AlertDialogTitle>
+            <AlertDialogTitle>Run the safe dry test?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 <p>
@@ -752,7 +784,7 @@ export const ControlledDryRunPanel: React.FC = () => {
               onClick={() => void onExecute()}
               data-testid="omni-comms-dry-run-confirm"
             >
-              Run dry run
+              Run safe dry test
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
