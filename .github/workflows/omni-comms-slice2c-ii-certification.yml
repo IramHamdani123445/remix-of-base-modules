@@ -91,10 +91,16 @@ jobs:
 
           [ -n "$SUPABASE_URL" ] || fail "SUPABASE_URL missing"
           [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || fail "SUPABASE_SERVICE_ROLE_KEY missing"
+          [ -n "$SUPABASE_ANON_KEY" ] || fail "SUPABASE_ANON_KEY missing"
           [ -n "$OMNI_COMMS_TEST_USER_JWT" ] || fail "OMNI_COMMS_TEST_USER_JWT missing"
+          [ -n "$OMNI_COMMS_TEST_UNPRIVILEGED_JWT" ] || fail "OMNI_COMMS_TEST_UNPRIVILEGED_JWT missing"
+          [ "$OMNI_COMMS_TEST_USER_JWT" != "$OMNI_COMMS_TEST_UNPRIVILEGED_JWT" ] \
+            || fail "privileged and unprivileged JWTs are identical"
           [ -n "$OMNI_COMMS_STAGING_DB_URL" ] || fail "OMNI_COMMS_STAGING_DB_URL missing"
           [ -n "$OMNI_COMMS_TEST_ORGANIZATION_ID" ] || fail "OMNI_COMMS_TEST_ORGANIZATION_ID missing"
           [ -n "$OMNI_COMMS_TEST_DEPARTMENT_ID" ] || fail "OMNI_COMMS_TEST_DEPARTMENT_ID missing"
+          [ -n "$OMNI_COMMS_TEST_EVENT_CODE" ] || fail "OMNI_COMMS_TEST_EVENT_CODE missing"
+
 
           # Reject placeholder-like values without echoing them.
           for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY OMNI_COMMS_TEST_USER_JWT OMNI_COMMS_STAGING_DB_URL; do
