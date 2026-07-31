@@ -167,20 +167,26 @@ Deno.serve(async (req: Request) => {
   if (req.method === "GET") {
     const url = new URL(req.url);
     if (url.pathname.endsWith("/health")) {
+      const posture = await readServerCertificationPosture();
       return json({
         function: "omni-comms-runtime",
         buildTag: BUILD_TAG,
         runtimeVersion: "2c-iii",
         revision: DEPLOYED_REVISION,
-        revisionVerified: DEPLOYED_REVISION !== null,
+        revisionVerified: REVISION_VERIFIED,
         available: true,
-        // Certification is recorded by the privileged workflow, never by this
-        // function. Absent an explicit recorded state the runtime reports
-        // "pending" — it never reports itself as certified.
-        certificationState: CERTIFICATION_STATE,
+        // Certification comes from the authoritative database record read via
+        // a service-role-only, read-only RPC. This function never decides.
+        certificationState: posture.certificationState,
+        certifiedCommit: posture.certifiedCommit,
+        environment: posture.environment,
+        revisionMatch: posture.revisionMatch,
+        safeTestPermitted: posture.safeTestPermitted,
+        safeTestBlockedReason: posture.safeTestBlockedReason,
         liveDeliveryEnabled: false,
         checkedAt: new Date().toISOString(),
       });
+
     }
     return blocked(null, "invalid_input", 404);
   }
