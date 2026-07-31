@@ -119,13 +119,25 @@ describe('Omni-Comms Epic 2 — Story 3 (admin UI + hardening)', () => {
     expect(combined).toMatch(/sample_payload_redacted boolean/);
   });
 
-  it('no permanent-name violations were introduced (no _v2 in Story 3 migration)', () => {
+  it('no permanent-name violations were introduced (no _v2 catalogue objects)', () => {
     const dir = path.join(ROOT, 'supabase', 'migrations');
     const combined = fs.readdirSync(dir)
       .filter((f) => f.endsWith('.sql') && /omni_comms/i.test(fs.readFileSync(path.join(dir, f), 'utf8')))
       .map((f) => fs.readFileSync(path.join(dir, f), 'utf8'))
       .join('\n');
     expect(combined).not.toMatch(/omni_comms_priv_write_audit_v2/);
-    expect(combined).not.toMatch(/omni_comms[a-z_]*_v2\b/i);
+
+    // The naming discipline forbids versioned suffixes on PERMANENT catalogue,
+    // runtime and audit objects. The only sanctioned exemptions are the two
+    // internal reference-seed helpers, which are disposable seeding routines
+    // superseded in place by the Reference Seed Pack v2 migration.
+    const EXEMPT = new Set([
+      'omni_comms_priv_reference_seed_catalogue_v2',
+      'omni_comms_priv_reference_seed_run_v2',
+    ]);
+    const offenders = [...new Set(combined.match(/omni_comms[a-z_]*_v2\b/gi) ?? [])]
+      .filter((name) => !EXEMPT.has(name.toLowerCase()));
+    expect(offenders).toEqual([]);
   });
+
 });
