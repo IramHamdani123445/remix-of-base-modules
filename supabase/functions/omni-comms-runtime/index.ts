@@ -187,7 +187,31 @@ Deno.serve(async (req: Request) => {
     ? (input.correlationId as string).trim()
     : null;
 
+  // 3a. Trusted administration dry-run guard. Applies ONLY to the bounded
+  // administration test caller; business-module behaviour is unchanged.
+  // Enforced BEFORE any runtime persistence occurs.
+  if (callerModule === "OMNI_COMMS_ADMIN_DRY_RUN") {
+    const { data: guardData, error: guardError } = await admin.rpc(
+      "omni_comms_priv_admin_dry_run_guard",
+      {
+        p_actor_id: userId,
+        p_mode: canonical.mode,
+        p_channels: canonical.requestedChannels,
+        p_recipients: canonical.recipients,
+      },
+    );
+    if (guardError) {
+      console.log(`[${BUILD_TAG}] admin_dry_run_guard_error`);
+      return blocked(input, mapRpcErrorToCode(guardError));
+    }
+    const guard = (guardData ?? {}) as { allowed?: boolean; code?: string };
+    if (guard.allowed !== true) {
+      return blocked(input, guard.code ?? "admin_dry_run_recipient_invalid");
+    }
+  }
+
   const { data: sendData, error: sendError } = await admin.rpc(
+
     "omni_comms_priv_send_communication",
     {
       p_actor_id: userId,
