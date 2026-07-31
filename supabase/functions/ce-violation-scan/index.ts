@@ -715,22 +715,69 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           }
 
           case "payment_not_received": {
-            if (payment && !payment.has_recent_payment && filing?.total_filings_12m > 0) {
-              shouldFlag = true;
-              summary = `Non-payment: No payment received in last 60 days despite active filing. Last payment: ${payment.last_payment_date || "Never"}.`;
-              periodFrom = asOfPeriod;
+            // Per-period: a declared C3 with no money received for that period
+            // once the payment due date (+ grace) has passed.
+            const cap = Math.min(
+              ABSOLUTE_CAP_MONTHS,
+              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
+            );
+            const graceDays = Number(rule.parameters?.grace_period_days ?? 0);
+            const dueDay = Number(rule.parameters?.payment_due_day ?? 28);
+            const today = new Date(asOfDate);
+            const c3 = c3ByEmp.get(emp.regno);
+            const paid = payByEmp.get(emp.regno);
+            if (c3) {
+              for (const ym of periodsInScope(emp.regno, cap)) {
+                const rec = c3.get(ym);
+                if (!rec || rec.declared <= 0) continue;
+                const [y, m] = ym.split("-").map((n) => parseInt(n, 10));
+                const dueDate = new Date(y, m, dueDay + graceDays);
+                if (today < dueDate) continue;
+                const amountPaid = paid?.get(ym) || 0;
+                if (amountPaid <= 0) {
+                  pushPeriod(
+                    emp,
+                    ym,
+                    `Non-payment: contributions of $${rec.declared.toLocaleString()} declared for ${ym} but no payment received by ${dueDate.toISOString().slice(0, 10)}.`,
+                  );
+                }
+              }
             }
+            shouldFlag = false;
             break;
           }
 
           case "payment_partial": {
-            if (arrear?.has_arrears && payment?.has_recent_payment && arrear.total_outstanding > 0) {
-              shouldFlag = true;
-              summary = `Partial payment: Outstanding balance of $${Number(arrear.total_outstanding).toLocaleString()} despite recent payments.`;
-              periodFrom = asOfPeriod;
+            // Per-period shortfall between declared C3 and money received.
+            const cap = Math.min(
+              ABSOLUTE_CAP_MONTHS,
+              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
+            );
+            const minAmt = Number(rule.parameters?.min_shortfall_amount_xcd ?? 0);
+            const minPct = Number(rule.parameters?.min_shortfall_percent ?? 0);
+            const c3 = c3ByEmp.get(emp.regno);
+            const paid = payByEmp.get(emp.regno);
+            if (c3 && paid) {
+              for (const ym of periodsInScope(emp.regno, cap)) {
+                const rec = c3.get(ym);
+                if (!rec || rec.declared <= 0) continue;
+                const amountPaid = paid.get(ym) || 0;
+                if (amountPaid <= 0) continue; // handled by non-payment rule
+                const shortfall = rec.declared - amountPaid;
+                if (shortfall <= 0) continue;
+                const pct = (shortfall / rec.declared) * 100;
+                if (shortfall < minAmt || pct < minPct) continue;
+                pushPeriod(
+                  emp,
+                  ym,
+                  `Partial payment: ${ym} declared $${rec.declared.toLocaleString()}, paid $${amountPaid.toLocaleString()}, shortfall $${shortfall.toLocaleString()} (${pct.toFixed(1)}%).`,
+                );
+              }
             }
+            shouldFlag = false;
             break;
           }
+
 
           case "repeat_violation_check": {
             const threshold = rule.parameters?.repeat_threshold ?? 3;
