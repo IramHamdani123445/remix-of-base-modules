@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Approved logical object catalogue (20 objects: the 19 foundation objects plus the caller-module authorisation registry).
+ * Omni-Comms — Approved logical object catalogue (21 objects: the 19 foundation objects, the caller-module authorisation registry and the runtime-environment configuration record).
  *
  * This is the CEILING for the new system. No object listed here has been
  * created. This file does not create tables, policies, functions, or types.
@@ -183,6 +183,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
       'Maps a permitted caller module code to the business capability an actor must hold to submit communications on its behalf.',
     status: 'AVAILABLE',
     introductionStory: 'Accelerated Build 3 — Certification hardening',
+  },
+  {
+    name: 'omni_comms_runtime_environment',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Singleton runtime-environment configuration record (unknown | non_production | production); the sole authoritative environment source for the certification posture.',
+    status: 'AVAILABLE',
+    introductionStory: 'Gate 3 — Path 2 runtime environment record',
   },
   {
     name: 'omni_comms_webhook_event',

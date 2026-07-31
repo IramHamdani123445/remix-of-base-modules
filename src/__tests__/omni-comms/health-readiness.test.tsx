@@ -144,7 +144,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     const notCreated = all.filter(
       (o) => o.status === 'Registered in architecture catalogue — Not yet created',
     );
-    expect(notCreated.length + available.length).toBe(20);
+    expect(notCreated.length + available.length).toBe(21);
   });
 
   it('shows reserved edge functions as Not created and Available ones as Available', () => {
