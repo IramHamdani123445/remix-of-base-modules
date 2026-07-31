@@ -11,7 +11,7 @@
 // what guarantees a replay returns the same messages and statuses as the
 // original call.
 
-export const OMNI_COMMS_RESULT_CONTRACT_VERSION = "omni-comms.result.v1";
+export const OMNI_COMMS_RESULT_CONTRACT_VERSION = "omni_comms.result.v1";
 
 export const OMNI_COMMS_SEND_MODES = ["dry_run", "shadow", "queued"] as const;
 export type OmniCommsSendMode = (typeof OMNI_COMMS_SEND_MODES)[number];

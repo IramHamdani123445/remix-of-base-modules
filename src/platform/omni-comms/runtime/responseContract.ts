@@ -24,7 +24,7 @@
  *   * The contract carries no rendered content, no PII, and no provider detail.
  */
 
-export const OMNI_COMMS_RESULT_CONTRACT_VERSION = 'omni-comms.result.v1';
+export const OMNI_COMMS_RESULT_CONTRACT_VERSION = 'omni_comms.result.v1';
 
 export const OMNI_COMMS_SEND_MODES = ['dry_run', 'shadow', 'queued'] as const;
 export type OmniCommsSendMode = (typeof OMNI_COMMS_SEND_MODES)[number];
