@@ -570,21 +570,24 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       }
     }
 
-    /** Periods (YYYY-MM) in scope for an employer, oldest → newest. */
-    const periodsInScope = (regno: string, cap: number): string[] => {
-      const today = new Date(asOfDate);
+    /**
+     * Period window for an employer: [startYm, lastCompleteYm].
+     * Rules driven by actual C3 rows iterate their own (small) period set and
+     * only test membership here — iterating up to 120 synthetic months per
+     * employer per rule blew the edge CPU budget on full-tenant scans.
+     */
+    const asOfToday = new Date(asOfDate);
+    const lastCompleteYm = (() => {
+      const d = new Date(asOfToday.getFullYear(), asOfToday.getMonth() - 1, 1);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    })();
+    const windowFor = (regno: string, cap: number): { from: string; to: string } => {
       const startYm = complianceStartByEmp.get(regno);
-      const sinceStart = startYm ? monthsBetween(startYm, today) : cap;
-      const lookback = Math.max(0, Math.min(cap, sinceStart));
-      const out: string[] = [];
-      for (let i = lookback; i >= 1; i--) {
-        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-        if (startYm && ym < startYm) continue;
-        out.push(ym);
-      }
-      return out;
+      const capStart = new Date(asOfToday.getFullYear(), asOfToday.getMonth() - cap, 1);
+      const capYm = `${capStart.getFullYear()}-${String(capStart.getMonth() + 1).padStart(2, "0")}`;
+      return { from: startYm && startYm > capYm ? startYm : capYm, to: lastCompleteYm };
     };
+
 
 
     // Process each rule
