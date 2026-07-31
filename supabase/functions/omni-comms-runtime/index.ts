@@ -382,7 +382,7 @@ Deno.serve(async (req: Request) => {
     },
   );
   if (finErr) {
-    console.log(`[${BUILD_TAG}] finalize_error`);
+    console.log(`[${BUILD_TAG}] finalize_error code=${(finErr as { code?: string }).code ?? "?"} msg=${(finErr as { message?: string }).message ?? "?"}`);
     return blocked(input, mapRpcErrorToCode(finErr));
   }
 
