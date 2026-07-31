@@ -256,6 +256,10 @@ export const OmniCommsLandingPage: React.FC = () => {
         <TabsContent value="dry-run" className="mt-4">
           <ControlledDryRunPanel />
         </TabsContent>
+
+        <TabsContent value="reference-data" className="mt-4">
+          <ReferenceSeedPanel />
+        </TabsContent>
       </Tabs>
     </div>
 
