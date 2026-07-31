@@ -1016,27 +1016,40 @@ export const OmniCommsTemplatesPage: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>#</TableHead><TableHead>Channel</TableHead><TableHead>Locale</TableHead>
-                  <TableHead>Status</TableHead><TableHead>Updated</TableHead>
+                  <TableHead>Status</TableHead><TableHead>Layout</TableHead><TableHead>Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {versionsLoading && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-6">
+                  <TableRow><TableCell colSpan={7} className="text-center py-6">
                     <Loader2 className="h-4 w-4 animate-spin inline mr-2" />Loading…
                   </TableCell></TableRow>
                 )}
                 {!versionsLoading && versions.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-6 text-sm text-muted-foreground">
+                  <TableRow><TableCell colSpan={7} className="text-center py-6 text-sm text-muted-foreground">
                     No versions yet.
                   </TableCell></TableRow>
                 )}
-                {versions.map((v) => (
+                {versions.map((v) => {
+                  const layout = describeLayoutSelection(v);
+                  const layoutReady = isLayoutSelectionApprovable(v);
+                  return (
                   <TableRow key={v.id} data-testid={`version-row-${v.id}`}>
                     <TableCell>v{v.version_number}</TableCell>
                     <TableCell>{v.channel}</TableCell>
                     <TableCell>{v.locale}</TableCell>
                     <TableCell><VersionStatusBadge s={v.status} /></TableCell>
+                    <TableCell data-testid={`version-layout-${v.id}`}>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className="text-xs">{layout.label}</span>
+                        {v.status === "draft" && !layoutReady && (
+                          <Badge variant="destructive" data-testid={`layout-required-${v.id}`}>
+                            {LAYOUT_REQUIRED_BADGE}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-xs">{new Date(v.updated_at).toLocaleString()}</TableCell>
                     <TableCell className="text-right space-x-1">
                       <Button size="sm" variant="ghost"
@@ -1048,23 +1061,24 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                         }}>
                         <Eye className="h-4 w-4" />
                       </Button>
+                      {v.status === "draft" && (
+                        <Button size="sm" variant="outline" disabled={!canAuthor}
+                          data-testid={`configure-layout-btn-${v.id}`}
+                          onClick={() => openLayoutDialog(v.id)}>
+                          Configure Layout
+                        </Button>
+                      )}
                       {v.status === "approved" && (
                         <Button size="sm" disabled={!canApprove}
                           data-testid={`publish-btn-${v.id}`}
                           onClick={() => openPublishDialog(v.id)}>Publish</Button>
                       )}
                       {v.status === "draft" && (
-                        <Button size="sm" variant="ghost" disabled={!canApprove}
-                          onClick={() => setReasonDialog({
-                            open: true, required: false,
-                            title: "Approve version",
-                            description: "The approver must differ from the author.",
-                            submitLabel: "Approve",
-                            onSubmit: async (reason) => {
-                              await svc.approveTemplateVersion(client, { id: v.id, approvalNote: reason || null });
-                              toast.success("Approved"); await reloadVersions(selectedFamilyId);
-                            },
-                          })}>Approve</Button>
+                        <Button size="sm" variant="ghost"
+                          disabled={!canApprove || !layoutReady}
+                          data-testid={`approve-btn-${v.id}`}
+                          title={layoutReady ? undefined : LAYOUT_REQUIRED_MESSAGE}
+                          onClick={() => startApproval(v.id)}>Approve</Button>
                       )}
                       {(v.status === "approved" || v.status === "published") && (
                         <Button size="sm" variant="ghost" disabled={!canApprove}
@@ -1081,10 +1095,20 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                       )}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </Card>
+          {versions.some((v) => v.status === "draft" && !isLayoutSelectionApprovable(v)) && (
+            <Alert variant="destructive" data-testid="layout-required-alert">
+              <AlertTitle>Layout selection required</AlertTitle>
+              <AlertDescription>
+                {LAYOUT_REQUIRED_MESSAGE} Use <strong>Configure Layout</strong> on the
+                draft version, save the selection, then approve.
+              </AlertDescription>
+            </Alert>
+          )}
         </TabsContent>
 
         {/* ── Preview ── */}
