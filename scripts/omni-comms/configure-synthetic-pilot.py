@@ -245,7 +245,7 @@ def main():
             "p_template_family_id": fam["id"],
             "p_sender_identity_id": snd["id"],
             "p_sender_resolution_policy": "explicit",
-            "p_preference_policy": "respect",
+            "p_preference_policy": "honour",
             "p_correlation_id": CORR})
         route = rpc("omni_comms_event_route_get", {"p_id": rid})
     if route.get("lifecycle_state") != "active":
