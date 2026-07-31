@@ -51,14 +51,41 @@ import RequestDetailPanel from "./operations/RequestDetailPanel";
 
 const ALL = "__all__";
 
-function ts(v: string | null): string {
+/** Quick relative windows offered instead of a free-form date picker. */
+const RANGES = [
+  { id: "24h", label: "Last 24 hours", hours: 24 },
+  { id: "7d", label: "Last 7 days", hours: 24 * 7 },
+  { id: "30d", label: "Last 30 days", hours: 24 * 30 },
+  { id: "all", label: "All time", hours: null },
+] as const;
+
+type RangeId = (typeof RANGES)[number]["id"];
+
+/** Explicit timezone rendering — operators must never guess the zone. */
+function ts(v: string | null, zone: "local" | "utc"): string {
   if (!v) return "—";
   try {
-    return new Date(v).toLocaleString();
+    const d = new Date(v);
+    if (zone === "utc") {
+      return `${d.toISOString().replace("T", " ").slice(0, 19)} UTC`;
+    }
+    return d.toLocaleString(undefined, { timeZoneName: "short" });
   } catch {
     return v;
   }
 }
+
+/** Plain-language outcome for a request row. Never invents delivery. */
+function outcomeOf(mode: string, status: string): string {
+  if (status === "blocked") return "Blocked before any message was created";
+  if (status === "failed") return "Failed during processing";
+  if (mode === "dry_run") return "Validated only — nothing was sent";
+  if (mode === "shadow") return "Rendered and held — nothing was sent";
+  if (status === "held") return "Held — awaiting a dispatch capability that does not exist yet";
+  if (status === "completed") return "Processed — no provider dispatch exists";
+  return "In progress";
+}
+
 
 export const OmniCommsOperationsPage: React.FC = () => {
   const { organizationId, departmentId, loading: tenantLoading } = useOmniCommsTenant();
