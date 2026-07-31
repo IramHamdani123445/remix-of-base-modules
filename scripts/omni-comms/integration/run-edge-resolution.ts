@@ -232,9 +232,11 @@ function messagesOf(body: Record<string, unknown>): Array<Record<string, unknown
 
 /* ── fixtures ──────────────────────────────────────────────────────────── */
 
-const RANDOM_ORG_ID = '00000000-0000-4000-8000-0000000000ff';
-const RANDOM_DEPARTMENT_ID = '00000000-0000-4000-8000-0000000000fe';
+// Tenant-isolation fixtures are supplied as REAL staging identifiers through
+// the protected environment. Fixed synthetic UUID constants are deliberately
+// absent: rejecting a nonexistent id proves nothing about tenant isolation.
 const CONTRACT_VERSION = 'omni_comms.result.v1';
+
 
 /**
  * The number of scenarios this harness is CONTRACTUALLY required to execute.
