@@ -506,15 +506,26 @@ async function main(): Promise<void> {
     return 'HTTP 403, permission_denied, nothing persisted';
   });
 
-  /* 3. Cross-tenant submission must be refused server-side. */
+  /* 3. Cross-tenant submission against a REAL foreign organisation. */
   await scenario('cross_tenant_rejection', async () => {
+    // Re-verify existence at scenario time: rejecting a nonexistent id
+    // would be indistinguishable from a genuine isolation refusal.
+    const { data: org, error: orgErr } = await admin
+      .from('core_organization')
+      .select('id')
+      .eq('id', env.OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID)
+      .maybeSingle();
+    assert(!orgErr, `foreign organisation read failed: ${orgErr?.message ?? ''}`);
+    assert(org != null, 'the foreign organisation fixture does not exist');
+
     const body = {
       ...baseRequest(env, prefix, 'xtenant', 'dry_run'),
-      organizationId: RANDOM_ORG_ID,
+      organizationId: env.OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID,
       departmentId: null,
     };
     const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
     assertEqual(r.httpStatus, 403, 'http status');
+    assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
     const b = blockersOf(r.body);
     assert(
       b.length === 1 && b[0] === 'organization_access_denied',
@@ -522,8 +533,9 @@ async function main(): Promise<void> {
     );
     const persisted = await requestIdsForPrefix(admin, `${prefix}-xtenant`);
     assertEqual(persisted.length, 0, 'persisted requests');
-    return 'HTTP 403, organization_access_denied, nothing persisted';
+    return 'HTTP 403, organization_access_denied against a real foreign organisation';
   });
+
 
   /* 4. Spoofed caller module must be refused. */
   await scenario('spoofed_caller_module_rejection', async () => {
