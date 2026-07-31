@@ -21,28 +21,50 @@ readiness. No provider is contacted anywhere in this build.
 | 11 | Browser result contract coerced malformed payloads | `parseSendCommunicationResult` now enforces the contract version, rejects a payload with any malformed element, requires a valid `createdAt`, a boolean `replayed`, a valid mode, and a `requestId` on non-blocked results |
 | 12 | Slice 2c-iii rendering verifier was not part of certification | Added as a required workflow step with its own marker |
 
-## 2. Scenario inventory (19)
+## 2. Scenario inventory (18 executed, enforced)
 
-`edge_revision_binding`, `missing_jwt_rejection`, `permission_rejection`,
-`cross_tenant_rejection`, `spoofed_caller_module_rejection`,
-`department_access_rejection`, `registered_but_unauthorised_module_rejection`,
-`valid_first_request`, `recipient_persistence`, `deterministic_resolution`,
-`deterministic_rendering`, `identical_replay`, `mismatched_replay_rejection`,
+`missing_jwt_rejection`, `permission_rejection`, `cross_tenant_rejection`,
+`spoofed_caller_module_rejection`, `department_access_rejection`,
+`registered_but_unauthorised_module_rejection`, `valid_first_request`,
+`recipient_persistence`, `deterministic_resolution`, `deterministic_rendering`,
+`identical_replay`, `mismatched_replay_rejection`,
 `concurrent_idempotency_semantics`, `dry_run_creates_no_jobs`,
 `shadow_creates_held_jobs_only`, `queued_creates_held_jobs_only`,
-`atomic_failure_no_partial_records`, `safety_invariants`, `cleanup_verified`.
+`atomic_failure_no_partial_records`, `safety_invariants`, `cleanup_verified`
+— 19 named scenarios in total, of which `shadow_` and `queued_` are generated
+by one loop.
+
+`EXPECTED_SCENARIO_COUNT` is asserted against the number actually executed and
+duplicate names are rejected, so the reported figure can never overstate or
+understate coverage. Edge-revision binding is **no longer a scenario**: it is a
+precondition evaluated before any fixture is created, and a mismatch refuses
+the run (exit 2) rather than being counted as a pass.
 
 ## 3. Safety evidence model
 
-All four safety statements are measured, never asserted by convention:
+All four safety statements are measured against **this run's fixtures only**,
+never globally — a shared staging project must not be able to pass or fail a
+certification for rows the harness did not create:
 
-- `no_runnable_dispatch_job` — every job row must be `status='held'` and `is_runnable=false`, with `attempt_count=0`, no lock and no lease.
-- `no_delivery_attempt` — global count of `omni_comms_delivery_attempt` must be `0`.
-- `no_provider_call` — derived from delivery-attempt rows (a provider call cannot exist without one).
-- `no_email` — delivery attempts against email-channel messages.
+- `no_runnable_dispatch_job` — every fixture job row must be `status='held'`
+  and `is_runnable=false`, with `attempt_count=0`, no lock and no lease.
+- `no_delivery_attempt` — count of `omni_comms_delivery_attempt` rows scoped to
+  fixture message ids must be `0`.
+- `no_provider_call` — derived from those delivery-attempt rows.
+- `no_email` — fixture delivery attempts against email-channel messages.
+
+Terminal message status is mode-derived and asserted as such:
+`dry_run → dry_run_completed`, `shadow → shadow_completed`, `queued → held`.
+The transient `rendered` state is never accepted as terminal evidence.
+
+Recipients on both the fresh and replay responses are read back through
+`omni_comms_priv_load_persisted_recipients`, and the harness asserts the
+projected ids equal the persisted ids and that no destination (email/phone)
+leaks onto the contract.
 
 The harness exits non-zero if any of these is breached, even when every
 scenario otherwise passes.
+
 
 ## 4. Deployment binding
 
