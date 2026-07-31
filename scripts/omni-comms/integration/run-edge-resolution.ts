@@ -593,33 +593,24 @@ async function main(): Promise<void> {
     return 'HTTP 403, caller_module_not_registered, nothing persisted';
   });
 
-  /* 4b. A REAL department the actor is not entitled to must be refused. */
+  /* 4b. A REAL in-tenant department the actor is not entitled to must be
+   * refused with department_access_denied EXACTLY. A
+   * department_organization_mismatch here would mean the fixture is
+   * cross-organisation, which cross_tenant_rejection already certifies. */
   await scenario('department_access_rejection', async () => {
-    const { data: dept, error: deptErr } = await admin
-      .from('core_department')
-      .select('id, organization_id')
-      .eq('id', env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID)
-      .maybeSingle();
-    assert(!deptErr, `foreign department read failed: ${deptErr?.message ?? ''}`);
-    assert(dept != null, 'the foreign department fixture does not exist');
-
     const body = {
       ...baseRequest(env, prefix, 'xdept', 'dry_run'),
       departmentId: env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID,
     };
     const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
     assertEqual(r.httpStatus, 403, 'http status');
-    const b = blockersOf(r.body);
-    assert(
-      b.length === 1 &&
-        (b[0] === 'department_access_denied' || b[0] === 'department_organization_mismatch'),
-      `expected a single department refusal code, got ${JSON.stringify(b)}`,
-    );
     assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
+    assertEqual(blockersOf(r.body), ['department_access_denied'], 'blockers');
     const persisted = await requestIdsForPrefix(admin, `${prefix}-xdept`);
     assertEqual(persisted.length, 0, 'persisted requests');
-    return `HTTP 403, ${b[0]} against a real foreign department`;
+    return 'HTTP 403, department_access_denied against a real in-tenant department';
   });
+
 
 
   /* 4c. A REGISTERED caller module the actor may not act for must be refused. */
