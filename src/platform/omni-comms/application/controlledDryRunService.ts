@@ -358,17 +358,10 @@ export async function executeControlledDryRun(
 ): Promise<ControlledDryRunOutcome> {
   const recipientErrors = assertSyntheticRecipients([args.recipient]);
   if (recipientErrors.length > 0) {
-    const blocked: SendCommunicationResult = {
-      requestId: '',
-      idempotencyKey: args.idempotencyKey,
-      mode: 'dry_run',
-      status: 'blocked',
-      recipients: [],
-      messages: [],
-      blockers: recipientErrors,
-      createdAt: new Date(0).toISOString(),
-      replayed: false,
-    };
+    const blocked: SendCommunicationResult = buildBlockedResult(
+      [...recipientErrors],
+      { idempotencyKey: args.idempotencyKey, mode: 'dry_run' },
+    );
     return { result: blocked, kind: 'new_request', state: 'blocked' };
   }
 

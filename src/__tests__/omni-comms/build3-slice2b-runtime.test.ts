@@ -147,6 +147,7 @@ function acceptedResult(
   replayed: boolean,
 ): SendCommunicationResult {
   return {
+    contractVersion: OMNI_COMMS_RESULT_CONTRACT_VERSION,
     requestId: row.request_id,
     idempotencyKey: row.idempotency_key,
     mode: input.mode,
@@ -164,6 +165,7 @@ function blocked(
   code: string,
 ): SendCommunicationResult {
   return {
+    contractVersion: OMNI_COMMS_RESULT_CONTRACT_VERSION,
     requestId: '',
     idempotencyKey: input.idempotencyKey ?? '',
     mode: input.mode,

@@ -76,11 +76,21 @@ const OK_GATE: DryRunGate = {
 
 function result(over: Partial<SendCommunicationResult> = {}): SendCommunicationResult {
   return {
+    contractVersion: OMNI_COMMS_RESULT_CONTRACT_VERSION,
     requestId: 'req-1',
     idempotencyKey: 'k',
     mode: 'dry_run',
     status: 'completed',
-    recipients: [{ recipientId: 'r1', resolvedChannels: ['email'], blockers: [] }],
+    recipients: [
+      {
+        recipientId: 'r1',
+        inputIndex: 0,
+        recipientReference: null,
+        resolvedChannels: ['email'],
+        eligibilityStatus: 'eligible',
+        blockers: [],
+      },
+    ],
     messages: [
       {
         messageId: 'm1',
@@ -88,6 +98,8 @@ function result(over: Partial<SendCommunicationResult> = {}): SendCommunicationR
         channel: 'email',
         status: 'rendered',
         renderedChecksum: 'abc',
+        dispatchJobId: null,
+        blockers: [],
       },
     ],
     blockers: [],
