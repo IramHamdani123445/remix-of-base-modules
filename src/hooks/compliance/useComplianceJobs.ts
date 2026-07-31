@@ -124,13 +124,38 @@ export function useRunComplianceJob() {
       if (data?.ok === false) throw new Error(data.error || 'Job execution failed');
 
       // If the edge function deferred the work (status: Running + run_id), poll
-      // ce_automation_runs until the background scan completes.
+      // ce_automation_runs until the background scan completes. Long tenant-wide
+      // scans report progress through a live toast instead of failing.
       const isAsync = data?.result?.status === 'Running' || data?.status === 'Running' || data?.accepted === true;
       if (isAsync && data?.run_id) {
-        const finished = await pollAutomationRun(data.run_id);
+        const progressToastId = `detection-progress-${data.run_id}`;
+        toast.loading(variables_dryRunLabel(dryRun), {
+          id: progressToastId,
+          description: 'Starting detection…',
+        });
+
+        let finished: any;
+        try {
+          finished = await pollAutomationRun(data.run_id, 12 * 60_000, (pct, done, total) => {
+            toast.loading(variables_dryRunLabel(dryRun), {
+              id: progressToastId,
+              description: total
+                ? `Scanned ${done.toLocaleString()} of ${total.toLocaleString()} employers (${pct}%)…`
+                : 'Detection in progress…',
+            });
+          });
+        } catch (pollErr: any) {
+          toast.dismiss(progressToastId);
+          if (pollErr?.name === RUN_STILL_PROGRESSING) {
+            return { still_running: true, run_id: data.run_id };
+          }
+          throw pollErr;
+        }
+
+        toast.dismiss(progressToastId);
         const log = finished.execution_log || {};
         if (finished.status === 'Failed') {
-          throw new Error(log.error || 'Detection job failed');
+          throw new Error(log.error || finished.error_message || 'Detection job failed');
         }
         return {
           run_id: finished.id,
@@ -157,7 +182,13 @@ export function useRunComplianceJob() {
       queryClient.invalidateQueries({ queryKey: ['ce_job_runs'] });
 
       const scan = data?.scan_details;
-      if (scan) {
+      if (data?.still_running) {
+        toast.info('Detection is running in the background', {
+          description:
+            'The scan is still processing employers. Results appear in Automation Job History and the violations list refreshes when it finishes.',
+          duration: 10000,
+        });
+      } else if (scan) {
         const isDry = scan.dry_run ?? variables.dryRun;
         const label = isDry ? '🔍 Dry Run Complete' : '✅ Job Completed';
         const desc = isDry
@@ -178,6 +209,11 @@ export function useRunComplianceJob() {
     },
   });
 }
+
+function variables_dryRunLabel(dryRun: boolean) {
+  return dryRun ? 'Dry run in progress' : 'Detection in progress';
+}
+
 
 
 export function useToggleJob() {
