@@ -21,7 +21,13 @@ import type {
   ResolvedAsset,
 } from '@/platform/omni-comms/application/sharedAssetsTypes';
 import type { ActiveDepartmentOption } from '@/platform/organization/organizationService';
-import type { TemplateFamilyListItem, TemplateVersionListItem } from '@/platform/omni-comms/application/templateCatalogueTypes';
+import type { TemplateFamilyListItem, TemplateVersionListItem, TemplateVersionGetResult } from '@/platform/omni-comms/application/templateCatalogueTypes';
+import { OmniCommsLayoutSelectionDialog } from '../components/OmniCommsLayoutSelectionDialog';
+import {
+  describeLayoutSelection,
+  isLayoutSelectionApprovable,
+  LAYOUT_REQUIRED_MESSAGE,
+} from '@/platform/omni-comms/application/templateLayoutSelection';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
