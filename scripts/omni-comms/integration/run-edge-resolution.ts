@@ -31,15 +31,23 @@
  *   OMNI_COMMS_TEST_UNPRIVILEGED_JWT     authenticated, NO omni_comms.operate
  *   OMNI_COMMS_TEST_ORGANIZATION_ID
  *   OMNI_COMMS_TEST_DEPARTMENT_ID
+ *   OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID   REAL staging organisation the
+ *                                        authorised test actor has NO access
+ *                                        to. Never a synthetic UUID.
+ *   OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID     REAL staging department the
+ *                                        authorised test actor is NOT
+ *                                        assigned/entitled to.
  *   OMNI_COMMS_TEST_EVENT_CODE           fully configured pilot event
+ *   OMNI_COMMS_TEST_CALLER_MODULE        the ACTUAL pilot business-module
+ *                                        caller certified by valid requests
+ *   OMNI_COMMS_TEST_UNAUTHORISED_MODULE  registered caller module the test
+ *                                        actor must NOT be able to act for
  *   COMMIT_SHA | GITHUB_SHA              full 40-char certified revision
  *
  * Optional environment:
  *   OMNI_COMMS_REQUIRE_EDGE_REVISION=1   fail unless the deployed Edge
  *                                        revision equals COMMIT_SHA
- *   OMNI_COMMS_TEST_UNAUTHORISED_MODULE  registered caller module the test
- *                                        actor must NOT be able to act for
- *                                        (default FINANCE)
+
 
  *
  * On refusal (missing/placeholder credentials) exits non-zero with:
@@ -61,7 +69,11 @@ const REQUIRED = [
   'OMNI_COMMS_TEST_UNPRIVILEGED_JWT',
   'OMNI_COMMS_TEST_ORGANIZATION_ID',
   'OMNI_COMMS_TEST_DEPARTMENT_ID',
+  'OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID',
+  'OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID',
   'OMNI_COMMS_TEST_EVENT_CODE',
+  'OMNI_COMMS_TEST_CALLER_MODULE',
+  'OMNI_COMMS_TEST_UNAUTHORISED_MODULE',
 ] as const;
 
 type Env = Record<(typeof REQUIRED)[number], string>;
@@ -70,6 +82,16 @@ const PLACEHOLDER_TOKENS = [
   '', 'changeme', 'placeholder', 'xxx', 'todo', 'undefined', 'null',
   'test', 'example', 'your-key-here',
 ];
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const UUID_ENV_KEYS = [
+  'OMNI_COMMS_TEST_ORGANIZATION_ID',
+  'OMNI_COMMS_TEST_DEPARTMENT_ID',
+  'OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID',
+  'OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID',
+] as const;
 
 function refuse(reason: string): never {
   console.error(`[omni-comms:harness] refusing to run: ${reason}`);
@@ -98,8 +120,57 @@ function readEnv(): Env {
   if (out.OMNI_COMMS_TEST_USER_JWT === out.OMNI_COMMS_TEST_UNPRIVILEGED_JWT) {
     refuse('privileged and unprivileged JWTs are identical — negative tests would be meaningless');
   }
+
+  // Tenant-isolation fixtures must be REAL, distinct, well-formed UUIDs.
+  // A synthetic or reused identifier turns tenant isolation into theatre.
+  for (const k of UUID_ENV_KEYS) {
+    if (!UUID_RE.test(out[k])) refuse(`${k} is not a valid UUID`);
+  }
+  if (
+    out.OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID.toLowerCase() ===
+    out.OMNI_COMMS_TEST_ORGANIZATION_ID.toLowerCase()
+  ) {
+    refuse('OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID equals the primary test organisation');
+  }
+  if (
+    out.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID.toLowerCase() ===
+    out.OMNI_COMMS_TEST_DEPARTMENT_ID.toLowerCase()
+  ) {
+    refuse('OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID equals the primary test department');
+  }
+
+  out.OMNI_COMMS_TEST_CALLER_MODULE = out.OMNI_COMMS_TEST_CALLER_MODULE.toUpperCase();
+  out.OMNI_COMMS_TEST_UNAUTHORISED_MODULE =
+    out.OMNI_COMMS_TEST_UNAUTHORISED_MODULE.toUpperCase();
+  if (out.OMNI_COMMS_TEST_CALLER_MODULE === out.OMNI_COMMS_TEST_UNAUTHORISED_MODULE) {
+    refuse(
+      'OMNI_COMMS_TEST_UNAUTHORISED_MODULE equals the authorised caller module — ' +
+        'the negative module scenario would prove nothing',
+    );
+  }
   return out;
 }
+
+/**
+ * Read the `sub` claim from a JWT WITHOUT verifying it. Used only to identify
+ * the actor for read-only preflight capability checks performed with the
+ * service role. The token itself is never printed and never logged.
+ */
+function decodeJwtSubject(jwt: string): string | null {
+  try {
+    const [, payload] = jwt.split('.');
+    if (!payload) return null;
+    const json = Buffer.from(
+      payload.replace(/-/g, '+').replace(/_/g, '/'),
+      'base64',
+    ).toString('utf8');
+    const sub = (JSON.parse(json) as { sub?: unknown }).sub;
+    return typeof sub === 'string' && UUID_RE.test(sub) ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
 
 /* ── scenario bookkeeping ──────────────────────────────────────────────── */
 
@@ -181,9 +252,11 @@ function messagesOf(body: Record<string, unknown>): Array<Record<string, unknown
 
 /* ── fixtures ──────────────────────────────────────────────────────────── */
 
-const RANDOM_ORG_ID = '00000000-0000-4000-8000-0000000000ff';
-const RANDOM_DEPARTMENT_ID = '00000000-0000-4000-8000-0000000000fe';
+// Tenant-isolation fixtures are supplied as REAL staging identifiers through
+// the protected environment. Fixed synthetic UUID constants are deliberately
+// absent: rejecting a nonexistent id proves nothing about tenant isolation.
 const CONTRACT_VERSION = 'omni_comms.result.v1';
+
 
 /**
  * The number of scenarios this harness is CONTRACTUALLY required to execute.
@@ -212,7 +285,10 @@ function baseRequest(env: Env, prefix: string, suffix: string, mode: string) {
     mode,
     idempotencyKey: `${prefix}-${suffix}`,
     requestedChannels: ['email'],
-    callerContext: { moduleCode: 'OMNI_COMMS_DIRECT' },
+    // Every valid request certifies the ACTUAL pilot business-module caller
+    // path, never a generic direct-caller placeholder.
+    callerContext: { moduleCode: env.OMNI_COMMS_TEST_CALLER_MODULE },
+
     recipients: [
       {
         recipientType: 'primary',
@@ -267,9 +343,9 @@ async function main(): Promise<void> {
     refuse('COMMIT_SHA/GITHUB_SHA must be a full 40-character git revision');
   }
   const requireEdgeRevision = process.env.OMNI_COMMS_REQUIRE_EDGE_REVISION === '1';
-  const unauthorisedModule = (
-    process.env.OMNI_COMMS_TEST_UNAUTHORISED_MODULE ?? 'FINANCE'
-  ).trim().toUpperCase();
+  const callerModule = env.OMNI_COMMS_TEST_CALLER_MODULE;
+  const unauthorisedModule = env.OMNI_COMMS_TEST_UNAUTHORISED_MODULE;
+
 
   const admin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -324,6 +400,81 @@ async function main(): Promise<void> {
   }
   console.log('');
 
+  /* ── PREFLIGHT: tenant-isolation fixtures must be REAL ─────────────────
+   * A rejection of a nonexistent organisation or department proves nothing
+   * about tenant isolation. Both foreign fixtures must exist in staging
+   * before the corresponding negative scenario is allowed to run.
+   */
+  const actorId = decodeJwtSubject(env.OMNI_COMMS_TEST_USER_JWT);
+  if (!actorId) refuse('OMNI_COMMS_TEST_USER_JWT carries no subject claim');
+
+  const foreignOrg = await admin
+    .from('core_organization')
+    .select('id')
+    .eq('id', env.OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID)
+    .maybeSingle();
+  if (foreignOrg.error) {
+    refuse('foreign organisation lookup failed');
+  }
+  if (!foreignOrg.data) {
+    refuse(
+      'OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID does not exist in staging — ' +
+        'a nonexistent id cannot prove tenant isolation',
+    );
+  }
+
+  const foreignDept = await admin
+    .from('core_department')
+    .select('id, organization_id')
+    .eq('id', env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID)
+    .maybeSingle();
+  if (foreignDept.error) {
+    refuse('foreign department lookup failed');
+  }
+  if (!foreignDept.data) {
+    refuse(
+      'OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID does not exist in staging — ' +
+        'a nonexistent id cannot prove department entitlement enforcement',
+    );
+  }
+  console.log('  preflight: foreign organisation and department fixtures exist');
+
+  /* ── PREFLIGHT: the certified caller module must be the real pilot path ── */
+  const { data: callerReg, error: callerRegErr } = await admin
+    .from('omni_comms_caller_module_registry')
+    .select('module_code, permission_module, permission_action, is_active')
+    .eq('module_code', callerModule)
+    .maybeSingle();
+  if (callerRegErr) refuse('caller-module registry lookup failed');
+  if (!callerReg) {
+    refuse(`OMNI_COMMS_TEST_CALLER_MODULE ${callerModule} is not registered`);
+  }
+  const reg = callerReg as {
+    permission_module: string;
+    permission_action: string;
+    is_active: boolean;
+  };
+  if (reg.is_active !== true) {
+    refuse(`OMNI_COMMS_TEST_CALLER_MODULE ${callerModule} is registered but inactive`);
+  }
+  const { data: hasCap, error: capErr } = await admin.rpc('has_permission', {
+    _user_id: actorId,
+    _module_name: reg.permission_module,
+    _action_name: reg.permission_action,
+  });
+  if (capErr) refuse('caller-module capability check failed');
+  if (hasCap !== true) {
+    refuse(
+      `the authorised test actor does not hold the capability required by ` +
+        `caller module ${callerModule}`,
+    );
+  }
+  console.log(
+    `  preflight: caller module ${callerModule} is registered, active and authorised`,
+  );
+  console.log('');
+
+
   let firstRequestId = '';
   let firstMessages: Array<Record<string, unknown>> = [];
   let firstRecipientIds: string[] = [];
@@ -355,15 +506,26 @@ async function main(): Promise<void> {
     return 'HTTP 403, permission_denied, nothing persisted';
   });
 
-  /* 3. Cross-tenant submission must be refused server-side. */
+  /* 3. Cross-tenant submission against a REAL foreign organisation. */
   await scenario('cross_tenant_rejection', async () => {
+    // Re-verify existence at scenario time: rejecting a nonexistent id
+    // would be indistinguishable from a genuine isolation refusal.
+    const { data: org, error: orgErr } = await admin
+      .from('core_organization')
+      .select('id')
+      .eq('id', env.OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID)
+      .maybeSingle();
+    assert(!orgErr, `foreign organisation read failed: ${orgErr?.message ?? ''}`);
+    assert(org != null, 'the foreign organisation fixture does not exist');
+
     const body = {
       ...baseRequest(env, prefix, 'xtenant', 'dry_run'),
-      organizationId: RANDOM_ORG_ID,
+      organizationId: env.OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID,
       departmentId: null,
     };
     const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
     assertEqual(r.httpStatus, 403, 'http status');
+    assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
     const b = blockersOf(r.body);
     assert(
       b.length === 1 && b[0] === 'organization_access_denied',
@@ -371,8 +533,9 @@ async function main(): Promise<void> {
     );
     const persisted = await requestIdsForPrefix(admin, `${prefix}-xtenant`);
     assertEqual(persisted.length, 0, 'persisted requests');
-    return 'HTTP 403, organization_access_denied, nothing persisted';
+    return 'HTTP 403, organization_access_denied against a real foreign organisation';
   });
+
 
   /* 4. Spoofed caller module must be refused. */
   await scenario('spoofed_caller_module_rejection', async () => {
@@ -388,11 +551,19 @@ async function main(): Promise<void> {
     return 'HTTP 403, caller_module_not_registered, nothing persisted';
   });
 
-  /* 4b. Department the actor is not entitled to must be refused. */
+  /* 4b. A REAL department the actor is not entitled to must be refused. */
   await scenario('department_access_rejection', async () => {
+    const { data: dept, error: deptErr } = await admin
+      .from('core_department')
+      .select('id, organization_id')
+      .eq('id', env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID)
+      .maybeSingle();
+    assert(!deptErr, `foreign department read failed: ${deptErr?.message ?? ''}`);
+    assert(dept != null, 'the foreign department fixture does not exist');
+
     const body = {
       ...baseRequest(env, prefix, 'xdept', 'dry_run'),
-      departmentId: RANDOM_DEPARTMENT_ID,
+      departmentId: env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID,
     };
     const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
     assertEqual(r.httpStatus, 403, 'http status');
@@ -405,8 +576,9 @@ async function main(): Promise<void> {
     assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
     const persisted = await requestIdsForPrefix(admin, `${prefix}-xdept`);
     assertEqual(persisted.length, 0, 'persisted requests');
-    return `HTTP 403, ${b[0]}, nothing persisted`;
+    return `HTTP 403, ${b[0]} against a real foreign department`;
   });
+
 
   /* 4c. A REGISTERED caller module the actor may not act for must be refused. */
   await scenario('registered_but_unauthorised_module_rejection', async () => {
@@ -790,31 +962,54 @@ async function main(): Promise<void> {
     });
   }
 
-  /* 14. Atomic failure — an invalid event code persists nothing. */
+  /* 14. Atomic failure — an invalid event code persists nothing at all.
+   * The assertion is exact in every dimension: an arbitrary non-empty blocker
+   * array is NOT accepted as evidence of a controlled atomic refusal.
+   */
   await scenario('atomic_failure_no_partial_records', async () => {
     const body = {
       ...baseRequest(env, prefix, 'atomic', 'dry_run'),
       eventCode: `${prefix.toUpperCase()}.NO.SUCH.EVENT`,
     };
     const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
-    const b = blockersOf(r.body);
-    assert(b.length > 0, 'invalid event code was accepted without a blocker');
+    assertEqual(r.httpStatus, 200, 'http status');
+    assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
+    assertEqual(r.body.status, 'blocked', 'top-level status');
+    assertEqual(blockersOf(r.body), ['event_code_not_found'], 'blockers');
+    assertEqual(messagesOf(r.body).length, 0, 'response messages');
+
+    // Persistence must be untouched across EVERY runtime table.
     const ids = await requestIdsForPrefix(admin, `${prefix}-atomic`);
-    if (ids.length > 0) {
-      // A request row may exist, but it must be terminal-blocked with no
-      // messages and no jobs — never a partial success.
-      const { data } = await admin
-        .from('omni_comms_request').select('status').in('id', ids);
-      for (const row of (data ?? []) as Array<{ status: string }>) {
-        assertEqual(row.status, 'blocked', 'aborted request status');
-      }
-      const msgs = await countRows(admin, 'omni_comms_message', (q) =>
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (q as any).in('request_id', ids));
-      assertEqual(msgs, 0, 'messages for aborted request');
-    }
-    return `blocked (${b.join(',')}), no partial records`;
+    assertEqual(ids.length, 0, 'persisted request rows');
+
+    const scoped = async (
+      table: string,
+      column: 'request_id' | 'message_id',
+      values: string[],
+    ) => (values.length === 0
+      ? 0
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      : countRows(admin, table, (q) => (q as any).in(column, values)));
+
+    assertEqual(await scoped('omni_comms_recipient', 'request_id', ids), 0, 'recipients');
+    assertEqual(await scoped('omni_comms_message', 'request_id', ids), 0, 'messages');
+    assertEqual(
+      await scoped('omni_comms_message_event', 'request_id', ids), 0, 'message events');
+
+    const atomicMessageIds: string[] = [];
+    assertEqual(
+      await scoped('omni_comms_dispatch_job', 'message_id', atomicMessageIds),
+      0,
+      'dispatch jobs',
+    );
+    assertEqual(
+      await scoped('omni_comms_delivery_attempt', 'message_id', atomicMessageIds),
+      0,
+      'delivery attempts',
+    );
+    return 'HTTP 200, blocked ["event_code_not_found"], zero rows in every runtime table';
   });
+
 
   /* 15-18. Global safety invariants across every fixture request. */
   const allRequestIds = await requestIdsForPrefix(admin, prefix);

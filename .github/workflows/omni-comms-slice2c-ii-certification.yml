@@ -29,9 +29,16 @@ jobs:
 
     env:
       # Non-secret protected environment variables. Provided by the
-      # `omni-comms-staging` environment. These are UUIDs, not credentials.
-      OMNI_COMMS_TEST_ORGANIZATION_ID: ${{ vars.OMNI_COMMS_TEST_ORGANIZATION_ID || secrets.OMNI_COMMS_TEST_ORGANIZATION_ID }}
-      OMNI_COMMS_TEST_DEPARTMENT_ID: ${{ vars.OMNI_COMMS_TEST_DEPARTMENT_ID || secrets.OMNI_COMMS_TEST_DEPARTMENT_ID }}
+      # `omni-comms-staging` environment. These are UUIDs / codes, not
+      # credentials. Names here MUST match the harness and the readiness doc.
+      OMNI_COMMS_TEST_ORGANIZATION_ID: ${{ vars.OMNI_COMMS_TEST_ORGANIZATION_ID }}
+      OMNI_COMMS_TEST_DEPARTMENT_ID: ${{ vars.OMNI_COMMS_TEST_DEPARTMENT_ID }}
+      OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID: ${{ vars.OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID }}
+      OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID: ${{ vars.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID }}
+      OMNI_COMMS_TEST_EVENT_CODE: ${{ vars.OMNI_COMMS_TEST_EVENT_CODE }}
+      OMNI_COMMS_TEST_CALLER_MODULE: ${{ vars.OMNI_COMMS_TEST_CALLER_MODULE }}
+      OMNI_COMMS_TEST_UNAUTHORISED_MODULE: ${{ vars.OMNI_COMMS_TEST_UNAUTHORISED_MODULE }}
+
 
     steps:
       - name: Checkout requested ref
@@ -85,7 +92,8 @@ jobs:
           OMNI_COMMS_TEST_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_TEST_UNPRIVILEGED_JWT }}
           OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          OMNI_COMMS_TEST_EVENT_CODE: ${{ vars.OMNI_COMMS_TEST_EVENT_CODE || secrets.OMNI_COMMS_TEST_EVENT_CODE }}
+        # Non-secret fixture identifiers come from the job-level env block.
+
         run: |
           set +x
           # Register masks BEFORE any potential exposure.
@@ -110,6 +118,10 @@ jobs:
           [ -n "$OMNI_COMMS_TEST_ORGANIZATION_ID" ] || fail "OMNI_COMMS_TEST_ORGANIZATION_ID missing"
           [ -n "$OMNI_COMMS_TEST_DEPARTMENT_ID" ] || fail "OMNI_COMMS_TEST_DEPARTMENT_ID missing"
           [ -n "$OMNI_COMMS_TEST_EVENT_CODE" ] || fail "OMNI_COMMS_TEST_EVENT_CODE missing"
+          [ -n "$OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID" ] || fail "OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID missing"
+          [ -n "$OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID" ] || fail "OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID missing"
+          [ -n "$OMNI_COMMS_TEST_CALLER_MODULE" ] || fail "OMNI_COMMS_TEST_CALLER_MODULE missing"
+          [ -n "$OMNI_COMMS_TEST_UNAUTHORISED_MODULE" ] || fail "OMNI_COMMS_TEST_UNAUTHORISED_MODULE missing"
 
 
           # Reject placeholder-like values without echoing them.
@@ -130,10 +142,21 @@ jobs:
           seg_count=$(printf '%s' "$OMNI_COMMS_TEST_USER_JWT" | awk -F. '{print NF}')
           [ "$seg_count" = "3" ] || fail "OMNI_COMMS_TEST_USER_JWT is not a JWT-shaped value"
 
-          # UUID validation for org/dept.
+          # UUID validation for every tenant fixture.
           uuid_re='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
-          [[ "$OMNI_COMMS_TEST_ORGANIZATION_ID" =~ $uuid_re ]] || fail "OMNI_COMMS_TEST_ORGANIZATION_ID is not a valid UUID"
-          [[ "$OMNI_COMMS_TEST_DEPARTMENT_ID" =~ $uuid_re ]] || fail "OMNI_COMMS_TEST_DEPARTMENT_ID is not a valid UUID"
+          for name in OMNI_COMMS_TEST_ORGANIZATION_ID OMNI_COMMS_TEST_DEPARTMENT_ID \
+                      OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID; do
+            [[ "${!name}" =~ $uuid_re ]] || fail "$name is not a valid UUID"
+          done
+
+          # Tenant-isolation fixtures must be genuinely distinct.
+          [ "$OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID" != "$OMNI_COMMS_TEST_ORGANIZATION_ID" ] \
+            || fail "OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID equals the primary organisation"
+          [ "$OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID" != "$OMNI_COMMS_TEST_DEPARTMENT_ID" ] \
+            || fail "OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID equals the primary department"
+          [ "$OMNI_COMMS_TEST_CALLER_MODULE" != "$OMNI_COMMS_TEST_UNAUTHORISED_MODULE" ] \
+            || fail "OMNI_COMMS_TEST_UNAUTHORISED_MODULE equals the authorised caller module"
+
 
           echo "credential validation: ok"
 
@@ -164,8 +187,11 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
           OMNI_COMMS_TEST_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_TEST_UNPRIVILEGED_JWT }}
-          OMNI_COMMS_TEST_EVENT_CODE: ${{ vars.OMNI_COMMS_TEST_EVENT_CODE || secrets.OMNI_COMMS_TEST_EVENT_CODE }}
-          OMNI_COMMS_TEST_UNAUTHORISED_MODULE: ${{ vars.OMNI_COMMS_TEST_UNAUTHORISED_MODULE }}
+          # Remaining fixture identifiers (event code, organisation,
+          # department, foreign tenant fixtures, caller modules) are inherited
+          # from the job-level env block so a single definition governs both
+          # validation and execution.
+
           # Certification is bound to the EXACT checked-out revision and the
           # deployed Edge revision must equal it.
           OMNI_COMMS_REQUIRE_EDGE_REVISION: "1"
