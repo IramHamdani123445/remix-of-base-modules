@@ -3,8 +3,10 @@
 // Structural mirror of `src/platform/omni-comms/runtime/responseContract.ts`.
 // Deno cannot import from `src/`, so the contract is duplicated deliberately
 // and kept in lockstep by
-// `src/__tests__/omni-comms/runtime-hardening.test.ts`, which compares the
-// declared contract version and the exported field lists of both files.
+// `src/__tests__/omni-comms/contract-mirror-drift.test.ts`, which compares the
+// declared contract version, the vocabularies and the interface field names of
+// both files.
+
 //
 // The Edge Function builds EVERY response through this module: fresh
 // resolution, rendered result, replay, and every bounded rejection. That is

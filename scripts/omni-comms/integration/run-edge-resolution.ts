@@ -423,6 +423,11 @@ async function main(): Promise<void> {
     );
   }
 
+  /* The department fixture must isolate ENTITLEMENT, not tenancy: it has to
+   * live inside the primary test organisation (cross-organisation ownership
+   * is certified separately by cross_tenant_rejection), differ from the
+   * primary department, and the authorised actor must hold no active
+   * core_staff_assignments entitlement to it. */
   const foreignDept = await admin
     .from('core_department')
     .select('id, organization_id')
@@ -437,7 +442,44 @@ async function main(): Promise<void> {
         'a nonexistent id cannot prove department entitlement enforcement',
     );
   }
-  console.log('  preflight: foreign organisation and department fixtures exist');
+  const foreignDeptRow = foreignDept.data as { id: string; organization_id: string | null };
+  if (
+    (foreignDeptRow.organization_id ?? '').toLowerCase() !==
+    env.OMNI_COMMS_TEST_ORGANIZATION_ID.toLowerCase()
+  ) {
+    refuse(
+      'OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID does not belong to ' +
+        'OMNI_COMMS_TEST_ORGANIZATION_ID — that is a cross-organisation fixture, ' +
+        'already certified by cross_tenant_rejection',
+    );
+  }
+  if (
+    foreignDeptRow.id.toLowerCase() === env.OMNI_COMMS_TEST_DEPARTMENT_ID.toLowerCase()
+  ) {
+    refuse('OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID equals the primary test department');
+  }
+  const deptEntitlement = await admin
+    .from('core_staff_assignments')
+    .select('id')
+    .eq('user_id', actorId)
+    .eq('department_id', env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID)
+    .eq('is_active', true)
+    .limit(1);
+  if (deptEntitlement.error) {
+    refuse('department entitlement lookup failed');
+  }
+  if ((deptEntitlement.data ?? []).length > 0) {
+    refuse(
+      'the authorised test actor holds an active core_staff_assignments ' +
+        'entitlement to OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID — the ' +
+        'department_access_rejection scenario would certify nothing',
+    );
+  }
+  console.log(
+    '  preflight: foreign organisation exists; foreign department is in-tenant, ' +
+      'distinct and unentitled',
+  );
+
 
   /* ── PREFLIGHT: the certified caller module must be the real pilot path ── */
   const { data: callerReg, error: callerRegErr } = await admin
@@ -551,33 +593,24 @@ async function main(): Promise<void> {
     return 'HTTP 403, caller_module_not_registered, nothing persisted';
   });
 
-  /* 4b. A REAL department the actor is not entitled to must be refused. */
+  /* 4b. A REAL in-tenant department the actor is not entitled to must be
+   * refused with department_access_denied EXACTLY. A
+   * department_organization_mismatch here would mean the fixture is
+   * cross-organisation, which cross_tenant_rejection already certifies. */
   await scenario('department_access_rejection', async () => {
-    const { data: dept, error: deptErr } = await admin
-      .from('core_department')
-      .select('id, organization_id')
-      .eq('id', env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID)
-      .maybeSingle();
-    assert(!deptErr, `foreign department read failed: ${deptErr?.message ?? ''}`);
-    assert(dept != null, 'the foreign department fixture does not exist');
-
     const body = {
       ...baseRequest(env, prefix, 'xdept', 'dry_run'),
       departmentId: env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID,
     };
     const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
     assertEqual(r.httpStatus, 403, 'http status');
-    const b = blockersOf(r.body);
-    assert(
-      b.length === 1 &&
-        (b[0] === 'department_access_denied' || b[0] === 'department_organization_mismatch'),
-      `expected a single department refusal code, got ${JSON.stringify(b)}`,
-    );
     assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
+    assertEqual(blockersOf(r.body), ['department_access_denied'], 'blockers');
     const persisted = await requestIdsForPrefix(admin, `${prefix}-xdept`);
     assertEqual(persisted.length, 0, 'persisted requests');
-    return `HTTP 403, ${b[0]} against a real foreign department`;
+    return 'HTTP 403, department_access_denied against a real in-tenant department';
   });
+
 
 
   /* 4c. A REGISTERED caller module the actor may not act for must be refused. */

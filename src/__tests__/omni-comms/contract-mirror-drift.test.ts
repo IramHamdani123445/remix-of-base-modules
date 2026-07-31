@@ -33,7 +33,26 @@ const EDGE_PATH = path.resolve(
   __dirname,
   '../../../supabase/functions/omni-comms-runtime/responseContract.ts',
 );
+const BROWSER_PATH = path.resolve(
+  __dirname,
+  '../../platform/omni-comms/runtime/responseContract.ts',
+);
 const edgeSrc = readFileSync(EDGE_PATH, 'utf8');
+const browserSrc = readFileSync(BROWSER_PATH, 'utf8');
+
+/**
+ * Extract the declared field names of `export interface NAME { ... }`.
+ * Comments are stripped so documentation drift never masquerades as a field.
+ */
+function interfaceFields(src: string, name: string, label: string): string[] {
+  const m = src.match(new RegExp(`export interface ${name}\\s*\\{([\\s\\S]*?)\\n\\}`));
+  if (!m) throw new Error(`${label} is missing interface ${name}`);
+  const body = m[1]
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  return [...body.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\??\s*:/gm)].map((x) => x[1]);
+}
+
 
 /** Extract a `export const NAME = [ ... ] as const;` string array. */
 function edgeArray(name: string): string[] {
@@ -109,5 +128,34 @@ describe('Omni-Comms result contract — browser/Edge mirror drift', () => {
 
   it('never lets the Edge mirror import from the browser tree', () => {
     expect(edgeSrc).not.toMatch(/from ['"](@\/|\.\.\/\.\.\/\.\.\/src)/);
+  });
+
+
+
+
+  const MIRRORED_INTERFACES = [
+    'SendCommunicationRecipientResult',
+    'SendCommunicationMessageResult',
+    'SendCommunicationResult',
+  ] as const;
+
+  for (const name of MIRRORED_INTERFACES) {
+    it(`declares identical field names for ${name}`, () => {
+      const browser = interfaceFields(browserSrc, name, 'browser contract');
+      const edge = interfaceFields(edgeSrc, name, 'edge mirror');
+      // Non-empty guard: an unparsed interface must not pass vacuously.
+      expect(browser.length).toBeGreaterThan(0);
+      // Sorted comparison catches add / remove / rename in either mirror.
+      expect([...edge].sort()).toEqual([...browser].sort());
+      // Declaration order is part of the reviewed contract shape.
+      expect(edge).toEqual(browser);
+    });
+  }
+
+  it('keeps the result interface anchored to the mirrored element types', () => {
+    const fields = interfaceFields(browserSrc, 'SendCommunicationResult', 'browser contract');
+    expect(fields).toContain('recipients');
+    expect(fields).toContain('messages');
+    expect(fields).toContain('contractVersion');
   });
 });

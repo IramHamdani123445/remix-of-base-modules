@@ -163,4 +163,15 @@ describe('Omni-Comms privileged certification harness', () => {
     expect(src).not.toMatch(/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}/);
     expect(src).not.toMatch(/postgres:\/\/[^$\s]+/);
   });
+
+  it('requires an in-tenant, unentitled department fixture before running', () => {
+    expect(src).toContain('core_staff_assignments');
+    expect(src).toMatch(/does not belong to/);
+    expect(src).toMatch(/holds an active core_staff_assignments/);
+  });
+
+  it('accepts only department_access_denied for the department scenario', () => {
+    expect(src).toMatch(/assertEqual\(blockersOf\(r\.body\), \['department_access_denied'\]/);
+    expect(src).not.toMatch(/b\[0\] === 'department_organization_mismatch'/);
+  });
 });

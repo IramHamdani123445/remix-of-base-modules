@@ -12,8 +12,10 @@
  *
  * The Edge mirror lives at
  * `supabase/functions/omni-comms-runtime/responseContract.ts` and MUST stay
- * structurally identical. `src/__tests__/omni-comms/runtime-hardening.test.ts`
- * asserts that both files declare the same contract version and field set.
+ * structurally identical. `src/__tests__/omni-comms/contract-mirror-drift.test.ts`
+ * asserts that both files declare the same contract version, the same
+ * vocabularies and the same interface field names.
+
  *
  * Design rules:
  *   * Replay returns the SAME bounded messages and statuses as the original
