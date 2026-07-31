@@ -370,6 +370,17 @@ Deno.serve(async (req) => {
   }
 });
 
+interface ScanCarry {
+  total_employers_scanned: number;
+  violations_detected: number;
+  violations_created: number;
+  violations_routed: number;
+  violations_skipped_dedupe: number;
+  violations_would_create: number;
+  by_rule: Array<{ rule_code: string; rule_name: string; detected: number; skipped: number; total: number }>;
+  sample_violations: any[];
+}
+
 interface ExecuteScanArgs {
   supabase: any;
   runId: string;
@@ -379,10 +390,59 @@ interface ExecuteScanArgs {
   asOfDate: string;
   employerFilter: string | null;
   employerLimit: number | null;
+  employerOffset: number;
+  batchSize: number;
+  carry: ScanCarry | null;
+  triggeredBy: string;
+}
+
+function emptyCarry(): ScanCarry {
+  return {
+    total_employers_scanned: 0,
+    violations_detected: 0,
+    violations_created: 0,
+    violations_routed: 0,
+    violations_skipped_dedupe: 0,
+    violations_would_create: 0,
+    by_rule: [],
+    sample_violations: [],
+  };
+}
+
+function mergeByRule(
+  prev: ScanCarry["by_rule"],
+  next: ScanCarry["by_rule"],
+): ScanCarry["by_rule"] {
+  const map = new Map<string, ScanCarry["by_rule"][number]>();
+  for (const row of [...prev, ...next]) {
+    const existing = map.get(row.rule_code);
+    if (existing) {
+      existing.detected += row.detected;
+      existing.skipped += row.skipped;
+      existing.total += row.total;
+    } else {
+      map.set(row.rule_code, { ...row });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => (a.rule_code < b.rule_code ? -1 : 1));
 }
 
 async function executeScan(args: ExecuteScanArgs): Promise<void> {
-  const { supabase, runId, jobId, dryRun, force, asOfDate, employerFilter, employerLimit } = args;
+  const {
+    supabase,
+    runId,
+    jobId,
+    dryRun,
+    force,
+    asOfDate,
+    employerFilter,
+    employerLimit,
+    employerOffset,
+    batchSize,
+    triggeredBy,
+  } = args;
+  const carry: ScanCarry = args.carry ?? emptyCarry();
+
 
 
     // Load enabled detection rules with violation type codes
