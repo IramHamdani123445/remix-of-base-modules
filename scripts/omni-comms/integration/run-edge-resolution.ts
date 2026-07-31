@@ -69,7 +69,11 @@ const REQUIRED = [
   'OMNI_COMMS_TEST_UNPRIVILEGED_JWT',
   'OMNI_COMMS_TEST_ORGANIZATION_ID',
   'OMNI_COMMS_TEST_DEPARTMENT_ID',
+  'OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID',
+  'OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID',
   'OMNI_COMMS_TEST_EVENT_CODE',
+  'OMNI_COMMS_TEST_CALLER_MODULE',
+  'OMNI_COMMS_TEST_UNAUTHORISED_MODULE',
 ] as const;
 
 type Env = Record<(typeof REQUIRED)[number], string>;
@@ -78,6 +82,16 @@ const PLACEHOLDER_TOKENS = [
   '', 'changeme', 'placeholder', 'xxx', 'todo', 'undefined', 'null',
   'test', 'example', 'your-key-here',
 ];
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const UUID_ENV_KEYS = [
+  'OMNI_COMMS_TEST_ORGANIZATION_ID',
+  'OMNI_COMMS_TEST_DEPARTMENT_ID',
+  'OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID',
+  'OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID',
+] as const;
 
 function refuse(reason: string): never {
   console.error(`[omni-comms:harness] refusing to run: ${reason}`);
@@ -106,8 +120,37 @@ function readEnv(): Env {
   if (out.OMNI_COMMS_TEST_USER_JWT === out.OMNI_COMMS_TEST_UNPRIVILEGED_JWT) {
     refuse('privileged and unprivileged JWTs are identical — negative tests would be meaningless');
   }
+
+  // Tenant-isolation fixtures must be REAL, distinct, well-formed UUIDs.
+  // A synthetic or reused identifier turns tenant isolation into theatre.
+  for (const k of UUID_ENV_KEYS) {
+    if (!UUID_RE.test(out[k])) refuse(`${k} is not a valid UUID`);
+  }
+  if (
+    out.OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID.toLowerCase() ===
+    out.OMNI_COMMS_TEST_ORGANIZATION_ID.toLowerCase()
+  ) {
+    refuse('OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID equals the primary test organisation');
+  }
+  if (
+    out.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID.toLowerCase() ===
+    out.OMNI_COMMS_TEST_DEPARTMENT_ID.toLowerCase()
+  ) {
+    refuse('OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID equals the primary test department');
+  }
+
+  out.OMNI_COMMS_TEST_CALLER_MODULE = out.OMNI_COMMS_TEST_CALLER_MODULE.toUpperCase();
+  out.OMNI_COMMS_TEST_UNAUTHORISED_MODULE =
+    out.OMNI_COMMS_TEST_UNAUTHORISED_MODULE.toUpperCase();
+  if (out.OMNI_COMMS_TEST_CALLER_MODULE === out.OMNI_COMMS_TEST_UNAUTHORISED_MODULE) {
+    refuse(
+      'OMNI_COMMS_TEST_UNAUTHORISED_MODULE equals the authorised caller module — ' +
+        'the negative module scenario would prove nothing',
+    );
+  }
   return out;
 }
+
 
 /* ── scenario bookkeeping ──────────────────────────────────────────────── */
 
