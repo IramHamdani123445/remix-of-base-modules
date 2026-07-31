@@ -81028,6 +81028,39 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_caller_module_registry: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          module_code: string
+          notes: string | null
+          permission_action: string
+          permission_module: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          module_code: string
+          notes?: string | null
+          permission_action: string
+          permission_module: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          module_code?: string
+          notes?: string | null
+          permission_action?: string
+          permission_module?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omni_comms_channel_setting: {
         Row: {
           channel: string

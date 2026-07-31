@@ -148,6 +148,13 @@ export interface ParseResultFallback {
  * Runtime shape validation of a result received across a trust boundary.
  * Returns `null` when the payload cannot be reconciled with the contract —
  * callers then surface a bounded blocker instead of leaking a partial object.
+ *
+ * Strictness rules (a contract, not a best-effort coercion):
+ *   * `contractVersion` MUST be present and MUST equal the supported version.
+ *   * every recipient and message element MUST validate; a single malformed
+ *     element invalidates the whole payload rather than being silently dropped.
+ *   * `blockers`, `recipients` and `messages` MUST be arrays when present.
+ *   * a non-blocked result MUST carry a non-empty `requestId`.
  */
 export function parseSendCommunicationResult(
   raw: unknown,
@@ -156,36 +163,56 @@ export function parseSendCommunicationResult(
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const r = raw as Record<string, unknown>;
 
+  if (r.contractVersion !== OMNI_COMMS_RESULT_CONTRACT_VERSION) return null;
+
   const status = str(r.status);
   if (status === '') return null;
 
-  const mode = isOmniCommsSendMode(r.mode)
-    ? r.mode
-    : (fallback.mode ?? 'dry_run');
+  if (!isOmniCommsSendMode(r.mode)) return null;
+  const mode = r.mode;
 
-  const recipients = Array.isArray(r.recipients)
-    ? r.recipients
-        .map(normalizeRecipientResult)
-        .filter((x): x is SendCommunicationRecipientResult => x !== null)
-    : [];
+  if (r.recipients !== undefined && !Array.isArray(r.recipients)) return null;
+  if (r.messages !== undefined && !Array.isArray(r.messages)) return null;
+  if (r.blockers !== undefined && !Array.isArray(r.blockers)) return null;
 
-  const messages = Array.isArray(r.messages)
-    ? r.messages
-        .map(normalizeMessageResult)
-        .filter((x): x is SendCommunicationMessageResult => x !== null)
-    : [];
+  const recipients: SendCommunicationRecipientResult[] = [];
+  for (const item of (r.recipients ?? []) as unknown[]) {
+    const parsed = normalizeRecipientResult(item);
+    if (!parsed) return null;
+    recipients.push(parsed);
+  }
+
+  const messages: SendCommunicationMessageResult[] = [];
+  for (const item of (r.messages ?? []) as unknown[]) {
+    const parsed = normalizeMessageResult(item);
+    if (!parsed) return null;
+    messages.push(parsed);
+  }
+
+  const blockers = ((r.blockers ?? []) as unknown[]).filter(
+    (b): b is string => typeof b === 'string',
+  );
+  if (blockers.length !== ((r.blockers ?? []) as unknown[]).length) return null;
+
+  const requestId = str(r.requestId);
+  if (requestId === '' && status !== 'blocked') return null;
+
+  const createdAt = str(r.createdAt);
+  if (createdAt === '' || Number.isNaN(Date.parse(createdAt))) return null;
+
+  if (typeof r.replayed !== 'boolean') return null;
 
   return {
     contractVersion: OMNI_COMMS_RESULT_CONTRACT_VERSION,
-    requestId: str(r.requestId),
+    requestId,
     idempotencyKey: str(r.idempotencyKey, fallback.idempotencyKey ?? ''),
     mode,
     status,
     recipients,
     messages,
-    blockers: strArray(r.blockers),
-    createdAt: str(r.createdAt, new Date(0).toISOString()),
-    replayed: r.replayed === true,
+    blockers,
+    createdAt,
+    replayed: r.replayed,
   };
 }
 

@@ -2,7 +2,7 @@
  * Epic 1 / Story 3 — Omnichannel Communications registries.
  *
  * Verifies:
- *  - counts (19 active objects, 2 deferred, 7 routes, 7 integrations, 5 queues)
+ *  - counts (20 active objects, 2 deferred, 7 routes, 7 integrations, 5 queues)
  *  - registry validation succeeds
  *  - registry invariants (prefixes, uniqueness, approved epics, write authority)
  *  - Story 3 introduces no migration, edge function, queue, or sendCommunication
@@ -37,8 +37,8 @@ function walk(dir: string): string[] {
 }
 
 describe('Omni-Comms Story 3 — registry counts', () => {
-  it('has exactly 19 active objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(19);
+  it('has exactly 20 active objects', () => {
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(20);
   });
   it('has exactly 2 deferred objects', () => {
     expect(OMNI_COMMS_DEFERRED_OBJECTS).toHaveLength(2);
@@ -60,7 +60,7 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     expect(r.errors).toEqual([]);
     expect(r.ok).toBe(true);
     expect(r.counts).toEqual({
-      activeObjects: 19,
+      activeObjects: 20,
       deferredObjects: 2,
       routes: 7,
       integrations: 7,

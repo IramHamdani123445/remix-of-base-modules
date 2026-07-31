@@ -131,6 +131,25 @@ jobs:
 
           echo "credential validation: ok"
 
+      - name: Validate embedded shell syntax
+        run: |
+          set +x
+          python3 - <<'PY' > .certification-logs/shell-syntax.txt
+          import re, subprocess, sys, pathlib
+          src = pathlib.Path('.github/workflows/omni-comms-slice2c-ii-certification.yml').read_text()
+          blocks = re.findall(r'\n\s+run: \|\n((?:\s{10}.*\n|\n)+)', src)
+          bad = 0
+          for i, b in enumerate(blocks):
+              body = '\n'.join(line[10:] for line in b.splitlines())
+              p = subprocess.run(['bash', '-n'], input=body, text=True, capture_output=True)
+              if p.returncode != 0:
+                  bad += 1
+                  print(f'run-block {i}: SYNTAX ERROR\n{p.stderr}')
+          print(f'run blocks checked: {len(blocks)}; syntax errors: {bad}')
+          sys.exit(1 if bad else 0)
+          PY
+          cat .certification-logs/shell-syntax.txt
+
       - name: Run privileged Edge resolution harness
         id: harness
         env:
@@ -140,11 +159,18 @@ jobs:
           OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
           OMNI_COMMS_TEST_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_TEST_UNPRIVILEGED_JWT }}
           OMNI_COMMS_TEST_EVENT_CODE: ${{ vars.OMNI_COMMS_TEST_EVENT_CODE || secrets.OMNI_COMMS_TEST_EVENT_CODE }}
+          OMNI_COMMS_TEST_UNAUTHORISED_MODULE: ${{ vars.OMNI_COMMS_TEST_UNAUTHORISED_MODULE }}
+          # Certification is bound to the EXACT checked-out revision and the
+          # deployed Edge revision must equal it.
+          OMNI_COMMS_REQUIRE_EDGE_REVISION: "1"
 
         run: |
           set +x
           set -o pipefail
           mkdir -p .certification-logs
+          COMMIT_SHA="$(git rev-parse HEAD)"
+          export COMMIT_SHA
+          echo "harness bound to commit: $COMMIT_SHA"
           # Run harness; mirror to file while streaming. Masks registered above
           # will scrub any accidental credential echo in the log.
           bunx tsx scripts/omni-comms/integration/run-edge-resolution.ts 2>&1 \
@@ -164,22 +190,44 @@ jobs:
 
           # Required reported fields (harness must emit these).
           for field in \
+            "commit_sha:" \
             "scenarios:" \
             "failed:" \
             "fixture prefix:" \
             "cleanup:" \
             "edge_function:" \
-            "no_message:" \
-            "no_dispatch_job:" \
+            "edge_revision:" \
+            "edge_revision_matches_commit:" \
+            "no_message_remaining:" \
+            "no_runnable_dispatch_job:" \
             "no_delivery_attempt:" \
             "no_provider_call:" \
             "no_email:" ; do
             grep -q "$field" "$log" || { echo "FAIL — harness output missing required field: $field"; exit 1; }
           done
 
+          # The harness must have run against the exact checked-out revision.
+          expected="$(git rev-parse HEAD)"
+          grep -Eq "^commit_sha: ${expected}$" "$log" \
+            || { echo "FAIL — harness commit_sha does not equal the checked-out revision"; exit 1; }
+          grep -Eq "^edge_revision_matches_commit: true$" "$log" \
+            || { echo "FAIL — deployed Edge revision does not match the certified commit"; exit 1; }
+
+          # Measured safety invariants must be true.
+          for invariant in \
+            "no_message_remaining: true" \
+            "no_runnable_dispatch_job: true" \
+            "no_delivery_attempt: true" \
+            "no_provider_call: true" \
+            "no_email: true" ; do
+            grep -q "$invariant" "$log" \
+              || { echo "FAIL — safety invariant not measured true: $invariant"; exit 1; }
+          done
+
           # Cleanup must be explicitly successful.
           grep -Eq "cleanup:\s*(ok|success)" "$log" \
             || { echo "FAIL — harness did not report successful fixture cleanup"; exit 1; }
+
 
       - name: Vitest — Omni-Comms suite
         run: |
@@ -257,6 +305,22 @@ jobs:
           grep -q "BUILD 3 SLICE 2C-II RESOLUTION VERIFY OK" .certification-logs/slice2c-ii-verifier.log \
             || { echo "FAIL — Slice 2c-ii verifier marker missing"; exit 1; }
 
+      - name: SQL verifier — Slice 2c-iii rendering
+        env:
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          PGSSLMODE: require
+        run: |
+          set +x
+          set -o pipefail
+          psql "$OMNI_COMMS_STAGING_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --file scripts/omni-comms/verify-build3-slice2c-iii-rendering.sql \
+            2>&1 | tee .certification-logs/slice2c-iii-verifier.log
+          grep -q "BUILD 3 SLICE 2C-III RENDERING VERIFY OK" .certification-logs/slice2c-iii-verifier.log \
+            || { echo "FAIL — Slice 2c-iii verifier marker missing"; exit 1; }
+
+
+
       - name: Sanitize logs
         if: always()
         env:
@@ -275,7 +339,6 @@ jobs:
             done
           done
 
-          done
 
       - name: Build certification summary
         if: always()
@@ -289,7 +352,7 @@ jobs:
             cat .certification-logs/git-revision.txt 2>/dev/null || true
             echo ""
             echo "-- Harness --"
-            grep -E "scenarios:|failed:|fixture prefix:|cleanup:|edge_function:|no_message:|no_dispatch_job:|no_delivery_attempt:|no_provider_call:|no_email:" "$log" 2>/dev/null || echo "(harness log unavailable)"
+            grep -E "commit_sha:|scenarios:|passed:|failed:|fixture prefix:|cleanup:|edge_function:|edge_revision:|edge_revision_matches_commit:|no_message_remaining:|no_runnable_dispatch_job:|no_delivery_attempt:|no_provider_call:|no_email:" "$log" 2>/dev/null || echo "(harness log unavailable)"
             echo ""
             echo "-- Assertions (measured by the harness, not assumed) --"
             sed -n '/OMNI_COMMS_HARNESS_SUMMARY_JSON_BEGIN/,/OMNI_COMMS_HARNESS_SUMMARY_JSON_END/p' "$log" 2>/dev/null \
@@ -307,6 +370,7 @@ jobs:
             grep -h "BUILD 3 SLICE 1 RUNTIME DATABASE VERIFY OK" .certification-logs/slice1-verifier.log 2>/dev/null || echo "slice1: MISSING"
             grep -h "BUILD 3 SLICE 2B IDEMPOTENCY VERIFY OK" .certification-logs/slice2b-verifier.log 2>/dev/null || echo "slice2b: MISSING"
             grep -h "BUILD 3 SLICE 2C-II RESOLUTION VERIFY OK" .certification-logs/slice2c-ii-verifier.log 2>/dev/null || echo "slice2c-ii: MISSING"
+            grep -h "BUILD 3 SLICE 2C-III RENDERING VERIFY OK" .certification-logs/slice2c-iii-verifier.log 2>/dev/null || echo "slice2c-iii: MISSING"
             grep -h "BUILD 3 SLICE 2C-II EDGE RESOLUTION INTEGRATION OK" "$log" 2>/dev/null || echo "integration: MISSING"
           } > "$summary"
           cat "$summary" >> "$GITHUB_STEP_SUMMARY"

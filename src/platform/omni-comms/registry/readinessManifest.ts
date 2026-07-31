@@ -136,7 +136,7 @@ const plannedObjects: PlannedObjects = {
     .filter((o) => o.category === 'runtime')
     .map(toPlannedEntry),
   note:
-    'Approved 19-object ceiling. Objects marked "Physical schema available" exist in the database; service capability may still be planned.',
+    'Approved 20-object ceiling. Objects marked "Physical schema available" exist in the database; service capability may still be planned.',
 };
 
 const reservedEdgeFunctions: string[] = OMNI_COMMS_INTEGRATION_REGISTRY

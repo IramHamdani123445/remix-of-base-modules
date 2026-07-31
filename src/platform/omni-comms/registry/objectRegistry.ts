@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Approved logical object catalogue (19 objects).
+ * Omni-Comms — Approved logical object catalogue (20 objects: the 19 foundation objects plus the caller-module authorisation registry).
  *
  * This is the CEILING for the new system. No object listed here has been
  * created. This file does not create tables, policies, functions, or types.
@@ -175,6 +175,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Accelerated Build 3 — Slice 1',
   },
   {
+    name: 'omni_comms_caller_module_registry',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Maps a permitted caller module code to the business capability an actor must hold to submit communications on its behalf.',
+    status: 'AVAILABLE',
+    introductionStory: 'Accelerated Build 3 — Certification hardening',
+  },
+  {
     name: 'omni_comms_webhook_event',
     category: 'runtime',
     epic: 6,
@@ -183,5 +193,6 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     status: 'PLANNED',
   },
 ] as const;
+
 
 export const OMNI_COMMS_OBJECT_COUNT = OMNI_COMMS_OBJECT_REGISTRY.length;
