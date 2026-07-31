@@ -151,23 +151,25 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
     }
     try {
       const { data, error: err } = await sb
-        .from("core_department_profile")
-        .select("id, department_code, department_name, organization_id")
+        .from("core_department")
+        .select("id, code, name, organization_id, is_active")
         .eq("organization_id", orgId)
-        .order("department_name", { ascending: true });
+        .eq("is_active", true)
+        .order("name", { ascending: true });
       if (err) throw err;
       const rows = (data ?? []) as Array<{
         id: string;
-        department_code: string | null;
-        department_name: string | null;
+        code: string | null;
+        name: string | null;
         organization_id: string;
       }>;
       const mapped: OmniCommsDepartmentOption[] = rows.map((r) => ({
         id: r.id,
-        name: r.department_name ?? r.department_code ?? r.id,
-        code: r.department_code ?? null,
+        name: r.name ?? r.code ?? r.id,
+        code: r.code ?? null,
         organizationId: r.organization_id,
       }));
+
       setDepts(mapped);
       // Reset department if it no longer belongs to the selected org.
       if (departmentId && !mapped.some((d) => d.id === departmentId)) {
