@@ -31,6 +31,7 @@ import { OMNI_COMMS_ROUTE_REGISTRY } from "../../registry/routeRegistry";
 import { OMNI_COMMS_READINESS_MANIFEST } from "../../registry/readinessManifest";
 import SetupWizardPanel from "./setup/SetupWizardPanel";
 import ControlledDryRunPanel from "./dryrun/ControlledDryRunPanel";
+import ReferenceSeedPanel from "./seed/ReferenceSeedPanel";
 
 type StatusKind = "available" | "coming-soon";
 
@@ -129,12 +130,17 @@ export const OmniCommsLandingPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawView = searchParams.get("view");
   const view =
-    rawView === "setup" || rawView === "dry-run" ? rawView : "overview";
+    rawView === "setup" || rawView === "dry-run" || rawView === "reference-data"
+      ? rawView
+      : "overview";
 
   const onTabChange = (value: string): void => {
     const params = new URLSearchParams(searchParams);
-    if (value === "setup" || value === "dry-run") params.set("view", value);
-    else params.delete("view");
+    if (value === "setup" || value === "dry-run" || value === "reference-data") {
+      params.set("view", value);
+    } else {
+      params.delete("view");
+    }
     setSearchParams(params, { replace: true });
   };
 
@@ -165,6 +171,12 @@ export const OmniCommsLandingPage: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="dry-run" data-testid="omni-comms-landing-tab-dry-run">
             Dry Run
+          </TabsTrigger>
+          <TabsTrigger
+            value="reference-data"
+            data-testid="omni-comms-landing-tab-reference-data"
+          >
+            Reference Data
           </TabsTrigger>
         </TabsList>
 
@@ -244,6 +256,10 @@ export const OmniCommsLandingPage: React.FC = () => {
 
         <TabsContent value="dry-run" className="mt-4">
           <ControlledDryRunPanel />
+        </TabsContent>
+
+        <TabsContent value="reference-data" className="mt-4">
+          <ReferenceSeedPanel />
         </TabsContent>
       </Tabs>
     </div>

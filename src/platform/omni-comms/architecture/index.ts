@@ -23,3 +23,8 @@ export {
   checkControlledDryRunBoundary,
   isControlledDryRunFile,
 } from './checks/checkControlledDryRunBoundary';
+export {
+  checkReferenceSeedBoundary,
+  isReferenceSeedFile,
+  REFERENCE_SEED_ALLOWED_RPCS,
+} from './checks/checkReferenceSeedBoundary';
