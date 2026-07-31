@@ -82043,6 +82043,27 @@ export type Database = {
           },
         ]
       }
+      omni_comms_runtime_environment: {
+        Row: {
+          created_at: string
+          environment: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          environment?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omni_comms_sender_identity: {
         Row: {
           activated_at: string | null
@@ -103021,6 +103042,7 @@ export type Database = {
         Args: { p_max_bytes: number; p_value: Json }
         Returns: undefined
       }
+      omni_comms_priv_runtime_environment: { Args: never; Returns: string }
       omni_comms_priv_runtime_health_posture: {
         Args: { p_deployed_revision?: string }
         Returns: Json
@@ -103051,6 +103073,10 @@ export type Database = {
           p_request_fingerprint: string
           p_requested_channels: string[]
         }
+        Returns: Json
+      }
+      omni_comms_priv_set_runtime_environment: {
+        Args: { p_environment: string }
         Returns: Json
       }
       omni_comms_priv_slice1_verify: { Args: never; Returns: string }

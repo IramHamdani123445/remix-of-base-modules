@@ -606,8 +606,8 @@ describe('Phase 3 — registry ceilings', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
   });
 
-  it('keeps exactly twenty logical database objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(20);
+  it('keeps exactly twenty-one logical database objects', () => {
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(21);
   });
 });
 
