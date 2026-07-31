@@ -16,7 +16,14 @@ import { Link } from "react-router-dom";
 import { AlertCircle, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -68,6 +75,11 @@ export const SetupWizardPanel: React.FC = () => {
   const [plan, setPlan] = React.useState<SetupPlan | null>(null);
   const [error, setError] = React.useState<SetupError | null>(null);
   const [loading, setLoading] = React.useState(false);
+  /**
+   * Completed stages collapse; the stage holding the next required action is
+   * expanded automatically so the operator's next move is always visible.
+   */
+  const [openStages, setOpenStages] = React.useState<string[]>([]);
 
   // Event picker — active definitions only.
   React.useEffect(() => {
@@ -119,6 +131,17 @@ export const SetupWizardPanel: React.FC = () => {
     },
     [organizationId, departmentId, eventDefinitionId, locale, rpc],
   );
+
+  React.useEffect(() => {
+    if (!plan) return;
+    setOpenStages(
+      OMNI_COMMS_SETUP_STAGES.filter((stage) => {
+        const steps = plan.steps.filter((s) => stage.steps.includes(s.id));
+        if (steps.length === 0) return false;
+        return steps.some((s) => s.state !== "complete");
+      }).map((stage) => stage.id),
+    );
+  }, [plan]);
 
   React.useEffect(() => {
     const signal = { cancelled: false };
@@ -327,35 +350,69 @@ export const SetupWizardPanel: React.FC = () => {
             </CardContent>
           </Card>
 
-          {OMNI_COMMS_SETUP_STAGES.map((stage) => {
-            const steps = plan.steps.filter((s) => stage.steps.includes(s.id));
-            if (steps.length === 0) return null;
-            const done = steps.filter((s) => s.state === "complete").length;
-            return (
-              <Card key={stage.id} data-testid={`omni-comms-setup-stage-${stage.id}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex flex-wrap items-center gap-2">
-                    <span>{stage.title}</span>
-                    <span className="text-sm font-normal text-muted-foreground">
-                      {done} of {steps.length} complete
-                    </span>
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">{stage.purpose}</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3" data-testid="omni-comms-setup-steps">
-                    {steps.map((s) => (
-                      <SetupStepCard
-                        key={s.id}
-                        step={s}
-                        isNextRequired={plan.nextRequiredStep?.id === s.id}
-                      />
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+          <Accordion
+            type="multiple"
+            value={openStages}
+            onValueChange={setOpenStages}
+            className="space-y-4"
+            data-testid="omni-comms-setup-stages"
+          >
+            {OMNI_COMMS_SETUP_STAGES.map((stage) => {
+              const steps = plan.steps.filter((s) => stage.steps.includes(s.id));
+              if (steps.length === 0) return null;
+              const done = steps.filter((s) => s.state === "complete").length;
+              const complete = done === steps.length;
+              const holdsNext = plan.nextRequiredStep
+                ? stage.steps.includes(plan.nextRequiredStep.id)
+                : false;
+              return (
+                <Card key={stage.id} data-testid={`omni-comms-setup-stage-${stage.id}`}>
+                  <AccordionItem value={stage.id} className="border-none">
+                    <CardHeader className="pb-0">
+                      <AccordionTrigger className="py-0 hover:no-underline">
+                        <div className="flex-1 text-left">
+                          <CardTitle className="text-base flex flex-wrap items-center gap-2">
+                            <span>{stage.title}</span>
+                            <span className="text-sm font-normal text-muted-foreground">
+                              {done} of {steps.length} complete
+                            </span>
+                            {holdsNext ? (
+                              <Badge data-testid={`omni-comms-setup-stage-next-${stage.id}`}>
+                                Action required
+                              </Badge>
+                            ) : complete ? (
+                              <Badge
+                                variant="outline"
+                                data-testid={`omni-comms-setup-stage-complete-${stage.id}`}
+                              >
+                                Complete
+                              </Badge>
+                            ) : null}
+                          </CardTitle>
+                          <p className="text-sm font-normal text-muted-foreground">
+                            {stage.purpose}
+                          </p>
+                        </div>
+                      </AccordionTrigger>
+                    </CardHeader>
+                    <AccordionContent>
+                      <CardContent className="pt-4">
+                        <div className="space-y-3" data-testid="omni-comms-setup-steps">
+                          {steps.map((s) => (
+                            <SetupStepCard
+                              key={s.id}
+                              step={s}
+                              isNextRequired={plan.nextRequiredStep?.id === s.id}
+                            />
+                          ))}
+                        </div>
+                      </CardContent>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Card>
+              );
+            })}
+          </Accordion>
         </>
       )}
 
