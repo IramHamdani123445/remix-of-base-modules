@@ -99,6 +99,8 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   const [mode, setMode] = useState<string>(ALL);
   const [status, setStatus] = useState<string>(ALL);
+  const [range, setRange] = useState<RangeId>("30d");
+  const [zone, setZone] = useState<"local" | "utc">("local");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [offset, setOffset] = useState(0);
@@ -109,6 +111,12 @@ export const OmniCommsOperationsPage: React.FC = () => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
     return () => window.clearTimeout(t);
   }, [search]);
+
+  const dateFrom = useMemo(() => {
+    const hours = RANGES.find((r) => r.id === range)?.hours ?? null;
+    if (hours === null) return null;
+    return new Date(Date.now() - hours * 3600_000).toISOString();
+  }, [range]);
 
   const load = useCallback(async () => {
     if (!organizationId) return;
@@ -122,6 +130,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
           departmentId,
           mode: mode === ALL ? null : (mode as RequestMode),
           status: status === ALL ? null : (status as RequestStatus),
+          dateFrom,
           search: debouncedSearch.length > 0 ? debouncedSearch : null,
           limit: OPS_PAGE_SIZE_DEFAULT,
           offset,
@@ -136,7 +145,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [client, organizationId, departmentId, mode, status, debouncedSearch, offset]);
+  }, [client, organizationId, departmentId, mode, status, dateFrom, debouncedSearch, offset]);
 
   useEffect(() => {
     void load();
@@ -144,7 +153,8 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   useEffect(() => {
     setOffset(0);
-  }, [mode, status, debouncedSearch, organizationId, departmentId]);
+  }, [mode, status, dateFrom, debouncedSearch, organizationId, departmentId]);
+
 
   const openRequest = (id: string) => {
     const next = new URLSearchParams(searchParams);
