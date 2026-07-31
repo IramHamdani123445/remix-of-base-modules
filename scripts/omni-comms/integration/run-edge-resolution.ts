@@ -31,15 +31,23 @@
  *   OMNI_COMMS_TEST_UNPRIVILEGED_JWT     authenticated, NO omni_comms.operate
  *   OMNI_COMMS_TEST_ORGANIZATION_ID
  *   OMNI_COMMS_TEST_DEPARTMENT_ID
+ *   OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID   REAL staging organisation the
+ *                                        authorised test actor has NO access
+ *                                        to. Never a synthetic UUID.
+ *   OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID     REAL staging department the
+ *                                        authorised test actor is NOT
+ *                                        assigned/entitled to.
  *   OMNI_COMMS_TEST_EVENT_CODE           fully configured pilot event
+ *   OMNI_COMMS_TEST_CALLER_MODULE        the ACTUAL pilot business-module
+ *                                        caller certified by valid requests
+ *   OMNI_COMMS_TEST_UNAUTHORISED_MODULE  registered caller module the test
+ *                                        actor must NOT be able to act for
  *   COMMIT_SHA | GITHUB_SHA              full 40-char certified revision
  *
  * Optional environment:
  *   OMNI_COMMS_REQUIRE_EDGE_REVISION=1   fail unless the deployed Edge
  *                                        revision equals COMMIT_SHA
- *   OMNI_COMMS_TEST_UNAUTHORISED_MODULE  registered caller module the test
- *                                        actor must NOT be able to act for
- *                                        (default FINANCE)
+
 
  *
  * On refusal (missing/placeholder credentials) exits non-zero with:
