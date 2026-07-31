@@ -408,17 +408,44 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       allEmployers = allEmployers.slice(0, employerLimit);
     }
 
+    // ── Compliance start per employer ──
+    // Detection must cover every eligible period since the employer began
+    // trading (date_wages_first_paid / registration_date), NOT a flat 12-month
+    // window. `lookback_months` on a rule now acts only as an absolute safety
+    // cap (default 120 months) — the effective window per employer is
+    // min(months since compliance start, cap).
+    const ABSOLUTE_CAP_MONTHS = 120;
+    const monthsBetween = (fromYm: string, to: Date) => {
+      const [fy, fm] = fromYm.split("-").map((n) => parseInt(n, 10));
+      return (to.getFullYear() - fy) * 12 + (to.getMonth() + 1 - fm);
+    };
+    const complianceStartByEmp = new Map<string, string>();
+    for (const f of filings as any[]) {
+      if (f.compliance_start_period) {
+        complianceStartByEmp.set(f.regno, String(f.compliance_start_period).slice(0, 7));
+      }
+    }
+
     // ── Bulk prefetch of filed C3 periods ──
     // Previously the missing-period rules issued ONE query per employer per
     // rule (thousands of sequential round trips), which blew past the edge
     // worker wall-clock and left the run stuck in "Running" forever. Fetch
     // every relevant period once, paginated, and index it by payer.
-    const maxLookback = Math.max(
+    const ruleCap = Math.max(
       12,
-      ...enrichedRules.map((r) => Number(r.parameters?.lookback_months ?? 12)),
+      ...enrichedRules.map((r) =>
+        Math.min(ABSOLUTE_CAP_MONTHS, Number(r.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS)),
+      ),
     );
+    const asOfRef = new Date(asOfDate);
+    let widestLookback = ruleCap;
+    for (const ym of complianceStartByEmp.values()) {
+      widestLookback = Math.max(widestLookback, Math.min(ruleCap, monthsBetween(ym, asOfRef)));
+    }
+    const maxLookback = Math.min(ABSOLUTE_CAP_MONTHS, widestLookback);
     const filedCutoff = new Date();
     filedCutoff.setMonth(filedCutoff.getMonth() - (maxLookback + 1));
+
     const filedPeriodsByEmp = new Map<string, Set<string>>();
     {
       const PAGE = 1000;
@@ -479,7 +506,10 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           case "contribution_gap_detected": {
             // Per-period emission: flag every missing month independently so each
             // gap (e.g. February only) gets its own violation row.
-            const lookback = Number(rule.parameters?.lookback_months ?? 12);
+            const cap = Math.min(
+              ABSOLUTE_CAP_MONTHS,
+              Number(rule.parameters?.lookback_months ?? ABSOLUTE_CAP_MONTHS),
+            );
             const minMissed = Number(rule.parameters?.min_missed_months ?? 1);
             const graceDays = Number(rule.parameters?.days_past_deadline ?? 30);
             const dueDay = Number(rule.parameters?.submission_due_day ?? 28);
@@ -487,15 +517,21 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
             // Filed periods come from the bulk prefetch above — no per-employer query.
             const filedSet = filedPeriodsByEmp.get(emp.regno) ?? new Set<string>();
 
-
             const today = new Date(asOfDate);
+            // Window starts at the employer's compliance start (registration /
+            // first wages paid), bounded by the rule's safety cap.
+            const startYm = complianceStartByEmp.get(emp.regno);
+            const sinceStart = startYm ? monthsBetween(startYm, today) : cap;
+            const lookback = Math.max(0, Math.min(cap, sinceStart));
             const missing: string[] = [];
             for (let i = 1; i <= lookback; i++) {
               const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
               const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+              if (startYm && ym < startYm) continue;
               const deadline = new Date(d.getFullYear(), d.getMonth() + 1, dueDay + graceDays);
               if (today >= deadline && !filedSet.has(ym)) missing.push(ym);
             }
+
 
             if (missing.length >= minMissed) {
               for (const ym of missing) {
