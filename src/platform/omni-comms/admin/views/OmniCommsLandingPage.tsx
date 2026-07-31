@@ -26,19 +26,22 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
-import { useOmniCommsEdgeHealthProbe } from "../hooks/useOmniCommsEdgeHealthProbe";
+import { useOmniCommsCertificationPosture } from "../hooks/useOmniCommsCertificationPosture";
 import {
   buildPostureFacets,
-  currentOmniCommsEnvironment,
   isNonProduction,
-  normaliseCertificationState,
   OMNI_COMMS_PENDING_POSTURE_LINES,
 } from "../posture/omniCommsPosture";
 import {
   OmniCommsPostureBadgeList,
   OmniCommsInlineWarning,
 } from "../components/OmniCommsPostureBadge";
-import { OMNI_COMMS_NAV_ITEMS } from "../navigation/omniCommsNavigation";
+import {
+  omniCommsNavItems,
+  overviewViewHref,
+  resolveOverviewView,
+  type OmniCommsOverviewView,
+} from "../navigation/omniCommsNavigation";
 import {
   buildSetupPlan,
   getSetupReadiness,
@@ -51,26 +54,24 @@ import SetupWizardPanel from "./setup/SetupWizardPanel";
 import ControlledDryRunPanel from "./dryrun/ControlledDryRunPanel";
 import ReferenceSeedPanel from "./seed/ReferenceSeedPanel";
 
-type LandingView = "overview" | "setup" | "dry-run" | "reference-data";
-
-const VIEWS: LandingView[] = ["overview", "setup", "dry-run", "reference-data"];
-
-function resolveView(raw: string | null): LandingView {
-  return (VIEWS as string[]).includes(raw ?? "") ? (raw as LandingView) : "overview";
-}
 
 // ── Dashboard body ────────────────────────────────────────────────────────
 
 const DashboardView: React.FC = () => {
   const { organizationId, departmentId, availableOrganizations } = useOmniCommsTenant();
   const rpc = useOmniCommsRpcClient();
-  const { result: edge, probe, probing } = useOmniCommsEdgeHealthProbe();
+  const {
+    posture: certification,
+    edge,
+    environment,
+    probing,
+    refresh: probe,
+  } = useOmniCommsCertificationPosture();
 
   const [plan, setPlan] = React.useState<SetupPlan | null>(null);
   const [error, setError] = React.useState<SetupError | null>(null);
   const [loading, setLoading] = React.useState(false);
 
-  const environment = currentOmniCommsEnvironment();
   const orgName =
     availableOrganizations.find((o) => o.id === organizationId)?.name ?? null;
 
@@ -95,14 +96,18 @@ const DashboardView: React.FC = () => {
 
   React.useEffect(() => {
     void load();
-    void probe();
-  }, [load, probe]);
+  }, [load]);
 
   const facets = buildPostureFacets({
     screenAvailable: true,
     configurationReady: plan ? plan.dryRunReady : null,
     runtimeAvailable: edge ? edge.available : null,
-    certification: normaliseCertificationState(edge?.certificationState ?? null),
+    certification:
+      certification.state === "certified"
+        ? "certified"
+        : certification.state === "pending"
+          ? "pending"
+          : "unknown",
     liveDeliveryEnabled: edge?.liveDeliveryEnabled === true,
     environment,
   });
@@ -124,6 +129,9 @@ const DashboardView: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           <OmniCommsPostureBadgeList facets={facets} />
+          <p className="text-sm text-muted-foreground" data-testid="omni-comms-dashboard-certification-reason">
+            {certification.reason}
+          </p>
           <ul className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
             {OMNI_COMMS_PENDING_POSTURE_LINES.map((line) => (
               <li key={line}>{line}</li>
@@ -147,7 +155,7 @@ const DashboardView: React.FC = () => {
             size="sm"
             onClick={() => {
               void load();
-              void probe();
+              probe();
             }}
             disabled={loading || probing}
             aria-label="Refresh dashboard"
@@ -189,7 +197,7 @@ const DashboardView: React.FC = () => {
                   <p className="text-muted-foreground">{nextStep.purpose}</p>
                   <div className="flex flex-wrap gap-2">
                     <Button asChild size="sm">
-                      <Link to="/admin/omnichannel-communications?view=setup">
+                      <Link to={overviewViewHref("setup")}>
                         Open Setup readiness
                         <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
                       </Link>
@@ -223,7 +231,7 @@ const DashboardView: React.FC = () => {
         </CardHeader>
         <CardContent>
           <ul className="grid gap-3 sm:grid-cols-2">
-            {OMNI_COMMS_NAV_ITEMS.map((item) => (
+            {omniCommsNavItems(environment).map((item) => (
               <li
                 key={item.id}
                 data-testid={`omni-comms-dashboard-link-${item.id}`}
@@ -268,14 +276,21 @@ const DashboardView: React.FC = () => {
 
 export const OmniCommsLandingPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const view = resolveView(searchParams.get("view"));
-  const environment = currentOmniCommsEnvironment();
+  // Single canonical parser shared with the module header, deep links and
+  // tests. This page never parses `?view=` itself.
+  const requested = resolveOverviewView(searchParams.get("view"));
+  const { environment } = useOmniCommsCertificationPosture({ autoProbe: false });
   const nonProduction = isNonProduction(environment);
+
+  // Safe test is a non-production surface. In production it is not rendered
+  // AND a direct `?view=safe-test` deep link falls back to the Dashboard.
+  const view: OmniCommsOverviewView =
+    requested === "safe-test" && !nonProduction ? "dashboard" : requested;
 
   const onTabChange = (value: string): void => {
     const params = new URLSearchParams(searchParams);
-    const next = resolveView(value);
-    if (next === "overview") params.delete("view");
+    const next = resolveOverviewView(value);
+    if (next === "dashboard") params.delete("view");
     else params.set("view", next);
     setSearchParams(params, { replace: true });
   };
@@ -284,20 +299,20 @@ export const OmniCommsLandingPage: React.FC = () => {
     <div data-testid="omni-comms-landing" className="space-y-6">
       <Tabs value={view} onValueChange={onTabChange} className="w-full">
         <TabsList aria-label="Omnichannel Communications views">
-          <TabsTrigger value="overview" data-testid="omni-comms-landing-tab-overview">
+          <TabsTrigger value="dashboard" data-testid="omni-comms-landing-tab-dashboard">
             Dashboard
           </TabsTrigger>
           <TabsTrigger value="setup" data-testid="omni-comms-landing-tab-setup">
             Setup readiness
           </TabsTrigger>
           {nonProduction ? (
-            <TabsTrigger value="dry-run" data-testid="omni-comms-landing-tab-dry-run">
+            <TabsTrigger value="safe-test" data-testid="omni-comms-landing-tab-safe-test">
               Safe test
             </TabsTrigger>
           ) : null}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-4">
+        <TabsContent value="dashboard" className="mt-4">
           <DashboardView />
         </TabsContent>
 
@@ -305,9 +320,11 @@ export const OmniCommsLandingPage: React.FC = () => {
           <SetupWizardPanel />
         </TabsContent>
 
-        <TabsContent value="dry-run" className="mt-4">
-          <ControlledDryRunPanel />
-        </TabsContent>
+        {nonProduction ? (
+          <TabsContent value="safe-test" className="mt-4">
+            <ControlledDryRunPanel />
+          </TabsContent>
+        ) : null}
 
         {/*
           Reference data is a non-production configuration tool, not a primary
