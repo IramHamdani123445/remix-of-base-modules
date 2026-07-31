@@ -753,6 +753,8 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const [versionCreate, setVersionCreate] = React.useState(false);
   const [publishState, setPublishState] = React.useState<PublishDialogState>({ open: false, version: null, hasExistingPublished: false });
   const [reasonDialog, setReasonDialog] = React.useState<ReasonDialogState>(CLOSED_REASON);
+  const [layoutDialogVersion, setLayoutDialogVersion] =
+    React.useState<TemplateVersionGetResult | null>(null);
 
   // ── Load the event catalogue once ──
   React.useEffect(() => {
