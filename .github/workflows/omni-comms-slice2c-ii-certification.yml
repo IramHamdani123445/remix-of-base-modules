@@ -262,15 +262,19 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           OMNI_COMMS_TEST_USER_JWT: ${{ secrets.OMNI_COMMS_TEST_USER_JWT }}
+          OMNI_COMMS_TEST_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_TEST_UNPRIVILEGED_JWT }}
           OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
         run: |
           set +x
           shopt -s nullglob
           for f in .certification-logs/*.log .certification-logs/*.txt; do
-            for v in "$SUPABASE_URL" "$SUPABASE_SERVICE_ROLE_KEY" "$OMNI_COMMS_TEST_USER_JWT" "$OMNI_COMMS_STAGING_DB_URL"; do
+            for v in "$SUPABASE_URL" "$SUPABASE_SERVICE_ROLE_KEY" "$SUPABASE_ANON_KEY" "$OMNI_COMMS_TEST_USER_JWT" "$OMNI_COMMS_TEST_UNPRIVILEGED_JWT" "$OMNI_COMMS_STAGING_DB_URL"; do
               [ -n "$v" ] && sed -i "s|${v//|/\\|}|***REDACTED***|g" "$f" || true
             done
+          done
+
           done
 
       - name: Build certification summary
