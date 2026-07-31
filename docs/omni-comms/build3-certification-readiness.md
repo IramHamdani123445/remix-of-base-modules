@@ -92,28 +92,49 @@ Artifacts are named after the **actual checked-out revision**
    40-character commit being certified. Without it `/health` reports
    `revisionVerified: false` and the run is refused before any fixture exists.
 2. **Create the `omni-comms-staging` GitHub environment** (with whatever
-   reviewers/protection rules your governance requires) and populate its
-   secrets:
-   - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for the staging project
-     (never a production project).
+   reviewers/protection rules your governance requires).
+
+   **Environment _secrets_** (exact names, referenced via `secrets.*`):
+   - `SUPABASE_URL` — staging project URL (never production).
+   - `SUPABASE_SERVICE_ROLE_KEY` — staging service-role key.
+   - `SUPABASE_ANON_KEY` — staging anon key. Must not equal the service key.
+   - `OMNI_COMMS_STAGING_DB_URL` — psql connection string for the SQL
+     verifiers.
    - `OMNI_COMMS_TEST_USER_JWT` — a real, authorised staging operator holding
-     the capability for the caller module under test, scoped to the test
-     organisation and department.
+     the capability required by `OMNI_COMMS_TEST_CALLER_MODULE`, scoped to the
+     test organisation and department.
    - `OMNI_COMMS_TEST_UNPRIVILEGED_JWT` — a genuinely unprivileged staging
-     user, used by `permission_rejection`. A second admin will make the
-     scenario fail.
-   - `OMNI_COMMS_TEST_ORG_ID`, `OMNI_COMMS_TEST_DEPARTMENT_ID`,
-     `OMNI_COMMS_TEST_EVENT_CODE`, `OMNI_COMMS_TEST_CALLER_MODULE`.
-   - `OMNI_COMMS_TEST_FOREIGN_ORG_ID` — a second staging organisation the test
-     actor has no access to, for `cross_tenant_rejection`.
-   - `OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID` — a department inside the test
-     organisation the actor is not entitled to, for
-     `department_access_rejection`.
-   - `OMNI_COMMS_TEST_UNAUTHORISED_MODULE` — a module registered in
-     `omni_comms_caller_module_registry` whose required capability the test
-     actor does **not** hold. The default `FINANCE` fails for a
-     platform-admin test actor; use a non-admin operator or pick a module
-     outside their capability set.
+     user, used by `permission_rejection`. A second admin makes the scenario
+     meaningless and the harness rejects an identical pair.
+
+   **Environment _variables_** (exact names, referenced via `vars.*`; these are
+   identifiers, not credentials):
+   - `OMNI_COMMS_TEST_ORGANIZATION_ID` — UUID of the test organisation.
+   - `OMNI_COMMS_TEST_DEPARTMENT_ID` — UUID of the test department.
+   - `OMNI_COMMS_TEST_FOREIGN_ORGANIZATION_ID` — UUID of a **real, existing**
+     second staging organisation the test actor has no access to, used by
+     `cross_tenant_rejection`. The harness verifies the row exists in
+     `core_organization` and refuses to run if it does not — a rejection of a
+     nonexistent id proves nothing.
+   - `OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID` — UUID of a **real, existing**
+     department the actor is not entitled to, used by
+     `department_access_rejection`. Verified against `core_department`.
+   - `OMNI_COMMS_TEST_EVENT_CODE` — the fully configured pilot event.
+   - `OMNI_COMMS_TEST_CALLER_MODULE` — the ACTUAL pilot business-module caller
+     code. Every valid request in the run is submitted under this module, so
+     the certification proves the real integration path rather than a generic
+     direct caller. The harness verifies before execution that it is
+     registered in `omni_comms_caller_module_registry`, is `is_active = true`,
+     and that the test actor holds its required capability.
+   - `OMNI_COMMS_TEST_UNAUTHORISED_MODULE` — a **different** module registered
+     in `omni_comms_caller_module_registry` whose required capability the test
+     actor does **not** hold. `FINANCE` fails for a platform-admin test actor;
+     use a non-admin operator or pick a module outside their capability set.
+
+   All four UUID variables must be well-formed and the foreign pair must
+   differ from the primary pair; the workflow and the harness both refuse
+   otherwise.
+
 3. **Seed a fully configured send path** in the test organisation for the
    chosen event, channel and locale: active event route, published template
    version pinned to a published layout, verified sender identity, and an
