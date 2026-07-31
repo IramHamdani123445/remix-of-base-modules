@@ -668,25 +668,47 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       .limit(1);
     const activePolicy = activePolicyRows?.[0] ?? null;
 
-    const empIds = Array.from(new Set(newViolations.map((v) => v.employer_id)));
+    const empIds = Array.from(new Set(newViolations.map((v) => v.employer_id).filter(Boolean)));
     const historyByEmp = new Map<string, number[]>();
     if (empIds.length > 0) {
-      // Pull the last ~24 months of C3 rows for the touched employers in one
-      // query, then take the 3 most recent per employer client-side.
-      const cutoff = new Date();
-      cutoff.setMonth(cutoff.getMonth() - 24);
-      const { data: c3Rows } = await supabase
-        .from("cn_c3_reported")
-        .select("payer_id, period, emp_ss_amt_calc, emp_levy_amt_calc, emp_pe_amt_calc")
-        .in("payer_id", empIds)
-        .gte("period", cutoff.toISOString().slice(0, 10))
-        .order("period", { ascending: false });
-      for (const r of (c3Rows || [])) {
-        const total = Number(r.emp_ss_amt_calc || 0) + Number(r.emp_levy_amt_calc || 0) + Number(r.emp_pe_amt_calc || 0);
-        if (!(total > 0)) continue;
-        const arr = historyByEmp.get(r.payer_id) || [];
-        if (arr.length < 3) arr.push(total);
-        historyByEmp.set(r.payer_id, arr);
+      // Pull the employer's most recent known C3 filings. Rows are aggregated
+      // per (employer, period) first — a period can carry several C3 lines —
+      // then the 3 most recent periods form the CR-003 basis.
+      // The employer id list is chunked: a single .in() with thousands of ids
+      // overflows the request URL and silently returns no rows (which is what
+      // caused every violation to be priced at 0).
+      const CHUNK = 100;
+      const periodTotals = new Map<string, Map<string, number>>();
+      for (let i = 0; i < empIds.length; i += CHUNK) {
+        const chunk = empIds.slice(i, i + CHUNK);
+        const { data: c3Rows, error: c3Err } = await supabase
+          .from("cn_c3_reported")
+          .select("payer_id, period, emp_ss_amt_calc, emp_levy_amt_calc, emp_pe_amt_calc")
+          .in("payer_id", chunk)
+          .order("period", { ascending: false })
+          .limit(20000);
+        if (c3Err) {
+          console.error("[ce-violation-scan] C3 history lookup failed", c3Err.message);
+          continue;
+        }
+        for (const r of (c3Rows || [])) {
+          const total =
+            Number(r.emp_ss_amt_calc || 0) +
+            Number(r.emp_levy_amt_calc || 0) +
+            Number(r.emp_pe_amt_calc || 0);
+          if (!(total > 0)) continue;
+          const byPeriod = periodTotals.get(r.payer_id) || new Map<string, number>();
+          const key = String(r.period).slice(0, 10);
+          byPeriod.set(key, (byPeriod.get(key) || 0) + total);
+          periodTotals.set(r.payer_id, byPeriod);
+        }
+      }
+      for (const [empId, byPeriod] of periodTotals) {
+        const last3 = Array.from(byPeriod.entries())
+          .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+          .slice(0, 3)
+          .map(([, v]) => v);
+        if (last3.length > 0) historyByEmp.set(empId, last3);
       }
     }
 
