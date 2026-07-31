@@ -335,6 +335,15 @@ export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departme
           </Card>
         </>
       )}
+
+      <OmniCommsLayoutSelectionDialog
+        open={layoutDialogVersion !== null}
+        version={layoutDialogVersion}
+        familyCode={families.find((f) => f.id === familyId)?.code ?? ''}
+        canAuthor
+        onClose={() => setLayoutDialogVersion(null)}
+        onSaved={async () => { await reloadVersions(); }}
+      />
     </div>
   );
 };
