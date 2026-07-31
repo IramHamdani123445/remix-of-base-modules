@@ -22,6 +22,7 @@ import {
   HEALTH_MIN_REFRESH_MS,
   OMNI_COMMS_TARGET_SCREENS,
   type HealthSummaryPayload,
+  type EdgeHealthProbeResult,
 } from '@/platform/omni-comms/application/healthDiagnosticsTypes';
 import { OmniCommsRpcError } from '@/platform/omni-comms/application/eventCatalogueTypes';
 import {
