@@ -81,7 +81,7 @@ import {
   type DryRunValidationScope,
 } from "@/platform/omni-comms/application/controlledDryRunService";
 
-const LOCALES = ["en", "en-GB", "es", "fr"];
+const LOCALES = ["en", "en-US", "en-GB", "es", "fr"];
 
 function Line({ label, value }: { label: string; value: React.ReactNode }) {
   return (
