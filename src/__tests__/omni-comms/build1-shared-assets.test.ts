@@ -31,9 +31,9 @@ describe('Build 1 — Shared Assets & Layouts', () => {
     expect(ch).toBeDefined();
   });
 
-  it('shared assets service exports exactly 12 RPC names', () => {
-    expect(SHARED_ASSETS_RPC_NAMES.length).toBe(12);
-    expect(new Set(SHARED_ASSETS_RPC_NAMES).size).toBe(12);
+  it('shared assets service exports exactly 13 RPC names', () => {
+    expect(SHARED_ASSETS_RPC_NAMES.length).toBe(13);
+    expect(new Set(SHARED_ASSETS_RPC_NAMES).size).toBe(13);
     for (const n of SHARED_ASSETS_RPC_NAMES) {
       expect(n).toMatch(/^(core_comm_|core_template_layout_|omni_comms_)/);
       expect(n.includes('.')).toBe(false);
