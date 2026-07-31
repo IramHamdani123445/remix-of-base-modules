@@ -129,12 +129,17 @@ export const OmniCommsLandingPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const rawView = searchParams.get("view");
   const view =
-    rawView === "setup" || rawView === "dry-run" ? rawView : "overview";
+    rawView === "setup" || rawView === "dry-run" || rawView === "reference-data"
+      ? rawView
+      : "overview";
 
   const onTabChange = (value: string): void => {
     const params = new URLSearchParams(searchParams);
-    if (value === "setup" || value === "dry-run") params.set("view", value);
-    else params.delete("view");
+    if (value === "setup" || value === "dry-run" || value === "reference-data") {
+      params.set("view", value);
+    } else {
+      params.delete("view");
+    }
     setSearchParams(params, { replace: true });
   };
 
