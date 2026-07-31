@@ -102851,6 +102851,7 @@ export type Database = {
         Args: {
           p_actor_id: string
           p_channels: string[]
+          p_deployed_revision?: string
           p_mode: string
           p_recipients: Json
         }
@@ -102865,6 +102866,7 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_certification_posture: { Args: never; Returns: Json }
       omni_comms_priv_compute_checksum: {
         Args: {
           p_event_code: string
