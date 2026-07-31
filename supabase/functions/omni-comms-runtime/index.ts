@@ -285,9 +285,19 @@ Deno.serve(async (req: Request) => {
     return finalizeBlocked(admin, userId, row, canonical, "resolution_snapshot_invalid");
   }
 
-  const inputRecipients = Array.isArray(input.recipients)
-    ? (input.recipients as RecipientInput[])
-    : [];
+  // Canonical recipients carry flat destination fields on the wire; the
+  // resolver consumes the `destinations` shape. Map, never re-derive.
+  const inputRecipients: RecipientInput[] = canonical.recipients.map((r) => ({
+    recipientType: r.recipientType,
+    recipientReference: r.recipientReference ?? undefined,
+    displayName: r.displayName ?? undefined,
+    locale: r.locale ?? undefined,
+    destinations: {
+      ...(r.email ? { email: r.email } : {}),
+      ...(r.phone ? { phone: r.phone } : {}),
+      ...(r.pushDestination ? { push: r.pushDestination } : {}),
+    },
+  }));
 
   let result;
   try {
@@ -382,7 +392,7 @@ Deno.serve(async (req: Request) => {
     },
   );
   if (finErr) {
-    console.log(`[${BUILD_TAG}] finalize_error`);
+    console.log(`[${BUILD_TAG}] finalize_error code=${(finErr as { code?: string }).code ?? "?"} msg=${(finErr as { message?: string }).message ?? "?"}`);
     return blocked(input, mapRpcErrorToCode(finErr));
   }
 

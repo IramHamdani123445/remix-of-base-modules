@@ -25,7 +25,11 @@ export function resolveAssetsForLayout(
   const assets: ResolvedAsset[] = [];
   const blockers: string[] = [];
 
-  const nonContent = rawSlots.filter((s) => s && s.code && s.kind !== "content");
+  // A slot holds rendered content — not a branding asset — when it declares
+  // kind = "content" or uses a reserved `content` / `content_*` slot code.
+  const isContentSlot = (s: Slot) =>
+    s.kind === "content" || s.code === "content" || s.code.startsWith("content_");
+  const nonContent = rawSlots.filter((s) => s && s.code && !isContentSlot(s));
   const ordered = [...nonContent].sort((a, b) => (a.code < b.code ? -1 : 1));
 
   for (const slot of ordered) {

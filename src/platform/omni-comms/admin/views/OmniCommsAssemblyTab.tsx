@@ -60,6 +60,10 @@ function InheritanceBadge({ source }: { source: string | null | undefined }) {
   return <Badge variant={v as never}>{source}</Badge>;
 }
 
+const ORG_ONLY_DEPARTMENT = '__organisation_only__';
+
+
+
 export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departments, families }) => {
   const client = useOmniCommsRpcClient();
   const [familyId, setFamilyId] = React.useState<string>('');
@@ -191,10 +195,13 @@ export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departme
             </div>
             <div>
               <label className="text-xs font-medium">Department context</label>
-              <Select value={departmentId} onValueChange={setDepartmentId}>
+              <Select
+                value={departmentId || ORG_ONLY_DEPARTMENT}
+                onValueChange={(v) => setDepartmentId(v === ORG_ONLY_DEPARTMENT ? '' : v)}
+              >
                 <SelectTrigger data-testid="assembly-department"><SelectValue placeholder="Organisation only" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— Organisation only —</SelectItem>
+                  <SelectItem value={ORG_ONLY_DEPARTMENT}>— Organisation only —</SelectItem>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                   ))}
