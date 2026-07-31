@@ -622,7 +622,7 @@ export const ReferenceSeedPanel: React.FC = () => {
                   </Link>
                 </Button>
                 <Button asChild size="sm" variant="outline">
-                  <Link to="/admin/omnichannel-communications?view=dry-run">
+                  <Link to="/admin/omnichannel-communications?view=safe-test">
                     Run controlled dry-run{" "}
                     <ArrowRight className="h-4 w-4 ml-1" />
                   </Link>

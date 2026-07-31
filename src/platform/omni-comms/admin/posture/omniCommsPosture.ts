@@ -228,3 +228,127 @@ export function buildHeaderPosture(input: {
     ).includes(f.id),
   );
 }
+
+// ── Derived certification posture (single source of truth) ────────────────
+
+/**
+ * Every surface that speaks about certification — the module header, the
+ * Dashboard, the Certification Evidence view, Operations and Safe test — MUST
+ * derive its wording from {@link deriveCertificationPosture}. No screen may
+ * invent its own certification sentence, and no screen may decide on its own
+ * whether the safe dry test may run.
+ */
+export type OmniCommsRevisionMatch = 'match' | 'mismatch' | 'unknown';
+
+export type OmniCommsCertificationOutcome =
+  | 'certified'
+  | 'pending'
+  | 'failed'
+  | 'unknown';
+
+/** Broader normaliser that preserves an explicit `failed` outcome. */
+export function normaliseCertificationOutcome(
+  raw: string | null | undefined,
+): OmniCommsCertificationOutcome {
+  const v = (raw ?? '').trim().toLowerCase();
+  if (v === 'certified') return 'certified';
+  if (v === 'failed' || v === 'revoked') return 'failed';
+  if (v === 'pending' || v === 'not_certified' || v === 'uncertified') {
+    return 'pending';
+  }
+  return 'unknown';
+}
+
+/** Compare a recorded certified commit with the deployed runtime revision. */
+export function compareRevision(
+  certifiedCommit: string | null,
+  deployedRevision: string | null,
+): OmniCommsRevisionMatch {
+  if (!certifiedCommit || !deployedRevision) return 'unknown';
+  const a = certifiedCommit.trim().toLowerCase();
+  const b = deployedRevision.trim().toLowerCase();
+  if (!a || !b) return 'unknown';
+  return a.startsWith(b) || b.startsWith(a) ? 'match' : 'mismatch';
+}
+
+export interface CertificationPostureInput {
+  /** Source-controlled certification record state. */
+  recordedState: string | null | undefined;
+  /** Commit recorded as certified, when one exists. */
+  certifiedCommit: string | null;
+  /** Revision reported by the deployed runtime health probe. */
+  deployedRevision: string | null;
+  /** Certification state reported by the deployed runtime health probe. */
+  edgeCertificationState: string | null | undefined;
+  /** Whether the deployed runtime answered its health probe. */
+  edgeAvailable: boolean | null;
+  environment: OmniCommsEnvironment;
+}
+
+export interface DerivedCertificationPosture {
+  state: OmniCommsCertificationOutcome;
+  revision: OmniCommsRevisionMatch;
+  /** Whether the presentation layer may offer the safe dry test at all. */
+  safeTestPermitted: boolean;
+  /** Operator-safe sentence explaining the derived state. */
+  reason: string;
+}
+
+export const CERTIFICATION_OUTCOME_LABEL: Record<
+  OmniCommsCertificationOutcome,
+  string
+> = {
+  certified: 'Privileged certification complete',
+  pending: OMNI_COMMS_POSTURE_STATEMENTS.certificationPending,
+  failed: 'Privileged certification failed',
+  unknown: 'Certification state unknown',
+};
+
+export function deriveCertificationPosture(
+  input: CertificationPostureInput,
+): DerivedCertificationPosture {
+  const recorded = normaliseCertificationOutcome(input.recordedState);
+  const reported = normaliseCertificationOutcome(input.edgeCertificationState);
+  const revision = compareRevision(input.certifiedCommit, input.deployedRevision);
+
+  let state: OmniCommsCertificationOutcome;
+  if (recorded === 'failed' || reported === 'failed') {
+    state = 'failed';
+  } else if (input.edgeAvailable === false) {
+    state = 'unknown';
+  } else if (recorded === 'unknown' || reported === 'unknown') {
+    state = input.edgeAvailable === null ? recorded : 'unknown';
+  } else if (recorded === 'certified' && reported === 'certified' && revision === 'match') {
+    state = 'certified';
+  } else {
+    state = 'pending';
+  }
+
+  const production = input.environment === 'production';
+  const blockedByState = state === 'failed' || state === 'unknown';
+  const blockedByRevision = revision === 'mismatch';
+  const safeTestPermitted = !production && !blockedByState && !blockedByRevision;
+
+  let reason: string;
+  if (production) {
+    reason =
+      'The safe dry test is not offered in production. Non-production tooling is withheld here.';
+  } else if (state === 'failed') {
+    reason =
+      'Privileged certification failed for the deployed runtime. The safe dry test is withheld until certification is repaired.';
+  } else if (state === 'unknown') {
+    reason =
+      'The deployed runtime did not report a usable certification state, so the safe dry test is withheld.';
+  } else if (blockedByRevision) {
+    reason =
+      'The certified commit does not match the deployed runtime revision. Treat the deployed runtime as uncertified.';
+  } else if (state === 'certified') {
+    reason =
+      'The deployed runtime is certified. Live delivery remains disabled and no provider dispatch exists.';
+  } else {
+    reason =
+      'Privileged certification is pending. The safe dry test validates configuration only — nothing is sent.';
+  }
+
+  return { state, revision, safeTestPermitted, reason };
+}

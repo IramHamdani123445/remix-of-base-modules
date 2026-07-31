@@ -17,14 +17,14 @@ import { OmniCommsTenantSelector } from './OmniCommsTenantSelector';
 import { OmniCommsPostureBadgeList } from './OmniCommsPostureBadge';
 import {
   buildHeaderPosture,
-  currentOmniCommsEnvironment,
   ENVIRONMENT_LABEL,
 } from '../posture/omniCommsPosture';
 import {
-  OMNI_COMMS_NAV_ITEMS,
+  omniCommsNavItems,
   OMNI_COMMS_PLANNED_NAV_ITEMS,
   resolveActiveNavItem,
 } from '../navigation/omniCommsNavigation';
+import { useOmniCommsCertificationPosture } from '../hooks/useOmniCommsCertificationPosture';
 import { useOmniCommsTenant } from '../../context/OmniCommsTenantContext';
 
 export const OmniCommsModuleHeader: React.FC = () => {
@@ -32,14 +32,26 @@ export const OmniCommsModuleHeader: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { organizationName, departmentName } = useOmniCommsTenant();
 
-  const environment = React.useMemo(() => currentOmniCommsEnvironment(), []);
-  // Privileged certification is executed outside this interface and has not
-  // been recorded as complete for the deployed runtime.
+  // Certification wording is derived ONCE, from the shared hook, so the
+  // header, the Dashboard, Operations, Health and Safe test can never
+  // disagree about the certification state of the deployed runtime.
+  const { posture: certification, environment } = useOmniCommsCertificationPosture();
   const posture = React.useMemo(
-    () => buildHeaderPosture({ certification: 'pending', environment }),
-    [environment],
+    () =>
+      buildHeaderPosture({
+        certification:
+          certification.state === 'certified'
+            ? 'certified'
+            : certification.state === 'pending'
+              ? 'pending'
+              : 'unknown',
+        environment,
+      }),
+    [certification.state, environment],
   );
 
+  // Non-production-only destinations are withheld in production.
+  const navItems = React.useMemo(() => omniCommsNavItems(environment), [environment]);
   const active = resolveActiveNavItem(location.pathname, searchParams.get('view'));
 
   return (
@@ -84,7 +96,7 @@ export const OmniCommsModuleHeader: React.FC = () => {
 
         <nav aria-label="Omnichannel Communications sections">
           <ul className="flex flex-wrap items-center gap-1">
-            {OMNI_COMMS_NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const isActive = item.id === active.id;
               return (
                 <li key={item.id}>

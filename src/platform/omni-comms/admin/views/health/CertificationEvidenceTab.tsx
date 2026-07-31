@@ -11,13 +11,10 @@ import { RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useOmniCommsEdgeHealthProbe } from "@/platform/omni-comms/admin/hooks/useOmniCommsEdgeHealthProbe";
-import {
-  OMNI_COMMS_CERTIFICATION_EVIDENCE as EVIDENCE,
-  revisionMatch,
-} from "@/platform/omni-comms/registry/certificationEvidence";
+import { useOmniCommsCertificationPosture } from "@/platform/omni-comms/admin/hooks/useOmniCommsCertificationPosture";
+import { OMNI_COMMS_CERTIFICATION_EVIDENCE as EVIDENCE } from "@/platform/omni-comms/registry/certificationEvidence";
 import OmniCommsPostureBadge from "@/platform/omni-comms/admin/components/OmniCommsPostureBadge";
-import { OMNI_COMMS_POSTURE_STATEMENTS } from "@/platform/omni-comms/admin/posture/omniCommsPosture";
+import { CERTIFICATION_OUTCOME_LABEL } from "@/platform/omni-comms/admin/posture/omniCommsPosture";
 
 const NOT_RECORDED = "Not recorded";
 
@@ -28,17 +25,18 @@ interface Row {
 }
 
 export const CertificationEvidenceTab: React.FC = () => {
-  const { result, probing, probe } = useOmniCommsEdgeHealthProbe();
-
-  React.useEffect(() => {
-    void probe();
-  }, [probe]);
-
-  const deployedRevision = result?.buildTag ?? null;
-  const match = revisionMatch(EVIDENCE.certifiedCommit, deployedRevision);
+  // Derived by the shared posture hook — this screen never compares
+  // revisions itself and never invents a certification sentence.
+  const { posture, edge, probing, refresh } = useOmniCommsCertificationPosture();
+  const deployedRevision = edge?.revision ?? null;
+  const match = posture.revision;
 
   const rows: Row[] = [
-    { field: "certification_state", label: "Certification state", value: EVIDENCE.state },
+    {
+      field: "certification_state",
+      label: "Certification state",
+      value: `${posture.state} — ${CERTIFICATION_OUTCOME_LABEL[posture.state]}`,
+    },
     {
       field: "certified_commit",
       label: "Certified commit",
@@ -47,7 +45,13 @@ export const CertificationEvidenceTab: React.FC = () => {
     {
       field: "deployed_edge_revision",
       label: "Deployed Edge revision",
-      value: deployedRevision ?? (probing ? "Checking…" : NOT_RECORDED),
+      value:
+        deployedRevision ??
+        (probing
+          ? "Checking…"
+          : edge?.revisionVerified === false
+            ? "The deployed runtime did not report a revision"
+            : NOT_RECORDED),
     },
     {
       field: "revision_match",
@@ -110,11 +114,13 @@ export const CertificationEvidenceTab: React.FC = () => {
               facet={{
                 id: "privileged_certification",
                 label: "Certification",
-                value:
-                  EVIDENCE.state === "certified"
-                    ? "Privileged certification complete"
-                    : OMNI_COMMS_POSTURE_STATEMENTS.certificationPending,
-                tone: EVIDENCE.state === "certified" ? "positive" : "pending",
+                value: CERTIFICATION_OUTCOME_LABEL[posture.state],
+                tone:
+                  posture.state === "certified"
+                    ? "positive"
+                    : posture.state === "failed"
+                      ? "blocked"
+                      : "pending",
                 detail:
                   "Privileged certification is executed outside this interface.",
               }}
@@ -122,7 +128,7 @@ export const CertificationEvidenceTab: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => void probe()}
+              onClick={refresh}
               disabled={probing}
               aria-label="Re-check deployed runtime revision"
             >
@@ -157,9 +163,11 @@ export const CertificationEvidenceTab: React.FC = () => {
         </Alert>
       ) : null}
 
-      <p className="text-sm text-muted-foreground">
-        {EVIDENCE.summary}
+      <p className="text-sm text-muted-foreground" data-testid="omni-comms-certification-reason">
+        {posture.reason}
       </p>
+
+      <p className="text-sm text-muted-foreground">{EVIDENCE.summary}</p>
     </div>
   );
 };

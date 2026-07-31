@@ -105,6 +105,16 @@ export const OmniCommsOperationsPage: React.FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [offset, setOffset] = useState(0);
 
+  const filtersActive =
+    mode !== ALL || status !== ALL || range !== "30d" || search.trim().length > 0;
+
+  const clearFilters = () => {
+    setMode(ALL);
+    setStatus(ALL);
+    setRange("30d");
+    setSearch("");
+  };
+
   const selectedRequestId = searchParams.get("request");
 
   useEffect(() => {
@@ -283,7 +293,33 @@ export const OmniCommsOperationsPage: React.FC = () => {
                 <SelectItem value="utc">UTC</SelectItem>
               </SelectContent>
             </Select>
+            {filtersActive ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                data-testid="omni-comms-ops-clear-filters"
+              >
+                Clear filters
+              </Button>
+            ) : null}
           </div>
+
+          <p
+            className="text-xs text-muted-foreground"
+            data-testid="omni-comms-ops-active-filters"
+          >
+            {filtersActive
+              ? `Filtered by ${[
+                  mode !== ALL ? `mode ${mode}` : null,
+                  status !== ALL ? `status ${status}` : null,
+                  `time range ${RANGES.find((r) => r.id === range)?.label.toLowerCase()}`,
+                  search.trim() ? `search "${search.trim()}"` : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}.`
+              : "No filters applied beyond the default last 30 days."}
+          </p>
 
 
           {error ? (
@@ -306,7 +342,8 @@ export const OmniCommsOperationsPage: React.FC = () => {
               <Table data-testid="omni-comms-ops-request-table">
                 <caption className="caption-bottom pt-3 text-left text-xs text-muted-foreground">
                   Timestamps are shown in {zone === "utc" ? "UTC" : "your local time"}.
-                  Select a row to open the full request timeline.
+                  Select a row, or choose View, to open the full request
+                  timeline. This console never retries, resends or dispatches.
                 </caption>
                 <TableHeader>
                   <TableRow>
@@ -319,6 +356,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
                     <TableHead className="text-right">Messages</TableHead>
                     <TableHead className="text-right">Held jobs</TableHead>
                     <TableHead className="text-right">Blockers</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -356,6 +394,20 @@ export const OmniCommsOperationsPage: React.FC = () => {
                       <TableCell className="text-xs text-right">{r.message_count}</TableCell>
                       <TableCell className="text-xs text-right">{r.held_job_count}</TableCell>
                       <TableCell className="text-xs text-right">{r.blocker_count}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openRequest(r.id);
+                          }}
+                          data-testid={`omni-comms-ops-request-view-${r.id}`}
+                          aria-label={`View request ${r.event_code ?? r.id}`}
+                        >
+                          View
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
