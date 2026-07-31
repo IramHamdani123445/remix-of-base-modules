@@ -335,7 +335,7 @@ export const ReferenceSeedPanel: React.FC = () => {
             always on <code>{REFERENCE_SEED_RECIPIENT_DOMAIN}</code>. Live
             delivery is never enabled and nothing is ever sent — controlled
             dry-runs are executed separately on the Dry Run tab through the
-            canonical <code>sendCommunication()</code> façade.
+            canonical Omni-Comms sending façade.
           </p>
 
           <OmniCommsTenantSelector />
