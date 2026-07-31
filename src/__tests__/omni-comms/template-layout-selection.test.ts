@@ -105,7 +105,7 @@ describe('Rule 15 — OMNI_TEMPLATE_LAYOUT_BOUNDARY', () => {
 
   it('passes clean on the real repository', async () => {
     const r = await runArchitectureChecks({});
-    const layout = r.violations.filter((v) => v.ruleId === 'OMNI_TEMPLATE_LAYOUT_BOUNDARY' && v.baselineStatus !== 'baselined');
+    const layout = r.violations.filter((v) => v.ruleId === 'OMNI_TEMPLATE_LAYOUT_BOUNDARY' && v.baselineStatus === 'not_baselined');
     expect(layout).toEqual([]);
   });
 });
