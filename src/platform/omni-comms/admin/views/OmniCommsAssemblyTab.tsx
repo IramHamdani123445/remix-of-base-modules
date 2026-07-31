@@ -62,6 +62,29 @@ export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departme
   const [departmentId, setDepartmentId] = React.useState<string>('');
   const [state, setState] = React.useState<AssemblyState>({ loading: false, manifest: null, assembled: null });
   const [resetting, setResetting] = React.useState(false);
+  const [layoutDialogVersion, setLayoutDialogVersion] =
+    React.useState<TemplateVersionGetResult | null>(null);
+
+  const selectedVersionRow = React.useMemo(
+    () => versions.find((v) => v.id === versionId) ?? null,
+    [versions, versionId],
+  );
+  const layoutDisplay = selectedVersionRow ? describeLayoutSelection(selectedVersionRow) : null;
+
+  const reloadVersions = React.useCallback(async () => {
+    if (!familyId) return;
+    const r = await svc.listTemplateVersions(client, { templateFamilyId: familyId });
+    setVersions(r.items ?? []);
+  }, [familyId, client]);
+
+  /** Open the persisted layout configuration dialog for the selected draft. */
+  const openLayoutDialog = async () => {
+    if (!versionId) return;
+    try {
+      const full = await svc.getTemplateVersion(client, versionId);
+      setLayoutDialogVersion(full);
+    } catch (e) { toast.error(friendly(e)); }
+  };
 
   // Load versions for family
   React.useEffect(() => {
