@@ -29,6 +29,10 @@ export interface UseOmniCommsCertificationPosture {
   environment: OmniCommsEnvironment;
   probing: boolean;
   refresh: () => void;
+  /** Bounded Edge health agreement that the safe dry test may be offered. */
+  edgeSafeTestPermitted: boolean;
+  /** Derived posture AND Edge posture must both permit the safe dry test. */
+  safeTestPermitted: boolean;
 }
 
 export function useOmniCommsCertificationPosture(
@@ -36,7 +40,17 @@ export function useOmniCommsCertificationPosture(
 ): UseOmniCommsCertificationPosture {
   const autoProbe = options.autoProbe !== false;
   const { result: edge, probe, probing } = useOmniCommsEdgeHealthProbe();
-  const environment = React.useMemo(() => currentOmniCommsEnvironment(), []);
+  const browserEnvironment = React.useMemo(() => currentOmniCommsEnvironment(), []);
+  // The SERVER classification is authoritative. Browser host detection is only
+  // a fallback for presentation before the probe answers, and it can never
+  // upgrade an unknown server classification.
+  const environment: OmniCommsEnvironment = React.useMemo(() => {
+    const reported = (edge?.environment ?? '').trim().toLowerCase();
+    if (reported === 'production') return 'production';
+    if (reported === 'non_production') return 'non_production';
+    if (edge && edge.available) return 'unknown';
+    return browserEnvironment;
+  }, [edge, browserEnvironment]);
 
   React.useEffect(() => {
     if (autoProbe) void probe();
@@ -46,7 +60,9 @@ export function useOmniCommsCertificationPosture(
     () =>
       deriveCertificationPosture({
         recordedState: OMNI_COMMS_CERTIFICATION_EVIDENCE.state,
-        certifiedCommit: OMNI_COMMS_CERTIFICATION_EVIDENCE.certifiedCommit,
+        // Authoritative certified commit comes from the server posture.
+        certifiedCommit:
+          edge?.certifiedCommit ?? OMNI_COMMS_CERTIFICATION_EVIDENCE.certifiedCommit,
         deployedRevision: edge?.revision ?? null,
         edgeCertificationState: edge?.certificationState ?? null,
         edgeAvailable: edge ? edge.available : null,
@@ -59,7 +75,28 @@ export function useOmniCommsCertificationPosture(
     void probe();
   }, [probe]);
 
-  return { posture, edge, environment, probing, refresh };
+  /**
+   * Bounded Edge posture agreement. The execution button must additionally
+   * require every one of these facts; the trusted server guard remains
+   * mandatory regardless of what the browser concludes.
+   */
+  const edgeSafeTestPermitted =
+    edge?.available === true &&
+    edge.safeTestPermitted === true &&
+    edge.revisionVerified === true &&
+    edge.revisionMatch === 'match' &&
+    (edge.certificationState ?? '').trim().toLowerCase() === 'certified' &&
+    (edge.environment ?? '').trim().toLowerCase() === 'non_production';
+
+  return {
+    posture,
+    edge,
+    environment,
+    probing,
+    refresh,
+    edgeSafeTestPermitted,
+    safeTestPermitted: posture.safeTestPermitted && edgeSafeTestPermitted,
+  };
 }
 
 export default useOmniCommsCertificationPosture;
