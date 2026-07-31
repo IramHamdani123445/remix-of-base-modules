@@ -16,6 +16,48 @@ export const OMNI_COMMS_RESULT_CONTRACT_VERSION = "omni_comms.result.v1";
 export const OMNI_COMMS_SEND_MODES = ["dry_run", "shadow", "queued"] as const;
 export type OmniCommsSendMode = (typeof OMNI_COMMS_SEND_MODES)[number];
 
+export const OMNI_COMMS_CHANNELS = [
+  "email",
+  "sms",
+  "whatsapp",
+  "push",
+  "in_app",
+  "print",
+] as const;
+export type OmniCommsChannel = (typeof OMNI_COMMS_CHANNELS)[number];
+
+export const OMNI_COMMS_MESSAGE_STATUSES = [
+  "pending",
+  "rendered",
+  "blocked",
+  "dry_run_completed",
+  "shadow_completed",
+  "held",
+] as const;
+
+export const OMNI_COMMS_TERMINAL_MESSAGE_STATUS: Record<OmniCommsSendMode, string> = {
+  dry_run: "dry_run_completed",
+  shadow: "shadow_completed",
+  queued: "held",
+};
+
+export const OMNI_COMMS_REQUEST_STATUSES = [
+  "received",
+  "accepted",
+  "processing",
+  "completed",
+  "completed_with_blockers",
+  "blocked",
+] as const;
+
+export const OMNI_COMMS_ELIGIBILITY_STATUSES = [
+  "eligible",
+  "partially_eligible",
+  "blocked",
+  "invalid",
+] as const;
+
+
 export interface SendCommunicationRecipientResult {
   recipientId: string | null;
   inputIndex: number | null;
