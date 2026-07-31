@@ -191,10 +191,13 @@ export const OmniCommsAssemblyTab: React.FC<Props> = ({ organizationId, departme
             </div>
             <div>
               <label className="text-xs font-medium">Department context</label>
-              <Select value={departmentId} onValueChange={setDepartmentId}>
+              <Select
+                value={departmentId || ORG_ONLY_DEPARTMENT}
+                onValueChange={(v) => setDepartmentId(v === ORG_ONLY_DEPARTMENT ? '' : v)}
+              >
                 <SelectTrigger data-testid="assembly-department"><SelectValue placeholder="Organisation only" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— Organisation only —</SelectItem>
+                  <SelectItem value={ORG_ONLY_DEPARTMENT}>— Organisation only —</SelectItem>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                   ))}
