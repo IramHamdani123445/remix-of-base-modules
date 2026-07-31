@@ -106,7 +106,7 @@ async def main() -> int:
             await browser.close()
             return 0
 
-        if re.search(r"configuration is incomplete", body, re.I):
+        if re.search(r"configuration is incomplete|not dry.run.ready", body, re.I):
             print("Browser smoke: Not executed — pilot configuration is not "
                   "dry_run_ready in this environment.")
             await browser.close()
@@ -157,7 +157,7 @@ async def main() -> int:
         await page.screenshot(path=str(SCREENSHOTS / "dryrun_1b_pilot.png"))
 
         body = await page.inner_text("body")
-        if re.search(r"configuration is incomplete|not dry_run_ready", body, re.I):
+        if re.search(r"configuration is incomplete|not dry.run.ready", body, re.I):
             print("Browser smoke: Not executed — pilot configuration is not "
                   "dry_run_ready in this environment.")
             await browser.close()
@@ -218,8 +218,14 @@ async def main() -> int:
             failures.append(f"Provider network calls observed: {provider_calls}")
         if failed_responses:
             failures.append(f"Server-error responses: {failed_responses[:5]}")
-        if console_errors:
-            failures.append(f"Console errors: {console_errors[:5]}")
+        # The 404 probes in step 3 are deliberate; their router log lines are
+        # expected and are not treated as defects.
+        real_console = [
+            c for c in console_errors
+            if "non-existent route" not in c and "404" not in c
+        ]
+        if real_console:
+            failures.append(f"Console errors: {real_console[:5]}")
 
         await browser.close()
 
