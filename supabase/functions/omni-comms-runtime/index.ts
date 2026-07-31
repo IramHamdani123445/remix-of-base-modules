@@ -568,7 +568,6 @@ async function finalizeBlocked(
   return json(
     buildResult({
       requestId: row.request_id,
-      idempotency_key: row.idempotency_key,
       idempotencyKey: row.idempotency_key,
       mode: row.mode,
       status: "blocked",
@@ -577,6 +576,6 @@ async function finalizeBlocked(
       blockers: [blocker],
       createdAt: row.created_at,
       replayed: false,
-    } as unknown as Parameters<typeof buildResult>[0]),
+    }),
   );
 }
