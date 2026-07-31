@@ -56,6 +56,11 @@ export function useOmniCommsEdgeHealthProbe(): UseEdgeHealthProbe {
           revisionVerified: null,
           runtimeVersion: null,
           certificationState: null,
+          certifiedCommit: null,
+          environment: null,
+          revisionMatch: null,
+          safeTestPermitted: null,
+          safeTestBlockedReason: null,
           liveDeliveryEnabled: null,
           checkedAt,
           error: {
@@ -78,6 +83,21 @@ export function useOmniCommsEdgeHealthProbe(): UseEdgeHealthProbe {
         runtimeVersion: typeof body.runtimeVersion === "string" ? body.runtimeVersion : null,
         certificationState:
           typeof body.certificationState === "string" ? body.certificationState : null,
+        certifiedCommit:
+          typeof body.certifiedCommit === "string" ? body.certifiedCommit : null,
+        environment: typeof body.environment === "string" ? body.environment : null,
+        revisionMatch:
+          body.revisionMatch === "match" || body.revisionMatch === "mismatch"
+            ? body.revisionMatch
+            : body.revisionMatch === "unknown"
+              ? "unknown"
+              : null,
+        // FAIL CLOSED: only an explicit `true` is treated as permitted.
+        safeTestPermitted: body.safeTestPermitted === true,
+        safeTestBlockedReason:
+          typeof body.safeTestBlockedReason === "string"
+            ? body.safeTestBlockedReason
+            : null,
         liveDeliveryEnabled:
           typeof body.liveDeliveryEnabled === "boolean" ? body.liveDeliveryEnabled : null,
         checkedAt,
@@ -94,6 +114,11 @@ export function useOmniCommsEdgeHealthProbe(): UseEdgeHealthProbe {
         revisionVerified: null,
         runtimeVersion: null,
         certificationState: null,
+        certifiedCommit: null,
+        environment: null,
+        revisionMatch: null,
+        safeTestPermitted: null,
+        safeTestBlockedReason: null,
         liveDeliveryEnabled: null,
         checkedAt,
         error: { ...mapHealthError(err), kind: "edge_unavailable" },

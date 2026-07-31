@@ -82,15 +82,16 @@ export function isExecutionPermitted(
   if (!gate) return false;
   if (gate.state !== 'enabled') return false;
   if (!gate.can_operate) return false;
-  // Older deployments omit the field; absence must not silently permit.
-  if (gate.execution_permitted === false) return false;
+  // FAIL CLOSED: only an explicit `true` permits execution. A missing field,
+  // null or false must all block.
+  if (gate.execution_permitted !== true) return false;
   return dryRunReady === true;
 }
 
 /** The server's reason for withholding execution, in operator language. */
 export function executionBlockedMessage(gate: DryRunGate | null): string | null {
   if (!gate) return null;
-  if (gate.execution_permitted !== false) return null;
+  if (gate.execution_permitted === true) return null;
   const code = gate.execution_blocked_reason ?? '';
   return (
     DRY_RUN_BLOCK_REASON_MESSAGE[code] ??

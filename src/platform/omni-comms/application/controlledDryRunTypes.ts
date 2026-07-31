@@ -57,6 +57,8 @@ export interface DryRunGate {
    * execution, whatever the browser believes about the environment.
    */
   execution_permitted?: boolean | null;
+  /** Whether the recorded certified commit is a valid full revision. */
+  certified_commit_valid?: boolean | null;
   /** Bounded reason code when execution is not permitted. */
   execution_blocked_reason?: string | null;
   checked_at: string;
@@ -74,6 +76,18 @@ export const DRY_RUN_BLOCK_REASON_MESSAGE: Readonly<Record<string, string>> = {
     'Privileged certification is recorded as failed for the deployed runtime.',
   admin_dry_run_revision_mismatch:
     'The certified commit does not match the deployed runtime revision.',
+  non_production_environment_required:
+    'The server did not classify this environment as non-production. The safe dry test is only offered in non-production.',
+  runtime_certification_required:
+    'Privileged certification is not recorded as complete for the deployed runtime.',
+  runtime_certification_failed:
+    'Privileged certification is recorded as failed for the deployed runtime.',
+  runtime_certified_commit_invalid:
+    'The recorded certified commit is missing or is not a full 40-character revision identifier.',
+  runtime_revision_unverified:
+    'The deployed runtime did not report a full 40-character revision identifier.',
+  runtime_revision_mismatch:
+    'The deployed runtime revision does not exactly match the certified commit.',
 };
 
 // ─── Authoritative payload validation ───────────────────────────────────
