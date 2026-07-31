@@ -11,18 +11,19 @@
 
 import { orchestrateRendering } from "./rendering/renderOrchestrator.ts";
 import type { RenderContext } from "./rendering/renderingTypes.ts";
+import {
+  messagesFromPersistedProjection,
+  type SendCommunicationMessageResult,
+} from "./responseContract.ts";
 
 export interface RenderStageOutcome {
   status: string;
-  messages: Array<{
-    recipientId: string;
-    channel: string;
-    status: string;
-    renderedChecksum: string | null;
-    unresolvedTokenCount: number;
-    unresolvedSlotCount: number;
-    blockers: string[];
-  }>;
+  /**
+   * Canonical contract messages, projected from the PERSISTED rows (not from
+   * the in-memory render output). This is the same projection the replay path
+   * returns, which is what makes fresh and replay responses identical.
+   */
+  messages: SendCommunicationMessageResult[];
   blockers: string[];
   heldJobCount: number;
   renderedCount: number;
@@ -89,17 +90,19 @@ export async function runRenderStage(
 
   const persisted = (persistData ?? {}) as { status?: string; held_job_count?: number };
 
+  // Re-read the persisted messages through the canonical projection so the
+  // fresh response carries real message ids and held dispatch-job ids, and is
+  // byte-comparable with the replay response.
+  const { data: projData, error: projErr } = await admin.rpc(
+    "omni_comms_priv_load_persisted_messages",
+    { p_actor_id: actorId, p_request_id: requestId, p_organization_id: organizationId },
+  );
+  if (projErr) throw new RenderStageError("render_projection_failed");
+  const messages = messagesFromPersistedProjection(projData);
+
   return {
     status: persisted.status ?? outcome.finalStatus,
-    messages: outcome.messages.map((m) => ({
-      recipientId: m.recipient_id,
-      channel: m.channel,
-      status: m.status,
-      renderedChecksum: m.rendered_checksum,
-      unresolvedTokenCount: m.unresolved_tokens.length,
-      unresolvedSlotCount: m.unresolved_required_slots.length,
-      blockers: m.blockers,
-    })),
+    messages,
     blockers: outcome.requestBlockers,
     heldJobCount: persisted.held_job_count ?? outcome.jobs.length,
     renderedCount: outcome.messages.filter((m) => m.status === "rendered").length,
