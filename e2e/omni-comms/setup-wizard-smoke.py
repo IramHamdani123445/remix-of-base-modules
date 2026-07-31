@@ -94,13 +94,18 @@ async def main() -> int:
             failures.append("An eighth permanent /setup route appears to exist.")
         _ = resp
 
-        # 5. The wizard offers no write control.
+        # 5. The wizard offers no write control. Inspect interactive controls
+        #    only — descriptive read-only prose may legitimately mention
+        #    "dispatch" (e.g. "no dispatch job is created").
         await page.goto(f"{BASE}{ROUTE}?view=setup", wait_until="networkidle")
-        forbidden = ["Send test", "Dispatch", "Retry", "Resend", "Save configuration"]
-        text = await page.inner_text("body")
-        for label in forbidden:
-            if label.lower() in text.lower():
-                failures.append(f"Wizard exposes a write/dispatch control: {label}")
+        forbidden = ["send test", "dispatch", "retry", "resend", "save configuration"]
+        panel = page.get_by_test_id("omni-comms-setup-wizard")
+        controls = panel.locator("button, a[href], input[type=submit]")
+        for i in range(await controls.count()):
+            label = ((await controls.nth(i).inner_text()) or "").strip().lower()
+            for bad in forbidden:
+                if bad and bad in label:
+                    failures.append(f"Wizard exposes a write/dispatch control: {label}")
 
         await browser.close()
 
