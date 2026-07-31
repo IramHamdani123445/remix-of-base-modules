@@ -475,6 +475,118 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       }
     }
 
+    // ── Bulk prefetch of per-period C3 declarations and payments ──
+    // Late-filing / non-payment / partial-payment detection must be evaluated
+    // period-by-period (like non-filing) instead of emitting a single
+    // aggregate row at the scan date.
+    const c3ByEmp = new Map<string, Map<string, { received: Date | null; declared: number }>>();
+    {
+      const PAGE = 1000;
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("cn_c3_reported")
+          .select(
+            "payer_id, period, date_received, posting_status, emp_ss_amt_calc, emp_levy_amt_calc, emp_pe_amt_calc",
+          )
+          .gte("period", filedCutoff.toISOString().slice(0, 10))
+          .order("payer_id")
+          .range(from, from + PAGE - 1);
+        if (employerFilter) q = q.eq("payer_id", employerFilter);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const r of data) {
+          if (String(r.posting_status ?? "") === "CANCELLED") continue;
+          const key = String(r.payer_id);
+          let m = c3ByEmp.get(key);
+          if (!m) {
+            m = new Map();
+            c3ByEmp.set(key, m);
+          }
+          const ym = String(r.period).slice(0, 7);
+          const declared =
+            Number(r.emp_ss_amt_calc || 0) +
+            Number(r.emp_levy_amt_calc || 0) +
+            Number(r.emp_pe_amt_calc || 0);
+          const received = r.date_received ? new Date(r.date_received) : null;
+          const prev = m.get(ym);
+          if (prev) {
+            prev.declared += declared;
+            if (received && (!prev.received || received > prev.received)) prev.received = received;
+          } else {
+            m.set(ym, { received, declared });
+          }
+        }
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+
+    // Payments: cn_payment holds the period + amount, cn_payment_header the payer.
+    const payByEmp = new Map<string, Map<string, number>>();
+    {
+      const PAGE = 1000;
+      const payerByPaymentId = new Map<string, string>();
+      let from = 0;
+      while (true) {
+        let q = supabase
+          .from("cn_payment_header")
+          .select("payment_id, payer_id")
+          .order("payment_id")
+          .range(from, from + PAGE - 1);
+        if (employerFilter) q = q.eq("payer_id", employerFilter);
+        const { data, error } = await q;
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const h of data) payerByPaymentId.set(String(h.payment_id), String(h.payer_id));
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+
+      from = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from("cn_payment")
+          .select("payment_id, period, payment_amount")
+          .gte("period", filedCutoff.toISOString().slice(0, 10))
+          .order("payment_id")
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        for (const p of data) {
+          const regno = payerByPaymentId.get(String(p.payment_id));
+          if (!regno || !p.period) continue;
+          let m = payByEmp.get(regno);
+          if (!m) {
+            m = new Map();
+            payByEmp.set(regno, m);
+          }
+          const ym = String(p.period).slice(0, 7);
+          m.set(ym, (m.get(ym) || 0) + Number(p.payment_amount || 0));
+        }
+        if (data.length < PAGE) break;
+        from += PAGE;
+      }
+    }
+
+    /** Periods (YYYY-MM) in scope for an employer, oldest → newest. */
+    const periodsInScope = (regno: string, cap: number): string[] => {
+      const today = new Date(asOfDate);
+      const startYm = complianceStartByEmp.get(regno);
+      const sinceStart = startYm ? monthsBetween(startYm, today) : cap;
+      const lookback = Math.max(0, Math.min(cap, sinceStart));
+      const out: string[] = [];
+      for (let i = lookback; i >= 1; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        if (startYm && ym < startYm) continue;
+        out.push(ym);
+      }
+      return out;
+    };
+
+
     // Process each rule
     for (const rule of enrichedRules) {
       const initialStatus = rule.auto_create_violation ? "OPEN" : "UNDER_REVIEW";
