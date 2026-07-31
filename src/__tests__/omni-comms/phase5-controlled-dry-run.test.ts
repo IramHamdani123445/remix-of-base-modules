@@ -72,6 +72,7 @@ const OK_GATE: DryRunGate = {
   can_view: true,
   can_operate: true,
   can_view_sensitive_content: false,
+  execution_permitted: true,
   checked_at: '2026-01-01T00:00:00Z',
 };
 
@@ -141,6 +142,23 @@ describe('Phase 5 — controlled dry-run constants and gate', () => {
 
   it('permits execution only when gate + readiness agree', () => {
     expect(isExecutionPermitted(OK_GATE, true)).toBe(true);
+  });
+
+  it('blocks execution when execution_permitted is absent', () => {
+    const { execution_permitted: _drop, ...withoutField } = OK_GATE;
+    expect(isExecutionPermitted(withoutField as typeof OK_GATE, true)).toBe(false);
+  });
+
+  it('blocks execution when execution_permitted is null', () => {
+    expect(isExecutionPermitted({ ...OK_GATE, execution_permitted: null }, true)).toBe(
+      false,
+    );
+  });
+
+  it('blocks execution when execution_permitted is false', () => {
+    expect(isExecutionPermitted({ ...OK_GATE, execution_permitted: false }, true)).toBe(
+      false,
+    );
   });
 
   it('never reports live delivery as enabled from the gate default', () => {

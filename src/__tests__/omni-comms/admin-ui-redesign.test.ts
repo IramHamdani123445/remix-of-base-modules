@@ -114,21 +114,28 @@ describe('Omni-Comms admin UI acceptance corrections', () => {
     expect(src).toContain('nonProduction ? (');
   });
 
-  it('certification posture is derived in exactly one place', async () => {
+  it('certification posture is derived in exactly one place and fails closed', async () => {
     const posture = await import('@/platform/omni-comms/admin/posture/omniCommsPosture');
+    const SHA = 'a'.repeat(40);
+    const OTHER = 'b'.repeat(40);
     const base = {
       recordedState: 'pending',
-      certifiedCommit: null,
-      deployedRevision: 'abc123',
+      certifiedCommit: null as string | null,
+      deployedRevision: SHA,
       edgeCertificationState: 'pending',
       edgeAvailable: true,
       environment: 'non_production' as const,
     };
     expect(posture.deriveCertificationPosture(base).state).toBe('pending');
-    expect(posture.deriveCertificationPosture(base).safeTestPermitted).toBe(true);
+    // Pending certification must NEVER permit the safe dry test.
+    expect(posture.deriveCertificationPosture(base).safeTestPermitted).toBe(false);
 
     expect(
       posture.deriveCertificationPosture({ ...base, environment: 'production' })
+        .safeTestPermitted,
+    ).toBe(false);
+    expect(
+      posture.deriveCertificationPosture({ ...base, environment: 'unknown' })
         .safeTestPermitted,
     ).toBe(false);
     expect(
@@ -141,27 +148,61 @@ describe('Omni-Comms admin UI acceptance corrections', () => {
     expect(
       posture.deriveCertificationPosture({ ...base, edgeAvailable: false }).state,
     ).toBe('unknown');
+    expect(
+      posture.deriveCertificationPosture({ ...base, edgeAvailable: false })
+        .safeTestPermitted,
+    ).toBe(false);
 
-    const mismatch = posture.deriveCertificationPosture({
+    const certifiedBase = {
       ...base,
       recordedState: 'certified',
       edgeCertificationState: 'certified',
-      certifiedCommit: 'deadbeefcafe',
-      deployedRevision: 'abc123',
+      certifiedCommit: SHA,
+      deployedRevision: SHA,
+    };
+
+    // Missing certified commit.
+    expect(
+      posture.deriveCertificationPosture({ ...certifiedBase, certifiedCommit: null })
+        .safeTestPermitted,
+    ).toBe(false);
+    // Missing deployed revision.
+    expect(
+      posture.deriveCertificationPosture({ ...certifiedBase, deployedRevision: null })
+        .safeTestPermitted,
+    ).toBe(false);
+    // Shortened revision — prefix matching must NOT be accepted.
+    const shortened = posture.deriveCertificationPosture({
+      ...certifiedBase,
+      deployedRevision: SHA.slice(0, 12),
+    });
+    expect(shortened.revision).toBe('unknown');
+    expect(shortened.safeTestPermitted).toBe(false);
+    // Malformed revision.
+    expect(
+      posture.deriveCertificationPosture({
+        ...certifiedBase,
+        deployedRevision: 'not-a-sha',
+      }).safeTestPermitted,
+    ).toBe(false);
+    // Exact full-SHA mismatch.
+    const mismatch = posture.deriveCertificationPosture({
+      ...certifiedBase,
+      deployedRevision: OTHER,
     });
     expect(mismatch.revision).toBe('mismatch');
     expect(mismatch.state).toBe('pending');
     expect(mismatch.safeTestPermitted).toBe(false);
 
-    const certified = posture.deriveCertificationPosture({
-      ...base,
-      recordedState: 'certified',
-      edgeCertificationState: 'certified',
-      certifiedCommit: 'abc123def456',
-      deployedRevision: 'abc123',
-    });
+    // Only certified + non-production + exact full-SHA match is permitted.
+    const certified = posture.deriveCertificationPosture(certifiedBase);
     expect(certified.revision).toBe('match');
     expect(certified.state).toBe('certified');
+    expect(certified.safeTestPermitted).toBe(true);
+
+    // Case-insensitive equality, still full length.
+    expect(posture.compareRevision(SHA.toUpperCase(), SHA)).toBe('match');
+    expect(posture.compareRevision(SHA, SHA.slice(0, 39))).toBe('unknown');
   });
 
   it('every certification surface consumes the shared derivation', () => {
@@ -195,13 +236,17 @@ describe('Omni-Comms admin UI acceptance corrections', () => {
     expect(cert).toContain('edge?.revision');
 
     const edge = read('supabase/functions/omni-comms-runtime/index.ts');
-    expect(edge).toContain('CERTIFICATION_STATE');
+    // Certification is read from the authoritative database posture, never
+    // from an independently-trusted function secret.
+    expect(edge).not.toContain('OMNI_COMMS_CERTIFICATION_STATE');
+    expect(edge).toContain('omni_comms_priv_runtime_health_posture');
+    expect(edge).toContain('safeTestPermitted');
     expect(edge).not.toContain('certificationState: "certified"');
   });
 
   it('Safe test execution is decided by the server, not the browser', () => {
     const service = read('src/platform/omni-comms/application/controlledDryRunService.ts');
-    expect(service).toContain('gate.execution_permitted === false');
+    expect(service).toContain('gate.execution_permitted !== true');
     expect(service).toContain('executionBlockedMessage');
 
     const panel = read('src/platform/omni-comms/admin/views/dryrun/ControlledDryRunPanel.tsx');

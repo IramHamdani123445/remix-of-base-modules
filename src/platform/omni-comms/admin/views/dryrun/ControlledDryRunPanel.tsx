@@ -121,7 +121,11 @@ export const ControlledDryRunPanel: React.FC = () => {
   const rpc = useOmniCommsRpcClient();
   // Certification wording comes from the shared derivation; the AUTHORITATIVE
   // permission to execute comes from the server gate below.
-  const { posture: certification } = useOmniCommsCertificationPosture();
+  const {
+    posture: certification,
+    edgeSafeTestPermitted,
+    safeTestPermitted: postureSafeTestPermitted,
+  } = useOmniCommsCertificationPosture();
 
   const [gate, setGate] = React.useState<DryRunGate | null>(null);
   const [gateLoading, setGateLoading] = React.useState(true);
@@ -290,8 +294,13 @@ export const ControlledDryRunPanel: React.FC = () => {
 
   const serverBlockedMessage = executionBlockedMessage(gate);
 
+  // FAIL CLOSED. The server gate is authoritative; the bounded Edge posture
+  // must additionally agree before the button is offered. Neither check can
+  // bypass the trusted server-side guard that runs before persistence.
   const executionPermitted =
     isExecutionPermitted(gate, dryRunReady) &&
+    postureSafeTestPermitted &&
+    edgeSafeTestPermitted &&
     Boolean(organizationId) &&
     Boolean(selectedEvent) &&
     parsed.ok &&

@@ -22,6 +22,7 @@ import {
   HEALTH_MIN_REFRESH_MS,
   OMNI_COMMS_TARGET_SCREENS,
   type HealthSummaryPayload,
+  type EdgeHealthProbeResult,
 } from '@/platform/omni-comms/application/healthDiagnosticsTypes';
 import { OmniCommsRpcError } from '@/platform/omni-comms/application/eventCatalogueTypes';
 import {
@@ -143,14 +144,20 @@ function payload(overrides: Partial<HealthSummaryPayload> = {}): HealthSummaryPa
   return { ...base, ...overrides };
 }
 
-const edgeOk = {
+const edgeOk: EdgeHealthProbeResult = {
   available: true,
   functionName: 'omni-comms-runtime',
   buildTag: 'omni-comms-runtime@2c-iii',
+  // A shortened revision is never accepted as verified by the hardened probe.
   revision: 'abc1234',
-  revisionVerified: true,
+  revisionVerified: false,
   runtimeVersion: '2c-iii',
   certificationState: 'not_certified',
+  certifiedCommit: null,
+  environment: 'non_production',
+  revisionMatch: 'unknown',
+  safeTestPermitted: false,
+  safeTestBlockedReason: 'runtime_certification_required',
   liveDeliveryEnabled: false,
   checkedAt: AT,
   error: null,

@@ -103021,6 +103021,10 @@ export type Database = {
         Args: { p_max_bytes: number; p_value: Json }
         Returns: undefined
       }
+      omni_comms_priv_runtime_health_posture: {
+        Args: { p_deployed_revision?: string }
+        Returns: Json
+      }
       omni_comms_priv_runtime_resolution_snapshot: {
         Args: {
           p_actor_id: string

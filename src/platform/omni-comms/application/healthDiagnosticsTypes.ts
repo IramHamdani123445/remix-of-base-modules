@@ -237,6 +237,16 @@ export interface EdgeHealthProbeResult {
   revisionVerified: boolean | null;
   runtimeVersion: string | null;
   certificationState: string | null;
+  /** Certified commit reported by the authoritative server posture. */
+  certifiedCommit: string | null;
+  /** Server-classified environment. Never inferred from the browser host. */
+  environment: string | null;
+  /** Exact full-SHA comparison performed by the server. */
+  revisionMatch: 'match' | 'mismatch' | 'unknown' | null;
+  /** Bounded server decision on whether the safe dry test may be offered. */
+  safeTestPermitted: boolean | null;
+  /** Bounded reason code when the safe dry test is withheld. */
+  safeTestBlockedReason: string | null;
   liveDeliveryEnabled: boolean | null;
   checkedAt: string;
   error: HealthError | null;
