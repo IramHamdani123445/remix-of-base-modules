@@ -129,4 +129,31 @@ describe('Omni-Comms result contract — browser/Edge mirror drift', () => {
   it('never lets the Edge mirror import from the browser tree', () => {
     expect(edgeSrc).not.toMatch(/from ['"](@\/|\.\.\/\.\.\/\.\.\/src)/);
   });
+}
+
+  const MIRRORED_INTERFACES = [
+    'SendCommunicationRecipientResult',
+    'SendCommunicationMessageResult',
+    'SendCommunicationResult',
+  ] as const;
+
+  for (const name of MIRRORED_INTERFACES) {
+    it(`declares identical field names for ${name}`, () => {
+      const browser = interfaceFields(browserSrc, name, 'browser contract');
+      const edge = interfaceFields(edgeSrc, name, 'edge mirror');
+      // Non-empty guard: an unparsed interface must not pass vacuously.
+      expect(browser.length).toBeGreaterThan(0);
+      // Sorted comparison catches add / remove / rename in either mirror.
+      expect([...edge].sort()).toEqual([...browser].sort());
+      // Declaration order is part of the reviewed contract shape.
+      expect(edge).toEqual(browser);
+    });
+  }
+
+  it('keeps the result interface anchored to the mirrored element types', () => {
+    const fields = interfaceFields(browserSrc, 'SendCommunicationResult', 'browser contract');
+    expect(fields).toContain('recipients');
+    expect(fields).toContain('messages');
+    expect(fields).toContain('contractVersion');
+  });
 });
