@@ -551,11 +551,19 @@ async function main(): Promise<void> {
     return 'HTTP 403, caller_module_not_registered, nothing persisted';
   });
 
-  /* 4b. Department the actor is not entitled to must be refused. */
+  /* 4b. A REAL department the actor is not entitled to must be refused. */
   await scenario('department_access_rejection', async () => {
+    const { data: dept, error: deptErr } = await admin
+      .from('core_department')
+      .select('id, organization_id')
+      .eq('id', env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID)
+      .maybeSingle();
+    assert(!deptErr, `foreign department read failed: ${deptErr?.message ?? ''}`);
+    assert(dept != null, 'the foreign department fixture does not exist');
+
     const body = {
       ...baseRequest(env, prefix, 'xdept', 'dry_run'),
-      departmentId: RANDOM_DEPARTMENT_ID,
+      departmentId: env.OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID,
     };
     const r = await invokeRuntime(env, env.OMNI_COMMS_TEST_USER_JWT, body);
     assertEqual(r.httpStatus, 403, 'http status');
@@ -568,8 +576,9 @@ async function main(): Promise<void> {
     assertEqual(r.body.contractVersion, CONTRACT_VERSION, 'contract version');
     const persisted = await requestIdsForPrefix(admin, `${prefix}-xdept`);
     assertEqual(persisted.length, 0, 'persisted requests');
-    return `HTTP 403, ${b[0]}, nothing persisted`;
+    return `HTTP 403, ${b[0]} against a real foreign department`;
   });
+
 
   /* 4c. A REGISTERED caller module the actor may not act for must be refused. */
   await scenario('registered_but_unauthorised_module_rejection', async () => {
