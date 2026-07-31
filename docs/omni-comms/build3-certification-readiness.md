@@ -79,14 +79,53 @@ Until that secret is present, `/health` reports `revisionVerified: false` and
 the privileged workflow (which sets `OMNI_COMMS_REQUIRE_EDGE_REVISION=1`)
 refuses to certify.
 
-## 5. Remaining prerequisites before a certification run
+Artifacts are named after the **actual checked-out revision**
+(`git rev-parse HEAD`), not `github.sha`, so a run launched against a specific
+`ref` cannot produce an artifact labelled with a different commit.
 
-1. Publish `OMNI_COMMS_EDGE_REVISION` on the staging deployment.
-2. Provision the `omni-comms-staging` environment secrets, including a
-   genuinely unprivileged JWT and an `OMNI_COMMS_TEST_UNAUTHORISED_MODULE`
-   value the test actor is not entitled to (the default `FINANCE` fails for a
-   platform-admin test actor — use a non-admin operator).
-3. Run the workflow manually and archive the sanitized artifact.
+## 5. Prerequisites an administrator must configure before the first privileged run
+
+1. **Publish the Edge revision.** Deploy `omni-comms-runtime` to staging with
+   the function secret `OMNI_COMMS_EDGE_REVISION` set to the exact
+   40-character commit being certified. Without it `/health` reports
+   `revisionVerified: false` and the run is refused before any fixture exists.
+2. **Create the `omni-comms-staging` GitHub environment** (with whatever
+   reviewers/protection rules your governance requires) and populate its
+   secrets:
+   - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for the staging project
+     (never a production project).
+   - `OMNI_COMMS_TEST_USER_JWT` — a real, authorised staging operator holding
+     the capability for the caller module under test, scoped to the test
+     organisation and department.
+   - `OMNI_COMMS_TEST_UNPRIVILEGED_JWT` — a genuinely unprivileged staging
+     user, used by `permission_rejection`. A second admin will make the
+     scenario fail.
+   - `OMNI_COMMS_TEST_ORG_ID`, `OMNI_COMMS_TEST_DEPARTMENT_ID`,
+     `OMNI_COMMS_TEST_EVENT_CODE`, `OMNI_COMMS_TEST_CALLER_MODULE`.
+   - `OMNI_COMMS_TEST_FOREIGN_ORG_ID` — a second staging organisation the test
+     actor has no access to, for `cross_tenant_rejection`.
+   - `OMNI_COMMS_TEST_FOREIGN_DEPARTMENT_ID` — a department inside the test
+     organisation the actor is not entitled to, for
+     `department_access_rejection`.
+   - `OMNI_COMMS_TEST_UNAUTHORISED_MODULE` — a module registered in
+     `omni_comms_caller_module_registry` whose required capability the test
+     actor does **not** hold. The default `FINANCE` fails for a
+     platform-admin test actor; use a non-admin operator or pick a module
+     outside their capability set.
+3. **Seed a fully configured send path** in the test organisation for the
+   chosen event, channel and locale: active event route, published template
+   version pinned to a published layout, verified sender identity, and an
+   active verified sender→provider-account binding. `valid_first_request`
+   fails if any step of the Setup Wizard is incomplete.
+4. **Register the caller module** used by the test in
+   `omni_comms_caller_module_registry` with its required capability.
+5. **Run the workflow manually** (`workflow_dispatch`), selecting the ref whose
+   commit matches `OMNI_COMMS_EDGE_REVISION`, then archive the sanitized
+   artifact.
+
+No provider dispatch, live delivery, retry, webhook or legacy cutover work is
+introduced by this round.
+
 
 No provider dispatch, live delivery, retry, webhook or legacy cutover work is
 introduced by this round.
