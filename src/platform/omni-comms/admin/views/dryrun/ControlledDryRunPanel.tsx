@@ -46,7 +46,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useOmniCommsTenant } from "@/platform/omni-comms/context/OmniCommsTenantContext";
-import { OmniCommsTenantSelector } from "@/platform/omni-comms/admin/components/OmniCommsTenantSelector";
 import { useOmniCommsRpcClient } from "@/platform/omni-comms/admin/hooks/useOmniCommsRpcClient";
 import {
   getEventContract,
@@ -381,8 +380,7 @@ export const ControlledDryRunPanel: React.FC = () => {
   if (tenantLoading || gateLoading) {
     return (
       <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading controlled dry-run
-        surface…
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading the safe test surface…
       </div>
     );
   }
@@ -393,7 +391,7 @@ export const ControlledDryRunPanel: React.FC = () => {
     <div className="space-y-4" data-testid="omni-comms-dry-run-panel">
       <Alert>
         <FlaskConical className="h-4 w-4" />
-        <AlertTitle>Controlled dry run — no delivery</AlertTitle>
+        <AlertTitle>Safe test — validation only, no delivery</AlertTitle>
         <AlertDescription>
           This surface submits one <strong>dry-run</strong> request through the
           canonical send façade using a single synthetic{" "}
@@ -418,7 +416,7 @@ export const ControlledDryRunPanel: React.FC = () => {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2">
-          <CardTitle className="text-base">Test scope</CardTitle>
+          <CardTitle className="text-base">Step 1 · Test scope</CardTitle>
           <Button
             size="sm"
             variant="outline"
@@ -435,7 +433,9 @@ export const ControlledDryRunPanel: React.FC = () => {
           </Button>
         </CardHeader>
         <CardContent className="space-y-4">
-          <OmniCommsTenantSelector />
+          <p className="text-sm text-muted-foreground">
+            Organisation and department are selected in the module header.
+          </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
@@ -505,7 +505,7 @@ export const ControlledDryRunPanel: React.FC = () => {
                 <p>Complete the outstanding setup steps first.</p>
                 <Button asChild size="sm" variant="outline">
                   <Link to="/admin/omnichannel-communications?view=setup">
-                    Open Setup Wizard <ArrowRight className="h-3 w-3 ml-1" />
+                    Open Setup readiness <ArrowRight className="h-3 w-3 ml-1" />
                   </Link>
                 </Button>
               </AlertDescription>
@@ -516,7 +516,7 @@ export const ControlledDryRunPanel: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Synthetic payload</CardTitle>
+          <CardTitle className="text-base">Step 2 · Synthetic payload</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {sampleNote ? (
