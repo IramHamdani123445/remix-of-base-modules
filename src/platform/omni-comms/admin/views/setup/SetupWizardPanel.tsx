@@ -1,17 +1,19 @@
 /**
- * Omni-Comms Setup Wizard — guided configuration panel.
+ * Omni-Comms Setup readiness — grouped configuration checklist.
  *
  * Lives INSIDE the existing Overview permanent route
- * (`/admin/omnichannel-communications`) as a tab. It adds no new route.
+ * (`/admin/omnichannel-communications`) as a view. It adds no new route.
  *
- * The wizard is read-only guidance. It reads exactly one bounded aggregate
- * RPC (`omni_comms_setup_readiness`), renders fourteen guided steps and deep
- * links to the permanent screen that owns each change. It never mutates
- * configuration, never enqueues a job, never contacts a provider and never
- * re-implements resolution precedence.
+ * The screen is read-only guidance. It reads exactly one bounded aggregate
+ * RPC (`omni_comms_setup_readiness`), renders the fourteen guided steps
+ * grouped into four administrator stages, states the single next required
+ * action first, and deep links to the permanent screen that owns each change.
+ * It never mutates configuration, never enqueues a job, never contacts a
+ * provider and never re-implements resolution precedence.
  */
 import React from "react";
-import { AlertCircle, Loader2, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
+import { AlertCircle, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useOmniCommsTenant } from "@/platform/omni-comms/context/OmniCommsTenantContext";
-import { OmniCommsTenantSelector } from "@/platform/omni-comms/admin/components/OmniCommsTenantSelector";
 import { useOmniCommsRpcClient } from "@/platform/omni-comms/admin/hooks/useOmniCommsRpcClient";
 import { listAllEventDefinitionsForPicker } from "@/platform/omni-comms/application/eventCatalogueService";
 import type { EventDefinitionListItem } from "@/platform/omni-comms/application/eventCatalogueTypes";
@@ -32,11 +33,18 @@ import {
   buildSetupPlan,
   getSetupReadiness,
   mapSetupError,
+  stepTargetHref,
   type SetupError,
   type SetupPlan,
 } from "@/platform/omni-comms/application/setupReadinessService";
+import {
+  currentOmniCommsEnvironment,
+  isNonProduction,
+} from "@/platform/omni-comms/admin/posture/omniCommsPosture";
+import { OmniCommsInlineWarning } from "@/platform/omni-comms/admin/components/OmniCommsPostureBadge";
 import SetupProgressSummary from "./SetupProgressSummary";
 import SetupStepCard from "./SetupStepCard";
+import { OMNI_COMMS_SETUP_STAGES } from "./setupStages";
 
 const NONE = "__none__";
 
@@ -125,20 +133,23 @@ export const SetupWizardPanel: React.FC = () => {
   return (
     <div className="space-y-6" data-testid="omni-comms-setup-wizard">
       <Alert>
-        <AlertTitle>Guided setup</AlertTitle>
+        <AlertTitle>Setup readiness</AlertTitle>
         <AlertDescription className="text-sm">
-          Configure one complete email path — organisation, department, pilot
-          event and locale — one step at a time. Every status below is read
-          from the deployed configuration, not from source code.
+          A read-only checklist for one complete email path. Every status below
+          is read from the deployed configuration, not from source code. Nothing
+          on this screen changes configuration.
         </AlertDescription>
       </Alert>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Pilot scope</CardTitle>
+          <CardTitle className="text-base">Evaluated path</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <OmniCommsTenantSelector />
+          <p className="text-sm text-muted-foreground">
+            Organisation and department are selected in the module header.
+          </p>
+
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1 min-w-[240px]">
