@@ -1,31 +1,35 @@
 /**
- * Omni-Comms Slice 2c-i — trusted send-communication runtime service.
+ * Omni-Comms — trusted send-communication runtime service (browser side).
  *
  * The public façade at src/platform/omni-comms/sendCommunication.ts calls
  * ONLY this entrypoint. Business modules must not import from
  * src/platform/omni-comms/runtime/** directly (enforced by the
  * architecture checker).
  *
- * Slice 2c-i change: authoritative canonicalization, fingerprinting and
- * persistence moved BEHIND the trusted Edge Function boundary
- * `omni-comms-runtime`. The browser side of the runtime performs only:
+ * Authoritative canonicalization, AUTHORISATION, fingerprinting, resolution,
+ * rendering and persistence all live BEHIND the trusted Edge Function
+ * boundary `omni-comms-runtime`. The browser side performs only:
  *
  *   - cheap public-shape validation (server re-validates authoritatively),
  *   - transport invocation of the Edge Function with the raw input,
+ *   - RUNTIME validation of the returned payload against the canonical
+ *     versioned result contract (never a bare TypeScript cast),
  *   - shielded mapping of transport errors to bounded blocker codes.
  *
- * The browser MUST NOT call the SECURITY DEFINER persistence RPC
- * directly — the RPC's EXECUTE grant has been revoked from
- * `authenticated` and moved to `service_role` only. The Edge Function is
- * the only path that reaches it.
+ * The browser MUST NOT call the SECURITY DEFINER persistence or
+ * authorisation RPCs directly — their EXECUTE grants are service_role only.
  */
 import { supabase } from '@/integrations/supabase/client';
 import {
   validateSendCommunicationInput,
   type SendCommunicationInput,
-  type SendCommunicationResult,
-  type OmniCommsSendMode,
 } from '../sendCommunication';
+import {
+  buildBlockedResult,
+  parseSendCommunicationResult,
+  type OmniCommsSendMode,
+  type SendCommunicationResult,
+} from './responseContract';
 import type { OmniCommsRuntimeErrorCode } from './runtimeErrors';
 
 /**
@@ -36,7 +40,7 @@ import type { OmniCommsRuntimeErrorCode } from './runtimeErrors';
  */
 export interface RuntimeTransport {
   invoke: (input: SendCommunicationInput) => Promise<{
-    data: SendCommunicationResult | null;
+    data: unknown;
     error: { message?: string; name?: string; status?: number } | null;
   }>;
 }
@@ -50,28 +54,18 @@ const DEFAULT_TRANSPORT: RuntimeTransport = {
       OMNI_COMMS_RUNTIME_FUNCTION,
       { body: input },
     );
-    return {
-      data: (data ?? null) as SendCommunicationResult | null,
-      error: error ?? null,
-    };
+    return { data: data ?? null, error: error ?? null };
   },
 };
 
-function blockedResult(
+function blocked(
   input: SendCommunicationInput,
   blockers: OmniCommsRuntimeErrorCode[],
 ): SendCommunicationResult {
-  return {
-    requestId: '',
+  return buildBlockedResult(blockers, {
     idempotencyKey: input?.idempotencyKey ?? '',
     mode: (input?.mode ?? 'dry_run') as OmniCommsSendMode,
-    status: 'blocked',
-    recipients: [],
-    messages: [],
-    blockers,
-    createdAt: new Date(0).toISOString(),
-    replayed: false,
-  };
+  });
 }
 
 /**
@@ -86,46 +80,36 @@ export async function executeSendCommunication(
   // 1) Cheap public-shape validation. Server re-validates authoritatively.
   const shapeBlockers = validateSendCommunicationInput(input);
   if (shapeBlockers.length > 0) {
-    return blockedResult(input, shapeBlockers as OmniCommsRuntimeErrorCode[]);
+    return blocked(input, shapeBlockers as OmniCommsRuntimeErrorCode[]);
   }
 
   // 2) Invoke the trusted Edge Function boundary. It authenticates,
-  //    canonicalizes, fingerprints, and persists via service_role.
+  //    AUTHORISES, canonicalizes, fingerprints and persists via service_role.
   let result: {
-    data: SendCommunicationResult | null;
+    data: unknown;
     error: { message?: string; name?: string; status?: number } | null;
   };
   try {
     result = await transport.invoke(input);
   } catch {
-    return blockedResult(input, ['runtime_transport_failed']);
+    return blocked(input, ['runtime_transport_failed']);
   }
 
   if (result.error && !result.data) {
     // Transport-level failure (network, 5xx without body). Never leak.
     const status = result.error.status ?? 0;
-    if (status === 401) return blockedResult(input, ['authentication_required']);
-    if (status === 403) return blockedResult(input, ['permission_denied']);
-    return blockedResult(input, ['runtime_transport_failed']);
+    if (status === 401) return blocked(input, ['authentication_required']);
+    if (status === 403) return blocked(input, ['permission_denied']);
+    return blocked(input, ['runtime_transport_failed']);
   }
 
-  const row = result.data;
-  if (!row || typeof row !== 'object' || typeof row.status !== 'string') {
-    return blockedResult(input, ['runtime_persistence_failed']);
-  }
-
-  // The Edge Function returns an already-bounded SendCommunicationResult.
-  // We defensively normalize array fields so a partial payload never
-  // reaches the caller with undefined lists.
-  return {
-    requestId: row.requestId ?? '',
-    idempotencyKey: row.idempotencyKey ?? (input.idempotencyKey ?? ''),
-    mode: (row.mode ?? input.mode) as OmniCommsSendMode,
-    status: row.status,
-    recipients: Array.isArray(row.recipients) ? row.recipients : [],
-    messages: Array.isArray(row.messages) ? row.messages : [],
-    blockers: Array.isArray(row.blockers) ? row.blockers : [],
-    createdAt: row.createdAt ?? new Date(0).toISOString(),
-    replayed: row.replayed === true,
-  };
+  // 3) Runtime contract validation. A payload that cannot be reconciled with
+  //    the canonical contract is treated as a persistence failure — we never
+  //    hand a partially-shaped object back to the caller.
+  const parsed = parseSendCommunicationResult(result.data, {
+    idempotencyKey: input.idempotencyKey,
+    mode: input.mode,
+  });
+  if (!parsed) return blocked(input, ['runtime_persistence_failed']);
+  return parsed;
 }
