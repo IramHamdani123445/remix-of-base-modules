@@ -33,7 +33,26 @@ const EDGE_PATH = path.resolve(
   __dirname,
   '../../../supabase/functions/omni-comms-runtime/responseContract.ts',
 );
+const BROWSER_PATH = path.resolve(
+  __dirname,
+  '../../platform/omni-comms/runtime/responseContract.ts',
+);
 const edgeSrc = readFileSync(EDGE_PATH, 'utf8');
+const browserSrc = readFileSync(BROWSER_PATH, 'utf8');
+
+/**
+ * Extract the declared field names of `export interface NAME { ... }`.
+ * Comments are stripped so documentation drift never masquerades as a field.
+ */
+function interfaceFields(src: string, name: string, label: string): string[] {
+  const m = src.match(new RegExp(`export interface ${name}\\s*\\{([\\s\\S]*?)\\n\\}`));
+  if (!m) throw new Error(`${label} is missing interface ${name}`);
+  const body = m[1]
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  return [...body.matchAll(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\??\s*:/gm)].map((x) => x[1]);
+}
+
 
 /** Extract a `export const NAME = [ ... ] as const;` string array. */
 function edgeArray(name: string): string[] {
