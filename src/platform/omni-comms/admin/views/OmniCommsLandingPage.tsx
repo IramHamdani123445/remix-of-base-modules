@@ -31,6 +31,7 @@ import { OMNI_COMMS_ROUTE_REGISTRY } from "../../registry/routeRegistry";
 import { OMNI_COMMS_READINESS_MANIFEST } from "../../registry/readinessManifest";
 import SetupWizardPanel from "./setup/SetupWizardPanel";
 import ControlledDryRunPanel from "./dryrun/ControlledDryRunPanel";
+import ReferenceSeedPanel from "./seed/ReferenceSeedPanel";
 
 type StatusKind = "available" | "coming-soon";
 
