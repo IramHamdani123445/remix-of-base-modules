@@ -13,7 +13,7 @@ import {
 } from '../../../supabase/functions/omni-comms-runtime/providerVerification';
 
 const MIGRATION = 'supabase/migrations/20260801194943_a1dd7cd9-c678-44d6-9d30-3dbac755ee3a.sql';
-const UI_SRC = 'src/platform/omni-comms/admin/views/OmniCommsChannelsPage.tsx';
+const UI_SRC = 'src/platform/omni-comms/admin/views/channels/ChannelAccountsTab.tsx';
 
 const sql = readFileSync(MIGRATION, 'utf8');
 const ui = readFileSync(UI_SRC, 'utf8');

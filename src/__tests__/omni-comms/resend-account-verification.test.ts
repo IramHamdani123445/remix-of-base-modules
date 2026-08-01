@@ -9,7 +9,7 @@ import {
 } from '../../../supabase/functions/omni-comms-runtime/providerVerification';
 
 const EDGE_SRC = 'supabase/functions/omni-comms-runtime/providerVerification.ts';
-const UI_SRC = 'src/platform/omni-comms/admin/views/OmniCommsChannelsPage.tsx';
+const UI_SRC = 'src/platform/omni-comms/admin/views/channels/ChannelAccountsTab.tsx';
 const CLIENT_SRC = 'src/platform/omni-comms/application/providerVerificationService.ts';
 
 const OK_CTX = {

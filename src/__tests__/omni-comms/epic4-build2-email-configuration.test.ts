@@ -54,7 +54,11 @@ describe('Omni-Comms Accelerated Build 2 — Email configuration RPCs & UI', () 
     expect(existsSync(p)).toBe(true);
     const src = readFileSync(p, 'utf8');
     expect(src).toMatch(/useOmniCommsRpcClient/);
-    expect(src).toMatch(/channelManagementService/);
+    const accounts = readFileSync(
+      'src/platform/omni-comms/admin/views/channels/ChannelAccountsTab.tsx',
+      'utf8',
+    );
+    expect(accounts).toMatch(/channelManagementService/);
     // No provider SDK / send behaviour leaks into the view.
     expect(src).not.toMatch(/from ['"]resend['"]/);
     expect(src).not.toMatch(/sendCommunication/);
