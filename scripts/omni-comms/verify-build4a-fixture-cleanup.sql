@@ -1,7 +1,14 @@
 -- ===================================================================
 -- Build 4A — certification fixture cleanup verifier.
 -- Read-only. Fails loudly if any certification fixture, temporary
--- authorization assignment or injected fault mechanism survives a run.
+-- authorization assignment, temporary role grant or injected fault
+-- mechanism survives a run.
+--
+-- Canonical schema note: public.core_staff_assignments has NO
+-- organization_id. Tenancy is reached through
+--   core_staff_assignments.department_id
+--     -> core_department.id
+--     -> core_department.organization_id
 --
 -- Usage:
 --   psql "$DB" -v cert_org='<uuid>' -v cert_foreign_org='<uuid>' \
@@ -68,6 +75,15 @@ BEGIN
     END IF;
   END LOOP;
 
+  -- 1b. no orphaned certification template versions may remain
+  SELECT count(*) INTO v_n
+    FROM public.omni_comms_template_version tv
+    JOIN public.omni_comms_template_family tf ON tf.id = tv.template_family_id
+   WHERE tf.organization_id = ANY(v_orgs);
+  IF v_n > 0 THEN
+    RAISE EXCEPTION 'CLEANUP: % certification template versions remain', v_n;
+  END IF;
+
   -- 2. no certification department fixtures may remain
   SELECT count(*) INTO v_n FROM public.core_department WHERE organization_id = ANY(v_orgs);
   IF v_n > 0 THEN
@@ -90,10 +106,12 @@ BEGIN
     RAISE EXCEPTION 'SAFETY: % injected certification fault function(s) remain', v_n;
   END IF;
 
-  -- 4. certification identities must never hold lingering authorization
+  -- 4. certification identities must never hold lingering authorization.
+  --    Reached through the canonical department -> organisation relationship.
   SELECT count(*) INTO v_n
     FROM public.core_staff_assignments a
-   WHERE a.organization_id = ANY(v_orgs);
+    JOIN public.core_department d ON d.id = a.department_id
+   WHERE d.organization_id = ANY(v_orgs);
   IF v_n > 0 THEN
     RAISE EXCEPTION 'CLEANUP: % certification authorization assignment(s) remain', v_n;
   END IF;

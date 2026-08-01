@@ -1,15 +1,17 @@
-name: Omni-Comms Build 4A Privileged Certification
+name: Omni-Comms Build 4A Bootstrap Authorization and Atomicity Certification
 
-# Manual-only execution. Completes the remaining Build 4A privileged
-# certification (authorization, prerequisite failure, late-stage rollback,
-# retry, replay, concurrency) against protected staging fixtures.
+# Manual-only execution. Proves ONLY bootstrap authorization and atomicity for
+# Build 4A. It does NOT produce the broader "BUILD 4A VERIFIED" verdict, which
+# additionally requires a separate controlled Employer Registration shadow test.
 #
 # It does NOT modify Build 4A product functionality, readiness status,
 # baselines or evidence files. It only produces sanitized evidence.
 #
-# Credentials: no durable Supabase access-token JWT secrets are used. Fresh
-# sessions are obtained at run time through the normal Supabase Auth boundary
-# with dedicated staging-only certification users, then masked and validated.
+# Credentials: no durable Supabase access-token JWT secrets and no service-role
+# key. Fresh sessions are obtained at run time through the normal Supabase Auth
+# boundary with dedicated staging-only certification users, then masked and
+# validated. Database access uses a dedicated least-privileged staging
+# certification role.
 
 on:
   workflow_dispatch:
@@ -28,7 +30,7 @@ concurrency:
 
 jobs:
   certify:
-    name: Build 4A Privileged Certification
+    name: Build 4A Bootstrap Authorization and Atomicity
     runs-on: ubuntu-latest
     environment: omni-comms-staging
     timeout-minutes: 45
@@ -38,11 +40,14 @@ jobs:
       OMNI_COMMS_CERT_ORGANIZATION_ID: ${{ vars.OMNI_COMMS_CERT_ORGANIZATION_ID }}
       OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID: ${{ vars.OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID }}
       OMNI_COMMS_CERT_NAMESPACE: ${{ vars.OMNI_COMMS_CERT_NAMESPACE }}
+      OMNI_COMMS_CERT_CAPABILITY_ROLE: ${{ vars.OMNI_COMMS_CERT_CAPABILITY_ROLE }}
+      OMNI_COMMS_CERT_DB_ROLE: ${{ vars.OMNI_COMMS_CERT_DB_ROLE }}
       OMNI_COMMS_CERT_RESULT_FILE: .certification-logs/build4a-result.json
 
     steps:
       - name: Checkout requested ref
-        uses: actions/checkout@v4
+        # actions/checkout v4.2.2 pinned to an immutable commit SHA
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
@@ -77,7 +82,8 @@ jobs:
           fi
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        # oven-sh/setup-bun v2.0.2 pinned to an immutable commit SHA
+        uses: oven-sh/setup-bun@735343b667d3e6f658f44d0eca948eb6282f2b76
         with:
           bun-version: "1.3.3"
 
@@ -94,7 +100,6 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
           OMNI_COMMS_CERT_CONFIGURE_EMAIL: ${{ secrets.OMNI_COMMS_CERT_CONFIGURE_EMAIL }}
           OMNI_COMMS_CERT_CONFIGURE_PASSWORD: ${{ secrets.OMNI_COMMS_CERT_CONFIGURE_PASSWORD }}
@@ -104,7 +109,7 @@ jobs:
           OMNI_COMMS_CERT_FOREIGN_PASSWORD: ${{ secrets.OMNI_COMMS_CERT_FOREIGN_PASSWORD }}
         run: |
           set +x
-          for v in "$SUPABASE_URL" "$SUPABASE_ANON_KEY" "$SUPABASE_SERVICE_ROLE_KEY" \
+          for v in "$SUPABASE_URL" "$SUPABASE_ANON_KEY" \
                    "$OMNI_COMMS_STAGING_DB_URL" \
                    "$OMNI_COMMS_CERT_CONFIGURE_EMAIL" "$OMNI_COMMS_CERT_CONFIGURE_PASSWORD" \
                    "$OMNI_COMMS_CERT_UNPRIVILEGED_EMAIL" "$OMNI_COMMS_CERT_UNPRIVILEGED_PASSWORD" \
@@ -116,7 +121,6 @@ jobs:
 
           [ -n "$SUPABASE_URL" ] || fail "SUPABASE_URL"
           [ -n "$SUPABASE_ANON_KEY" ] || fail "SUPABASE_ANON_KEY"
-          [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || fail "SUPABASE_SERVICE_ROLE_KEY"
           [ -n "$OMNI_COMMS_STAGING_DB_URL" ] || fail "OMNI_COMMS_STAGING_DB_URL"
           [ -n "$OMNI_COMMS_CERT_CONFIGURE_EMAIL" ] || fail "OMNI_COMMS_CERT_CONFIGURE_EMAIL"
           [ -n "$OMNI_COMMS_CERT_CONFIGURE_PASSWORD" ] || fail "OMNI_COMMS_CERT_CONFIGURE_PASSWORD"
@@ -127,9 +131,20 @@ jobs:
           [ -n "$OMNI_COMMS_CERT_ORGANIZATION_ID" ] || fail "OMNI_COMMS_CERT_ORGANIZATION_ID"
           [ -n "$OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID" ] || fail "OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID"
           [ -n "$OMNI_COMMS_CERT_NAMESPACE" ] || fail "OMNI_COMMS_CERT_NAMESPACE"
+          [ -n "$OMNI_COMMS_CERT_CAPABILITY_ROLE" ] || fail "OMNI_COMMS_CERT_CAPABILITY_ROLE"
+          [ -n "$OMNI_COMMS_CERT_DB_ROLE" ] || fail "OMNI_COMMS_CERT_DB_ROLE"
 
-          [ "$SUPABASE_ANON_KEY" != "$SUPABASE_SERVICE_ROLE_KEY" ] \
-            || { echo "FAIL — service-role key equals anon key"; exit 1; }
+          # The certification capability role must never be a global administrator,
+          # and the DB role must never be a production owner role.
+          case "$(printf '%s' "$OMNI_COMMS_CERT_CAPABILITY_ROLE" | tr '[:upper:]' '[:lower:]')" in
+            admin|superadmin|application*admin)
+              echo "FAIL — certification capability role must not be an administrator role"; exit 1;;
+          esac
+          case "$OMNI_COMMS_CERT_DB_ROLE" in
+            postgres|supabase_admin|supabase_auth_admin|service_role|authenticator)
+              echo "FAIL — certification DB role must not be a platform owner role"; exit 1;;
+          esac
+
           [ "$OMNI_COMMS_CERT_CONFIGURE_EMAIL" != "$OMNI_COMMS_CERT_UNPRIVILEGED_EMAIL" ] \
             || { echo "FAIL — privileged and unprivileged certification users are identical"; exit 1; }
           [ "$OMNI_COMMS_CERT_CONFIGURE_EMAIL" != "$OMNI_COMMS_CERT_FOREIGN_EMAIL" ] \
@@ -142,8 +157,7 @@ jobs:
             [[ "${!name}" =~ $uuid_re ]] || { echo "FAIL — $name is not a valid UUID"; exit 1; }
           done
 
-          for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY OMNI_COMMS_STAGING_DB_URL \
-                      OMNI_COMMS_CERT_CONFIGURE_PASSWORD; do
+          for name in SUPABASE_URL OMNI_COMMS_STAGING_DB_URL OMNI_COMMS_CERT_CONFIGURE_PASSWORD; do
             val="$(printf '%s' "${!name}" | tr '[:upper:]' '[:lower:]')"
             case "$val" in
               changeme|placeholder|xxx|todo|undefined|null|test|example|password|your-key-here)
@@ -160,14 +174,13 @@ jobs:
             esac
           done
 
-          echo "credential validation: ok (no durable access-token secrets in use)"
+          echo "credential validation: ok (no durable access tokens, no service-role key)"
 
       - name: Run privileged Build 4A certification harness
         id: harness
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
           OMNI_COMMS_CERT_CONFIGURE_EMAIL: ${{ secrets.OMNI_COMMS_CERT_CONFIGURE_EMAIL }}
           OMNI_COMMS_CERT_CONFIGURE_PASSWORD: ${{ secrets.OMNI_COMMS_CERT_CONFIGURE_PASSWORD }}
@@ -274,11 +287,11 @@ jobs:
             || { echo "FAIL — fixture cleanup verifier marker missing"; exit 1; }
 
       - name: Sanitize logs
+        id: sanitize
         if: always()
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
           OMNI_COMMS_CERT_CONFIGURE_EMAIL: ${{ secrets.OMNI_COMMS_CERT_CONFIGURE_EMAIL }}
           OMNI_COMMS_CERT_CONFIGURE_PASSWORD: ${{ secrets.OMNI_COMMS_CERT_CONFIGURE_PASSWORD }}
@@ -288,18 +301,36 @@ jobs:
           OMNI_COMMS_CERT_FOREIGN_PASSWORD: ${{ secrets.OMNI_COMMS_CERT_FOREIGN_PASSWORD }}
         run: |
           set +x
+          set -euo pipefail
           shopt -s nullglob
+          # Sanitization must FAIL rather than silently continue: an artifact is
+          # only uploadable when every replacement command succeeded.
           for f in .certification-logs/*.log .certification-logs/*.txt .certification-logs/*.json; do
-            for v in "$SUPABASE_URL" "$SUPABASE_ANON_KEY" "$SUPABASE_SERVICE_ROLE_KEY" \
+            for v in "$SUPABASE_URL" "$SUPABASE_ANON_KEY" \
                      "$OMNI_COMMS_STAGING_DB_URL" \
                      "$OMNI_COMMS_CERT_CONFIGURE_EMAIL" "$OMNI_COMMS_CERT_CONFIGURE_PASSWORD" \
                      "$OMNI_COMMS_CERT_UNPRIVILEGED_EMAIL" "$OMNI_COMMS_CERT_UNPRIVILEGED_PASSWORD" \
                      "$OMNI_COMMS_CERT_FOREIGN_EMAIL" "$OMNI_COMMS_CERT_FOREIGN_PASSWORD"; do
-              [ -n "$v" ] && sed -i "s|${v//|/\\|}|***REDACTED***|g" "$f" || true
+              if [ -n "$v" ]; then
+                python3 - "$f" "$v" <<'PY'
+import sys
+path, secret = sys.argv[1], sys.argv[2]
+with open(path, 'r', encoding='utf-8', errors='replace') as fh:
+    data = fh.read()
+with open(path, 'w', encoding='utf-8') as fh:
+    fh.write(data.replace(secret, '***REDACTED***'))
+PY
+              fi
             done
-            sed -i -E 's/(Authorization: Bearer )[^ ]+/\1***REDACTED***/g' "$f" || true
-            sed -i -E 's/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/***REDACTED***/g' "$f" || true
+            sed -i -E 's/(Authorization: Bearer )[^ ]+/\1***REDACTED***/g' "$f"
+            sed -i -E 's/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/***REDACTED***/g' "$f"
           done
+          # Fail closed if any credential-shaped value survived.
+          if grep -REq 'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|postgres(ql)?://' .certification-logs/; then
+            echo "FAIL — sanitization did not remove every credential-shaped value"
+            exit 1
+          fi
+          echo "sanitization: ok"
 
       - name: Build certification summary
         if: always()
@@ -308,12 +339,12 @@ jobs:
           summary=.certification-logs/certification-summary.txt
           log=.certification-logs/build4a-harness.log
           {
-            echo "Omni-Comms Build 4A Privileged Certification Summary"
-            echo "===================================================="
+            echo "Omni-Comms Build 4A Bootstrap Authorization and Atomicity Certification"
+            echo "======================================================================"
             cat .certification-logs/git-revision.txt 2>/dev/null || true
             echo ""
             echo "-- Harness (measured, not assumed) --"
-            grep -E "commit_sha:|environment:|run identifier:|preflight cleanup:|certification sessions:|scenarios:|passed:|failed:|fixture namespace:|final scoped rows:|sanctioned_dry_run_requests:|no_dispatch_job:|no_delivery_attempt:|no_provider_call:|no_email:|no_webhook_event:|no_unintended_message:|no_unintended_message_event:|cleanup:" "$log" 2>/dev/null || echo "(harness log unavailable)"
+            grep -E "commit_sha:|environment:|run identifier:|deployed revision bound:|preflight cleanup:|certification sessions:|identities validated:|scenarios:|passed:|failed:|fixture namespace:|final scoped rows:|no_runnable_dispatch_job:|no_delivery_attempt:|provider_adapter_present:|provider_sdk_imports:|outbound_provider_calls:|cleanup:" "$log" 2>/dev/null || echo "(harness log unavailable)"
             echo ""
             echo "-- Structured result (authoritative) --"
             cat .certification-logs/build4a-result.json 2>/dev/null || echo "(structured result unavailable)"
@@ -349,6 +380,8 @@ jobs:
             || { echo "missing protected capability or gate: structured certification result"; ok=0; }
           [ "${{ steps.cleanup.outcome }}" = "success" ] \
             || { echo "missing protected capability or gate: fixture cleanup verification"; ok=0; }
+          [ "${{ steps.sanitize.outcome }}" = "success" ] \
+            || { echo "missing protected capability or gate: log sanitization"; ok=0; }
           grep -qhF "OMNI COMMS BUILD 4A PRODUCER VERIFY OK" .certification-logs/build4a-verifier.log 2>/dev/null \
             || { echo "missing protected capability or gate: Build 4A producer verifier"; ok=0; }
           grep -qhF "OMNI COMMS BUILD 4A AUTHORIZATION INTEGRATION OK" .certification-logs/structured-result.log 2>/dev/null \
@@ -359,7 +392,10 @@ jobs:
             || { echo "missing protected capability or gate: fixture cleanup marker"; ok=0; }
           if [ "${{ job.status }}" != "success" ]; then ok=0; fi
           if [ "$ok" = "1" ]; then
-            echo "BUILD 4A VERIFIED"
+            # Scope-correct verdict: this workflow proves bootstrap authorization
+            # and atomicity only. "BUILD 4A VERIFIED" additionally requires a
+            # separate controlled Employer Registration shadow test.
+            echo "BUILD 4A BOOTSTRAP AUTHORIZATION AND ATOMICITY VERIFIED"
           else
             echo "BUILD 4A IMPLEMENTED — PRIVILEGED CERTIFICATION INCOMPLETE"
             exit 1
@@ -367,7 +403,8 @@ jobs:
 
       - name: Upload sanitized certification artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact v4.6.2 pinned to an immutable commit SHA
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: omni-comms-build4a-certification-${{ steps.revision.outputs.certified_sha || github.run_id }}
           path: .certification-logs/
