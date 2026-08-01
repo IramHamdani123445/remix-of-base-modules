@@ -82067,6 +82067,7 @@ export type Database = {
           mode: string
           organization_id: string
           payload_snapshot: Json
+          producer_event_binding_id: string | null
           request_fingerprint: string
           requested_by: string | null
           requested_channels: string[]
@@ -82091,6 +82092,7 @@ export type Database = {
           mode: string
           organization_id: string
           payload_snapshot: Json
+          producer_event_binding_id?: string | null
           request_fingerprint: string
           requested_by?: string | null
           requested_channels: string[]
@@ -82115,6 +82117,7 @@ export type Database = {
           mode?: string
           organization_id?: string
           payload_snapshot?: Json
+          producer_event_binding_id?: string | null
           request_fingerprint?: string
           requested_by?: string | null
           requested_channels?: string[]
@@ -82127,6 +82130,13 @@ export type Database = {
             columns: ["event_definition_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_event_definition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_request_producer_event_binding_fkey"
+            columns: ["producer_event_binding_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_producer_event_binding"
             referencedColumns: ["id"]
           },
         ]
@@ -102671,6 +102681,10 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_bootstrap_employer_registration_pilot: {
+        Args: { p_apply?: boolean; p_organization_code?: string }
+        Returns: Json
+      }
       omni_comms_channel_setting_upsert: {
         Args: {
           p_channel: string
@@ -103028,6 +103042,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_bootstrap_employer_registration_pilot: {
+        Args: {
+          p_actor_id: string
+          p_apply?: boolean
+          p_organization_code?: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_certification_posture: { Args: never; Returns: Json }
       omni_comms_priv_compute_checksum: {
         Args: {
@@ -103175,6 +103197,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_pilot_assert_non_production: {
+        Args: never
+        Returns: undefined
+      }
       omni_comms_priv_record_runtime_certification: {
         Args: {
           p_certification_state: string
@@ -103223,6 +103249,14 @@ export type Database = {
         Args: { p_max_bytes: number; p_value: Json }
         Returns: undefined
       }
+      omni_comms_priv_require_tenant_access: {
+        Args: {
+          p_actor_id: string
+          p_department_id?: string
+          p_organization_id: string
+        }
+        Returns: undefined
+      }
       omni_comms_priv_runtime_certification: { Args: never; Returns: Json }
       omni_comms_priv_runtime_environment: { Args: never; Returns: string }
       omni_comms_priv_runtime_health_posture: {
@@ -103252,6 +103286,7 @@ export type Database = {
           p_mode: string
           p_organization_id: string
           p_payload: Json
+          p_producer_event_binding_id?: string
           p_request_fingerprint: string
           p_requested_channels: string[]
         }

@@ -59,4 +59,6 @@ export interface BusinessProducerResult {
   idempotencyKey: string | null;
   mode: BusinessProducerMode;
   eventCode: string;
+  /** Trusted producer binding that authorised the emission, when known. */
+  producerEventBindingId?: string | null;
 }

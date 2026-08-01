@@ -158,6 +158,7 @@ function acceptedResult(
     blockers: ['runtime_resolution_pending'],
     createdAt: row.created_at,
     replayed,
+    producerEventBindingId: null,
   };
 }
 
@@ -176,6 +177,7 @@ function blocked(
     blockers: [code],
     createdAt: new Date(0).toISOString(),
     replayed: false,
+    producerEventBindingId: null,
   };
 }
 

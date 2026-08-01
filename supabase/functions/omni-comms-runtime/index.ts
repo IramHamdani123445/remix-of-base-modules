@@ -272,13 +272,25 @@ Deno.serve(async (req: Request) => {
     console.log(`[${BUILD_TAG}] authorize_rpc_error`);
     return blocked(input, mapRpcErrorToCode(authzError), 403);
   }
-  const authz = (authzData ?? {}) as { allowed?: boolean; code?: string };
+  const authz = (authzData ?? {}) as {
+    allowed?: boolean;
+    code?: string;
+    binding_id?: string | null;
+  };
   if (authz.allowed !== true) {
     const code = authz.code ?? "permission_denied";
     // 401 only for a genuinely absent actor; every other refusal is a 403.
     const httpStatus = code === "authentication_required" ? 401 : 403;
     return blocked(input, code, httpStatus);
   }
+
+  // The producer binding that authorised this emission is TRUSTED runtime
+  // state derived from the authorizer. A browser-supplied binding is never
+  // read: `input` is not consulted for it anywhere in this function.
+  const producerEventBindingId =
+    typeof authz.binding_id === "string" && authz.binding_id.trim() !== ""
+      ? authz.binding_id
+      : null;
 
   // 3b. Trusted administration dry-run guard. Applies ONLY to the bounded
   // administration test caller; business-module behaviour is unchanged.
@@ -321,6 +333,7 @@ Deno.serve(async (req: Request) => {
       p_request_fingerprint: serverFingerprint,
       p_payload: canonical.payload,
       p_requested_channels: canonical.requestedChannels,
+      p_producer_event_binding_id: producerEventBindingId,
     },
   );
 
@@ -336,6 +349,7 @@ Deno.serve(async (req: Request) => {
     status: string;
     created_at: string;
     replayed: boolean;
+    producer_event_binding_id?: string | null;
   } | null;
 
   if (!row?.request_id) return blocked(input, "runtime_persistence_failed");
@@ -596,7 +610,13 @@ async function loadPersistedRecipients(
 }
 
 function buildResolvedResponse(
-  row: { request_id: string; idempotency_key: string; mode: Mode; created_at: string },
+  row: {
+    request_id: string;
+    idempotency_key: string;
+    mode: Mode;
+    created_at: string;
+    producer_event_binding_id?: string | null;
+  },
   finData: unknown,
   recipients: SendCommunicationRecipientResult[],
   requestBlockers: string[],
@@ -612,11 +632,19 @@ function buildResolvedResponse(
     blockers: requestBlockers,
     createdAt: row.created_at,
     replayed: false,
+    producerEventBindingId: row.producer_event_binding_id ?? null,
   });
 }
 
 function buildReplayResponse(
-  row: { request_id: string; idempotency_key: string; mode: Mode; status: string; created_at: string },
+  row: {
+    request_id: string;
+    idempotency_key: string;
+    mode: Mode;
+    status: string;
+    created_at: string;
+    producer_event_binding_id?: string | null;
+  },
   loaded: unknown,
   recipients: SendCommunicationRecipientResult[],
   messages: SendCommunicationMessageResult[],
@@ -633,6 +661,7 @@ function buildReplayResponse(
     blockers,
     createdAt: row.created_at,
     replayed: true,
+    producerEventBindingId: row.producer_event_binding_id ?? null,
   });
 }
 
@@ -640,7 +669,13 @@ function buildReplayResponse(
 async function finalizeBlocked(
   admin: ReturnType<typeof createClient>,
   actorId: string,
-  row: { request_id: string; idempotency_key: string; mode: Mode; created_at: string },
+  row: {
+    request_id: string;
+    idempotency_key: string;
+    mode: Mode;
+    created_at: string;
+    producer_event_binding_id?: string | null;
+  },
   canonical: { organizationId: string },
   blocker: string,
 ): Promise<Response> {
@@ -664,6 +699,7 @@ async function finalizeBlocked(
       blockers: [blocker],
       createdAt: row.created_at,
       replayed: false,
+      producerEventBindingId: row.producer_event_binding_id ?? null,
     }),
   );
 }

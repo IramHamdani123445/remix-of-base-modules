@@ -3,41 +3,86 @@ import { supabase } from '@/integrations/supabase/client';
 import { triggerEmployerRegistrationWorkflow } from '@/services/employerWorkflowTriggerService';
 import { resolveOrganizationContext } from '@/lib/org/organizationContextResolver';
 import {
-  emitEmployerRegistrationSubmitted,
+  emitEmployerRegistrationApplicationSubmitted,
   EMPLOYER_REGISTRATION_MODULE_CODE,
 } from '@/platform/omni-comms/integrations/business/employerRegistrationProducer';
+import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
+
+/** Observable, non-fatal outcome of the pilot acknowledgement emission. */
+export interface CommunicationOutcome {
+  outcome: BusinessProducerResult['outcome'] | 'skipped';
+  eventCode: string | null;
+  requestId: string | null;
+  blockers: string[];
+  /** Short, user-safe sentence describing what happened. */
+  summary: string;
+}
+
+const COMMUNICATION_SUMMARY: Record<string, string> = {
+  accepted: 'Acknowledgement prepared (test mode — nothing was sent).',
+  replayed: 'Acknowledgement already prepared for this application.',
+  blocked: 'Acknowledgement not prepared.',
+  unavailable: 'Acknowledgement could not be prepared right now.',
+  skipped: 'Acknowledgement not applicable for this organisation.',
+};
 
 /**
- * Build 4A pilot — raise the employer-registration communication event through
- * the single Omni-Comms facade in SHADOW mode. Provider-free and fail-closed:
- * the runtime records evidence only. This never blocks or fails the business
- * submission, and it never contacts a provider or writes to a comms table.
+ * Build 4A pilot — raise the employer-registration APPLICATION SUBMITTED
+ * acknowledgement through the single Omni-Comms facade in SHADOW mode.
+ * Provider-free and fail-closed: the runtime records evidence only. This
+ * never blocks or fails the business submission, never contacts a provider
+ * and never writes to a comms table. The outcome is returned so the caller
+ * can surface it — it is observed, not fire-and-forget.
  */
 const emitOmniCommsRegistrationEvent = async (
   regno: string,
   employerName: string,
   contact: { email?: string | null; phone?: string | null },
-): Promise<void> => {
+): Promise<CommunicationOutcome> => {
+  const skipped: CommunicationOutcome = {
+    outcome: 'skipped',
+    eventCode: null,
+    requestId: null,
+    blockers: [],
+    summary: COMMUNICATION_SUMMARY.skipped,
+  };
+
   try {
     const ctx = await resolveOrganizationContext({
       moduleCode: EMPLOYER_REGISTRATION_MODULE_CODE,
     });
     const organizationId: string | undefined = ctx?.organization?.id;
-    if (!organizationId) return;
+    if (!organizationId) return skipped;
 
-    await emitEmployerRegistrationSubmitted({
+    const res = await emitEmployerRegistrationApplicationSubmitted({
       organizationId,
       departmentId: ctx?.department?.department_id ?? null,
-      registrationNumber: regno,
-      employerName,
+      reference: regno,
+      subjectName: employerName,
       contactEmail: contact.email ?? null,
       contactPhone: contact.phone ?? null,
       submittedAt: new Date().toISOString(),
     });
+
+    return {
+      outcome: res.outcome,
+      eventCode: res.eventCode || null,
+      requestId: res.requestId,
+      blockers: res.blockers ?? [],
+      summary: COMMUNICATION_SUMMARY[res.outcome] ?? COMMUNICATION_SUMMARY.unavailable,
+    };
   } catch {
     // Communication evidence is best-effort and never affects submission.
+    return {
+      outcome: 'unavailable',
+      eventCode: null,
+      requestId: null,
+      blockers: ['runtime_unavailable'],
+      summary: COMMUNICATION_SUMMARY.unavailable,
+    };
   }
 };
+
 
 const formatDbError = (err: unknown): string => {
   if (!err) return 'Unknown error';
@@ -79,7 +124,10 @@ export interface SubmitResult {
   errors?: ValidationErrors;
   message?: string;
   workflowInstanceId?: string;
+  /** Observed, non-fatal outcome of the acknowledgement emission. */
+  communication?: CommunicationOutcome;
 }
+
 
 /**
  * Validates required fields for ER submission.
@@ -199,18 +247,22 @@ export function useEmployerRegistrationSubmit() {
       // Trigger workflow with the new permanent regno (if configured)
       const workflowInstanceId = await triggerWorkflow(newRegno, recordName, userId);
 
-      // Build 4A pilot — non-blocking Omni-Comms shadow emission.
-      void emitOmniCommsRegistrationEvent(newRegno, recordName, {
-        email: recordData.email,
-        phone: recordData.phone,
-      });
+      // Build 4A pilot — Omni-Comms shadow emission. Awaited so the outcome
+      // is observable, but total: it can never fail the submission.
+      const communication = await emitOmniCommsRegistrationEvent(
+        newRegno,
+        recordName,
+        { email: recordData.email, phone: recordData.phone },
+      );
 
       return {
         success: true,
         regno: newRegno,
         workflowInstanceId: workflowInstanceId || undefined,
         message: `Registration submitted successfully. New Registration No: ${newRegno}`,
+        communication,
       };
+
     } catch (error) {
       console.error('Submit error:', error);
       return {

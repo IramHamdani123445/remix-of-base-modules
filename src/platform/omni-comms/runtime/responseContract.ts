@@ -127,6 +127,8 @@ export interface SendCommunicationResult {
   blockers: string[];
   createdAt: string;
   replayed: boolean;
+  /** Trusted producer-event binding that authorised the request, if any. */
+  producerEventBindingId: string | null;
 }
 
 /* ─── runtime validation ────────────────────────────────────────────────── */
@@ -300,6 +302,7 @@ export function parseSendCommunicationResult(
     blockers,
     createdAt,
     replayed: r.replayed,
+    producerEventBindingId: nullableStr(r.producerEventBindingId),
   };
 }
 
@@ -319,5 +322,6 @@ export function buildBlockedResult(
     blockers,
     createdAt: new Date(0).toISOString(),
     replayed: false,
+    producerEventBindingId: null,
   };
 }
