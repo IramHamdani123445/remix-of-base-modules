@@ -73,8 +73,17 @@ export const OmniCommsChannelsPage: React.FC = () => {
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // URL-controlled channel selection (?channel=). Defaults to email.
+  const {
+    channel,
+    descriptor: channelDescriptor,
+    setChannel,
+  } = useOmniCommsChannelParam();
+  const isEmailChannel = channel === "email";
+
   const refresh = useCallback(async () => {
-    if (!orgId) return;
+    if (!orgId || !isEmailChannel) return;
+
     setLoading(true);
     try {
       const s = await getEmailConfigSummary(client, orgId);
