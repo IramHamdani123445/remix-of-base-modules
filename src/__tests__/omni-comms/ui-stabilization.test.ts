@@ -69,7 +69,8 @@ describe('Omni-Comms UI Stabilization', () => {
     expect(src).not.toContain('omni_comms.active_org_id');
     expect(src).not.toContain('window.location.reload');
     expect(src).toContain('useOmniCommsTenant');
-    expect(src).toContain('OmniCommsTenantSelector');
+    // C1: the duplicate tenant selector was removed; the module header owns it.
+    expect(src).not.toContain('OmniCommsTenantSelector');
   });
 
   it('landing page no longer advertises "shell only" or "not operational"', () => {

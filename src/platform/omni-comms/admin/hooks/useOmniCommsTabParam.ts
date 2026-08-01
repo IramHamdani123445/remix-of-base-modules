@@ -17,6 +17,7 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
+/** Legacy (pre-C1) email-only tab identifiers. Retained for deep links. */
 export const OMNI_COMMS_CHANNEL_TABS = [
   'providers',
   'accounts',
@@ -24,6 +25,45 @@ export const OMNI_COMMS_CHANNEL_TABS = [
   'bindings',
   'settings',
 ] as const;
+
+/** C1 — common channel workspace tabs shared by every channel. */
+export const OMNI_COMMS_CHANNEL_WORKSPACE_TABS = [
+  'overview',
+  'accounts',
+  'identities',
+  'endpoints',
+  'bindings',
+  'policies',
+  'test-centre',
+  'diagnostics',
+] as const;
+
+export type OmniCommsChannelWorkspaceTab =
+  (typeof OMNI_COMMS_CHANNEL_WORKSPACE_TABS)[number];
+
+/** Old deep links must keep working. */
+export const OMNI_COMMS_CHANNEL_TAB_ALIASES: Readonly<
+  Record<string, OmniCommsChannelWorkspaceTab>
+> = {
+  providers: 'overview',
+  senders: 'identities',
+  settings: 'policies',
+};
+
+/** Resolve a raw `?tab=` value (including legacy aliases). Never throws. */
+export function resolveChannelWorkspaceTab(
+  raw: string | null | undefined,
+): OmniCommsChannelWorkspaceTab {
+  if (typeof raw !== 'string') return 'overview';
+  const value = raw.trim().toLowerCase();
+  if (
+    (OMNI_COMMS_CHANNEL_WORKSPACE_TABS as readonly string[]).includes(value)
+  ) {
+    return value as OmniCommsChannelWorkspaceTab;
+  }
+  return OMNI_COMMS_CHANNEL_TAB_ALIASES[value] ?? 'overview';
+}
+
 
 export const OMNI_COMMS_EVENT_TABS = [
   'definitions',
@@ -116,4 +156,33 @@ export function useOmniCommsViewParam<T extends string>(
   );
 
   return [current, setView];
+}
+
+/**
+ * C1 — bind the channel workspace tabs to `?tab=`, honouring legacy aliases
+ * (providers → overview, senders → identities, settings → policies) and
+ * falling back to `overview` for unknown values. Selection replaces the
+ * history entry so the back button still leaves the workspace.
+ */
+export function useOmniCommsChannelWorkspaceTab(): [
+  OmniCommsChannelWorkspaceTab,
+  (next: string) => void,
+] {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const current = useMemo(
+    () => resolveChannelWorkspaceTab(searchParams.get('tab')),
+    [searchParams],
+  );
+
+  const setTab = useCallback(
+    (next: string) => {
+      const resolved = resolveChannelWorkspaceTab(next);
+      const params = new URLSearchParams(searchParams);
+      params.set('tab', resolved);
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  return [current, setTab];
 }
