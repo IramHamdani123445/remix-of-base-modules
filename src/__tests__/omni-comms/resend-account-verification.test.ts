@@ -17,7 +17,7 @@ const OK_CTX = {
   code: 'ok',
   account_id: 'acc-1',
   account_code: 'RESEND_PRIMARY',
-  secret_ref: 'RESEND_STAGING_API_KEY',
+  secret_ref: 'OMNI_COMMS_RESEND_PRIMARY',
   status: 'draft',
   sandbox_mode: true,
   updated_at: '2026-01-01T00:00:00Z',
@@ -225,7 +225,7 @@ describe('Omni-Comms Step 1 — Resend credential verification', () => {
     expect(statusForResult('verified')).toBe('verified');
     expect(statusForResult('rate_limited')).toBe('failed');
     expect(detailForResult('secret_missing').length).toBeLessThanOrEqual(200);
-    expect(SECRET_REF_PATTERN.test('RESEND_STAGING_API_KEY')).toBe(true);
+    expect(SECRET_REF_PATTERN.test('OMNI_COMMS_RESEND_PRIMARY')).toBe(true);
     expect(SECRET_REF_PATTERN.test('lowercase')).toBe(false);
   });
 });
