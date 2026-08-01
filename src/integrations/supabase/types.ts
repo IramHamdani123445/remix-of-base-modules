@@ -103103,6 +103103,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_is_resend_secret_ref: {
+        Args: { p_ref: string }
+        Returns: boolean
+      }
       omni_comms_priv_layout_kind_matches_channel: {
         Args: { p_channel: string; p_layout_kind: string }
         Returns: boolean
@@ -103226,6 +103230,7 @@ export type Database = {
           p_actor_id: string
           p_correlation_id?: string
           p_detail: string
+          p_expected_updated_at: string
           p_organization_id: string
           p_provider_account_id: string
           p_result_code: string
