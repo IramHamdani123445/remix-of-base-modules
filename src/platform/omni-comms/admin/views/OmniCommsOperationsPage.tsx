@@ -51,6 +51,19 @@ import RequestDetailPanel from "./operations/RequestDetailPanel";
 
 const ALL = "__all__";
 
+/** Registered business caller modules (mirrors omni_comms_caller_module_registry). */
+const OPS_CALLER_MODULES = [
+  "EMPLOYER_REGISTRATION",
+  "BENEFITS",
+  "COMPLIANCE",
+  "FINANCE",
+  "INSURED_PERSON",
+  "LEGAL",
+  "OMNI_COMMS_DIRECT",
+  "OMNI_COMMS_ADMIN_DRY_RUN",
+  "PLATFORM",
+] as const;
+
 /** Quick relative windows offered instead of a free-form date picker. */
 const RANGES = [
   { id: "24h", label: "Last 24 hours", hours: 24 },
