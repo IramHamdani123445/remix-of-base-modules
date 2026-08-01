@@ -195,6 +195,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Gate 3 — Path 2 runtime environment record',
   },
   {
+    name: 'omni_comms_runtime_certification',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Singleton privileged certification record (pending | certified | failed, certified commit, workflow run, timestamp); the sole authoritative certification source for the certification posture.',
+    status: 'AVAILABLE',
+    introductionStory: 'Gate 3 — Protected certification record',
+  },
+  {
     name: 'omni_comms_webhook_event',
     category: 'runtime',
     epic: 6,
