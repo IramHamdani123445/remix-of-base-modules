@@ -6,7 +6,7 @@
  * tabs. All email behaviour is preserved and delegated to the tab components
  * under ./channels, which call the existing SECURITY DEFINER RPC wrappers.
  *
- * Boundaries: no provider SDK import, no sendCommunication, no dispatch, no
+ * Boundaries: no provider SDK import, no send facade call, no dispatch, no
  * runtime mutation, no database migration.
  */
 import React, { useCallback, useEffect, useState } from "react";
