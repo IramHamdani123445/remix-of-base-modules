@@ -208,7 +208,7 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     name: 'omni_comms_producer_event_binding',
     category: 'runtime',
     epic: 6,
-    writeAuthority: 'admin_rpc',
+    writeAuthority: 'service_role_only',
     purpose:
       'Explicitly authorises one registered business caller module to produce one event for an organisation and optional department, in a bounded set of modes (dry_run | shadow | queued).',
     status: 'PLANNED',
