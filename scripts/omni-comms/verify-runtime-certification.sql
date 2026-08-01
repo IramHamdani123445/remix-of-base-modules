@@ -110,7 +110,49 @@ BEGIN
 END;
 $$;
 
+-- Every downstream gate must require a COMPLETE certification record.
+DO $$
+DECLARE
+  v_fn text;
+  v_src text;
+BEGIN
+  FOREACH v_fn IN ARRAY ARRAY[
+    'omni_comms_priv_runtime_health_posture',
+    'omni_comms_controlled_dry_run_gate',
+    'omni_comms_priv_admin_dry_run_guard'
+  ] LOOP
+    SELECT prosrc INTO v_src FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public' AND p.proname = v_fn;
+    IF v_src IS NULL THEN
+      RAISE EXCEPTION 'MISSING: public.% does not exist', v_fn;
+    END IF;
+    IF v_src NOT LIKE '%effective_certified%' OR v_src NOT LIKE '%NOT v_effective%' THEN
+      RAISE EXCEPTION 'EFFECTIVE: public.% does not require effective_certified', v_fn;
+    END IF;
+    IF v_src NOT LIKE '%runtime_certification_record_incomplete%' THEN
+      RAISE EXCEPTION 'REASON: public.% does not report the incomplete-record reason', v_fn;
+    END IF;
+    IF v_src NOT LIKE '%non_production%' THEN
+      RAISE EXCEPTION 'SCOPE: public.% does not require a non_production environment', v_fn;
+    END IF;
+  END LOOP;
+
+  -- The trusted guard keeps exact full 40-character SHA equality.
+  SELECT prosrc INTO v_src FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.proname = 'omni_comms_priv_admin_dry_run_guard';
+  IF v_src NOT LIKE '%v_rev <> v_commit%' OR v_src NOT LIKE '%^[0-9a-f]{40}$%' THEN
+    RAISE EXCEPTION 'SHA: trusted guard does not require exact full-sha equality';
+  END IF;
+  IF v_src ~* '(starts_with|left\s*\(\s*v_)' THEN
+    RAISE EXCEPTION 'SHA: trusted guard performs a prefix comparison';
+  END IF;
+
+  RAISE NOTICE 'OMNI COMMS EFFECTIVE CERTIFICATION GATE VERIFY OK';
+END;
+$$;
+
 -- Live delivery must remain disabled throughout this change.
+
 DO $$
 DECLARE
   v_jobs integer := 0;
