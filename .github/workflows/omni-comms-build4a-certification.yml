@@ -1,0 +1,368 @@
+name: Omni-Comms Build 4A Privileged Certification
+
+# Manual-only execution. Completes the remaining Build 4A privileged
+# certification (authorization, prerequisite failure, late-stage rollback,
+# retry, replay, concurrency) against protected staging fixtures.
+#
+# It does NOT modify Build 4A product functionality, readiness status,
+# baselines or evidence files. It only produces sanitized evidence.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to certify (branch, tag, or SHA). Defaults to the workflow's current commit."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: omni-comms-build4a-certification
+  cancel-in-progress: false
+
+jobs:
+  certify:
+    name: Build 4A Privileged Certification
+    runs-on: ubuntu-latest
+    environment: omni-comms-staging
+    timeout-minutes: 45
+
+    env:
+      # Non-secret protected environment variables (identifiers, not credentials).
+      OMNI_COMMS_CERT_ORGANIZATION_ID: ${{ vars.OMNI_COMMS_CERT_ORGANIZATION_ID }}
+      OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID: ${{ vars.OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID }}
+      OMNI_COMMS_CERT_NAMESPACE: ${{ vars.OMNI_COMMS_CERT_NAMESPACE }}
+
+    steps:
+      - name: Checkout requested ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Record checkout revision
+        id: revision
+        run: |
+          set +x
+          mkdir -p .certification-logs
+          CERTIFIED_SHA="$(git rev-parse HEAD)"
+          {
+            echo "commit_sha=$CERTIFIED_SHA"
+            echo "branch=${{ github.ref_name }}"
+            echo "selected_ref=${{ inputs.ref || github.sha }}"
+            echo "run_id=${{ github.run_id }}"
+            echo "environment=omni-comms-staging"
+            echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > .certification-logs/git-revision.txt
+          echo "certified_sha=$CERTIFIED_SHA" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$(git status --short)" ]; then
+            echo "FAIL — working tree has unexpected tracked modifications:"
+            git status --short
+            exit 1
+          fi
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.3"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install psql client
+        run: |
+          set +x
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client >/dev/null
+
+      - name: Validate and mask protected credentials
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          OMNI_COMMS_CERT_CONFIGURE_JWT: ${{ secrets.OMNI_COMMS_CERT_CONFIGURE_JWT }}
+          OMNI_COMMS_CERT_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_CERT_UNPRIVILEGED_JWT }}
+          OMNI_COMMS_CERT_FOREIGN_TENANT_JWT: ${{ secrets.OMNI_COMMS_CERT_FOREIGN_TENANT_JWT }}
+        run: |
+          set +x
+          echo "::add-mask::$SUPABASE_URL"
+          echo "::add-mask::$SUPABASE_ANON_KEY"
+          echo "::add-mask::$SUPABASE_SERVICE_ROLE_KEY"
+          echo "::add-mask::$OMNI_COMMS_STAGING_DB_URL"
+          echo "::add-mask::$OMNI_COMMS_CERT_CONFIGURE_JWT"
+          echo "::add-mask::$OMNI_COMMS_CERT_UNPRIVILEGED_JWT"
+          echo "::add-mask::$OMNI_COMMS_CERT_FOREIGN_TENANT_JWT"
+
+          fail() { echo "FAIL — missing protected capability: $1"; exit 1; }
+
+          [ -n "$SUPABASE_URL" ] || fail "SUPABASE_URL"
+          [ -n "$SUPABASE_ANON_KEY" ] || fail "SUPABASE_ANON_KEY"
+          [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] || fail "SUPABASE_SERVICE_ROLE_KEY"
+          [ -n "$OMNI_COMMS_STAGING_DB_URL" ] || fail "OMNI_COMMS_STAGING_DB_URL"
+          [ -n "$OMNI_COMMS_CERT_CONFIGURE_JWT" ] || fail "OMNI_COMMS_CERT_CONFIGURE_JWT"
+          [ -n "$OMNI_COMMS_CERT_UNPRIVILEGED_JWT" ] || fail "OMNI_COMMS_CERT_UNPRIVILEGED_JWT"
+          [ -n "$OMNI_COMMS_CERT_FOREIGN_TENANT_JWT" ] || fail "OMNI_COMMS_CERT_FOREIGN_TENANT_JWT"
+          [ -n "$OMNI_COMMS_CERT_ORGANIZATION_ID" ] || fail "OMNI_COMMS_CERT_ORGANIZATION_ID"
+          [ -n "$OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID" ] || fail "OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID"
+          [ -n "$OMNI_COMMS_CERT_NAMESPACE" ] || fail "OMNI_COMMS_CERT_NAMESPACE"
+
+          [ "$SUPABASE_ANON_KEY" != "$SUPABASE_SERVICE_ROLE_KEY" ] \
+            || { echo "FAIL — service-role key equals anon key"; exit 1; }
+          [ "$OMNI_COMMS_CERT_CONFIGURE_JWT" != "$OMNI_COMMS_CERT_UNPRIVILEGED_JWT" ] \
+            || { echo "FAIL — privileged and unprivileged certification JWTs are identical"; exit 1; }
+          [ "$OMNI_COMMS_CERT_CONFIGURE_JWT" != "$OMNI_COMMS_CERT_FOREIGN_TENANT_JWT" ] \
+            || { echo "FAIL — privileged and foreign-tenant certification JWTs are identical"; exit 1; }
+          [ "$OMNI_COMMS_CERT_ORGANIZATION_ID" != "$OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID" ] \
+            || { echo "FAIL — certification organisations are identical"; exit 1; }
+
+          uuid_re='^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+          for name in OMNI_COMMS_CERT_ORGANIZATION_ID OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID; do
+            [[ "${!name}" =~ $uuid_re ]] || { echo "FAIL — $name is not a valid UUID"; exit 1; }
+          done
+
+          for name in SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY OMNI_COMMS_STAGING_DB_URL \
+                      OMNI_COMMS_CERT_CONFIGURE_JWT; do
+            val="$(printf '%s' "${!name}" | tr '[:upper:]' '[:lower:]')"
+            case "$val" in
+              changeme|placeholder|xxx|todo|undefined|null|test|example|your-key-here)
+                echo "FAIL — $name is a placeholder"; exit 1;;
+            esac
+          done
+
+          for name in OMNI_COMMS_CERT_CONFIGURE_JWT OMNI_COMMS_CERT_UNPRIVILEGED_JWT \
+                      OMNI_COMMS_CERT_FOREIGN_TENANT_JWT; do
+            seg_count=$(printf '%s' "${!name}" | awk -F. '{print NF}')
+            [ "$seg_count" = "3" ] || { echo "FAIL — $name is not a JWT-shaped value"; exit 1; }
+          done
+
+          echo "credential validation: ok"
+
+      - name: Run privileged Build 4A certification harness
+        id: harness
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          OMNI_COMMS_CERT_CONFIGURE_JWT: ${{ secrets.OMNI_COMMS_CERT_CONFIGURE_JWT }}
+          OMNI_COMMS_CERT_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_CERT_UNPRIVILEGED_JWT }}
+          OMNI_COMMS_CERT_FOREIGN_TENANT_JWT: ${{ secrets.OMNI_COMMS_CERT_FOREIGN_TENANT_JWT }}
+          PGSSLMODE: require
+        run: |
+          set +x
+          set -o pipefail
+          mkdir -p .certification-logs
+          COMMIT_SHA="$(git rev-parse HEAD)"
+          export COMMIT_SHA
+          echo "harness bound to commit: $COMMIT_SHA"
+          bunx tsx scripts/omni-comms/integration/run-build4a-authorization.ts 2>&1 \
+            | tee .certification-logs/build4a-harness.log
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
+            echo "FAIL — harness exited with code $rc"
+            exit "$rc"
+          fi
+
+      - name: Enforce privileged integration markers
+        run: |
+          set +x
+          log=.certification-logs/build4a-harness.log
+          grep -qxF "OMNI COMMS BUILD 4A AUTHORIZATION INTEGRATION OK" "$log" \
+            || { echo "FAIL — authorization integration marker missing"; exit 1; }
+          grep -qxF "OMNI COMMS BUILD 4A ATOMICITY INTEGRATION OK" "$log" \
+            || { echo "FAIL — atomicity integration marker missing"; exit 1; }
+
+          for field in \
+            "commit_sha:" \
+            "scenarios:" \
+            "passed:" \
+            "failed:" \
+            "fixture namespace:" \
+            "final scoped rows:" \
+            "cleanup:" \
+            "no_dispatch_job:" \
+            "no_delivery_attempt:" \
+            "no_provider_call:" \
+            "no_email:" \
+            "no_webhook_event:" \
+            "no_unintended_message:" \
+            "no_unintended_message_event:" ; do
+            grep -q "$field" "$log" || { echo "FAIL — harness output missing field: $field"; exit 1; }
+          done
+
+          expected="$(git rev-parse HEAD)"
+          grep -Eq "^commit_sha: ${expected}$" "$log" \
+            || { echo "FAIL — harness commit_sha does not equal the checked-out revision"; exit 1; }
+
+          for invariant in \
+            "no_dispatch_job: true" \
+            "no_delivery_attempt: true" \
+            "no_provider_call: true" \
+            "no_email: true" \
+            "no_webhook_event: true" \
+            "no_unintended_message: true" \
+            "no_unintended_message_event: true" ; do
+            grep -q "$invariant" "$log" \
+              || { echo "FAIL — safety invariant not measured true: $invariant"; exit 1; }
+          done
+
+          grep -Eq "cleanup:\s*(ok|success)" "$log" \
+            || { echo "FAIL — harness did not report successful fixture cleanup"; exit 1; }
+
+      - name: Vitest — Omni-Comms suite
+        run: |
+          set +x
+          set -o pipefail
+          bunx vitest run src/__tests__/omni-comms/ 2>&1 | tee .certification-logs/vitest.log
+
+      - name: Architecture checker
+        run: |
+          set +x
+          set -o pipefail
+          bun run check:omni-comms-architecture 2>&1 | tee .certification-logs/architecture.log
+
+      - name: Typecheck
+        run: |
+          set +x
+          set -o pipefail
+          bunx tsgo --noEmit 2>&1 | tee .certification-logs/typecheck.log
+
+      - name: Production build
+        run: |
+          set +x
+          set -o pipefail
+          bun run build 2>&1 | tee .certification-logs/build.log
+
+      - name: Scoped lint (Build 4A surfaces)
+        run: |
+          set +x
+          set -o pipefail
+          bunx eslint \
+            "src/platform/omni-comms/**/*.{ts,tsx}" \
+            "scripts/omni-comms/**/*.ts" \
+            2>&1 | tee .certification-logs/lint.log
+
+      - name: SQL verifier — Build 4A producer
+        env:
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          PGSSLMODE: require
+        run: |
+          set +x
+          set -o pipefail
+          psql "$OMNI_COMMS_STAGING_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --file scripts/omni-comms/verify-build4a-producer.sql \
+            2>&1 | tee .certification-logs/build4a-verifier.log
+          grep -q "OMNI COMMS BUILD 4A PRODUCER VERIFY OK" .certification-logs/build4a-verifier.log \
+            || { echo "FAIL — Build 4A producer verifier marker missing"; exit 1; }
+
+      - name: Registry validator
+        run: |
+          set +x
+          set -o pipefail
+          bunx vitest run src/__tests__/omni-comms/story3-registries.test.ts \
+            2>&1 | tee .certification-logs/registry.log
+
+      - name: Fixture-cleanup verifier
+        if: always()
+        env:
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          PGSSLMODE: require
+        run: |
+          set +x
+          set -o pipefail
+          psql "$OMNI_COMMS_STAGING_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            -v cert_org="$OMNI_COMMS_CERT_ORGANIZATION_ID" \
+            -v cert_namespace="$OMNI_COMMS_CERT_NAMESPACE" \
+            --file scripts/omni-comms/verify-build4a-fixture-cleanup.sql \
+            2>&1 | tee .certification-logs/cleanup-verifier.log
+          grep -q "OMNI COMMS BUILD 4A FIXTURE CLEANUP OK" .certification-logs/cleanup-verifier.log \
+            || { echo "FAIL — fixture cleanup verifier marker missing"; exit 1; }
+
+      - name: Sanitize logs
+        if: always()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          OMNI_COMMS_STAGING_DB_URL: ${{ secrets.OMNI_COMMS_STAGING_DB_URL }}
+          OMNI_COMMS_CERT_CONFIGURE_JWT: ${{ secrets.OMNI_COMMS_CERT_CONFIGURE_JWT }}
+          OMNI_COMMS_CERT_UNPRIVILEGED_JWT: ${{ secrets.OMNI_COMMS_CERT_UNPRIVILEGED_JWT }}
+          OMNI_COMMS_CERT_FOREIGN_TENANT_JWT: ${{ secrets.OMNI_COMMS_CERT_FOREIGN_TENANT_JWT }}
+        run: |
+          set +x
+          shopt -s nullglob
+          for f in .certification-logs/*.log .certification-logs/*.txt; do
+            for v in "$SUPABASE_URL" "$SUPABASE_ANON_KEY" "$SUPABASE_SERVICE_ROLE_KEY" \
+                     "$OMNI_COMMS_STAGING_DB_URL" "$OMNI_COMMS_CERT_CONFIGURE_JWT" \
+                     "$OMNI_COMMS_CERT_UNPRIVILEGED_JWT" "$OMNI_COMMS_CERT_FOREIGN_TENANT_JWT"; do
+              [ -n "$v" ] && sed -i "s|${v//|/\\|}|***REDACTED***|g" "$f" || true
+            done
+            sed -i -E 's/(Authorization: Bearer )[^ ]+/\1***REDACTED***/g' "$f" || true
+          done
+
+      - name: Build certification summary
+        if: always()
+        run: |
+          set +x
+          summary=.certification-logs/certification-summary.txt
+          log=.certification-logs/build4a-harness.log
+          {
+            echo "Omni-Comms Build 4A Privileged Certification Summary"
+            echo "===================================================="
+            cat .certification-logs/git-revision.txt 2>/dev/null || true
+            echo ""
+            echo "-- Harness (measured, not assumed) --"
+            grep -E "commit_sha:|environment:|scenarios:|passed:|failed:|fixture namespace:|final scoped rows:|sanctioned_dry_run_requests:|no_dispatch_job:|no_delivery_attempt:|no_provider_call:|no_email:|no_webhook_event:|no_unintended_message:|no_unintended_message_event:|cleanup:" "$log" 2>/dev/null || echo "(harness log unavailable)"
+            echo ""
+            echo "-- Scenario detail --"
+            sed -n '/OMNI_COMMS_BUILD4A_SUMMARY_JSON_BEGIN/,/OMNI_COMMS_BUILD4A_SUMMARY_JSON_END/p' "$log" 2>/dev/null \
+              || echo "(harness summary unavailable)"
+            echo ""
+            echo "-- Gate results --"
+            echo "vitest: $(tail -n 5 .certification-logs/vitest.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo "architecture: $(tail -n 3 .certification-logs/architecture.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo "typecheck: $(tail -n 3 .certification-logs/typecheck.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo "build: $(tail -n 3 .certification-logs/build.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo "lint: $(tail -n 3 .certification-logs/lint.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo "registry: $(tail -n 5 .certification-logs/registry.log 2>/dev/null | tr '\n' ' ' || echo n/a)"
+            echo ""
+            echo "-- Required markers --"
+            grep -h "OMNI COMMS BUILD 4A PRODUCER VERIFY OK" .certification-logs/build4a-verifier.log 2>/dev/null || echo "producer verifier: MISSING"
+            grep -h "OMNI COMMS BUILD 4A AUTHORIZATION INTEGRATION OK" "$log" 2>/dev/null || echo "authorization integration: MISSING"
+            grep -h "OMNI COMMS BUILD 4A ATOMICITY INTEGRATION OK" "$log" 2>/dev/null || echo "atomicity integration: MISSING"
+            grep -h "OMNI COMMS BUILD 4A FIXTURE CLEANUP OK" .certification-logs/cleanup-verifier.log 2>/dev/null || echo "fixture cleanup: MISSING"
+          } > "$summary"
+          cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Final verdict
+        if: always()
+        run: |
+          set +x
+          log=.certification-logs/build4a-harness.log
+          ok=1
+          have() { grep -qhF "$1" $2 2>/dev/null; }
+          have "OMNI COMMS BUILD 4A PRODUCER VERIFY OK" .certification-logs/build4a-verifier.log || { echo "missing protected capability or gate: Build 4A producer verifier"; ok=0; }
+          have "OMNI COMMS BUILD 4A AUTHORIZATION INTEGRATION OK" "$log" || { echo "missing protected capability or gate: authorization integration"; ok=0; }
+          have "OMNI COMMS BUILD 4A ATOMICITY INTEGRATION OK" "$log" || { echo "missing protected capability or gate: atomicity integration"; ok=0; }
+          have "OMNI COMMS BUILD 4A FIXTURE CLEANUP OK" .certification-logs/cleanup-verifier.log || { echo "missing protected capability or gate: fixture cleanup verification"; ok=0; }
+          if [ "${{ job.status }}" != "success" ]; then ok=0; fi
+          if [ "$ok" = "1" ]; then
+            echo "BUILD 4A VERIFIED"
+          else
+            echo "BUILD 4A IMPLEMENTED — PRIVILEGED CERTIFICATION INCOMPLETE"
+            exit 1
+          fi
+
+      - name: Upload sanitized certification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: omni-comms-build4a-certification-${{ steps.revision.outputs.certified_sha || github.run_id }}
+          path: .certification-logs/
+          retention-days: 14
