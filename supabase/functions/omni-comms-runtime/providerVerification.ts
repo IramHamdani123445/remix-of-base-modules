@@ -46,8 +46,12 @@ export function detailForResult(code: VerificationResultCode): string {
   return DETAIL[code];
 }
 
-/** Bounded secret-reference name shape. */
-export const SECRET_REF_PATTERN = /^[A-Z][A-Z0-9_]{2,63}$/;
+/**
+ * Bounded secret-reference name shape.
+ * Only Resend-scoped Omni-Comms references may ever be resolved from the Edge
+ * environment. Any other reference is rejected BEFORE Deno.env.get() is called.
+ */
+export const SECRET_REF_PATTERN = /^OMNI_COMMS_RESEND_[A-Z0-9]+(?:_[A-Z0-9]+)*$/;
 
 /**
  * Safe, non-sending Resend credential probe.
@@ -102,6 +106,7 @@ const DENIAL_STATUS: Record<string, number> = {
   organization_access_denied: 403,
   not_found: 404,
   invalid_input: 400,
+  concurrent_update: 409,
 };
 
 export async function runProviderVerification(
@@ -142,6 +147,11 @@ export async function runProviderVerification(
     return { status: DENIAL_STATUS[code] ?? 403, body: { ok: false, code } };
   }
 
+  const accountUpdatedAt = typeof ctx.updated_at === "string" ? ctx.updated_at : null;
+  if (!accountUpdatedAt) {
+    return { status: 500, body: { ok: false, code: "verification_context_failed" } };
+  }
+
   const secretRef = String(ctx.secret_ref ?? "");
   let outcome: ProbeOutcome;
   if (!SECRET_REF_PATTERN.test(secretRef)) {
@@ -164,6 +174,7 @@ export async function runProviderVerification(
       p_actor_id: req.actorId,
       p_organization_id: req.organizationId,
       p_provider_account_id: req.providerAccountId,
+      p_expected_updated_at: accountUpdatedAt,
       p_status: statusForResult(outcome.resultCode),
       p_result_code: outcome.resultCode,
       p_detail: outcome.detail,
@@ -176,6 +187,8 @@ export async function runProviderVerification(
   const rec = (recRes.data ?? {}) as Record<string, unknown>;
   if (rec.allowed !== true) {
     const code = typeof rec.code === "string" ? rec.code : "permission_denied";
+    // concurrent_update => the account changed during the probe; the stale
+    // result is deliberately NOT persisted.
     return { status: DENIAL_STATUS[code] ?? 403, body: { ok: false, code } };
   }
 
