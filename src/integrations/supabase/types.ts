@@ -81754,6 +81754,94 @@ export type Database = {
           },
         ]
       }
+      omni_comms_producer_event_binding: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          allowed_modes: string[]
+          caller_module_code: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          event_definition_id: string
+          id: string
+          integration_reference: string | null
+          lifecycle_reason: string | null
+          organization_id: string
+          retired_at: string | null
+          retired_by: string | null
+          status: string
+          suspended_at: string | null
+          suspended_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          allowed_modes?: string[]
+          caller_module_code: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          event_definition_id: string
+          id?: string
+          integration_reference?: string | null
+          lifecycle_reason?: string | null
+          organization_id: string
+          retired_at?: string | null
+          retired_by?: string | null
+          status?: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          allowed_modes?: string[]
+          caller_module_code?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          event_definition_id?: string
+          id?: string
+          integration_reference?: string | null
+          lifecycle_reason?: string | null
+          organization_id?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          status?: string
+          suspended_at?: string | null
+          suspended_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_producer_event_binding_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "core_department"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_producer_event_binding_event_definition_id_fkey"
+            columns: ["event_definition_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_event_definition"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_producer_event_binding_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_provider: {
         Row: {
           activated_at: string | null
@@ -102833,6 +102921,10 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_get_producer_event_binding: {
+        Args: { p_id: string }
+        Returns: Json
+      }
       omni_comms_health_catalogue: {
         Args: { p_department_id?: string; p_organization_id: string }
         Returns: Json
@@ -102854,6 +102946,14 @@ export type Database = {
           p_department_id?: string
           p_organization_id: string
           p_since_hours?: number
+        }
+        Returns: Json
+      }
+      omni_comms_list_producer_event_bindings: {
+        Args: {
+          p_department_id?: string
+          p_organization_id: string
+          p_status?: string
         }
         Returns: Json
       }
@@ -102905,6 +103005,17 @@ export type Database = {
           p_deployed_revision?: string
           p_mode: string
           p_recipients: Json
+        }
+        Returns: Json
+      }
+      omni_comms_priv_authorize_producer_event: {
+        Args: {
+          p_actor_id: string
+          p_caller_module_code: string
+          p_department_id: string
+          p_event_code: string
+          p_mode: string
+          p_organization_id: string
         }
         Returns: Json
       }
@@ -103020,6 +103131,36 @@ export type Database = {
       omni_comms_priv_normalize_reason: {
         Args: { p_reason: string; p_required: boolean }
         Returns: string
+      }
+      omni_comms_priv_peb_load: {
+        Args: { p_id: string }
+        Returns: {
+          activated_at: string | null
+          activated_by: string | null
+          allowed_modes: string[]
+          caller_module_code: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          event_definition_id: string
+          id: string
+          integration_reference: string | null
+          lifecycle_reason: string | null
+          organization_id: string
+          retired_at: string | null
+          retired_by: string | null
+          status: string
+          suspended_at: string | null
+          suspended_by: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "omni_comms_producer_event_binding"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       omni_comms_priv_persist_rendered_messages: {
         Args: {
@@ -103287,6 +103428,10 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_set_producer_event_binding_status: {
+        Args: { p_id: string; p_reason?: string; p_target_status: string }
+        Returns: Json
+      }
       omni_comms_setup_readiness: {
         Args: {
           p_channel?: string
@@ -103411,6 +103556,18 @@ export type Database = {
           p_correlation_id: string
           p_expected_updated_at: string
           p_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_upsert_producer_event_binding_draft: {
+        Args: {
+          p_allowed_modes: string[]
+          p_caller_module_code: string
+          p_department_id: string
+          p_event_definition_id: string
+          p_id: string
+          p_integration_reference?: string
+          p_organization_id: string
         }
         Returns: Json
       }
