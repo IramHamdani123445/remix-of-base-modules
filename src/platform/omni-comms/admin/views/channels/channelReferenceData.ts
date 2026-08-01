@@ -6,7 +6,7 @@
  * retire, mutate or migrate them; it only HIDES them from the normal
  * configuration lists and excludes them from readiness.
  *
- * No database column (data_origin / is_synthetic) is introduced here — that is
+ * No new database column is introduced here — classification is derived from
  * a separate data-migration task. Detection is convention based.
  */
 import type {
