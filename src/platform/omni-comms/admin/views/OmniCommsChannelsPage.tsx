@@ -166,7 +166,9 @@ export const OmniCommsChannelsPage: React.FC = () => {
           <SettingsTab client={client} orgId={orgId} summary={summary} onChanged={refresh} />
         </TabsContent>
       </Tabs>
+      )}
     </div>
+
   );
 };
 
