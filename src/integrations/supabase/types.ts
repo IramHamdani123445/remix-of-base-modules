@@ -82043,6 +82043,36 @@ export type Database = {
           },
         ]
       }
+      omni_comms_runtime_certification: {
+        Row: {
+          certification_state: string
+          certified_at: string | null
+          certified_commit: string | null
+          created_at: string
+          singleton: boolean
+          updated_at: string
+          workflow_run_id: string | null
+        }
+        Insert: {
+          certification_state?: string
+          certified_at?: string | null
+          certified_commit?: string | null
+          created_at?: string
+          singleton?: boolean
+          updated_at?: string
+          workflow_run_id?: string | null
+        }
+        Update: {
+          certification_state?: string
+          certified_at?: string | null
+          certified_commit?: string | null
+          created_at?: string
+          singleton?: boolean
+          updated_at?: string
+          workflow_run_id?: string | null
+        }
+        Relationships: []
+      }
       omni_comms_runtime_environment: {
         Row: {
           created_at: string
@@ -103004,6 +103034,16 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_record_runtime_certification: {
+        Args: {
+          p_certification_state: string
+          p_certified_at?: string
+          p_certified_commit?: string
+          p_deployed_revision?: string
+          p_workflow_run_id?: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_reference_seed_assert_safe: {
         Args: { p_organization_id: string }
         Returns: undefined
@@ -103042,6 +103082,7 @@ export type Database = {
         Args: { p_max_bytes: number; p_value: Json }
         Returns: undefined
       }
+      omni_comms_priv_runtime_certification: { Args: never; Returns: Json }
       omni_comms_priv_runtime_environment: { Args: never; Returns: string }
       omni_comms_priv_runtime_health_posture: {
         Args: { p_deployed_revision?: string }
