@@ -205,6 +205,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Gate 3 — Protected certification record',
   },
   {
+    name: 'omni_comms_producer_event_binding',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Explicitly authorises one registered business caller module to produce one event for an organisation and optional department, in a bounded set of modes (dry_run | shadow | queued).',
+    status: 'PLANNED',
+    introductionStory: 'Build 4A — Business producer integration',
+  },
+  {
     name: 'omni_comms_webhook_event',
     category: 'runtime',
     epic: 6,
