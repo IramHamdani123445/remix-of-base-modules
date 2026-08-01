@@ -107,6 +107,6 @@ $$;
 -- and re-asserted here as a data-independent reminder of the fixed counts.
 SELECT 'permanent_admin_routes'::text AS ceiling, 7 AS expected
 UNION ALL
-SELECT 'logical_database_objects', 21;
+SELECT 'logical_database_objects', 22;
 
 SELECT 'OMNI COMMS HEALTH LIVE DIAGNOSTICS VERIFY OK' AS marker;

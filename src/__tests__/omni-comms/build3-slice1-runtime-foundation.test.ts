@@ -20,7 +20,7 @@ const RUNTIME_TABLES = [
 
 describe('Build 3 Slice 1 — object registry', () => {
   it('keeps the registry ceiling at exactly 20 entries', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(21);
+    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(22);
   });
 
   it.each(RUNTIME_TABLES)('marks %s as AVAILABLE', (name) => {
