@@ -207,7 +207,11 @@ describe('Slice 2c-iii — Edge Function wiring', () => {
       for (const entry of readdirSync(current, { withFileTypes: true })) {
         const full = resolve(current, entry.name);
         if (entry.isDirectory()) stack.push(full);
-        else if (entry.name.endsWith('.ts')) sources.push(readFileSync(full, 'utf8'));
+        // providerVerification.ts is the Step 1 configuration-only credential
+        // probe (read-only GET, never a send path); asserted separately below.
+        else if (entry.name.endsWith('.ts') && entry.name !== 'providerVerification.ts') {
+          sources.push(readFileSync(full, 'utf8'));
+        }
       }
     }
     for (const src of sources) {
@@ -215,6 +219,15 @@ describe('Slice 2c-iii — Edge Function wiring', () => {
       expect(src).not.toMatch(/api\.resend\.com/);
       expect(src).not.toMatch(/api\.twilio\.com/);
     }
+  });
+
+  it('the credential probe never touches a Resend send endpoint', () => {
+    const src = read(
+      'supabase/functions/omni-comms-runtime/providerVerification.ts',
+    );
+    expect(src).not.toMatch(/api\.resend\.com\/emails/);
+    expect(src).not.toMatch(/from\s+["']resend/);
+    expect(src).toContain('https://api.resend.com/domains');
   });
 });
 

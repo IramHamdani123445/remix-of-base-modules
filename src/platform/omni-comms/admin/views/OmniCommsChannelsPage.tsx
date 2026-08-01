@@ -49,6 +49,11 @@ import type {
   SenderIdentityRow,
 } from "@/platform/omni-comms/application/channelManagementTypes";
 import { OmniCommsRpcError } from "@/platform/omni-comms/application/omniCommsRpcErrors";
+import {
+  PROVIDER_VERIFICATION_MESSAGES,
+  verifyProviderCredentials,
+} from "@/platform/omni-comms/application/providerVerificationService";
+
 
 function toastError(err: unknown, fallback: string): void {
   if (err instanceof OmniCommsRpcError) {
@@ -291,6 +296,8 @@ const AccountsTab: React.FC<{
         </CardContent>
       </Card>
 
+      <ResendAccountSection orgId={orgId} accounts={accounts} onChanged={onChanged} />
+
       <Card>
         <CardHeader><CardTitle>Provider accounts</CardTitle></CardHeader>
         <CardContent>
@@ -317,6 +324,128 @@ const AccountsTab: React.FC<{
   );
 };
 
+// ─── Resend Account (Step 1) ────────────────────────────────────────
+// Provider-account configuration state + server-side credential verification.
+// The API key itself is never requested, displayed, returned or logged; only
+// the bounded secret REFERENCE name is shown.
+const ResendAccountSection: React.FC<{
+  orgId: string;
+  accounts: ProviderAccountRow[];
+  onChanged: () => Promise<void> | void;
+}> = ({ orgId, accounts, onChanged }) => {
+  const [verifyingId, setVerifyingId] = useState<string | null>(null);
+  const [lastMessage, setLastMessage] = useState<string | null>(null);
+
+  const verify = async (account: ProviderAccountRow) => {
+    setVerifyingId(account.id);
+    setLastMessage(null);
+    try {
+      const res = await verifyProviderCredentials({
+        organizationId: orgId,
+        providerAccountId: account.id,
+      });
+      const message =
+        PROVIDER_VERIFICATION_MESSAGES[res.code] ??
+        "Verification could not be completed.";
+      setLastMessage(message);
+      if (res.ok) toast.success(message); else toast.error(message);
+      await onChanged();
+    } catch {
+      const message = PROVIDER_VERIFICATION_MESSAGES.provider_unavailable;
+      setLastMessage(message);
+      toast.error(message);
+    } finally {
+      setVerifyingId(null);
+    }
+  };
+
+  return (
+    <Card data-testid="omni-comms-resend-account-section">
+      <CardHeader>
+        <CardTitle>Resend Account</CardTitle>
+        <CardDescription>
+          Configuration and credential verification only. The API key lives in
+          Edge Function secrets and is never shown here or sent to the browser.
+          Verification contacts Resend with a read-only check and sends no email.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {accounts.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No Resend account configured yet. Create a draft account below.
+          </p>
+        ) : (
+          accounts.map((a) => (
+            <div key={a.id} className="rounded-md border p-4 space-y-3"
+              data-testid={`omni-comms-resend-account-${a.code}`}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <Detail label="Account name" value={a.display_name} />
+                <Detail label="Provider code" value="resend" />
+                <Detail label="Environment" value={a.sandbox_mode ? "sandbox" : "standard"} />
+                <Detail label="Secret reference" value={a.secret_ref} mono />
+                <Detail label="Account status" value={a.status} />
+                <Detail
+                  label="Verification status"
+                  value={a.verification_status ?? "unverified"}
+                />
+                <Detail
+                  label="Last verified"
+                  value={a.verification_checked_at
+                    ? new Date(a.verification_checked_at).toLocaleString()
+                    : "Never"}
+                />
+                <Detail
+                  label="Verification message"
+                  value={a.verification_detail ?? "—"}
+                />
+                <Detail label="Updated" value={new Date(a.updated_at).toLocaleString()} />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" disabled={verifyingId === a.id}
+                  onClick={() => void verify(a)}
+                  data-testid={`omni-comms-verify-credentials-${a.code}`}>
+                  {verifyingId === a.id
+                    ? (<><Loader2 className="h-4 w-4 animate-spin mr-2" />Verifying…</>)
+                    : "Verify credentials"}
+                </Button>
+                <Button size="sm" variant="outline" disabled={verifyingId === a.id}
+                  onClick={() => void onChanged()}>
+                  <RefreshCcw className="h-4 w-4 mr-2" />Refresh
+                </Button>
+                {a.verification_status === "verified" ? (
+                  <Badge variant="outline" className="gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Provider verified
+                  </Badge>
+                ) : a.verification_status === "failed" ? (
+                  <Badge variant="destructive" className="gap-1">
+                    <AlertCircle className="h-3 w-3" /> Verification failed
+                  </Badge>
+                ) : null}
+              </div>
+              {lastMessage && verifyingId === null ? (
+                <p className="text-sm text-muted-foreground">{lastMessage}</p>
+              ) : null}
+            </div>
+          ))
+        )}
+        <p className="text-xs text-muted-foreground">
+          Live delivery remains unavailable. Verification never sends an email
+          and creates no delivery attempt or dispatch job.
+        </p>
+      </CardContent>
+    </Card>
+  );
+};
+
+const Detail: React.FC<{ label: string; value: string; mono?: boolean }> = ({
+  label, value, mono,
+}) => (
+  <div>
+    <p className="text-xs text-muted-foreground">{label}</p>
+    <p className={mono ? "font-mono text-sm break-all" : "text-sm"}>{value}</p>
+  </div>
+);
+
 const AccountRow: React.FC<{
   account: ProviderAccountRow;
   client: ReturnType<typeof useOmniCommsRpcClient>;
@@ -328,7 +457,7 @@ const AccountRow: React.FC<{
     setBusy(true);
     try {
       await recordProviderAccountCredentialCheck(client, account.id, account.updated_at, result);
-      toast.success(`Credential check recorded: ${result}`);
+      toast.success(`Manual configuration evidence recorded: ${result}`);
       await onChanged();
     } catch (e) { toastError(e, "Credential check failed"); }
     finally { setBusy(false); }
@@ -352,14 +481,21 @@ const AccountRow: React.FC<{
       <TableCell>{account.region ?? "—"}</TableCell>
       <TableCell className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" disabled={busy}
-          onClick={() => recordCheck("healthy")}>Mark healthy</Button>
+          onClick={() => recordCheck("healthy")}
+          title="Manual configuration evidence — not provider verified">
+          Manual evidence: healthy — not provider verified
+        </Button>
         <Button size="sm" variant="outline" disabled={busy}
-          onClick={() => recordCheck("failed")}>Mark failed</Button>
+          onClick={() => recordCheck("failed")}
+          title="Manual configuration evidence — not provider verified">
+          Manual evidence: failed — not provider verified
+        </Button>
         <Button size="sm" disabled={busy || account.status !== "draft"} onClick={activate}>Activate</Button>
       </TableCell>
     </TableRow>
   );
 };
+
 
 // ─── Senders tab ────────────────────────────────────────────────────
 const SendersTab: React.FC<{

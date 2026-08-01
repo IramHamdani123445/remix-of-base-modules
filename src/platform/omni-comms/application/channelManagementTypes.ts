@@ -31,7 +31,13 @@ export interface ProviderAccountRow {
   health_state: HealthState;
   health_checked_at: string | null;
   updated_at: string;
+  /** Step 1 — bounded Resend credential-verification state (no key material). */
+  verification_status?: VerificationStatus;
+  verification_result_code?: string | null;
+  verification_detail?: string | null;
+  verification_checked_at?: string | null;
 }
+
 
 export interface SenderIdentityRow {
   id: string;

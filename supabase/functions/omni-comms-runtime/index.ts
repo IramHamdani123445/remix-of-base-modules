@@ -42,6 +42,8 @@ import {
   type SendCommunicationRecipientResult,
   type SendCommunicationResult,
 } from "./responseContract.ts";
+import { runProviderVerification } from "./providerVerification.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -208,6 +210,32 @@ Deno.serve(async (req: Request) => {
     return blocked(null, "authentication_required", 401);
   }
   const userId = claimsData.claims.sub as string;
+
+  // 1c. Bounded provider-account credential verification (Step 1).
+  // Configuration-only: contacts Resend with a read-only probe, sends no
+  // email, and creates no message / delivery attempt / dispatch job.
+  if (new URL(req.url).pathname.endsWith("/verify-provider-credentials")) {
+    let vBody: Record<string, unknown>;
+    try { vBody = await req.json(); } catch { vBody = {}; }
+    const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const result = await runProviderVerification(
+      {
+        actorId: userId,
+        organizationId: String(vBody.organizationId ?? ""),
+        providerAccountId: String(vBody.providerAccountId ?? ""),
+        correlationId: typeof vBody.correlationId === "string" ? vBody.correlationId : null,
+      },
+      {
+        admin: svc as unknown as {
+          rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+        },
+        getSecret: (name) => Deno.env.get(name),
+      },
+    );
+    return json(result.body, result.status);
+  }
+
+
 
   // 2. Body.
   let input: Record<string, unknown>;
