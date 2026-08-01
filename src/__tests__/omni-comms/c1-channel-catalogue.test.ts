@@ -103,17 +103,17 @@ describe('C1 — seed isolation', () => {
     const namespaces = OMNI_COMMS_CHANNEL_CATALOGUE.map((d) => d.seedNamespace);
     expect(new Set(namespaces).size).toBe(namespaces.length);
     for (const d of OMNI_COMMS_CHANNEL_CATALOGUE) {
-      expect(d.seedNamespace).toBe(`omni-comms.seed.${d.channel}`);
+      expect(d.seedNamespace).toBe(`omni_comms_seed:${d.channel}`);
     }
   });
 
   it('accepts keys inside the owning namespace', () => {
-    expect(isSeedKeyIsolatedTo('omni-comms.seed.email.layout.default', 'email')).toBe(true);
+    expect(isSeedKeyIsolatedTo('omni_comms_seed:email.layout.default', 'email')).toBe(true);
   });
 
   it('rejects keys from another channel namespace', () => {
-    expect(isSeedKeyIsolatedTo('omni-comms.seed.sms.layout.default', 'email')).toBe(false);
-    expect(isSeedKeyIsolatedTo('omni-comms.seed.email.layout.default', 'sms')).toBe(false);
+    expect(isSeedKeyIsolatedTo('omni_comms_seed:sms.layout.default', 'email')).toBe(false);
+    expect(isSeedKeyIsolatedTo('omni_comms_seed:email.layout.default', 'sms')).toBe(false);
   });
 
   it('rejects unnamespaced or legacy keys', () => {

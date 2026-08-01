@@ -96,7 +96,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C6',
     implemented: true,
     tabs: tabs('overview', 'accounts', 'identities', 'bindings', 'policies', 'test', 'diagnostics'),
-    seedNamespace: 'omni-comms.seed.email',
+    seedNamespace: 'omni_comms_seed:email',
     reservedProviders: ['resend'],
   },
   {
@@ -107,7 +107,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C7',
     implemented: false,
     tabs: tabs('overview', 'accounts', 'identities', 'bindings', 'policies', 'test', 'diagnostics'),
-    seedNamespace: 'omni-comms.seed.sms',
+    seedNamespace: 'omni_comms_seed:sms',
     reservedProviders: [],
   },
   {
@@ -118,7 +118,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C8',
     implemented: false,
     tabs: tabs('overview', 'accounts', 'identities', 'bindings', 'policies', 'test', 'diagnostics'),
-    seedNamespace: 'omni-comms.seed.whatsapp',
+    seedNamespace: 'omni_comms_seed:whatsapp',
     reservedProviders: [],
   },
   {
@@ -129,7 +129,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C9',
     implemented: false,
     tabs: tabs('overview', 'accounts', 'bindings', 'policies', 'test', 'diagnostics'),
-    seedNamespace: 'omni-comms.seed.push',
+    seedNamespace: 'omni_comms_seed:push',
     reservedProviders: [],
   },
   {
@@ -140,7 +140,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C9',
     implemented: false,
     tabs: tabs('overview', 'policies', 'test', 'diagnostics'),
-    seedNamespace: 'omni-comms.seed.in_app',
+    seedNamespace: 'omni_comms_seed:in_app',
     reservedProviders: [],
   },
   {
@@ -151,7 +151,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C10',
     implemented: false,
     tabs: tabs('overview', 'endpoints', 'bindings', 'policies', 'test', 'diagnostics'),
-    seedNamespace: 'omni-comms.seed.webhook',
+    seedNamespace: 'omni_comms_seed:webhook',
     reservedProviders: [],
   },
   {
@@ -162,7 +162,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C10',
     implemented: false,
     tabs: tabs('overview', 'identities', 'policies', 'test', 'diagnostics'),
-    seedNamespace: 'omni-comms.seed.print',
+    seedNamespace: 'omni_comms_seed:print',
     reservedProviders: [],
   },
   {
@@ -173,7 +173,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C10',
     implemented: false,
     tabs: tabs('overview', 'accounts', 'identities', 'bindings', 'policies', 'test', 'diagnostics'),
-    seedNamespace: 'omni-comms.seed.voice',
+    seedNamespace: 'omni_comms_seed:voice',
     reservedProviders: [],
   },
 ] as const;
@@ -241,8 +241,8 @@ export function validateChannelCatalogue(): string[] {
     }
     seenNamespace.add(d.seedNamespace);
 
-    if (d.seedNamespace !== `omni-comms.seed.${d.channel}`) {
-      errors.push(`Seed namespace must be omni-comms.seed.${d.channel}`);
+    if (d.seedNamespace !== `omni_comms_seed:${d.channel}`) {
+      errors.push(`Seed namespace must be omni_comms_seed:${d.channel}`);
     }
     if (!d.tabs.includes('overview')) {
       errors.push(`Channel ${d.channel} must expose the overview tab`);
