@@ -367,6 +367,6 @@ describe('Build 4A correction — safety invariants hold', () => {
     const hook = read('src/hooks/useEmployerRegistrationSubmit.ts');
     expect(hook).toContain('CommunicationOutcome');
     const form = read('src/pages/employer-registration/EmployerRegistrationForm.tsx');
-    expect(form).toContain('submitResult.communication?.summary');
+    expect(form).toContain('communication?.summary');
   });
 });
