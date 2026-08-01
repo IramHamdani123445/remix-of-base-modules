@@ -44,3 +44,45 @@ export function useOmniCommsChannelParam(): UseOmniCommsChannelParamResult {
 }
 
 export { OMNI_COMMS_DEFAULT_CHANNEL };
+
+/**
+ * C1 — catalogue-first selection. Returns `null` when no (or an unknown)
+ * `?channel=` value is present, so the page renders the channel catalogue.
+ */
+export interface UseOmniCommsSelectedChannelResult {
+  selected: OmniCommsChannelDescriptor | null;
+  raw: string | null;
+  selectChannel: (next: string) => void;
+  clearChannel: () => void;
+}
+
+export function useOmniCommsSelectedChannel(): UseOmniCommsSelectedChannelResult {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const raw = searchParams.get('channel');
+
+  const selected = useMemo(() => {
+    if (typeof raw !== 'string' || raw.trim() === '') return null;
+    const key = raw.trim().toLowerCase();
+    const descriptor = resolveChannelDescriptor(key);
+    return descriptor.channel === key ? descriptor : null;
+  }, [raw]);
+
+  const selectChannel = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams);
+      params.set('channel', next);
+      params.delete('tab');
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams],
+  );
+
+  const clearChannel = useCallback(() => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('channel');
+    params.delete('tab');
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  return { selected, raw, selectChannel, clearChannel };
+}
