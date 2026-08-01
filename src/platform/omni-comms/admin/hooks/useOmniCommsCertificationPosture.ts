@@ -59,17 +59,21 @@ export function useOmniCommsCertificationPosture(
   const posture = React.useMemo(
     () =>
       deriveCertificationPosture({
-        recordedState: OMNI_COMMS_CERTIFICATION_EVIDENCE.state,
-        // Authoritative certified commit comes from the server posture.
-        certifiedCommit:
-          edge?.certifiedCommit ?? OMNI_COMMS_CERTIFICATION_EVIDENCE.certifiedCommit,
+        // DATABASE HEALTH POSTURE IS THE SOLE RUNTIME CERTIFICATION AUTHORITY.
+        // The source-controlled evidence record is never consulted here.
+        certifiedCommit: edge?.certifiedCommit ?? null,
         deployedRevision: edge?.revision ?? null,
         edgeCertificationState: edge?.certificationState ?? null,
         edgeAvailable: edge ? edge.available : null,
+        edgeRevisionVerified: edge?.revisionVerified ?? null,
+        edgeRevisionMatch: edge?.revisionMatch ?? null,
+        edgeSafeTestPermitted: edge?.safeTestPermitted ?? null,
+        edgeSafeTestBlockedReason: edge?.safeTestBlockedReason ?? null,
         environment,
       }),
     [edge, environment],
   );
+
 
   const refresh = React.useCallback(() => {
     void probe();
