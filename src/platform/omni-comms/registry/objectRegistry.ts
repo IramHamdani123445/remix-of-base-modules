@@ -211,7 +211,7 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     writeAuthority: 'service_role_only',
     purpose:
       'Explicitly authorises one registered business caller module to produce one event for an organisation and optional department, in a bounded set of modes (dry_run | shadow | queued).',
-    status: 'PLANNED',
+    status: 'AVAILABLE',
     introductionStory: 'Build 4A — Business producer integration',
   },
   {
