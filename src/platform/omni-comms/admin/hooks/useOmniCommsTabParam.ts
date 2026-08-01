@@ -29,7 +29,7 @@ export const OMNI_COMMS_EVENT_TABS = [
   'definitions',
   'contracts',
   'routes',
-  'simulator',
+  'producers',
 ] as const;
 
 export const OMNI_COMMS_TEMPLATE_TABS = [
