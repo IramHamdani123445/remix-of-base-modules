@@ -9,8 +9,9 @@
  *  - Never imports a provider SDK, never contacts a provider, never writes to
  *    any Omni-Comms or Legacy communication table.
  *  - `queued` mode is impossible from this layer (Build 4A is provider-free).
- *  - Deterministic idempotency key derived from
- *    (module, event, entity type, entity id, entity version, mode).
+ *  - Deterministic, collision-resistant idempotency key: SHA-256 over the
+ *    COMPLETE canonical identity string. No component is ever truncated, so
+ *    two distinct business facts can never collapse onto one key.
  *  - Never throws. Every controlled condition surfaces as a bounded
  *    `blockers[]` code on a non-accepted outcome, so a failed emission can
  *    never break the business transaction that raised it.
@@ -24,35 +25,52 @@ import {
   type BusinessProducerResult,
 } from './businessProducerTypes';
 
-/** Bounded slug used inside the idempotency key. */
-function slug(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60);
+/** Identity components a producer key is derived from. */
+export type ProducerIdentity = Pick<
+  BusinessProducerEmission,
+  'moduleCode' | 'eventCode' | 'entityType' | 'entityId' | 'entityVersion' | 'mode'
+>;
+
+/**
+ * Canonical identity string. Every component is included in full and
+ * unit-separated, so no component boundary can be forged by embedding the
+ * separator in a value.
+ */
+export function buildProducerIdentityString(input: ProducerIdentity): string {
+  return [
+    input.moduleCode,
+    input.eventCode,
+    input.entityType,
+    input.entityId,
+    input.entityVersion,
+    input.mode,
+  ]
+    .map((v) => String(v ?? '').trim())
+    .join('\u001f');
+}
+
+function toHex(bytes: ArrayBuffer): string {
+  const view = new Uint8Array(bytes);
+  let out = '';
+  for (let i = 0; i < view.length; i++) {
+    out += view[i].toString(16).padStart(2, '0');
+  }
+  return out;
 }
 
 /**
- * Deterministic idempotency key. Same business fact → same key → the runtime
- * replays instead of creating a second request.
+ * Deterministic idempotency key: `omni-producer:<sha256 hex>`.
+ *
+ * Bounded at 76 characters (prefix + separator + 64 hex chars), well inside
+ * the runtime's 8..200 constraint, and derived from the complete canonical
+ * string rather than truncated slugs.
  */
-export function buildProducerIdempotencyKey(
-  input: Pick<
-    BusinessProducerEmission,
-    'moduleCode' | 'eventCode' | 'entityType' | 'entityId' | 'entityVersion' | 'mode'
-  >,
-): string {
-  return [
-    BUSINESS_PRODUCER_IDEMPOTENCY_PREFIX,
-    slug(input.moduleCode),
-    slug(input.eventCode),
-    slug(input.entityType),
-    slug(input.entityId),
-    slug(input.entityVersion),
-    slug(input.mode),
-  ].join(':');
+export async function buildProducerIdempotencyKey(
+  input: ProducerIdentity,
+): Promise<string> {
+  const bytes = new TextEncoder().encode(buildProducerIdentityString(input));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return `${BUSINESS_PRODUCER_IDEMPOTENCY_PREFIX}:${toHex(digest)}`;
 }
 
 /** Cheap, non-authoritative shape validation. The server re-validates. */
@@ -99,9 +117,11 @@ export async function emitBusinessCommunication(
     };
   }
 
-  const idempotencyKey = buildProducerIdempotencyKey(input);
+  let idempotencyKey: string | null = null;
 
   try {
+    idempotencyKey = await buildProducerIdempotencyKey(input);
+
     const result = await sendCommunication({
       eventCode: input.eventCode.trim(),
       organizationId: input.organizationId,
@@ -140,6 +160,7 @@ export async function emitBusinessCommunication(
       idempotencyKey: result.idempotencyKey || idempotencyKey,
       mode,
       eventCode,
+      producerEventBindingId: result.producerEventBindingId ?? null,
     };
   } catch {
     // A transport-level failure must never surface to the business caller as

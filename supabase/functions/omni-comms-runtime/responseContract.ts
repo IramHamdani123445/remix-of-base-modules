@@ -90,6 +90,8 @@ export interface SendCommunicationResult {
   blockers: string[];
   createdAt: string;
   replayed: boolean;
+  /** Trusted producer-event binding that authorised the request, if any. */
+  producerEventBindingId: string | null;
 }
 
 function str(v: unknown, fallback = ""): string {
@@ -158,6 +160,8 @@ export interface BuildResultInput {
   blockers: string[];
   createdAt: string;
   replayed: boolean;
+  /** Trusted producer-event binding that authorised the request, if any. */
+  producerEventBindingId?: string | null;
 }
 
 /** Single construction point for every successful/bounded runtime response. */
@@ -173,6 +177,7 @@ export function buildResult(input: BuildResultInput): SendCommunicationResult {
     blockers: strArray(input.blockers),
     createdAt: str(input.createdAt, new Date(0).toISOString()),
     replayed: input.replayed === true,
+    producerEventBindingId: nullableStr(input.producerEventBindingId),
   };
 }
 
@@ -191,6 +196,7 @@ export function buildBlockedResult(
     blockers,
     createdAt: new Date(0).toISOString(),
     replayed: false,
+    producerEventBindingId: null,
   });
 }
 

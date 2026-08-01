@@ -79,6 +79,7 @@ const OK_GATE: DryRunGate = {
 function result(over: Partial<SendCommunicationResult> = {}): SendCommunicationResult {
   return {
     contractVersion: OMNI_COMMS_RESULT_CONTRACT_VERSION,
+    producerEventBindingId: null,
     requestId: 'req-1',
     idempotencyKey: 'k',
     mode: 'dry_run',

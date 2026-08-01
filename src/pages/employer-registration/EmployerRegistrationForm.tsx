@@ -122,7 +122,9 @@ export default function EmployerRegistrationForm() {
       // Use the new registration number for submission
       const submitResult = await submitERRegistration(result, user?.id);
       if (submitResult.success) {
-        toast.success(submitResult.message || 'Registration submitted successfully');
+        toast.success(submitResult.message || 'Registration submitted successfully', {
+          description: submitResult.communication?.summary,
+        });
         navigate('/employer-registration');
       } else {
         toast.error(submitResult.message || 'Submission failed');
@@ -133,7 +135,9 @@ export default function EmployerRegistrationForm() {
     // Submit existing record
     const submitResult = await submitERRegistration(formData.regno, user?.id);
     if (submitResult.success) {
-      toast.success(submitResult.message || 'Registration submitted successfully');
+      toast.success(submitResult.message || 'Registration submitted successfully', {
+        description: submitResult.communication?.summary,
+      });
       navigate('/employer-registration');
     } else {
       toast.error(submitResult.message || 'Submission failed');

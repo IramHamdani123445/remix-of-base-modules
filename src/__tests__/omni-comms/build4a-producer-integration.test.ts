@@ -17,9 +17,9 @@ import {
   type BusinessProducerEmission,
 } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
 import {
-  EMPLOYER_REGISTERED_EVENT_CODE,
+  EMPLOYER_APPLICATION_SUBMITTED_EVENT_CODE,
   EMPLOYER_REGISTRATION_MODULE_CODE,
-  emitEmployerRegistrationSubmitted,
+  emitEmployerRegistrationApplicationSubmitted,
 } from '@/platform/omni-comms/integrations/business/employerRegistrationProducer';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 
@@ -33,14 +33,19 @@ const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 
 const baseEmission = (): BusinessProducerEmission => ({
   moduleCode: 'EMPLOYER_REGISTRATION',
-  eventCode: 'REGISTRATION.EMPLOYER.REGISTERED',
+  eventCode: 'REGISTRATION.EMPLOYER.APPLICATION_SUBMITTED',
   organizationId: '69afc88b-da5c-4f41-a1e7-199e1ee1d416',
   entityType: 'employer_registration',
   entityId: 'ER-00001',
-  entityVersion: 'submitted-v1',
+  entityVersion: 'application-submitted-v1',
   mode: 'shadow',
   recipients: [{ recipientType: 'employer', email: 'a@b.test' }],
-  payload: { registration_number: 'ER-00001' },
+  payload: {
+    reference: 'ER-00001',
+    subjectName: 'Acme Ltd',
+    submissionStatus: 'Pending review',
+    submittedAt: '2026-08-01T08:00:00.000Z',
+  },
 });
 
 beforeEach(() => {
@@ -77,22 +82,22 @@ describe('Build 4A — producer modes', () => {
 });
 
 describe('Build 4A — idempotency', () => {
-  it('is deterministic for the same business fact', () => {
-    const a = buildProducerIdempotencyKey(baseEmission());
-    const b = buildProducerIdempotencyKey(baseEmission());
+  it('is deterministic for the same business fact', async () => {
+    const a = await buildProducerIdempotencyKey(baseEmission());
+    const b = await buildProducerIdempotencyKey(baseEmission());
     expect(a).toBe(b);
     expect(a.startsWith('omni-producer:')).toBe(true);
   });
 
-  it('changes when the entity version changes', () => {
-    const a = buildProducerIdempotencyKey(baseEmission());
-    const b = buildProducerIdempotencyKey({ ...baseEmission(), entityVersion: 'v2' });
+  it('changes when the entity version changes', async () => {
+    const a = await buildProducerIdempotencyKey(baseEmission());
+    const b = await buildProducerIdempotencyKey({ ...baseEmission(), entityVersion: 'v2' });
     expect(a).not.toBe(b);
   });
 
-  it('changes when the mode changes', () => {
-    const a = buildProducerIdempotencyKey(baseEmission());
-    const b = buildProducerIdempotencyKey({ ...baseEmission(), mode: 'dry_run' });
+  it('changes when the mode changes', async () => {
+    const a = await buildProducerIdempotencyKey(baseEmission());
+    const b = await buildProducerIdempotencyKey({ ...baseEmission(), mode: 'dry_run' });
     expect(a).not.toBe(b);
   });
 });
@@ -138,17 +143,24 @@ describe('Build 4A — emission validation and outcomes', () => {
 
 describe('Build 4A — employer registration pilot', () => {
   it('emits in shadow mode only, through the façade, with caller context', async () => {
-    await emitEmployerRegistrationSubmitted({
+    await emitEmployerRegistrationApplicationSubmitted({
       organizationId: '69afc88b-da5c-4f41-a1e7-199e1ee1d416',
-      registrationNumber: 'ER-00042',
-      employerName: 'Acme Ltd',
+      reference: 'ER-00042',
+      subjectName: 'Acme Ltd',
       contactEmail: 'acme@example.com',
       submittedAt: '2026-08-01T00:00:00.000Z',
     });
     expect(sendMock).toHaveBeenCalledTimes(1);
     const arg = sendMock.mock.calls[0][0];
     expect(arg.mode).toBe('shadow');
-    expect(arg.eventCode).toBe(EMPLOYER_REGISTERED_EVENT_CODE);
+    expect(arg.eventCode).toBe(EMPLOYER_APPLICATION_SUBMITTED_EVENT_CODE);
+    expect(arg.eventCode).not.toBe('REGISTRATION.EMPLOYER.REGISTERED');
+    expect(arg.payload).toEqual({
+      reference: 'ER-00042',
+      subjectName: 'Acme Ltd',
+      submissionStatus: 'Pending review',
+      submittedAt: '2026-08-01T00:00:00.000Z',
+    });
     expect(arg.callerContext.moduleCode).toBe(EMPLOYER_REGISTRATION_MODULE_CODE);
     expect(arg.callerContext.entityId).toBe('ER-00042');
     expect(arg.requestedChannels).toEqual(['email']);
@@ -179,9 +191,12 @@ describe('Build 4A — architecture and safety invariants', () => {
 
   it('wires the pilot without blocking the business submission', () => {
     const src = read('src/hooks/useEmployerRegistrationSubmit.ts');
-    expect(src).toContain('emitEmployerRegistrationSubmitted');
-    expect(src).toContain('void emitOmniCommsRegistrationEvent(');
-    expect(src).not.toMatch(/await emitOmniCommsRegistrationEvent/);
+    expect(src).toContain('emitEmployerRegistrationApplicationSubmitted');
+    // Observed, not fire-and-forget: the outcome is awaited and returned,
+    // and the emission helper is total so it can never fail the submission.
+    expect(src).toContain('const communication = await emitOmniCommsRegistrationEvent(');
+    expect(src).not.toMatch(/void emitOmniCommsRegistrationEvent/);
+    expect(src).toContain('communication,');
   });
 
   it('registers the producer binding object as available and service-role owned', () => {
