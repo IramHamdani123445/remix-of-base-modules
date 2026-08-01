@@ -65,15 +65,18 @@ export type OmniCommsCertificationField =
 
 /**
  * Compare the certified commit with the revision reported by the deployed
- * Edge health probe. Returns `unknown` when either side is missing.
+ * Edge health probe.
+ *
+ * EXACT, case-insensitive, full 40-character SHA equality only. Prefix or
+ * shortened-SHA comparison is forbidden anywhere in the Omni-Comms
+ * certification surfaces. This helper is presentation-only: it never enables
+ * or disables execution — the database health posture is the sole runtime
+ * certification authority.
  */
 export function revisionMatch(
   certifiedCommit: string | null,
   deployedRevision: string | null,
 ): 'match' | 'mismatch' | 'unknown' {
-  if (!certifiedCommit || !deployedRevision) return 'unknown';
-  return certifiedCommit.startsWith(deployedRevision) ||
-    deployedRevision.startsWith(certifiedCommit)
-    ? 'match'
-    : 'mismatch';
+  return compareRevision(certifiedCommit, deployedRevision);
 }
+
