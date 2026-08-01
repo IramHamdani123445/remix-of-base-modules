@@ -77,6 +77,11 @@ export function revisionMatch(
   certifiedCommit: string | null,
   deployedRevision: string | null,
 ): 'match' | 'mismatch' | 'unknown' {
-  return compareRevision(certifiedCommit, deployedRevision);
+  const full = /^[0-9a-f]{40}$/;
+  const a = (certifiedCommit ?? '').trim().toLowerCase();
+  const b = (deployedRevision ?? '').trim().toLowerCase();
+  if (!full.test(a) || !full.test(b)) return 'unknown';
+  return a === b ? 'match' : 'mismatch';
 }
+
 
