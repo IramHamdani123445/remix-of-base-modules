@@ -349,7 +349,9 @@ export function deriveCertificationPosture(
     input.edgeRevisionMatch === 'mismatch' ||
     input.edgeRevisionMatch === 'unknown'
       ? input.edgeRevisionMatch
-      : null;
+      : input.edgeRevisionMatch === null
+        ? 'unknown'
+        : null;
   const revision: OmniCommsRevisionMatch =
     serverRevision === null
       ? localRevision
