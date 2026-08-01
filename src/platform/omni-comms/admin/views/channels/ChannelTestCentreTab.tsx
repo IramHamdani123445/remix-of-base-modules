@@ -2,7 +2,7 @@
  * Omni-Comms C1 — Test Centre tab (read-only placeholder).
  *
  * Hard boundary: this tab performs NO action. It does not call
- * sendCommunication(), does not create a request, message, dispatch job or
+ * the send facade, does not create a request, message, dispatch job or
  * delivery attempt, and never contacts Resend or any other provider.
  */
 import React from 'react';
