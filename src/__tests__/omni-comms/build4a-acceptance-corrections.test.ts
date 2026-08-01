@@ -258,6 +258,8 @@ describe('Build 4A correction — one payload vocabulary, real pipeline', () => 
 
 describe('Build 4A correction — SHA-256 idempotency', () => {
   const identity = {
+    organizationId: '11111111-1111-4111-8111-111111111111',
+    departmentId: '22222222-2222-4222-8222-222222222222',
     moduleCode: 'EMPLOYER_REGISTRATION',
     eventCode: 'REGISTRATION.EMPLOYER.APPLICATION_SUBMITTED',
     entityType: 'employer_registration',
@@ -271,6 +273,41 @@ describe('Build 4A correction — SHA-256 idempotency', () => {
     expect(key).toMatch(/^omni-producer:[0-9a-f]{64}$/);
     expect(key.length).toBeLessThanOrEqual(200);
     expect(key.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('includes the complete identity: tenant, module, event, entity and mode', () => {
+    const s = buildProducerIdentityString(identity);
+    const parts = s.split('\u001f');
+    expect(parts).toEqual([
+      identity.organizationId,
+      identity.departmentId,
+      identity.moduleCode,
+      identity.eventCode,
+      identity.entityType,
+      identity.entityId,
+      identity.entityVersion,
+      identity.mode,
+    ]);
+  });
+
+  it('separates tenants and departments', async () => {
+    const base = await buildProducerIdempotencyKey(identity);
+    const otherOrg = await buildProducerIdempotencyKey({
+      ...identity,
+      organizationId: '33333333-3333-4333-8333-333333333333',
+    });
+    const otherDept = await buildProducerIdempotencyKey({
+      ...identity,
+      departmentId: '44444444-4444-4444-8444-444444444444',
+    });
+    const noDept = await buildProducerIdempotencyKey({ ...identity, departmentId: null });
+    expect(new Set([base, otherOrg, otherDept, noDept]).size).toBe(4);
+  });
+
+  it('separates modes for the same business fact', async () => {
+    const shadow = await buildProducerIdempotencyKey(identity);
+    const dryRun = await buildProducerIdempotencyKey({ ...identity, mode: 'dry_run' });
+    expect(shadow).not.toBe(dryRun);
   });
 
   it('never truncates a component', () => {
@@ -290,6 +327,7 @@ describe('Build 4A correction — SHA-256 idempotency', () => {
     expect(a).not.toBe(b);
   });
 });
+
 
 /* ── 5. safety invariants ──────────────────────────────────────────────── */
 
