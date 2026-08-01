@@ -118,7 +118,7 @@ describe('C1 — seed isolation', () => {
 
   it('rejects unnamespaced or legacy keys', () => {
     expect(isSeedKeyIsolatedTo('layout.default', 'email')).toBe(false);
-    expect(isSeedKeyIsolatedTo('comm_hub.seed.email.x', 'email')).toBe(false);
+    expect(isSeedKeyIsolatedTo('comm_hub_seed:email.x', 'email')).toBe(false);
   });
 
   it('rejects a bare namespace with no key suffix', () => {
