@@ -7,7 +7,7 @@
  * configuration lists and excludes them from readiness.
  *
  * No new database column is introduced here — classification is derived from
- * a separate data-migration task. Detection is convention based.
+ * naming conventions used by the existing seed pack.
  */
 import type {
   BindingRow,
