@@ -111,6 +111,30 @@ export default function EmployerRegistrationForm() {
     return result;
   }, [formData, saveEmployer, isNewRecord, navigate]);
 
+  /**
+   * Non-fatal acknowledgement evidence. When the Hub accepted (or replayed)
+   * the emission we expose a deep link to the Omni-Comms Operations console
+   * for that exact request. Never blocks navigation.
+   */
+  const notifySubmitted = (submitResult: Awaited<ReturnType<typeof submitERRegistration>>) => {
+    const communication = submitResult.communication;
+    const requestId = communication?.requestId;
+    toast.success(submitResult.message || 'Registration submitted successfully', {
+      description: communication?.summary,
+      ...(requestId
+        ? {
+            action: {
+              label: 'View communication evidence',
+              onClick: () =>
+                navigate(
+                  `/admin/omnichannel-communications/operations?request=${encodeURIComponent(requestId)}`,
+                ),
+            },
+          }
+        : {}),
+    });
+  };
+
   const handleSubmit = async () => {
     setShowSubmitConfirm(false);
     
@@ -122,9 +146,7 @@ export default function EmployerRegistrationForm() {
       // Use the new registration number for submission
       const submitResult = await submitERRegistration(result, user?.id);
       if (submitResult.success) {
-        toast.success(submitResult.message || 'Registration submitted successfully', {
-          description: submitResult.communication?.summary,
-        });
+        notifySubmitted(submitResult);
         navigate('/employer-registration');
       } else {
         toast.error(submitResult.message || 'Submission failed');
@@ -135,14 +157,13 @@ export default function EmployerRegistrationForm() {
     // Submit existing record
     const submitResult = await submitERRegistration(formData.regno, user?.id);
     if (submitResult.success) {
-      toast.success(submitResult.message || 'Registration submitted successfully', {
-        description: submitResult.communication?.summary,
-      });
+      notifySubmitted(submitResult);
       navigate('/employer-registration');
     } else {
       toast.error(submitResult.message || 'Submission failed');
     }
   };
+
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
