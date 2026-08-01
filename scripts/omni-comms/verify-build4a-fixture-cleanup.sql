@@ -32,7 +32,10 @@ BEGIN
     RAISE EXCEPTION 'INPUT: cert_namespace is required';
   END IF;
 
-  v_orgs := ARRAY(SELECT DISTINCT unnest(ARRAY[v_org, v_foreign]) WHERE unnest IS NOT NULL);
+  v_orgs := ARRAY[v_org] || CASE
+              WHEN v_foreign IS NOT NULL AND v_foreign <> v_org THEN ARRAY[v_foreign]
+              ELSE ARRAY[]::uuid[]
+            END;
 
   -- Every certification organisation must be a namespaced fixture tenant.
   IF EXISTS (
