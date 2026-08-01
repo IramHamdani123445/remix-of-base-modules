@@ -101,16 +101,22 @@ export const OmniCommsOperationsPage: React.FC = () => {
   const [status, setStatus] = useState<string>(ALL);
   const [range, setRange] = useState<RangeId>("30d");
   const [zone, setZone] = useState<"local" | "utc">("local");
+  const [callerModule, setCallerModule] = useState<string>(ALL);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [offset, setOffset] = useState(0);
 
   const filtersActive =
-    mode !== ALL || status !== ALL || range !== "30d" || search.trim().length > 0;
+    mode !== ALL ||
+    status !== ALL ||
+    callerModule !== ALL ||
+    range !== "30d" ||
+    search.trim().length > 0;
 
   const clearFilters = () => {
     setMode(ALL);
     setStatus(ALL);
+    setCallerModule(ALL);
     setRange("30d");
     setSearch("");
   };
@@ -141,6 +147,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
           mode: mode === ALL ? null : (mode as RequestMode),
           status: status === ALL ? null : (status as RequestStatus),
           dateFrom,
+          callerModuleCode: callerModule === ALL ? null : callerModule,
           search: debouncedSearch.length > 0 ? debouncedSearch : null,
           limit: OPS_PAGE_SIZE_DEFAULT,
           offset,
@@ -155,7 +162,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [client, organizationId, departmentId, mode, status, dateFrom, debouncedSearch, offset]);
+  }, [client, organizationId, departmentId, mode, status, callerModule, dateFrom, debouncedSearch, offset]);
 
   useEffect(() => {
     void load();
@@ -163,7 +170,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   useEffect(() => {
     setOffset(0);
-  }, [mode, status, dateFrom, debouncedSearch, organizationId, departmentId]);
+  }, [mode, status, callerModule, dateFrom, debouncedSearch, organizationId, departmentId]);
 
 
   const openRequest = (id: string) => {
@@ -263,6 +270,21 @@ export const OmniCommsOperationsPage: React.FC = () => {
                 <SelectItem value={ALL}>All statuses</SelectItem>
                 {OPS_REQUEST_STATUSES.map((s) => (
                   <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={callerModule} onValueChange={setCallerModule}>
+              <SelectTrigger
+                className="w-[220px]"
+                aria-label="Filter by caller module"
+                data-testid="omni-comms-ops-caller-filter"
+              >
+                <SelectValue placeholder="Caller module" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All caller modules</SelectItem>
+                {OPS_CALLER_MODULES.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
