@@ -81918,6 +81918,10 @@ export type Database = {
           status: string
           updated_at: string
           updated_by: string | null
+          verification_checked_at: string | null
+          verification_detail: string | null
+          verification_result_code: string | null
+          verification_status: string
         }
         Insert: {
           activated_at?: string | null
@@ -81940,6 +81944,10 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          verification_checked_at?: string | null
+          verification_detail?: string | null
+          verification_result_code?: string | null
+          verification_status?: string
         }
         Update: {
           activated_at?: string | null
@@ -81962,6 +81970,10 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          verification_checked_at?: string | null
+          verification_detail?: string | null
+          verification_result_code?: string | null
+          verification_status?: string
         }
         Relationships: [
           {
@@ -103200,6 +103212,26 @@ export type Database = {
       omni_comms_priv_pilot_assert_non_production: {
         Args: never
         Returns: undefined
+      }
+      omni_comms_priv_provider_account_verification_context: {
+        Args: {
+          p_actor_id: string
+          p_organization_id: string
+          p_provider_account_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_record_provider_verification: {
+        Args: {
+          p_actor_id: string
+          p_correlation_id?: string
+          p_detail: string
+          p_organization_id: string
+          p_provider_account_id: string
+          p_result_code: string
+          p_status: string
+        }
+        Returns: Json
       }
       omni_comms_priv_record_runtime_certification: {
         Args: {
