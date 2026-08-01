@@ -119,7 +119,6 @@ describe('Omni-Comms admin UI acceptance corrections', () => {
     const SHA = 'a'.repeat(40);
     const OTHER = 'b'.repeat(40);
     const base = {
-      recordedState: 'pending',
       certifiedCommit: null as string | null,
       deployedRevision: SHA,
       edgeCertificationState: 'pending',
@@ -139,10 +138,10 @@ describe('Omni-Comms admin UI acceptance corrections', () => {
         .safeTestPermitted,
     ).toBe(false);
     expect(
-      posture.deriveCertificationPosture({ ...base, recordedState: 'failed' }).state,
+      posture.deriveCertificationPosture({ ...base, edgeCertificationState: 'failed' }).state,
     ).toBe('failed');
     expect(
-      posture.deriveCertificationPosture({ ...base, recordedState: 'failed' })
+      posture.deriveCertificationPosture({ ...base, edgeCertificationState: 'failed' })
         .safeTestPermitted,
     ).toBe(false);
     expect(
@@ -155,7 +154,6 @@ describe('Omni-Comms admin UI acceptance corrections', () => {
 
     const certifiedBase = {
       ...base,
-      recordedState: 'certified',
       edgeCertificationState: 'certified',
       certifiedCommit: SHA,
       deployedRevision: SHA,

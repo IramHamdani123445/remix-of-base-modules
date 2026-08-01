@@ -20,7 +20,6 @@ import {
   type DerivedCertificationPosture,
   type OmniCommsEnvironment,
 } from '../posture/omniCommsPosture';
-import { OMNI_COMMS_CERTIFICATION_EVIDENCE } from '@/platform/omni-comms/registry/certificationEvidence';
 import type { EdgeHealthProbeResult } from '@/platform/omni-comms/application/healthDiagnosticsTypes';
 
 export interface UseOmniCommsCertificationPosture {

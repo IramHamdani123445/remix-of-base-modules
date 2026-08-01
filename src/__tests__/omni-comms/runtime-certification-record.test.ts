@@ -223,7 +223,6 @@ describe('Safe Test gating over the certification record', () => {
   it('blocks Safe Test while certification is pending', () => {
     const p = deriveCertificationPosture({
       ...base,
-      recordedState: 'pending',
       certifiedCommit: null,
       edgeCertificationState: 'pending',
     });
@@ -233,7 +232,6 @@ describe('Safe Test gating over the certification record', () => {
   it('blocks Safe Test when certification failed', () => {
     const p = deriveCertificationPosture({
       ...base,
-      recordedState: 'failed',
       certifiedCommit: SHA,
       edgeCertificationState: 'failed',
     });
@@ -245,7 +243,6 @@ describe('Safe Test gating over the certification record', () => {
     for (const commit of [null, '', 'abc123', SHA.slice(0, 39)]) {
       const p = deriveCertificationPosture({
         ...base,
-        recordedState: 'certified',
         certifiedCommit: commit,
         edgeCertificationState: 'certified',
       });
@@ -256,7 +253,6 @@ describe('Safe Test gating over the certification record', () => {
   it('blocks Safe Test when the certified sha does not match the deployed revision', () => {
     const p = deriveCertificationPosture({
       ...base,
-      recordedState: 'certified',
       certifiedCommit: OTHER_SHA,
       edgeCertificationState: 'certified',
     });
@@ -269,7 +265,6 @@ describe('Safe Test gating over the certification record', () => {
       const p = deriveCertificationPosture({
         ...base,
         environment,
-        recordedState: 'certified',
         certifiedCommit: SHA,
         edgeCertificationState: 'certified',
       });
@@ -280,7 +275,6 @@ describe('Safe Test gating over the certification record', () => {
   it('permits Safe Test only with certified state, exact full-sha match and non_production', () => {
     const p = deriveCertificationPosture({
       ...base,
-      recordedState: 'certified',
       certifiedCommit: SHA,
       edgeCertificationState: 'certified',
     });
