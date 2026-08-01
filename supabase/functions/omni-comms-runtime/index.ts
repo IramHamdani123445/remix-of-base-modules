@@ -254,13 +254,18 @@ Deno.serve(async (req: Request) => {
   // 3a. AUTHORITATIVE server-side authorisation. Nothing is persisted until
   // the actor is proven to hold the Omni-Comms execution capability and to be
   // entitled to the submitted organisation, department and caller module.
+  // Build 4A: the producer-aware authorizer performs the full actor check AND
+  // proves an ACTIVE producer-event binding authorises this caller module to
+  // produce this event in this mode. Default is denial.
   const { data: authzData, error: authzError } = await admin.rpc(
-    "omni_comms_priv_authorize_runtime_actor",
+    "omni_comms_priv_authorize_producer_event",
     {
       p_actor_id: userId,
       p_organization_id: canonical.organizationId,
       p_department_id: canonical.departmentId,
       p_caller_module_code: callerModule,
+      p_event_code: canonical.eventCode,
+      p_mode: canonical.mode,
     },
   );
   if (authzError) {

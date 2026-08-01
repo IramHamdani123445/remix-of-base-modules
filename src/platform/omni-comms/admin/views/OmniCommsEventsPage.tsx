@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import EventDefinitionEditorDialog from "./events/EventDefinitionEditorDialog";
 import EventContractEditorDialog from "./events/EventContractEditorDialog";
 import EventRoutesTab from "./events/EventRoutesTab";
+import ProducerIntegrationsTab from "./events/ProducerIntegrationsTab";
 import { OmniCommsEmptyState } from "../components/OmniCommsEmptyState";
 import { useModulePermissions } from "@/hooks/useNavigationMenu";
 
@@ -600,8 +601,15 @@ const RoutesTabHost: React.FC = () => {
   return <EventRoutesTab canConfigure={canConfigure} friendly={friendly} />;
 };
 
+// Build 4A — Producer Integrations tab host (replaces the Simulator placeholder).
+const ProducersTabHost: React.FC = () => {
+  const perms = useModulePermissions("omni_comms");
+  const canConfigure = !perms.isLoading && perms.hasPermission("configure");
+  return <ProducerIntegrationsTab canConfigure={canConfigure} friendly={friendly} />;
+};
+
 export const OmniCommsEventsPage: React.FC = () => {
-  // URL-controlled: ?tab=definitions|contracts|routes|simulator
+  // URL-controlled: ?tab=definitions|contracts|routes|producers
   const [eventTab, setEventTab] = useOmniCommsTabParam(
     OMNI_COMMS_EVENT_TABS,
     "definitions",
@@ -623,19 +631,12 @@ export const OmniCommsEventsPage: React.FC = () => {
           <TabsTrigger value="definitions">Definitions</TabsTrigger>
           <TabsTrigger value="contracts">Contracts</TabsTrigger>
           <TabsTrigger value="routes">Routes</TabsTrigger>
-          <TabsTrigger value="simulator">Simulator</TabsTrigger>
+          <TabsTrigger value="producers">Producer Integrations</TabsTrigger>
         </TabsList>
         <TabsContent value="definitions"><DefinitionsTab /></TabsContent>
         <TabsContent value="contracts"><ContractsTab /></TabsContent>
         <TabsContent value="routes"><RoutesTabHost /></TabsContent>
-        <TabsContent value="simulator">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Simulator</CardTitle></CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Producer simulation is planned for a later Epic 2 story. This tab is a placeholder.
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <TabsContent value="producers"><ProducersTabHost /></TabsContent>
       </Tabs>
     </div>
   );

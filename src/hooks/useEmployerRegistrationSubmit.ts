@@ -1,6 +1,43 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { triggerEmployerRegistrationWorkflow } from '@/services/employerWorkflowTriggerService';
+import { resolveOrganizationContext } from '@/lib/org/organizationContextResolver';
+import {
+  emitEmployerRegistrationSubmitted,
+  EMPLOYER_REGISTRATION_MODULE_CODE,
+} from '@/platform/omni-comms/integrations/business/employerRegistrationProducer';
+
+/**
+ * Build 4A pilot — raise the employer-registration communication event through
+ * the single Omni-Comms facade in SHADOW mode. Provider-free and fail-closed:
+ * the runtime records evidence only. This never blocks or fails the business
+ * submission, and it never contacts a provider or writes to a comms table.
+ */
+const emitOmniCommsRegistrationEvent = async (
+  regno: string,
+  employerName: string,
+  contact: { email?: string | null; phone?: string | null },
+): Promise<void> => {
+  try {
+    const ctx = await resolveOrganizationContext({
+      moduleCode: EMPLOYER_REGISTRATION_MODULE_CODE,
+    });
+    const organizationId: string | undefined = ctx?.organization?.id;
+    if (!organizationId) return;
+
+    await emitEmployerRegistrationSubmitted({
+      organizationId,
+      departmentId: ctx?.department?.department_id ?? null,
+      registrationNumber: regno,
+      employerName,
+      contactEmail: contact.email ?? null,
+      contactPhone: contact.phone ?? null,
+      submittedAt: new Date().toISOString(),
+    });
+  } catch {
+    // Communication evidence is best-effort and never affects submission.
+  }
+};
 
 const formatDbError = (err: unknown): string => {
   if (!err) return 'Unknown error';
@@ -161,6 +198,12 @@ export function useEmployerRegistrationSubmit() {
       
       // Trigger workflow with the new permanent regno (if configured)
       const workflowInstanceId = await triggerWorkflow(newRegno, recordName, userId);
+
+      // Build 4A pilot — non-blocking Omni-Comms shadow emission.
+      void emitOmniCommsRegistrationEvent(newRegno, recordName, {
+        email: recordData.email,
+        phone: recordData.phone,
+      });
 
       return {
         success: true,
