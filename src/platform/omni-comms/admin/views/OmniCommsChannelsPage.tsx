@@ -93,7 +93,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [client, orgId]);
+  }, [client, orgId, isEmailChannel]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
