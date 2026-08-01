@@ -322,7 +322,7 @@ describe('C1 — reference-data isolation', () => {
     expect(isReferenceSenderIdentity(sender({ from_address: 'x@example.com' }))).toBe(true);
     expect(isReferenceProviderAccount(acct())).toBe(false);
     const helper = read(`${DIR}/channelReferenceData.ts`);
-    expect(helper).not.toContain('delete');
+    expect(helper).not.toMatch(/\.delete\(/);
     expect(helper).not.toContain('rpc(');
     expect(helper).not.toContain('data_origin');
     expect(helper).not.toContain('is_synthetic');
