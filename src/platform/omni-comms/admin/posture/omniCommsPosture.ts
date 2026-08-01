@@ -282,10 +282,19 @@ export function compareRevision(
   return a === b ? 'match' : 'mismatch';
 }
 
+/**
+ * Inputs for {@link deriveCertificationPosture}.
+ *
+ * EVERY field originates from the deployed runtime `/health` response, which
+ * itself reads the protected database certification record through a
+ * service-role RPC. The source-controlled evidence record
+ * (`certificationEvidence.ts`) is HISTORICAL DOCUMENTATION ONLY and must never
+ * appear here: database health posture is the sole runtime certification
+ * authority, and requiring a source-code edit after certification would change
+ * the deployed commit SHA and invalidate the certified-revision match.
+ */
 export interface CertificationPostureInput {
-  /** Source-controlled certification record state. */
-  recordedState: string | null | undefined;
-  /** Commit recorded as certified, when one exists. */
+  /** Certified commit reported by the server posture. */
   certifiedCommit: string | null;
   /** Revision reported by the deployed runtime health probe. */
   deployedRevision: string | null;
@@ -293,6 +302,14 @@ export interface CertificationPostureInput {
   edgeCertificationState: string | null | undefined;
   /** Whether the deployed runtime answered its health probe. */
   edgeAvailable: boolean | null;
+  /** Server statement that the deployed revision is a full 40-char SHA. */
+  edgeRevisionVerified?: boolean | null;
+  /** Server-performed exact full-SHA comparison. */
+  edgeRevisionMatch?: OmniCommsRevisionMatch | null;
+  /** Explicit server decision. Anything other than `true` blocks. */
+  edgeSafeTestPermitted?: boolean | null;
+  /** Bounded server reason code when the safe dry test is withheld. */
+  edgeSafeTestBlockedReason?: string | null;
   environment: OmniCommsEnvironment;
 }
 
@@ -318,24 +335,44 @@ export const CERTIFICATION_OUTCOME_LABEL: Record<
 export function deriveCertificationPosture(
   input: CertificationPostureInput,
 ): DerivedCertificationPosture {
-  const recorded = normaliseCertificationOutcome(input.recordedState);
   const reported = normaliseCertificationOutcome(input.edgeCertificationState);
-  const revision = compareRevision(input.certifiedCommit, input.deployedRevision);
+  const localRevision = compareRevision(
+    input.certifiedCommit,
+    input.deployedRevision,
+  );
   const commitValid = isFullRevision(input.certifiedCommit);
   const revisionValid = isFullRevision(input.deployedRevision);
+  // The server comparison is authoritative when present; the local comparison
+  // is only a presentation fallback and can never upgrade the outcome.
+  const serverRevision: OmniCommsRevisionMatch | null =
+    input.edgeRevisionMatch === 'match' ||
+    input.edgeRevisionMatch === 'mismatch' ||
+    input.edgeRevisionMatch === 'unknown'
+      ? input.edgeRevisionMatch
+      : null;
+  const revision: OmniCommsRevisionMatch =
+    serverRevision === null
+      ? localRevision
+      : serverRevision === 'match' && localRevision !== 'match'
+        ? localRevision
+        : serverRevision;
+  // Missing health facts fail closed.
+  const revisionVerified =
+    input.edgeRevisionVerified === undefined
+      ? revisionValid
+      : input.edgeRevisionVerified === true && revisionValid;
 
   let state: OmniCommsCertificationOutcome;
-  if (recorded === 'failed' || reported === 'failed') {
+  if (reported === 'failed') {
     state = 'failed';
-  } else if (input.edgeAvailable === false) {
+  } else if (input.edgeAvailable !== true) {
     state = 'unknown';
-  } else if (recorded === 'unknown' || reported === 'unknown') {
-    state = input.edgeAvailable === null ? recorded : 'unknown';
+  } else if (reported === 'unknown') {
+    state = 'unknown';
   } else if (
-    recorded === 'certified' &&
     reported === 'certified' &&
     commitValid &&
-    revisionValid &&
+    revisionVerified &&
     revision === 'match'
   ) {
     state = 'certified';
@@ -346,13 +383,19 @@ export function deriveCertificationPosture(
   // FAIL CLOSED. Everything below must be true before the presentation layer
   // may even offer the safe dry test. The trusted server guard remains the
   // final authority and cannot be bypassed from here.
+  const serverPermits =
+    input.edgeSafeTestPermitted === undefined
+      ? true
+      : input.edgeSafeTestPermitted === true;
+
   const safeTestPermitted =
     input.environment === 'non_production' &&
     input.edgeAvailable === true &&
-    recorded === 'certified' &&
+    serverPermits &&
     reported === 'certified' &&
     commitValid &&
     revisionValid &&
+    revisionVerified &&
     revision === 'match' &&
     state === 'certified';
 
@@ -372,13 +415,16 @@ export function deriveCertificationPosture(
   } else if (state === 'unknown') {
     reason =
       'The deployed runtime did not report a usable certification state, so the safe dry test is withheld.';
+  } else if (state === 'certified' && !serverPermits) {
+    reason =
+      'The deployed runtime is certified but the server withheld the safe dry test. Treat the safe dry test as unavailable.';
   } else if (state === 'certified') {
     reason =
       'The deployed runtime is certified. Live delivery remains disabled and no provider dispatch exists.';
   } else if (revision === 'mismatch') {
     reason =
       'The certified commit does not match the deployed runtime revision. Treat the deployed runtime as uncertified.';
-  } else if (!commitValid || !revisionValid) {
+  } else if (!commitValid || !revisionVerified) {
     reason =
       'The certified commit or the deployed runtime revision is missing or malformed. Treat the deployed runtime as uncertified.';
   } else {
@@ -388,3 +434,4 @@ export function deriveCertificationPosture(
 
   return { state, revision, safeTestPermitted, reason };
 }
+
