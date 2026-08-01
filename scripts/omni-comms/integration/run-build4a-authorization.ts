@@ -5,29 +5,39 @@
  *   Executes the remaining Build 4A privileged scenarios (authorization,
  *   prerequisite failure, late-stage rollback, retry, replay, concurrency)
  *   against a protected STAGING environment using isolated certification
- *   fixtures and protected credentials.
+ *   fixtures and protected staging-only certification credentials.
+ *
+ * OPERATIONAL HARDENING
+ *   - No durable access-token JWT secrets. Sessions are obtained at run time
+ *     through the normal Supabase Auth boundary using dedicated staging-only
+ *     certification users, then masked and validated before any scenario runs.
+ *   - An idempotent, namespace-restricted preflight cleanup repairs the residue
+ *     of an interrupted previous run before fixtures are created.
+ *   - The temporary fault mechanism is proven safe (non-production, isolated
+ *     certification organisation, approved namespace, no real tenant), carries a
+ *     unique run identifier and fires only for namespaced certification rows.
+ *   - Success is expressed through a structured result file, not printed text.
  *
  * SAFETY CONTRACT
  *   - Never modifies Build 4A product logic, grants, RLS or JWT verification.
  *   - Never calls the private bootstrap RPC as a substitute for the public
  *     boundary; every scenario goes through
  *     public.omni_comms_bootstrap_employer_registration_pilot.
- *   - Never touches real tenants: the certification organisation codes must
- *     carry the certification namespace prefix, and the harness refuses to run
- *     against a runtime environment that is not authoritatively non-production.
- *   - Never triggers provider delivery: dispatch jobs, delivery attempts,
- *     provider calls, emails, webhook events and messages are measured and
- *     asserted to be zero.
+ *   - Never touches real tenants.
+ *   - Never triggers provider delivery.
  *   - Removes every fixture it creates and verifies cleanup, including after
  *     failed scenarios.
- *   - Prints no credential, JWT, database URL or authorization header.
+ *   - Prints no credential, token, password, database URL or authorization
+ *     header.
  *
- * MARKERS (printed only when everything applicable passed)
+ * MARKERS (emitted into the structured result only when everything passed)
  *   OMNI COMMS BUILD 4A AUTHORIZATION INTEGRATION OK
  *   OMNI COMMS BUILD 4A ATOMICITY INTEGRATION OK
  */
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 
 const execFileAsync = promisify(execFile);
 
@@ -40,20 +50,51 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const DB_URL = process.env.OMNI_COMMS_STAGING_DB_URL ?? '';
 
-const JWT_CONFIGURE = process.env.OMNI_COMMS_CERT_CONFIGURE_JWT ?? '';
-const JWT_UNPRIVILEGED = process.env.OMNI_COMMS_CERT_UNPRIVILEGED_JWT ?? '';
-const JWT_FOREIGN_TENANT = process.env.OMNI_COMMS_CERT_FOREIGN_TENANT_JWT ?? '';
+/** Staging-only certification-user credentials (no durable access tokens). */
+const CERT_USERS = {
+  configure: {
+    email: process.env.OMNI_COMMS_CERT_CONFIGURE_EMAIL ?? '',
+    password: process.env.OMNI_COMMS_CERT_CONFIGURE_PASSWORD ?? '',
+  },
+  unprivileged: {
+    email: process.env.OMNI_COMMS_CERT_UNPRIVILEGED_EMAIL ?? '',
+    password: process.env.OMNI_COMMS_CERT_UNPRIVILEGED_PASSWORD ?? '',
+  },
+  foreign: {
+    email: process.env.OMNI_COMMS_CERT_FOREIGN_EMAIL ?? '',
+    password: process.env.OMNI_COMMS_CERT_FOREIGN_PASSWORD ?? '',
+  },
+} as const;
+
+type CertIdentity = keyof typeof CERT_USERS;
 
 const CERT_ORG_ID = process.env.OMNI_COMMS_CERT_ORGANIZATION_ID ?? '';
 const CERT_FOREIGN_ORG_ID = process.env.OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID ?? '';
 const CERT_NAMESPACE = process.env.OMNI_COMMS_CERT_NAMESPACE ?? '';
 const COMMIT_SHA = process.env.COMMIT_SHA ?? process.env.GITHUB_SHA ?? '';
+const RESULT_FILE =
+  process.env.OMNI_COMMS_CERT_RESULT_FILE ?? '.certification-logs/build4a-result.json';
+
+/** Sanitised unique run identifier used in every temporary object name. */
+const RUN_ID = (process.env.GITHUB_RUN_ID ?? String(Date.now()))
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, '')
+  .slice(0, 16);
+
+const RESULT_SCHEMA = 'omni_comms.build4a.certification.result';
+const RESULT_VERSION = 1;
+
+/** Minimum remaining access-token lifetime required for the full run. */
+const MIN_TOKEN_LIFETIME_SECONDS = 900;
 
 const BOOTSTRAP_FN = 'omni_comms_bootstrap_employer_registration_pilot';
 const PRIVATE_BOOTSTRAP_FN = 'omni_comms_priv_bootstrap_employer_registration_pilot';
 const PILOT_EVENT_CODE = 'REGISTRATION.EMPLOYER.APPLICATION_SUBMITTED';
 const PILOT_MODULE_CODE = 'EMPLOYER_REGISTRATION';
 const PILOT_FAMILY_CODE = 'pilot_registration_employer_application_submitted';
+
+const AUTHORIZATION_MARKER = 'OMNI COMMS BUILD 4A AUTHORIZATION INTEGRATION OK';
+const ATOMICITY_MARKER = 'OMNI COMMS BUILD 4A ATOMICITY INTEGRATION OK';
 
 /** Every Build 4A bootstrap table whose certification-scoped rows are counted. */
 const SCOPED_TABLES = [
@@ -75,8 +116,39 @@ interface ScenarioResult {
 const results: ScenarioResult[] = [];
 let refusal: string | null = null;
 
+function writeResult(payload: Record<string, unknown>): void {
+  try {
+    mkdirSync(path.dirname(RESULT_FILE), { recursive: true });
+    writeFileSync(
+      RESULT_FILE,
+      JSON.stringify(
+        { schema: RESULT_SCHEMA, version: RESULT_VERSION, ...payload },
+        null,
+        2,
+      ),
+    );
+  } catch (err) {
+    console.log(`WARN — structured result could not be written: ${String(err)}`);
+  }
+}
+
 function refuse(reason: string): never {
   refusal = reason;
+  writeResult({
+    commit_sha: COMMIT_SHA,
+    fixture_namespace: CERT_NAMESPACE,
+    run_id: RUN_ID,
+    refused: true,
+    refusal_reason: reason,
+    scenarios: results,
+    scenarios_total: results.length,
+    passed: results.filter((r) => r.ok).length,
+    failed: results.filter((r) => !r.ok).length,
+    authorization_marker: null,
+    atomicity_marker: null,
+    cleanup: 'not verified',
+    cleanup_ok: false,
+  });
   console.log(`REFUSED — ${reason}`);
   console.log('BUILD 4A IMPLEMENTED — PRIVILEGED CERTIFICATION INCOMPLETE');
   process.exit(3);
@@ -130,6 +202,103 @@ function lit(value: string): string {
 }
 
 /* ------------------------------------------------------------------ */
+/* Runtime certification sessions (no durable JWT secrets)             */
+/* ------------------------------------------------------------------ */
+
+/** Masks a value in CI logs without ever printing it in a readable form. */
+function mask(value: string): void {
+  if (!value) return;
+  if (process.env.GITHUB_ACTIONS === 'true') {
+    process.stdout.write(`::add-mask::${value}\n`);
+  }
+}
+
+interface CertSession {
+  identity: CertIdentity;
+  token: string;
+  userId: string;
+  email: string;
+  expiresAt: number;
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const parts = token.split('.');
+  if (parts.length !== 3) throw new Error('token is not JWT-shaped');
+  const json = Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+  return JSON.parse(json) as Record<string, unknown>;
+}
+
+/**
+ * Signs in a dedicated staging certification user through the normal Supabase
+ * Auth boundary. Tokens are masked immediately and never printed or returned to
+ * any log surface.
+ */
+async function signIn(identity: CertIdentity): Promise<CertSession> {
+  const { email, password } = CERT_USERS[identity];
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY },
+    body: JSON.stringify({ email, password }),
+  });
+  if (res.status !== 200) {
+    // Sanitised: identity name only, never the response body.
+    refuse(`certification identity could not authenticate: ${identity}`);
+  }
+  const body = (await res.json()) as Record<string, unknown>;
+  const token = typeof body.access_token === 'string' ? body.access_token : '';
+  const refresh = typeof body.refresh_token === 'string' ? body.refresh_token : '';
+  mask(token);
+  mask(refresh);
+  if (!token) refuse(`certification identity returned no access token: ${identity}`);
+
+  const user = (body.user ?? {}) as Record<string, unknown>;
+  const userId = typeof user.id === 'string' ? user.id : '';
+  const userEmail = typeof user.email === 'string' ? user.email : '';
+
+  let claims: Record<string, unknown>;
+  try {
+    claims = decodeJwtPayload(token);
+  } catch {
+    refuse(`certification access token is malformed: ${identity}`);
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const exp = typeof claims.exp === 'number' ? claims.exp : 0;
+  if (exp <= now) refuse(`certification access token is already expired: ${identity}`);
+  if (exp - now < MIN_TOKEN_LIFETIME_SECONDS) {
+    refuse(`certification access token lifetime is insufficient for the run: ${identity}`);
+  }
+  if (claims.role !== 'authenticated') {
+    refuse(`certification access token does not carry the authenticated role: ${identity}`);
+  }
+  if (!userId || claims.sub !== userId) {
+    refuse(`certification access token subject does not match the issued user: ${identity}`);
+  }
+  if (!userEmail || userEmail.toLowerCase() !== email.toLowerCase()) {
+    refuse(`certification access token identity does not match the configured user: ${identity}`);
+  }
+
+  return { identity, token, userId, email: userEmail, expiresAt: exp };
+}
+
+/**
+ * Fail-closed proof that a certification identity holds no authorization inside
+ * any real (non-namespaced) tenant.
+ */
+async function assertNoRealTenantMembership(session: CertSession): Promise<void> {
+  const realTenantAssignments = await count(`
+    SELECT count(*)
+      FROM public.core_staff_assignments a
+      JOIN public.core_organization o ON o.id = a.organization_id
+     WHERE a.user_id = ${lit(session.userId)}
+       AND o.org_code NOT LIKE ${lit(`${CERT_NAMESPACE}%`)}
+  `).catch(() => -1);
+  if (realTenantAssignments !== 0) {
+    refuse(`certification identity is attached to a non-certification tenant: ${session.identity}`);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Public RPC boundary                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -139,7 +308,7 @@ interface RpcResult {
 }
 
 async function callBootstrap(
-  auth: { kind: 'jwt'; token: string } | { kind: 'anonymous' },
+  auth: { kind: 'session'; session: CertSession } | { kind: 'anonymous' },
   orgCode: string,
   apply: boolean,
 ): Promise<RpcResult> {
@@ -147,7 +316,7 @@ async function callBootstrap(
     'Content-Type': 'application/json',
     apikey: SUPABASE_ANON_KEY,
   };
-  if (auth.kind === 'jwt') headers.Authorization = `Bearer ${auth.token}`;
+  if (auth.kind === 'session') headers.Authorization = `Bearer ${auth.session.token}`;
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${BOOTSTRAP_FN}`, {
     method: 'POST',
@@ -178,7 +347,7 @@ function denialCode(body: unknown): string {
 
 function isDenial(r: RpcResult): boolean {
   if (r.status === 200) return false;
-  return r.status === 401 || r.status === 403 || r.status === 404 || r.status >= 400;
+  return r.status >= 400;
 }
 
 /* ------------------------------------------------------------------ */
@@ -212,20 +381,63 @@ function renderCounts(c: ScopedCounts): string {
 /* ------------------------------------------------------------------ */
 /*
  * The fault is a CONSTRAINT TRIGGER created at run time by this harness and
- * dropped again in cleanup. It exists in no migration, so it can never reach
- * production, and it fires only for rows belonging to the certification
- * organisation. Because it raises AFTER the final bootstrap INSERT, the
- * enclosing RPC transaction has already mutated several tables — which is
- * exactly the late-stage rollback condition under test. It changes no Build 4A
- * logic whatsoever.
+ * dropped again in normal and failure cleanup. It exists in no migration, so it
+ * can never reach production. Its name carries a sanitised unique run
+ * identifier, and its predicate requires BOTH the isolated certification
+ * organisation AND the approved certification namespace, so it can never fire
+ * for a real tenant. It changes no Build 4A logic whatsoever.
  */
 
+const CERT_FAULT_PREFIX = 'omni_comms_cert_fault_';
+
 function faultNames(ns: string): { fn: string; trg: string } {
-  const suffix = ns.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+  const suffix = `${ns}_${RUN_ID}`.toLowerCase().replace(/[^a-z0-9]+/g, '_');
   return {
-    fn: `omni_comms_cert_fault_${suffix}`,
-    trg: `omni_comms_cert_fault_trg_${suffix}`,
+    fn: `${CERT_FAULT_PREFIX}${suffix}`,
+    trg: `${CERT_FAULT_PREFIX}trg_${suffix}`,
   };
+}
+
+/**
+ * Fail-closed preconditions that must all hold before any DDL is issued.
+ */
+async function assertFaultInstallationPermitted(
+  environment: string,
+  orgId: string,
+  orgCode: string,
+): Promise<void> {
+  if (environment !== 'non_production') {
+    refuse('fault mechanism refused: authoritative environment is not exactly non_production');
+  }
+  if (orgId !== CERT_ORG_ID) {
+    refuse('fault mechanism refused: target is not the isolated certification organisation');
+  }
+  if (!CERT_NAMESPACE || !orgCode.startsWith(CERT_NAMESPACE)) {
+    refuse('fault mechanism refused: fixture namespace does not match the approved prefix');
+  }
+  if (orgCode === 'SKN-SSB' || orgCode.includes('SKN-SSB')) {
+    refuse('fault mechanism refused: a real organisation identifier is involved');
+  }
+  const realOrgTouched = await count(
+    `SELECT count(*) FROM public.core_organization
+      WHERE id = ${lit(orgId)} AND org_code NOT LIKE ${lit(`${CERT_NAMESPACE}%`)}`,
+  );
+  if (realOrgTouched !== 0) {
+    refuse('fault mechanism refused: target organisation is outside the certification namespace');
+  }
+  // The database role must hold exactly the staging DDL capability required —
+  // never superuser, never a role able to bypass RLS platform-wide.
+  const roleFacts = await sql(`
+    SELECT rolsuper::text, rolbypassrls::text,
+           pg_catalog.has_schema_privilege(current_user, 'public', 'CREATE')::text
+      FROM pg_roles WHERE rolname = current_user
+  `);
+  const [isSuper, bypassRls, canCreate] = roleFacts[0] ?? ['t', 't', 'f'];
+  if (isSuper === 't') refuse('fault mechanism refused: database role is superuser');
+  if (bypassRls === 't') refuse('fault mechanism refused: database role bypasses RLS');
+  if (canCreate !== 't') {
+    refuse('fault mechanism refused: database role lacks the required staging DDL capability');
+  }
 }
 
 async function installFault(ns: string, orgId: string): Promise<void> {
@@ -234,7 +446,13 @@ async function installFault(ns: string, orgId: string): Promise<void> {
     CREATE OR REPLACE FUNCTION public.${fn}() RETURNS trigger
     LANGUAGE plpgsql AS $cert$
     BEGIN
-      IF NEW.organization_id = ${lit(orgId)} THEN
+      IF NEW.organization_id = ${lit(orgId)}
+         AND EXISTS (
+           SELECT 1 FROM public.core_organization o
+            WHERE o.id = NEW.organization_id
+              AND o.org_code LIKE ${lit(`${CERT_NAMESPACE}%`)}
+         )
+      THEN
         RAISE EXCEPTION 'OC599 certification_injected_fault'
           USING ERRCODE = 'P0001', DETAIL = 'certification_late_stage_fault';
       END IF;
@@ -249,6 +467,7 @@ async function installFault(ns: string, orgId: string): Promise<void> {
   `);
 }
 
+/** Drops this run's fault objects and any residue of an interrupted run. */
 async function removeFault(ns: string): Promise<void> {
   const { fn, trg } = faultNames(ns);
   await sql(`
@@ -266,6 +485,107 @@ async function faultPresent(ns: string): Promise<boolean> {
 }
 
 /* ------------------------------------------------------------------ */
+/* Idempotent, namespace-restricted preflight cleanup                  */
+/* ------------------------------------------------------------------ */
+
+interface PreflightCounts {
+  stale_fault_triggers: number;
+  stale_fault_functions: number;
+  temporary_capability_assignments: number;
+  temporary_department_assignments: number;
+  incomplete_bootstrap_fixtures: number;
+  namespaced_test_records: number;
+}
+
+/**
+ * Repairs the residue of an interrupted previous run. Every statement is
+ * restricted to the isolated certification organisations and the configured
+ * certification namespace; nothing outside that scope is ever touched.
+ */
+async function preflightCleanup(certOrgIds: string[]): Promise<PreflightCounts> {
+  const orgList = certOrgIds.map(lit).join(', ');
+  const nsLike = lit(`${CERT_NAMESPACE}%`);
+
+  // Refuse to proceed unless every target organisation is namespaced.
+  const namespacedOrgs = await count(
+    `SELECT count(*) FROM public.core_organization
+      WHERE id IN (${orgList}) AND org_code LIKE ${nsLike}`,
+  );
+  if (namespacedOrgs !== certOrgIds.length) {
+    refuse('preflight cleanup refused: a target organisation is outside the certification namespace');
+  }
+
+  // 1. stale certification-only fault triggers and functions (any previous run id)
+  const staleTriggers = await sql(`
+    SELECT t.tgname FROM pg_trigger t
+     WHERE NOT t.tgisinternal AND t.tgname LIKE ${lit(`${CERT_FAULT_PREFIX}%`)}
+  `);
+  for (const [tgname] of staleTriggers) {
+    await sql(`DROP TRIGGER IF EXISTS ${tgname} ON public.omni_comms_producer_event_binding;`);
+  }
+  const staleFunctions = await sql(`
+    SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public' AND p.proname LIKE ${lit(`${CERT_FAULT_PREFIX}%`)}
+  `);
+  for (const [proname] of staleFunctions) {
+    await sql(`DROP FUNCTION IF EXISTS public.${proname}();`);
+  }
+
+  // 2. temporary certification capability / tenant / department assignments
+  const capabilityAssignments = await count(
+    `SELECT count(*) FROM public.core_staff_assignments WHERE organization_id IN (${orgList})`,
+  );
+  await sql(`DELETE FROM public.core_staff_assignments WHERE organization_id IN (${orgList});`);
+
+  const departmentFixtures = await count(
+    `SELECT count(*) FROM public.core_department WHERE organization_id IN (${orgList})`,
+  );
+
+  // 3. incomplete bootstrap fixtures and previously namespaced test records
+  const incomplete = await count(
+    `SELECT count(*) FROM public.omni_comms_producer_event_binding
+      WHERE organization_id IN (${orgList})`,
+  );
+  const namespacedRecords = await count(`
+    SELECT
+      (SELECT count(*) FROM public.omni_comms_event_route WHERE organization_id IN (${orgList}))
+    + (SELECT count(*) FROM public.omni_comms_template_family WHERE organization_id IN (${orgList}))
+    + (SELECT count(*) FROM public.omni_comms_request WHERE organization_id IN (${orgList}))
+  `);
+
+  await deleteScopedFixtures(certOrgIds);
+
+  return {
+    stale_fault_triggers: staleTriggers.length,
+    stale_fault_functions: staleFunctions.length,
+    temporary_capability_assignments: capabilityAssignments,
+    temporary_department_assignments: departmentFixtures,
+    incomplete_bootstrap_fixtures: incomplete,
+    namespaced_test_records: namespacedRecords,
+  };
+}
+
+/** Namespace-restricted deletion of every certification-scoped fixture row. */
+async function deleteScopedFixtures(certOrgIds: string[]): Promise<void> {
+  const orgList = certOrgIds.map(lit).join(', ');
+  await sql(`
+    DELETE FROM public.omni_comms_producer_event_binding WHERE organization_id IN (${orgList});
+    DELETE FROM public.omni_comms_event_route WHERE organization_id IN (${orgList});
+    DELETE FROM public.omni_comms_message_event WHERE organization_id IN (${orgList});
+    DELETE FROM public.omni_comms_delivery_attempt WHERE organization_id IN (${orgList});
+    DELETE FROM public.omni_comms_dispatch_job WHERE organization_id IN (${orgList});
+    DELETE FROM public.omni_comms_message WHERE organization_id IN (${orgList});
+    DELETE FROM public.omni_comms_request WHERE organization_id IN (${orgList});
+    DELETE FROM public.omni_comms_template_version tv
+      USING public.omni_comms_template_family tf
+     WHERE tv.family_id = tf.id AND tf.organization_id IN (${orgList});
+    DELETE FROM public.omni_comms_template_family WHERE organization_id IN (${orgList});
+    DELETE FROM public.omni_comms_sender_identity WHERE organization_id IN (${orgList});
+    DELETE FROM public.core_department WHERE organization_id IN (${orgList});
+  `);
+}
+
+/* ------------------------------------------------------------------ */
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -277,9 +597,12 @@ async function main(): Promise<void> {
     ['SUPABASE_ANON_KEY', SUPABASE_ANON_KEY],
     ['SUPABASE_SERVICE_ROLE_KEY', SUPABASE_SERVICE_ROLE_KEY],
     ['OMNI_COMMS_STAGING_DB_URL', DB_URL],
-    ['OMNI_COMMS_CERT_CONFIGURE_JWT', JWT_CONFIGURE],
-    ['OMNI_COMMS_CERT_UNPRIVILEGED_JWT', JWT_UNPRIVILEGED],
-    ['OMNI_COMMS_CERT_FOREIGN_TENANT_JWT', JWT_FOREIGN_TENANT],
+    ['OMNI_COMMS_CERT_CONFIGURE_EMAIL', CERT_USERS.configure.email],
+    ['OMNI_COMMS_CERT_CONFIGURE_PASSWORD', CERT_USERS.configure.password],
+    ['OMNI_COMMS_CERT_UNPRIVILEGED_EMAIL', CERT_USERS.unprivileged.email],
+    ['OMNI_COMMS_CERT_UNPRIVILEGED_PASSWORD', CERT_USERS.unprivileged.password],
+    ['OMNI_COMMS_CERT_FOREIGN_EMAIL', CERT_USERS.foreign.email],
+    ['OMNI_COMMS_CERT_FOREIGN_PASSWORD', CERT_USERS.foreign.password],
     ['OMNI_COMMS_CERT_ORGANIZATION_ID', CERT_ORG_ID],
     ['OMNI_COMMS_CERT_FOREIGN_ORGANIZATION_ID', CERT_FOREIGN_ORG_ID],
     ['OMNI_COMMS_CERT_NAMESPACE', CERT_NAMESPACE],
@@ -302,17 +625,22 @@ async function main(): Promise<void> {
   if (CERT_ORG_ID === CERT_FOREIGN_ORG_ID) {
     refuse('certification and foreign certification organisations are identical');
   }
-  const distinctJwts = new Set([JWT_CONFIGURE, JWT_UNPRIVILEGED, JWT_FOREIGN_TENANT]);
-  if (distinctJwts.size !== 3) refuse('certification JWTs are not three distinct identities');
+  const distinctEmails = new Set(
+    Object.values(CERT_USERS).map((u) => u.email.toLowerCase()),
+  );
+  if (distinctEmails.size !== 3) refuse('certification users are not three distinct identities');
   if (SUPABASE_ANON_KEY === SUPABASE_SERVICE_ROLE_KEY) {
     refuse('service-role key equals the anon key');
   }
 
   // Authoritative environment gate: the DB itself must report non-production.
-  const environment = await scalar(
-    `SELECT coalesce((public.omni_comms_priv_runtime_environment())::text, 'unknown')`,
-  ).catch(() => null);
-  if (!environment || !environment.toLowerCase().includes('non_production')) {
+  const environment =
+    (
+      await scalar(
+        `SELECT coalesce((public.omni_comms_priv_runtime_environment())::text, 'unknown')`,
+      ).catch(() => null)
+    )?.trim() ?? '';
+  if (environment !== 'non_production') {
     refuse('runtime environment is not authoritatively non_production');
   }
 
@@ -343,6 +671,29 @@ async function main(): Promise<void> {
   console.log(`commit_sha: ${COMMIT_SHA}`);
   console.log(`environment: ${environment}`);
   console.log(`fixture namespace: ${CERT_NAMESPACE}`);
+  console.log(`run identifier: ${RUN_ID}`);
+
+  /* ---------- preflight cleanup of an interrupted previous run ----- */
+
+  const preflight = await preflightCleanup([CERT_ORG_ID, CERT_FOREIGN_ORG_ID]);
+  console.log(
+    `preflight cleanup: ${Object.entries(preflight)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(', ')}`,
+  );
+
+  /* ---------- runtime certification sessions ----------------------- */
+
+  const sessionConfigure = await signIn('configure');
+  const sessionUnprivileged = await signIn('unprivileged');
+  const sessionForeign = await signIn('foreign');
+  for (const s of [sessionConfigure, sessionUnprivileged, sessionForeign]) {
+    await assertNoRealTenantMembership(s);
+  }
+  if (new Set([sessionConfigure.userId, sessionUnprivileged.userId, sessionForeign.userId]).size !== 3) {
+    refuse('certification sessions do not resolve to three distinct user subjects');
+  }
+  console.log('certification sessions: 3 validated (tokens masked, never printed)');
 
   /* ---------- global-object baseline (only delete what we create) --- */
 
@@ -383,7 +734,7 @@ async function main(): Promise<void> {
     /* ---------- authorization scenarios ---------------------------- */
 
     await scenario('authorized_caller_success', async () => {
-      const r = await callBootstrap({ kind: 'jwt', token: JWT_CONFIGURE }, orgCode, false);
+      const r = await callBootstrap({ kind: 'session', session: sessionConfigure }, orgCode, false);
       assertEqual(r.status, 200, 'status');
       const body = r.body as Record<string, unknown>;
       assertEqual(body.organization_id, CERT_ORG_ID, 'organization_id');
@@ -393,7 +744,7 @@ async function main(): Promise<void> {
 
     await scenario('missing_capability_denied', async () => {
       const before = await scopedCounts(CERT_ORG_ID);
-      const r = await callBootstrap({ kind: 'jwt', token: JWT_UNPRIVILEGED }, orgCode, true);
+      const r = await callBootstrap({ kind: 'session', session: sessionUnprivileged }, orgCode, true);
       if (!isDenial(r)) throw new Error(`expected denial, got status ${r.status}`);
       const after = await scopedCounts(CERT_ORG_ID);
       if (!sameCounts(before, after)) throw new Error('denial mutated bootstrap tables');
@@ -402,7 +753,7 @@ async function main(): Promise<void> {
 
     await scenario('foreign_tenant_denied', async () => {
       const before = await scopedCounts(CERT_ORG_ID);
-      const r = await callBootstrap({ kind: 'jwt', token: JWT_FOREIGN_TENANT }, orgCode, true);
+      const r = await callBootstrap({ kind: 'session', session: sessionForeign }, orgCode, true);
       if (!isDenial(r)) throw new Error(`expected tenant-safe denial, got status ${r.status}`);
       const after = await scopedCounts(CERT_ORG_ID);
       if (!sameCounts(before, after)) throw new Error('cross-tenant denial mutated bootstrap tables');
@@ -412,7 +763,7 @@ async function main(): Promise<void> {
     await scenario('unknown_organization_denied', async () => {
       const before = await scopedCounts(CERT_ORG_ID);
       const r = await callBootstrap(
-        { kind: 'jwt', token: JWT_CONFIGURE },
+        { kind: 'session', session: sessionConfigure },
         `${CERT_NAMESPACE}-UNKNOWN-ORG`,
         true,
       );
@@ -437,7 +788,7 @@ async function main(): Promise<void> {
         headers: {
           'Content-Type': 'application/json',
           apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${JWT_CONFIGURE}`,
+          Authorization: `Bearer ${sessionConfigure.token}`,
         },
         body: JSON.stringify({ p_organization_code: orgCode, p_apply: false }),
       });
@@ -458,7 +809,7 @@ async function main(): Promise<void> {
         UPDATE public.omni_comms_sender_identity SET status = 'retired'
          WHERE organization_id = ${lit(CERT_ORG_ID)} AND code = 'ref_sender_registration';
       `);
-      const r = await callBootstrap({ kind: 'jwt', token: JWT_CONFIGURE }, orgCode, true);
+      const r = await callBootstrap({ kind: 'session', session: sessionConfigure }, orgCode, true);
       await sql(`
         UPDATE public.omni_comms_sender_identity SET status = 'active'
          WHERE organization_id = ${lit(CERT_ORG_ID)} AND code = 'ref_sender_registration';
@@ -476,8 +827,9 @@ async function main(): Promise<void> {
 
     await scenario('late_stage_rollback_restores_baseline', async () => {
       const before = await scopedCounts(CERT_ORG_ID);
+      await assertFaultInstallationPermitted(environment, CERT_ORG_ID, orgCode);
       await installFault(CERT_NAMESPACE, CERT_ORG_ID);
-      const r = await callBootstrap({ kind: 'jwt', token: JWT_CONFIGURE }, orgCode, true);
+      const r = await callBootstrap({ kind: 'session', session: sessionConfigure }, orgCode, true);
       await removeFault(CERT_NAMESPACE);
       if (!isDenial(r)) throw new Error('injected late-stage fault did not fail the bootstrap');
       const after = await scopedCounts(CERT_ORG_ID);
@@ -494,7 +846,7 @@ async function main(): Promise<void> {
 
     await scenario('retry_after_rollback_single_result', async () => {
       if (await faultPresent(CERT_NAMESPACE)) throw new Error('fault mechanism still installed');
-      const r = await callBootstrap({ kind: 'jwt', token: JWT_CONFIGURE }, orgCode, true);
+      const r = await callBootstrap({ kind: 'session', session: sessionConfigure }, orgCode, true);
       assertEqual(r.status, 200, 'status');
       const bindings = await count(
         `SELECT count(*) FROM public.omni_comms_producer_event_binding
@@ -510,7 +862,7 @@ async function main(): Promise<void> {
 
     await scenario('replay_after_success_is_deterministic', async () => {
       const before = await scopedCounts(CERT_ORG_ID);
-      const r = await callBootstrap({ kind: 'jwt', token: JWT_CONFIGURE }, orgCode, true);
+      const r = await callBootstrap({ kind: 'session', session: sessionConfigure }, orgCode, true);
       assertEqual(r.status, 200, 'status');
       const after = await scopedCounts(CERT_ORG_ID);
       if (!sameCounts(before, after)) throw new Error('replay created duplicate objects');
@@ -521,7 +873,7 @@ async function main(): Promise<void> {
       const before = await scopedCounts(CERT_ORG_ID);
       const responses = await Promise.all(
         Array.from({ length: 5 }, () =>
-          callBootstrap({ kind: 'jwt', token: JWT_CONFIGURE }, orgCode, true),
+          callBootstrap({ kind: 'session', session: sessionConfigure }, orgCode, true),
         ),
       );
       const succeeded = responses.filter((r) => r.status === 200);
@@ -579,22 +931,7 @@ async function main(): Promise<void> {
     /* ---------- cleanup -------------------------------------------- */
 
     await removeFault(CERT_NAMESPACE);
-    await sql(`
-      DELETE FROM public.omni_comms_producer_event_binding WHERE organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.omni_comms_event_route WHERE organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.omni_comms_message_event WHERE organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.omni_comms_delivery_attempt WHERE organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.omni_comms_dispatch_job WHERE organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.omni_comms_message WHERE organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.omni_comms_request WHERE organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.omni_comms_template_version tv
-        USING public.omni_comms_template_family tf
-       WHERE tv.family_id = tf.id AND tf.organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.omni_comms_template_family WHERE organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.omni_comms_sender_identity WHERE organization_id = ${lit(CERT_ORG_ID)};
-      DELETE FROM public.core_department
-       WHERE organization_id = ${lit(CERT_ORG_ID)} AND code = ${lit(deptCode)};
-    `);
+    await deleteScopedFixtures([CERT_ORG_ID, CERT_FOREIGN_ORG_ID]);
 
     // Global pilot objects are removed ONLY when this run created them.
     if (!preExistingEventId) {
@@ -624,7 +961,10 @@ async function main(): Promise<void> {
       `SELECT count(*) FROM public.omni_comms_template_family
         WHERE organization_id = ${lit(CERT_ORG_ID)} AND code = ${lit(PILOT_FAMILY_CODE)}`,
     );
-    const faultRemaining = (await faultPresent(CERT_NAMESPACE)) ? 1 : 0;
+    const faultRemaining = (await count(
+      `SELECT count(*) FROM pg_trigger
+        WHERE NOT tgisinternal AND tgname LIKE ${lit(`${CERT_FAULT_PREFIX}%`)}`,
+    ));
 
     const leftovers = Object.entries(remaining).filter(([, n]) => n > 0);
     cleanupOk = leftovers.length === 0 && faultRemaining === 0;
@@ -636,6 +976,17 @@ async function main(): Promise<void> {
 
     const passed = results.filter((r) => r.ok).length;
     const failed = results.length - passed;
+    const sideEffects = {
+      dispatch_jobs: dispatchJobCount,
+      delivery_attempts: deliveryAttemptCount,
+      provider_calls: providerCallCount,
+      emails: emailCount,
+      webhook_events: webhookEventCount,
+      messages: messageCount,
+      message_events: messageEventCount,
+      unintended_requests: nonDryRunRequestCount,
+      sanctioned_dry_run_requests: dryRunRequestCount,
+    };
     const safetyBreached =
       dispatchJobCount > 0 ||
       deliveryAttemptCount > 0 ||
@@ -645,6 +996,8 @@ async function main(): Promise<void> {
       messageCount > 0 ||
       messageEventCount > 0 ||
       nonDryRunRequestCount > 0;
+
+    const allPassed = failed === 0 && !safetyBreached && cleanupOk;
 
     console.log('');
     console.log(`scenarios: ${results.length}`);
@@ -662,46 +1015,41 @@ async function main(): Promise<void> {
     console.log(`no_unintended_message_event: ${messageEventCount === 0}`);
     console.log(`cleanup: ${cleanupDetail}`);
 
-    console.log('OMNI_COMMS_BUILD4A_SUMMARY_JSON_BEGIN');
-    console.log(
-      JSON.stringify(
-        {
-          commit_sha: COMMIT_SHA,
-          environment,
-          fixture_namespace: CERT_NAMESPACE,
-          scenarios: results.map((r) => ({ name: r.name, ok: r.ok, detail: r.detail })),
-          passed,
-          failed,
-          final_scoped_rows: finalCounts,
-          side_effects: {
-            dispatch_jobs: dispatchJobCount,
-            delivery_attempts: deliveryAttemptCount,
-            provider_calls: providerCallCount,
-            emails: emailCount,
-            webhook_events: webhookEventCount,
-            messages: messageCount,
-            message_events: messageEventCount,
-            sanctioned_dry_run_requests: dryRunRequestCount,
-          },
-          cleanup: cleanupDetail,
-        },
-        null,
-        2,
-      ),
-    );
-    console.log('OMNI_COMMS_BUILD4A_SUMMARY_JSON_END');
+    writeResult({
+      commit_sha: COMMIT_SHA,
+      environment,
+      run_id: RUN_ID,
+      fixture_namespace: CERT_NAMESPACE,
+      refused: false,
+      preflight_cleanup: preflight,
+      identities_validated: 3,
+      scenarios: results,
+      scenarios_total: results.length,
+      passed,
+      failed,
+      authorization_scenarios: authorizationScenarios,
+      atomicity_scenarios: results.length - authorizationScenarios,
+      final_scoped_rows: finalCounts,
+      side_effects: sideEffects,
+      safety_breached: safetyBreached,
+      cleanup: cleanupDetail,
+      cleanup_ok: cleanupOk,
+      authorization_marker: authorizationPassed && allPassed ? AUTHORIZATION_MARKER : null,
+      atomicity_marker: atomicityPassed && allPassed ? ATOMICITY_MARKER : null,
+    });
 
-    if (failed > 0 || safetyBreached || !cleanupOk) {
+    if (!allPassed) {
       console.log('BUILD 4A IMPLEMENTED — PRIVILEGED CERTIFICATION INCOMPLETE');
       process.exit(3);
     }
 
-    if (authorizationPassed) console.log('OMNI COMMS BUILD 4A AUTHORIZATION INTEGRATION OK');
-    if (atomicityPassed) console.log('OMNI COMMS BUILD 4A ATOMICITY INTEGRATION OK');
+    if (authorizationPassed) console.log(AUTHORIZATION_MARKER);
+    if (atomicityPassed) console.log(ATOMICITY_MARKER);
   } catch (err) {
     // Best-effort cleanup after an unexpected failure, then refuse.
     try {
       await removeFault(CERT_NAMESPACE);
+      await deleteScopedFixtures([CERT_ORG_ID, CERT_FOREIGN_ORG_ID]);
     } catch {
       /* reported through the cleanup verifier */
     }
