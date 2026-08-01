@@ -8,6 +8,10 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
+/** Only Resend-scoped Omni-Comms secret references may be verified. */
+export const OMNI_COMMS_RESEND_SECRET_REF_PATTERN =
+  /^OMNI_COMMS_RESEND_[A-Z0-9]+(?:_[A-Z0-9]+)*$/;
+
 export type ProviderVerificationResultCode =
   | "verified"
   | "invalid_credentials"
@@ -46,6 +50,8 @@ export const PROVIDER_VERIFICATION_MESSAGES: Record<string, string> = {
   authentication_required: "Sign in again to verify credentials.",
   not_found: "Provider account not found.",
   invalid_input: "Verification request was incomplete.",
+  concurrent_update:
+    "The account changed during verification. The result was not saved — reload and verify again.",
 };
 
 export async function verifyProviderCredentials(params: {

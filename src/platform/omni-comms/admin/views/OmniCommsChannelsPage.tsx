@@ -276,7 +276,9 @@ const AccountsTab: React.FC<{
         <CardHeader>
           <CardTitle>New provider account (draft)</CardTitle>
           <CardDescription>
-            Secret is a reference, not a raw key. Must match <code>^OMNI_COMMS_[A-Z0-9_]+$</code>.
+            Secret is a reference, not a raw key. Only Resend references are accepted and
+            must match <code>^OMNI_COMMS_RESEND_[A-Z0-9]+(?:_[A-Z0-9]+)*$</code>
+            (for example <code>OMNI_COMMS_RESEND_PRIMARY</code>).
           </CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -367,6 +369,9 @@ const ResendAccountSection: React.FC<{
           Configuration and credential verification only. The API key lives in
           Edge Function secrets and is never shown here or sent to the browser.
           Verification contacts Resend with a read-only check and sends no email.
+          Only secret references matching <code>^OMNI_COMMS_RESEND_[A-Z0-9]+(?:_[A-Z0-9]+)*$</code>
+          can be resolved. Manual health evidence is not authoritative and never
+          makes this account ready.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -490,7 +495,12 @@ const AccountRow: React.FC<{
           title="Manual configuration evidence — not provider verified">
           Manual evidence: failed — not provider verified
         </Button>
-        <Button size="sm" disabled={busy || account.status !== "draft"} onClick={activate}>Activate</Button>
+        <Button size="sm"
+          disabled={busy || account.status !== "draft" || account.verification_status !== "verified"}
+          title={account.verification_status !== "verified"
+            ? "Verified Resend credentials are required before activation"
+            : undefined}
+          onClick={activate}>Activate</Button>
       </TableCell>
     </TableRow>
   );
