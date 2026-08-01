@@ -28,6 +28,10 @@ import {
 import { toast } from "sonner";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
 import { OmniCommsTenantSelector } from "../components/OmniCommsTenantSelector";
+import { OmniCommsChannelSelector } from "../components/OmniCommsChannelSelector";
+import { OmniCommsChannelTabShell } from "../components/OmniCommsChannelTabShell";
+import { useOmniCommsChannelParam } from "../hooks/useOmniCommsChannelParam";
+
 import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
 import {
   activateBinding,
@@ -69,8 +73,17 @@ export const OmniCommsChannelsPage: React.FC = () => {
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // URL-controlled channel selection (?channel=). Defaults to email.
+  const {
+    channel,
+    descriptor: channelDescriptor,
+    setChannel,
+  } = useOmniCommsChannelParam();
+  const isEmailChannel = channel === "email";
+
   const refresh = useCallback(async () => {
-    if (!orgId) return;
+    if (!orgId || !isEmailChannel) return;
+
     setLoading(true);
     try {
       const s = await getEmailConfigSummary(client, orgId);
@@ -80,7 +93,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [client, orgId]);
+  }, [client, orgId, isEmailChannel]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -111,22 +124,35 @@ export const OmniCommsChannelsPage: React.FC = () => {
     <div className="space-y-6" data-testid="omni-comms-channels-page">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold">Channels — Email</h1>
+          <h1 className="text-2xl font-semibold">
+            Channels — {channelDescriptor.label}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Omnichannel Communications · Resend provider configuration
+            Omnichannel Communications · {channelDescriptor.description}
             {organizationName ? ` · ${organizationName}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <ReadinessBadge summary={summary} />
-          <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-            <span className="ml-2">Refresh</span>
-          </Button>
+          {isEmailChannel && <ReadinessBadge summary={summary} />}
+          {isEmailChannel && (
+            <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+              <span className="ml-2">Refresh</span>
+            </Button>
+          )}
         </div>
       </div>
 
       <OmniCommsTenantSelector showDepartment={false} />
+
+      <OmniCommsChannelSelector value={channel} onChange={setChannel} />
+
+      {!isEmailChannel && (
+        <OmniCommsChannelTabShell descriptor={channelDescriptor} />
+      )}
+
+      {isEmailChannel && (
+
 
       <Tabs value={channelTab} onValueChange={setChannelTab} className="w-full">
         <TabsList>
@@ -153,7 +179,9 @@ export const OmniCommsChannelsPage: React.FC = () => {
           <SettingsTab client={client} orgId={orgId} summary={summary} onChanged={refresh} />
         </TabsContent>
       </Tabs>
+      )}
     </div>
+
   );
 };
 
