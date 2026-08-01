@@ -10,7 +10,7 @@
  * contacts a provider.
  */
 import React from "react";
-import { Loader2, Plus, RefreshCw, PlugZap } from "lucide-react";
+import { Loader2, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -208,7 +208,6 @@ export const ProducerIntegrationsTab: React.FC<ProducerIntegrationsTabProps> = (
 
       {!loading && rows.length === 0 && (
         <OmniCommsEmptyState
-          icon={PlugZap}
           title="No producer integrations"
           description="No business module is authorised to produce an event for this organisation yet."
         />
