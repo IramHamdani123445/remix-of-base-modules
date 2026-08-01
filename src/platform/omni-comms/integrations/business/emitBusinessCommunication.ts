@@ -25,19 +25,37 @@ import {
   type BusinessProducerResult,
 } from './businessProducerTypes';
 
-/** Identity components a producer key is derived from. */
+/**
+ * Identity components a producer key is derived from.
+ *
+ * The identity is COMPLETE: tenant (organisation + department), caller
+ * module, event, business entity, entity version and mode. Two different
+ * tenants raising the same business fact therefore produce two different
+ * keys, and an organisation can never replay onto another organisation's
+ * request row.
+ */
 export type ProducerIdentity = Pick<
   BusinessProducerEmission,
-  'moduleCode' | 'eventCode' | 'entityType' | 'entityId' | 'entityVersion' | 'mode'
+  | 'organizationId'
+  | 'departmentId'
+  | 'moduleCode'
+  | 'eventCode'
+  | 'entityType'
+  | 'entityId'
+  | 'entityVersion'
+  | 'mode'
 >;
 
 /**
  * Canonical identity string. Every component is included in full and
  * unit-separated, so no component boundary can be forged by embedding the
- * separator in a value.
+ * separator in a value. A null/absent department is encoded as an empty
+ * component so its position is never collapsed.
  */
 export function buildProducerIdentityString(input: ProducerIdentity): string {
   return [
+    input.organizationId,
+    input.departmentId ?? '',
     input.moduleCode,
     input.eventCode,
     input.entityType,
@@ -48,6 +66,7 @@ export function buildProducerIdentityString(input: ProducerIdentity): string {
     .map((v) => String(v ?? '').trim())
     .join('\u001f');
 }
+
 
 function toHex(bytes: ArrayBuffer): string {
   const view = new Uint8Array(bytes);

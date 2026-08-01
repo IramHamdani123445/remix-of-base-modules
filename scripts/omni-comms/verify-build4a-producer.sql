@@ -272,6 +272,100 @@ BEGIN
     RAISE EXCEPTION 'SAFETY: the pilot bootstrap is not restricted to non-production';
   END IF;
 
+  -- 14. environment guard reads the AUTHORITATIVE fail-closed reader only
+  SELECT p.prosrc INTO v_src FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname='public' AND p.proname='omni_comms_priv_pilot_assert_non_production';
+  IF v_src IS NULL THEN
+    RAISE EXCEPTION 'MISSING: pilot environment guard';
+  END IF;
+  IF v_src NOT LIKE '%omni_comms_priv_runtime_environment()%' THEN
+    RAISE EXCEPTION 'ENV: pilot guard does not use the authoritative runtime environment reader';
+  END IF;
+  IF v_src NOT LIKE '%<> ''non_production''%' THEN
+    RAISE EXCEPTION 'ENV: pilot guard does not require an exact non_production environment';
+  END IF;
+  IF v_src LIKE '%= ''production''%' THEN
+    RAISE EXCEPTION 'ENV: pilot guard still fails open by testing only for production';
+  END IF;
+  IF v_src NOT LIKE '%EXCEPTION WHEN OTHERS%' THEN
+    RAISE EXCEPTION 'ENV: pilot guard does not fail closed when the environment cannot be read';
+  END IF;
+  IF has_function_privilege('anon', 'public.omni_comms_priv_pilot_assert_non_production()', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.omni_comms_priv_pilot_assert_non_production()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'GRANTS: browser roles can execute the pilot environment guard';
+  END IF;
+
+  -- 15. public bootstrap wrapper enforces capability AND tenant access
+  SELECT p.prosrc INTO v_src FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname='public' AND p.proname='omni_comms_bootstrap_employer_registration_pilot';
+  IF v_src IS NULL THEN
+    RAISE EXCEPTION 'MISSING: public pilot bootstrap wrapper';
+  END IF;
+  IF v_src NOT LIKE '%omni_comms_priv_require_capability(''configure'')%' THEN
+    RAISE EXCEPTION 'AUTHZ: public bootstrap does not require the configure capability';
+  END IF;
+  IF v_src NOT LIKE '%omni_comms_priv_require_tenant_access%' THEN
+    RAISE EXCEPTION 'AUTHZ: public bootstrap does not enforce tenant access';
+  END IF;
+  IF has_function_privilege('anon', 'public.omni_comms_bootstrap_employer_registration_pilot(text, boolean)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'GRANTS: anon can execute the public pilot bootstrap';
+  END IF;
+  IF has_function_privilege('anon', 'public.omni_comms_priv_bootstrap_employer_registration_pilot(uuid, text, boolean)', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.omni_comms_priv_bootstrap_employer_registration_pilot(uuid, text, boolean)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'GRANTS: browser roles can execute the internal pilot bootstrap';
+  END IF;
+
+  -- 16. bootstrap is all-or-nothing (prerequisites + completion gate)
+  SELECT p.prosrc INTO v_src FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname='public' AND p.proname='omni_comms_priv_bootstrap_employer_registration_pilot';
+  IF v_src NOT LIKE '%pilot_bootstrap_layout_missing%'
+     OR v_src NOT LIKE '%pilot_bootstrap_sender_identity_missing%'
+     OR v_src NOT LIKE '%pilot_bootstrap_caller_module_inactive%'
+     OR v_src NOT LIKE '%pilot_bootstrap_department_missing%' THEN
+    RAISE EXCEPTION 'ATOMICITY: bootstrap does not refuse missing prerequisites in apply mode';
+  END IF;
+  IF v_src NOT LIKE '%pilot_bootstrap_incomplete_configuration%' THEN
+    RAISE EXCEPTION 'ATOMICITY: bootstrap has no completion gate; a partial pilot is possible';
+  END IF;
+
+  -- 17. retirement of the incorrect binding stayed SCOPED
+  IF EXISTS (
+    SELECT 1 FROM public.omni_comms_producer_event_binding b
+      JOIN public.omni_comms_event_definition e ON e.id = b.event_definition_id
+      JOIN public.core_organization o ON o.id = b.organization_id
+     WHERE e.code = 'REGISTRATION.EMPLOYER.REGISTERED'
+       AND b.status = 'retired'
+       AND b.lifecycle_reason LIKE 'REGISTRATION.EMPLOYER.REGISTERED represents a completed registration%'
+       AND (o.org_code <> 'SKN-SSB'
+            OR b.integration_reference IS DISTINCT FROM 'useEmployerRegistrationSubmit')
+  ) THEN
+    RAISE EXCEPTION 'SCOPE: a binding outside the SKN-SSB submission pilot was retired';
+  END IF;
+
+  -- 18. still provider-free: no dispatch job or delivery attempt for the pilot
+  IF EXISTS (
+    SELECT 1 FROM public.omni_comms_dispatch_job j
+      JOIN public.omni_comms_request r ON r.id = j.request_id
+     WHERE r.caller_module_code = 'EMPLOYER_REGISTRATION'
+  ) THEN
+    RAISE EXCEPTION 'SAFETY: a dispatch job exists for the employer registration pilot';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.omni_comms_delivery_attempt a
+      JOIN public.omni_comms_message m ON m.id = a.message_id
+      JOIN public.omni_comms_request r ON r.id = m.request_id
+     WHERE r.caller_module_code = 'EMPLOYER_REGISTRATION'
+  ) THEN
+    RAISE EXCEPTION 'SAFETY: a delivery attempt exists for the employer registration pilot';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.omni_comms_request
+     WHERE caller_module_code = 'EMPLOYER_REGISTRATION'
+       AND mode NOT IN ('dry_run','shadow')
+  ) THEN
+    RAISE EXCEPTION 'SAFETY: the employer registration pilot raised a non provider-free request';
+  END IF;
+
   RAISE NOTICE 'OMNI COMMS BUILD 4A PRODUCER VERIFY OK';
 END;
 $$;
