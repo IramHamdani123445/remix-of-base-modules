@@ -16,6 +16,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { OMNI_COMMS_GENERIC_TABS } from '@/platform/omni-comms/domain/channelCatalogue';
 
 /** Legacy (pre-C1) email-only tab identifiers. Retained for deep links. */
 export const OMNI_COMMS_CHANNEL_TABS = [
@@ -26,17 +27,11 @@ export const OMNI_COMMS_CHANNEL_TABS = [
   'settings',
 ] as const;
 
-/** C1 — common channel workspace tabs shared by every channel. */
-export const OMNI_COMMS_CHANNEL_WORKSPACE_TABS = [
-  'overview',
-  'accounts',
-  'identities',
-  'endpoints',
-  'bindings',
-  'policies',
-  'test-centre',
-  'diagnostics',
-] as const;
+/**
+ * C1 — channel workspace tabs. Re-exported from the domain catalogue so the
+ * module has exactly one tab vocabulary (`test-centre`, never `test`).
+ */
+export const OMNI_COMMS_CHANNEL_WORKSPACE_TABS = OMNI_COMMS_GENERIC_TABS;
 
 export type OmniCommsChannelWorkspaceTab =
   (typeof OMNI_COMMS_CHANNEL_WORKSPACE_TABS)[number];
