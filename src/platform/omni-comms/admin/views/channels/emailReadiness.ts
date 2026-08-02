@@ -9,8 +9,9 @@
  *   - Derived only from GENUINE records; reference/simulation records never
  *     contribute (see channelReferenceData.ts).
  *   - `summary.email_send_ready` is never consulted by the Channels UI.
- *   - Technical channel testing is not implemented, so the projection can
- *     never reach "Configuration complete".
+ *   - C5A adds the technical configuration preflight. The projection reaches
+ *     "Configuration prerequisites met" only when a CURRENT passed preflight
+ *     exists for the selected binding. A preflight never sends a message.
  *   - C3B adds endpoint checks. C3B performs no DNS lookup and no provider
  *     verification call, so a sending domain can never become
  *     `verified` from this screen, and no callback receiver exists.
