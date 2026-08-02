@@ -425,11 +425,15 @@ describe('C3A — boundaries', () => {
 
   it('46. Existing Email compatibility RPCs delegate to the generic workers', () => {
     const legacy = SQL.slice(
-      SQL.lastIndexOf('FUNCTION public.omni_comms_sender_identity_upsert_draft'),
+      SQL.lastIndexOf(
+        'CREATE OR REPLACE FUNCTION public.omni_comms_sender_identity_upsert_draft',
+      ),
     );
     expect(legacy).toContain('omni_comms_priv_channel_identity_upsert');
     const legacyLifecycle = SQL.slice(
-      SQL.lastIndexOf('FUNCTION public.omni_comms_sender_identity_activate'),
+      SQL.lastIndexOf(
+        'CREATE OR REPLACE FUNCTION public.omni_comms_sender_identity_activate',
+      ),
     );
     expect(legacyLifecycle).toContain('omni_comms_priv_channel_identity_lifecycle');
   });
