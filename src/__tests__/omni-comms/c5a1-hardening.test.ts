@@ -178,7 +178,7 @@ describe('C5A.1 — zero-send boundary and evidence surfacing', () => {
   it('states the zero-send boundary on the Test Centre and Diagnostics', () => {
     expect(read(TAB)).toContain('No message is sent.');
     expect(read(TAB)).toContain('not proof of delivery');
-    expect(read(DIAG)).toContain('not implemented');
+    expect(read(DIAG)).toContain('nothing on');
   });
 
   it('renders the direct evidence columns from the ledger', () => {

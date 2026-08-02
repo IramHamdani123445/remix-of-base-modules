@@ -482,7 +482,8 @@ describe('C3B — Email readiness integration', () => {
     expect(check?.detail).toMatch(/not performed by this screen/);
   });
   it('70. reports the callback receiver as not implemented', () => {
-    expect(EMAIL_CALLBACK_RECEIVER_IMPLEMENTED).toBe(false);
+    // C5B added the receiver; with no callback evidence it stays unproven.
+    expect(EMAIL_CALLBACK_RECEIVER_IMPLEMENTED).toBe(true);
     const check = projectEmailReadiness({ endpoints: [] } as never)
       .checks.find((c) => c.key === 'callback_receiver');
     expect(check?.state).toBe('not_implemented');

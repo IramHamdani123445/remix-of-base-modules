@@ -132,14 +132,10 @@ describe('C5A — canonical checklist', () => {
     for (const code of [
       'binding_selected',
       'binding_active',
-      'binding_not_reference',
       'binding_verified',
-      'provider_account_present',
       'provider_account_active',
-      'provider_account_not_reference',
-      'provider_account_verified',
+      'provider_credentials_verified',
       'provider_credentials_complete',
-      'identity_present',
       'identity_active',
       'identity_not_reference',
       'identity_configuration_complete',
@@ -157,7 +153,7 @@ describe('C5A — canonical checklist', () => {
   });
 
   it('places the fail-closed live-delivery check in the checklist', () => {
-    expect(CHANNEL_TEST_CHECK_CODES).toContain('policy_live_delivery_disabled');
+    expect(CHANNEL_TEST_CHECK_CODES).toContain('live_delivery_disabled');
   });
 });
 

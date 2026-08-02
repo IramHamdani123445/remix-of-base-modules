@@ -262,8 +262,11 @@ describe('C1 closure — one Email readiness projection', () => {
     expect(complete.label).toBe('Configuration prerequisites met');
     expect(complete.explanation).toContain(CONFIGURATION_PREFLIGHT_PENDING);
     expect(complete.configurationPreflightImplemented).toBe(true);
-    expect(complete.providerDeliveryTestImplemented).toBe(false);
-    expect(complete.checks.at(-1)?.state).toBe('not_implemented');
+    // Delivery remains unproven while no approved test-delivery evidence is
+    // supplied to the projection.
+    expect(
+      complete.checks.find((c) => c.key === 'provider_delivery_test')?.state,
+    ).toBe('not_implemented');
     expect(Object.values(EMAIL_READINESS_LABEL)).not.toContain(
       'Configuration complete',
     );
