@@ -85,3 +85,17 @@ SELECT 'preflight_writes_ledger_only' AS check,
         AND pg_get_functiondef(p.oid) NOT LIKE '%notification_queue%') AS ok
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
  WHERE n.nspname='public' AND p.proname='omni_comms_channel_test_run_preflight';
+
+-- 11. Zero-send: no C5A function contacts a provider or enqueues delivery.
+--     (The source rollback script's ROLLBACK-by-default is asserted in the
+--      focused TypeScript suite; SQL cannot prove a source file's contents.)
+SELECT 'c5a_functions_zero_send' AS check,
+       bool_and(pg_get_functiondef(p.oid) NOT LIKE '%notification_queue%'
+                AND pg_get_functiondef(p.oid) NOT LIKE '%omni_comms_dispatch_job%'
+                AND pg_get_functiondef(p.oid) NOT LIKE '%omni_comms_delivery_attempt%'
+                AND pg_get_functiondef(p.oid) NOT LIKE '%http_post%'
+                AND pg_get_functiondef(p.oid) NOT LIKE '%net.http%') AS ok
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname='public'
+   AND (p.proname LIKE 'omni_comms_channel_test%'
+        OR p.proname LIKE 'omni_comms_priv_channel_test%');

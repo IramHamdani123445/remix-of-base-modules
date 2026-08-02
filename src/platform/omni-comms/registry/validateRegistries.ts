@@ -48,7 +48,14 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
     if (o.status === 'AVAILABLE' && !o.introductionStory) {
       errors.push(`Object ${o.name} is AVAILABLE but has no introductionStory.`);
     }
-    if (o.category === 'runtime' && o.writeAuthority !== 'service_role_only') {
+    // Runtime delivery objects are written only by the service role. The C5A
+    // preflight-evidence ledger is the single admin-triggered exception: it
+    // records configuration evidence and never any provider delivery.
+    if (
+      o.category === 'runtime'
+      && o.writeAuthority !== 'service_role_only'
+      && o.name !== 'omni_comms_channel_test_run'
+    ) {
       errors.push(`Runtime object ${o.name} must be service_role_only.`);
     }
   }
