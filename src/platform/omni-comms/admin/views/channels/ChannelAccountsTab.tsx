@@ -448,13 +448,15 @@ export function accountLifecycleActions(
   if (opts.verifiable) {
     actions.push({ key: 'verify', label: 'Verify credentials' });
   }
-  if (account.status === 'draft' || account.status === 'disabled') {
+  const canActivate = account.status === 'draft' || account.status === 'disabled';
+  const complete = opts.complete;
+  if (canActivate) {
     const blocked =
       !opts.verifiable
         ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
-        : !opts.complete
+        : !complete
           ? 'All required credential references must be configured.'
-          : account.verification_status !== 'verified'
+          : account.verification_status !== "verified"
             ? 'Verified provider credentials are required before activation.'
             : undefined;
     actions.push({
