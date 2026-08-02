@@ -43,8 +43,8 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     name: 'resend',
     kind: 'provider',
     ownership: 'omni_comms',
-    purpose: 'Sole initial email provider. Credentials live in Edge Function Secrets. Reachable only from the approved test-delivery boundary.',
-    status: 'Available',
+    purpose: 'Sole initial email provider. Credentials live in Edge Function Secrets. Reachable only from the approved test-delivery boundary; no live dispatch adapter exists.',
+    status: 'Reserved',
   },
   // Shared platform assets (3) — reused, not re-created
   {
