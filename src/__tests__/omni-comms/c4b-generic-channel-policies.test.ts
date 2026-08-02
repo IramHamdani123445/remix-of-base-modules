@@ -591,7 +591,7 @@ describe('C4B Email readiness integration', () => {
 
   it('keeps one shared projection for catalogue, header and overview', () => {
     const page = read(join(ROOT, 'src/platform/omni-comms/admin/views/OmniCommsChannelsPage.tsx'));
-    expect(page).toContain('projectEmailReadiness(summary, emailPolicy)');
+    expect(page).toContain('projectEmailReadiness(summary, emailPolicy, testCentre)');
     expect(read(join(CH_DIR, 'ChannelOverviewTab.tsx'))).toContain('projectEmailReadiness');
   });
 });

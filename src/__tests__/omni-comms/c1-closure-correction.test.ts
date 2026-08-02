@@ -261,7 +261,7 @@ describe('C1 closure — one Email readiness projection', () => {
     expect(complete.state).toBe('prerequisites_met');
     expect(complete.label).toBe('Configuration prerequisites met');
     expect(complete.explanation).toBe(TECHNICAL_TEST_PENDING);
-    expect(complete.technicalTestImplemented).toBe(false);
+    expect(complete.technicalTestImplemented).toBe(true);
     expect(complete.checks.at(-1)?.state).toBe('not_implemented');
     expect(Object.values(EMAIL_READINESS_LABEL)).not.toContain(
       'Configuration complete',

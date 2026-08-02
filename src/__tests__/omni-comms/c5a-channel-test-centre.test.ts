@@ -104,10 +104,10 @@ describe('C5A — object registry', () => {
     expect(OMNI_COMMS_OBJECT_COUNT).toBe(28);
   });
 
-  it('marks the test-run object AVAILABLE, runtime, admin_rpc', () => {
+  it('marks the test-run object AVAILABLE, channel-scoped, admin_rpc', () => {
     const e = OMNI_COMMS_OBJECT_REGISTRY.find((x) => x.name === 'omni_comms_channel_test_run');
     expect(e?.status).toBe('AVAILABLE');
-    expect(e?.category).toBe('runtime');
+    expect(e?.category).toBe('channels_senders_preferences');
     expect(e?.writeAuthority).toBe('admin_rpc');
   });
 

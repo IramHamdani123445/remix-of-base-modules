@@ -244,12 +244,13 @@ describe('C1 — safety boundaries', () => {
 
   it('19. Test Centre creates no request, message, job or attempt', () => {
     const src = read(`${DIR}/ChannelTestCentreTab.tsx`);
-    expect(src).toContain(
-      'Technical channel testing will be implemented after provider account,',
-    );
-    expect(src).not.toContain('rpc(');
+    // C5A — the Test Centre runs a configuration preflight only.
+    expect(src).toContain('never sends a message');
+    expect(src).toContain('No message is sent.');
+    expect(src).toContain('No provider is contacted.');
     expect(src).not.toContain('invoke(');
     expect(src).not.toContain('supabase');
+    expect(src).not.toContain('sendCommunication(');
   });
 
   it('23. planned channels expose no fake mutation controls', () => {
