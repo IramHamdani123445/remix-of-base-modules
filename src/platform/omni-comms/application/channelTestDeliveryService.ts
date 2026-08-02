@@ -61,6 +61,12 @@ export function setChannelTestDeliveryApproval(
     channel: TestCentreChannel;
     enabled: boolean;
     recipients: readonly string[];
+    /** C5B — bounded approval window, 1–24 hours. */
+    expiresInHours?: number;
+    /** C5B — approved delivery volume, 1–20. */
+    maxDeliveries?: number;
+    /** C5B — minimum spacing between deliveries, 30–3600 seconds. */
+    minIntervalSeconds?: number;
   },
 ): Promise<ChannelTestDeliveryApproval> {
   return callOmniCommsRpc<ChannelTestDeliveryApproval>(
@@ -72,6 +78,9 @@ export function setChannelTestDeliveryApproval(
       p_channel: input.channel,
       p_enabled: input.enabled,
       p_recipients: [...input.recipients],
+      p_expires_in_hours: input.expiresInHours ?? 4,
+      p_max_deliveries: input.maxDeliveries ?? 5,
+      p_min_interval_seconds: input.minIntervalSeconds ?? 60,
     },
   );
 }
