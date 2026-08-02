@@ -82541,10 +82541,17 @@ export type Database = {
         Row: {
           activated_at: string | null
           activated_by: string | null
+          channel: string
+          channel_endpoint_id: string | null
           created_at: string
           created_by: string | null
+          data_origin: string
+          department_id: string | null
+          disabled_at: string | null
+          disabled_by: string | null
           external_sender_ref: string | null
           id: string
+          organization_id: string
           priority: number
           provider_account_id: string
           retired_at: string | null
@@ -82554,16 +82561,27 @@ export type Database = {
           status: string
           updated_at: string
           updated_by: string | null
+          verification_checked_at: string | null
+          verification_detail: string | null
+          verification_result_code: string | null
+          verification_source: string
           verification_status: string
           verified_at: string | null
         }
         Insert: {
           activated_at?: string | null
           activated_by?: string | null
+          channel: string
+          channel_endpoint_id?: string | null
           created_at?: string
           created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          disabled_at?: string | null
+          disabled_by?: string | null
           external_sender_ref?: string | null
           id?: string
+          organization_id: string
           priority?: number
           provider_account_id: string
           retired_at?: string | null
@@ -82573,16 +82591,27 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          verification_checked_at?: string | null
+          verification_detail?: string | null
+          verification_result_code?: string | null
+          verification_source?: string
           verification_status?: string
           verified_at?: string | null
         }
         Update: {
           activated_at?: string | null
           activated_by?: string | null
+          channel?: string
+          channel_endpoint_id?: string | null
           created_at?: string
           created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          disabled_at?: string | null
+          disabled_by?: string | null
           external_sender_ref?: string | null
           id?: string
+          organization_id?: string
           priority?: number
           provider_account_id?: string
           retired_at?: string | null
@@ -82592,10 +82621,21 @@ export type Database = {
           status?: string
           updated_at?: string
           updated_by?: string | null
+          verification_checked_at?: string | null
+          verification_detail?: string | null
+          verification_result_code?: string | null
+          verification_source?: string
           verification_status?: string
           verified_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "omni_comms_sender_provider_binding_channel_endpoint_id_fkey"
+            columns: ["channel_endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_endpoint"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omni_comms_sender_provider_binding_provider_account_id_fkey"
             columns: ["provider_account_id"]
@@ -102936,6 +102976,41 @@ export type Database = {
         Args: { p_apply?: boolean; p_organization_code?: string }
         Returns: Json
       }
+      omni_comms_channel_binding_set_lifecycle: {
+        Args: {
+          p_action: string
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
+        }
+        Returns: string
+      }
+      omni_comms_channel_binding_summary: {
+        Args: {
+          p_channel?: string
+          p_department_id?: string
+          p_include_reference?: boolean
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_binding_upsert_draft: {
+        Args: {
+          p_channel: string
+          p_channel_endpoint_id: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_expected_updated_at: string
+          p_external_sender_ref?: string
+          p_id: string
+          p_organization_id: string
+          p_priority: number
+          p_provider_account_id: string
+          p_sender_identity_id: string
+        }
+        Returns: string
+      }
       omni_comms_channel_endpoint_set_lifecycle: {
         Args: {
           p_action: string
@@ -103407,6 +103482,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_binding_endpoint_requirement: {
+        Args: { p_channel: string }
+        Returns: string
+      }
       omni_comms_priv_bootstrap_employer_registration_pilot: {
         Args: {
           p_actor_id: string
@@ -103443,6 +103522,34 @@ export type Database = {
           p_provider_id: string
           p_region: string
           p_secret_refs: Json
+        }
+        Returns: string
+      }
+      omni_comms_priv_channel_binding_lifecycle: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_channel_binding_upsert: {
+        Args: {
+          p_actor_id: string
+          p_channel: string
+          p_channel_endpoint_id: string
+          p_correlation_id: string
+          p_department_id: string
+          p_expected_updated_at: string
+          p_external_sender_ref: string
+          p_id: string
+          p_organization_id: string
+          p_priority: number
+          p_provider_account_id: string
+          p_sender_identity_id: string
         }
         Returns: string
       }
@@ -103693,6 +103800,19 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_record_binding_verification: {
+        Args: {
+          p_actor_id: string
+          p_correlation_id: string
+          p_detail: string
+          p_expected_updated_at: string
+          p_id: string
+          p_result_code: string
+          p_verification_source: string
+          p_verification_status: string
+        }
+        Returns: string
+      }
       omni_comms_priv_record_provider_verification: {
         Args: {
           p_actor_id: string
@@ -103804,6 +103924,18 @@ export type Database = {
       omni_comms_priv_slice1_verify: { Args: never; Returns: string }
       omni_comms_priv_sync_legacy_secret_ref: {
         Args: { p_account_id: string }
+        Returns: undefined
+      }
+      omni_comms_priv_validate_binding: {
+        Args: {
+          p_actor_id: string
+          p_channel: string
+          p_channel_endpoint_id: string
+          p_department_id: string
+          p_organization_id: string
+          p_provider_account_id: string
+          p_sender_identity_id: string
+        }
         Returns: undefined
       }
       omni_comms_priv_validate_channel: {

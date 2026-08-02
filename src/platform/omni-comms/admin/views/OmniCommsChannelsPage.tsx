@@ -163,10 +163,12 @@ export const OmniCommsChannelsPage: React.FC = () => {
         </TabsContent>
         <TabsContent value="bindings">
           <ChannelBindingsTab
-            definition={definition} client={client}
-            summary={isEmail ? summary : null} onChanged={refresh}
+            definition={definition} client={client} orgId={orgId}
+            departmentId={departmentId} departmentName={departmentName}
+            onChanged={refresh}
           />
         </TabsContent>
+
         <TabsContent value="policies">
           <ChannelPoliciesTab
             definition={definition} client={client} orgId={orgId}

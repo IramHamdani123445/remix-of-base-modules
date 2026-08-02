@@ -82,6 +82,10 @@ export interface EmailReadinessProjection {
     readonly accounts: number;
     readonly activeSenders: number;
     readonly activeVerifiedBindings: number;
+    /** C4A — genuine active bindings. */
+    readonly activeBindings: number;
+    /** C4A — active bindings verified by a provider or trusted service. */
+    readonly providerVerifiedBindings: number;
     /** C3B — genuine active sending-domain endpoints. */
     readonly activeSendingDomains: number;
     /** C3B — genuine active sending domains marked verified by a provider. */
@@ -90,6 +94,7 @@ export interface EmailReadinessProjection {
     readonly activeEventCallbacks: number;
   };
 }
+
 
 export function projectEmailReadiness(
   summary: EmailConfigSummary | null | undefined,
@@ -151,10 +156,25 @@ export function projectEmailReadiness(
     },
     {
       key: 'binding',
-      label: 'Active verified binding present',
-      state: yn(counts.activeVerifiedBindings > 0),
-      detail: `${counts.activeVerifiedBindings} active verified binding(s).`,
+      label: 'Active identity-to-provider binding present',
+      state: yn(counts.activeBindings > 0),
+      detail: `${counts.activeBindings} active binding(s).`,
     },
+    {
+      key: 'binding_verification',
+      label: 'Binding provider verification',
+      state:
+        counts.providerVerifiedBindings > 0
+          ? 'met'
+          : 'not_implemented',
+      detail:
+        counts.providerVerifiedBindings > 0
+          ? `${counts.providerVerifiedBindings} binding(s) verified by a provider or trusted service.`
+          : 'Binding verification is recorded only by the provider or a trusted '
+            + 'service; this screen performs no verification and legacy manual '
+            + 'evidence does not count.',
+    },
+
     {
       key: 'policy',
       label: 'Email policy present',

@@ -8,7 +8,7 @@ export type ProviderStatus = 'draft' | 'active' | 'retired';
 export type ProviderAccountStatus = 'draft' | 'active' | 'disabled' | 'retired';
 export type HealthState = 'unknown' | 'healthy' | 'degraded' | 'failed';
 export type SenderStatus = 'draft' | 'active' | 'disabled' | 'retired';
-export type BindingStatus = 'draft' | 'active' | 'retired';
+export type BindingStatus = 'draft' | 'active' | 'disabled' | 'retired';
 export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'failed';
 export type CredentialCheckResult = 'healthy' | 'degraded' | 'failed';
 
@@ -72,7 +72,16 @@ export interface BindingRow {
   verified_at: string | null;
   status: BindingStatus;
   updated_at: string;
+  /** C4A — explicit classification (authoritative over naming rules). */
+  data_origin?: 'system_seed' | 'user' | 'reference_seed';
+  /** C4A — who produced the verification evidence. */
+  verification_source?: 'none' | 'provider' | 'service' | 'legacy_manual';
+  verification_result_code?: string | null;
+  verification_checked_at?: string | null;
+  channel_endpoint_id?: string | null;
+  department_id?: string | null;
 }
+
 
 export interface ChannelSettingRow {
   id: string;
