@@ -13,6 +13,14 @@ import {
 } from '@/platform/omni-comms/architecture';
 import type { RepositoryScan } from '@/platform/omni-comms/architecture';
 
+/**
+ * A full repository architecture scan reads ~6k source files. It is
+ * inherently expensive and fully deterministic, so these specific tests get an
+ * explicit generous budget instead of the 5s default. Assertions are unchanged.
+ */
+const REPO_SCAN_TIMEOUT_MS = 60_000;
+
+
 const REPO_ROOT = process.cwd();
 
 function scanOf(filePath: string, content: string): RepositoryScan {
@@ -139,5 +147,5 @@ describe('Rule 16 — repository is clean', () => {
         v.baselineStatus !== 'existing_baseline',
     );
     expect(failing).toEqual([]);
-  });
+  }, REPO_SCAN_TIMEOUT_MS);
 });

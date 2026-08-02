@@ -41,6 +41,14 @@ import type { RepositoryScan } from '@/platform/omni-comms/architecture/architec
 import type { SendCommunicationResult } from '@/platform/omni-comms/sendCommunication';
 import { OMNI_COMMS_RESULT_CONTRACT_VERSION } from '@/platform/omni-comms/runtime/responseContract';
 
+/**
+ * A full repository architecture scan reads ~6k source files. It is
+ * inherently expensive and fully deterministic, so these specific tests get an
+ * explicit generous budget instead of the 5s default. Assertions are unchanged.
+ */
+const REPO_SCAN_TIMEOUT_MS = 60_000;
+
+
 const REPO_ROOT = process.cwd();
 const SERVICE = 'src/platform/omni-comms/application/controlledDryRunService.ts';
 const PANEL = 'src/platform/omni-comms/admin/views/dryrun/ControlledDryRunPanel.tsx';
@@ -593,5 +601,5 @@ describe('Phase 5 — repository-wide architecture is clean', () => {
       (v) => v.baselineStatus !== 'existing_baseline',
     );
     expect(failing).toEqual([]);
-  });
+  }, REPO_SCAN_TIMEOUT_MS);
 });

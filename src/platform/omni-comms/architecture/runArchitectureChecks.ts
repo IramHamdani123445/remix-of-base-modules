@@ -95,6 +95,24 @@ function walkFs(root: string, sub: string, acc: string[]): void {
   }
 }
 
+/**
+ * Deterministic process-level caches.
+ *
+ * The repository scan reads every in-scope source file (~6k files) and is
+ * inherently expensive (~2s). Source files are immutable for the lifetime of a
+ * check run (CI, a script invocation, or a single test worker), so both the
+ * scan and the fully derived summary are memoised per repository root. This
+ * removes repeated repository-wide scans without weakening any assertion.
+ */
+const SCAN_CACHE = new Map<string, RepositoryScan>();
+const SUMMARY_CACHE = new Map<string, ArchitectureCheckSummary>();
+
+/** Test/CI escape hatch — drops every memoised scan and summary. */
+export function clearArchitectureScanCache(): void {
+  SCAN_CACHE.clear();
+  SUMMARY_CACHE.clear();
+}
+
 export function buildRepositoryScan(repoRoot: string): RepositoryScan {
   const files: ScannedFile[] = [];
   const relPaths: string[] = [];
@@ -157,7 +175,22 @@ export function runArchitectureChecks(
   opts: RunArchitectureChecksOptions = {},
 ): ArchitectureCheckSummary {
   const repoRoot = opts.repoRoot ?? process.cwd();
-  const scan = opts.scan ?? buildRepositoryScan(repoRoot);
+  const canonicalRun = opts.scan === undefined && opts.baseline === undefined;
+  if (canonicalRun) {
+    const cached = SUMMARY_CACHE.get(repoRoot);
+    if (cached) return cached;
+  }
+
+  let scan = opts.scan;
+  if (scan === undefined) {
+    const cachedScan = SCAN_CACHE.get(repoRoot);
+    if (cachedScan) {
+      scan = cachedScan;
+    } else {
+      scan = buildRepositoryScan(repoRoot);
+      SCAN_CACHE.set(repoRoot, scan);
+    }
+  }
   const baseline = opts.baseline ?? OMNI_COMMS_ARCHITECTURE_BASELINE;
 
   const baselineResult = validateBaseline(baseline);
@@ -212,13 +245,15 @@ export function runArchitectureChecks(
 
   const all = [...annotated, ...stale, ...invalidBaselineViolations].sort(sortViolations);
 
-  return {
+  const summary: ArchitectureCheckSummary = {
     passed: failing.length === 0,
     checkedFiles: scan.files.length,
     violations: all,
     activeBaselineEntries: matched.size,
     staleBaselineEntries: stale.length,
   };
+  if (canonicalRun) SUMMARY_CACHE.set(repoRoot, summary);
+  return summary;
 }
 
 export function formatViolations(vs: readonly ArchitectureViolation[]): string {
