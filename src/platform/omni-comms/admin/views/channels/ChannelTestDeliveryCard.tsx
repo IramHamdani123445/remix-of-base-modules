@@ -227,17 +227,26 @@ export const ChannelTestDeliveryCard: React.FC<{
 
   const approvedRecipients = diagnostics?.controlled_test_recipients ?? [];
   const canConfigure = diagnostics?.can_configure ?? false;
+  const canExecute = diagnostics?.can_execute ?? true;
+  const current = lastDelivery ?? latestDelivery(diagnostics, bindingId);
+  const attemptsUsed = current?.attempts?.length ?? 0;
 
   const blockReason = useMemo(
     () => deliveryBlockReason({
       canConfigure,
+      canExecute,
       approvalEnabled: diagnostics?.controlled_test_delivery_enabled ?? false,
+      approvalActive: diagnostics ? isApprovalActive(diagnostics) : false,
       approvedRecipients,
       target,
       run,
       runIsCurrent,
+      attemptsExhausted: attemptsUsed >= MAX_DELIVERY_ATTEMPTS,
     }),
-    [canConfigure, diagnostics, approvedRecipients, target, run, runIsCurrent],
+    [
+      canConfigure, canExecute, diagnostics, approvedRecipients, target, run,
+      runIsCurrent, attemptsUsed,
+    ],
   );
 
   const onSaveApproval = useCallback(async () => {
@@ -253,6 +262,9 @@ export const ChannelTestDeliveryCard: React.FC<{
         channel,
         enabled: approvalEnabled,
         recipients,
+        expiresInHours: Number(expiresInHours) || 4,
+        maxDeliveries: Number(maxDeliveries) || 5,
+        minIntervalSeconds: Number(minIntervalSeconds) || 60,
       });
       toast.success(
         res.controlled_test_delivery_enabled
@@ -266,7 +278,10 @@ export const ChannelTestDeliveryCard: React.FC<{
     } finally {
       setSaving(false);
     }
-  }, [client, orgId, departmentId, channel, approvalEnabled, recipientsText, refresh, onChanged]);
+  }, [
+    client, orgId, departmentId, channel, approvalEnabled, recipientsText,
+    expiresInHours, maxDeliveries, minIntervalSeconds, refresh, onChanged,
+  ]);
 
   const onSend = useCallback(async () => {
     if (!run) return;
@@ -277,6 +292,7 @@ export const ChannelTestDeliveryCard: React.FC<{
         target,
         idempotencyKey,
         subject,
+        bodyText,
       });
       setLastDelivery(res.delivery);
       toast.success(
@@ -284,7 +300,10 @@ export const ChannelTestDeliveryCard: React.FC<{
           ? 'Existing delivery evidence returned — nothing was sent again.'
           : res.delivery?.status === 'accepted'
             ? 'The provider accepted the technical test message.'
-            : 'The provider did not accept the test message. See the evidence below.',
+            : res.delivery?.status === 'outcome_unknown'
+              ? 'The provider outcome is unknown. A bounded retry reuses the same '
+                + 'idempotency key and cannot send twice.'
+              : 'The provider did not accept the test message. See the evidence below.',
       );
       await refresh();
       onChanged?.();
@@ -294,9 +313,10 @@ export const ChannelTestDeliveryCard: React.FC<{
     } finally {
       setSending(false);
     }
-  }, [transport, run, target, idempotencyKey, subject, refresh, onChanged]);
+  }, [transport, run, target, idempotencyKey, subject, bodyText, refresh, onChanged]);
 
-  const current = lastDelivery ?? latestDelivery(diagnostics, bindingId);
+  const retryable = current ? isDeliveryRetryable(current) : false;
+
 
   return (
     <Card data-testid="omni-comms-test-delivery">
