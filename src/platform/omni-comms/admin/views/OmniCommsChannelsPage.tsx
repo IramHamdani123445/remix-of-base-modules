@@ -22,6 +22,8 @@ import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
 import { getEmailConfigSummary } from "@/platform/omni-comms/application/channelManagementService";
 import { getChannelPolicySummary } from "@/platform/omni-comms/application/channelPolicyService";
 import { getChannelTestCentreSummary } from "@/platform/omni-comms/application/channelTestCentreService";
+import { getChannelReleaseControlSummary } from "@/platform/omni-comms/application/channelReleaseControlService";
+import type { ChannelReleaseControlSummary } from "@/platform/omni-comms/application/channelReleaseControlTypes";
 import type { ChannelTestCentreSummary } from "@/platform/omni-comms/application/channelTestCentreTypes";
 import type { ChannelPolicySummary } from "@/platform/omni-comms/application/channelPolicyTypes";
 import type { EmailConfigSummary } from "@/platform/omni-comms/application/channelManagementTypes";
@@ -63,6 +65,8 @@ export const OmniCommsChannelsPage: React.FC = () => {
   // Controlled test delivery evidence. Read-only; loading it sends nothing.
   const [deliveryDiagnostics, setDeliveryDiagnostics] =
     useState<ChannelTestDeliveryDiagnostics | null>(null);
+  // C6 — genuine Release Control governance. Reading it sends nothing.
+  const [releaseSummary, setReleaseSummary] = useState<ChannelReleaseControlSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { selected, selectChannel, clearChannel } = useOmniCommsSelectedChannel();
@@ -73,7 +77,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [config, policy, test, deliveries] = await Promise.all([
+      const [config, policy, test, deliveries, release] = await Promise.all([
         getEmailConfigSummary(client, orgId),
         getChannelPolicySummary(client, {
           organizationId: orgId,
@@ -85,11 +89,17 @@ export const OmniCommsChannelsPage: React.FC = () => {
         getChannelTestDeliveryDiagnostics(
           client, orgId, "email", departmentId ?? null, null, 20,
         ),
+        getChannelReleaseControlSummary(client, {
+          organizationId: orgId,
+          departmentId: departmentId ?? null,
+          channel: "email",
+        }).catch(() => null),
       ]);
       setSummary(config);
       setEmailPolicy(policy);
       setTestCentre(test);
       setDeliveryDiagnostics(deliveries);
+      setReleaseSummary(release);
     } catch (e) {
       toastError(e, "Failed to load email configuration");
     } finally {
@@ -119,7 +129,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Catalogue (default view) ──────────────────────────────────────
   if (!definition) {
-    const emailReadiness = projectEmailReadiness(summary, emailPolicy, testCentre, deliveryDiagnostics);
+    const emailReadiness = projectEmailReadiness(summary, emailPolicy, testCentre, deliveryDiagnostics, releaseSummary);
     return (
       <div className="space-y-6" data-testid="omni-comms-channels-page">
         <div>
@@ -145,7 +155,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Selected channel workspace ────────────────────────────────────
   const isEmail = definition.code === "email";
-  const readiness = isEmail ? projectEmailReadiness(summary, emailPolicy, testCentre, deliveryDiagnostics) : null;
+  const readiness = isEmail ? projectEmailReadiness(summary, emailPolicy, testCentre, deliveryDiagnostics, releaseSummary) : null;
 
   return (
     <div className="space-y-6" data-testid="omni-comms-channels-page">
