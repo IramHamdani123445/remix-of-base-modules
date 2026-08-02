@@ -70,6 +70,11 @@ export interface OmniCommsChannelDescriptor {
    * Everything else renders the reserved placeholder (fail-closed).
    */
   readonly implemented: boolean;
+  /**
+   * Whether the CURRENT database schema accepts this channel value. Channels
+   * without schema support cannot be configured at all (fail-closed).
+   */
+  readonly databaseSupported: boolean;
   /** Tabs this channel exposes, in canonical order. */
   readonly tabs: readonly OmniCommsGenericTab[];
   /**
@@ -95,7 +100,8 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     kind: 'addressed',
     chunk: 'C6',
     implemented: true,
-    tabs: tabs('overview', 'accounts', 'identities', 'bindings', 'policies', 'test-centre', 'diagnostics'),
+    databaseSupported: true,
+    tabs: tabs('overview', 'accounts', 'identities', 'endpoints', 'bindings', 'policies', 'test-centre', 'diagnostics'),
     seedNamespace: 'omni_comms_seed:email',
     reservedProviders: ['resend'],
   },
@@ -106,6 +112,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     kind: 'addressed',
     chunk: 'C7',
     implemented: false,
+    databaseSupported: true,
     tabs: tabs('overview', 'accounts', 'identities', 'bindings', 'policies', 'test-centre', 'diagnostics'),
     seedNamespace: 'omni_comms_seed:sms',
     reservedProviders: [],
@@ -117,6 +124,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     kind: 'addressed',
     chunk: 'C8',
     implemented: false,
+    databaseSupported: true,
     tabs: tabs('overview', 'accounts', 'identities', 'bindings', 'policies', 'test-centre', 'diagnostics'),
     seedNamespace: 'omni_comms_seed:whatsapp',
     reservedProviders: [],
@@ -128,6 +136,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     kind: 'device',
     chunk: 'C9',
     implemented: false,
+    databaseSupported: true,
     tabs: tabs('overview', 'accounts', 'bindings', 'policies', 'test-centre', 'diagnostics'),
     seedNamespace: 'omni_comms_seed:push',
     reservedProviders: [],
@@ -139,6 +148,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     kind: 'inbound_surface',
     chunk: 'C9',
     implemented: false,
+    databaseSupported: true,
     tabs: tabs('overview', 'policies', 'test-centre', 'diagnostics'),
     seedNamespace: 'omni_comms_seed:in_app',
     reservedProviders: [],
@@ -150,6 +160,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     kind: 'endpoint',
     chunk: 'C10',
     implemented: false,
+    databaseSupported: false,
     tabs: tabs('overview', 'endpoints', 'bindings', 'policies', 'test-centre', 'diagnostics'),
     seedNamespace: 'omni_comms_seed:webhook',
     reservedProviders: [],
@@ -161,6 +172,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     kind: 'physical',
     chunk: 'C10',
     implemented: false,
+    databaseSupported: true,
     tabs: tabs('overview', 'identities', 'policies', 'test-centre', 'diagnostics'),
     seedNamespace: 'omni_comms_seed:print',
     reservedProviders: [],
@@ -172,13 +184,12 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     kind: 'addressed',
     chunk: 'C10',
     implemented: false,
+    databaseSupported: false,
     tabs: tabs('overview', 'accounts', 'identities', 'bindings', 'policies', 'test-centre', 'diagnostics'),
     seedNamespace: 'omni_comms_seed:voice',
     reservedProviders: [],
   },
 ] as const;
-
-export const OMNI_COMMS_DEFAULT_CHANNEL: OmniCommsChannel = 'email';
 
 const BY_CHANNEL = new Map<string, OmniCommsChannelDescriptor>(
   OMNI_COMMS_CHANNEL_CATALOGUE.map((d) => [d.channel, d]),
@@ -188,12 +199,18 @@ export function isOmniCommsChannel(value: unknown): value is OmniCommsChannel {
   return typeof value === 'string' && BY_CHANNEL.has(value);
 }
 
-/** Resolve a raw (URL) value to a descriptor, never throwing. */
-export function resolveChannelDescriptor(
+/**
+ * Resolve a raw (URL) value to a descriptor, never throwing.
+ *
+ * Catalogue-first: an unknown, empty or missing value resolves to `null` so
+ * the caller renders the channel catalogue. No channel is ever silently
+ * selected on the operator's behalf.
+ */
+export function findChannelDescriptor(
   raw: string | null | undefined,
-): OmniCommsChannelDescriptor {
+): OmniCommsChannelDescriptor | null {
   const key = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
-  return BY_CHANNEL.get(key) ?? BY_CHANNEL.get(OMNI_COMMS_DEFAULT_CHANNEL)!;
+  return BY_CHANNEL.get(key) ?? null;
 }
 
 export function getChannelDescriptor(
@@ -257,6 +274,9 @@ export function validateChannelCatalogue(): string[] {
     }
     if (!d.implemented && d.reservedProviders.length > 0) {
       errors.push(`Channel ${d.channel} is not implemented but declares providers`);
+    }
+    if (d.implemented && !d.databaseSupported) {
+      errors.push(`Channel ${d.channel} is implemented but has no schema support`);
     }
   }
 
