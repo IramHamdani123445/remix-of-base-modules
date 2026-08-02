@@ -96,8 +96,19 @@ Deno.serve(async (req) => {
       400,
     );
   }
-  if ("batchLimit" in raw && !Number.isInteger(raw.batchLimit)) {
-    return json({ error: "OC422", detail: "batch_limit_invalid" }, 400);
+  // A supplied batch limit must be a strict integer inside the bounded range.
+  // Out-of-range, fractional, NaN, string and boolean values are REJECTED —
+  // never silently clamped.
+  if ("batchLimit" in raw && raw.batchLimit !== null) {
+    const candidate = raw.batchLimit;
+    if (
+      typeof candidate !== "number" ||
+      !Number.isInteger(candidate) ||
+      candidate < 1 ||
+      candidate > MAX_BATCH_LIMIT
+    ) {
+      return json({ error: "OC422", detail: "batch_limit_invalid" }, 400);
+    }
   }
   if (
     "correlationId" in raw &&
@@ -108,10 +119,10 @@ Deno.serve(async (req) => {
     return json({ error: "OC422", detail: "correlation_id_invalid" }, 400);
   }
 
-  const batchLimit = Math.min(
-    Math.max(Number.isInteger(raw.batchLimit) ? Number(raw.batchLimit) : 1, 1),
-    MAX_BATCH_LIMIT,
-  );
+  const batchLimit = typeof raw.batchLimit === "number" && Number.isInteger(raw.batchLimit)
+    ? raw.batchLimit
+    : 1;
+
   const correlationId = typeof raw.correlationId === "string" ? raw.correlationId : null;
 
   // ── Operator authorisation ──────────────────────────────────────────────
