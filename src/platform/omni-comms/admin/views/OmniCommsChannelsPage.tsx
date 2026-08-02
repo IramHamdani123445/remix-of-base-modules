@@ -14,6 +14,7 @@ import { ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOmniCommsChannelWorkspaceTab } from "../hooks/useOmniCommsTabParam";
+import { useChannelTestDeliveryTransport } from "@/platform/omni-comms/admin/hooks/useChannelTestDeliveryTransport";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
 import { useOmniCommsSelectedChannel } from "../hooks/useOmniCommsChannelParam";
 import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
@@ -44,6 +45,7 @@ import { toastError } from "./channels/channelFormPrimitives";
 
 export const OmniCommsChannelsPage: React.FC = () => {
   const client = useOmniCommsRpcClient();
+  const deliveryTransport = useChannelTestDeliveryTransport();
   const { organizationId: orgId, organizationName, departmentId, departmentName } = useOmniCommsTenant();
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   // C4B — the shared Email readiness projection resolves policy state from the
@@ -206,12 +208,16 @@ export const OmniCommsChannelsPage: React.FC = () => {
           <ChannelTestCentreTab
             definition={definition} client={client} orgId={orgId}
             departmentId={departmentId} departmentName={departmentName}
+            deliveryTransport={deliveryTransport}
             onChanged={refreshTestCentre}
           />
 
         </TabsContent>
         <TabsContent value="diagnostics">
-          <ChannelDiagnosticsTab definition={definition} />
+          <ChannelDiagnosticsTab
+            definition={definition} client={client} orgId={orgId}
+            departmentId={departmentId}
+          />
         </TabsContent>
       </Tabs>
     </div>
