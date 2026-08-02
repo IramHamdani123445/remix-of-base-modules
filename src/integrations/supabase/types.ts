@@ -82312,12 +82312,15 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          data_origin: string
           department_id: string | null
           display_name: string
           event_definition_id: string | null
           from_address: string | null
           from_name: string | null
           id: string
+          identity_config: Json
+          identity_type: string | null
           organization_id: string
           print_config: Json | null
           reply_to_address: string | null
@@ -82335,12 +82338,15 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          data_origin?: string
           department_id?: string | null
           display_name: string
           event_definition_id?: string | null
           from_address?: string | null
           from_name?: string | null
           id?: string
+          identity_config?: Json
+          identity_type?: string | null
           organization_id: string
           print_config?: Json | null
           reply_to_address?: string | null
@@ -82358,12 +82364,15 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          data_origin?: string
           department_id?: string | null
           display_name?: string
           event_definition_id?: string | null
           from_address?: string | null
           from_name?: string | null
           id?: string
+          identity_config?: Json
+          identity_type?: string | null
           organization_id?: string
           print_config?: Json | null
           reply_to_address?: string | null
@@ -102797,6 +102806,40 @@ export type Database = {
         Args: { p_apply?: boolean; p_organization_code?: string }
         Returns: Json
       }
+      omni_comms_channel_identity_set_lifecycle: {
+        Args: {
+          p_action: string
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
+        }
+        Returns: string
+      }
+      omni_comms_channel_identity_summary: {
+        Args: {
+          p_channel?: string
+          p_department_id?: string
+          p_include_reference?: boolean
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_identity_upsert_draft: {
+        Args: {
+          p_channel: string
+          p_code: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_display_name: string
+          p_expected_updated_at: string
+          p_id: string
+          p_identity_config?: Json
+          p_identity_type: string
+          p_organization_id: string
+        }
+        Returns: string
+      }
       omni_comms_channel_provider_account_set_lifecycle: {
         Args: {
           p_action: string
@@ -103237,6 +103280,33 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_priv_channel_identity_lifecycle: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_channel_identity_upsert: {
+        Args: {
+          p_actor_id: string
+          p_channel: string
+          p_code: string
+          p_correlation_id: string
+          p_department_id: string
+          p_display_name: string
+          p_expected_updated_at: string
+          p_id: string
+          p_identity_config: Json
+          p_identity_type: string
+          p_organization_id: string
+        }
+        Returns: string
+      }
       omni_comms_priv_compute_checksum: {
         Args: {
           p_event_code: string
@@ -103339,6 +103409,10 @@ export type Database = {
       omni_comms_priv_next_event_sequence: {
         Args: { p_request_id: string }
         Returns: number
+      }
+      omni_comms_priv_normalize_identity_config: {
+        Args: { p_channel: string; p_config: Json; p_identity_type: string }
+        Returns: Json
       }
       omni_comms_priv_normalize_locale: {
         Args: { p_locale: string }
