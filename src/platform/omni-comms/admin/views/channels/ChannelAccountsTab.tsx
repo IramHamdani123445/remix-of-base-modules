@@ -574,11 +574,17 @@ const AccountFormDialog: React.FC<{
 
       <div className="space-y-3">
         <p className="text-sm font-medium">Credential references</p>
+        <p className="text-xs text-muted-foreground">
+          Resend references are restricted to{' '}
+          <code>^OMNI_COMMS_RESEND_[A-Z0-9]+(?:_[A-Z0-9]+)*$</code>. Each
+          installed provider declares its own accepted pattern below.
+        </p>
         {requirements.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Select a provider to see its credential requirements.
           </p>
         ) : (
+
           requirements.map((r) => (
             <div key={r.purpose} className="space-y-1">
               <Field
