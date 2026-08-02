@@ -318,3 +318,17 @@ FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_record_callback';
 \echo '== C7F.52 live delivery is still disabled everywhere =='
 SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7f_52
 FROM public.omni_comms_channel_setting WHERE live_delivery_enabled IS TRUE;
+
+\echo '== C7F.53 automatic pilot suspension records a valid release event type =='
+SELECT CASE WHEN prosrc ~ 'release_suspended' AND prosrc !~ E'\\bv_rel, ''suspended'''
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_53
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_suspend_pilot';
+
+\echo '== C7F.54 release event vocabulary accepts the suspension event type =='
+SELECT CASE WHEN pg_get_constraintdef(oid) ILIKE '%release_suspended%'
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_54
+FROM pg_constraint WHERE conname = 'omni_comms_release_event_type_chk';
+
+\echo '== C7F.55 no test fixture was retained by the executable runtime tests =='
+SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7f_55
+FROM public.omni_comms_request WHERE caller_module_code = 'omni_comms_c7_test';
