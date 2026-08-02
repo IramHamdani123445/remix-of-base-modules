@@ -126,7 +126,7 @@ describe('Omni-Comms Health page — Readiness', () => {
       ...M.plannedObjects.channelsSendersPreferences,
       ...M.plannedObjects.runtime,
     ];
-    expect(all).toHaveLength(31);
+    expect(all).toHaveLength(33);
     for (const entry of all) {
       expect(screen.getAllByText(entry.name).length).toBeGreaterThan(0);
     }
@@ -144,7 +144,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     const notCreated = all.filter(
       (o) => o.status === 'Registered in architecture catalogue — Not yet created',
     );
-    expect(notCreated.length + available.length).toBe(31);
+    expect(notCreated.length + available.length).toBe(33);
   });
 
   it('shows reserved edge functions as Not created and Available ones as Available', () => {

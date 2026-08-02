@@ -59,9 +59,9 @@ describe('Epic 1 — Story 5 final verification', () => {
     }
   });
 
-  it('registers exactly seven permanent routes and eight integrations', () => {
+  it('registers exactly seven permanent routes and nine integrations', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(8);
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(9);
     for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {
       expect(['reserved', 'reused', 'available']).toContain(String(i.status).toLowerCase());
     }
