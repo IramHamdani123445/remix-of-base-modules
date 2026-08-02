@@ -184,7 +184,7 @@ describe('C4B schema and migration', () => {
     expect(
       OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.name === 'omni_comms_channel_setting'),
     ).toHaveLength(1);
-    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(28);
+    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(30);
   });
 
   it('ships a rollback and a verifier script', () => {

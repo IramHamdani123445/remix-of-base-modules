@@ -100,8 +100,8 @@ describe('C5A — object registry', () => {
     expect(entries[0].name).toBe('omni_comms_channel_test_run');
   });
 
-  it('raises the approved object ceiling from 27 to 28', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(28);
+  it('raises the approved object ceiling from 27 to 28 (C5B raises it to 30)', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(30);
   });
 
   it('marks the test-run object AVAILABLE, runtime evidence, admin_rpc', () => {
