@@ -136,8 +136,9 @@ describe('C1 — URL channel and tab state', () => {
   it('11. old settings tab aliases to policies', () => {
     expect(resolveChannelWorkspaceTab('settings')).toBe('policies');
     expect(Object.keys(OMNI_COMMS_CHANNEL_TAB_ALIASES).sort()).toEqual([
-      'providers', 'senders', 'settings',
+      'senders', 'settings',
     ]);
+
   });
 
   it('24. existing deep links remain safe (accounts/bindings unchanged)', () => {
