@@ -1,18 +1,24 @@
 /**
- * Omni-Comms C1 — the ONE Email readiness projection.
+ * Omni-Comms C1 / C3B — the ONE Email readiness projection.
  *
  * Pure function shared by the Channel Catalogue card, the Email workspace
  * header and the Email Overview checklist so the three surfaces can never
  * disagree.
  *
- * Rules (permanent for C1):
+ * Rules (permanent for C1 + C3B):
  *   - Derived only from GENUINE records; reference/simulation records never
  *     contribute (see channelReferenceData.ts).
  *   - `summary.email_send_ready` is never consulted by the Channels UI.
  *   - Technical channel testing is not implemented, so the projection can
  *     never reach "Configuration complete".
+ *   - C3B adds endpoint checks. C3B performs no DNS lookup and no provider
+ *     verification call, so a sending domain can never become
+ *     `verified` from this screen, and no callback receiver exists.
  */
-import type { EmailConfigSummary } from '@/platform/omni-comms/application/channelManagementTypes';
+import type {
+  EmailConfigSummary,
+  EmailEndpointRow,
+} from '@/platform/omni-comms/application/channelManagementTypes';
 import { partitionEmailConfig, readinessCounts } from './channelReferenceData';
 
 export type EmailReadinessState = 'unknown' | 'incomplete' | 'prerequisites_met';
@@ -28,6 +34,29 @@ export const TECHNICAL_TEST_PENDING = 'Technical test pending';
 
 /** Technical channel testing is not implemented in C1. */
 export const EMAIL_TECHNICAL_TEST_IMPLEMENTED = false;
+
+/** C3B introduces no callback receiver route. */
+export const EMAIL_CALLBACK_RECEIVER_IMPLEMENTED = false;
+
+export const EMAIL_CALLBACK_RECEIVER_PENDING =
+  'Callback receiver not implemented';
+
+/**
+ * Genuine, operational Email endpoints only. Reference, draft, disabled and
+ * retired endpoint records never contribute to readiness.
+ */
+export function genuineActiveEmailEndpoints(
+  endpoints: readonly EmailEndpointRow[] | null | undefined,
+  endpointType: 'sending_domain' | 'event_callback',
+): EmailEndpointRow[] {
+  return (endpoints ?? []).filter(
+    (e) =>
+      e.endpoint_type === endpointType
+      && e.status === 'active'
+      && e.data_origin !== 'reference_seed',
+  );
+}
+
 
 export type EmailReadinessCheckState = 'met' | 'unmet' | 'not_implemented';
 
@@ -48,10 +77,17 @@ export interface EmailReadinessProjection {
   /** True when every required (non technical-test) check is met. */
   readonly prerequisitesMet: boolean;
   readonly technicalTestImplemented: boolean;
+  readonly callbackReceiverImplemented: boolean;
   readonly counts: {
     readonly accounts: number;
     readonly activeSenders: number;
     readonly activeVerifiedBindings: number;
+    /** C3B — genuine active sending-domain endpoints. */
+    readonly activeSendingDomains: number;
+    /** C3B — genuine active sending domains marked verified by a provider. */
+    readonly verifiedSendingDomains: number;
+    /** C3B — genuine active event-callback endpoints with the required secret. */
+    readonly activeEventCallbacks: number;
   };
 }
 
@@ -63,12 +99,26 @@ export function projectEmailReadiness(
     senders: summary?.sender_identities,
     bindings: summary?.bindings,
   });
-  const counts = readinessCounts(part);
+  const baseCounts = readinessCounts(part);
   const provider = summary?.provider ?? null;
   const setting = summary?.channel_setting ?? null;
   const verified = part.accounts.some((a) => a.verification_status === 'verified');
 
+  const domains = genuineActiveEmailEndpoints(summary?.endpoints, 'sending_domain');
+  const callbacks = genuineActiveEmailEndpoints(summary?.endpoints, 'event_callback');
+  const verifiedDomains = domains.filter((d) => d.verification_status === 'verified');
+  const signedCallbacks = callbacks.filter((c) =>
+    (c.secret_refs ?? []).some((s) => s.purpose === 'signing_secret' && Boolean(s.secret_ref)),
+  );
+  const counts = {
+    ...baseCounts,
+    activeSendingDomains: domains.length,
+    verifiedSendingDomains: verifiedDomains.length,
+    activeEventCallbacks: signedCallbacks.length,
+  };
+
   const yn = (ok: boolean): EmailReadinessCheckState => (ok ? 'met' : 'unmet');
+
 
   const checks: EmailReadinessCheck[] = [
     {
@@ -120,6 +170,36 @@ export function projectEmailReadiness(
         : 'Channel flag is disabled.',
     },
     {
+      key: 'sending_domain',
+      label: 'Active sending domain configured',
+      state: yn(counts.activeSendingDomains > 0),
+      detail: `${counts.activeSendingDomains} active sending domain endpoint(s).`,
+    },
+    {
+      key: 'sending_domain_verification',
+      label: 'Sending-domain provider verification',
+      state:
+        counts.verifiedSendingDomains > 0
+          ? 'met'
+          : 'not_implemented',
+      detail:
+        counts.verifiedSendingDomains > 0
+          ? `${counts.verifiedSendingDomains} domain(s) recorded as provider-verified.`
+          : 'Provider verification is not performed by this screen; no DNS or provider check runs here.',
+    },
+    {
+      key: 'event_callback',
+      label: 'Event callback configured with signing secret',
+      state: yn(counts.activeEventCallbacks > 0),
+      detail: `${counts.activeEventCallbacks} active event callback(s) with a signing secret reference.`,
+    },
+    {
+      key: 'callback_receiver',
+      label: 'Callback receiver route',
+      state: 'not_implemented',
+      detail: `${EMAIL_CALLBACK_RECEIVER_PENDING} — C3B stores callback configuration only.`,
+    },
+    {
       key: 'technical_test',
       label: 'Technical channel test',
       state: 'not_implemented',
@@ -128,7 +208,7 @@ export function projectEmailReadiness(
   ];
 
   const prerequisitesMet = checks
-    .filter((c) => c.key !== 'technical_test')
+    .filter((c) => c.state !== 'not_implemented')
     .every((c) => c.state === 'met');
 
   const state: EmailReadinessState = !summary
@@ -144,6 +224,7 @@ export function projectEmailReadiness(
     checks,
     prerequisitesMet: Boolean(summary) && prerequisitesMet,
     technicalTestImplemented: EMAIL_TECHNICAL_TEST_IMPLEMENTED,
+    callbackReceiverImplemented: EMAIL_CALLBACK_RECEIVER_IMPLEMENTED,
     counts,
   };
 }

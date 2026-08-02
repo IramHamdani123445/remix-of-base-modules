@@ -179,7 +179,7 @@ describe('C1 closure — one Email readiness projection', () => {
         bindings: [binding({ id: 'b9', sender_identity_id: 's9', provider_account_id: 'a9' })] as never,
       }),
     );
-    expect(synthetic.counts).toEqual({
+    expect(synthetic.counts).toMatchObject({
       accounts: 0,
       activeSenders: 0,
       activeVerifiedBindings: 0,
@@ -211,6 +211,25 @@ describe('C1 closure — one Email readiness projection', () => {
         provider_accounts: [acct()] as never,
         sender_identities: [sender()] as never,
         bindings: [binding()] as never,
+        // C3B — readiness now also requires genuine active endpoints.
+        endpoints: [
+          {
+            id: 'ep1', code: 'domain', display_name: 'Domain', channel: 'email',
+            endpoint_type: 'sending_domain', endpoint_config: { domain_name: 'mail.example.kn' },
+            provider_account_id: 'a1', department_id: null, status: 'active',
+            data_origin: 'user', verification_status: 'unverified', secret_refs: [],
+            updated_at: '2026-01-01T00:00:00Z',
+          },
+          {
+            id: 'ep2', code: 'cb', display_name: 'Callback', channel: 'email',
+            endpoint_type: 'event_callback',
+            endpoint_config: { callback_url: 'https://example.gov.kn/hook' },
+            provider_account_id: 'a1', department_id: null, status: 'active',
+            data_origin: 'user', verification_status: 'unverified',
+            secret_refs: [{ purpose: 'signing_secret', secret_ref: 'OMNI_COMMS_EMAIL_CB' }],
+            updated_at: '2026-01-01T00:00:00Z',
+          },
+        ] as never,
       }),
     );
     expect(complete.prerequisitesMet).toBe(true);

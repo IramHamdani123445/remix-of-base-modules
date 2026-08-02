@@ -86,6 +86,26 @@ export interface ChannelSettingRow {
   updated_at: string;
 }
 
+/**
+ * C3B — Email endpoint projection returned by the Email configuration summary.
+ * Carries endpoint secret reference NAMES only, never a credential value.
+ */
+export interface EmailEndpointRow {
+  id: string;
+  code: string;
+  display_name: string;
+  channel: 'email';
+  endpoint_type: 'sending_domain' | 'event_callback';
+  endpoint_config: Record<string, unknown>;
+  provider_account_id: string | null;
+  department_id: string | null;
+  status: 'draft' | 'active' | 'disabled' | 'retired';
+  data_origin: 'system_seed' | 'user' | 'reference_seed';
+  verification_status: VerificationStatus;
+  secret_refs: { purpose: string; secret_ref: string }[];
+  updated_at: string;
+}
+
 export interface EmailConfigSummary {
   organization_id: string;
   provider: EmailProviderRow | null;
@@ -93,6 +113,8 @@ export interface EmailConfigSummary {
   sender_identities: SenderIdentityRow[];
   bindings: BindingRow[];
   channel_setting: ChannelSettingRow | null;
+  /** C3B — Email sending domains and event callbacks. */
+  endpoints?: EmailEndpointRow[];
   email_send_ready: boolean;
   generated_at: string;
 }

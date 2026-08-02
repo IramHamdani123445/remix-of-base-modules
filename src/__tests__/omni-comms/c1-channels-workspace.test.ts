@@ -261,11 +261,15 @@ describe('C1 — safety boundaries', () => {
     );
   });
 
-  it('endpoints tab is a shell only', () => {
+  it('endpoints tab performs no external call (C3B configuration only)', () => {
     const src = read(`${DIR}/ChannelEndpointsTab.tsx`);
-    expect(src).toContain('Configuration model not implemented in C1');
-    expect(src).not.toContain('rpc(');
+    // C3B replaced the C1 shell with a configuration screen. It still must not
+    // contact DNS, a provider or a callback URL.
+    expect(src).toContain('No DNS lookup, provider call or');
+    expect(src).not.toMatch(/\bfetch\(/);
+    expect(src).not.toMatch(/from ['"]resend['"]/);
   });
+
 
   it('diagnostics implements no queries', () => {
     const src = read(`${DIR}/ChannelDiagnosticsTab.tsx`);
