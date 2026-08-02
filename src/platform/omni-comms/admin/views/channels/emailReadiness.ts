@@ -33,6 +33,7 @@ import type {
   ChannelTestDeliveryDiagnostics,
 } from '@/platform/omni-comms/application/channelTestDeliveryTypes';
 import {
+  hasVerifiedCallbackEvidence,
   isDeliveryCurrent,
   latestDelivery,
 } from '@/platform/omni-comms/application/channelTestDeliveryTypes';
