@@ -115,8 +115,14 @@ Deno.serve(async (req) => {
   });
   const auth = await userClient.rpc("omni_comms_dispatch_tick_authorize");
   if (auth.error) {
-    return json({ error: "OC403", detail: auth.error.message }, 403);
+    // Bounded browser-facing detail only. The raw database error may embed
+    // identifiers or values and is never returned or logged.
+    console.error(
+      `omni-comms-dispatch authorization_failed correlation=${correlationId ?? "none"}`,
+    );
+    return json({ error: "OC403", detail: "authorization_failed" }, 403);
   }
+
   const authz = (auth.data ?? {}) as Record<string, unknown>;
   if (authz.allowed !== true) {
     return json({ error: "OC403", detail: String(authz.code ?? "permission_denied") }, 403);
