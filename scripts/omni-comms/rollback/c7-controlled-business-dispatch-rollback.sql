@@ -62,8 +62,33 @@ UPDATE public.omni_comms_delivery_attempt
        lease_expires_at = NULL
  WHERE status IN ('started', 'dispatching', 'retry_scheduled');
 
+-- 2b. Explicitly suspend EVERY currently active controlled-pilot release that
+--     the dispatcher rollback affects. Removing the dispatcher must never
+--     leave a release advertising an active controlled pilot it can no longer
+--     honour.
+--
+--     The release-event ledger is append-only, so history is NEVER rewritten:
+--     suspension goes through the canonical private governance worker
+--     `omni_comms_priv_dispatch_suspend_pilot`, which records a new
+--     `suspended` release event and preserves every prior event.
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT id FROM public.omni_comms_channel_release_control
+     WHERE release_state = 'controlled_pilot'
+     ORDER BY id
+  LOOP
+    PERFORM public.omni_comms_priv_dispatch_suspend_pilot(
+      r.id,
+      'dispatcher_rollback',
+      'dispatcher_rolled_back');
+  END LOOP;
+END $$;
+
 -- 3. Remove the C7 dispatch RPCs (fail-closed: no claim surface remains).
 --    Signatures match the C7 Closure Correction exactly.
+
 DROP FUNCTION IF EXISTS public.omni_comms_priv_dispatch_claim_email(text, integer, text, text, jsonb, text);
 DROP FUNCTION IF EXISTS public.omni_comms_priv_dispatch_claim_email(text, integer, text, text);
 DROP FUNCTION IF EXISTS public.omni_comms_priv_dispatch_scheduler_tick(text, integer, text, text);
