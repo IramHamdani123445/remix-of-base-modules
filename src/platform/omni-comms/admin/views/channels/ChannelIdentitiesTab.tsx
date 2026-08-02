@@ -144,11 +144,17 @@ const GenericIdentitiesPanel: React.FC<{
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(() => blankForm(channel));
 
-  const load = useCallback(async () => {
+  /**
+   * C3A closure — reference identities are fetched ONLY when the authorised
+   * reference view is active. A normal load asks the server for genuine rows
+   * only, so reference rows are never delivered to the browser.
+   */
+  const load = useCallback(async (includeReference: boolean) => {
+    if (!orgId) return;
     setLoading(true);
     try {
       const res = await getChannelIdentitySummary(
-        client, orgId, channel, departmentId, true,
+        client, orgId, channel, departmentId, includeReference,
       );
       setSummary(res);
     } catch (e) {
@@ -159,15 +165,16 @@ const GenericIdentitiesPanel: React.FC<{
     }
   }, [client, orgId, channel, departmentId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(showReference); }, [load, showReference]);
 
   const refreshAll = useCallback(async () => {
-    await load();
+    await load(showReference);
     await onChanged();
-  }, [load, onChanged]);
+  }, [load, showReference, onChanged]);
 
   const genuine = summary?.identities ?? [];
   const reference = summary?.reference_identities ?? [];
+  const referenceCount = summary?.reference_identity_count ?? reference.length;
   const rows = useMemo(
     () => visibleRecords(genuine, reference, showReference),
     [genuine, reference, showReference],
