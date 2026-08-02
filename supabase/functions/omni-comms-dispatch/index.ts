@@ -147,9 +147,12 @@ Deno.serve(async (req) => {
     p_execution_context: "operator",
   });
   if (claimed.error) {
-    console.error("omni-comms-dispatch claim failed:", claimed.error.message);
-    return json({ error: "OC500", detail: claimed.error.message }, 500);
+    console.error(
+      `omni-comms-dispatch dispatch_claim_failed correlation=${correlationId ?? "none"}`,
+    );
+    return json({ error: "OC500", detail: "dispatch_claim_failed" }, 500);
   }
+
 
   const plan = (claimed.data ?? {}) as Record<string, unknown>;
   const claims = Array.isArray(plan.claims) ? (plan.claims as Record<string, unknown>[]) : [];
