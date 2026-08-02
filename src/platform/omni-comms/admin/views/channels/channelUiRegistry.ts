@@ -1,29 +1,31 @@
 /**
- * Omni-Comms C1 — typed frontend channel UI registry.
+ * Omni-Comms C1 — channel UI registry.
  *
- * SINGLE source of truth for the operator-facing channel catalogue rendered on
- * /admin/omnichannel-communications/channels.
+ * This module does NOT own the channel list. `domain/channelCatalogue.ts` is
+ * the single source of truth for stable channel identifiers, tab identifiers,
+ * schema-support state and build ownership. This registry only ENRICHES those
+ * domain descriptors with operator-facing copy, icons and empty-state text.
  *
  * Boundaries (permanent):
  *   - Pure metadata. No React, no RPC, no provider SDK, no send behaviour.
  *   - `planned` channels are fail-closed: no mutation controls are offered and
  *     the database schema is NOT extended in C1.
  */
-import type { OmniCommsChannel } from '@/platform/omni-comms/domain/channelCatalogue';
+import {
+  OMNI_COMMS_CHANNEL_CATALOGUE,
+  OMNI_COMMS_GENERIC_TABS,
+  type OmniCommsChannel,
+  type OmniCommsChannelDescriptor,
+  type OmniCommsGenericTab,
+} from '@/platform/omni-comms/domain/channelCatalogue';
 
-/** Workspace tab vocabulary (mirrors useOmniCommsTabParam). */
-export const CHANNEL_WORKSPACE_TABS = [
-  'overview',
-  'accounts',
-  'identities',
-  'endpoints',
-  'bindings',
-  'policies',
-  'test-centre',
-  'diagnostics',
-] as const;
+/**
+ * Workspace tab vocabulary — re-exported from the domain catalogue so exactly
+ * one vocabulary exists across the module.
+ */
+export const CHANNEL_WORKSPACE_TABS = OMNI_COMMS_GENERIC_TABS;
 
-export type ChannelWorkspaceTab = (typeof CHANNEL_WORKSPACE_TABS)[number];
+export type ChannelWorkspaceTab = OmniCommsGenericTab;
 
 export const CHANNEL_WORKSPACE_TAB_LABELS: Record<ChannelWorkspaceTab, string> = {
   overview: 'Overview',
@@ -37,7 +39,8 @@ export const CHANNEL_WORKSPACE_TAB_LABELS: Record<ChannelWorkspaceTab, string> =
 };
 
 /**
- * Implementation state as presented to operators.
+ * Implementation state as presented to operators. Derived from the domain
+ * descriptor — never independently declared here.
  *  - configuring     — real configuration surface is wired (email only in C1)
  *  - not_configured  — schema supports the channel, no surface yet
  *  - planned         — database extension required; nothing configurable
@@ -56,6 +59,13 @@ export const CHANNEL_IMPLEMENTATION_LABEL: Record<
   planned: 'Planned',
 };
 
+export function deriveImplementationState(
+  d: OmniCommsChannelDescriptor,
+): ChannelImplementationState {
+  if (d.implemented) return 'configuring';
+  return d.databaseSupported ? 'not_configured' : 'planned';
+}
+
 export interface ChannelAccountsCopy {
   /** What a "provider account" means for this channel. */
   readonly meaning: string;
@@ -65,30 +75,27 @@ export interface ChannelAccountsCopy {
   readonly futureBuild: string;
 }
 
-export interface ChannelUiDefinition {
-  readonly code: OmniCommsChannel;
+/** Operator-facing copy only. All structural fields come from the domain. */
+interface ChannelUiCopy {
   readonly name: string;
   readonly description: string;
-  /** lucide-react icon identifier. */
   readonly icon: string;
+  readonly statusText: string;
+  readonly accounts: ChannelAccountsCopy;
+  readonly identities: string;
+  readonly endpoints: readonly string[];
+  readonly bindings: string;
+}
+
+export interface ChannelUiDefinition extends ChannelUiCopy {
+  readonly code: OmniCommsChannel;
   readonly implementationState: ChannelImplementationState;
   /** Whether the CURRENT database schema supports this channel value. */
   readonly databaseSupported: boolean;
   readonly tabs: readonly ChannelWorkspaceTab[];
-  /** Short truthful status sentence shown on the catalogue card. */
-  readonly statusText: string;
-  readonly accounts: ChannelAccountsCopy;
-  /** Explanatory identity empty state. */
-  readonly identities: string;
-  /** Future endpoint responsibilities (UI shell only in C1). */
-  readonly endpoints: readonly string[];
-  /** Binding empty-state explanation. */
-  readonly bindings: string;
   /** Future policy fields — displayed, never saved, for non-email channels. */
   readonly policies: readonly string[];
 }
-
-const COMMON_TABS = [...CHANNEL_WORKSPACE_TABS] as ChannelWorkspaceTab[];
 
 const FUTURE_POLICY_FIELDS: readonly string[] = [
   'Enabled state',
@@ -102,16 +109,16 @@ const FUTURE_POLICY_FIELDS: readonly string[] = [
   'Cost controls',
 ];
 
-export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] = [
-  {
-    code: 'email',
+const NOT_CONFIGURED_STATUS = 'No configuration exists for this organisation yet.';
+const PLANNED_STATUS =
+  'Planned. Database extension required before this channel can be configured.';
+
+const COPY: Record<OmniCommsChannel, ChannelUiCopy> = {
+  email: {
     name: 'Email',
     description:
       'Transactional email configuration: provider account, sender identities, bindings and channel policy.',
     icon: 'Mail',
-    implementationState: 'configuring',
-    databaseSupported: true,
-    tabs: COMMON_TABS,
     statusText: 'Configuration in progress. Provider dispatch is not implemented.',
     accounts: {
       meaning:
@@ -127,17 +134,12 @@ export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] = [
       'Bounce and complaint callbacks',
     ],
     bindings: 'Sender identity → provider account → priority/fallback.',
-    policies: FUTURE_POLICY_FIELDS,
   },
-  {
-    code: 'sms',
+  sms: {
     name: 'SMS',
     description: 'Short message delivery to mobile numbers.',
     icon: 'MessageSquare',
-    implementationState: 'not_configured',
-    databaseSupported: true,
-    tabs: COMMON_TABS,
-    statusText: 'No configuration exists for this organisation yet.',
+    statusText: NOT_CONFIGURED_STATUS,
     accounts: {
       meaning:
         'A telecom or aggregator account that accepts outbound SMS on behalf of the organisation.',
@@ -147,45 +149,27 @@ export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] = [
     identities: 'Sender ID or originating number.',
     endpoints: ['Delivery receipt callback', 'Inbound SMS callback'],
     bindings: 'Identity → provider account → priority/fallback.',
-    policies: FUTURE_POLICY_FIELDS,
   },
-  {
-    code: 'whatsapp',
+  whatsapp: {
     name: 'WhatsApp',
     description: 'Template-governed WhatsApp Business messaging.',
     icon: 'MessagesSquare',
-    implementationState: 'not_configured',
-    databaseSupported: true,
-    tabs: COMMON_TABS,
-    statusText: 'No configuration exists for this organisation yet.',
+    statusText: NOT_CONFIGURED_STATUS,
     accounts: {
       meaning:
         'A WhatsApp Business account provisioned through Meta or an approved business solution provider.',
-      examples: [
-        'Meta WhatsApp Cloud API',
-        'Twilio WhatsApp',
-        'An approved BSP',
-      ],
+      examples: ['Meta WhatsApp Cloud API', 'Twilio WhatsApp', 'An approved BSP'],
       futureBuild: 'C8 — WhatsApp adapter',
     },
     identities: 'WhatsApp business number and phone-number ID.',
-    endpoints: [
-      'Meta/BSP webhook',
-      'Verify token',
-      'Callback signing secret',
-    ],
+    endpoints: ['Meta/BSP webhook', 'Verify token', 'Callback signing secret'],
     bindings: 'Identity → provider account → priority/fallback.',
-    policies: FUTURE_POLICY_FIELDS,
   },
-  {
-    code: 'push',
+  push: {
     name: 'Push Notifications',
     description: 'Mobile and web push notifications to registered devices.',
     icon: 'BellRing',
-    implementationState: 'not_configured',
-    databaseSupported: true,
-    tabs: COMMON_TABS,
-    statusText: 'No configuration exists for this organisation yet.',
+    statusText: NOT_CONFIGURED_STATUS,
     accounts: {
       meaning:
         'A push messaging project holding the credentials used to reach device tokens.',
@@ -195,17 +179,12 @@ export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] = [
     identities: 'Mobile or web application identity.',
     endpoints: ['Firebase/APNs application endpoint and credentials'],
     bindings: 'Identity → provider account → priority/fallback.',
-    policies: FUTURE_POLICY_FIELDS,
   },
-  {
-    code: 'in_app',
+  in_app: {
     name: 'In-App Notifications',
     description: 'Messages surfaced inside the product notification centre.',
     icon: 'Inbox',
-    implementationState: 'not_configured',
-    databaseSupported: true,
-    tabs: COMMON_TABS,
-    statusText: 'No configuration exists for this organisation yet.',
+    statusText: NOT_CONFIGURED_STATUS,
     accounts: {
       meaning:
         'An internal delivery account; no external provider contract is required.',
@@ -215,18 +194,12 @@ export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] = [
     identities: 'Application or system identity.',
     endpoints: ['Internal realtime/application endpoint'],
     bindings: 'Identity → provider account → priority/fallback.',
-    policies: FUTURE_POLICY_FIELDS,
   },
-  {
-    code: 'webhook',
+  webhook: {
     name: 'Webhooks',
     description: 'Machine-to-machine delivery to a configured remote endpoint.',
     icon: 'Webhook',
-    implementationState: 'planned',
-    databaseSupported: false,
-    tabs: COMMON_TABS,
-    statusText:
-      'Planned. Database extension required before this channel can be configured.',
+    statusText: PLANNED_STATUS,
     accounts: {
       meaning:
         'A destination system contract, including signing configuration and delivery credentials.',
@@ -236,17 +209,12 @@ export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] = [
     identities: 'Integration identity.',
     endpoints: ['Destination URL and signing configuration'],
     bindings: 'Identity → provider account → priority/fallback.',
-    policies: FUTURE_POLICY_FIELDS,
   },
-  {
-    code: 'print',
+  print: {
     name: 'Print and Correspondence',
     description: 'Physical letter production and archived correspondence.',
     icon: 'Printer',
-    implementationState: 'not_configured',
-    databaseSupported: true,
-    tabs: COMMON_TABS,
-    statusText: 'No configuration exists for this organisation yet.',
+    statusText: NOT_CONFIGURED_STATUS,
     accounts: {
       meaning:
         'A document rendering or print fulfilment service used to produce physical correspondence.',
@@ -256,18 +224,12 @@ export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] = [
     identities: 'Issuing authority and letterhead profile.',
     endpoints: ['Document renderer or print-service endpoint'],
     bindings: 'Identity → provider account → priority/fallback.',
-    policies: FUTURE_POLICY_FIELDS,
   },
-  {
-    code: 'voice',
+  voice: {
     name: 'Voice and IVR',
     description: 'Outbound voice and IVR notification calls.',
     icon: 'PhoneCall',
-    implementationState: 'planned',
-    databaseSupported: false,
-    tabs: COMMON_TABS,
-    statusText:
-      'Planned. Database extension required before this channel can be configured.',
+    statusText: PLANNED_STATUS,
     accounts: {
       meaning:
         'A voice carrier account permitted to place outbound calls for the organisation.',
@@ -277,9 +239,18 @@ export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] = [
     identities: 'Originating number and voice profile.',
     endpoints: ['IVR callbacks', 'Call-status callbacks'],
     bindings: 'Identity → provider account → priority/fallback.',
-    policies: FUTURE_POLICY_FIELDS,
   },
-] as const;
+};
+
+export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] =
+  OMNI_COMMS_CHANNEL_CATALOGUE.map((d) => ({
+    ...COPY[d.channel],
+    code: d.channel,
+    implementationState: deriveImplementationState(d),
+    databaseSupported: d.databaseSupported,
+    tabs: d.tabs,
+    policies: FUTURE_POLICY_FIELDS,
+  }));
 
 const BY_CODE = new Map<string, ChannelUiDefinition>(
   OMNI_COMMS_CHANNEL_UI_CATALOGUE.map((d) => [d.code, d]),
@@ -314,8 +285,8 @@ export function isTabDisabled(
 /** Structural self-check used by tests. */
 export function validateChannelUiCatalogue(): string[] {
   const problems: string[] = [];
-  if (OMNI_COMMS_CHANNEL_UI_CATALOGUE.length !== 8) {
-    problems.push('catalogue must declare exactly eight channels');
+  if (OMNI_COMMS_CHANNEL_UI_CATALOGUE.length !== OMNI_COMMS_CHANNEL_CATALOGUE.length) {
+    problems.push('UI catalogue must mirror the domain catalogue exactly');
   }
   for (const d of OMNI_COMMS_CHANNEL_UI_CATALOGUE) {
     if (d.implementationState === 'planned' && d.databaseSupported) {
@@ -325,6 +296,11 @@ export function validateChannelUiCatalogue(): string[] {
       problems.push('email must be presented as configuring');
     }
     if (d.tabs.length === 0) problems.push(`${d.code}: no tabs declared`);
+    for (const t of d.tabs) {
+      if (!(CHANNEL_WORKSPACE_TABS as readonly string[]).includes(t)) {
+        problems.push(`${d.code}: unknown tab ${t}`);
+      }
+    }
   }
   return problems;
 }

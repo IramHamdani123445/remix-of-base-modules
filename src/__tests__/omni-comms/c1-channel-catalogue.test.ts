@@ -5,14 +5,13 @@ import { describe, expect, it } from 'vitest';
 import {
   OMNI_COMMS_CHANNELS,
   OMNI_COMMS_CHANNEL_CATALOGUE,
-  OMNI_COMMS_DEFAULT_CHANNEL,
   OMNI_COMMS_GENERIC_TABS,
   channelSeedNamespace,
   getChannelDescriptor,
   getImplementedChannels,
   isOmniCommsChannel,
   isSeedKeyIsolatedTo,
-  resolveChannelDescriptor,
+  findChannelDescriptor,
   validateChannelCatalogue,
 } from '@/platform/omni-comms/domain/channelCatalogue';
 
@@ -68,7 +67,7 @@ describe('C1 — channel catalogue', () => {
     expect(getChannelDescriptor('in_app').tabs).toEqual([
       'overview',
       'policies',
-      'test',
+      'test-centre',
       'diagnostics',
     ]);
   });
@@ -81,20 +80,20 @@ describe('C1 — channel resolution', () => {
     expect(isOmniCommsChannel(null)).toBe(false);
   });
 
-  it('falls back to the default channel for unknown values', () => {
-    expect(resolveChannelDescriptor('fax').channel).toBe(OMNI_COMMS_DEFAULT_CHANNEL);
-    expect(resolveChannelDescriptor(null).channel).toBe('email');
-    expect(resolveChannelDescriptor(undefined).channel).toBe('email');
-    expect(resolveChannelDescriptor('').channel).toBe('email');
+  it('returns null (catalogue) for unknown or missing values', () => {
+    expect(findChannelDescriptor('fax')).toBeNull();
+    expect(findChannelDescriptor(null)).toBeNull();
+    expect(findChannelDescriptor(undefined)).toBeNull();
+    expect(findChannelDescriptor('')).toBeNull();
   });
 
   it('normalises case and whitespace', () => {
-    expect(resolveChannelDescriptor('  SMS ').channel).toBe('sms');
-    expect(resolveChannelDescriptor('WhatsApp').channel).toBe('whatsapp');
+    expect(findChannelDescriptor('  SMS ')?.channel).toBe('sms');
+    expect(findChannelDescriptor('WhatsApp')?.channel).toBe('whatsapp');
   });
 
   it('never throws for hostile input', () => {
-    expect(() => resolveChannelDescriptor('../../etc/passwd')).not.toThrow();
+    expect(() => findChannelDescriptor('../../etc/passwd')).not.toThrow();
   });
 });
 

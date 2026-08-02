@@ -28,6 +28,8 @@ export interface ChannelCatalogueCounts {
   /** Genuine active sender identities. */
   activeIdentities: number;
   readiness: string;
+  /** Supporting explanation (technical test pending). */
+  readinessExplanation?: string;
 }
 
 export interface ChannelCatalogueProps {
@@ -81,7 +83,14 @@ export const ChannelCatalogue: React.FC<ChannelCatalogueProps> = ({
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Readiness</dt>
-                <dd>{counts ? counts.readiness : 'Unknown'}</dd>
+                <dd>
+                  {counts ? counts.readiness : 'Unknown'}
+                  {counts?.readinessExplanation ? (
+                    <span className="block text-xs text-muted-foreground">
+                      {counts.readinessExplanation}
+                    </span>
+                  ) : null}
+                </dd>
               </div>
             </dl>
             <p className="text-xs text-muted-foreground">
