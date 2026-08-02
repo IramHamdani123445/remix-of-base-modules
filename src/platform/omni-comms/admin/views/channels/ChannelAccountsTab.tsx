@@ -649,10 +649,11 @@ const AdvancedEvidenceSection: React.FC<{
       <CardHeader>
         <CardTitle>Advanced — manual evidence</CardTitle>
         <CardDescription>
-          Manual configuration evidence is NOT authoritative. It never verifies
-          a provider, never contributes to readiness and can never activate an
-          account.
+          Manual health evidence is not authoritative. It never verifies a
+          provider, never contributes to readiness and can never activate an
+          account. Live delivery remains unavailable.
         </CardDescription>
+
       </CardHeader>
       <CardContent className="space-y-3">
         {accounts.map((a) => (
