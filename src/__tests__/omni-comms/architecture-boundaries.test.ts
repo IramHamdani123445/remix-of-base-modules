@@ -29,6 +29,14 @@ import {
   OMNI_COMMS_ARCHITECTURE_BASELINE,
 } from '@/platform/omni-comms/architecture';
 
+/**
+ * A full repository architecture scan reads ~6k source files. It is
+ * inherently expensive and fully deterministic, so these specific tests get an
+ * explicit generous budget instead of the 5s default. Assertions are unchanged.
+ */
+const REPO_SCAN_TIMEOUT_MS = 60_000;
+
+
 // ─── helpers ────────────────────────────────────────────────────────────
 function makeScan(files: ScannedFile[], extras: Partial<RepositoryScan> = {}): RepositoryScan {
   return {
@@ -491,7 +499,7 @@ describe('Rule 9 — OMNI_SEND_FACADE_BOUNDARY (Slice 2a: exactly one canonical 
       (v) => v.ruleId === 'OMNI_SEND_FACADE_BOUNDARY' && v.baselineStatus !== 'existing_baseline',
     );
     expect(facade).toHaveLength(0);
-  });
+  }, REPO_SCAN_TIMEOUT_MS);
 
   it('accepts the canonical façade path exporting sendCommunication', () => {
     const v = checkFacadeBoundary(
@@ -731,5 +739,6 @@ describe('Canonical repository run', () => {
     expect(unbaselined).toEqual([]);
     expect(summary.staleBaselineEntries).toBe(0);
     expect(summary.passed).toBe(true);
-  });
+  }, REPO_SCAN_TIMEOUT_MS);
+
 });

@@ -17,6 +17,14 @@ import {
 } from '@/platform/omni-comms/architecture/checks/checkTemplateLayoutBoundary';
 import { runArchitectureChecks } from '@/platform/omni-comms/architecture/runArchitectureChecks';
 
+/**
+ * A full repository architecture scan reads ~6k source files. It is
+ * inherently expensive and fully deterministic, so these specific tests get an
+ * explicit generous budget instead of the 5s default. Assertions are unchanged.
+ */
+const REPO_SCAN_TIMEOUT_MS = 60_000;
+
+
 const DIALOG = 'src/platform/omni-comms/admin/components/OmniCommsLayoutSelectionDialog.tsx';
 const scanOf = (content: string) => ({ files: [{ filePath: DIALOG, content }] } as never);
 
@@ -107,5 +115,5 @@ describe('Rule 15 — OMNI_TEMPLATE_LAYOUT_BOUNDARY', () => {
     const r = await runArchitectureChecks({});
     const layout = r.violations.filter((v) => v.ruleId === 'OMNI_TEMPLATE_LAYOUT_BOUNDARY' && v.baselineStatus === 'not_baselined');
     expect(layout).toEqual([]);
-  });
+  }, REPO_SCAN_TIMEOUT_MS);
 });

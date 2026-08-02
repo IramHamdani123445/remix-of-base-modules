@@ -4,6 +4,8 @@
  * These tests are pure. They never touch the database, never invoke an edge
  * function and never contact a provider.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   RELEASE_STATES,
@@ -419,5 +421,202 @@ describe('C6 — Email readiness', () => {
     const s = summary();
     expect(s.live_delivery_enabled).toBe(false);
     expect(s.business_dispatch_implemented).toBe(false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// C6 closure correction — SQL artefact evidence.
+//
+// These assertions read a small, fixed set of files once per suite. They never
+// open a database connection, never invoke an edge function and never contact
+// a provider.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('C6 closure — SQL artefact evidence', () => {
+  const repoRoot = path.resolve(__dirname, '..', '..', '..');
+  const readOnce = (() => {
+    const cache = new Map<string, string>();
+    return (rel: string): string => {
+      const hit = cache.get(rel);
+      if (hit !== undefined) return hit;
+      const content = fs.readFileSync(path.join(repoRoot, rel), 'utf8');
+      cache.set(rel, content);
+      return content;
+    };
+  })();
+
+  const migrationsDir = path.join(repoRoot, 'supabase', 'migrations');
+  const c6Sql = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .map((f) => fs.readFileSync(path.join(migrationsDir, f), 'utf8'))
+    .filter((s) => s.includes('omni_comms_channel_release') || s.includes('release_decision_snapshot'))
+    .join('\n');
+
+  const verifier = readOnce('scripts/omni-comms/verify-c6-release-control.sql');
+  const rollback = readOnce('scripts/omni-comms/rollback/c6-release-control-rollback.sql');
+
+  it('grants the decision oracle to service_role only', () => {
+    expect(c6Sql).toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.omni_comms_priv_channel_release_decision\([^)]*\) TO service_role/,
+    );
+    expect(c6Sql).toMatch(
+      /REVOKE ALL ON FUNCTION public\.omni_comms_priv_channel_release_decision\([^)]*\) FROM PUBLIC, anon, authenticated/,
+    );
+  });
+
+  it('never grants the decision oracle to anon or authenticated', () => {
+    expect(c6Sql).not.toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.omni_comms_priv_channel_release_decision[^;]*TO (anon|authenticated)/,
+    );
+  });
+
+  it('exposes no public decision oracle to the browser service', () => {
+    const service = readOnce(
+      'src/platform/omni-comms/application/channelReleaseControlService.ts',
+    );
+    expect(service).not.toContain('release_evaluate_decision');
+    expect(service).not.toContain('release_decision');
+    expect(c6Sql).toMatch(/DROP FUNCTION IF EXISTS public\.omni_comms_channel_release_evaluate_decision/);
+  });
+
+  it('declares every release snapshot column on the dispatch job', () => {
+    for (const col of [
+      'release_control_id',
+      'release_version_at_decision',
+      'release_state_at_decision',
+      'release_fingerprint_at_decision',
+      'release_expires_at_decision',
+      'release_decision_snapshot',
+      'release_decision_at',
+    ]) {
+      expect(c6Sql).toContain(col);
+    }
+    expect(c6Sql).toMatch(/ADD COLUMN IF NOT EXISTS release_decision_at timestamptz/);
+    expect(c6Sql).toMatch(/ALTER COLUMN release_decision_snapshot DROP NOT NULL/);
+  });
+
+  it('bounds the decision snapshot and excludes raw recipients and secrets', () => {
+    expect(c6Sql).toContain('omni_comms_priv_release_decision_snapshot_bounded');
+    expect(c6Sql).toContain('omni_comms_dispatch_job_release_snapshot_bounded');
+    expect(c6Sql).toMatch(/secret_ref\|secret_name\|api_key\|authorization/);
+    expect(c6Sql).toMatch(/length\(p_snapshot::text\) <= 8192/);
+  });
+
+  it('records the release expiry inside the decision evidence', () => {
+    expect(c6Sql).toMatch(/'release_expires_at', v_rel\.release_expires_at/);
+    expect(c6Sql).toMatch(/'certified_commit', v_rel\.approved_commit/);
+    expect(c6Sql).toMatch(/'deployed_revision_match', v_revision_match/);
+    expect(c6Sql).toMatch(/'prerequisite_codes', v_prereq_codes/);
+  });
+
+  it('rejects release-event update and delete with OC412', () => {
+    expect(c6Sql).toMatch(/BEFORE UPDATE OR DELETE ON public\.omni_comms_channel_release_event/);
+    expect(c6Sql).toMatch(/RAISE EXCEPTION 'OC412 immutable_release_event'/);
+  });
+
+  it('prevents even service_role from bypassing the immutable trigger', () => {
+    expect(c6Sql).toMatch(/including service_role/i);
+    expect(verifier).toContain('release_event_append_only_trigger');
+    expect(verifier).toContain('OC412 immutable_release_event');
+  });
+
+  it('verifies append-only through the trigger definition, not policy absence', () => {
+    expect(verifier).toContain('pg_get_triggerdef');
+    expect(verifier).toContain('BEFORE DELETE OR UPDATE');
+  });
+
+  it('carries a meaningful C5B preservation verifier', () => {
+    expect(verifier).not.toContain('count(*) >= 0');
+    for (const check of [
+      'c5b_tables_exist',
+      'c5b_immutability_triggers_exist',
+      'c5b_grants_intact',
+      'c6_functions_do_not_write_c5b',
+      'c5b_evidence_readable',
+    ]) {
+      expect(verifier).toContain(check);
+    }
+  });
+
+  it('keeps the rollback non-destructive for C5B and ends in ROLLBACK', () => {
+    expect(rollback.trimEnd().endsWith('ROLLBACK;')).toBe(true);
+    expect(rollback).not.toMatch(
+      /(DROP|DELETE FROM|TRUNCATE)[^\n;]*omni_comms_channel_test_(run|delivery)/i,
+    );
+    for (const col of [
+      'release_control_id',
+      'release_version_at_decision',
+      'release_state_at_decision',
+      'release_fingerprint_at_decision',
+      'release_expires_at_decision',
+      'release_decision_snapshot',
+      'release_decision_at',
+    ]) {
+      expect(rollback).toContain(`DROP COLUMN IF EXISTS ${col}`);
+    }
+  });
+
+  it('proves the prerequisite checklist contains every canonical gate', () => {
+    for (const code of [
+      'tenant_access',
+      'department_access',
+      'channel_supported',
+      'release_not_reference',
+      'effective_policy_present',
+      'policy_test_or_pilot_state',
+      'provider_present',
+      'provider_account_active',
+      'provider_credentials_complete',
+      'provider_credentials_verified',
+      'sender_identity_active',
+      'sending_domain_active',
+      'sending_domain_verified',
+      'callback_endpoint_active',
+      'binding_active',
+      'binding_provider_verified',
+      'current_preflight_passed',
+      'technical_provider_delivery_accepted',
+      'signed_delivery_callback_received',
+      'no_bounce_or_complaint_evidence',
+      'producer_binding_active',
+      'event_route_active',
+      'template_family_active',
+      'published_template_version_present',
+      'runtime_environment_known',
+      'runtime_certification_effective',
+      'deployed_revision_matches_certification',
+      'release_time_window_valid',
+      'release_volume_limits_valid',
+      'pilot_recipient_rules_present',
+      'live_delivery_legacy_flag_false',
+      'business_dispatch_not_implemented_c6',
+    ]) {
+      expect(c6Sql).toContain(`'${code}'`);
+    }
+  });
+
+  it('derives prerequisites from database state, not browser input', () => {
+    expect(c6Sql).toMatch(
+      /omni_comms_priv_channel_release_prerequisites\(\s*p_organization_id uuid,\s*p_department_id uuid,\s*p_channel text,\s*p_release_control_id uuid,\s*p_deployed_revision text/,
+    );
+  });
+
+  it('creates no normal delivery attempt and no runnable dispatch job in C6', () => {
+    expect(c6Sql).not.toMatch(/INSERT INTO public\.omni_comms_delivery_attempt/i);
+    expect(c6Sql).not.toMatch(/is_runnable\s*=\s*true/i);
+    expect(c6Sql).toMatch(/is_runnable = false/);
+    expect(verifier).toContain('jobs_remain_held');
+    expect(verifier).toContain('no_normal_delivery_attempt');
+  });
+
+  it('contacts no provider from the C6 edge boundary', () => {
+    const edge = readOnce('supabase/functions/omni-comms-release-control/index.ts');
+    expect(edge).not.toMatch(/api\.resend\.com|twilio|sendgrid|nodemailer/i);
+  });
+
+  it('keeps live delivery disabled', () => {
+    expect(verifier).toContain('live_delivery_disabled');
+    expect(EMAIL_BUSINESS_DISPATCH_IMPLEMENTED).toBe(false);
   });
 });
