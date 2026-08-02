@@ -81195,9 +81195,12 @@ export type Database = {
         Row: {
           channel: string
           channel_policy_config: Json
+          controlled_test_approval_expires_at: string | null
           controlled_test_approved_at: string | null
           controlled_test_approved_by: string | null
           controlled_test_delivery_enabled: boolean
+          controlled_test_max_deliveries: number
+          controlled_test_min_interval_seconds: number
           controlled_test_recipients: string[]
           cost_currency: string | null
           created_at: string
@@ -81227,9 +81230,12 @@ export type Database = {
         Insert: {
           channel: string
           channel_policy_config?: Json
+          controlled_test_approval_expires_at?: string | null
           controlled_test_approved_at?: string | null
           controlled_test_approved_by?: string | null
           controlled_test_delivery_enabled?: boolean
+          controlled_test_max_deliveries?: number
+          controlled_test_min_interval_seconds?: number
           controlled_test_recipients?: string[]
           cost_currency?: string | null
           created_at?: string
@@ -81259,9 +81265,12 @@ export type Database = {
         Update: {
           channel?: string
           channel_policy_config?: Json
+          controlled_test_approval_expires_at?: string | null
           controlled_test_approved_at?: string | null
           controlled_test_approved_by?: string | null
           controlled_test_delivery_enabled?: boolean
+          controlled_test_max_deliveries?: number
+          controlled_test_min_interval_seconds?: number
           controlled_test_recipients?: string[]
           cost_currency?: string | null
           created_at?: string
@@ -81307,9 +81316,12 @@ export type Database = {
       }
       omni_comms_channel_test_delivery: {
         Row: {
+          active_claim_token: string | null
+          attempt_count: number
           binding_id: string
           channel: string
           channel_endpoint_id: string | null
+          claimed_at: string | null
           completed_at: string | null
           configuration_fingerprint: string
           correlation_id: string | null
@@ -81327,7 +81339,9 @@ export type Database = {
           provider_account_id: string | null
           provider_code: string | null
           provider_id: string | null
+          provider_idempotency_key: string | null
           provider_message_id: string | null
+          provider_payload_hash: string | null
           provider_response: Json | null
           provider_status_code: number | null
           request_fingerprint: string
@@ -81343,9 +81357,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_claim_token?: string | null
+          attempt_count?: number
           binding_id: string
           channel: string
           channel_endpoint_id?: string | null
+          claimed_at?: string | null
           completed_at?: string | null
           configuration_fingerprint: string
           correlation_id?: string | null
@@ -81363,7 +81380,9 @@ export type Database = {
           provider_account_id?: string | null
           provider_code?: string | null
           provider_id?: string | null
+          provider_idempotency_key?: string | null
           provider_message_id?: string | null
+          provider_payload_hash?: string | null
           provider_response?: Json | null
           provider_status_code?: number | null
           request_fingerprint: string
@@ -81379,9 +81398,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_claim_token?: string | null
+          attempt_count?: number
           binding_id?: string
           channel?: string
           channel_endpoint_id?: string | null
+          claimed_at?: string | null
           completed_at?: string | null
           configuration_fingerprint?: string
           correlation_id?: string | null
@@ -81399,7 +81421,9 @@ export type Database = {
           provider_account_id?: string | null
           provider_code?: string | null
           provider_id?: string | null
+          provider_idempotency_key?: string | null
           provider_message_id?: string | null
+          provider_payload_hash?: string | null
           provider_response?: Json | null
           provider_status_code?: number | null
           request_fingerprint?: string
@@ -81420,6 +81444,77 @@ export type Database = {
             columns: ["test_run_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_channel_test_run"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_channel_test_delivery_attempt: {
+        Row: {
+          attempt_number: number
+          claim_token: string
+          claimed_by: string | null
+          completed_at: string | null
+          created_at: string
+          delivery_id: string
+          error_code: string | null
+          error_detail: string | null
+          id: string
+          organization_id: string
+          provider_idempotency_key: string
+          provider_message_id: string | null
+          provider_status_code: number | null
+          response_summary: Json
+          result_code: string | null
+          started_at: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_number: number
+          claim_token: string
+          claimed_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivery_id: string
+          error_code?: string | null
+          error_detail?: string | null
+          id?: string
+          organization_id: string
+          provider_idempotency_key: string
+          provider_message_id?: string | null
+          provider_status_code?: number | null
+          response_summary?: Json
+          result_code?: string | null
+          started_at?: string
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_number?: number
+          claim_token?: string
+          claimed_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          delivery_id?: string
+          error_code?: string | null
+          error_detail?: string | null
+          id?: string
+          organization_id?: string
+          provider_idempotency_key?: string
+          provider_message_id?: string | null
+          provider_status_code?: number | null
+          response_summary?: Json
+          result_code?: string | null
+          started_at?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_channel_test_delivery_attempt_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_test_delivery"
             referencedColumns: ["id"]
           },
         ]
@@ -103553,8 +103648,10 @@ export type Database = {
       }
       omni_comms_channel_test_delivery_prepare: {
         Args: {
+          p_body_text: string
           p_correlation_id?: string
           p_idempotency_key: string
+          p_subject: string
           p_target: string
           p_test_run_id: string
         }
@@ -103565,6 +103662,9 @@ export type Database = {
           p_channel?: string
           p_department_id?: string
           p_enabled?: boolean
+          p_expires_in_hours?: number
+          p_max_deliveries?: number
+          p_min_interval_seconds?: number
           p_organization_id: string
           p_recipients?: string[]
         }
@@ -104112,6 +104212,7 @@ export type Database = {
       }
       omni_comms_priv_channel_test_delivery_complete: {
         Args: {
+          p_claim_token: string
           p_delivery_id: string
           p_error_code?: string
           p_error_detail?: string
@@ -104140,6 +104241,54 @@ export type Database = {
           p_signature_verified?: boolean
         }
         Returns: Json
+      }
+      omni_comms_priv_channel_test_effective_policy: {
+        Args: {
+          p_channel: string
+          p_department_id: string
+          p_organization_id: string
+        }
+        Returns: {
+          channel: string
+          channel_policy_config: Json
+          controlled_test_approval_expires_at: string | null
+          controlled_test_approved_at: string | null
+          controlled_test_approved_by: string | null
+          controlled_test_delivery_enabled: boolean
+          controlled_test_max_deliveries: number
+          controlled_test_min_interval_seconds: number
+          controlled_test_recipients: string[]
+          cost_currency: string | null
+          created_at: string
+          created_by: string | null
+          daily_cost_limit_minor: number | null
+          data_origin: string
+          department_id: string | null
+          department_override_enabled: boolean
+          enabled: boolean
+          id: string
+          live_delivery_enabled: boolean
+          max_recipients_per_request: number | null
+          operational_state: string
+          organization_id: string
+          per_day_limit: number | null
+          per_message_cost_limit_minor: number | null
+          per_minute_limit: number | null
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          quiet_hours_timezone: string | null
+          request_timeout_seconds: number | null
+          retention_days: number | null
+          retry_profile: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "omni_comms_channel_setting"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       omni_comms_priv_channel_test_normalize_payload: {
         Args: { p_channel: string; p_payload: Json }

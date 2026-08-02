@@ -397,6 +397,8 @@ export const ChannelTestCentreTab: React.FC<{
           channel="email"
           bindingId={bindingId}
           target={target}
+          subject={content.subject}
+          bodyText={content.body}
           run={currentRun}
           runIsCurrent={!currentStale}
           configurationFingerprint={summary?.configuration_fingerprint ?? null}

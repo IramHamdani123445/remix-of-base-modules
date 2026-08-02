@@ -291,6 +291,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Channels C5B — Controlled test delivery',
   },
   {
+    name: 'omni_comms_channel_test_delivery_attempt',
+    category: 'runtime',
+    epic: 4,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Immutable per-attempt provider dispatch ledger for approved technical test deliveries. Each row records one atomic claim and its terminal outcome, including transport uncertainty, so a bounded retry can never hide a duplicate send.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C5B Closure — Retry-safe controlled delivery',
+  },
+  {
     name: 'omni_comms_webhook_event',
     category: 'runtime',
     epic: 6,

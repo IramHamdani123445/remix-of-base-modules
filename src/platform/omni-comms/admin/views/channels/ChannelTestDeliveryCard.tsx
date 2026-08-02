@@ -34,8 +34,11 @@ import {
   CONTROLLED_DELIVERY_NOTICE,
   DELIVERY_STATUS_LABEL,
   deliveryOutcome,
+  isApprovalActive,
+  isDeliveryRetryable,
   latestDelivery,
   MAX_APPROVED_TEST_RECIPIENTS,
+  MAX_DELIVERY_ATTEMPTS,
   type ChannelTestDelivery,
   type ChannelTestDeliveryDiagnostics,
 } from '@/platform/omni-comms/application/channelTestDeliveryTypes';
@@ -47,9 +50,13 @@ import { Detail, Field, toastError } from './channelFormPrimitives';
 
 export const DELIVERY_SAFETY_BULLETS: readonly string[] = [
   'One real technical email is sent to an approved test address only.',
+  'The subject and body must be the exact content that passed the preflight.',
   'The live sending path is not used and live delivery stays switched off.',
   'The provider credential never reaches the browser.',
-  'Recipient, sender, provider outcome and callbacks are recorded permanently.',
+  'Each attempt carries a persistent provider idempotency key, so a retry '
+  + 'cannot produce a second send.',
+  'Recipient, sender, every attempt, the provider outcome and callbacks are '
+  + 'recorded permanently.',
 ] as const;
 
 export function newDeliveryIdempotencyKey(): string {
@@ -60,21 +67,33 @@ export function newDeliveryIdempotencyKey(): string {
 /** Mirrors the database gate so the operator sees the blocking reason. */
 export function deliveryBlockReason(input: {
   canConfigure: boolean;
+  canExecute?: boolean;
   approvalEnabled: boolean;
+  approvalActive?: boolean;
   approvedRecipients: readonly string[];
   target: string;
   run: ChannelTestRun | null;
   runIsCurrent: boolean;
+  attemptsExhausted?: boolean;
 }): string | null {
+  if (input.canExecute === false) {
+    return 'You do not have the Omni-Comms operate capability.';
+  }
   if (!input.canConfigure) return 'You do not have the Omni-Comms configure capability.';
   if (!input.run) return 'Run a configuration preflight for this binding first.';
   if (input.run.status !== 'passed') return 'The latest configuration preflight did not pass.';
   if (!input.runIsCurrent) return 'The configuration changed — run the preflight again.';
   if (!input.approvalEnabled) return 'Provider test delivery is not approved for this scope.';
+  if (input.approvalActive === false) {
+    return 'The provider test delivery approval has expired — approve it again.';
+  }
   const target = input.target.trim().toLowerCase();
   if (!target) return 'Enter the approved test address used for the preflight.';
   if (!input.approvedRecipients.some((r) => r.toLowerCase() === target)) {
     return 'This address is not on the approved technical test list.';
+  }
+  if (input.attemptsExhausted) {
+    return `This delivery has used all ${MAX_DELIVERY_ATTEMPTS} permitted provider attempts.`;
   }
   return null;
 }
@@ -108,6 +127,27 @@ const DeliveryEvidence: React.FC<{ delivery: ChannelTestDelivery }> = ({ deliver
       ) : null}
       <div>
         <p className="text-xs font-medium uppercase text-muted-foreground mb-1">
+          Provider attempts
+        </p>
+        {(delivery.attempts ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">No provider attempt recorded.</p>
+        ) : (
+          <ul className="space-y-1">
+            {(delivery.attempts ?? []).map((a) => (
+              <li key={a.id} className="text-xs" data-testid="omni-comms-test-delivery-attempt">
+                <Badge variant="outline" className="mr-2">#{a.attempt_number}</Badge>
+                {a.state}
+                {a.provider_status_code ? ` · HTTP ${a.provider_status_code}` : ''}
+                {a.error_code ? ` · ${a.error_code}` : ''}
+                {' · '}
+                {new Date(a.started_at).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div>
+        <p className="text-xs font-medium uppercase text-muted-foreground mb-1">
           Provider callbacks
         </p>
         {delivery.events.length === 0 ? (
@@ -138,13 +178,16 @@ export const ChannelTestDeliveryCard: React.FC<{
   channel: TestCentreChannel;
   bindingId: string;
   target: string;
+  /** C5B — must be the exact content that passed the preflight. */
+  subject?: string;
+  bodyText?: string;
   run: ChannelTestRun | null;
   runIsCurrent: boolean;
   configurationFingerprint?: string | null;
   onChanged?: () => void;
 }> = ({
   client, transport, orgId, departmentId, channel, bindingId, target, run,
-  runIsCurrent, onChanged,
+  subject = '', bodyText = '', runIsCurrent, onChanged,
 }) => {
   const [diagnostics, setDiagnostics] = useState<ChannelTestDeliveryDiagnostics | null>(null);
   const [loading, setLoading] = useState(false);
@@ -152,7 +195,9 @@ export const ChannelTestDeliveryCard: React.FC<{
   const [saving, setSaving] = useState(false);
   const [recipientsText, setRecipientsText] = useState('');
   const [approvalEnabled, setApprovalEnabled] = useState(false);
-  const [subject, setSubject] = useState('Omni-Comms channel test');
+  const [expiresInHours, setExpiresInHours] = useState('4');
+  const [maxDeliveries, setMaxDeliveries] = useState('5');
+  const [minIntervalSeconds, setMinIntervalSeconds] = useState('60');
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() => newDeliveryIdempotencyKey());
   const [lastDelivery, setLastDelivery] = useState<ChannelTestDelivery | null>(null);
 
@@ -165,6 +210,12 @@ export const ChannelTestDeliveryCard: React.FC<{
       setDiagnostics(d);
       setApprovalEnabled(d.controlled_test_delivery_enabled);
       setRecipientsText(d.controlled_test_recipients.join(', '));
+      if (typeof d.controlled_test_max_deliveries === 'number') {
+        setMaxDeliveries(String(d.controlled_test_max_deliveries));
+      }
+      if (typeof d.controlled_test_min_interval_seconds === 'number') {
+        setMinIntervalSeconds(String(d.controlled_test_min_interval_seconds));
+      }
     } catch (e) {
       toastError(e, 'Failed to load provider test delivery status');
     } finally {
@@ -176,17 +227,26 @@ export const ChannelTestDeliveryCard: React.FC<{
 
   const approvedRecipients = diagnostics?.controlled_test_recipients ?? [];
   const canConfigure = diagnostics?.can_configure ?? false;
+  const canExecute = diagnostics?.can_execute ?? true;
+  const current = lastDelivery ?? latestDelivery(diagnostics, bindingId);
+  const attemptsUsed = current?.attempts?.length ?? 0;
 
   const blockReason = useMemo(
     () => deliveryBlockReason({
       canConfigure,
+      canExecute,
       approvalEnabled: diagnostics?.controlled_test_delivery_enabled ?? false,
+      approvalActive: diagnostics ? isApprovalActive(diagnostics) : false,
       approvedRecipients,
       target,
       run,
       runIsCurrent,
+      attemptsExhausted: attemptsUsed >= MAX_DELIVERY_ATTEMPTS,
     }),
-    [canConfigure, diagnostics, approvedRecipients, target, run, runIsCurrent],
+    [
+      canConfigure, canExecute, diagnostics, approvedRecipients, target, run,
+      runIsCurrent, attemptsUsed,
+    ],
   );
 
   const onSaveApproval = useCallback(async () => {
@@ -202,6 +262,9 @@ export const ChannelTestDeliveryCard: React.FC<{
         channel,
         enabled: approvalEnabled,
         recipients,
+        expiresInHours: Number(expiresInHours) || 4,
+        maxDeliveries: Number(maxDeliveries) || 5,
+        minIntervalSeconds: Number(minIntervalSeconds) || 60,
       });
       toast.success(
         res.controlled_test_delivery_enabled
@@ -215,7 +278,10 @@ export const ChannelTestDeliveryCard: React.FC<{
     } finally {
       setSaving(false);
     }
-  }, [client, orgId, departmentId, channel, approvalEnabled, recipientsText, refresh, onChanged]);
+  }, [
+    client, orgId, departmentId, channel, approvalEnabled, recipientsText,
+    expiresInHours, maxDeliveries, minIntervalSeconds, refresh, onChanged,
+  ]);
 
   const onSend = useCallback(async () => {
     if (!run) return;
@@ -226,6 +292,7 @@ export const ChannelTestDeliveryCard: React.FC<{
         target,
         idempotencyKey,
         subject,
+        bodyText,
       });
       setLastDelivery(res.delivery);
       toast.success(
@@ -233,7 +300,10 @@ export const ChannelTestDeliveryCard: React.FC<{
           ? 'Existing delivery evidence returned — nothing was sent again.'
           : res.delivery?.status === 'accepted'
             ? 'The provider accepted the technical test message.'
-            : 'The provider did not accept the test message. See the evidence below.',
+            : res.delivery?.status === 'outcome_unknown'
+              ? 'The provider outcome is unknown. A bounded retry reuses the same '
+                + 'idempotency key and cannot send twice.'
+              : 'The provider did not accept the test message. See the evidence below.',
       );
       await refresh();
       onChanged?.();
@@ -243,9 +313,10 @@ export const ChannelTestDeliveryCard: React.FC<{
     } finally {
       setSending(false);
     }
-  }, [transport, run, target, idempotencyKey, subject, refresh, onChanged]);
+  }, [transport, run, target, idempotencyKey, subject, bodyText, refresh, onChanged]);
 
-  const current = lastDelivery ?? latestDelivery(diagnostics, bindingId);
+  const retryable = current ? isDeliveryRetryable(current) : false;
+
 
   return (
     <Card data-testid="omni-comms-test-delivery">
@@ -288,6 +359,33 @@ export const ChannelTestDeliveryCard: React.FC<{
             onChange={setRecipientsText}
             placeholder="qa.mailbox@example.com"
           />
+          <div className="grid gap-3 md:grid-cols-3">
+            <Field
+              label="Approval window (hours, max 24)"
+              value={expiresInHours}
+              onChange={setExpiresInHours}
+              placeholder="4"
+            />
+            <Field
+              label="Maximum deliveries (1–20)"
+              value={maxDeliveries}
+              onChange={setMaxDeliveries}
+              placeholder="5"
+            />
+            <Field
+              label="Minimum spacing (seconds, 30–3600)"
+              value={minIntervalSeconds}
+              onChange={setMinIntervalSeconds}
+              placeholder="60"
+            />
+          </div>
+          {diagnostics?.controlled_test_approval_expires_at ? (
+            <p className="text-xs text-muted-foreground" data-testid="omni-comms-test-delivery-approval-expiry">
+              Approval expires{' '}
+              {new Date(diagnostics.controlled_test_approval_expires_at).toLocaleString()}
+              {isApprovalActive(diagnostics) ? '' : ' — expired'}
+            </p>
+          ) : null}
           <Button
             size="sm"
             variant="secondary"
@@ -298,20 +396,20 @@ export const ChannelTestDeliveryCard: React.FC<{
           </Button>
         </div>
 
-        <Field
-          label="Test message subject"
-          value={subject}
-          onChange={setSubject}
-          placeholder="Omni-Comms channel test"
-        />
+        <div className="grid gap-3 md:grid-cols-2" data-testid="omni-comms-test-delivery-content">
+          <Detail label="Preflight subject" value={subject || '—'} />
+          <Detail label="Preflight body" value={bodyText || '—'} />
+        </div>
         <p className="text-xs text-muted-foreground">
-          The subject is prefixed with [TEST] and the body states plainly that the
-          message is a technical test with no personal or case information.
+          The provider message must carry exactly the subject and body that passed the
+          configuration preflight; the server rejects any other content.
         </p>
 
         <div className="text-xs text-muted-foreground" data-testid="omni-comms-test-delivery-idempotency">
           Delivery key: <span className="font-mono">{idempotencyKey}</span>
-          {' — retrying the same delivery returns the existing evidence without sending again.'}
+          {' — retrying the same delivery reuses the provider idempotency key, so it '}
+          {'returns the existing evidence instead of sending again.'}
+          {current ? ` Attempts used: ${attemptsUsed}/${MAX_DELIVERY_ATTEMPTS}.` : ''}
         </div>
 
         {blockReason ? (
@@ -329,7 +427,11 @@ export const ChannelTestDeliveryCard: React.FC<{
             data-testid="omni-comms-test-delivery-send"
           >
             <Send className="h-4 w-4 mr-1" />
-            {sending ? 'Sending test message…' : 'Send provider test message'}
+            {sending
+              ? 'Sending test message…'
+              : retryable
+                ? 'Retry safely (same idempotency key)'
+                : 'Send provider test message'}
           </Button>
           <Button
             variant="secondary"

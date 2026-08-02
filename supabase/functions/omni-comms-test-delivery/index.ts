@@ -4,18 +4,22 @@
 // it may do so only for an operator-approved technical test:
 //
 //   1. The caller must be authenticated; the database RPC re-checks the
-//      Omni-Comms configure capability and tenant access server-side.
+//      Omni-Comms operate capability and tenant access server-side.
 //   2. `omni_comms_channel_test_delivery_prepare` authorises the attempt:
-//      current PASSED configuration preflight, same recipient as the
-//      preflight, genuine active binding / verified account / active identity,
-//      effective genuine policy in test_only or pilot_ready, test delivery
-//      explicitly approved, recipient on the approved list. Live delivery
-//      remains disabled and is never consulted here.
+//      current PASSED configuration preflight, same recipient AND same content
+//      as the preflight, genuine active binding / verified account / active
+//      identity, C4B effective genuine policy in test_only or pilot_ready with
+//      live delivery disabled, a live (non-expired) approval, an approved
+//      recipient, and the approved volume / pacing budget. The RPC also claims
+//      the delivery atomically and returns a claim token.
 //   3. Only then is the provider called, using a secret whose NAME comes from
 //      configuration; the secret VALUE is read from Edge Function Secrets and
-//      is never returned, logged, or stored.
+//      is never returned, logged, or stored. The provider request carries a
+//      persistent `Idempotency-Key`, so a bounded retry cannot double-send.
 //   4. The outcome is written back to the immutable delivery ledger through a
-//      service_role-only RPC.
+//      service_role-only RPC, bound to the claim token so a stale worker can
+//      never overwrite a newer result. Transport uncertainty is recorded as
+//      `outcome_unknown`, never as a definite failure.
 //
 // No Omni-Comms runtime request, message, dispatch job or delivery attempt is
 // created. This path never touches the sending spine.
@@ -38,11 +42,11 @@ const SECRET_REF_PATTERN = /^OMNI_COMMS_RESEND_[A-Z0-9]+(_[A-Z0-9]+)*$/;
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
-/** Every controlled test message carries an unmistakable subject prefix. */
-const TEST_SUBJECT_PREFIX = "[TEST]";
-
 const MAX_SUBJECT = 180;
 const MAX_BODY = 4000;
+
+/** Bounded transport budget; a timeout is uncertainty, never a failure. */
+const PROVIDER_TIMEOUT_MS = 20000;
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -78,6 +82,11 @@ function redactProviderResponse(raw: unknown): Record<string, unknown> {
   return out;
 }
 
+/** A provider status that may still have produced a send. */
+function isUncertainStatus(status: number): boolean {
+  return status === 408 || status === 429 || status >= 500;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return fail("method_not_allowed", "Use POST.", 405);
@@ -106,8 +115,8 @@ Deno.serve(async (req) => {
     typeof body.correlationId === "string" && body.correlationId.trim() !== ""
       ? body.correlationId.trim()
       : null;
-  const rawSubject = typeof body.subject === "string" ? body.subject.trim() : "";
-  const rawBody = typeof body.bodyText === "string" ? body.bodyText.trim() : "";
+  const rawSubject = typeof body.subject === "string" ? body.subject : "";
+  const rawBody = typeof body.bodyText === "string" ? body.bodyText : "";
 
   if (!testRunId || !target || !idempotencyKey) {
     return fail("OC422", "invalid_input", 400);
@@ -121,11 +130,14 @@ Deno.serve(async (req) => {
   });
   const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // 1. Authorise + reserve. All policy decisions are made in the database.
+  // 1. Authorise + atomically claim. All policy decisions are made in the
+  //    database, including that the content matches the passed preflight.
   const prepared = await userClient.rpc("omni_comms_channel_test_delivery_prepare", {
     p_test_run_id: testRunId,
     p_target: target,
     p_idempotency_key: idempotencyKey,
+    p_subject: rawSubject,
+    p_body_text: rawBody,
     p_correlation_id: correlationId,
   });
   if (prepared.error) {
@@ -137,9 +149,11 @@ Deno.serve(async (req) => {
   const deliveryId = String(plan.delivery_id ?? "");
   const dispatchRequired = plan.dispatch_required === true;
   const replayed = plan.replayed === true;
+  const claimToken = typeof plan.claim_token === "string" ? plan.claim_token : "";
 
-  // 2. Replay of a completed attempt — the provider is NOT contacted again.
-  if (!dispatchRequired) {
+  // 2. Replay of a completed (or unclaimable) delivery — the provider is NOT
+  //    contacted again.
+  if (!dispatchRequired || !claimToken) {
     return json({ replayed, dispatched: false, delivery: plan.delivery ?? null });
   }
 
@@ -147,9 +161,21 @@ Deno.serve(async (req) => {
   const fromAddress = typeof plan.from_address === "string" ? plan.from_address : "";
   const fromName = typeof plan.from_name === "string" ? plan.from_name : "";
   const replyTo = typeof plan.reply_to_address === "string" ? plan.reply_to_address : "";
+  const providerIdempotencyKey =
+    typeof plan.provider_idempotency_key === "string" && plan.provider_idempotency_key
+      ? plan.provider_idempotency_key
+      : `omni-test/${deliveryId}`;
+  const subject =
+    typeof plan.provider_subject === "string" && plan.provider_subject
+      ? plan.provider_subject
+      : "[TEST] Omni-Comms channel test";
+  const providerText =
+    typeof plan.provider_body_text === "string" && plan.provider_body_text
+      ? plan.provider_body_text
+      : "This is a technical Omni-Comms channel test message.";
 
   const complete = async (
-    status: "accepted" | "failed",
+    status: "accepted" | "failed" | "outcome_unknown",
     resultCode: string,
     extra: Record<string, unknown> = {},
   ) => {
@@ -157,6 +183,7 @@ Deno.serve(async (req) => {
       "omni_comms_priv_channel_test_delivery_complete",
       {
         p_delivery_id: deliveryId,
+        p_claim_token: claimToken,
         p_status: status,
         p_result_code: resultCode,
         p_provider_message_id: extra.providerMessageId ?? null,
@@ -166,6 +193,14 @@ Deno.serve(async (req) => {
         p_error_detail: extra.errorDetail ?? null,
       },
     );
+    if (res.error) {
+      // A stale claim must never be treated as a delivery outcome.
+      console.error(
+        "omni-comms-test-delivery evidence write rejected:",
+        res.error.message,
+      );
+      return null;
+    }
     return res.data ?? null;
   };
 
@@ -193,29 +228,25 @@ Deno.serve(async (req) => {
     return json({ error: "OC409", detail: "from_address_missing", delivery }, 409);
   }
 
-  const subject = `${TEST_SUBJECT_PREFIX} ${
-    rawSubject || "Omni-Comms channel test"
-  }`.slice(0, MAX_SUBJECT + TEST_SUBJECT_PREFIX.length + 1);
-
-  const text = [
-    "This is a technical channel test message from the Omni-Comms Test Centre.",
-    "It contains no personal or case information and requires no action.",
-    "",
-    rawBody || "(no additional test content)",
-    "",
-    `Delivery reference: ${deliveryId}`,
-  ].join("\n");
+  const text = `${providerText}\n\nDelivery reference: ${deliveryId}`;
 
   const started = Date.now();
   let providerStatus: number | null = null;
   let providerBody: unknown = null;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+
   try {
     const res = await fetch(RESEND_ENDPOINT, {
       method: "POST",
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        // Persistent per-delivery key: a bounded retry of the SAME delivery
+        // can never produce a second provider send.
+        "Idempotency-Key": providerIdempotencyKey,
       },
       body: JSON.stringify({
         from: fromName ? `${fromName} <${fromAddress}>` : fromAddress,
@@ -234,17 +265,30 @@ Deno.serve(async (req) => {
         `omni-comms-test-delivery provider rejected [${res.status}]`,
         JSON.stringify(redacted),
       );
-      const delivery = await complete("failed", "provider_rejected", {
-        providerStatusCode: providerStatus,
-        providerResponse: redacted,
-        errorCode: typeof redacted.name === "string" ? redacted.name : "provider_error",
-        errorDetail: typeof redacted.message === "string" ? redacted.message : null,
-      });
+      // 5xx / 408 / 429 may still have produced a send: record uncertainty.
+      const uncertain = isUncertainStatus(res.status);
+      const delivery = await complete(
+        uncertain ? "outcome_unknown" : "failed",
+        uncertain ? "provider_outcome_unknown" : "provider_rejected",
+        {
+          providerStatusCode: providerStatus,
+          providerResponse: redacted,
+          errorCode: typeof redacted.name === "string"
+            ? redacted.name
+            : uncertain
+              ? "provider_outcome_unknown"
+              : "provider_error",
+          errorDetail: typeof redacted.message === "string" ? redacted.message : null,
+        },
+      );
       return json(
         {
-          error: "provider_rejected",
+          error: uncertain ? "provider_outcome_unknown" : "provider_rejected",
           status: providerStatus,
-          detail: redacted.message ?? "The provider rejected the test message.",
+          detail: redacted.message
+            ?? (uncertain
+              ? "The provider outcome is unknown. A safe retry is permitted."
+              : "The provider rejected the test message."),
           delivery,
         },
         res.status,
@@ -260,13 +304,24 @@ Deno.serve(async (req) => {
     });
     return json({ replayed: false, dispatched: true, delivery });
   } catch (e) {
-    const detail = e instanceof Error ? e.message : "provider request failed";
-    console.error("omni-comms-test-delivery transport failure:", detail);
-    const delivery = await complete("failed", "provider_unreachable", {
+    const aborted = e instanceof DOMException && e.name === "AbortError";
+    const detail = aborted
+      ? "provider request timed out"
+      : e instanceof Error
+        ? e.message
+        : "provider request failed";
+    console.error("omni-comms-test-delivery transport uncertainty:", detail);
+    // The request may have reached the provider — never assert failure.
+    const delivery = await complete("outcome_unknown", "provider_outcome_unknown", {
       providerStatusCode: providerStatus,
-      errorCode: "provider_unreachable",
+      errorCode: aborted ? "provider_timeout" : "provider_unreachable",
       errorDetail: detail,
     });
-    return json({ error: "provider_unreachable", detail, delivery }, 502);
+    return json(
+      { error: "provider_outcome_unknown", detail, delivery },
+      502,
+    );
+  } finally {
+    clearTimeout(timer);
   }
 });

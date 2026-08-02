@@ -33,6 +33,7 @@ import type {
   ChannelTestDeliveryDiagnostics,
 } from '@/platform/omni-comms/application/channelTestDeliveryTypes';
 import {
+  hasVerifiedCallbackEvidence,
   isDeliveryCurrent,
   latestDelivery,
 } from '@/platform/omni-comms/application/channelTestDeliveryTypes';
@@ -212,7 +213,13 @@ export function projectEmailReadiness(
     delivery,
     testCentre?.configuration_fingerprint ?? null,
   );
+  // C5B — only a CURRENT, terminal, accepted delivery proves provider delivery.
   const deliveryAccepted = deliveryCurrent && delivery?.status === 'accepted';
+  // C5B — callback evidence must be current AND signature-verified.
+  const callbackVerified = hasVerifiedCallbackEvidence(
+    delivery,
+    testCentre?.configuration_fingerprint ?? null,
+  );
 
   const yn = (ok: boolean): EmailReadinessCheckState => (ok ? 'met' : 'unmet');
 
@@ -318,10 +325,18 @@ export function projectEmailReadiness(
     {
       key: 'callback_receiver',
       label: 'Callback receiver route',
-      state: (delivery?.events.length ?? 0) > 0 ? 'met' : 'not_implemented',
-      detail: (delivery?.events.length ?? 0) > 0
-        ? `${delivery?.events.length} provider callback event(s) recorded against the latest test delivery.`
-        : `${EMAIL_CALLBACK_RECEIVER_PENDING} — no provider callback has been received yet.`,
+      state: callbackVerified
+        ? 'met'
+        : (delivery?.events.length ?? 0) > 0
+          ? 'unmet'
+          : 'not_implemented',
+      detail: callbackVerified
+        ? `${delivery?.events.filter((e) => e.signature_verified).length} signature-verified `
+          + 'provider callback event(s) recorded against the current configuration.'
+        : (delivery?.events.length ?? 0) > 0
+          ? 'Callback evidence exists but is stale or unverified — it does not '
+            + 'prove the current configuration.'
+          : `${EMAIL_CALLBACK_RECEIVER_PENDING} — no verified provider callback has been received yet.`,
     } as EmailReadinessCheck,
     {
       key: 'configuration_preflight',
@@ -355,7 +370,13 @@ export function projectEmailReadiness(
           : delivery.status === 'accepted'
             ? 'A provider test delivery was accepted, but the configuration has '
               + 'changed since. Run it again.'
-            : PROVIDER_DELIVERY_TEST_FAILED,
+            : delivery.status === 'outcome_unknown'
+              ? 'The last provider test delivery ended with an unknown outcome. '
+                + 'Retry it safely — the provider idempotency key prevents a '
+                + 'second send.'
+              : delivery.status === 'pending' || delivery.status === 'dispatching'
+                ? 'A provider test delivery is still in progress.'
+                : PROVIDER_DELIVERY_TEST_FAILED,
     } as EmailReadinessCheck,
   ];
 
