@@ -184,7 +184,11 @@ Deno.serve(async (req) => {
     });
     const gate = (hashGate.data ?? {}) as Record<string, unknown>;
     if (hashGate.error || gate.ok !== true) {
-      const gateCode = String(gate.code ?? hashGate.error?.message ?? "payload_hash_rejected");
+      // Bounded code only — a raw RPC message is never surfaced or stored.
+      const gateCode = BOUNDED_CODE.test(String(gate.code ?? ""))
+        ? String(gate.code)
+        : "payload_hash_rejected";
+
       const gateFailure = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
         p_attempt_id: attemptId,
         p_claim_token: claimToken,
