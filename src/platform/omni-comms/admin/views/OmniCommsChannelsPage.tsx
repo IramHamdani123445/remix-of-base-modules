@@ -47,6 +47,9 @@ export const OmniCommsChannelsPage: React.FC = () => {
   // C4B — the shared Email readiness projection resolves policy state from the
   // generic policy summary (genuine records only; reference never contributes).
   const [emailPolicy, setEmailPolicy] = useState<ChannelPolicySummary | null>(null);
+  // C5A — readiness requires a CURRENT passed configuration preflight. Loading
+  // this summary performs no send and contacts no provider.
+  const [testCentre, setTestCentre] = useState<ChannelTestCentreSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { selected, selectChannel, clearChannel } = useOmniCommsSelectedChannel();
@@ -57,7 +60,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [config, policy] = await Promise.all([
+      const [config, policy, test] = await Promise.all([
         getEmailConfigSummary(client, orgId),
         getChannelPolicySummary(client, {
           organizationId: orgId,
@@ -65,15 +68,19 @@ export const OmniCommsChannelsPage: React.FC = () => {
           channel: "email",
           includeReference: false,
         }),
+        getChannelTestCentreSummary(client, orgId, "email", departmentId ?? null),
       ]);
       setSummary(config);
       setEmailPolicy(policy);
+      setTestCentre(test);
     } catch (e) {
       toastError(e, "Failed to load email configuration");
     } finally {
       setLoading(false);
     }
   }, [client, orgId, departmentId]);
+
+  const refreshTestCentre = useCallback(() => { void refresh(); }, [refresh]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
