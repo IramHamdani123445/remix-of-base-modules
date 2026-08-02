@@ -77,6 +77,7 @@ export function isReferenceProviderAccount(row: ProviderAccountRow): boolean {
 
 
 export function isReferenceSenderIdentity(row: SenderIdentityRow): boolean {
+  if (row.data_origin) return isReferenceDataOrigin(row.data_origin);
   return isReferenceCode(row.code) || isReferenceAddress(row.from_address);
 }
 

@@ -50,6 +50,7 @@ import {
   identityChannelSupported,
   identityChannelValue,
   identityConfigSummary,
+  identityScopeLabel,
   IDENTITY_ACTIVATION_MEANING,
   OMNI_COMMS_IDENTITY_TYPES_BY_CHANNEL,
   OMNI_COMMS_IDENTITY_TYPE_LABEL,
@@ -144,11 +145,17 @@ const GenericIdentitiesPanel: React.FC<{
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<FormState>(() => blankForm(channel));
 
-  const load = useCallback(async () => {
+  /**
+   * C3A closure — reference identities are fetched ONLY when the authorised
+   * reference view is active. A normal load asks the server for genuine rows
+   * only, so reference rows are never delivered to the browser.
+   */
+  const load = useCallback(async (includeReference: boolean) => {
+    if (!orgId) return;
     setLoading(true);
     try {
       const res = await getChannelIdentitySummary(
-        client, orgId, channel, departmentId, true,
+        client, orgId, channel, departmentId, includeReference,
       );
       setSummary(res);
     } catch (e) {
@@ -159,15 +166,16 @@ const GenericIdentitiesPanel: React.FC<{
     }
   }, [client, orgId, channel, departmentId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(showReference); }, [load, showReference]);
 
   const refreshAll = useCallback(async () => {
-    await load();
+    await load(showReference);
     await onChanged();
-  }, [load, onChanged]);
+  }, [load, showReference, onChanged]);
 
   const genuine = summary?.identities ?? [];
   const reference = summary?.reference_identities ?? [];
+  const referenceCount = summary?.reference_identity_count ?? reference.length;
   const rows = useMemo(
     () => visibleRecords(genuine, reference, showReference),
     [genuine, reference, showReference],
@@ -192,7 +200,7 @@ const GenericIdentitiesPanel: React.FC<{
   return (
     <div className="space-y-4">
       <ReferenceDataControls
-        hiddenCount={reference.length}
+        hiddenCount={referenceCount}
         showReference={showReference}
         onToggle={setShowReference}
       />
@@ -206,7 +214,7 @@ const GenericIdentitiesPanel: React.FC<{
             </CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={() => void load(showReference)} disabled={loading}>
               <RefreshCcw className="h-4 w-4 mr-1" /> Refresh
             </Button>
             <Button size="sm" onClick={openCreate} data-testid="omni-comms-create-identity">
@@ -243,7 +251,6 @@ const GenericIdentitiesPanel: React.FC<{
                     key={row.id}
                     row={row}
                     client={client}
-                    departmentName={departmentName}
                     onEdit={() => openEdit(row)}
                     onChanged={refreshAll}
                   />
@@ -281,10 +288,9 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
 const IdentityRow: React.FC<{
   row: ChannelIdentityRow;
   client: Client;
-  departmentName: string | null;
   onEdit: () => void;
   onChanged: () => Promise<void> | void;
-}> = ({ row, client, departmentName, onEdit, onChanged }) => {
+}> = ({ row, client, onEdit, onChanged }) => {
   const [busy, setBusy] = useState(false);
   const isReference =
     row.data_origin === 'reference_seed'
@@ -332,7 +338,7 @@ const IdentityRow: React.FC<{
         {identityChannelValue(row)}
       </TableCell>
       <TableCell className="text-sm">
-        {row.department_id ? (departmentName ?? 'Department') : 'Organisation-wide'}
+        {identityScopeLabel(row)}
       </TableCell>
       <TableCell>
         <Badge variant={STATUS_VARIANT[row.status] ?? 'outline'}>{row.status}</Badge>

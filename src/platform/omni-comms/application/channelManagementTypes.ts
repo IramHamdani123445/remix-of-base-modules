@@ -7,7 +7,7 @@
 export type ProviderStatus = 'draft' | 'active' | 'retired';
 export type ProviderAccountStatus = 'draft' | 'active' | 'disabled' | 'retired';
 export type HealthState = 'unknown' | 'healthy' | 'degraded' | 'failed';
-export type SenderStatus = 'draft' | 'active' | 'retired';
+export type SenderStatus = 'draft' | 'active' | 'disabled' | 'retired';
 export type BindingStatus = 'draft' | 'active' | 'retired';
 export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'failed';
 export type CredentialCheckResult = 'healthy' | 'degraded' | 'failed';
@@ -56,6 +56,10 @@ export interface SenderIdentityRow {
   department_id: string | null;
   event_definition_id: string | null;
   updated_at: string;
+  /** C3A closure — explicit classification (authoritative over naming rules). */
+  data_origin?: 'system_seed' | 'user' | 'reference_seed';
+  identity_type?: string | null;
+  identity_config?: Record<string, string> | null;
 }
 
 export interface BindingRow {
