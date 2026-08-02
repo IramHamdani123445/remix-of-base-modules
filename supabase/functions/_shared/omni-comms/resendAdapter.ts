@@ -209,12 +209,12 @@ export async function sendResendEmail(
         providerMessageId: null,
         providerStatusCode: res.status,
         providerResponse: { ...redacted, latency_ms: latencyMs },
-        errorCode: typeof redacted.name === "string"
-          ? redacted.name
-          : uncertain
-            ? "provider_outcome_unknown"
-            : "provider_error",
-        errorDetail: typeof redacted.message === "string" ? redacted.message : null,
+        // Bounded allow-listed classification only — never provider free text.
+        errorCode: boundedProviderCode(redacted.provider_code) ??
+          (uncertain ? "provider_outcome_unknown" : "provider_error"),
+        errorDetail: uncertain
+          ? "The provider outcome is uncertain."
+          : "The provider rejected the request.",
         latencyMs,
       };
     }
@@ -222,7 +222,7 @@ export async function sendResendEmail(
     return {
       status: "accepted",
       resultCode: "provider_accepted",
-      providerMessageId: typeof redacted.id === "string" ? redacted.id : null,
+      providerMessageId: boundedProviderMessageId(redacted.id),
       providerStatusCode: res.status,
       providerResponse: { ...redacted, latency_ms: latencyMs },
       errorCode: null,
@@ -231,12 +231,8 @@ export async function sendResendEmail(
     };
   } catch (e) {
     const aborted = e instanceof DOMException && e.name === "AbortError";
-    const detail = aborted
-      ? "provider request timed out"
-      : e instanceof Error
-        ? e.message
-        : "provider request failed";
-    // The request may have reached the provider — never assert failure.
+    // The transport error text is NEVER retained: it can embed the endpoint,
+    // request details or resolved values. Only a bounded classification is.
     return {
       status: "outcome_unknown",
       resultCode: "provider_outcome_unknown",
@@ -244,10 +240,13 @@ export async function sendResendEmail(
       providerStatusCode: null,
       providerResponse: {},
       errorCode: aborted ? "provider_timeout" : "provider_unreachable",
-      errorDetail: detail,
+      errorDetail: aborted
+        ? "The provider request timed out."
+        : "The provider could not be reached.",
       latencyMs: Date.now() - started,
     };
   } finally {
+
     clearTimeout(timer);
   }
 }
