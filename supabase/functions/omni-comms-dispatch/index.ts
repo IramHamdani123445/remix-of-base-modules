@@ -48,6 +48,14 @@ const DEPLOYED_REVISION = Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "";
 const DISPATCHABLE_CHANNEL = "email";
 const MAX_BATCH_LIMIT = 10;
 
+/**
+ * Browser-facing details are bounded symbolic codes ONLY. A raw RPC, database
+ * or provider message is never returned to a caller and never logged: it can
+ * embed recipients, rendered content, credential references or values.
+ */
+const BOUNDED_CODE = /^[a-z][a-z0-9_]{0,63}$/;
+
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
