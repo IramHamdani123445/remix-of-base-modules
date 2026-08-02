@@ -160,19 +160,21 @@ export async function sendResendEmail(
   input: ResendSendInput,
 ): Promise<ResendSendResult> {
   const started = Date.now();
-  const secret = resolveSecret(input.secretRef);
-  if (!secret.ok) {
+  const secret: ResolvedSecret = resolveSecret(input.secretRef);
+  if (secret.ok === false) {
+    const failure = secret;
     return {
       status: "failed",
       resultCode: "configuration_invalid",
       providerMessageId: null,
       providerStatusCode: null,
       providerResponse: {},
-      errorCode: secret.errorCode,
-      errorDetail: secret.detail,
+      errorCode: failure.errorCode,
+      errorDetail: failure.detail,
       latencyMs: 0,
     };
   }
+
   if (!input.fromAddress) {
     return {
       status: "failed",
