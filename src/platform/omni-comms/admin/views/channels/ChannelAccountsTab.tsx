@@ -351,6 +351,9 @@ const AccountRow: React.FC<{
   const isReference = account.data_origin === 'reference_seed';
   const verifiable = verificationImplemented(account.provider_adapter_key);
   const complete = credentialsComplete(account);
+  const canActivate = account.status === 'draft' || account.status === 'disabled';
+  const activateLabel = account.status === 'disabled' ? 'Reactivate' : 'Activate';
+
 
   const lifecycle = async (
     action: 'activate' | 'disable' | 'retire',
