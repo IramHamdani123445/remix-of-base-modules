@@ -120,7 +120,7 @@ BEGIN
 END $$;
 
 -- ===========================================================================
-DO $outer$
+CREATE OR REPLACE FUNCTION pg_temp.run_transitions() RETURNS void LANGUAGE plpgsql AS $outer$
 DECLARE
   f jsonb; r jsonb; s text; js text; n integer; a uuid; f2 jsonb;
 BEGIN
@@ -368,7 +368,7 @@ END $outer$;
 --     The diagnostics RPC itself requires an authenticated operator, so the
 --     compatibility predicate is exercised directly and identically here.
 -- ===========================================================================
-DO $dept2$
+CREATE OR REPLACE FUNCTION pg_temp.run_dept() RETURNS void LANGUAGE plpgsql AS $dept2$
 DECLARE
   v_org uuid := '00000000-0000-4000-8000-00000000c7d1';
   v_d1 uuid := '00000000-0000-4000-8000-00000000dep1';
@@ -415,7 +415,7 @@ END $dept2$;
 -- ===========================================================================
 -- 14. Security-definer ownership / search path / grants.
 -- ===========================================================================
-DO $sec$
+CREATE OR REPLACE FUNCTION pg_temp.run_security() RETURNS void LANGUAGE plpgsql AS $sec$
 DECLARE
   v_service_only text[] := ARRAY[
     'omni_comms_priv_dispatch_claim_safety_suspend',
@@ -461,7 +461,7 @@ END $sec$;
 -- ===========================================================================
 -- 15. Global safety invariants remain intact.
 -- ===========================================================================
-DO $inv$
+CREATE OR REPLACE FUNCTION pg_temp.run_invariants() RETURNS void LANGUAGE plpgsql AS $inv$
 DECLARE n integer;
 BEGIN
   SELECT count(*) INTO n FROM public.omni_comms_channel_setting WHERE live_delivery_enabled IS TRUE;
@@ -473,6 +473,29 @@ BEGIN
   PERFORM pg_temp.ok('T15.3 no non-Email dispatch job is runnable', n = 0, n::text);
   RAISE NOTICE 'SAFETY INVARIANT TESTS PASSED';
 END $inv$;
+
+-- ===========================================================================
+-- Runner. Every fixture is created inside a subtransaction that is ALWAYS
+-- rolled back through a sentinel exception, so the script is net-zero even
+-- when it is executed outside an explicit BEGIN/ROLLBACK (for example as a
+-- one-off verification migration). Nothing is retained.
+-- ===========================================================================
+DO $run$
+BEGIN
+  BEGIN
+    PERFORM pg_temp.run_transitions();
+    PERFORM pg_temp.run_dept();
+    PERFORM pg_temp.run_security();
+    PERFORM pg_temp.run_invariants();
+    RAISE EXCEPTION 'OMNI_COMMS_C7_TEST_ROLLBACK_SENTINEL';
+  EXCEPTION WHEN others THEN
+    IF SQLERRM = 'OMNI_COMMS_C7_TEST_ROLLBACK_SENTINEL' THEN
+      RAISE NOTICE 'ALL C7 RUNTIME TRANSITION TESTS PASSED — fixtures rolled back';
+    ELSE
+      RAISE;
+    END IF;
+  END;
+END $run$;
 
 ROLLBACK;
 
