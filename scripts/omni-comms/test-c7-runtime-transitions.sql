@@ -68,7 +68,7 @@ BEGIN
     permitted_modes, pilot_recipient_rules, max_recipients_per_request,
     max_messages_per_hour, max_messages_per_day, max_messages_total,
     release_fingerprint, release_starts_at, release_expires_at)
-  VALUES (v_org, p_dept, 'email', 'genuine', 'controlled_pilot', 1,
+  VALUES (v_org, p_dept, 'email', 'user', 'controlled_pilot', 1,
           ARRAY['c7.test.event'], ARRAY['omni_comms_c7_test'], ARRAY['queued'],
           jsonb_build_array(jsonb_build_object(
             'target_hash', repeat('f', 64), 'target_masked', 'c***@example.test')),
