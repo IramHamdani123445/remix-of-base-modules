@@ -72,6 +72,18 @@ import type { ChannelUiDefinition } from './channelUiRegistry';
 
 type Client = ReturnType<typeof useOmniCommsRpcClient>;
 
+/**
+ * C2 closure — a `reference_seed` account is read-only and non-operational.
+ * It is displayed for demonstration only and is never passed into a mutation.
+ */
+export const REFERENCE_ACCOUNT_READ_ONLY_HELP =
+  'Reference account — read-only and excluded from operational configuration.';
+
+export function isReferenceAccountRow(a: ChannelProviderAccountRow): boolean {
+  return a.data_origin === 'reference_seed';
+}
+
+
 interface FormState {
   id: string | null;
   expectedUpdatedAt: string | null;
