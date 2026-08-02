@@ -656,7 +656,10 @@ const AdvancedEvidenceSection: React.FC<{
   onChanged: () => Promise<void> | void;
 }> = ({ accounts, client, onChanged }) => {
   const [busy, setBusy] = useState(false);
-  if (accounts.length === 0) return null;
+  // reference accounts never expose manual evidence controls
+  const operational = accounts.filter((a) => !isReferenceAccountRow(a));
+  if (operational.length === 0) return null;
+
 
   const record = async (
     account: ChannelProviderAccountRow,
