@@ -35,22 +35,8 @@ import {
   resolveChannelUi,
   type ChannelWorkspaceTab,
 } from "./channels/channelUiRegistry";
-import {
-  partitionEmailConfig,
-  readinessCounts,
-} from "./channels/channelReferenceData";
+import { projectEmailReadiness } from "./channels/emailReadiness";
 import { toastError } from "./channels/channelFormPrimitives";
-
-const TAB_ORDER: ChannelWorkspaceTab[] = [
-  "overview",
-  "accounts",
-  "identities",
-  "endpoints",
-  "bindings",
-  "policies",
-  "test-centre",
-  "diagnostics",
-];
 
 export const OmniCommsChannelsPage: React.FC = () => {
   const client = useOmniCommsRpcClient();
@@ -94,12 +80,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Catalogue (default view) ──────────────────────────────────────
   if (!definition) {
-    const part = partitionEmailConfig({
-      accounts: summary?.provider_accounts,
-      senders: summary?.sender_identities,
-      bindings: summary?.bindings,
-    });
-    const counts = readinessCounts(part);
+    const emailReadiness = projectEmailReadiness(summary);
     return (
       <div className="space-y-6" data-testid="omni-comms-channels-page">
         <div>
@@ -113,13 +94,10 @@ export const OmniCommsChannelsPage: React.FC = () => {
         <ChannelCatalogue
           onSelect={selectChannel}
           emailCounts={{
-            providerAccounts: counts.accounts,
-            activeIdentities: counts.activeSenders,
-            readiness: summary
-              ? counts.activeVerifiedBindings > 0 && summary.channel_setting?.enabled
-                ? "Configured"
-                : "Incomplete"
-              : "Unknown",
+            providerAccounts: emailReadiness.counts.accounts,
+            activeIdentities: emailReadiness.counts.activeSenders,
+            readiness: emailReadiness.label,
+            readinessExplanation: emailReadiness.explanation,
           }}
         />
       </div>
@@ -128,6 +106,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Selected channel workspace ────────────────────────────────────
   const isEmail = definition.code === "email";
+  const readiness = isEmail ? projectEmailReadiness(summary) : null;
 
   return (
     <div className="space-y-6" data-testid="omni-comms-channels-page">
@@ -136,14 +115,14 @@ export const OmniCommsChannelsPage: React.FC = () => {
         organizationName={organizationName}
         departmentName={departmentName}
         loading={loading}
-        ready={isEmail ? Boolean(summary?.email_send_ready) : null}
+        readiness={readiness}
         onBack={clearChannel}
         onRefresh={isEmail ? () => void refresh() : undefined}
       />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList>
-          {TAB_ORDER.map((t) => (
+          {(definition.tabs as ChannelWorkspaceTab[]).map((t) => (
             <TabsTrigger
               key={t}
               value={t}
@@ -155,7 +134,11 @@ export const OmniCommsChannelsPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value="overview">
-          <ChannelOverviewTab definition={definition} summary={isEmail ? summary : null} />
+          <ChannelOverviewTab
+            definition={definition}
+            readiness={readiness}
+            summary={isEmail ? summary : null}
+          />
         </TabsContent>
         <TabsContent value="accounts">
           <ChannelAccountsTab
