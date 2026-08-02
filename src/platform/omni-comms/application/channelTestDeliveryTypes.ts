@@ -82,6 +82,12 @@ export interface ChannelTestDelivery {
   readonly requested_by: string;
   readonly requested_at: string;
   readonly completed_at: string | null;
+  /** C5B — final wrapped provider content fingerprint. */
+  readonly provider_payload_hash?: string | null;
+  /** C5B — persistent provider idempotency key (`omni-test/<delivery id>`). */
+  readonly provider_idempotency_key?: string | null;
+  readonly attempt_count?: number;
+  readonly attempts?: readonly ChannelTestDeliveryAttempt[];
   readonly events: readonly ChannelTestDeliveryEvent[];
 }
 
@@ -91,9 +97,15 @@ export interface ChannelTestDeliveryDiagnostics {
   readonly channel: TestCentreChannel;
   readonly binding_id: string | null;
   readonly can_configure: boolean;
+  /** C5B — execution requires the Omni-Comms operate capability. */
+  readonly can_execute?: boolean;
   readonly controlled_test_delivery_enabled: boolean;
   readonly controlled_test_recipients: readonly string[];
   readonly controlled_test_approved_at: string | null;
+  readonly controlled_test_approval_expires_at?: string | null;
+  readonly controlled_test_approval_active?: boolean;
+  readonly controlled_test_max_deliveries?: number;
+  readonly controlled_test_min_interval_seconds?: number;
   readonly live_delivery_enabled: boolean;
   readonly policy_id: string | null;
   readonly deliveries: readonly ChannelTestDelivery[];
