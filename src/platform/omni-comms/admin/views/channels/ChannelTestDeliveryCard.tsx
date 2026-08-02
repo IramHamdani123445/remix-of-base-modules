@@ -178,13 +178,16 @@ export const ChannelTestDeliveryCard: React.FC<{
   channel: TestCentreChannel;
   bindingId: string;
   target: string;
+  /** C5B — must be the exact content that passed the preflight. */
+  subject?: string;
+  bodyText?: string;
   run: ChannelTestRun | null;
   runIsCurrent: boolean;
   configurationFingerprint?: string | null;
   onChanged?: () => void;
 }> = ({
   client, transport, orgId, departmentId, channel, bindingId, target, run,
-  runIsCurrent, onChanged,
+  subject = '', bodyText = '', runIsCurrent, onChanged,
 }) => {
   const [diagnostics, setDiagnostics] = useState<ChannelTestDeliveryDiagnostics | null>(null);
   const [loading, setLoading] = useState(false);
@@ -192,7 +195,9 @@ export const ChannelTestDeliveryCard: React.FC<{
   const [saving, setSaving] = useState(false);
   const [recipientsText, setRecipientsText] = useState('');
   const [approvalEnabled, setApprovalEnabled] = useState(false);
-  const [subject, setSubject] = useState('Omni-Comms channel test');
+  const [expiresInHours, setExpiresInHours] = useState('4');
+  const [maxDeliveries, setMaxDeliveries] = useState('5');
+  const [minIntervalSeconds, setMinIntervalSeconds] = useState('60');
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() => newDeliveryIdempotencyKey());
   const [lastDelivery, setLastDelivery] = useState<ChannelTestDelivery | null>(null);
 
