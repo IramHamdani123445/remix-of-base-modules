@@ -26,7 +26,7 @@ const SIGNING_SECRET = Deno.env.get("OMNI_COMMS_RESEND_WEBHOOK_SECRET") ?? "";
 const EVENT_TYPES: Record<string, string> = {
   "email.sent": "sent",
   "email.delivered": "delivered",
-  "email.delivery_delayed": "delayed",
+  "email.delivery_delayed": "delivery_delayed",
   "email.bounced": "bounced",
   "email.complained": "complained",
   "email.opened": "opened",
