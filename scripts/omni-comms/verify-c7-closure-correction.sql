@@ -357,7 +357,7 @@ FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
 
 \echo '== C7R.59 a retry claim never moves the message status backwards =='
 SELECT CASE WHEN prosrc ~ 'message_status IN \(''held'',''queued''\)'
-             AND prosrc ~ E'status = ''dispatching''\'
+             AND prosrc ~ 'status = ''dispatching'''
         THEN 'PASS' ELSE 'FAIL' END AS c7r_59
 FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
 
