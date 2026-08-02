@@ -232,9 +232,13 @@ Deno.serve(async (req) => {
       p_error_detail: outcome.errorDetail,
     });
     if (completion.error) {
-      // A stale claim must never be treated as a delivery outcome.
-      console.error("omni-comms-dispatch evidence write rejected:", completion.error.message);
+      // A stale claim must never be treated as a delivery outcome. Only a
+      // bounded internal code and correlation reference are logged.
+      console.error(
+        `omni-comms-dispatch evidence_record_failed correlation=${correlationId ?? "none"} attempt=${attemptId}`,
+      );
     }
+
 
     results.push({
       attempt_id: attemptId,
