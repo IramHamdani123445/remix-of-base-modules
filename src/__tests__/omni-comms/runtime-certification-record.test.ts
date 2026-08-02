@@ -294,7 +294,7 @@ describe('object registry', () => {
   });
 
   it('keeps the registry valid at the new ceiling', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(27);
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(28);
     expect(validateOmniCommsRegistries().ok).toBe(true);
   });
 });

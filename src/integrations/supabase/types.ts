@@ -81293,6 +81293,99 @@ export type Database = {
           },
         ]
       }
+      omni_comms_channel_test_run: {
+        Row: {
+          binding_id: string
+          blocker_codes: string[]
+          channel: string
+          checks: Json
+          configuration_fingerprint: string
+          configuration_snapshot: Json
+          correlation_id: string | null
+          created_at: string
+          department_id: string | null
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payload_hash: string
+          payload_summary: Json
+          request_fingerprint: string
+          requested_at: string
+          requested_by: string
+          result_code: string
+          status: string
+          target_hash: string
+          target_masked: string
+          target_type: string
+          test_kind: string
+        }
+        Insert: {
+          binding_id: string
+          blocker_codes?: string[]
+          channel: string
+          checks?: Json
+          configuration_fingerprint: string
+          configuration_snapshot?: Json
+          correlation_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          idempotency_key: string
+          organization_id: string
+          payload_hash: string
+          payload_summary?: Json
+          request_fingerprint: string
+          requested_at?: string
+          requested_by: string
+          result_code: string
+          status: string
+          target_hash: string
+          target_masked: string
+          target_type: string
+          test_kind?: string
+        }
+        Update: {
+          binding_id?: string
+          blocker_codes?: string[]
+          channel?: string
+          checks?: Json
+          configuration_fingerprint?: string
+          configuration_snapshot?: Json
+          correlation_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          idempotency_key?: string
+          organization_id?: string
+          payload_hash?: string
+          payload_summary?: Json
+          request_fingerprint?: string
+          requested_at?: string
+          requested_by?: string
+          result_code?: string
+          status?: string
+          target_hash?: string
+          target_masked?: string
+          target_type?: string
+          test_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_ctr_binding_fk"
+            columns: ["binding_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_sender_provider_binding"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_ctr_org_fk"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_delivery_attempt: {
         Row: {
           attempt_number: number
@@ -103191,6 +103284,29 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_channel_test_centre_summary: {
+        Args: {
+          p_binding_id?: string
+          p_channel?: string
+          p_department_id?: string
+          p_history_limit?: number
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_test_run_preflight: {
+        Args: {
+          p_binding_id: string
+          p_channel: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_idempotency_key: string
+          p_organization_id: string
+          p_payload: Json
+          p_target: string
+        }
+        Returns: Json
+      }
       omni_comms_controlled_dry_run_gate: { Args: never; Returns: Json }
       omni_comms_diagnostics: {
         Args: { p_organization_id?: string }
@@ -103685,6 +103801,52 @@ export type Database = {
           p_id: string
           p_organization_id: string
         }
+        Returns: string
+      }
+      omni_comms_priv_channel_test_checklist: {
+        Args: {
+          p_channel: string
+          p_payload: Json
+          p_snapshot: Json
+          p_target: Json
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_test_config_fingerprint: {
+        Args: {
+          p_binding_id: string
+          p_channel: string
+          p_department_id: string
+          p_organization_id: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_channel_test_config_snapshot: {
+        Args: {
+          p_binding_id: string
+          p_channel: string
+          p_department_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_test_normalize_payload: {
+        Args: { p_channel: string; p_payload: Json }
+        Returns: Json
+      }
+      omni_comms_priv_channel_test_normalize_target: {
+        Args: { p_channel: string; p_target: string }
+        Returns: Json
+      }
+      omni_comms_priv_channel_test_run_json: {
+        Args: {
+          p_include_snapshot?: boolean
+          r: Database["public"]["Tables"]["omni_comms_channel_test_run"]["Row"]
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_test_sha256: {
+        Args: { p_text: string }
         Returns: string
       }
       omni_comms_priv_compute_checksum: {

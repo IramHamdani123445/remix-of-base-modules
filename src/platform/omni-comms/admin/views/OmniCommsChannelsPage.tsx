@@ -19,6 +19,8 @@ import { useOmniCommsSelectedChannel } from "../hooks/useOmniCommsChannelParam";
 import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
 import { getEmailConfigSummary } from "@/platform/omni-comms/application/channelManagementService";
 import { getChannelPolicySummary } from "@/platform/omni-comms/application/channelPolicyService";
+import { getChannelTestCentreSummary } from "@/platform/omni-comms/application/channelTestCentreService";
+import type { ChannelTestCentreSummary } from "@/platform/omni-comms/application/channelTestCentreTypes";
 import type { ChannelPolicySummary } from "@/platform/omni-comms/application/channelPolicyTypes";
 import type { EmailConfigSummary } from "@/platform/omni-comms/application/channelManagementTypes";
 import { ChannelCatalogue } from "./channels/ChannelCatalogue";
@@ -47,6 +49,9 @@ export const OmniCommsChannelsPage: React.FC = () => {
   // C4B — the shared Email readiness projection resolves policy state from the
   // generic policy summary (genuine records only; reference never contributes).
   const [emailPolicy, setEmailPolicy] = useState<ChannelPolicySummary | null>(null);
+  // C5A — readiness requires a CURRENT passed configuration preflight. Loading
+  // this summary performs no send and contacts no provider.
+  const [testCentre, setTestCentre] = useState<ChannelTestCentreSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { selected, selectChannel, clearChannel } = useOmniCommsSelectedChannel();
@@ -57,7 +62,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [config, policy] = await Promise.all([
+      const [config, policy, test] = await Promise.all([
         getEmailConfigSummary(client, orgId),
         getChannelPolicySummary(client, {
           organizationId: orgId,
@@ -65,15 +70,19 @@ export const OmniCommsChannelsPage: React.FC = () => {
           channel: "email",
           includeReference: false,
         }),
+        getChannelTestCentreSummary(client, orgId, "email", departmentId ?? null),
       ]);
       setSummary(config);
       setEmailPolicy(policy);
+      setTestCentre(test);
     } catch (e) {
       toastError(e, "Failed to load email configuration");
     } finally {
       setLoading(false);
     }
   }, [client, orgId, departmentId]);
+
+  const refreshTestCentre = useCallback(() => { void refresh(); }, [refresh]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -95,7 +104,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Catalogue (default view) ──────────────────────────────────────
   if (!definition) {
-    const emailReadiness = projectEmailReadiness(summary, emailPolicy);
+    const emailReadiness = projectEmailReadiness(summary, emailPolicy, testCentre);
     return (
       <div className="space-y-6" data-testid="omni-comms-channels-page">
         <div>
@@ -121,7 +130,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Selected channel workspace ────────────────────────────────────
   const isEmail = definition.code === "email";
-  const readiness = isEmail ? projectEmailReadiness(summary, emailPolicy) : null;
+  const readiness = isEmail ? projectEmailReadiness(summary, emailPolicy, testCentre) : null;
 
   return (
     <div className="space-y-6" data-testid="omni-comms-channels-page">
@@ -192,7 +201,10 @@ export const OmniCommsChannelsPage: React.FC = () => {
           />
         </TabsContent>
         <TabsContent value="test-centre">
-          <ChannelTestCentreTab definition={definition} />
+          <ChannelTestCentreTab
+            definition={definition} client={client} orgId={orgId}
+            departmentId={departmentId} onChanged={refreshTestCentre}
+          />
         </TabsContent>
         <TabsContent value="diagnostics">
           <ChannelDiagnosticsTab definition={definition} />

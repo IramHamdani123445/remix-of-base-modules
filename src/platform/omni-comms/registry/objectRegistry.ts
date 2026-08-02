@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Approved logical object catalogue (25 objects: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, the two Channels C2 generic provider-account objects, and the two Channels C3B channel-endpoint objects).
+ * Omni-Comms — Approved logical object catalogue (26 logical groups: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, the two Channels C2 generic provider-account objects, and the two Channels C3B channel-endpoint objects).
  *
  * This is the CEILING for the new system. No object listed here has been
  * created. This file does not create tables, policies, functions, or types.
@@ -259,6 +259,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
       'Explicitly authorises one registered business caller module to produce one event for an organisation and optional department, in a bounded set of modes (dry_run | shadow | queued).',
     status: 'AVAILABLE',
     introductionStory: 'Build 4A — Business producer integration',
+  },
+  {
+    name: 'omni_comms_channel_test_run',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Immutable technical configuration-preflight ledger for a channel binding; stores the 21-check outcome, configuration fingerprint, masked target and payload summary only, and never sends a message.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C5A — Test Centre preflight',
   },
   {
     name: 'omni_comms_webhook_event',

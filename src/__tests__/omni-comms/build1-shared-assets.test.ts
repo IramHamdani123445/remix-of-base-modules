@@ -19,8 +19,8 @@ const root = resolve(__dirname, '..', '..', '..');
 
 describe('Build 1 — Shared Assets & Layouts', () => {
   it('omni-comms object registry remains exactly 20 objects (19 foundation + caller-module registry)', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(27);
-    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(27);
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(28);
+    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(28);
     for (const o of OMNI_COMMS_OBJECT_REGISTRY) {
       expect(o.name.startsWith('omni_comms_')).toBe(true);
     }

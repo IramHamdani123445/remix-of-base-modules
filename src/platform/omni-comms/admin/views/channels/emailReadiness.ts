@@ -9,8 +9,9 @@
  *   - Derived only from GENUINE records; reference/simulation records never
  *     contribute (see channelReferenceData.ts).
  *   - `summary.email_send_ready` is never consulted by the Channels UI.
- *   - Technical channel testing is not implemented, so the projection can
- *     never reach "Configuration complete".
+ *   - C5A adds the technical configuration preflight. The projection reaches
+ *     "Configuration prerequisites met" only when a CURRENT passed preflight
+ *     exists for the selected binding. A preflight never sends a message.
  *   - C3B adds endpoint checks. C3B performs no DNS lookup and no provider
  *     verification call, so a sending domain can never become
  *     `verified` from this screen, and no callback receiver exists.
@@ -25,6 +26,9 @@ import type {
 import {
   operationalStateAllowsConfiguration,
 } from '@/platform/omni-comms/application/channelPolicyTypes';
+import type {
+  ChannelTestCentreSummary,
+} from '@/platform/omni-comms/application/channelTestCentreTypes';
 import { partitionEmailConfig, readinessCounts } from './channelReferenceData';
 
 /** C4B — Release Control is not implemented; activation is never met here. */
@@ -42,11 +46,21 @@ export const EMAIL_READINESS_LABEL: Record<EmailReadinessState, string> = {
   prerequisites_met: 'Configuration prerequisites met',
 };
 
-/** Supporting explanation shown wherever readiness is presented. */
+/** Supporting explanation shown while no current passed preflight exists. */
 export const TECHNICAL_TEST_PENDING = 'Technical test pending';
 
-/** Technical channel testing is not implemented in C1. */
-export const EMAIL_TECHNICAL_TEST_IMPLEMENTED = false;
+/** Shown once a current passed preflight exists for the selected binding. */
+export const TECHNICAL_TEST_CURRENT =
+  'Configuration preflight passed for the current configuration. No message '
+  + 'has been sent.';
+
+/** Shown when a stored preflight no longer matches the live configuration. */
+export const TECHNICAL_TEST_STALE =
+  'Configuration changed since the last preflight; re-run the Test Centre '
+  + 'preflight.';
+
+/** C5A implements the technical configuration preflight (zero-send). */
+export const EMAIL_TECHNICAL_TEST_IMPLEMENTED = true;
 
 /** C3B introduces no callback receiver route. */
 export const EMAIL_CALLBACK_RECEIVER_IMPLEMENTED = false;
@@ -112,7 +126,19 @@ export interface EmailReadinessProjection {
 export function projectEmailReadiness(
   summary: EmailConfigSummary | null | undefined,
   policySummary?: ChannelPolicySummary | null,
+  /**
+   * C5A — Test Centre summary for the selected binding. When omitted the
+   * technical-test check stays `not_implemented` (callers that cannot supply
+   * a preflight result must not be able to fabricate readiness).
+   */
+  testCentre?: ChannelTestCentreSummary | null,
 ): EmailReadinessProjection {
+  const testPassed = Boolean(
+    testCentre?.latest_run
+    && !testCentre.latest_run_is_stale
+    && testCentre.latest_run.status === 'passed',
+  );
+  const testStale = Boolean(testCentre?.latest_run && testCentre.latest_run_is_stale);
   const part = partitionEmailConfig({
     accounts: summary?.provider_accounts,
     senders: summary?.sender_identities,
@@ -251,10 +277,21 @@ export function projectEmailReadiness(
     },
     {
       key: 'technical_test',
-      label: 'Technical channel test',
-      state: 'not_implemented',
-      detail: `${TECHNICAL_TEST_PENDING} — technical testing is not implemented in C1.`,
-    },
+      label: 'Technical channel test (configuration preflight)',
+      state: testCentre === undefined
+        ? 'not_implemented'
+        : testPassed
+          ? 'met'
+          : 'unmet',
+      detail: testCentre === undefined
+        ? `${TECHNICAL_TEST_PENDING} — no Test Centre result supplied.`
+        : testPassed
+          ? TECHNICAL_TEST_CURRENT
+          : testStale
+            ? TECHNICAL_TEST_STALE
+            : `${TECHNICAL_TEST_PENDING} — run a configuration preflight for `
+              + 'the selected binding in the Test Centre.',
+    } as EmailReadinessCheck,
   ];
 
   const prerequisitesMet = checks
@@ -270,7 +307,9 @@ export function projectEmailReadiness(
   return {
     state,
     label: EMAIL_READINESS_LABEL[state],
-    explanation: TECHNICAL_TEST_PENDING,
+    explanation: testPassed ? TECHNICAL_TEST_CURRENT
+      : testStale ? TECHNICAL_TEST_STALE
+        : TECHNICAL_TEST_PENDING,
     checks,
     prerequisitesMet: Boolean(summary) && prerequisitesMet,
     technicalTestImplemented: EMAIL_TECHNICAL_TEST_IMPLEMENTED,
