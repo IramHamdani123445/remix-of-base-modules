@@ -23,7 +23,7 @@ function gateMigration(): string {
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
   for (let i = files.length - 1; i >= 0; i -= 1) {
     const body = fs.readFileSync(path.join(dir, files[i]), 'utf8');
-    if (body.includes('omni_comms_priv_dispatch_claim_safety_suspend')) return body;
+    if (body.includes('FUNCTION public.omni_comms_priv_dispatch_claim_safety_suspend')) return body;
   }
   throw new Error('C7 final gate migration not found');
 }

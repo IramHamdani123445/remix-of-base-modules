@@ -30,7 +30,7 @@ function closureMigration(): string {
     .sort();
   for (let i = files.length - 1; i >= 0; i -= 1) {
     const body = fs.readFileSync(path.join(migrationsDir(), files[i]), 'utf8');
-    if (body.includes('omni_comms_priv_dispatch_operator_scopes')) return body;
+    if (body.includes('FUNCTION public.omni_comms_priv_dispatch_operator_scopes')) return body;
   }
   throw new Error('C7 closure correction migration not found');
 }
