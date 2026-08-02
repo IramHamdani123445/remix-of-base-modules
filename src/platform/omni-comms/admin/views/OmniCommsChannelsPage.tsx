@@ -19,6 +19,8 @@ import { useOmniCommsSelectedChannel } from "../hooks/useOmniCommsChannelParam";
 import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
 import { getEmailConfigSummary } from "@/platform/omni-comms/application/channelManagementService";
 import { getChannelPolicySummary } from "@/platform/omni-comms/application/channelPolicyService";
+import { getChannelTestCentreSummary } from "@/platform/omni-comms/application/channelTestCentreService";
+import type { ChannelTestCentreSummary } from "@/platform/omni-comms/application/channelTestCentreTypes";
 import type { ChannelPolicySummary } from "@/platform/omni-comms/application/channelPolicyTypes";
 import type { EmailConfigSummary } from "@/platform/omni-comms/application/channelManagementTypes";
 import { ChannelCatalogue } from "./channels/ChannelCatalogue";
