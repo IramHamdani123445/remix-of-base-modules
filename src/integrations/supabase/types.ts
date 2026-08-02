@@ -81195,6 +81195,10 @@ export type Database = {
         Row: {
           channel: string
           channel_policy_config: Json
+          controlled_test_approved_at: string | null
+          controlled_test_approved_by: string | null
+          controlled_test_delivery_enabled: boolean
+          controlled_test_recipients: string[]
           cost_currency: string | null
           created_at: string
           created_by: string | null
@@ -81223,6 +81227,10 @@ export type Database = {
         Insert: {
           channel: string
           channel_policy_config?: Json
+          controlled_test_approved_at?: string | null
+          controlled_test_approved_by?: string | null
+          controlled_test_delivery_enabled?: boolean
+          controlled_test_recipients?: string[]
           cost_currency?: string | null
           created_at?: string
           created_by?: string | null
@@ -81251,6 +81259,10 @@ export type Database = {
         Update: {
           channel?: string
           channel_policy_config?: Json
+          controlled_test_approved_at?: string | null
+          controlled_test_approved_by?: string | null
+          controlled_test_delivery_enabled?: boolean
+          controlled_test_recipients?: string[]
           cost_currency?: string | null
           created_at?: string
           created_by?: string | null
@@ -81289,6 +81301,178 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_channel_test_delivery: {
+        Row: {
+          binding_id: string
+          channel: string
+          channel_endpoint_id: string | null
+          completed_at: string | null
+          configuration_fingerprint: string
+          correlation_id: string | null
+          created_at: string
+          department_id: string | null
+          error_code: string | null
+          error_detail: string | null
+          from_address: string | null
+          id: string
+          idempotency_key: string
+          organization_id: string
+          payload_hash: string
+          payload_summary: Json
+          policy_id: string | null
+          provider_account_id: string | null
+          provider_code: string | null
+          provider_id: string | null
+          provider_message_id: string | null
+          provider_response: Json | null
+          provider_status_code: number | null
+          request_fingerprint: string
+          requested_at: string
+          requested_by: string
+          result_code: string | null
+          sender_identity_id: string | null
+          status: string
+          target_hash: string
+          target_masked: string
+          target_type: string
+          test_run_id: string
+          updated_at: string
+        }
+        Insert: {
+          binding_id: string
+          channel: string
+          channel_endpoint_id?: string | null
+          completed_at?: string | null
+          configuration_fingerprint: string
+          correlation_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          error_code?: string | null
+          error_detail?: string | null
+          from_address?: string | null
+          id?: string
+          idempotency_key: string
+          organization_id: string
+          payload_hash: string
+          payload_summary?: Json
+          policy_id?: string | null
+          provider_account_id?: string | null
+          provider_code?: string | null
+          provider_id?: string | null
+          provider_message_id?: string | null
+          provider_response?: Json | null
+          provider_status_code?: number | null
+          request_fingerprint: string
+          requested_at?: string
+          requested_by: string
+          result_code?: string | null
+          sender_identity_id?: string | null
+          status?: string
+          target_hash: string
+          target_masked: string
+          target_type: string
+          test_run_id: string
+          updated_at?: string
+        }
+        Update: {
+          binding_id?: string
+          channel?: string
+          channel_endpoint_id?: string | null
+          completed_at?: string | null
+          configuration_fingerprint?: string
+          correlation_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          error_code?: string | null
+          error_detail?: string | null
+          from_address?: string | null
+          id?: string
+          idempotency_key?: string
+          organization_id?: string
+          payload_hash?: string
+          payload_summary?: Json
+          policy_id?: string | null
+          provider_account_id?: string | null
+          provider_code?: string | null
+          provider_id?: string | null
+          provider_message_id?: string | null
+          provider_response?: Json | null
+          provider_status_code?: number | null
+          request_fingerprint?: string
+          requested_at?: string
+          requested_by?: string
+          result_code?: string | null
+          sender_identity_id?: string | null
+          status?: string
+          target_hash?: string
+          target_masked?: string
+          target_type?: string
+          test_run_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_channel_test_delivery_test_run_id_fkey"
+            columns: ["test_run_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_test_run"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_channel_test_delivery_event: {
+        Row: {
+          channel: string
+          created_at: string
+          delivery_id: string
+          event_type: string
+          id: string
+          occurred_at: string | null
+          organization_id: string
+          payload_summary: Json
+          provider_event_id: string | null
+          provider_message_id: string | null
+          received_at: string
+          signature_verified: boolean
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          delivery_id: string
+          event_type: string
+          id?: string
+          occurred_at?: string | null
+          organization_id: string
+          payload_summary?: Json
+          provider_event_id?: string | null
+          provider_message_id?: string | null
+          received_at?: string
+          signature_verified?: boolean
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          delivery_id?: string
+          event_type?: string
+          id?: string
+          occurred_at?: string | null
+          organization_id?: string
+          payload_summary?: Json
+          provider_event_id?: string | null
+          provider_message_id?: string | null
+          received_at?: string
+          signature_verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_channel_test_delivery_event_delivery_id_fkey"
+            columns: ["delivery_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_test_delivery"
             referencedColumns: ["id"]
           },
         ]
@@ -103330,6 +103514,35 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_channel_test_delivery_diagnostics: {
+        Args: {
+          p_binding_id?: string
+          p_channel?: string
+          p_department_id?: string
+          p_limit?: number
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_test_delivery_prepare: {
+        Args: {
+          p_correlation_id?: string
+          p_idempotency_key: string
+          p_target: string
+          p_test_run_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_test_delivery_set_approval: {
+        Args: {
+          p_channel?: string
+          p_department_id?: string
+          p_enabled?: boolean
+          p_organization_id: string
+          p_recipients?: string[]
+        }
+        Returns: Json
+      }
       omni_comms_channel_test_run_preflight: {
         Args: {
           p_binding_id: string
@@ -103867,6 +104080,37 @@ export type Database = {
           p_channel: string
           p_department_id: string
           p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_test_delivery_complete: {
+        Args: {
+          p_delivery_id: string
+          p_error_code?: string
+          p_error_detail?: string
+          p_provider_message_id?: string
+          p_provider_response?: Json
+          p_provider_status_code?: number
+          p_result_code: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_test_delivery_json: {
+        Args: {
+          p_include_detail?: boolean
+          r: Database["public"]["Tables"]["omni_comms_channel_test_delivery"]["Row"]
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_test_delivery_record_event: {
+        Args: {
+          p_event_type: string
+          p_occurred_at?: string
+          p_payload_summary?: Json
+          p_provider_event_id?: string
+          p_provider_message_id: string
+          p_signature_verified?: boolean
         }
         Returns: Json
       }
