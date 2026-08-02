@@ -56,6 +56,10 @@ export interface SenderIdentityRow {
   department_id: string | null;
   event_definition_id: string | null;
   updated_at: string;
+  /** C3A closure — explicit classification (authoritative over naming rules). */
+  data_origin?: 'system_seed' | 'user' | 'reference_seed';
+  identity_type?: string | null;
+  identity_config?: Record<string, string> | null;
 }
 
 export interface BindingRow {
