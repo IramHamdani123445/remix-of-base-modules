@@ -110,7 +110,8 @@ export function isUncertainStatus(status: number): boolean {
  */
 export function resolveSecret(
   secretRef: string,
-): { ok: true; apiKey: string } | { ok: false; errorCode: string; detail: string } {
+): ResolvedSecret {
+
   if (!OMNI_COMMS_SECRET_REF_PATTERN.test(secretRef ?? "")) {
     return {
       ok: false,
