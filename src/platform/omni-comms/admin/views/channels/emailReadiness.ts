@@ -26,6 +26,9 @@ import type {
 import {
   operationalStateAllowsConfiguration,
 } from '@/platform/omni-comms/application/channelPolicyTypes';
+import type {
+  ChannelTestCentreSummary,
+} from '@/platform/omni-comms/application/channelTestCentreTypes';
 import { partitionEmailConfig, readinessCounts } from './channelReferenceData';
 
 /** C4B — Release Control is not implemented; activation is never met here. */
@@ -43,11 +46,21 @@ export const EMAIL_READINESS_LABEL: Record<EmailReadinessState, string> = {
   prerequisites_met: 'Configuration prerequisites met',
 };
 
-/** Supporting explanation shown wherever readiness is presented. */
+/** Supporting explanation shown while no current passed preflight exists. */
 export const TECHNICAL_TEST_PENDING = 'Technical test pending';
 
-/** Technical channel testing is not implemented in C1. */
-export const EMAIL_TECHNICAL_TEST_IMPLEMENTED = false;
+/** Shown once a current passed preflight exists for the selected binding. */
+export const TECHNICAL_TEST_CURRENT =
+  'Configuration preflight passed for the current configuration. No message '
+  + 'has been sent.';
+
+/** Shown when a stored preflight no longer matches the live configuration. */
+export const TECHNICAL_TEST_STALE =
+  'Configuration changed since the last preflight; re-run the Test Centre '
+  + 'preflight.';
+
+/** C5A implements the technical configuration preflight (zero-send). */
+export const EMAIL_TECHNICAL_TEST_IMPLEMENTED = true;
 
 /** C3B introduces no callback receiver route. */
 export const EMAIL_CALLBACK_RECEIVER_IMPLEMENTED = false;
