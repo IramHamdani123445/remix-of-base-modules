@@ -233,7 +233,7 @@ describe('C3A — scope and access', () => {
   });
 
   it('20. Cross-organisation update rejected', () => {
-    const fn = SQL.slice(SQL.indexOf('FUNCTION public.omni_comms_priv_channel_identity_upsert'));
+    const fn = SQL.slice(SQL.lastIndexOf('FUNCTION public.omni_comms_priv_channel_identity_upsert'));
     expect(fn).toContain('omni_comms_priv_require_tenant_access');
   });
 
@@ -261,7 +261,7 @@ describe('C3A — scope and access', () => {
 
 describe('C3A — lifecycle and concurrency', () => {
   const worker = SQL.slice(
-    SQL.indexOf('FUNCTION public.omni_comms_priv_channel_identity_set_lifecycle'),
+    SQL.lastIndexOf('FUNCTION public.omni_comms_priv_channel_identity_lifecycle'),
   );
 
   it('24. Draft identity activates', () => {
@@ -278,7 +278,7 @@ describe('C3A — lifecycle and concurrency', () => {
 
   it('27. Retired identity cannot reactivate', () => {
     expect(worker).toMatch(/retired/);
-    expect(worker).toContain('invalid_lifecycle_transition');
+    expect(worker).toContain('already_retired');
   });
 
   it('28. Retirement requires a reason', () => {
@@ -295,14 +295,14 @@ describe('C3A — lifecycle and concurrency', () => {
   });
 
   it('30. Concurrent update is rejected', () => {
-    expect(SQL).toContain('concurrent_modification');
+    expect(SQL).toContain('updated_at_mismatch');
   });
 
   it('31. Active identity cannot be edited as draft', () => {
     const upsert = SQL.slice(
-      SQL.indexOf('FUNCTION public.omni_comms_priv_channel_identity_upsert'),
+      SQL.lastIndexOf('FUNCTION public.omni_comms_priv_channel_identity_upsert'),
     );
-    expect(upsert).toMatch(/status\s*<>\s*'draft'|not_draft|identity_not_draft/);
+    expect(upsert).toContain('must_be_draft');
   });
 
   it('32. Activation does not claim provider verification', () => {
@@ -423,12 +423,12 @@ describe('C3A — boundaries', () => {
 
   it('46. Existing Email compatibility RPCs delegate to the generic workers', () => {
     const legacy = SQL.slice(
-      SQL.lastIndexOf('FUNCTION public.omni_comms_upsert_sender_identity_draft'),
+      SQL.lastIndexOf('FUNCTION public.omni_comms_sender_identity_upsert_draft'),
     );
     expect(legacy).toContain('omni_comms_priv_channel_identity_upsert');
     const legacyLifecycle = SQL.slice(
-      SQL.lastIndexOf('FUNCTION public.omni_comms_set_sender_identity_lifecycle'),
+      SQL.lastIndexOf('FUNCTION public.omni_comms_sender_identity_activate'),
     );
-    expect(legacyLifecycle).toContain('omni_comms_priv_channel_identity_set_lifecycle');
+    expect(legacyLifecycle).toContain('omni_comms_priv_channel_identity_lifecycle');
   });
 });
