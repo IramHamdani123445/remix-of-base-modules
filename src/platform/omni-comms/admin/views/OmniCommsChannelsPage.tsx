@@ -104,7 +104,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Catalogue (default view) ──────────────────────────────────────
   if (!definition) {
-    const emailReadiness = projectEmailReadiness(summary, emailPolicy);
+    const emailReadiness = projectEmailReadiness(summary, emailPolicy, testCentre);
     return (
       <div className="space-y-6" data-testid="omni-comms-channels-page">
         <div>
@@ -130,7 +130,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Selected channel workspace ────────────────────────────────────
   const isEmail = definition.code === "email";
-  const readiness = isEmail ? projectEmailReadiness(summary, emailPolicy) : null;
+  const readiness = isEmail ? projectEmailReadiness(summary, emailPolicy, testCentre) : null;
 
   return (
     <div className="space-y-6" data-testid="omni-comms-channels-page">
