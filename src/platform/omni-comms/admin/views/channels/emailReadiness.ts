@@ -29,6 +29,13 @@ import {
 import type {
   ChannelTestCentreSummary,
 } from '@/platform/omni-comms/application/channelTestCentreTypes';
+import type {
+  ChannelTestDeliveryDiagnostics,
+} from '@/platform/omni-comms/application/channelTestDeliveryTypes';
+import {
+  isDeliveryCurrent,
+  latestDelivery,
+} from '@/platform/omni-comms/application/channelTestDeliveryTypes';
 import { partitionEmailConfig, readinessCounts } from './channelReferenceData';
 
 /** C4B — Release Control is not implemented; activation is never met here. */
@@ -58,25 +65,36 @@ export const CONFIGURATION_PREFLIGHT_CURRENT =
 export const CONFIGURATION_PREFLIGHT_STALE =
   'Configuration changed — run preflight again.';
 
-/** C5A closure — provider delivery is a separate, unimplemented capability. */
+/** Provider delivery remains a SEPARATE capability from the preflight. */
 export const PROVIDER_DELIVERY_TEST_PENDING = 'Provider delivery test pending';
 
 export const PROVIDER_DELIVERY_TEST_DETAIL =
-  'Configuration preflight does not send an email. Controlled Resend delivery '
-  + 'is not implemented in C5A.';
+  'Configuration preflight does not send an email. Delivery is proven only by '
+  + 'an approved provider test delivery to an approved test address.';
 
-/** C5A implements the zero-send configuration preflight. */
+export const PROVIDER_DELIVERY_TEST_PASSED =
+  'The provider accepted an approved technical test message for the current '
+  + 'configuration. Live delivery remains disabled.';
+
+export const PROVIDER_DELIVERY_TEST_FAILED =
+  'The most recent provider test delivery was not accepted. Review the '
+  + 'delivery diagnostics.';
+
+/** The zero-send configuration preflight exists. */
 export const EMAIL_CONFIGURATION_PREFLIGHT_IMPLEMENTED = true;
 
-/** C5A implements NO provider delivery test. This must never become true here. */
-export const EMAIL_PROVIDER_DELIVERY_TEST_IMPLEMENTED = false;
+/**
+ * Approved provider test delivery now exists. It is deliberately separate from
+ * the configuration preflight, which still never sends anything.
+ */
+export const EMAIL_PROVIDER_DELIVERY_TEST_IMPLEMENTED = true;
 
 
-/** C3B introduces no callback receiver route. */
-export const EMAIL_CALLBACK_RECEIVER_IMPLEMENTED = false;
+/** The Resend callback receiver records test-delivery evidence. */
+export const EMAIL_CALLBACK_RECEIVER_IMPLEMENTED = true;
 
 export const EMAIL_CALLBACK_RECEIVER_PENDING =
-  'Callback receiver not implemented';
+  'Callback receiver records approved test-delivery evidence only';
 
 /**
  * Genuine, operational Email endpoints only. Reference, draft, disabled and
@@ -145,6 +163,11 @@ export function projectEmailReadiness(
    * a preflight result must not be able to fabricate readiness).
    */
   testCentre?: ChannelTestCentreSummary | null,
+  /**
+   * Approved provider test-delivery evidence. When omitted the delivery check
+   * stays `not_implemented`, so no caller can fabricate delivery proof.
+   */
+  deliveryDiagnostics?: ChannelTestDeliveryDiagnostics | null,
 ): EmailReadinessProjection {
   const testPassed = Boolean(
     testCentre?.latest_run
@@ -180,6 +203,16 @@ export function projectEmailReadiness(
     verifiedSendingDomains: verifiedDomains.length,
     activeEventCallbacks: signedCallbacks.length,
   };
+
+  const delivery = latestDelivery(
+    deliveryDiagnostics,
+    testCentre?.selected_binding_id ?? null,
+  );
+  const deliveryCurrent = isDeliveryCurrent(
+    delivery,
+    testCentre?.configuration_fingerprint ?? null,
+  );
+  const deliveryAccepted = deliveryCurrent && delivery?.status === 'accepted';
 
   const yn = (ok: boolean): EmailReadinessCheckState => (ok ? 'met' : 'unmet');
 
@@ -285,9 +318,11 @@ export function projectEmailReadiness(
     {
       key: 'callback_receiver',
       label: 'Callback receiver route',
-      state: 'not_implemented',
-      detail: `${EMAIL_CALLBACK_RECEIVER_PENDING} — C3B stores callback configuration only.`,
-    },
+      state: (delivery?.events.length ?? 0) > 0 ? 'met' : 'not_implemented',
+      detail: (delivery?.events.length ?? 0) > 0
+        ? `${delivery?.events.length} provider callback event(s) recorded against the latest test delivery.`
+        : `${EMAIL_CALLBACK_RECEIVER_PENDING} — no provider callback has been received yet.`,
+    } as EmailReadinessCheck,
     {
       key: 'configuration_preflight',
       label: 'Current configuration preflight passed',
@@ -308,9 +343,20 @@ export function projectEmailReadiness(
     {
       key: 'provider_delivery_test',
       label: 'Provider delivery test',
-      state: 'not_implemented',
-      detail: PROVIDER_DELIVERY_TEST_DETAIL,
-    },
+      state: deliveryDiagnostics === undefined || !delivery
+        ? 'not_implemented'
+        : deliveryAccepted
+          ? 'met'
+          : 'unmet',
+      detail: deliveryDiagnostics === undefined || !delivery
+        ? PROVIDER_DELIVERY_TEST_DETAIL
+        : deliveryAccepted
+          ? PROVIDER_DELIVERY_TEST_PASSED
+          : delivery.status === 'accepted'
+            ? 'A provider test delivery was accepted, but the configuration has '
+              + 'changed since. Run it again.'
+            : PROVIDER_DELIVERY_TEST_FAILED,
+    } as EmailReadinessCheck,
   ];
 
   const prerequisitesMet = checks
@@ -332,7 +378,9 @@ export function projectEmailReadiness(
   return {
     state,
     label: EMAIL_READINESS_LABEL[state],
-    explanation: `${preflightExplanation} · ${PROVIDER_DELIVERY_TEST_PENDING}`,
+    explanation: `${preflightExplanation} · ${
+      deliveryAccepted ? 'Provider delivery test passed' : PROVIDER_DELIVERY_TEST_PENDING
+    }`,
     checks,
     prerequisitesMet: Boolean(summary) && prerequisitesMet,
     configurationPreflightImplemented: EMAIL_CONFIGURATION_PREFLIGHT_IMPLEMENTED,
