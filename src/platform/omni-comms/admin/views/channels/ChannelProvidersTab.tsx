@@ -187,10 +187,11 @@ export const ChannelProvidersTab: React.FC<Props> = ({
         </CardHeader>
         <CardContent className="space-y-4">
           <ReferenceDataControls
-            show={showReference}
+            showReference={showReference}
             onToggle={setShowReference}
-            referenceCount={providers.filter((p) => p.data_origin === 'reference_seed').length}
+            hiddenCount={providers.filter((p) => p.data_origin === 'reference_seed').length}
           />
+
 
           {loading ? (
             <p className="text-sm text-muted-foreground">
