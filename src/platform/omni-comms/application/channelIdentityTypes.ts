@@ -93,6 +93,8 @@ export interface ChannelIdentityRow {
   identity_type: OmniCommsIdentityType | null;
   identity_config: ChannelIdentityConfig;
   department_id: string | null;
+  /** C3A closure — resolved organisation department name; null when org-wide. */
+  department_name: string | null;
   event_definition_id: string | null;
   status: OmniCommsIdentityStatus;
   data_origin: OmniCommsIdentityDataOrigin;
