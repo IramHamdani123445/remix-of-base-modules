@@ -36,6 +36,7 @@ const allChannelSrc = [
   'ChannelAccountsTab.tsx', 'ChannelIdentitiesTab.tsx', 'ChannelEndpointsTab.tsx',
   'ChannelBindingsTab.tsx', 'ChannelPoliciesTab.tsx', 'ChannelTestCentreTab.tsx',
   'ChannelDiagnosticsTab.tsx', 'channelUiRegistry.ts', 'channelReferenceData.ts',
+  'emailReadiness.ts',
 ].map((f) => `${DIR}/${f}`);
 
 describe('C1 — file structure', () => {
@@ -342,15 +343,15 @@ describe('C1 — reference-data isolation', () => {
     expect(counts.accounts).toBe(1);
     expect(counts.activeSenders).toBe(1);
     expect(counts.activeVerifiedBindings).toBe(1);
-    expect(page).toContain('readinessCounts');
-    const overview = read(`${DIR}/ChannelOverviewTab.tsx`);
-    expect(overview).toContain('partitionEmailConfig');
+    expect(page).toContain('projectEmailReadiness');
+    const readiness = read(`${DIR}/emailReadiness.ts`);
+    expect(readiness).toContain('partitionEmailConfig');
   });
 
   it('overview never claims send readiness and marks the test not implemented', () => {
-    const overview = read(`${DIR}/ChannelOverviewTab.tsx`);
-    expect(overview).toContain("state: 'not_implemented'");
-    expect(overview).toContain('Not implemented — C1 sends nothing.');
+    const readiness = read(`${DIR}/emailReadiness.ts`);
+    expect(readiness).toContain("state: 'not_implemented'");
+    expect(readiness).toContain('TECHNICAL_TEST_PENDING');
   });
 });
 
