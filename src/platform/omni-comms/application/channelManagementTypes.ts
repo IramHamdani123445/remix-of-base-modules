@@ -7,7 +7,7 @@
 export type ProviderStatus = 'draft' | 'active' | 'retired';
 export type ProviderAccountStatus = 'draft' | 'active' | 'disabled' | 'retired';
 export type HealthState = 'unknown' | 'healthy' | 'degraded' | 'failed';
-export type SenderStatus = 'draft' | 'active' | 'retired';
+export type SenderStatus = 'draft' | 'active' | 'disabled' | 'retired';
 export type BindingStatus = 'draft' | 'active' | 'retired';
 export type VerificationStatus = 'unverified' | 'pending' | 'verified' | 'failed';
 export type CredentialCheckResult = 'healthy' | 'degraded' | 'failed';
