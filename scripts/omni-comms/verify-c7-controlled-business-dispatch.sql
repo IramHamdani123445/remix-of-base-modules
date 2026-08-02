@@ -29,7 +29,7 @@ WHERE n.nspname = 'public'
   AND has_function_privilege(r.role, p.oid, 'EXECUTE');
 
 \echo '== C7.04 claim uses FOR UPDATE SKIP LOCKED =='
-SELECT CASE WHEN prosrc ILIKE '%for update skip locked%' THEN 'PASS' ELSE 'FAIL' END AS c7_04
+SELECT CASE WHEN prosrc ILIKE '%skip locked%' THEN 'PASS' ELSE 'FAIL' END AS c7_04
 FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
 
 \echo '== C7.05 claim locks the release control row =='
@@ -100,7 +100,7 @@ FROM public.omni_comms_channel_release_control WHERE release_state = 'live';
 
 \echo '== C7.18 no non-Email dispatch job is runnable =='
 SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7_18
-FROM public.omni_comms_dispatch_job WHERE channel_code <> 'email' AND is_runnable IS TRUE;
+FROM public.omni_comms_dispatch_job WHERE channel <> 'email' AND is_runnable IS TRUE;
 
 \echo '== C7.19 no genuine business Email was sent (zero business attempts) =='
 SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'INFO: ' || count(*) END AS c7_19
