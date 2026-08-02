@@ -40,7 +40,7 @@ export type OmniCommsChannelWorkspaceTab =
 export const OMNI_COMMS_CHANNEL_TAB_ALIASES: Readonly<
   Record<string, OmniCommsChannelWorkspaceTab>
 > = {
-  providers: 'overview',
+  // 'providers' is a first-class tab again (C2.1) — no alias needed.
   senders: 'identities',
   settings: 'policies',
 };

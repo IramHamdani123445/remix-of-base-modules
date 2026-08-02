@@ -124,9 +124,10 @@ describe('C1 — URL channel and tab state', () => {
     }
   });
 
-  it('9. old providers tab aliases to overview', () => {
-    expect(resolveChannelWorkspaceTab('providers')).toBe('overview');
+  it('9. providers is now a first-class tab (C2.1), no longer aliased', () => {
+    expect(resolveChannelWorkspaceTab('providers')).toBe('providers');
   });
+
 
   it('10. old senders tab aliases to identities', () => {
     expect(resolveChannelWorkspaceTab('senders')).toBe('identities');
@@ -135,8 +136,9 @@ describe('C1 — URL channel and tab state', () => {
   it('11. old settings tab aliases to policies', () => {
     expect(resolveChannelWorkspaceTab('settings')).toBe('policies');
     expect(Object.keys(OMNI_COMMS_CHANNEL_TAB_ALIASES).sort()).toEqual([
-      'providers', 'senders', 'settings',
+      'senders', 'settings',
     ]);
+
   });
 
   it('24. existing deep links remain safe (accounts/bindings unchanged)', () => {

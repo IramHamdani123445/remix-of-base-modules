@@ -28,6 +28,7 @@ import { ChannelCatalogue } from "./channels/ChannelCatalogue";
 import { ChannelWorkspaceHeader } from "./channels/ChannelWorkspaceHeader";
 import { ChannelOverviewTab } from "./channels/ChannelOverviewTab";
 import { ChannelAccountsTab } from "./channels/ChannelAccountsTab";
+import { ChannelProvidersTab } from "./channels/ChannelProvidersTab";
 import { ChannelIdentitiesTab } from "./channels/ChannelIdentitiesTab";
 import { ChannelEndpointsTab } from "./channels/ChannelEndpointsTab";
 import { ChannelBindingsTab } from "./channels/ChannelBindingsTab";
@@ -175,6 +176,11 @@ export const OmniCommsChannelsPage: React.FC = () => {
             definition={definition}
             readiness={readiness}
             summary={isEmail ? summary : null}
+          />
+        </TabsContent>
+        <TabsContent value="providers">
+          <ChannelProvidersTab
+            definition={definition} client={client} onChanged={refresh}
           />
         </TabsContent>
         <TabsContent value="accounts">
