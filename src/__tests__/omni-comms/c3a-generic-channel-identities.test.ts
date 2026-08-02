@@ -261,7 +261,9 @@ describe('C3A — scope and access', () => {
 
 describe('C3A — lifecycle and concurrency', () => {
   const worker = SQL.slice(
-    SQL.lastIndexOf('FUNCTION public.omni_comms_priv_channel_identity_lifecycle'),
+    SQL.indexOf(
+      'CREATE OR REPLACE FUNCTION public.omni_comms_priv_channel_identity_lifecycle',
+    ),
   );
 
   it('24. Draft identity activates', () => {
