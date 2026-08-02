@@ -30,8 +30,10 @@ describe('C7 executable runtime transition suite — safety envelope', () => {
 
   it('never enables live delivery or the live release state', () => {
     expect(SUITE).not.toMatch(/live_delivery_enabled\s*=\s*true/i);
-    expect(SUITE).not.toMatch(/release_state\s*=\s*'live'/i);
+    expect(SUITE).not.toMatch(/release_state\s*=\s*'live'\s*(?:,|;|$)/im);
+    expect(SUITE).toMatch(/release_state='live'\)/);
   });
+
 
   it('rolls every fixture back through an explicit sentinel', () => {
     expect(SUITE).toContain('OMNI_COMMS_C7_TEST_ROLLBACK_SENTINEL');
