@@ -13,7 +13,34 @@
  */
 import type { ChannelTestTargetType, TestCentreChannel } from './channelTestCentreTypes';
 
-export type ChannelTestDeliveryStatus = 'pending' | 'accepted' | 'failed';
+export type ChannelTestDeliveryStatus =
+  | 'pending'
+  | 'dispatching'
+  | 'accepted'
+  | 'failed'
+  | 'outcome_unknown';
+
+/** C5B — one immutable record per provider dispatch attempt. */
+export type ChannelTestDeliveryAttemptState =
+  | 'claimed'
+  | 'accepted'
+  | 'failed'
+  | 'outcome_unknown';
+
+export interface ChannelTestDeliveryAttempt {
+  readonly id: string;
+  readonly attempt_number: number;
+  readonly state: ChannelTestDeliveryAttemptState;
+  readonly result_code: string | null;
+  readonly provider_message_id: string | null;
+  readonly provider_status_code: number | null;
+  readonly error_code: string | null;
+  readonly started_at: string;
+  readonly completed_at: string | null;
+}
+
+/** Bounded number of provider attempts per delivery (database-enforced). */
+export const MAX_DELIVERY_ATTEMPTS = 3;
 
 export interface ChannelTestDeliveryEvent {
   readonly id: string;
