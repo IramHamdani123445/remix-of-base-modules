@@ -33,8 +33,8 @@ export interface TestContentForm {
   sampleText: string;
 }
 
-export function defaultTestContentForm(channel: TestCentreChannel): TestContentForm {
-  const base: TestContentForm = {
+export function defaultTestContentForm(_channel: TestCentreChannel): TestContentForm {
+  return {
     subject: 'Configuration preflight',
     body: 'Technical configuration preflight only. No message is sent.',
     text: 'Technical configuration preflight only.',
@@ -46,8 +46,8 @@ export function defaultTestContentForm(channel: TestCentreChannel): TestContentF
     documentTitle: 'Configuration preflight',
     sampleText: 'Technical configuration preflight only.',
   };
-  return { ...base, __channel: channel } as TestContentForm;
 }
+
 
 /**
  * Builds the bounded payload object accepted by the preflight RPC. Only keys
