@@ -370,6 +370,8 @@ const AccountRow: React.FC<{
   const lifecycle = async (
     action: 'activate' | 'disable' | 'retire',
   ) => {
+    // reference accounts are never passed into a mutation action
+    if (isReference) return;
     let reason: string | null = null;
     if (action === 'retire') {
       reason = window.prompt('Retirement reason (required)') ?? '';
@@ -393,8 +395,10 @@ const AccountRow: React.FC<{
   };
 
   const verify = async () => {
+    if (isReference) return;
     setBusy(true);
     try {
+
       const res = await verifyProviderCredentials({
         organizationId: orgId,
         providerAccountId: account.id,
