@@ -289,10 +289,9 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
 const IdentityRow: React.FC<{
   row: ChannelIdentityRow;
   client: Client;
-  departmentName: string | null;
   onEdit: () => void;
   onChanged: () => Promise<void> | void;
-}> = ({ row, client, departmentName, onEdit, onChanged }) => {
+}> = ({ row, client, onEdit, onChanged }) => {
   const [busy, setBusy] = useState(false);
   const isReference =
     row.data_origin === 'reference_seed'
