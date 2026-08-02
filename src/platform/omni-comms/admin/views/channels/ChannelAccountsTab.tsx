@@ -471,7 +471,7 @@ const AccountRow: React.FC<{
               busy ||
               account.status !== 'draft' ||
               !complete ||
-              (verifiable && account.verification_status !== 'verified') ||
+              (verifiable && account.verification_status !== "verified") ||
               !verifiable
             }
             title={
@@ -479,10 +479,11 @@ const AccountRow: React.FC<{
                 ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
                 : !complete
                   ? 'All required credential references must be configured'
-                  : account.verification_status !== 'verified'
+                  : account.verification_status !== "verified"
                     ? 'Verified provider credentials are required before activation'
                     : undefined
             }
+
             onClick={() => void lifecycle('activate')}
           >
             Activate
