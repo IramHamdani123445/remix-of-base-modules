@@ -269,8 +269,8 @@ describe('C1 closure — preservation and safety', () => {
       'recordProviderAccountCredentialCheck',
       'verifyProviderCredentials',
     ]) expect(accounts).toContain(fn);
-    expect(identities).toContain('upsertSenderIdentityDraft');
-    expect(identities).toContain('activateSenderIdentity');
+    expect(identities).toContain('upsertChannelIdentityDraft');
+    expect(identities).toContain('setChannelIdentityLifecycle');
     expect(bindings).toContain('upsertBindingDraft');
     expect(bindings).toContain('recordBindingVerification');
     expect(bindings).toContain('activateBinding');

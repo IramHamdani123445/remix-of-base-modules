@@ -40,7 +40,7 @@ import { toastError } from "./channels/channelFormPrimitives";
 
 export const OmniCommsChannelsPage: React.FC = () => {
   const client = useOmniCommsRpcClient();
-  const { organizationId: orgId, organizationName, departmentName } = useOmniCommsTenant();
+  const { organizationId: orgId, organizationName, departmentId, departmentName } = useOmniCommsTenant();
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -149,8 +149,10 @@ export const OmniCommsChannelsPage: React.FC = () => {
         <TabsContent value="identities">
           <ChannelIdentitiesTab
             definition={definition} client={client} orgId={orgId}
-            summary={isEmail ? summary : null} onChanged={refresh}
+            departmentId={departmentId} departmentName={departmentName}
+            onChanged={refresh}
           />
+
         </TabsContent>
         <TabsContent value="endpoints">
           <ChannelEndpointsTab definition={definition} />
