@@ -178,3 +178,70 @@ FROM public.omni_comms_delivery_attempt WHERE provider_idempotency_key IS NOT NU
 SELECT CASE WHEN to_regclass('public.omni_comms_channel_test_delivery') IS NOT NULL
              AND to_regclass('public.omni_comms_channel_test_delivery_attempt') IS NOT NULL
         THEN 'PASS' ELSE 'FAIL' END AS c7c_32;
+
+-- ============================================================================
+-- FINAL CLOSURE CORRECTION — rollback safety, evidence sanitisation and
+-- generic error responses.
+--
+-- Checks 33-40 concern SQL-script text and TypeScript source. SQL cannot
+-- inspect TypeScript reliably, so 36-40 are SOURCE ASSERTIONS: each is proved
+-- in `src/__tests__/omni-comms/c7-final-closure.test.ts` and is reported here
+-- as a pointer, not as a database assertion. Checks 33-35 are DATABASE-SIDE
+-- structural assertions about objects the rollback must not destroy, plus a
+-- documented pointer to the script-text assertion.
+-- ============================================================================
+
+\echo '== C7F.33 rollback ends with ROLLBACK, not COMMIT (SOURCE ASSERTION) =='
+\echo 'SOURCE ASSERTION -> c7-final-closure.test.ts "rollback final executable statement is ROLLBACK"'
+
+\echo '== C7F.34 rollback explicitly suspends controlled-pilot releases =='
+-- Database side: the canonical governed suspension worker the rollback calls
+-- must exist and must be service-role only. Without it the rollback could not
+-- suspend a controlled pilot without rewriting append-only history.
+SELECT CASE WHEN to_regprocedure('public.omni_comms_priv_dispatch_suspend_pilot(uuid,text,text)') IS NOT NULL
+             AND NOT has_function_privilege('authenticated','public.omni_comms_priv_dispatch_suspend_pilot(uuid,text,text)','EXECUTE')
+             AND NOT has_function_privilege('anon','public.omni_comms_priv_dispatch_suspend_pilot(uuid,text,text)','EXECUTE')
+        THEN 'PASS' ELSE 'FAIL' END AS c7f_34;
+
+\echo '== C7F.35 rollback preserves all evidence tables =='
+-- Every ledger the rollback must NEVER drop is present. The rollback script
+-- drops functions only; this check proves the evidence surface still exists.
+SELECT CASE WHEN count(*) = 8 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7f_35
+FROM unnest(ARRAY[
+  'omni_comms_channel_release_control',
+  'omni_comms_channel_release_event',
+  'omni_comms_dispatch_job',
+  'omni_comms_delivery_attempt',
+  'omni_comms_webhook_event',
+  'omni_comms_channel_test_delivery',
+  'omni_comms_channel_test_delivery_attempt',
+  'omni_comms_channel_test_delivery_event']) AS t(name)
+WHERE to_regclass('public.' || t.name) IS NOT NULL;
+
+\echo '== C7F.36 secret-reference names are not returned by the adapter (SOURCE ASSERTION) =='
+\echo 'SOURCE ASSERTION -> c7-final-closure.test.ts "adapter never echoes the credential reference name"'
+-- Database side: no stored evidence anywhere contains an Omni-Comms secret
+-- reference name. This IS a real database assertion.
+SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7f_36
+FROM public.omni_comms_delivery_attempt
+WHERE coalesce(error_detail,'') ~ 'OMNI_COMMS_RESEND_'
+   OR coalesce(error_code,'')   ~ 'OMNI_COMMS_RESEND_'
+   OR coalesce(provider_response::text,'') ~ 'OMNI_COMMS_RESEND_';
+
+\echo '== C7F.37 dispatcher browser responses contain no raw RPC message (SOURCE ASSERTION) =='
+\echo 'SOURCE ASSERTION -> c7-final-closure.test.ts "dispatcher returns only bounded codes"'
+
+\echo '== C7F.38 webhook responses contain no raw RPC message (SOURCE ASSERTION) =='
+\echo 'SOURCE ASSERTION -> c7-final-closure.test.ts "webhook business failure returns only record_failed"'
+
+\echo '== C7F.39 a C5B matching failure cannot fall through to C7 (SOURCE ASSERTION) =='
+\echo 'SOURCE ASSERTION -> c7-final-closure.test.ts "C5B recording failure stops processing"'
+
+\echo '== C7F.40 provider response evidence is allow-listed and bounded =='
+-- Database side: no persisted provider response retains a raw Email address or
+-- an unbounded provider message/error body.
+SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7f_40
+FROM public.omni_comms_delivery_attempt
+WHERE provider_response ? 'message'
+   OR provider_response ? 'error'
+   OR coalesce(provider_response::text,'') ~ '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}';
