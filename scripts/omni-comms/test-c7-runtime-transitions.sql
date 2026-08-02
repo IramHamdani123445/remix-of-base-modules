@@ -85,7 +85,7 @@ BEGIN
   RETURNING id INTO v_req;
 
   INSERT INTO public.omni_comms_recipient (request_id, organization_id, recipient_type)
-  VALUES (v_req, v_org, 'to') RETURNING id INTO v_rcp;
+  VALUES (v_req, v_org, 'external') RETURNING id INTO v_rcp;
 
   INSERT INTO public.omni_comms_message (
     request_id, recipient_id, organization_id, department_id, event_definition_id,
