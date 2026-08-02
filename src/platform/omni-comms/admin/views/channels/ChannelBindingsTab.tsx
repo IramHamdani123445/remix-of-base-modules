@@ -1,194 +1,600 @@
 /**
- * Omni-Comms C1 — channel Bindings tab.
+ * Omni-Comms C4A — generic, provider-independent Bindings tab.
  *
- * Email preserves the existing binding actions (draft, verification recording,
- * activation) and enriches the table using data already returned by the
- * summary RPC. No provider fallback fields are introduced in C1.
+ * ONE binding administration experience for every channel. A binding declares
+ * which provider account (and, where the channel models one, which channel
+ * endpoint) an approved channel identity may be presented through, plus the
+ * priority used by a FUTURE same-channel fallback capability.
+ *
+ * Boundaries (permanent):
+ *   - No provider SDK import, no provider API call, no DNS lookup, no fetch of
+ *     a configured URL, and no façade emission call.
+ *   - No request, message, dispatch job or delivery attempt is created.
+ *   - No credential value is entered, stored or displayed.
+ *   - Verification state is READ-ONLY here. Manual administrator verification
+ *     was permanently removed; only the provider or a trusted server-side
+ *     service can record it.
+ *   - Reference/simulation bindings are hidden by default and read-only.
  */
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Loader2, Plus, RefreshCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { toast } from 'sonner';
 import type { useOmniCommsRpcClient } from '../../hooks/useOmniCommsRpcClient';
 import {
-  activateBinding,
-  recordBindingVerification,
-  upsertBindingDraft,
-} from '@/platform/omni-comms/application/channelManagementService';
-import type {
-  EmailConfigSummary,
-} from '@/platform/omni-comms/application/channelManagementTypes';
+  getChannelBindingSummary,
+  setChannelBindingLifecycle,
+  upsertChannelBindingDraft,
+} from '@/platform/omni-comms/application/channelBindingService';
+import {
+  bindingActivationBlockers,
+  bindingEndpointLabel,
+  bindingEndpointRequirement,
+  bindingScopeLabel,
+  isValidBindingExternalRef,
+  isValidBindingPriority,
+  BINDING_ACTIVATION_MEANING,
+  BINDING_PRIORITY_DEFAULT,
+  BINDING_PRIORITY_MEANING,
+  BINDING_VERIFICATION_LABEL,
+  BINDING_VERIFICATION_OWNERSHIP,
+  BINDING_VERIFICATION_SOURCE_LABEL,
+  REFERENCE_BINDING_READ_ONLY_HELP,
+  type BindingEndpointOption,
+  type BindingIdentityOption,
+  type BindingProviderAccountOption,
+  type ChannelBindingRow,
+  type ChannelBindingSummary,
+  type OmniCommsBindingChannel,
+} from '@/platform/omni-comms/application/channelBindingTypes';
+import { identityChannelSupported } from '@/platform/omni-comms/application/channelIdentityTypes';
 import { DeferredCapabilityCard, Field, SelectField, toastError } from './channelFormPrimitives';
-import { partitionEmailConfig, visibleRecords } from './channelReferenceData';
-import { ReferenceDataControls } from './ReferenceDataControls';
+import { visibleRecords } from './channelReferenceData';
+import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
 import type { ChannelUiDefinition } from './channelUiRegistry';
 
 type Client = ReturnType<typeof useOmniCommsRpcClient>;
 
+const NO_ENDPOINT = '__none__';
+
+export const BINDINGS_NOT_IMPLEMENTED_LABEL =
+  'Binding configuration is not modelled for this channel';
+
+/** Truthful statement rendered on every binding surface. */
+export const BINDING_NO_EXTERNAL_CALL_NOTICE =
+  'This screen stores configuration only. No provider call, DNS lookup or '
+  + 'verification request is performed, and no message is sent.';
+
+interface FormState {
+  id: string | null;
+  expectedUpdatedAt: string | null;
+  senderIdentityId: string;
+  providerAccountId: string;
+  channelEndpointId: string;
+  priority: string;
+  externalSenderRef: string;
+}
+
+function blankForm(): FormState {
+  return {
+    id: null,
+    expectedUpdatedAt: null,
+    senderIdentityId: '',
+    providerAccountId: '',
+    channelEndpointId: NO_ENDPOINT,
+    priority: String(BINDING_PRIORITY_DEFAULT),
+    externalSenderRef: '',
+  };
+}
+
 export const ChannelBindingsTab: React.FC<{
   definition: ChannelUiDefinition;
-  client: Client;
-  summary: EmailConfigSummary | null;
-  onChanged: () => Promise<void> | void;
-}> = ({ definition, client, summary, onChanged }) => {
-  if (definition.code !== 'email') {
+  client?: Client;
+  orgId?: string;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  onChanged?: () => Promise<void> | void;
+}> = ({ definition, client, orgId, departmentId = null, departmentName = null, onChanged }) => {
+  if (!identityChannelSupported(definition.code) || !client || !orgId) {
     return (
       <DeferredCapabilityCard
         testId="omni-comms-bindings-empty-state"
         title={`${definition.name} bindings`}
-        description="Identity → Provider account → Priority/fallback"
+        description={BINDINGS_NOT_IMPLEMENTED_LABEL}
         bullets={[definition.bindings]}
-        footer={`Binding configuration will be implemented in ${definition.accounts.futureBuild}.`}
+        footer="No binding record is created, stored or contacted."
       />
     );
   }
-  return <EmailBindingsPanel client={client} summary={summary} onChanged={onChanged} />;
+
+  return (
+    <GenericBindingsPanel
+      channel={definition.code as OmniCommsBindingChannel}
+      channelName={definition.name}
+      client={client}
+      orgId={orgId}
+      departmentId={departmentId}
+      departmentName={departmentName}
+      onChanged={onChanged ?? (() => undefined)}
+    />
+  );
 };
 
-const EmailBindingsPanel: React.FC<{
+const GenericBindingsPanel: React.FC<{
+  channel: OmniCommsBindingChannel;
+  channelName: string;
   client: Client;
-  summary: EmailConfigSummary | null;
+  orgId: string;
+  departmentId: string | null;
+  departmentName: string | null;
   onChanged: () => Promise<void> | void;
-}> = ({ client, summary, onChanged }) => {
-  const [form, setForm] = useState({
-    senderId: '', accountId: '', priority: '100', externalRef: '',
-  });
-  const [busy, setBusy] = useState(false);
+}> = ({ channel, channelName, client, orgId, departmentId, departmentName, onChanged }) => {
+  const [summary, setSummary] = useState<ChannelBindingSummary | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showReference, setShowReference] = useState(false);
-  const part = partitionEmailConfig({
-    accounts: summary?.provider_accounts,
-    senders: summary?.sender_identities,
-    bindings: summary?.bindings,
-  });
-  const bindings = visibleRecords(part.bindings, part.referenceBindings, showReference);
-  const senders = visibleRecords(part.senders, part.referenceSenders, showReference);
-  const accounts = visibleRecords(part.accounts, part.referenceAccounts, showReference);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(blankForm);
 
-  const allSenders = summary?.sender_identities ?? [];
-  const allAccounts = summary?.provider_accounts ?? [];
-  const senderLabel = (id: string) => {
-    const s = allSenders.find((x) => x.id === id);
-    return s ? `${s.code}${s.from_address ? ` — ${s.from_address}` : ''}` : id;
-  };
-  const accountLabel = (id: string) => {
-    const a = allAccounts.find((x) => x.id === id);
-    return a ? a.code : id;
-  };
-
-  const create = async () => {
-    setBusy(true);
+  /**
+   * Reference bindings are fetched ONLY when the reference view is active, so
+   * reference rows are never delivered to the browser during normal use.
+   */
+  const load = useCallback(async (includeReference: boolean) => {
+    if (!orgId) return;
+    setLoading(true);
     try {
-      const priority = Number.parseInt(form.priority, 10);
-      await upsertBindingDraft(client, {
-        senderIdentityId: form.senderId,
-        providerAccountId: form.accountId,
-        priority: Number.isFinite(priority) ? priority : 100,
-        externalSenderRef: form.externalRef.trim() || null,
-      });
-      toast.success('Draft binding created');
-      setForm({ senderId: '', accountId: '', priority: '100', externalRef: '' });
-      await onChanged();
-    } catch (e) { toastError(e, 'Create failed'); }
-    finally { setBusy(false); }
+      setSummary(
+        await getChannelBindingSummary(client, orgId, channel, departmentId, includeReference),
+      );
+    } catch (e) {
+      toastError(e, 'Unable to load bindings');
+      setSummary(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [client, orgId, channel, departmentId]);
+
+  useEffect(() => { void load(showReference); }, [load, showReference]);
+
+  const refreshAll = useCallback(async () => {
+    await load(showReference);
+    await onChanged();
+  }, [load, showReference, onChanged]);
+
+  const genuine = summary?.bindings ?? [];
+  const reference = summary?.reference_bindings ?? [];
+  const referenceCount = summary?.reference_binding_count ?? reference.length;
+  const rows = useMemo(
+    () => visibleRecords(genuine, reference, showReference),
+    [genuine, reference, showReference],
+  );
+
+  const identities = summary?.identities ?? [];
+  const accounts = summary?.provider_accounts ?? [];
+  const endpoints = summary?.endpoints ?? [];
+  const requirement = bindingEndpointRequirement(channel);
+
+  const openCreate = () => { setForm(blankForm()); setDialogOpen(true); };
+  const openEdit = (row: ChannelBindingRow) => {
+    setForm({
+      id: row.id,
+      expectedUpdatedAt: row.updated_at,
+      senderIdentityId: row.sender_identity_id,
+      providerAccountId: row.provider_account_id,
+      channelEndpointId: row.channel_endpoint_id ?? NO_ENDPOINT,
+      priority: String(row.priority),
+      externalSenderRef: row.external_sender_ref ?? '',
+    });
+    setDialogOpen(true);
   };
 
   return (
     <div className="space-y-4">
       <ReferenceDataControls
-        hiddenCount={part.hiddenCount}
+        hiddenCount={referenceCount}
         showReference={showReference}
         onToggle={setShowReference}
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>Bind sender to provider account</CardTitle>
-          <CardDescription>
-            A binding must be verified before it can be activated. Verification is recorded here;
-            a later build wires real Resend domain checks.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <SelectField label="Sender identity" value={form.senderId}
-            onChange={(v) => setForm({ ...form, senderId: v })}
-            options={senders.map((s) => ({ value: s.id, label: `${s.code} — ${s.from_address ?? ''}` }))} />
-          <SelectField label="Provider account" value={form.accountId}
-            onChange={(v) => setForm({ ...form, accountId: v })}
-            options={accounts.map((a) => ({ value: a.id, label: `${a.code} (${a.status})` }))} />
-          <Field label="Priority" value={form.priority} onChange={(v) => setForm({ ...form, priority: v })} />
-          <Field label="External sender ref" value={form.externalRef}
-            onChange={(v) => setForm({ ...form, externalRef: v })} placeholder="Resend domain id" />
-          <div className="col-span-2">
-            <Button disabled={busy || !form.senderId || !form.accountId} onClick={create}>Create draft</Button>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
-        <CardHeader><CardTitle>Bindings</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle>{channelName} bindings</CardTitle>
+            <CardDescription data-testid="omni-comms-binding-activation-meaning">
+              {BINDING_ACTIVATION_MEANING}
+            </CardDescription>
+            <p
+              className="text-xs text-muted-foreground mt-2"
+              data-testid="omni-comms-binding-verification-ownership"
+            >
+              {BINDING_VERIFICATION_OWNERSHIP}
+            </p>
+            <p
+              className="text-xs text-muted-foreground mt-1"
+              data-testid="omni-comms-binding-priority-meaning"
+            >
+              {BINDING_PRIORITY_MEANING}
+            </p>
+            <p
+              className="text-xs text-muted-foreground mt-1"
+              data-testid="omni-comms-binding-no-external-call"
+            >
+              {BINDING_NO_EXTERNAL_CALL_NOTICE}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline" size="sm"
+              onClick={() => void load(showReference)} disabled={loading}
+            >
+              <RefreshCcw className="h-4 w-4 mr-1" /> Refresh
+            </Button>
+            <Button size="sm" onClick={openCreate} data-testid="omni-comms-create-binding">
+              <Plus className="h-4 w-4 mr-1" /> Create binding
+            </Button>
+          </div>
+        </CardHeader>
         <CardContent>
-          {bindings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No bindings yet.</p>
+          {loading ? (
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading bindings…
+            </p>
+          ) : rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground" data-testid="omni-comms-bindings-none">
+              No {channelName.toLowerCase()} bindings are configured for this scope yet.
+            </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Sender identity</TableHead>
+                  <TableHead>Identity</TableHead>
                   <TableHead>Provider account</TableHead>
+                  <TableHead>Endpoint</TableHead>
+                  <TableHead>Scope</TableHead>
                   <TableHead>Priority</TableHead>
-                  <TableHead>External sender ref</TableHead>
+                  <TableHead>Provider reference</TableHead>
                   <TableHead>Verification</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bindings.map((b) => (
-                  <TableRow key={b.id}>
-                    <TableCell>{senderLabel(b.sender_identity_id)}</TableCell>
-                    <TableCell><code>{accountLabel(b.provider_account_id)}</code></TableCell>
-                    <TableCell>{b.priority}</TableCell>
-                    <TableCell>{b.external_sender_ref ?? '—'}</TableCell>
-                    <TableCell><Badge variant="outline">{b.verification_status}</Badge></TableCell>
-                    <TableCell><Badge>{b.status}</Badge></TableCell>
-                    <TableCell className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="outline"
-                        onClick={async () => {
-                          try {
-                            await recordBindingVerification(client, b.id, b.updated_at, 'verified');
-                            toast.success('Verification recorded: verified');
-                            await onChanged();
-                          } catch (e) { toastError(e, 'Record failed'); }
-                        }}
-                      >Mark verified</Button>
-                      <Button size="sm" variant="outline"
-                        onClick={async () => {
-                          try {
-                            await recordBindingVerification(client, b.id, b.updated_at, 'failed');
-                            toast.success('Verification recorded: failed');
-                            await onChanged();
-                          } catch (e) { toastError(e, 'Record failed'); }
-                        }}
-                      >Mark failed</Button>
-                      <Button size="sm" disabled={b.status !== 'draft' || b.verification_status !== 'verified'}
-                        onClick={async () => {
-                          try {
-                            await activateBinding(client, b.id, b.updated_at);
-                            toast.success('Binding activated');
-                            await onChanged();
-                          } catch (e) { toastError(e, 'Activate failed'); }
-                        }}
-                      >Activate</Button>
-                    </TableCell>
-                  </TableRow>
+                {rows.map((row) => (
+                  <BindingRow
+                    key={row.id}
+                    row={row}
+                    client={client}
+                    identity={identities.find((i) => i.id === row.sender_identity_id)}
+                    account={accounts.find((a) => a.id === row.provider_account_id)}
+                    endpoint={endpoints.find((e) => e.id === row.channel_endpoint_id)}
+                    onEdit={() => openEdit(row)}
+                    onChanged={refreshAll}
+                  />
                 ))}
               </TableBody>
             </Table>
           )}
         </CardContent>
       </Card>
+
+      <BindingDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        channel={channel}
+        channelName={channelName}
+        form={form}
+        setForm={setForm}
+        client={client}
+        orgId={orgId}
+        departmentId={departmentId}
+        departmentName={departmentName}
+        identities={identities}
+        accounts={accounts}
+        endpoints={endpoints}
+        requirement={requirement}
+        onSaved={refreshAll}
+      />
     </div>
+  );
+};
+
+const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
+  active: 'default',
+  draft: 'secondary',
+  disabled: 'outline',
+  retired: 'outline',
+};
+
+const BindingRow: React.FC<{
+  row: ChannelBindingRow;
+  client: Client;
+  identity?: BindingIdentityOption;
+  account?: BindingProviderAccountOption;
+  endpoint?: BindingEndpointOption;
+  onEdit: () => void;
+  onChanged: () => Promise<void> | void;
+}> = ({ row, client, identity, account, endpoint, onEdit, onChanged }) => {
+  const [busy, setBusy] = useState(false);
+  const isReference = row.data_origin === 'reference_seed';
+  const blockers = bindingActivationBlockers(row, identity, account, endpoint);
+
+  const lifecycle = async (action: 'activate' | 'disable' | 'retire') => {
+    if (isReference) return;
+    let reason: string | null = null;
+    if (action === 'retire') {
+      reason = window.prompt('Retirement reason (required)')?.trim() || null;
+      if (!reason) return;
+    }
+    setBusy(true);
+    try {
+      await setChannelBindingLifecycle(client, {
+        id: row.id,
+        expectedUpdatedAt: row.updated_at,
+        action,
+        reason,
+      });
+      toast.success(`Binding ${action}d`);
+      await onChanged();
+    } catch (e) { toastError(e, `${action} failed`); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <TableRow data-testid={`omni-comms-binding-row-${row.id}`}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <div>
+            <p className="font-medium">{row.identity_display_name}</p>
+            <p className="text-xs text-muted-foreground font-mono">
+              {row.identity_value ?? row.identity_code}
+            </p>
+          </div>
+          {isReference ? <ReferenceDataBadge /> : null}
+        </div>
+      </TableCell>
+      <TableCell>
+        <p className="text-sm">{row.provider_account_display_name}</p>
+        <p className="text-xs text-muted-foreground font-mono">
+          {row.adapter_key ?? row.provider_account_code}
+        </p>
+      </TableCell>
+      <TableCell className="text-sm">{bindingEndpointLabel(row)}</TableCell>
+      <TableCell className="text-sm">{bindingScopeLabel(row)}</TableCell>
+      <TableCell>{row.priority}</TableCell>
+      <TableCell className="font-mono text-xs break-all">
+        {row.external_sender_ref ?? '—'}
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline" data-testid={`omni-comms-binding-verification-${row.id}`}>
+          {BINDING_VERIFICATION_LABEL[row.verification_status]}
+        </Badge>
+        <p className="text-xs text-muted-foreground mt-1">
+          {BINDING_VERIFICATION_SOURCE_LABEL[row.verification_source]}
+          {row.verification_result_code ? ` · ${row.verification_result_code}` : ''}
+        </p>
+      </TableCell>
+      <TableCell>
+        <Badge variant={STATUS_VARIANT[row.status] ?? 'outline'}>{row.status}</Badge>
+      </TableCell>
+      <TableCell>
+        {isReference ? (
+          <p className="text-xs text-muted-foreground" data-testid="omni-comms-binding-reference-help">
+            {REFERENCE_BINDING_READ_ONLY_HELP}
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {row.status === 'draft' ? (
+              <Button size="sm" variant="outline" disabled={busy} onClick={onEdit}>Edit</Button>
+            ) : null}
+            {row.status === 'draft' || row.status === 'disabled' ? (
+              <Button
+                size="sm" disabled={busy || blockers.length > 0}
+                title={blockers.join(' ')}
+                onClick={() => void lifecycle('activate')}
+              >Activate</Button>
+            ) : null}
+            {row.status === 'active' ? (
+              <Button
+                size="sm" variant="outline" disabled={busy}
+                onClick={() => void lifecycle('disable')}
+              >Disable</Button>
+            ) : null}
+            {row.status !== 'retired' ? (
+              <Button
+                size="sm" variant="outline" disabled={busy}
+                onClick={() => void lifecycle('retire')}
+              >Retire</Button>
+            ) : null}
+          </div>
+        )}
+      </TableCell>
+    </TableRow>
+  );
+};
+
+const BindingDialog: React.FC<{
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  channel: OmniCommsBindingChannel;
+  channelName: string;
+  form: FormState;
+  setForm: React.Dispatch<React.SetStateAction<FormState>>;
+  client: Client;
+  orgId: string;
+  departmentId: string | null;
+  departmentName: string | null;
+  identities: readonly BindingIdentityOption[];
+  accounts: readonly BindingProviderAccountOption[];
+  endpoints: readonly BindingEndpointOption[];
+  requirement: 'required' | 'optional' | 'forbidden';
+  onSaved: () => Promise<void> | void;
+}> = ({
+  open, onOpenChange, channel, channelName, form, setForm, client, orgId,
+  departmentId, departmentName, identities, accounts, endpoints, requirement, onSaved,
+}) => {
+  const [busy, setBusy] = useState(false);
+  const priority = Number.parseInt(form.priority, 10);
+  const endpointId = form.channelEndpointId === NO_ENDPOINT ? null : form.channelEndpointId;
+
+  /** Endpoints are filtered to the chosen provider account where one applies. */
+  const eligibleEndpoints = useMemo(
+    () => endpoints.filter(
+      (e) => e.provider_account_id === null
+        || e.provider_account_id === form.providerAccountId,
+    ),
+    [endpoints, form.providerAccountId],
+  );
+
+  const problems: string[] = [];
+  if (!form.senderIdentityId) problems.push('Select a channel identity.');
+  if (!form.providerAccountId) problems.push('Select a provider account.');
+  if (requirement === 'required' && !endpointId) {
+    problems.push(`A ${channelName.toLowerCase()} endpoint is required for this channel.`);
+  }
+  if (!isValidBindingPriority(priority)) problems.push('Priority must be between 1 and 1000.');
+  if (form.externalSenderRef.trim() && !isValidBindingExternalRef(form.externalSenderRef)) {
+    problems.push('Provider reference contains unsupported characters.');
+  }
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await upsertChannelBindingDraft(client, {
+        id: form.id,
+        expectedUpdatedAt: form.expectedUpdatedAt,
+        organizationId: orgId,
+        departmentId,
+        channel,
+        senderIdentityId: form.senderIdentityId,
+        providerAccountId: form.providerAccountId,
+        channelEndpointId: endpointId,
+        priority,
+        externalSenderRef: form.externalSenderRef.trim() || null,
+      });
+      toast.success(form.id ? 'Binding draft updated' : 'Binding draft created');
+      onOpenChange(false);
+      await onSaved();
+    } catch (e) { toastError(e, 'Save failed'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>{form.id ? 'Edit binding draft' : `New ${channelName} binding`}</DialogTitle>
+          <DialogDescription>
+            {BINDING_ACTIVATION_MEANING} {BINDING_NO_EXTERNAL_CALL_NOTICE}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <SelectField
+            label="Channel identity"
+            value={form.senderIdentityId}
+            onChange={(v) => setForm((f) => ({ ...f, senderIdentityId: v }))}
+            options={identities.map((i) => ({
+              value: i.id,
+              label: `${i.display_name} — ${i.identity_value ?? i.code} (${i.status})`,
+            }))}
+          />
+          <SelectField
+            label="Provider account"
+            value={form.providerAccountId}
+            onChange={(v) => setForm((f) => ({
+              ...f, providerAccountId: v, channelEndpointId: NO_ENDPOINT,
+            }))}
+            options={accounts.map((a) => ({
+              value: a.id,
+              label: `${a.display_name} — ${a.adapter_key ?? a.code} (${a.status})`,
+            }))}
+          />
+          {requirement === 'forbidden' ? null : (
+            <SelectField
+              label={`Channel endpoint${requirement === 'required' ? '' : ' (optional)'}`}
+              value={form.channelEndpointId}
+              onChange={(v) => setForm((f) => ({ ...f, channelEndpointId: v }))}
+              options={[
+                ...(requirement === 'optional'
+                  ? [{ value: NO_ENDPOINT, label: 'No endpoint' }]
+                  : []),
+                ...eligibleEndpoints.map((e) => ({
+                  value: e.id,
+                  label: `${e.display_name} — ${e.endpoint_type} (${e.status})`,
+                })),
+              ]}
+            />
+          )}
+          <Field
+            label="Priority"
+            value={form.priority}
+            onChange={(v) => setForm((f) => ({ ...f, priority: v }))}
+            placeholder="100"
+          />
+          <Field
+            label="Provider identity reference (optional)"
+            value={form.externalSenderRef}
+            onChange={(v) => setForm((f) => ({ ...f, externalSenderRef: v }))}
+            placeholder="Provider-side identifier — never a credential"
+          />
+          <div className="md:col-span-2 text-xs text-muted-foreground space-y-1">
+            <p>{BINDING_PRIORITY_MEANING}</p>
+            <p>
+              Scope: {departmentId ? (departmentName?.trim() || 'Department') : 'Organisation-wide'}
+            </p>
+            <p data-testid="omni-comms-binding-dialog-verification-ownership">
+              {BINDING_VERIFICATION_OWNERSHIP}
+            </p>
+          </div>
+          {problems.length > 0 ? (
+            <ul
+              className="md:col-span-2 list-disc pl-5 text-xs text-destructive space-y-1"
+              data-testid="omni-comms-binding-problems"
+            >
+              {problems.map((p) => <li key={p}>{p}</li>)}
+            </ul>
+          ) : null}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => void save()}
+            disabled={busy || problems.length > 0}
+            data-testid="omni-comms-save-binding"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+            Save draft
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

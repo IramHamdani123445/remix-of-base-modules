@@ -196,13 +196,17 @@ describe('C1 — email functionality preserved', () => {
   });
 
   it('15. existing email binding actions remain available with richer columns', () => {
-    expect(bindings).toContain('upsertBindingDraft');
-    expect(bindings).toContain('recordBindingVerification');
-    expect(bindings).toContain('activateBinding');
-    expect(bindings).toContain('Sender identity');
+    // C4A — Email binding administration is preserved through the generic,
+    // provider-independent Channel Bindings model. Manual administrator
+    // verification was deliberately removed; the provider owns that evidence.
+    expect(bindings).toContain('upsertChannelBindingDraft');
+    expect(bindings).toContain('setChannelBindingLifecycle');
+    expect(bindings).not.toContain('recordBindingVerification');
+    expect(bindings).toContain('Identity');
     expect(bindings).toContain('Provider account');
-    expect(bindings).toContain('External sender ref');
+    expect(bindings).toContain('Priority');
   });
+
 
   it('16. existing email policy save remains available', () => {
     expect(policies).toContain('upsertEmailChannelSetting');

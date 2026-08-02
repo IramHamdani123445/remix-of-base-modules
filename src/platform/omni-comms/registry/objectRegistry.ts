@@ -133,8 +133,10 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     category: 'channels_senders_preferences',
     epic: 4,
     writeAuthority: 'admin_rpc',
-    purpose: 'Binds a sender identity to the provider account that ships it.',
+    purpose:
+      'Generic channel binding: which provider account (and optional channel endpoint) an approved channel identity may be presented through, with priority for future same-channel fallback and provider-controlled verification evidence. C4A adds no new table.',
     status: 'AVAILABLE',
+
     introductionStory: 'Epic 4 — Story 1',
   },
   {

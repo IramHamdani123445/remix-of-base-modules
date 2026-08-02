@@ -81,17 +81,23 @@ export function isReferenceSenderIdentity(row: SenderIdentityRow): boolean {
   return isReferenceCode(row.code) || isReferenceAddress(row.from_address);
 }
 
-/** A binding is reference data when either side of it is reference data. */
+/**
+ * C4A — explicit `data_origin` is authoritative for a binding too. The
+ * either-side derivation below remains ONLY as a defensive fallback for a row
+ * that predates the C4A classification backfill.
+ */
 export function isReferenceBinding(
   row: BindingRow,
   referenceSenderIds: ReadonlySet<string>,
   referenceAccountIds: ReadonlySet<string>,
 ): boolean {
+  if (row.data_origin) return isReferenceDataOrigin(row.data_origin);
   return (
     referenceSenderIds.has(row.sender_identity_id)
     || referenceAccountIds.has(row.provider_account_id)
   );
 }
+
 
 export interface PartitionedEmailConfig {
   accounts: ProviderAccountRow[];
@@ -163,12 +169,24 @@ export function readinessCounts(part: PartitionedEmailConfig): {
   accounts: number;
   activeSenders: number;
   activeVerifiedBindings: number;
+  /** C4A — genuine active bindings, regardless of verification evidence. */
+  activeBindings: number;
+  /** C4A — active bindings verified by a provider or trusted service. */
+  providerVerifiedBindings: number;
 } {
+  const activeBindings = part.bindings.filter((b) => b.status === 'active');
   return {
     accounts: part.accounts.length,
     activeSenders: part.senders.filter((s) => s.status === 'active').length,
-    activeVerifiedBindings: part.bindings.filter(
-      (b) => b.status === 'active' && b.verification_status === 'verified',
+    activeVerifiedBindings: activeBindings.filter(
+      (b) => b.verification_status === 'verified',
+    ).length,
+    activeBindings: activeBindings.length,
+    providerVerifiedBindings: activeBindings.filter(
+      (b) =>
+        b.verification_status === 'verified'
+        && (b.verification_source === 'provider' || b.verification_source === 'service'),
     ).length,
   };
 }
+
