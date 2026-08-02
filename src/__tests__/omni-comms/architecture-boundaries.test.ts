@@ -739,5 +739,6 @@ describe('Canonical repository run', () => {
     expect(unbaselined).toEqual([]);
     expect(summary.staleBaselineEntries).toBe(0);
     expect(summary.passed).toBe(true);
-  });
+  }, REPO_SCAN_TIMEOUT_MS);
+
 });
