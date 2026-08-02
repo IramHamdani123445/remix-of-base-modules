@@ -261,6 +261,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Build 4A — Business producer integration',
   },
   {
+    name: 'omni_comms_channel_test_run',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Immutable technical configuration-preflight ledger for a channel binding; stores the 21-check outcome, configuration fingerprint, masked target and payload summary only, and never sends a message.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C5A — Test Centre preflight',
+  },
+  {
     name: 'omni_comms_webhook_event',
     category: 'runtime',
     epic: 6,
