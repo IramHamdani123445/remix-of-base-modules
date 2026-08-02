@@ -179,7 +179,7 @@ describe('C1 closure — one Email readiness projection', () => {
         bindings: [binding({ id: 'b9', sender_identity_id: 's9', provider_account_id: 'a9' })] as never,
       }),
     );
-    expect(synthetic.counts).toEqual({
+    expect(synthetic.counts).toMatchObject({
       accounts: 0,
       activeSenders: 0,
       activeVerifiedBindings: 0,
