@@ -143,7 +143,7 @@ export const ChannelReleaseControlTab: React.FC<{
         });
       }
     } catch (e) {
-      toastError(e);
+      toastError(e, 'Could not load Release Control.');
     } finally {
       setLoading(false);
     }
@@ -159,7 +159,7 @@ export const ChannelReleaseControlTab: React.FC<{
       await refresh();
       onChanged?.();
     } catch (e) {
-      toastError(e);
+      toastError(e, 'Release Control action failed.');
     } finally {
       setBusy(false);
     }
@@ -169,7 +169,7 @@ export const ChannelReleaseControlTab: React.FC<{
     return (
       <DeferredCapabilityCard
         title="Release Control"
-        description={`Release Control is implemented for Email only. ${definition.label} governance arrives with its own build.`}
+        description={`Release Control is implemented for Email only. ${definition.name} governance arrives with its own build.`}
       />
     );
   }
