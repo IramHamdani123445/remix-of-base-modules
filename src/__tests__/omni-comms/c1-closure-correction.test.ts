@@ -296,7 +296,8 @@ describe('C1 closure — preservation and safety', () => {
     expect(bindings).toContain('setChannelBindingLifecycle');
     expect(bindings).not.toContain('recordBindingVerification');
 
-    expect(policies).toContain('upsertEmailChannelSetting');
+    // C4B — generic policy mutation supersedes the Email-only setting RPC.
+    expect(policies).toContain('upsertChannelPolicy');
   });
 
   it('12. no migration, provider call, send or runtime mutation is introduced', () => {

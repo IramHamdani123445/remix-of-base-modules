@@ -209,10 +209,10 @@ describe('C1 — email functionality preserved', () => {
 
 
   it('16. existing email policy save remains available', () => {
-    expect(policies).toContain('upsertEmailChannelSetting');
-    expect(policies).toContain(
-      'Configuration flag only. Provider dispatch is not implemented.',
-    );
+    // C4B — the Email-only setting mutation was superseded by the generic
+    // channel-policy mutation; saving Email policy remains available.
+    expect(policies).toContain('upsertChannelPolicy');
+    expect(policies).toContain('POLICY_STATE_NOTICE');
   });
 
   it('overview replaces the "Register provider" organisation action', () => {
