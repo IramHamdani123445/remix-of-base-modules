@@ -181,9 +181,13 @@ export function identityChannelValue(row: ChannelIdentityRow): string {
 
 /** Compact "key: value" summary of the remaining configuration fields. */
 export function identityConfigSummary(row: ChannelIdentityRow): string {
+  const entries = Object.entries(row.identity_config ?? {});
+  if (entries.length === 0) return 'No configuration';
+  return entries.map(([k, v]) => `${k}: ${v}`).join(' · ');
+}
+
 /** Operator-facing scope label: organisation-wide or the actual department. */
 export function identityScopeLabel(row: ChannelIdentityRow): string {
   if (!row.department_id) return 'Organisation-wide';
   return row.department_name?.trim() || 'Department';
-}
 }
