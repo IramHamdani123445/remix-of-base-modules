@@ -145,17 +145,19 @@ export const OmniCommsChannelsPage: React.FC = () => {
       />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList>
+        <TabsList className="flex w-full flex-nowrap justify-start overflow-x-auto">
           {(definition.tabs as ChannelWorkspaceTab[]).map((t) => (
             <TabsTrigger
               key={t}
               value={t}
+              className="whitespace-nowrap"
               disabled={isTabDisabled(definition, t)}
             >
               {CHANNEL_WORKSPACE_TAB_LABELS[t]}
             </TabsTrigger>
           ))}
         </TabsList>
+
 
         <TabsContent value="overview">
           <ChannelOverviewTab
@@ -203,8 +205,10 @@ export const OmniCommsChannelsPage: React.FC = () => {
         <TabsContent value="test-centre">
           <ChannelTestCentreTab
             definition={definition} client={client} orgId={orgId}
-            departmentId={departmentId} onChanged={refreshTestCentre}
+            departmentId={departmentId} departmentName={departmentName}
+            onChanged={refreshTestCentre}
           />
+
         </TabsContent>
         <TabsContent value="diagnostics">
           <ChannelDiagnosticsTab definition={definition} />
