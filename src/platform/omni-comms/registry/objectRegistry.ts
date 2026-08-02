@@ -325,8 +325,11 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     category: 'runtime',
     epic: 6,
     writeAuthority: 'service_role_only',
-    purpose: 'Raw inbound provider webhook payload, deduplicated and audited.',
-    status: 'PLANNED',
+    purpose:
+      'Deduplicated, signature-verified inbound provider callback ledger. Stores only a bounded payload summary and a SHA-256 payload digest, never raw provider bodies or headers.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C7 — Controlled business Email dispatch',
+
   },
 ] as const;
 

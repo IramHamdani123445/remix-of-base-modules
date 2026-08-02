@@ -441,9 +441,11 @@ describe('Rule 7 — OMNI_INTEGRATION_REGISTRY', () => {
     expect(v[0].message).toMatch(/Unregistered/);
   });
 
-  it('fails when physical implementation exists for Reserved integration', () => {
+  it('has no Reserved integration with a physical implementation', () => {
+    // C7 promoted omni-comms-dispatch to Available, so its physical edge
+    // function directory must NOT be reported as an undeclared implementation.
     const v = checkIntegrationRegistry(makeScan([], { edgeFunctionDirs: ['omni-comms-dispatch'] }));
-    expect(v.some((x) => /Physical implementation/.test(x.message))).toBe(true);
+    expect(v.some((x) => /Physical implementation/.test(x.message))).toBe(false);
   });
 
   it('rejects omni-comms-render outright', () => {

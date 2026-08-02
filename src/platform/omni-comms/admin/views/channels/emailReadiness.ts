@@ -49,19 +49,24 @@ import { partitionEmailConfig, readinessCounts } from './channelReferenceData';
 export const EMAIL_RELEASE_CONTROL_IMPLEMENTED = true;
 
 /**
- * C6 — business provider dispatch is deliberately NOT implemented. Release
- * Control decides what is ALLOWED; it never makes a job runnable.
+ * C7 — the canonical controlled business Email dispatcher IS installed.
+ * Release Control still decides only what is ALLOWED; the claim transaction
+ * remains the concurrency authority, and live delivery stays disabled.
  */
-export const EMAIL_BUSINESS_DISPATCH_IMPLEMENTED = false;
+export const EMAIL_BUSINESS_DISPATCH_IMPLEMENTED = true;
 
 export const EMAIL_RELEASE_CONTROL_PENDING =
   'Release Control is configured but no controlled pilot has been approved and '
   + 'activated for this scope.';
 
 export const EMAIL_BUSINESS_DISPATCH_PENDING =
-  'Business provider dispatch is not implemented in C6. Jobs created under a '
-  + 'controlled pilot remain held and non-runnable, and live delivery stays '
-  + 'disabled.';
+  'The controlled business Email dispatcher is installed, but no approved '
+  + 'queued business producer exists yet, so no business job is eligible for '
+  + 'dispatch. Live delivery remains disabled.';
+
+/** C7 — no approved queued business producer has been selected. */
+export const EMAIL_PILOT_PRODUCER_BLOCKER = 'pilot_business_producer_not_selected';
+
 
 export type EmailReadinessState = 'unknown' | 'incomplete' | 'prerequisites_met';
 
@@ -140,6 +145,35 @@ export interface EmailReadinessCheck {
   readonly detail: string;
 }
 
+/**
+ * C7 — read-only controlled business dispatch diagnostics, projected by the
+ * server. The UI can never supply or fabricate any of these values.
+ */
+export interface EmailDispatchDiagnostics {
+  /** The canonical dispatcher is installed and reachable. */
+  readonly dispatcher_installed: boolean;
+  /** Queued Email jobs currently eligible for a claim. */
+  readonly eligible_jobs: number;
+  /** Business delivery attempts recorded by the dispatcher. */
+  readonly business_attempts: number;
+  /** Business attempts accepted by the provider. */
+  readonly accepted_attempts: number;
+  /** Business attempts with a delivered callback. */
+  readonly delivered_attempts: number;
+  /** Attempts whose transport outcome is unknown and may be safely retried. */
+  readonly outcome_unknown_attempts: number;
+  /** Complaint or hard-bounce callbacks recorded against business attempts. */
+  readonly harmful_callbacks: number;
+  /** True while an automatic controlled-pilot suspension is in force. */
+  readonly pilot_suspended: boolean;
+  /** Server-determined blocker, e.g. `pilot_business_producer_not_selected`. */
+  readonly blocker: string | null;
+  /** Always false in C7 — live delivery is not available. */
+  readonly live_delivery_available: boolean;
+}
+
+
+
 export interface EmailReadinessProjection {
   readonly state: EmailReadinessState;
   /** Operator-facing state label. Never "Configuration complete". */
@@ -191,7 +225,14 @@ export function projectEmailReadiness(
    * `not_implemented`, so no caller can fabricate governance approval.
    */
   releaseSummary?: ChannelReleaseControlSummary | null,
+  /**
+   * C7 — server-projected controlled business dispatch diagnostics. When
+   * omitted the dispatch checks stay `not_implemented`, so no caller can
+   * fabricate business delivery evidence.
+   */
+  dispatchDiagnostics?: EmailDispatchDiagnostics | null,
 ): EmailReadinessProjection {
+
   const testPassed = Boolean(
     testCentre?.latest_run
     && !testCentre.latest_run_is_stale
@@ -352,10 +393,71 @@ export function projectEmailReadiness(
     } as EmailReadinessCheck,
     {
       key: 'business_dispatch',
-      label: 'Business provider dispatch',
-      state: 'not_implemented',
-      detail: EMAIL_BUSINESS_DISPATCH_PENDING,
-    },
+      label: 'Controlled business dispatcher installed',
+      state: !dispatchDiagnostics
+        ? 'not_implemented'
+        : yn(dispatchDiagnostics.dispatcher_installed),
+      detail: !dispatchDiagnostics
+        ? EMAIL_BUSINESS_DISPATCH_PENDING
+        : dispatchDiagnostics.dispatcher_installed
+          ? 'The canonical controlled business Email dispatcher is installed. '
+            + 'Only queued Email jobs may be claimed; live delivery remains disabled.'
+          : 'The controlled business Email dispatcher is not installed.',
+    } as EmailReadinessCheck,
+    {
+      key: 'business_delivery_attempt',
+      label: 'Business delivery attempt recorded',
+      state: !dispatchDiagnostics
+        ? 'not_implemented'
+        : dispatchDiagnostics.business_attempts > 0
+          ? yn(dispatchDiagnostics.accepted_attempts > 0)
+          : 'not_implemented',
+      detail: !dispatchDiagnostics
+        ? EMAIL_BUSINESS_DISPATCH_PENDING
+        : dispatchDiagnostics.business_attempts === 0
+          ? `No business delivery attempt exists — ${
+            dispatchDiagnostics.blocker ?? EMAIL_PILOT_PRODUCER_BLOCKER
+          }.`
+          : `${dispatchDiagnostics.accepted_attempts} of `
+            + `${dispatchDiagnostics.business_attempts} business attempt(s) accepted `
+            + `(${dispatchDiagnostics.outcome_unknown_attempts} with an unknown outcome).`,
+    } as EmailReadinessCheck,
+    {
+      key: 'business_delivery_confirmed',
+      label: 'Business delivery confirmed by callback',
+      state: !dispatchDiagnostics
+        ? 'not_implemented'
+        : dispatchDiagnostics.accepted_attempts > 0
+          ? yn(dispatchDiagnostics.delivered_attempts > 0)
+          : 'not_implemented',
+      detail: !dispatchDiagnostics
+        ? EMAIL_BUSINESS_DISPATCH_PENDING
+        : dispatchDiagnostics.delivered_attempts > 0
+          ? `${dispatchDiagnostics.delivered_attempts} signature-verified delivery `
+            + 'callback(s) recorded against business attempts.'
+          : 'No signature-verified delivery callback has been recorded for a '
+            + 'business attempt yet.',
+    } as EmailReadinessCheck,
+    {
+      key: 'pilot_safety',
+      label: 'Controlled pilot safety',
+      state: !dispatchDiagnostics
+        ? 'not_implemented'
+        : yn(!dispatchDiagnostics.pilot_suspended
+          && dispatchDiagnostics.harmful_callbacks === 0
+          && dispatchDiagnostics.live_delivery_available === false),
+      detail: !dispatchDiagnostics
+        ? EMAIL_BUSINESS_DISPATCH_PENDING
+        : dispatchDiagnostics.pilot_suspended
+          ? 'The controlled pilot was automatically suspended. Review the '
+            + 'dispatch diagnostics before proposing a new release.'
+          : dispatchDiagnostics.harmful_callbacks > 0
+            ? `${dispatchDiagnostics.harmful_callbacks} complaint or hard-bounce `
+              + 'callback(s) recorded against business attempts.'
+            : 'No complaint, hard bounce or suspension is recorded, and live '
+              + 'delivery remains disabled.',
+    } as EmailReadinessCheck,
+
     {
       key: 'sending_domain',
       label: 'Active sending domain configured',

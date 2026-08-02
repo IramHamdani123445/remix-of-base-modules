@@ -378,8 +378,8 @@ describe('C6 — Email readiness', () => {
     expect(EMAIL_RELEASE_CONTROL_IMPLEMENTED).toBe(true);
   });
 
-  it('never reports business dispatch as implemented', () => {
-    expect(EMAIL_BUSINESS_DISPATCH_IMPLEMENTED).toBe(false);
+  it('reports business dispatch as implemented only from C7 onwards', () => {
+    expect(EMAIL_BUSINESS_DISPATCH_IMPLEMENTED).toBe(true);
   });
 
   it('keeps the business-dispatch check not_implemented even for an active pilot', () => {
@@ -450,7 +450,9 @@ describe('C6 closure — SQL artefact evidence', () => {
     .filter((f) => f.endsWith('.sql'))
     .sort()
     .map((f) => fs.readFileSync(path.join(migrationsDir, f), 'utf8'))
-    .filter((s) => s.includes('omni_comms_channel_release') || s.includes('release_decision_snapshot'))
+    .filter((s) => (s.includes('omni_comms_channel_release') || s.includes('release_decision_snapshot'))
+      // C7 dispatch migrations also reference Release Control; they are out of C6 scope.
+      && !s.includes('omni_comms_priv_dispatch_claim_email'))
     .join('\n');
 
   const verifier = readOnce('scripts/omni-comms/verify-c6-release-control.sql');
@@ -617,6 +619,5 @@ describe('C6 closure — SQL artefact evidence', () => {
 
   it('keeps live delivery disabled', () => {
     expect(verifier).toContain('live_delivery_disabled');
-    expect(EMAIL_BUSINESS_DISPATCH_IMPLEMENTED).toBe(false);
   });
 });

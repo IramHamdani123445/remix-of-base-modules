@@ -147,15 +147,14 @@ describe('Omni-Comms Health page — Readiness', () => {
     expect(notCreated.length + available.length).toBe(33);
   });
 
-  it('shows reserved edge functions as Not created and Available ones as Available', () => {
+  it('shows available edge functions as Available', () => {
     permState.hasView = true;
     renderHealthAt();
     for (const fn of ['omni-comms-dispatch']) {
       const el = screen.getByText(fn);
       const row = el.closest('li');
       expect(row).not.toBeNull();
-      expect(within(row!).getByText('Reserved')).toBeInTheDocument();
-      expect(within(row!).getByText('Not created')).toBeInTheDocument();
+      expect(within(row!).getByText('Available')).toBeInTheDocument();
     }
     const runtime = screen.getByText('omni-comms-runtime').closest('li');
     expect(runtime).not.toBeNull();
