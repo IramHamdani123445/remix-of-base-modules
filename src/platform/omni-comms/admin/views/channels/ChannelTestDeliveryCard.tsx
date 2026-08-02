@@ -127,6 +127,27 @@ const DeliveryEvidence: React.FC<{ delivery: ChannelTestDelivery }> = ({ deliver
       ) : null}
       <div>
         <p className="text-xs font-medium uppercase text-muted-foreground mb-1">
+          Provider attempts
+        </p>
+        {(delivery.attempts ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">No provider attempt recorded.</p>
+        ) : (
+          <ul className="space-y-1">
+            {(delivery.attempts ?? []).map((a) => (
+              <li key={a.id} className="text-xs" data-testid="omni-comms-test-delivery-attempt">
+                <Badge variant="outline" className="mr-2">#{a.attempt_number}</Badge>
+                {a.state}
+                {a.provider_status_code ? ` · HTTP ${a.provider_status_code}` : ''}
+                {a.error_code ? ` · ${a.error_code}` : ''}
+                {' · '}
+                {new Date(a.started_at).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div>
+        <p className="text-xs font-medium uppercase text-muted-foreground mb-1">
           Provider callbacks
         </p>
         {delivery.events.length === 0 ? (
