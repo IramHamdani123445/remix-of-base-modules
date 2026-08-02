@@ -32,6 +32,11 @@ import type { EmailConfigSummary } from '@/platform/omni-comms/application/chann
 const DIR = 'src/platform/omni-comms/admin/views/channels';
 const PAGE = 'src/platform/omni-comms/admin/views/OmniCommsChannelsPage.tsx';
 const read = (p: string) => readFileSync(p, 'utf8');
+/** File text with comments stripped — used for "must not appear" assertions. */
+const code = (p: string) =>
+  read(p)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
 const page = read(PAGE);
 
 const UI_FILES = [
@@ -158,7 +163,7 @@ const summaryOf = (over: Partial<EmailConfigSummary>): EmailConfigSummary =>
 describe('C1 closure — one Email readiness projection', () => {
   it('6. summary.email_send_ready is not used by the C1 Channels UI', () => {
     for (const f of UI_FILES) {
-      expect(read(f), f).not.toContain('email_send_ready');
+      expect(code(f), f).not.toContain('email_send_ready');
     }
   });
 
@@ -186,7 +191,7 @@ describe('C1 closure — one Email readiness projection', () => {
   it('8. synthetic records cannot make the header ready', () => {
     const header = read(`${DIR}/ChannelWorkspaceHeader.tsx`);
     expect(header).toContain('EmailReadinessProjection');
-    expect(header).not.toContain('Configuration complete');
+    expect(code(`${DIR}/ChannelWorkspaceHeader.tsx`)).not.toContain('Configuration complete');
     expect(page).toContain('readiness={readiness}');
   });
 
@@ -218,7 +223,7 @@ describe('C1 closure — one Email readiness projection', () => {
       'Configuration complete',
     );
     for (const f of UI_FILES) {
-      expect(read(f), f).not.toContain('Configuration complete');
+      expect(code(f), f).not.toContain('Configuration complete');
     }
   });
 
