@@ -34,8 +34,11 @@ import {
   CONTROLLED_DELIVERY_NOTICE,
   DELIVERY_STATUS_LABEL,
   deliveryOutcome,
+  isApprovalActive,
+  isDeliveryRetryable,
   latestDelivery,
   MAX_APPROVED_TEST_RECIPIENTS,
+  MAX_DELIVERY_ATTEMPTS,
   type ChannelTestDelivery,
   type ChannelTestDeliveryDiagnostics,
 } from '@/platform/omni-comms/application/channelTestDeliveryTypes';
@@ -47,9 +50,13 @@ import { Detail, Field, toastError } from './channelFormPrimitives';
 
 export const DELIVERY_SAFETY_BULLETS: readonly string[] = [
   'One real technical email is sent to an approved test address only.',
+  'The subject and body must be the exact content that passed the preflight.',
   'The live sending path is not used and live delivery stays switched off.',
   'The provider credential never reaches the browser.',
-  'Recipient, sender, provider outcome and callbacks are recorded permanently.',
+  'Each attempt carries a persistent provider idempotency key, so a retry '
+  + 'cannot produce a second send.',
+  'Recipient, sender, every attempt, the provider outcome and callbacks are '
+  + 'recorded permanently.',
 ] as const;
 
 export function newDeliveryIdempotencyKey(): string {
@@ -60,21 +67,33 @@ export function newDeliveryIdempotencyKey(): string {
 /** Mirrors the database gate so the operator sees the blocking reason. */
 export function deliveryBlockReason(input: {
   canConfigure: boolean;
+  canExecute?: boolean;
   approvalEnabled: boolean;
+  approvalActive?: boolean;
   approvedRecipients: readonly string[];
   target: string;
   run: ChannelTestRun | null;
   runIsCurrent: boolean;
+  attemptsExhausted?: boolean;
 }): string | null {
+  if (input.canExecute === false) {
+    return 'You do not have the Omni-Comms operate capability.';
+  }
   if (!input.canConfigure) return 'You do not have the Omni-Comms configure capability.';
   if (!input.run) return 'Run a configuration preflight for this binding first.';
   if (input.run.status !== 'passed') return 'The latest configuration preflight did not pass.';
   if (!input.runIsCurrent) return 'The configuration changed — run the preflight again.';
   if (!input.approvalEnabled) return 'Provider test delivery is not approved for this scope.';
+  if (input.approvalActive === false) {
+    return 'The provider test delivery approval has expired — approve it again.';
+  }
   const target = input.target.trim().toLowerCase();
   if (!target) return 'Enter the approved test address used for the preflight.';
   if (!input.approvedRecipients.some((r) => r.toLowerCase() === target)) {
     return 'This address is not on the approved technical test list.';
+  }
+  if (input.attemptsExhausted) {
+    return `This delivery has used all ${MAX_DELIVERY_ATTEMPTS} permitted provider attempts.`;
   }
   return null;
 }
