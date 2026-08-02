@@ -19,7 +19,20 @@ import type {
   EmailConfigSummary,
   EmailEndpointRow,
 } from '@/platform/omni-comms/application/channelManagementTypes';
+import type {
+  ChannelPolicySummary,
+} from '@/platform/omni-comms/application/channelPolicyTypes';
+import {
+  operationalStateAllowsConfiguration,
+} from '@/platform/omni-comms/application/channelPolicyTypes';
 import { partitionEmailConfig, readinessCounts } from './channelReferenceData';
+
+/** C4B — Release Control is not implemented; activation is never met here. */
+export const EMAIL_RELEASE_CONTROL_IMPLEMENTED = false;
+
+export const EMAIL_RELEASE_CONTROL_PENDING =
+  'Pilot and live activation are governed by Release Control, which is not '
+  + 'implemented in C4B.';
 
 export type EmailReadinessState = 'unknown' | 'incomplete' | 'prerequisites_met';
 
@@ -98,6 +111,7 @@ export interface EmailReadinessProjection {
 
 export function projectEmailReadiness(
   summary: EmailConfigSummary | null | undefined,
+  policySummary?: ChannelPolicySummary | null,
 ): EmailReadinessProjection {
   const part = partitionEmailConfig({
     accounts: summary?.provider_accounts,
@@ -106,7 +120,13 @@ export function projectEmailReadiness(
   });
   const baseCounts = readinessCounts(part);
   const provider = summary?.provider ?? null;
-  const setting = summary?.channel_setting ?? null;
+  // C4B — readiness uses the GENUINE effective Email policy only. Reference
+  // policies never contribute and `live_delivery_enabled` is never consulted.
+  const effectivePolicy =
+    policySummary?.effective_policy
+    && policySummary.effective_policy.data_origin !== 'reference_seed'
+      ? policySummary.effective_policy
+      : null;
   const verified = part.accounts.some((a) => a.verification_status === 'verified');
 
   const domains = genuineActiveEmailEndpoints(summary?.endpoints, 'sending_domain');
@@ -177,17 +197,27 @@ export function projectEmailReadiness(
 
     {
       key: 'policy',
-      label: 'Email policy present',
-      state: yn(Boolean(setting)),
-      detail: setting ? 'Channel policy record exists.' : 'No channel policy saved.',
+      label: 'Effective genuine Email policy exists',
+      state: yn(Boolean(effectivePolicy)),
+      detail: effectivePolicy
+        ? `Effective policy resolved from the ${
+          effectivePolicy.department_id ? 'department override' : 'organisation baseline'
+        }.`
+        : 'No genuine effective Email policy for this scope.',
     },
     {
-      key: 'enabled',
-      label: 'Email channel enabled',
-      state: yn(Boolean(setting?.enabled)),
-      detail: setting?.enabled
-        ? 'Channel flag is enabled.'
-        : 'Channel flag is disabled.',
+      key: 'policy_state',
+      label: 'Email policy operational state allows configuration',
+      state: yn(operationalStateAllowsConfiguration(effectivePolicy?.operational_state)),
+      detail: effectivePolicy
+        ? `Operational state is ${effectivePolicy.operational_state}.`
+        : 'No effective policy, so no operational state applies.',
+    },
+    {
+      key: 'release_control',
+      label: 'Release Control activation',
+      state: 'not_implemented',
+      detail: EMAIL_RELEASE_CONTROL_PENDING,
     },
     {
       key: 'sending_domain',
