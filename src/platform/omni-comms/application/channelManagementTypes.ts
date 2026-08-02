@@ -36,7 +36,13 @@ export interface ProviderAccountRow {
   verification_result_code?: string | null;
   verification_detail?: string | null;
   verification_checked_at?: string | null;
+  /** C2 — explicit data-origin classification (preferred over naming rules). */
+  data_origin?: 'system_seed' | 'user' | 'reference_seed';
+  /** C2 — generic account environment. */
+  environment?: 'sandbox' | 'staging' | 'production';
+  provider_account_reference?: string | null;
 }
+
 
 
 export interface SenderIdentityRow {
