@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Approved logical object catalogue (21 objects: the 19 foundation objects, the caller-module authorisation registry and the runtime-environment configuration record).
+ * Omni-Comms — Approved logical object catalogue (23 objects: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, and the two Channels C2 generic provider-account objects).
  *
  * This is the CEILING for the new system. No object listed here has been
  * created. This file does not create tables, policies, functions, or types.
