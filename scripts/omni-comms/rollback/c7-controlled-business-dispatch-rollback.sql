@@ -116,9 +116,15 @@ DROP FUNCTION IF EXISTS public.omni_comms_dispatch_diagnostics(uuid, uuid);
 ALTER TABLE public.omni_comms_delivery_attempt
   ENABLE TRIGGER omni_comms_delivery_attempt_immutable_trg;
 
-COMMIT;
+-- 7. DRY RUN BY DEFAULT. The script ends with ROLLBACK so that a review run
+--    proves every statement without changing anything. Applying the rollback
+--    for real is an intentional operator change: replace the ROLLBACK below
+--    with COMMIT under change control. No evidence is ever deleted in either
+--    mode.
+ROLLBACK;
 
 -- Post-rollback expectations:
+
 --   * no claim RPC exists                    -> claimed_jobs is impossible;
 --   * prerequisite check 32                  -> failed (fails closed);
 --   * live_delivery_enabled = false          -> unchanged;
