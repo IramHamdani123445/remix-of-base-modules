@@ -265,10 +265,23 @@ export function projectEmailReadiness(
     },
     {
       key: 'technical_test',
-      label: 'Technical channel test',
-      state: 'not_implemented',
-      detail: `${TECHNICAL_TEST_PENDING} — technical testing is not implemented in C1.`,
-    },
+      // C5A — a preflight validates configuration only; it never sends.
+      key_note: undefined,
+      label: 'Technical channel test (configuration preflight)',
+      state: testCentre === undefined
+        ? 'not_implemented'
+        : testPassed
+          ? 'met'
+          : 'unmet',
+      detail: testCentre === undefined
+        ? `${TECHNICAL_TEST_PENDING} — no Test Centre result supplied.`
+        : testPassed
+          ? TECHNICAL_TEST_CURRENT
+          : testStale
+            ? TECHNICAL_TEST_STALE
+            : `${TECHNICAL_TEST_PENDING} — run a configuration preflight for `
+              + 'the selected binding in the Test Centre.',
+    } as EmailReadinessCheck,
   ];
 
   const prerequisitesMet = checks
@@ -284,7 +297,9 @@ export function projectEmailReadiness(
   return {
     state,
     label: EMAIL_READINESS_LABEL[state],
-    explanation: TECHNICAL_TEST_PENDING,
+    explanation: testPassed ? TECHNICAL_TEST_CURRENT
+      : testStale ? TECHNICAL_TEST_STALE
+        : TECHNICAL_TEST_PENDING,
     checks,
     prerequisitesMet: Boolean(summary) && prerequisitesMet,
     technicalTestImplemented: EMAIL_TECHNICAL_TEST_IMPLEMENTED,
