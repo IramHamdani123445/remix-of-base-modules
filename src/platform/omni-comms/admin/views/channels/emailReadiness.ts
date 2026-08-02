@@ -277,8 +277,6 @@ export function projectEmailReadiness(
     },
     {
       key: 'technical_test',
-      // C5A — a preflight validates configuration only; it never sends.
-      key_note: undefined,
       label: 'Technical channel test (configuration preflight)',
       state: testCentre === undefined
         ? 'not_implemented'
