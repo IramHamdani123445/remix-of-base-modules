@@ -213,7 +213,13 @@ export function projectEmailReadiness(
     delivery,
     testCentre?.configuration_fingerprint ?? null,
   );
+  // C5B — only a CURRENT, terminal, accepted delivery proves provider delivery.
   const deliveryAccepted = deliveryCurrent && delivery?.status === 'accepted';
+  // C5B — callback evidence must be current AND signature-verified.
+  const callbackVerified = hasVerifiedCallbackEvidence(
+    delivery,
+    testCentre?.configuration_fingerprint ?? null,
+  );
 
   const yn = (ok: boolean): EmailReadinessCheckState => (ok ? 'met' : 'unmet');
 
