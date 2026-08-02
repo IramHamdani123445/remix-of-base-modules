@@ -445,70 +445,79 @@ const AccountRow: React.FC<{
         {new Date(account.updated_at).toLocaleString()}
       </TableCell>
       <TableCell>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy || account.status !== 'draft'}
-            onClick={onEdit}
+        {isReference ? (
+          <p
+            className="text-xs text-muted-foreground max-w-xs"
+            data-testid={`omni-comms-reference-readonly-${account.code}`}
           >
-            Edit draft
-          </Button>
-          {verifiable ? (
+            {REFERENCE_ACCOUNT_READ_ONLY_HELP}
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="outline"
-              disabled={busy}
-              onClick={() => void verify()}
-              data-testid={`omni-comms-verify-credentials-${account.code}`}
+              disabled={busy || account.status !== 'draft'}
+              onClick={onEdit}
             >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify credentials'}
+              Edit draft
             </Button>
-          ) : null}
-          <Button
-            size="sm"
-            disabled={
-              busy ||
-              account.status !== 'draft' ||
-              !complete ||
-              (verifiable && account.verification_status !== "verified") ||
-              !verifiable
-            }
-            title={
-              !verifiable
-                ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
-                : !complete
-                  ? 'All required credential references must be configured'
-                  : account.verification_status !== "verified"
-                    ? 'Verified provider credentials are required before activation'
-                    : undefined
-            }
-
-            onClick={() => void lifecycle('activate')}
-          >
-            Activate
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy || account.status !== 'active'}
-            onClick={() => void lifecycle('disable')}
-          >
-            Disable
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy || account.status === 'retired'}
-            onClick={() => void lifecycle('retire')}
-          >
-            Retire
-          </Button>
-        </div>
+            {verifiable ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void verify()}
+                data-testid={`omni-comms-verify-credentials-${account.code}`}
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify credentials'}
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              disabled={
+                busy ||
+                !canActivate ||
+                !complete ||
+                (verifiable && account.verification_status !== "verified") ||
+                !verifiable
+              }
+              title={
+                !verifiable
+                  ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
+                  : !complete
+                    ? 'All required credential references must be configured'
+                    : account.verification_status !== "verified"
+                      ? 'Verified provider credentials are required before activation'
+                      : undefined
+              }
+              onClick={() => void lifecycle('activate')}
+            >
+              {activateLabel}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || account.status !== 'active'}
+              onClick={() => void lifecycle('disable')}
+            >
+              Disable
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || account.status === 'retired'}
+              onClick={() => void lifecycle('retire')}
+            >
+              Retire
+            </Button>
+          </div>
+        )}
       </TableCell>
     </TableRow>
   );
 };
+
 
 // ─── Create / Edit drawer ───────────────────────────────────────────
 const AccountFormDialog: React.FC<{
