@@ -55,6 +55,9 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
       o.category === 'runtime'
       && o.writeAuthority !== 'service_role_only'
       && o.name !== 'omni_comms_channel_test_run'
+      // C5B — reserved by an operator RPC, completed only by the trusted
+      // Edge boundary. Approved technical test delivery only; never live send.
+      && o.name !== 'omni_comms_channel_test_delivery'
     ) {
       errors.push(`Runtime object ${o.name} must be service_role_only.`);
     }
@@ -85,8 +88,8 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
   }
 
   // Integrations
-  if (OMNI_COMMS_INTEGRATION_REGISTRY.length !== 7) {
-    errors.push(`Integration registry must contain 7 entries, found ${OMNI_COMMS_INTEGRATION_REGISTRY.length}.`);
+  if (OMNI_COMMS_INTEGRATION_REGISTRY.length !== 8) {
+    errors.push(`Integration registry must contain 8 entries, found ${OMNI_COMMS_INTEGRATION_REGISTRY.length}.`);
   }
   const seenIntegrations = new Set<string>();
   for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {

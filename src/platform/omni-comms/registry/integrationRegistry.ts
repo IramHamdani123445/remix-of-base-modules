@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Reserved integrations registry (7 entries).
+ * Omni-Comms — Integrations registry (8 entries).
  *
  * Reserves the external touchpoints the new system will use once
  * implementation begins. Nothing here is deployed, configured, or wired.
@@ -9,7 +9,7 @@
 import type { IntegrationRegistryEntry } from './registry.types';
 
 export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[] = [
-  // Edge functions (3) — Omni-Comms-owned
+  // Edge functions (4) — Omni-Comms-owned
   {
     name: 'omni-comms-runtime',
     kind: 'edge_function',
@@ -28,16 +28,23 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     name: 'omni-comms-webhook-resend',
     kind: 'edge_function',
     ownership: 'omni_comms',
-    purpose: 'Receives Resend delivery webhooks and updates message events.',
-    status: 'Reserved',
+    purpose: 'Receives Svix-verified Resend delivery webhooks. Currently records callback evidence for approved technical test deliveries only.',
+    status: 'Available',
+  },
+  {
+    name: 'omni-comms-test-delivery',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Trusted server boundary for approved technical test delivery: authorises via RPC, dispatches to the provider using an Edge secret, and records the outcome. Cannot send business communications.',
+    status: 'Available',
   },
   // Provider (1) — Omni-Comms-owned
   {
     name: 'resend',
     kind: 'provider',
     ownership: 'omni_comms',
-    purpose: 'Sole initial email provider. Credentials live in Edge Function Secrets.',
-    status: 'Reserved',
+    purpose: 'Sole initial email provider. Credentials live in Edge Function Secrets. Reachable only from the approved test-delivery boundary.',
+    status: 'Available',
   },
   // Shared platform assets (3) — reused, not re-created
   {
