@@ -103487,6 +103487,33 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_channel_provider_admin_summary: {
+        Args: { p_channel: string; p_include_reference?: boolean }
+        Returns: Json
+      }
+      omni_comms_channel_provider_set_lifecycle: {
+        Args: {
+          p_action: string
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
+        }
+        Returns: string
+      }
+      omni_comms_channel_provider_upsert_draft: {
+        Args: {
+          p_adapter_key: string
+          p_channel: string
+          p_code: string
+          p_correlation_id?: string
+          p_credential_requirements?: Json
+          p_display_name: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: string
+      }
       omni_comms_channel_setting_upsert: {
         Args: {
           p_channel: string
