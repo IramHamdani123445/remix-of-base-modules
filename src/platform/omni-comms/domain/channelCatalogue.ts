@@ -39,6 +39,7 @@ export const OMNI_COMMS_GENERIC_TABS = [
   'endpoints',
   'bindings',
   'policies',
+  'release-control',
   'test-centre',
   'diagnostics',
 ] as const;
@@ -102,7 +103,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C6',
     implemented: true,
     databaseSupported: true,
-    tabs: tabs('overview', 'providers', 'accounts', 'identities', 'endpoints', 'bindings', 'policies', 'test-centre', 'diagnostics'),
+    tabs: tabs('overview', 'providers', 'accounts', 'identities', 'endpoints', 'bindings', 'policies', 'release-control', 'test-centre', 'diagnostics'),
     seedNamespace: 'omni_comms_seed:email',
     reservedProviders: ['resend'],
   },
