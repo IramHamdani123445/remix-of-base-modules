@@ -482,30 +482,57 @@ PERFORM public.omni_comms_priv_dispatch_record_callback(
 PERFORM pg_temp.ok('T5 delivered -> failed succeeds through the verified callback',
   (SELECT status FROM public.omni_comms_message WHERE id = (f2->>'message')::uuid) = 'failed');
 
-f := pg_temp.mkfix('t7');
+-- ----------------------------------------------------------------------------
+-- T7 — the uncertainty runtime driven by the REAL claim worker.
+--
+-- Every attempt below (1, 2 and 3) is created by
+-- public.omni_comms_priv_dispatch_claim_email. No attempt row, lease, status
+-- transition or idempotency key is simulated by hand. This is what proves the
+-- retry-eligibility predicate: attempts two and three exist ONLY if the real
+-- dispatcher agrees to claim a retry_wait job whose message is dispatching.
+-- ----------------------------------------------------------------------------
+f := pg_temp.mkclaimable('t7');
+IF f IS NULL THEN
+  RAISE NOTICE 'T7 REAL-CLAIM TESTS SKIPPED (no active event definition or resend_email provider)';
+ELSE
+
+-- Attempt 1 — initial controlled dispatch: job held + message held.
+r := public.omni_comms_priv_dispatch_claim_email(
+       'c7-test-worker', 1, 'c7-test', f->>'commit', NULL, 'scheduler');
+PERFORM pg_temp.ok('T7.0 the real dispatcher claims the initial controlled dispatch',
+  (r->>'claimed_jobs')::int = 1, coalesce(r->>'blockers','-'));
+a  := ((r->'claims'->0)->>'attempt_id')::uuid;
+js := (r->'claims'->0)->>'claim_token';
+PERFORM public.omni_comms_priv_dispatch_record_payload_hash(a, js, repeat('a', 64));
+PERFORM pg_temp.ok('T7.0b claim 1 is attempt number one and the job is processing',
+  (SELECT attempt_number FROM public.omni_comms_delivery_attempt WHERE id = a) = 1
+  AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id = (f->>'job')::uuid) = 'processing'
+  AND (SELECT status FROM public.omni_comms_message WHERE id = (f->>'message')::uuid) = 'dispatching');
+
 r := public.omni_comms_priv_dispatch_attempt_complete(
-       (f->>'attempt')::uuid, f->>'claim', 'outcome_unknown', NULL, NULL, '{}'::jsonb,
-       'provider_timeout');
+       a, js, 'outcome_unknown', NULL, NULL, '{}'::jsonb, 'provider_timeout');
 PERFORM pg_temp.ok('T7.1 attempt 1 outcome_unknown -> job retry_wait',
-  (SELECT status FROM public.omni_comms_delivery_attempt WHERE id = (f->>'attempt')::uuid) = 'outcome_unknown'
+  (SELECT status FROM public.omni_comms_delivery_attempt WHERE id = a) = 'outcome_unknown'
   AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id = (f->>'job')::uuid) = 'retry_wait'
   AND (SELECT status FROM public.omni_comms_message WHERE id = (f->>'message')::uuid) = 'dispatching',
   (SELECT status FROM public.omni_comms_dispatch_job WHERE id = (f->>'job')::uuid));
 
-PERFORM set_config('omni_comms.dispatch_worker','on',true);
-UPDATE public.omni_comms_dispatch_job SET status='ready', is_runnable=true WHERE id=(f->>'job')::uuid;
-UPDATE public.omni_comms_dispatch_job SET status='leased', is_runnable=false WHERE id=(f->>'job')::uuid;
-UPDATE public.omni_comms_dispatch_job SET status='processing' WHERE id=(f->>'job')::uuid;
-PERFORM set_config('omni_comms.dispatch_worker','off',true);
-INSERT INTO public.omni_comms_delivery_attempt (
-  dispatch_job_id, message_id, organization_id, attempt_number, status,
-  claim_token, provider_idempotency_key, release_control_id, provider_payload_hash,
-  safe_request_metadata, safe_response_metadata)
-VALUES ((f->>'job')::uuid, (f->>'message')::uuid, (f->>'org')::uuid, 2, 'dispatching',
-        'claim-t7-2', 'idem-t7', (f->>'release')::uuid, repeat('a',64), '{}'::jsonb, '{}'::jsonb)
-RETURNING id INTO a;
-PERFORM public.omni_comms_priv_dispatch_attempt_complete(a, 'claim-t7-2', 'outcome_unknown',
-        NULL, NULL, '{}'::jsonb, 'provider_timeout');
+-- Attempt 2 — the retry claim. This is the corrected eligibility pair
+-- (job retry_wait + message dispatching) and is claimed by the real worker.
+UPDATE public.omni_comms_dispatch_job SET next_attempt_at = now() - interval '1 minute'
+ WHERE id = (f->>'job')::uuid;
+r := public.omni_comms_priv_dispatch_claim_email(
+       'c7-test-worker', 1, 'c7-test', f->>'commit', NULL, 'scheduler');
+PERFORM pg_temp.ok('T7.2a the real dispatcher claims attempt two from retry_wait',
+  (r->>'claimed_jobs')::int = 1, coalesce(r->>'blockers','-'));
+a  := ((r->'claims'->0)->>'attempt_id')::uuid;
+js := (r->'claims'->0)->>'claim_token';
+PERFORM public.omni_comms_priv_dispatch_record_payload_hash(a, js, repeat('a', 64));
+PERFORM pg_temp.ok('T7.2b the retry claim never moves the message backwards',
+  (SELECT status FROM public.omni_comms_message WHERE id = (f->>'message')::uuid) = 'dispatching',
+  (SELECT status FROM public.omni_comms_message WHERE id = (f->>'message')::uuid));
+PERFORM public.omni_comms_priv_dispatch_attempt_complete(
+  a, js, 'outcome_unknown', NULL, NULL, '{}'::jsonb, 'provider_timeout');
 SELECT count(*) INTO n FROM public.omni_comms_delivery_attempt
  WHERE dispatch_job_id = (f->>'job')::uuid;
 PERFORM pg_temp.ok('T7.2 second attempt reuses idempotency key and payload hash',
@@ -517,20 +544,19 @@ PERFORM pg_temp.ok('T7.2 second attempt reuses idempotency key and payload hash'
   AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id = (f->>'job')::uuid) = 'retry_wait',
   n::text);
 
-PERFORM set_config('omni_comms.dispatch_worker','on',true);
-UPDATE public.omni_comms_dispatch_job SET status='ready', is_runnable=true WHERE id=(f->>'job')::uuid;
-UPDATE public.omni_comms_dispatch_job SET status='leased', is_runnable=false WHERE id=(f->>'job')::uuid;
-UPDATE public.omni_comms_dispatch_job SET status='processing' WHERE id=(f->>'job')::uuid;
-PERFORM set_config('omni_comms.dispatch_worker','off',true);
-INSERT INTO public.omni_comms_delivery_attempt (
-  dispatch_job_id, message_id, organization_id, attempt_number, status,
-  claim_token, provider_idempotency_key, release_control_id, provider_payload_hash,
-  safe_request_metadata, safe_response_metadata)
-VALUES ((f->>'job')::uuid, (f->>'message')::uuid, (f->>'org')::uuid, 3, 'dispatching',
-        'claim-t7-3', 'idem-t7', (f->>'release')::uuid, repeat('a',64), '{}'::jsonb, '{}'::jsonb)
-RETURNING id INTO a;
-r := public.omni_comms_priv_dispatch_attempt_complete(a, 'claim-t7-3', 'outcome_unknown',
-        NULL, NULL, '{}'::jsonb, 'provider_timeout');
+-- Attempt 3 — the final permitted retry, again through the real worker.
+UPDATE public.omni_comms_dispatch_job SET next_attempt_at = now() - interval '1 minute'
+ WHERE id = (f->>'job')::uuid;
+r := public.omni_comms_priv_dispatch_claim_email(
+       'c7-test-worker', 1, 'c7-test', f->>'commit', NULL, 'scheduler');
+PERFORM pg_temp.ok('T7.3a the real dispatcher claims attempt three',
+  (r->>'claimed_jobs')::int = 1
+  AND ((r->'claims'->0)->>'attempt_number')::int = 3, coalesce(r->>'blockers','-'));
+a  := ((r->'claims'->0)->>'attempt_id')::uuid;
+js := (r->'claims'->0)->>'claim_token';
+PERFORM public.omni_comms_priv_dispatch_record_payload_hash(a, js, repeat('a', 64));
+r := public.omni_comms_priv_dispatch_attempt_complete(
+       a, js, 'outcome_unknown', NULL, NULL, '{}'::jsonb, 'provider_timeout');
 PERFORM pg_temp.ok('T7.3 third outcome_unknown -> non-runnable reconciliation hold',
   (SELECT status FROM public.omni_comms_delivery_attempt WHERE id = a) = 'outcome_unknown'
   AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id=(f->>'job')::uuid) = 'held'
@@ -538,6 +564,17 @@ PERFORM pg_temp.ok('T7.3 third outcome_unknown -> non-runnable reconciliation ho
   AND (SELECT status FROM public.omni_comms_message WHERE id=(f->>'message')::uuid) = 'reconciliation_required',
   (SELECT status FROM public.omni_comms_dispatch_job WHERE id=(f->>'job')::uuid) || '/' ||
   (SELECT status FROM public.omni_comms_message WHERE id=(f->>'message')::uuid));
+
+-- A fourth claim is impossible: the reconciliation hold is not an eligible pair.
+r := public.omni_comms_priv_dispatch_claim_email(
+       'c7-test-worker', 1, 'c7-test', f->>'commit', NULL, 'scheduler');
+PERFORM pg_temp.ok('T7.4 a reconciliation hold is never claimed again',
+  (r->>'claimed_jobs')::int = 0
+  AND (SELECT count(*) FROM public.omni_comms_delivery_attempt
+        WHERE dispatch_job_id = (f->>'job')::uuid) = 3,
+  coalesce(r->>'claimed_jobs','-'));
+END IF;
+
 
 PERFORM set_config('omni_comms.reconciliation','on',true);
 UPDATE public.omni_comms_delivery_attempt SET provider_message_id = 'pmid-t7' WHERE id = a;
