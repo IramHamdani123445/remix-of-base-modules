@@ -66,6 +66,21 @@ import {
 import { DeferredCapabilityCard, Field, SelectField, toastError } from './channelFormPrimitives';
 import { isReferenceSenderIdentity, visibleRecords } from './channelReferenceData';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
+import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
+import {
+  DrawerFacts,
+  LifecycleActionDialog,
+  ResourceActionMenu,
+  ResourceDetailsDrawer,
+  ResourceRecordCard,
+  ResourceResponsiveList,
+  ResourceSearchToolbar,
+  backendLifecycleAction,
+  safeLifecycleFacts,
+  useLifecycleDialog,
+  useResourceFilter,
+  type LifecycleActionDescriptor,
+} from './resourceManager';
 import type { ChannelUiDefinition } from './channelUiRegistry';
 
 type Client = ReturnType<typeof useOmniCommsRpcClient>;
@@ -181,6 +196,15 @@ const GenericIdentitiesPanel: React.FC<{
     [genuine, reference, showReference],
   );
 
+  const { filter, setFilter, filtered } = useResourceFilter(
+    rows,
+    (r) => [r.code, r.display_name, identityChannelValue(r), r.identity_type],
+    (r) => r.status,
+  );
+
+  const { resourceId, selectResource, clearResource } = useOmniCommsResourceParam();
+  const detailRow = rows.find((r) => r.id === resourceId) ?? null;
+
   const openCreate = () => { setForm(blankForm(channel)); setDialogOpen(true); };
   const openEdit = (row: ChannelIdentityRow) => {
     setForm({
@@ -222,16 +246,27 @@ const GenericIdentitiesPanel: React.FC<{
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <ResourceSearchToolbar
+            filter={filter}
+            onChange={setFilter}
+            placeholder="Search identities by code, name or value"
+            total={rows.length}
+            shown={filtered.length}
+            testId="omni-comms-identities-toolbar"
+          />
           {loading ? (
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading identities…
             </p>
-          ) : rows.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground" data-testid="omni-comms-identities-none">
-              No {channelName.toLowerCase()} identities are configured for this scope yet.
+              {rows.length === 0
+                ? `No ${channelName.toLowerCase()} identities are configured for this scope yet.`
+                : 'No identity matches the current search or status filter.'}
             </p>
           ) : (
+            <ResourceResponsiveList table={(
             <Table>
               <TableHeader>
                 <TableRow>
@@ -246,20 +281,65 @@ const GenericIdentitiesPanel: React.FC<{
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
+                {filtered.map((row) => (
                   <IdentityRow
                     key={row.id}
                     row={row}
                     client={client}
                     onEdit={() => openEdit(row)}
                     onChanged={refreshAll}
+                    onViewDetails={() => selectResource(row.id)}
                   />
                 ))}
               </TableBody>
             </Table>
+            )} cards={filtered.map((row) => (
+              <ResourceRecordCard
+                key={row.id}
+                testId={`omni-comms-identity-card-${row.code}`}
+                title={row.display_name}
+                subtitle={row.code}
+                status={row.status}
+                fields={[
+                  { label: 'Value', value: identityChannelValue(row) },
+                  { label: 'Scope', value: identityScopeLabel(row) },
+                ]}
+                actions={(
+                  <IdentityRowActions
+                    row={row}
+                    client={client}
+                    onEdit={() => openEdit(row)}
+                    onChanged={refreshAll}
+                    onViewDetails={() => selectResource(row.id)}
+                  />
+                )}
+                onOpen={() => selectResource(row.id)}
+              />
+            ))} />
           )}
         </CardContent>
       </Card>
+
+      <ResourceDetailsDrawer
+        open={detailRow !== null}
+        onOpenChange={(open) => { if (!open) clearResource(); }}
+        title={detailRow?.display_name ?? 'Identity'}
+        description={detailRow ? `${channelName} identity ${detailRow.code}` : undefined}
+        facts={detailRow ? safeLifecycleFacts(detailRow as never) : undefined}
+        testId="omni-comms-identity-drawer"
+      >
+        {detailRow ? (
+          <DrawerFacts
+            facts={[
+              { label: 'Type', value: detailRow.identity_type ?? '—' },
+              { label: 'Channel value', value: identityChannelValue(detailRow) },
+              { label: 'Scope', value: identityScopeLabel(detailRow) },
+              { label: 'Status', value: detailRow.status },
+              { label: 'Configuration', value: identityConfigSummary(detailRow) },
+            ]}
+          />
+        ) : null}
+      </ResourceDetailsDrawer>
 
       <IdentityDialog
         open={dialogOpen}
@@ -285,24 +365,37 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
   retired: 'outline',
 };
 
-const IdentityRow: React.FC<{
+export function identityLifecycleActions(row: ChannelIdentityRow): LifecycleActionDescriptor[] {
+  const actions: LifecycleActionDescriptor[] = [];
+  if (row.status === 'draft') actions.push({ key: 'activate', label: 'Activate' });
+  if (row.status === 'disabled') actions.push({ key: 'reactivate', label: 'Reactivate' });
+  if (row.status === 'active') actions.push({ key: 'disable', label: 'Disable' });
+  if (row.status !== 'retired') {
+    actions.push({ key: 'retire', label: 'Retire', destructive: true });
+  }
+  return actions;
+}
+
+/** Action menu + accessible lifecycle dialog for one identity. */
+export const IdentityRowActions: React.FC<{
   row: ChannelIdentityRow;
   client: Client;
   onEdit: () => void;
   onChanged: () => Promise<void> | void;
-}> = ({ row, client, onEdit, onChanged }) => {
+  onViewDetails: () => void;
+}> = ({ row, client, onEdit, onChanged, onViewDetails }) => {
   const [busy, setBusy] = useState(false);
   const isReference =
     row.data_origin === 'reference_seed'
     || (!row.data_origin && isReferenceSenderIdentity(row as never));
 
-  const lifecycle = async (action: 'activate' | 'disable' | 'retire') => {
+  const run = async (
+    key: 'activate' | 'reactivate' | 'disable' | 'retire' | 'verify',
+    reason: string | null,
+  ) => {
     if (isReference) return;
-    let reason: string | null = null;
-    if (action === 'retire') {
-      reason = window.prompt('Retirement reason (required)')?.trim() || null;
-      if (!reason) return;
-    }
+    const action = backendLifecycleAction(key);
+    if (action === 'verify') return;
     setBusy(true);
     try {
       await setChannelIdentityLifecycle(client, {
@@ -317,8 +410,38 @@ const IdentityRow: React.FC<{
     finally { setBusy(false); }
   };
 
-  const canActivate = row.status === 'draft' || row.status === 'disabled';
-  const activateLabel = row.status === 'disabled' ? 'Reactivate' : 'Activate';
+  const dialog = useLifecycleDialog(run);
+
+  return (
+    <>
+      <ResourceActionMenu
+        testId={`omni-comms-identity-actions-${row.code}`}
+        label={`Actions for ${row.display_name}`}
+        disabled={busy || isReference}
+        actions={isReference ? [] : identityLifecycleActions(row)}
+        onSelect={dialog.request}
+        onEdit={!isReference && row.status === 'draft' ? onEdit : undefined}
+        onViewDetails={onViewDetails}
+      />
+      <LifecycleActionDialog
+        controller={dialog}
+        resourceLabel="identity"
+        recordLabel={`${row.display_name} (${row.code})`}
+      />
+    </>
+  );
+};
+
+const IdentityRow: React.FC<{
+  row: ChannelIdentityRow;
+  client: Client;
+  onEdit: () => void;
+  onChanged: () => Promise<void> | void;
+  onViewDetails: () => void;
+}> = ({ row, client, onEdit, onChanged, onViewDetails }) => {
+  const isReference =
+    row.data_origin === 'reference_seed'
+    || (!row.data_origin && isReferenceSenderIdentity(row as never));
 
   return (
     <TableRow>
@@ -337,9 +460,7 @@ const IdentityRow: React.FC<{
       <TableCell className="font-mono text-xs break-all">
         {identityChannelValue(row)}
       </TableCell>
-      <TableCell className="text-sm">
-        {identityScopeLabel(row)}
-      </TableCell>
+      <TableCell className="text-sm">{identityScopeLabel(row)}</TableCell>
       <TableCell>
         <Badge variant={STATUS_VARIANT[row.status] ?? 'outline'}>{row.status}</Badge>
       </TableCell>
@@ -358,28 +479,13 @@ const IdentityRow: React.FC<{
             {REFERENCE_IDENTITY_READ_ONLY_HELP}
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" disabled={busy || row.status !== 'draft'} onClick={onEdit}>
-              Edit draft
-            </Button>
-            <Button size="sm" disabled={busy || !canActivate} onClick={() => void lifecycle('activate')}>
-              {activateLabel}
-            </Button>
-            <Button
-              size="sm" variant="outline"
-              disabled={busy || row.status !== 'active'}
-              onClick={() => void lifecycle('disable')}
-            >
-              Disable
-            </Button>
-            <Button
-              size="sm" variant="outline"
-              disabled={busy || row.status === 'retired'}
-              onClick={() => void lifecycle('retire')}
-            >
-              Retire
-            </Button>
-          </div>
+          <IdentityRowActions
+            row={row}
+            client={client}
+            onEdit={onEdit}
+            onChanged={onChanged}
+            onViewDetails={onViewDetails}
+          />
         )}
       </TableCell>
     </TableRow>

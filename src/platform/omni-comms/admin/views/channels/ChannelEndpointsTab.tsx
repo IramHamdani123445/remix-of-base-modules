@@ -72,6 +72,21 @@ import {
 import { DeferredCapabilityCard, Field, SelectField, toastError } from './channelFormPrimitives';
 import { visibleRecords } from './channelReferenceData';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
+import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
+import {
+  DrawerFacts,
+  LifecycleActionDialog,
+  ResourceActionMenu,
+  ResourceDetailsDrawer,
+  ResourceRecordCard,
+  ResourceResponsiveList,
+  ResourceSearchToolbar,
+  backendLifecycleAction,
+  safeLifecycleFacts,
+  useLifecycleDialog,
+  useResourceFilter,
+  type LifecycleActionDescriptor,
+} from './resourceManager';
 import type { ChannelUiDefinition } from './channelUiRegistry';
 
 type Client = ReturnType<typeof useOmniCommsRpcClient>;
@@ -203,6 +218,14 @@ const GenericEndpointsPanel: React.FC<{
     [genuine, reference, showReference],
   );
 
+  const { filter, setFilter, filtered } = useResourceFilter(
+    rows,
+    (r) => [r.code, r.display_name, r.endpoint_type, r.provider_account_code],
+    (r) => r.status,
+  );
+  const { resourceId, selectResource, clearResource } = useOmniCommsResourceParam();
+  const detailRow = rows.find((r) => r.id === resourceId) ?? null;
+
   const openCreate = () => { setForm(blankForm(channel)); setDialogOpen(true); };
   const openEdit = (row: ChannelEndpointRow) => {
     setForm({
@@ -257,16 +280,27 @@ const GenericEndpointsPanel: React.FC<{
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <ResourceSearchToolbar
+            filter={filter}
+            onChange={setFilter}
+            placeholder="Search endpoints by code, name or type"
+            total={rows.length}
+            shown={filtered.length}
+            testId="omni-comms-endpoints-toolbar"
+          />
           {loading ? (
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading endpoints…
             </p>
-          ) : rows.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground" data-testid="omni-comms-endpoints-none">
-              No {channelName.toLowerCase()} endpoints are configured for this scope yet.
+              {rows.length === 0
+                ? `No ${channelName.toLowerCase()} endpoints are configured for this scope yet.`
+                : 'No endpoint matches the current search or status filter.'}
             </p>
           ) : (
+            <ResourceResponsiveList table={(
             <Table>
               <TableHeader>
                 <TableRow>
@@ -282,20 +316,64 @@ const GenericEndpointsPanel: React.FC<{
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
+                {filtered.map((row) => (
                   <EndpointRow
                     key={row.id}
                     row={row}
                     client={client}
                     onEdit={() => openEdit(row)}
                     onChanged={refreshAll}
+                    onViewDetails={() => selectResource(row.id)}
                   />
                 ))}
               </TableBody>
             </Table>
+            )} cards={filtered.map((row) => (
+              <ResourceRecordCard
+                key={row.id}
+                testId={`omni-comms-endpoint-card-${row.code}`}
+                title={row.display_name}
+                subtitle={row.code}
+                status={row.status}
+                fields={[
+                  { label: 'Type', value: OMNI_COMMS_ENDPOINT_TYPE_LABEL[row.endpoint_type] ?? row.endpoint_type },
+                  { label: 'Scope', value: endpointScopeLabel(row) },
+                ]}
+                actions={(
+                  <EndpointRowActions
+                    row={row}
+                    client={client}
+                    onEdit={() => openEdit(row)}
+                    onChanged={refreshAll}
+                    onViewDetails={() => selectResource(row.id)}
+                  />
+                )}
+                onOpen={() => selectResource(row.id)}
+              />
+            ))} />
           )}
         </CardContent>
       </Card>
+
+      <ResourceDetailsDrawer
+        open={detailRow !== null}
+        onOpenChange={(open) => { if (!open) clearResource(); }}
+        title={detailRow?.display_name ?? 'Endpoint'}
+        description={detailRow ? `${channelName} endpoint ${detailRow.code}` : undefined}
+        facts={detailRow ? safeLifecycleFacts(detailRow as never) : undefined}
+        testId="omni-comms-endpoint-drawer"
+      >
+        {detailRow ? (
+          <DrawerFacts
+            facts={[
+              { label: 'Type', value: OMNI_COMMS_ENDPOINT_TYPE_LABEL[detailRow.endpoint_type] ?? detailRow.endpoint_type },
+              { label: 'Scope', value: endpointScopeLabel(detailRow) },
+              { label: 'Status', value: detailRow.status },
+              { label: 'Configuration', value: endpointConfigSummary(detailRow) },
+            ]}
+          />
+        ) : null}
+      </ResourceDetailsDrawer>
 
       <EndpointDialog
         open={dialogOpen}
@@ -330,22 +408,34 @@ export const VERIFICATION_LABEL: Record<string, string> = {
   failed: 'Provider verification failed',
 };
 
-const EndpointRow: React.FC<{
+export function endpointLifecycleActions(row: ChannelEndpointRow): LifecycleActionDescriptor[] {
+  const actions: LifecycleActionDescriptor[] = [];
+  if (row.status === 'draft') actions.push({ key: 'activate', label: 'Activate' });
+  if (row.status === 'disabled') actions.push({ key: 'reactivate', label: 'Reactivate' });
+  if (row.status === 'active') actions.push({ key: 'disable', label: 'Disable' });
+  if (row.status !== 'retired') {
+    actions.push({ key: 'retire', label: 'Retire', destructive: true });
+  }
+  return actions;
+}
+
+export const EndpointRowActions: React.FC<{
   row: ChannelEndpointRow;
   client: Client;
   onEdit: () => void;
   onChanged: () => Promise<void> | void;
-}> = ({ row, client, onEdit, onChanged }) => {
+  onViewDetails: () => void;
+}> = ({ row, client, onEdit, onChanged, onViewDetails }) => {
   const [busy, setBusy] = useState(false);
   const isReference = row.data_origin === 'reference_seed';
 
-  const lifecycle = async (action: 'activate' | 'disable' | 'retire') => {
+  const run = async (
+    key: 'activate' | 'reactivate' | 'disable' | 'retire' | 'verify',
+    reason: string | null,
+  ) => {
     if (isReference) return;
-    let reason: string | null = null;
-    if (action === 'retire') {
-      reason = window.prompt('Retirement reason (required)')?.trim() || null;
-      if (!reason) return;
-    }
+    const action = backendLifecycleAction(key);
+    if (action === 'verify') return;
     setBusy(true);
     try {
       await setChannelEndpointLifecycle(client, {
@@ -360,8 +450,36 @@ const EndpointRow: React.FC<{
     finally { setBusy(false); }
   };
 
-  const canActivate = row.status === 'draft' || row.status === 'disabled';
-  const activateLabel = row.status === 'disabled' ? 'Reactivate' : 'Activate';
+  const dialog = useLifecycleDialog(run);
+
+  return (
+    <>
+      <ResourceActionMenu
+        testId={`omni-comms-endpoint-actions-${row.code}`}
+        label={`Actions for ${row.display_name}`}
+        disabled={busy || isReference}
+        actions={isReference ? [] : endpointLifecycleActions(row)}
+        onSelect={dialog.request}
+        onEdit={!isReference && row.status === 'draft' ? onEdit : undefined}
+        onViewDetails={onViewDetails}
+      />
+      <LifecycleActionDialog
+        controller={dialog}
+        resourceLabel="endpoint"
+        recordLabel={`${row.display_name} (${row.code})`}
+      />
+    </>
+  );
+};
+
+const EndpointRow: React.FC<{
+  row: ChannelEndpointRow;
+  client: Client;
+  onEdit: () => void;
+  onChanged: () => Promise<void> | void;
+  onViewDetails: () => void;
+}> = ({ row, client, onEdit, onChanged, onViewDetails }) => {
+  const isReference = row.data_origin === 'reference_seed';
 
   return (
     <TableRow>
@@ -404,28 +522,13 @@ const EndpointRow: React.FC<{
             {REFERENCE_ENDPOINT_READ_ONLY_HELP}
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" disabled={busy || row.status !== 'draft'} onClick={onEdit}>
-              Edit draft
-            </Button>
-            <Button size="sm" disabled={busy || !canActivate} onClick={() => void lifecycle('activate')}>
-              {activateLabel}
-            </Button>
-            <Button
-              size="sm" variant="outline"
-              disabled={busy || row.status !== 'active'}
-              onClick={() => void lifecycle('disable')}
-            >
-              Disable
-            </Button>
-            <Button
-              size="sm" variant="outline"
-              disabled={busy || row.status === 'retired'}
-              onClick={() => void lifecycle('retire')}
-            >
-              Retire
-            </Button>
-          </div>
+          <EndpointRowActions
+            row={row}
+            client={client}
+            onEdit={onEdit}
+            onChanged={onChanged}
+            onViewDetails={onViewDetails}
+          />
         )}
       </TableCell>
     </TableRow>

@@ -1,15 +1,14 @@
 /**
  * Omni-Comms C2.1 — generic, provider-independent Providers tab.
- *
- * Lets an operator register the provider vendors available for a channel,
- * declare the named credential purposes each one requires, activate them for
- * use by Accounts, and retire them.
+ * Omni-Comms UX2 — resource-manager presentation (search, action menu,
+ * accessible lifecycle dialogs, details drawer, responsive cards).
  *
  * Boundaries (permanent):
  *   - No provider SDK import, no network call to a provider, no send.
  *   - No credential VALUE is requested, stored or displayed — only Edge secret
  *     reference NAME patterns.
  *   - Seeded and reference providers are read-only.
+ *   - `core_audit_log` is never queried; history is not fabricated.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, Plus, ShieldAlert } from 'lucide-react';
@@ -42,6 +41,21 @@ import { SECRET_REFERENCE_HELP } from '@/platform/omni-comms/application/channel
 import type { ChannelUiDefinition } from './channelUiRegistry';
 import { Field, SelectField, toastError } from './channelFormPrimitives';
 import { ReferenceDataControls } from './ReferenceDataControls';
+import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
+import {
+  DrawerFacts,
+  LifecycleActionDialog,
+  ResourceActionMenu,
+  ResourceDetailsDrawer,
+  ResourceRecordCard,
+  ResourceResponsiveList,
+  ResourceSearchToolbar,
+  backendLifecycleAction,
+  safeLifecycleFacts,
+  useLifecycleDialog,
+  useResourceFilter,
+  type LifecycleActionDescriptor,
+} from './resourceManager';
 
 interface Props {
   definition: ChannelUiDefinition;
@@ -61,6 +75,19 @@ const EMPTY_FORM: FormState = {
   id: null, expectedUpdatedAt: null, adapterKey: '', code: '', displayName: '',
 };
 
+/** Providers support exactly two backend lifecycle actions. */
+export function providerLifecycleActions(
+  row: ProviderAdminRow,
+): LifecycleActionDescriptor[] {
+  if (row.data_origin !== 'user') return [];
+  const actions: LifecycleActionDescriptor[] = [];
+  if (row.status === 'draft') actions.push({ key: 'activate', label: 'Activate' });
+  if (row.status === 'active') {
+    actions.push({ key: 'retire', label: 'Retire', destructive: true });
+  }
+  return actions;
+}
+
 export const ChannelProvidersTab: React.FC<Props> = ({
   definition, client, onChanged,
 }) => {
@@ -70,9 +97,20 @@ export const ChannelProvidersTab: React.FC<Props> = ({
   const [busy, setBusy] = useState(false);
   const [showReference, setShowReference] = useState(false);
   const [form, setForm] = useState<FormState | null>(null);
+  const [actionRow, setActionRow] = useState<ProviderAdminRow | null>(null);
 
   const supported = providerRegistrationSupported(channel);
   const adapters = useMemo(() => adaptersForChannel(channel), [channel]);
+  const providers = useMemo(() => data?.providers ?? [], [data]);
+
+  const { resourceId, selectResource, clearResource } = useOmniCommsResourceParam();
+  const detailRow = providers.find((p) => p.id === resourceId) ?? null;
+
+  const { filter, setFilter, filtered } = useResourceFilter(
+    providers,
+    (p) => [p.code, p.display_name, p.adapter_key],
+    (p) => p.status,
+  );
 
   const load = useCallback(async () => {
     if (!supported) return;
@@ -88,10 +126,34 @@ export const ChannelProvidersTab: React.FC<Props> = ({
 
   useEffect(() => { void load(); }, [load]);
 
+  const runLifecycle = useCallback(
+    async (key: 'activate' | 'reactivate' | 'disable' | 'retire' | 'verify', reason: string | null) => {
+      const p = actionRow;
+      if (!p) return;
+      const action = backendLifecycleAction(key);
+      if (action === 'verify' || action === 'disable') return; // unsupported for providers
+      setBusy(true);
+      try {
+        await setChannelProviderLifecycle(client, {
+          id: p.id, expectedUpdatedAt: p.updated_at, action, reason,
+        });
+        toast.success(action === 'activate' ? 'Provider activated' : 'Provider retired');
+        await load();
+        onChanged?.();
+      } catch (e) {
+        toastError(e, 'Lifecycle action failed');
+      } finally {
+        setBusy(false);
+        setActionRow(null);
+      }
+    },
+    [actionRow, client, load, onChanged],
+  );
+
+  const lifecycleDialog = useLifecycleDialog(runLifecycle);
+
   const selectedAdapter = form ? findAdapter(form.adapterKey) : undefined;
-
   const startCreate = () => setForm({ ...EMPTY_FORM, adapterKey: adapters[0]?.adapterKey ?? '' });
-
   const startEdit = (p: ProviderAdminRow) =>
     setForm({
       id: p.id,
@@ -131,26 +193,6 @@ export const ChannelProvidersTab: React.FC<Props> = ({
     }
   };
 
-  const lifecycle = async (p: ProviderAdminRow, action: 'activate' | 'retire') => {
-    const reason = action === 'retire'
-      ? window.prompt('Retirement reason (required)')?.trim()
-      : null;
-    if (action === 'retire' && !reason) return;
-    setBusy(true);
-    try {
-      await setChannelProviderLifecycle(client, {
-        id: p.id, expectedUpdatedAt: p.updated_at, action, reason,
-      });
-      toast.success(action === 'activate' ? 'Provider activated' : 'Provider retired');
-      await load();
-      onChanged?.();
-    } catch (e) {
-      toastError(e, 'Lifecycle action failed');
-    } finally {
-      setBusy(false);
-    }
-  };
-
   if (!supported) {
     return (
       <Card data-testid="channel-providers-unsupported">
@@ -165,12 +207,27 @@ export const ChannelProvidersTab: React.FC<Props> = ({
     );
   }
 
-  const providers = data?.providers ?? [];
+  const openActions = (p: ProviderAdminRow) => (a: LifecycleActionDescriptor) => {
+    setActionRow(p);
+    lifecycleDialog.request(a);
+  };
+
+  const rowActions = (p: ProviderAdminRow) => (
+    <ResourceActionMenu
+      testId={`omni-comms-provider-actions-${p.code}`}
+      label={`Actions for ${p.display_name}`}
+      disabled={busy || p.data_origin !== 'user'}
+      actions={providerLifecycleActions(p)}
+      onSelect={openActions(p)}
+      onEdit={p.status === 'draft' && p.data_origin === 'user' ? () => startEdit(p) : undefined}
+      onViewDetails={() => selectResource(p.id)}
+    />
+  );
 
   return (
     <div className="space-y-4" data-testid="channel-providers-tab">
       <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
+        <CardHeader className="flex flex-col items-start justify-between gap-4 sm:flex-row">
           <div>
             <CardTitle>{definition.name} providers</CardTitle>
             <CardDescription>
@@ -192,90 +249,133 @@ export const ChannelProvidersTab: React.FC<Props> = ({
             hiddenCount={providers.filter((p) => p.data_origin === 'reference_seed').length}
           />
 
+          <ResourceSearchToolbar
+            filter={filter}
+            onChange={setFilter}
+            placeholder="Search providers by name, code or adapter"
+            total={providers.length}
+            shown={filtered.length}
+            testId="omni-comms-providers-toolbar"
+          />
 
           {loading ? (
             <p className="text-sm text-muted-foreground">
               <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Loading providers…
             </p>
-          ) : providers.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No provider is registered for this channel yet.
+              {providers.length === 0
+                ? 'No provider is registered for this channel yet.'
+                : 'No provider matches the current search or status filter.'}
             </p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Adapter</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Credentials</TableHead>
-                  <TableHead>Accounts</TableHead>
-                  <TableHead>Origin</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {providers.map((p) => {
-                  const adapter = findAdapter(p.adapter_key);
-                  const editable = p.data_origin === 'user';
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <div className="font-medium">{p.display_name}</div>
-                        <div className="font-mono text-xs text-muted-foreground">{p.code}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-mono text-xs">{p.adapter_key}</div>
-                        {!adapter?.deliveryImplemented ? (
-                          <div className="text-xs text-muted-foreground">
-                            No delivery adapter installed
-                          </div>
-                        ) : null}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={p.status === 'active' ? 'default' : 'secondary'}>
-                          {p.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {p.credential_requirements.length === 0
-                          ? 'None declared'
-                          : p.credential_requirements
-                              .map((r) => r.purpose)
-                              .join(', ')}
-                      </TableCell>
-                      <TableCell className="text-sm">{p.account_count}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {p.data_origin}
-                      </TableCell>
-                      <TableCell className="space-x-2 text-right">
-                        {!editable ? (
-                          <span className="text-xs text-muted-foreground">Read-only</span>
-                        ) : (
-                          <>
-                            {p.status === 'draft' ? (
-                              <>
-                                <Button size="sm" variant="outline" disabled={busy}
-                                  onClick={() => startEdit(p)}>Edit</Button>
-                                <Button size="sm" disabled={busy}
-                                  onClick={() => void lifecycle(p, 'activate')}>Activate</Button>
-                              </>
-                            ) : null}
-                            {p.status === 'active' ? (
-                              <Button size="sm" variant="outline" disabled={busy}
-                                onClick={() => void lifecycle(p, 'retire')}>Retire</Button>
-                            ) : null}
-                          </>
-                        )}
-                      </TableCell>
+            <ResourceResponsiveList
+              table={(
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Adapter</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Credentials</TableHead>
+                      <TableHead>Accounts</TableHead>
+                      <TableHead>Origin</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((p) => {
+                      const adapter = findAdapter(p.adapter_key);
+                      return (
+                        <TableRow key={p.id}>
+                          <TableCell>
+                            <div className="font-medium">{p.display_name}</div>
+                            <div className="font-mono text-xs text-muted-foreground">{p.code}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-mono text-xs">{p.adapter_key}</div>
+                            {!adapter?.deliveryImplemented ? (
+                              <div className="text-xs text-muted-foreground">
+                                No delivery adapter installed
+                              </div>
+                            ) : null}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={p.status === 'active' ? 'default' : 'secondary'}>
+                              {p.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {p.credential_requirements.length === 0
+                              ? 'None declared'
+                              : p.credential_requirements.map((r) => r.purpose).join(', ')}
+                          </TableCell>
+                          <TableCell className="text-sm">{p.account_count}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {p.data_origin}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {p.data_origin !== 'user' ? (
+                              <span className="text-xs text-muted-foreground">Read-only</span>
+                            ) : null}
+                            {rowActions(p)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+              cards={filtered.map((p) => (
+                <ResourceRecordCard
+                  key={p.id}
+                  testId={`omni-comms-provider-card-${p.code}`}
+                  title={p.display_name}
+                  subtitle={p.code}
+                  status={p.status}
+                  fields={[
+                    { label: 'Adapter', value: p.adapter_key },
+                    { label: 'Accounts', value: String(p.account_count) },
+                    { label: 'Origin', value: p.data_origin },
+                  ]}
+                  actions={rowActions(p)}
+                  onOpen={() => selectResource(p.id)}
+                />
+              ))}
+            />
           )}
         </CardContent>
       </Card>
+
+      <LifecycleActionDialog
+        controller={lifecycleDialog}
+        resourceLabel="provider"
+        recordLabel={actionRow ? `${actionRow.display_name} (${actionRow.code})` : ''}
+      />
+
+      <ResourceDetailsDrawer
+        open={detailRow !== null}
+        onOpenChange={(open) => { if (!open) clearResource(); }}
+        title={detailRow?.display_name ?? 'Provider'}
+        description={detailRow ? `Provider ${detailRow.code} on ${definition.name}` : undefined}
+        facts={detailRow ? safeLifecycleFacts(detailRow as never) : undefined}
+        testId="omni-comms-provider-drawer"
+      >
+        {detailRow ? (
+          <DrawerFacts
+            facts={[
+              { label: 'Adapter', value: detailRow.adapter_key },
+              { label: 'Status', value: detailRow.status },
+              { label: 'Origin', value: detailRow.data_origin },
+              { label: 'Accounts', value: String(detailRow.account_count) },
+              {
+                label: 'Credential purposes',
+                value: detailRow.credential_requirements.map((r) => r.purpose).join(', ') || 'None declared',
+              },
+            ]}
+          />
+        ) : null}
+      </ResourceDetailsDrawer>
 
       {form ? (
         <Card data-testid="channel-provider-form">
