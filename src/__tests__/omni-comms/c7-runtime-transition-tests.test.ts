@@ -30,9 +30,11 @@ describe('C7 executable runtime transition suite — safety envelope', () => {
 
   it('never enables live delivery or the live release state', () => {
     expect(SUITE).not.toMatch(/live_delivery_enabled\s*=\s*true/i);
-    expect(SUITE).not.toMatch(/release_state\s*=\s*'live'\s*(?:,|;|$)/im);
-    expect(SUITE).toMatch(/release_state='live'\)/);
+    expect(SUITE).not.toMatch(/SET\s+release_state\s*=\s*'live'/i);
+    // `live` appears only inside the read-only invariant assertion.
+    expect(SUITE).toMatch(/WHERE release_state='live'/);
   });
+
 
 
   it('rolls every fixture back through an explicit sentinel', () => {
