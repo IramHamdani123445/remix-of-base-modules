@@ -382,6 +382,23 @@ export const ChannelTestCentreTab: React.FC<{
         </Card>
       )}
 
+      {channel === 'email' && bindingId && deliveryTransport ? (
+        <ChannelTestDeliveryCard
+          client={client}
+          transport={deliveryTransport}
+          orgId={orgId}
+          departmentId={departmentId ?? null}
+          channel="email"
+          bindingId={bindingId}
+          target={target}
+          run={currentRun}
+          runIsCurrent={!currentStale}
+          configurationFingerprint={summary?.configuration_fingerprint ?? null}
+          onChanged={onChanged}
+        />
+      ) : null}
+
+
       <Card data-testid="omni-comms-test-centre-history">
         <CardHeader>
           <CardTitle>Preflight history</CardTitle>
