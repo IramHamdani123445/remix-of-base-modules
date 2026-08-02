@@ -5,7 +5,7 @@
  * channel (email, sms, whatsapp, push, in_app, print).
  *
  * Boundaries (permanent):
- *   - No provider SDK import, no sendCommunication call, no request, message,
+ *   - No provider SDK import, no façade emission call, no request, message,
  *     dispatch job or delivery attempt is created or referenced.
  *   - No endpoint, domain, SPF/DKIM, webhook or callback surface (C3B).
  *   - No identity is ever presented as provider verified.

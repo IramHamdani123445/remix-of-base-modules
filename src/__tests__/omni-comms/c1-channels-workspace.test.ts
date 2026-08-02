@@ -188,9 +188,11 @@ describe('C1 — email functionality preserved', () => {
   });
 
   it('14. existing email sender actions remain available', () => {
-    expect(identities).toContain('upsertSenderIdentityDraft');
-    expect(identities).toContain('activateSenderIdentity');
-    expect(identities).toContain('Email sender identities');
+    // C3A — Email identity administration is preserved through the generic,
+    // provider-independent Channel Identities model.
+    expect(identities).toContain('upsertChannelIdentityDraft');
+    expect(identities).toContain('setChannelIdentityLifecycle');
+    expect(identities).toContain("channel === 'email'");
   });
 
   it('15. existing email binding actions remain available with richer columns', () => {
