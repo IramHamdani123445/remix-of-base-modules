@@ -262,8 +262,8 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
   },
   {
     name: 'omni_comms_channel_test_run',
-    category: 'runtime',
-    epic: 6,
+    category: 'channels_senders_preferences',
+    epic: 4,
     writeAuthority: 'admin_rpc',
     purpose:
       'Immutable technical configuration-preflight ledger for a channel binding; stores the 21-check outcome, configuration fingerprint, masked target and payload summary only, and never sends a message.',
