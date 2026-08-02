@@ -205,8 +205,10 @@ export const OmniCommsChannelsPage: React.FC = () => {
         <TabsContent value="test-centre">
           <ChannelTestCentreTab
             definition={definition} client={client} orgId={orgId}
-            departmentId={departmentId} onChanged={refreshTestCentre}
+            departmentId={departmentId} departmentName={departmentName}
+            onChanged={refreshTestCentre}
           />
+
         </TabsContent>
         <TabsContent value="diagnostics">
           <ChannelDiagnosticsTab definition={definition} />
