@@ -242,3 +242,33 @@ export async function sha256Hex(value: string): Promise<string> {
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
+
+/**
+ * Canonical provider payload fingerprint (C7 Closure Correction).
+ *
+ * Deterministic, order-independent SHA-256 over the EXACT provider-visible
+ * content of an Email send. The dispatcher records this hash BEFORE the
+ * provider is contacted, so a retry that carries different content under the
+ * same idempotency key is refused rather than silently double-sending
+ * different mail.
+ */
+export async function canonicalProviderPayloadHash(input: {
+  fromAddress: string;
+  fromName?: string | null;
+  replyTo?: string | null;
+  to: string;
+  subject: string;
+  text: string;
+  html?: string | null;
+}): Promise<string> {
+  const canonical = JSON.stringify({
+    from_address: (input.fromAddress ?? "").trim().toLowerCase(),
+    from_name: (input.fromName ?? "").trim(),
+    reply_to: (input.replyTo ?? "").trim().toLowerCase(),
+    to: (input.to ?? "").trim().toLowerCase(),
+    subject: input.subject ?? "",
+    text: input.text ?? "",
+    html: input.html ?? "",
+  });
+  return await sha256Hex(canonical);
+}

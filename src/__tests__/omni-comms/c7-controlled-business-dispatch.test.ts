@@ -64,14 +64,19 @@ describe('C7 — dispatcher input boundary', () => {
   });
 
   it('rejects every caller-supplied field that could influence what is sent', () => {
+    // Closure correction: the dispatcher now enforces a positive allow-list of
+    // exactly two keys, so no send-influencing field can ever be accepted.
+    expect(dispatch).toContain('ALLOWED_INPUT_KEYS');
+    expect(dispatch).toContain('"batchLimit", "correlationId"');
     for (const field of [
       'jobId', 'messageId', 'recipient', 'provider', 'credential',
       'eventCode', 'callerModule', 'releaseControlId', 'subject', 'html',
     ]) {
-      expect(dispatch).toContain(`"${field}"`);
+      expect(['batchLimit', 'correlationId']).not.toContain(field);
     }
     expect(dispatch).toContain('caller_supplied_dispatch_input_forbidden');
   });
+
 
   it('accepts only a bounded batch limit and a correlation identifier', () => {
     expect(dispatch).toContain('MAX_BATCH_LIMIT');
@@ -201,12 +206,15 @@ describe('C7 — callback processing', () => {
     expect(webhook).toContain('maskEmail');
   });
 
-  it('records business evidence first and preserves C5B test evidence', () => {
+  it('matches C5B test evidence first and preserves business evidence', () => {
+    // Closure correction: a technical test delivery must be matched before a
+    // business attempt so a C5B reference can never be mis-attributed.
     const business = webhook.indexOf('omni_comms_priv_dispatch_record_callback');
     const c5b = webhook.indexOf('omni_comms_priv_channel_test_delivery_record_event');
-    expect(business).toBeGreaterThan(-1);
-    expect(c5b).toBeGreaterThan(business);
+    expect(c5b).toBeGreaterThan(-1);
+    expect(business).toBeGreaterThan(c5b);
   });
+
 
   it('never sends anything from the callback receiver', () => {
     expect(webhook).not.toContain('sendResendEmail');

@@ -81902,13 +81902,16 @@ export type Database = {
         Row: {
           attempt_number: number
           certified_commit_at_claim: string | null
+          claim_decision_snapshot: Json | null
           claim_token: string | null
           claimed_at: string | null
           completed_at: string | null
           created_at: string
+          deployed_revision_at_claim: string | null
           dispatch_job_id: string
           error_code: string | null
           error_detail: string | null
+          execution_context: string | null
           failure_category: string | null
           id: string
           is_retriable: boolean | null
@@ -81920,9 +81923,13 @@ export type Database = {
           provider_id: string | null
           provider_idempotency_key: string | null
           provider_message_id: string | null
+          provider_payload_hash: string | null
           provider_status_code: number | null
           recipient_hash: string | null
+          recipient_rule_matched: boolean | null
+          reconciliation_state: string | null
           release_control_id: string | null
+          release_expires_at_claim: string | null
           release_fingerprint_at_claim: string | null
           release_state_at_claim: string | null
           release_version_at_claim: number | null
@@ -81937,13 +81944,16 @@ export type Database = {
         Insert: {
           attempt_number: number
           certified_commit_at_claim?: string | null
+          claim_decision_snapshot?: Json | null
           claim_token?: string | null
           claimed_at?: string | null
           completed_at?: string | null
           created_at?: string
+          deployed_revision_at_claim?: string | null
           dispatch_job_id: string
           error_code?: string | null
           error_detail?: string | null
+          execution_context?: string | null
           failure_category?: string | null
           id?: string
           is_retriable?: boolean | null
@@ -81955,9 +81965,13 @@ export type Database = {
           provider_id?: string | null
           provider_idempotency_key?: string | null
           provider_message_id?: string | null
+          provider_payload_hash?: string | null
           provider_status_code?: number | null
           recipient_hash?: string | null
+          recipient_rule_matched?: boolean | null
+          reconciliation_state?: string | null
           release_control_id?: string | null
+          release_expires_at_claim?: string | null
           release_fingerprint_at_claim?: string | null
           release_state_at_claim?: string | null
           release_version_at_claim?: number | null
@@ -81972,13 +81986,16 @@ export type Database = {
         Update: {
           attempt_number?: number
           certified_commit_at_claim?: string | null
+          claim_decision_snapshot?: Json | null
           claim_token?: string | null
           claimed_at?: string | null
           completed_at?: string | null
           created_at?: string
+          deployed_revision_at_claim?: string | null
           dispatch_job_id?: string
           error_code?: string | null
           error_detail?: string | null
+          execution_context?: string | null
           failure_category?: string | null
           id?: string
           is_retriable?: boolean | null
@@ -81990,9 +82007,13 @@ export type Database = {
           provider_id?: string | null
           provider_idempotency_key?: string | null
           provider_message_id?: string | null
+          provider_payload_hash?: string | null
           provider_status_code?: number | null
           recipient_hash?: string | null
+          recipient_rule_matched?: boolean | null
+          reconciliation_state?: string | null
           release_control_id?: string | null
+          release_expires_at_claim?: string | null
           release_fingerprint_at_claim?: string | null
           release_state_at_claim?: string | null
           release_version_at_claim?: number | null
@@ -104882,9 +104903,19 @@ export type Database = {
           p_batch_limit: number
           p_correlation_id: string
           p_deployed_revision: string
+          p_execution_context?: string
+          p_scopes: Json
           p_worker: string
         }
         Returns: Json
+      }
+      omni_comms_priv_dispatch_operator_scopes: {
+        Args: { p_actor: string }
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_recalculate_request: {
+        Args: { p_request_id: string }
+        Returns: undefined
       }
       omni_comms_priv_dispatch_reclaim_expired_leases: {
         Args: never
@@ -104901,6 +104932,23 @@ export type Database = {
           p_provider_message_id: string
           p_raw_event_type: string
           p_signature_verified: boolean
+        }
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_record_payload_hash: {
+        Args: {
+          p_attempt_id: string
+          p_claim_token: string
+          p_payload_hash: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_scheduler_tick: {
+        Args: {
+          p_batch_limit: number
+          p_correlation_id?: string
+          p_deployed_revision: string
+          p_worker: string
         }
         Returns: Json
       }
