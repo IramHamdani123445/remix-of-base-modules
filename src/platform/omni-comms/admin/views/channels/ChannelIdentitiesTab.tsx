@@ -251,7 +251,6 @@ const GenericIdentitiesPanel: React.FC<{
                     key={row.id}
                     row={row}
                     client={client}
-                    departmentName={departmentName}
                     onEdit={() => openEdit(row)}
                     onChanged={refreshAll}
                   />
