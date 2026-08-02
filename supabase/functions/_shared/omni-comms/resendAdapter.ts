@@ -102,6 +102,18 @@ export function isUncertainStatus(status: number): boolean {
 }
 
 /**
+ * The Deno runtime global. Declared locally so this Edge module can also be
+ * imported by the Node-based test runner, where `Deno` is stubbed.
+ */
+declare const Deno: { env: { get(name: string): string | undefined } };
+
+/** Bounded outcome of a credential-reference resolution. */
+export type ResolvedSecret =
+  | { ok: true; apiKey: string }
+  | { ok: false; errorCode: string; detail: string };
+
+
+/**
  * Resolves the credential VALUE for a bounded reference name.
  *
  * The reference NAME is never echoed back: it must not reach delivery-attempt
