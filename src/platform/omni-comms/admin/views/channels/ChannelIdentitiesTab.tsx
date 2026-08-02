@@ -50,6 +50,7 @@ import {
   identityChannelSupported,
   identityChannelValue,
   identityConfigSummary,
+  identityScopeLabel,
   IDENTITY_ACTIVATION_MEANING,
   OMNI_COMMS_IDENTITY_TYPES_BY_CHANNEL,
   OMNI_COMMS_IDENTITY_TYPE_LABEL,
