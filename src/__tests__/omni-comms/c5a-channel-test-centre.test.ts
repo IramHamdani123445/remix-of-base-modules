@@ -100,8 +100,8 @@ describe('C5A — object registry', () => {
     expect(entries[0].name).toBe('omni_comms_channel_test_run');
   });
 
-  it('raises the approved object ceiling from 27 to 28', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(28);
+  it('raises the approved object ceiling from 27 to 28 (C5B raises it to 30)', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(30);
   });
 
   it('marks the test-run object AVAILABLE, runtime evidence, admin_rpc', () => {
@@ -130,34 +130,31 @@ describe('C5A — canonical checklist', () => {
 
   it('covers every configuration layer', () => {
     for (const code of [
+      'tenant_access',
+      'channel_supported',
+      'effective_policy_present',
+      'policy_test_state',
       'binding_selected',
       'binding_active',
-      'binding_not_reference',
-      'binding_verified',
-      'provider_account_present',
+      'binding_scope_valid',
       'provider_account_active',
-      'provider_account_not_reference',
-      'provider_account_verified',
       'provider_credentials_complete',
-      'identity_present',
+      'provider_credentials_verified',
       'identity_active',
-      'identity_not_reference',
-      'identity_configuration_complete',
-      'endpoint_requirement_satisfied',
+      'endpoint_requirement',
       'endpoint_active',
-      'endpoint_verified',
-      'policy_effective_present',
-      'policy_state_allows_test',
-      'policy_live_delivery_disabled',
-      'test_target_valid',
-      'test_payload_valid',
+      'binding_verification',
+      'target_valid',
+      'payload_valid',
+      'reference_configuration',
+      'live_delivery_disabled',
     ]) {
       expect(CHANNEL_TEST_CHECK_CODES).toContain(code);
     }
   });
 
   it('places the fail-closed live-delivery check in the checklist', () => {
-    expect(CHANNEL_TEST_CHECK_CODES).toContain('policy_live_delivery_disabled');
+    expect(CHANNEL_TEST_CHECK_CODES).toContain('live_delivery_disabled');
   });
 });
 

@@ -271,6 +271,26 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Channels C5A — Test Centre preflight',
   },
   {
+    name: 'omni_comms_channel_test_delivery',
+    category: 'runtime',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Immutable ledger of approved technical provider test deliveries. Rows are reserved by an operator RPC and completed by the trusted Edge boundary; it never records live business sending.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C5B — Controlled test delivery',
+  },
+  {
+    name: 'omni_comms_channel_test_delivery_event',
+    category: 'runtime',
+    epic: 4,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Verified provider callback evidence for approved test deliveries, deduplicated by provider event identifier.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C5B — Controlled test delivery',
+  },
+  {
     name: 'omni_comms_webhook_event',
     category: 'runtime',
     epic: 6,

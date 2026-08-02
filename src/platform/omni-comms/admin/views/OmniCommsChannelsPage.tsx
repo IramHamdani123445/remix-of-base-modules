@@ -14,6 +14,7 @@ import { ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOmniCommsChannelWorkspaceTab } from "../hooks/useOmniCommsTabParam";
+import { useChannelTestDeliveryTransport } from "@/platform/omni-comms/admin/hooks/useChannelTestDeliveryTransport";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
 import { useOmniCommsSelectedChannel } from "../hooks/useOmniCommsChannelParam";
 import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
@@ -40,10 +41,13 @@ import {
   type ChannelWorkspaceTab,
 } from "./channels/channelUiRegistry";
 import { projectEmailReadiness } from "./channels/emailReadiness";
+import { getChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/application/channelTestDeliveryService";
+import type { ChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/application/channelTestDeliveryTypes";
 import { toastError } from "./channels/channelFormPrimitives";
 
 export const OmniCommsChannelsPage: React.FC = () => {
   const client = useOmniCommsRpcClient();
+  const deliveryTransport = useChannelTestDeliveryTransport();
   const { organizationId: orgId, organizationName, departmentId, departmentName } = useOmniCommsTenant();
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   // C4B — the shared Email readiness projection resolves policy state from the
@@ -52,6 +56,9 @@ export const OmniCommsChannelsPage: React.FC = () => {
   // C5A — readiness requires a CURRENT passed configuration preflight. Loading
   // this summary performs no send and contacts no provider.
   const [testCentre, setTestCentre] = useState<ChannelTestCentreSummary | null>(null);
+  // Controlled test delivery evidence. Read-only; loading it sends nothing.
+  const [deliveryDiagnostics, setDeliveryDiagnostics] =
+    useState<ChannelTestDeliveryDiagnostics | null>(null);
   const [loading, setLoading] = useState(false);
 
   const { selected, selectChannel, clearChannel } = useOmniCommsSelectedChannel();
@@ -62,7 +69,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [config, policy, test] = await Promise.all([
+      const [config, policy, test, deliveries] = await Promise.all([
         getEmailConfigSummary(client, orgId),
         getChannelPolicySummary(client, {
           organizationId: orgId,
@@ -71,10 +78,14 @@ export const OmniCommsChannelsPage: React.FC = () => {
           includeReference: false,
         }),
         getChannelTestCentreSummary(client, orgId, "email", departmentId ?? null),
+        getChannelTestDeliveryDiagnostics(
+          client, orgId, "email", departmentId ?? null, null, 20,
+        ),
       ]);
       setSummary(config);
       setEmailPolicy(policy);
       setTestCentre(test);
+      setDeliveryDiagnostics(deliveries);
     } catch (e) {
       toastError(e, "Failed to load email configuration");
     } finally {
@@ -104,7 +115,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Catalogue (default view) ──────────────────────────────────────
   if (!definition) {
-    const emailReadiness = projectEmailReadiness(summary, emailPolicy, testCentre);
+    const emailReadiness = projectEmailReadiness(summary, emailPolicy, testCentre, deliveryDiagnostics);
     return (
       <div className="space-y-6" data-testid="omni-comms-channels-page">
         <div>
@@ -130,7 +141,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
 
   // ── Selected channel workspace ────────────────────────────────────
   const isEmail = definition.code === "email";
-  const readiness = isEmail ? projectEmailReadiness(summary, emailPolicy, testCentre) : null;
+  const readiness = isEmail ? projectEmailReadiness(summary, emailPolicy, testCentre, deliveryDiagnostics) : null;
 
   return (
     <div className="space-y-6" data-testid="omni-comms-channels-page">
@@ -206,12 +217,16 @@ export const OmniCommsChannelsPage: React.FC = () => {
           <ChannelTestCentreTab
             definition={definition} client={client} orgId={orgId}
             departmentId={departmentId} departmentName={departmentName}
+            deliveryTransport={deliveryTransport}
             onChanged={refreshTestCentre}
           />
 
         </TabsContent>
         <TabsContent value="diagnostics">
-          <ChannelDiagnosticsTab definition={definition} />
+          <ChannelDiagnosticsTab
+            definition={definition} client={client} orgId={orgId}
+            departmentId={departmentId}
+          />
         </TabsContent>
       </Tabs>
     </div>

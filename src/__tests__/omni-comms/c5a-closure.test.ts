@@ -133,9 +133,9 @@ describe('C5A closure — 2. registry classification', () => {
     );
   });
 
-  it('keeps the object count at exactly 28', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(28);
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(28);
+  it('keeps the object count aligned with the registry', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(30);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(30);
   });
 
   it('registers exactly one C5A object and keeps registries valid', () => {
@@ -155,10 +155,19 @@ describe('C5A closure — 3. explicit capability flags', () => {
       .toBe(true);
   });
 
-  it('marks provider delivery test NOT implemented', () => {
-    expect(EMAIL_PROVIDER_DELIVERY_TEST_IMPLEMENTED).toBe(false);
+  it('keeps provider delivery a separate capability from the preflight', () => {
+    // C5B implements approved provider TEST delivery. It is still a distinct
+    // capability: a passed preflight never implies delivery.
+    expect(EMAIL_PROVIDER_DELIVERY_TEST_IMPLEMENTED).toBe(true);
+    expect(EMAIL_CONFIGURATION_PREFLIGHT_IMPLEMENTED)
+      .not.toBe(EMAIL_PROVIDER_DELIVERY_TEST_IMPLEMENTED === false);
+    // With no delivery evidence supplied, readiness must not claim delivery.
     expect(projectEmailReadiness(null, null, summary()).providerDeliveryTestImplemented)
-      .toBe(false);
+      .toBe(true);
+    expect(
+      projectEmailReadiness(null, null, summary())
+        .checks.find((c) => c.key === 'provider_delivery_test')?.state,
+    ).toBe('not_implemented');
   });
 
   it('removes the ambiguous technicalTestImplemented flag entirely', () => {
@@ -197,10 +206,10 @@ describe('C5A closure — 4. two separate Email readiness checks', () => {
     expect(check(stale, 'provider_delivery_test').state).toBe('not_implemented');
   });
 
-  it('keeps provider delivery not_implemented with the C5A explanation', () => {
+  it('keeps provider delivery unproven until an approved test delivery exists', () => {
     expect(check(summary(), 'provider_delivery_test').detail).toBe(PROVIDER_DELIVERY_TEST_DETAIL);
     expect(PROVIDER_DELIVERY_TEST_DETAIL).toContain('does not send an email');
-    expect(PROVIDER_DELIVERY_TEST_DETAIL).toContain('not implemented in C5A');
+    expect(PROVIDER_DELIVERY_TEST_DETAIL).toContain('approved provider test delivery');
   });
 
   it('never claims completion, send readiness or delivery', () => {

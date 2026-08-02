@@ -184,7 +184,7 @@ describe('registry catalogue', () => {
   });
 
   it('keeps the registry ceiling consistent and valid', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(28);
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(30);
     expect(validateOmniCommsRegistries().errors).toEqual([]);
   });
 });

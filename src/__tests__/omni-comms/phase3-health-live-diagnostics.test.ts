@@ -327,7 +327,9 @@ describe('Phase 3 — health diagnostics model', () => {
     const res = buildLiveDiagnostics({ summary: payload(), edge: edgeOk });
     expect(findRow(res, 'DLV.ADAPTER')?.state).toBe('not_implemented');
     expect(findRow(res, 'DLV.DISPATCH_FN')?.state).toBe('not_implemented');
-    expect(findRow(res, 'DLV.WEBHOOK_FN')?.state).toBe('not_implemented');
+    // C5B deployed the webhook receiver for approved test-delivery evidence.
+    // It does not make live delivery available.
+    expect(findRow(res, 'DLV.WEBHOOK_FN')?.state).toBe('configured');
     expect(findRow(res, 'DLV.QUEUE')?.state).toBe('not_implemented');
   });
 
@@ -607,7 +609,7 @@ describe('Phase 3 — registry ceilings', () => {
   });
 
   it('keeps exactly twenty-one logical database objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(28);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(30);
   });
 });
 

@@ -30,7 +30,9 @@ import {
   type ChannelTestRun,
   type TestCentreChannel,
 } from '@/platform/omni-comms/application/channelTestCentreTypes';
+import type { ChannelTestDeliveryTransport } from '@/platform/omni-comms/application/channelTestDeliveryService';
 import { DeferredCapabilityCard, Detail, Field, SelectField, toastError } from './channelFormPrimitives';
+import { ChannelTestDeliveryCard } from './ChannelTestDeliveryCard';
 import {
   buildTestPayload,
   defaultTestContentForm,
@@ -148,12 +150,12 @@ const RunResult: React.FC<{
         </div>
         <div className="space-y-2" data-testid="omni-comms-test-centre-delivery-checks">
           <p className="text-xs font-medium uppercase text-muted-foreground">
-            Delivery evidence — not implemented in this release
+            Delivery evidence — recorded by provider test delivery
           </p>
           <p className="text-xs text-muted-foreground">
             A passed configuration preflight is not proof of delivery. These
-            points remain outstanding until controlled provider test delivery
-            is implemented.
+            points are proven only by an approved provider test delivery,
+            recorded separately below.
           </p>
           <ul className="space-y-2">
             {delivery.map((c) => <CheckRow key={c.code} check={c} />)}
@@ -170,8 +172,12 @@ export const ChannelTestCentreTab: React.FC<{
   orgId?: string | null;
   departmentId?: string | null;
   departmentName?: string | null;
+  /** Bound trusted-boundary transport for approved provider test delivery. */
+  deliveryTransport?: ChannelTestDeliveryTransport;
   onChanged?: () => void;
-}> = ({ definition, client, orgId, departmentId, departmentName, onChanged }) => {
+}> = ({
+  definition, client, orgId, departmentId, departmentName, deliveryTransport, onChanged,
+}) => {
   const channel = definition.code;
   const supported = isTestCentreChannel(channel);
 
@@ -381,6 +387,23 @@ export const ChannelTestCentreTab: React.FC<{
           </CardHeader>
         </Card>
       )}
+
+      {channel === 'email' && bindingId && deliveryTransport ? (
+        <ChannelTestDeliveryCard
+          client={client}
+          transport={deliveryTransport}
+          orgId={orgId}
+          departmentId={departmentId ?? null}
+          channel="email"
+          bindingId={bindingId}
+          target={target}
+          run={currentRun}
+          runIsCurrent={!currentStale}
+          configurationFingerprint={summary?.configuration_fingerprint ?? null}
+          onChanged={onChanged}
+        />
+      ) : null}
+
 
       <Card data-testid="omni-comms-test-centre-history">
         <CardHeader>

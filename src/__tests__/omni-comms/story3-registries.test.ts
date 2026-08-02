@@ -37,8 +37,8 @@ function walk(dir: string): string[] {
 }
 
 describe('Omni-Comms Story 3 — registry counts', () => {
-  it('has exactly 28 active objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(28);
+  it('has exactly 30 active objects', () => {
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(30);
   });
   it('has exactly 2 deferred objects', () => {
     expect(OMNI_COMMS_DEFERRED_OBJECTS).toHaveLength(2);
@@ -46,8 +46,8 @@ describe('Omni-Comms Story 3 — registry counts', () => {
   it('has exactly 7 permanent routes', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
   });
-  it('has exactly 7 reserved integrations', () => {
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(7);
+  it('has exactly 8 registered integrations', () => {
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(8);
   });
   it('has exactly 5 reserved queues', () => {
     expect(OMNI_COMMS_QUEUE_REGISTRY).toHaveLength(5);
@@ -60,10 +60,10 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     expect(r.errors).toEqual([]);
     expect(r.ok).toBe(true);
     expect(r.counts).toEqual({
-      activeObjects: 28,
+      activeObjects: 30,
       deferredObjects: 2,
       routes: 7,
-      integrations: 7,
+      integrations: 8,
       queues: 5,
     });
   });
@@ -77,9 +77,13 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     }
   });
 
-  it('runtime objects are service_role_only, except the C5A evidence ledger', () => {
+  it('runtime objects are service_role_only, except the test evidence ledgers', () => {
+    const adminTriggered = new Set([
+      'omni_comms_channel_test_run',
+      'omni_comms_channel_test_delivery',
+    ]);
     for (const o of OMNI_COMMS_OBJECT_REGISTRY.filter((x) => x.category === 'runtime')) {
-      if (o.name === 'omni_comms_channel_test_run') {
+      if (adminTriggered.has(o.name)) {
         expect(o.writeAuthority).toBe('admin_rpc');
         continue;
       }
@@ -181,10 +185,16 @@ describe('Omni-Comms Story 3 — no runtime implementation was created', () => {
       const dirs = readdirSync(functionsDir).filter((d) =>
         statSync(path.join(functionsDir, d)).isDirectory(),
       );
-      // Slice 2c-i introduced the trusted server boundary as the only
-      // physical omni-comms-* edge function. Any additional directory would
-      // violate Story 3 invariants.
-      expect(dirs.filter((d) => d.startsWith('omni-comms-'))).toEqual(['omni-comms-runtime']);
+      // Every physical omni-comms-* edge function must be registered in the
+      // integration registry with status Available.
+      const registered = new Set(
+        OMNI_COMMS_INTEGRATION_REGISTRY
+          .filter((i) => i.kind === 'edge_function' && i.status === 'Available')
+          .map((i) => i.name),
+      );
+      for (const d of dirs.filter((x) => x.startsWith('omni-comms-'))) {
+        expect(registered.has(d), `${d} is not a registered Available integration`).toBe(true);
+      }
     }
   });
 

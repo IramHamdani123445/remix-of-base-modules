@@ -276,10 +276,14 @@ describe('C1 — safety boundaries', () => {
   });
 
 
-  it('diagnostics implements no queries', () => {
+  it('diagnostics stays read-only and never sends', () => {
     const src = read(`${DIR}/ChannelDiagnosticsTab.tsx`);
+    // It reads evidence through the bound service only, never a raw RPC call
+    // and never any send path.
     expect(src).not.toContain('rpc(');
-    expect(src).toContain('Credential verification history');
+    expect(src).not.toContain('sendCommunication');
+    expect(src).toContain('getChannelTestDeliveryDiagnostics');
+    expect(src).toContain('Credential and identity verification history');
   });
 });
 
