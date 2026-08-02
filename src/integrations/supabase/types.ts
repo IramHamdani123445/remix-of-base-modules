@@ -81298,7 +81298,9 @@ export type Database = {
           binding_id: string
           blocker_codes: string[]
           channel: string
+          channel_endpoint_id: string | null
           checks: Json
+          completed_at: string | null
           configuration_fingerprint: string
           configuration_snapshot: Json
           correlation_id: string | null
@@ -81309,10 +81311,13 @@ export type Database = {
           organization_id: string
           payload_hash: string
           payload_summary: Json
+          policy_id: string | null
+          provider_account_id: string | null
           request_fingerprint: string
           requested_at: string
           requested_by: string
           result_code: string
+          sender_identity_id: string | null
           status: string
           target_hash: string
           target_masked: string
@@ -81323,7 +81328,9 @@ export type Database = {
           binding_id: string
           blocker_codes?: string[]
           channel: string
+          channel_endpoint_id?: string | null
           checks?: Json
+          completed_at?: string | null
           configuration_fingerprint: string
           configuration_snapshot?: Json
           correlation_id?: string | null
@@ -81334,10 +81341,13 @@ export type Database = {
           organization_id: string
           payload_hash: string
           payload_summary?: Json
+          policy_id?: string | null
+          provider_account_id?: string | null
           request_fingerprint: string
           requested_at?: string
           requested_by: string
           result_code: string
+          sender_identity_id?: string | null
           status: string
           target_hash: string
           target_masked: string
@@ -81348,7 +81358,9 @@ export type Database = {
           binding_id?: string
           blocker_codes?: string[]
           channel?: string
+          channel_endpoint_id?: string | null
           checks?: Json
+          completed_at?: string | null
           configuration_fingerprint?: string
           configuration_snapshot?: Json
           correlation_id?: string | null
@@ -81359,10 +81371,13 @@ export type Database = {
           organization_id?: string
           payload_hash?: string
           payload_summary?: Json
+          policy_id?: string | null
+          provider_account_id?: string | null
           request_fingerprint?: string
           requested_at?: string
           requested_by?: string
           result_code?: string
+          sender_identity_id?: string | null
           status?: string
           target_hash?: string
           target_masked?: string
@@ -81378,10 +81393,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "omni_comms_ctr_endpoint_fk"
+            columns: ["channel_endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_endpoint"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_ctr_identity_fk"
+            columns: ["sender_identity_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_sender_identity"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "omni_comms_ctr_org_fk"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_ctr_provider_account_fk"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
             referencedColumns: ["id"]
           },
         ]
@@ -103811,6 +103847,10 @@ export type Database = {
           p_target: Json
         }
         Returns: Json
+      }
+      omni_comms_priv_channel_test_checks_valid: {
+        Args: { p_checks: Json }
+        Returns: boolean
       }
       omni_comms_priv_channel_test_config_fingerprint: {
         Args: {
