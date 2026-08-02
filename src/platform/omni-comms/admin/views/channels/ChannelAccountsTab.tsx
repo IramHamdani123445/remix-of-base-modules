@@ -331,10 +331,11 @@ export const ChannelAccountsTab: React.FC<{
       </Card>
 
       <AdvancedEvidenceSection
-        accounts={accounts}
+        accounts={accounts.filter((a) => !isReferenceAccountRow(a))}
         client={client}
         onChanged={refreshAll}
       />
+
 
       {form ? (
         <AccountFormDialog
