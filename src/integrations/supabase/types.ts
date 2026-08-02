@@ -81851,6 +81851,7 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          data_origin: string
           display_name: string
           id: string
           retired_at: string | null
@@ -81868,6 +81869,7 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          data_origin?: string
           display_name: string
           id?: string
           retired_at?: string | null
@@ -81885,6 +81887,7 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          data_origin?: string
           display_name?: string
           id?: string
           retired_at?: string | null
@@ -81903,11 +81906,14 @@ export type Database = {
           code: string
           created_at: string
           created_by: string | null
+          data_origin: string
           display_name: string
+          environment: string
           health_checked_at: string | null
           health_state: string
           id: string
           organization_id: string
+          provider_account_reference: string | null
           provider_id: string
           region: string | null
           retired_at: string | null
@@ -81929,11 +81935,14 @@ export type Database = {
           code: string
           created_at?: string
           created_by?: string | null
+          data_origin?: string
           display_name: string
+          environment?: string
           health_checked_at?: string | null
           health_state?: string
           id?: string
           organization_id: string
+          provider_account_reference?: string | null
           provider_id: string
           region?: string | null
           retired_at?: string | null
@@ -81955,11 +81964,14 @@ export type Database = {
           code?: string
           created_at?: string
           created_by?: string | null
+          data_origin?: string
           display_name?: string
+          environment?: string
           health_checked_at?: string | null
           health_state?: string
           id?: string
           organization_id?: string
+          provider_account_reference?: string | null
           provider_id?: string
           region?: string | null
           retired_at?: string | null
@@ -81985,6 +81997,94 @@ export type Database = {
           },
           {
             foreignKeyName: "omni_comms_provider_account_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_provider_account_secret_ref: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          provider_account_id: string
+          purpose: string
+          secret_ref: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          provider_account_id: string
+          purpose: string
+          secret_ref: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          provider_account_id?: string
+          purpose?: string
+          secret_ref?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_provider_account_secret_ref_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_provider_credential_requirement: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          provider_id: string
+          purpose: string
+          required: boolean
+          secret_ref_pattern: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          provider_id: string
+          purpose: string
+          required?: boolean
+          secret_ref_pattern: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          provider_id?: string
+          purpose?: string
+          required?: boolean
+          secret_ref_pattern?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_provider_credential_requirement_provider_id_fkey"
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_provider"
@@ -102697,6 +102797,41 @@ export type Database = {
         Args: { p_apply?: boolean; p_organization_code?: string }
         Returns: Json
       }
+      omni_comms_channel_provider_account_set_lifecycle: {
+        Args: {
+          p_action: string
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
+        }
+        Returns: string
+      }
+      omni_comms_channel_provider_account_summary: {
+        Args: {
+          p_channel: string
+          p_include_reference?: boolean
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_provider_account_upsert_draft: {
+        Args: {
+          p_channel: string
+          p_code: string
+          p_correlation_id?: string
+          p_display_name: string
+          p_environment: string
+          p_expected_updated_at: string
+          p_id: string
+          p_organization_id: string
+          p_provider_account_reference?: string
+          p_provider_id: string
+          p_region?: string
+          p_secret_refs?: Json
+        }
+        Returns: string
+      }
       omni_comms_channel_setting_upsert: {
         Args: {
           p_channel: string
@@ -103034,6 +103169,15 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_apply_account_secret_refs: {
+        Args: {
+          p_account_id: string
+          p_actor_id: string
+          p_provider_id: string
+          p_refs: Json
+        }
+        Returns: boolean
+      }
       omni_comms_priv_authorize_producer_event: {
         Args: {
           p_actor_id: string
@@ -103063,6 +103207,36 @@ export type Database = {
         Returns: Json
       }
       omni_comms_priv_certification_posture: { Args: never; Returns: Json }
+      omni_comms_priv_channel_account_lifecycle: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_channel_account_upsert: {
+        Args: {
+          p_account_reference: string
+          p_actor_id: string
+          p_allow_reference_provider: boolean
+          p_channel: string
+          p_code: string
+          p_correlation_id: string
+          p_display_name: string
+          p_environment: string
+          p_expected_updated_at: string
+          p_id: string
+          p_organization_id: string
+          p_provider_id: string
+          p_region: string
+          p_secret_refs: Json
+        }
+        Returns: string
+      }
       omni_comms_priv_compute_checksum: {
         Args: {
           p_event_code: string
@@ -103104,6 +103278,10 @@ export type Database = {
         Returns: Json
       }
       omni_comms_priv_is_resend_secret_ref: {
+        Args: { p_ref: string }
+        Returns: boolean
+      }
+      omni_comms_priv_is_secret_ref_name: {
         Args: { p_ref: string }
         Returns: boolean
       }
@@ -103334,6 +103512,10 @@ export type Database = {
         Returns: Json
       }
       omni_comms_priv_slice1_verify: { Args: never; Returns: string }
+      omni_comms_priv_sync_legacy_secret_ref: {
+        Args: { p_account_id: string }
+        Returns: undefined
+      }
       omni_comms_priv_validate_channel: {
         Args: { p_channel: string }
         Returns: undefined
@@ -103438,8 +103620,8 @@ export type Database = {
           p_expected_updated_at: string
           p_id: string
           p_organization_id: string
-          p_region: string
-          p_sandbox_mode: boolean
+          p_region?: string
+          p_sandbox_mode?: boolean
           p_secret_ref: string
         }
         Returns: string

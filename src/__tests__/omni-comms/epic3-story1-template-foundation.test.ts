@@ -30,7 +30,7 @@ const findFiles = (root: string, pred: (p: string) => boolean): string[] => {
 
 describe('Epic 3 Story 1 — object registry', () => {
   it('keeps the 20-object ceiling', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(23);
+    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(25);
   });
 
   it('marks template_family and template_version as AVAILABLE', () => {

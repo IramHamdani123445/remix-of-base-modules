@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Approved logical object catalogue (21 objects: the 19 foundation objects, the caller-module authorisation registry and the runtime-environment configuration record).
+ * Omni-Comms — Approved logical object catalogue (23 objects: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, and the two Channels C2 generic provider-account objects).
  *
  * This is the CEILING for the new system. No object listed here has been
  * created. This file does not create tables, policies, functions, or types.
@@ -75,6 +75,27 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     status: 'AVAILABLE',
     introductionStory: 'Epic 4 — Story 1',
   },
+  {
+    name: 'omni_comms_provider_credential_requirement',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Named credential purposes an installed provider adapter requires, with the accepted secret-reference pattern.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C2 — Generic provider accounts',
+  },
+  {
+    name: 'omni_comms_provider_account_secret_ref',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Bounded secret REFERENCE names configured per provider account and credential purpose. Never holds credential values.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C2 — Generic provider accounts',
+  },
+
   {
     name: 'omni_comms_sender_identity',
     category: 'channels_senders_preferences',

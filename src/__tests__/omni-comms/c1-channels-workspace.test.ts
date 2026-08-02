@@ -179,9 +179,11 @@ describe('C1 — email functionality preserved', () => {
   const policies = read(`${DIR}/ChannelPoliciesTab.tsx`);
 
   it('13. existing email account actions remain available', () => {
-    expect(accounts).toContain('upsertProviderAccountDraft');
+    // C2 supersedes the email-specific upsert/activate calls with the generic
+    // provider-account service; manual evidence and verification are unchanged.
+    expect(accounts).toContain('upsertChannelProviderAccountDraft');
+    expect(accounts).toContain('setChannelProviderAccountLifecycle');
     expect(accounts).toContain('recordProviderAccountCredentialCheck');
-    expect(accounts).toContain('activateProviderAccount');
     expect(accounts).toContain('verifyProviderCredentials');
   });
 
@@ -325,7 +327,8 @@ describe('C1 — reference-data isolation', () => {
     const helper = read(`${DIR}/channelReferenceData.ts`);
     expect(helper).not.toMatch(/\.delete\(/);
     expect(helper).not.toContain('rpc(');
-    expect(helper).not.toContain('data_origin');
+    // C2 makes explicit data_origin classification authoritative.
+    expect(helper).toContain('data_origin');
     expect(helper).not.toContain('is_synthetic');
   });
 

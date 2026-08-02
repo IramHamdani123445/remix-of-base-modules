@@ -263,9 +263,10 @@ describe('C1 closure — preservation and safety', () => {
     const bindings = read(`${DIR}/ChannelBindingsTab.tsx`);
     const policies = read(`${DIR}/ChannelPoliciesTab.tsx`);
     for (const fn of [
-      'upsertProviderAccountDraft',
+      // C2: generic provider-account service replaces the email-only calls.
+      'upsertChannelProviderAccountDraft',
+      'setChannelProviderAccountLifecycle',
       'recordProviderAccountCredentialCheck',
-      'activateProviderAccount',
       'verifyProviderCredentials',
     ]) expect(accounts).toContain(fn);
     expect(identities).toContain('upsertSenderIdentityDraft');
