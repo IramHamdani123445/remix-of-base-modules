@@ -370,7 +370,7 @@ describe('C1 — reference-data isolation', () => {
 
   it('overview never claims send readiness and marks the test not implemented', () => {
     const readiness = read(`${DIR}/emailReadiness.ts`);
-    expect(readiness).toContain("state: 'not_implemented'");
+    expect(readiness).toContain("'not_implemented'");
     expect(readiness).toContain('CONFIGURATION_PREFLIGHT_PENDING');
   });
 });

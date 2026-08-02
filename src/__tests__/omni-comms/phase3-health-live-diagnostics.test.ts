@@ -325,8 +325,10 @@ describe('Phase 3 — health diagnostics model', () => {
 
   it('keeps live delivery capability disabled', () => {
     const res = buildLiveDiagnostics({ summary: payload(), edge: edgeOk });
-    expect(findRow(res, 'DLV.ADAPTER')?.state).toBe('not_implemented');
-    expect(findRow(res, 'DLV.DISPATCH_FN')?.state).toBe('not_implemented');
+    // C7 promoted the shared server-only Resend adapter; live delivery stays off.
+    expect(findRow(res, 'DLV.ADAPTER')?.state).toBe('configured');
+    // C7 installed the controlled business dispatcher; live delivery stays off.
+    expect(findRow(res, 'DLV.DISPATCH_FN')?.state).toBe('configured');
     // C5B deployed the webhook receiver for approved test-delivery evidence.
     // It does not make live delivery available.
     expect(findRow(res, 'DLV.WEBHOOK_FN')?.state).toBe('configured');

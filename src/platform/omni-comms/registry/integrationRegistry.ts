@@ -21,21 +21,21 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     name: 'omni-comms-dispatch',
     kind: 'edge_function',
     ownership: 'omni_comms',
-    purpose: 'Drains dispatch jobs and calls the correct provider adapter.',
-    status: 'Reserved',
+    purpose: 'Canonical controlled business Email dispatcher. The server selects eligible queued Email jobs; the claim transaction locks Release Control, revalidates every gate, reserves pilot volume and writes the delivery attempt before any provider call. Callers may supply only a bounded batch limit and a correlation identifier.',
+    status: 'Available',
   },
   {
     name: 'omni-comms-webhook-resend',
     kind: 'edge_function',
     ownership: 'omni_comms',
-    purpose: 'Receives Svix-verified Resend delivery webhooks. Currently records callback evidence for approved technical test deliveries only.',
+    purpose: 'Receives Svix-verified Resend delivery webhooks and records normalized callback evidence for business delivery attempts and approved technical test deliveries. Automatically suspends the controlled pilot on complaint or hard bounce.',
     status: 'Available',
   },
   {
     name: 'omni-comms-test-delivery',
     kind: 'edge_function',
     ownership: 'omni_comms',
-    purpose: 'Trusted server boundary for approved technical test delivery: authorises via RPC, dispatches to the provider using an Edge secret, and records the outcome. Cannot send business communications.',
+    purpose: 'Trusted server boundary for approved technical test delivery: authorises via RPC, dispatches through the shared Resend adapter using an Edge secret, and records the outcome. Cannot send business communications.',
     status: 'Available',
   },
   // Provider (1) — Omni-Comms-owned
@@ -43,9 +43,10 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     name: 'resend',
     kind: 'provider',
     ownership: 'omni_comms',
-    purpose: 'Sole initial email provider. Credentials live in Edge Function Secrets. Reachable only from the approved test-delivery boundary; no live dispatch adapter exists.',
-    status: 'Reserved',
+    purpose: 'Sole initial email provider. Credentials live in Edge Function Secrets and are read by name only inside the shared server-only adapter, which is reachable solely from the approved test-delivery and controlled business dispatch boundaries.',
+    status: 'Available',
   },
+
   {
     name: 'omni-comms-release-control',
     kind: 'edge_function',

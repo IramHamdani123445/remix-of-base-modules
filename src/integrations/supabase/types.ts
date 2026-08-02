@@ -81901,66 +81901,108 @@ export type Database = {
       omni_comms_delivery_attempt: {
         Row: {
           attempt_number: number
+          certified_commit_at_claim: string | null
+          claim_token: string | null
+          claimed_at: string | null
           completed_at: string | null
           created_at: string
           dispatch_job_id: string
+          error_code: string | null
+          error_detail: string | null
           failure_category: string | null
           id: string
           is_retriable: boolean | null
           latency_ms: number | null
+          lease_expires_at: string | null
           message_id: string
           organization_id: string
           provider_account_id: string | null
           provider_id: string | null
+          provider_idempotency_key: string | null
           provider_message_id: string | null
+          provider_status_code: number | null
+          recipient_hash: string | null
+          release_control_id: string | null
+          release_fingerprint_at_claim: string | null
+          release_state_at_claim: string | null
+          release_version_at_claim: number | null
           response_category: string | null
           response_code: string | null
           safe_request_metadata: Json
           safe_response_metadata: Json
           started_at: string
           status: string
+          worker_id: string | null
         }
         Insert: {
           attempt_number: number
+          certified_commit_at_claim?: string | null
+          claim_token?: string | null
+          claimed_at?: string | null
           completed_at?: string | null
           created_at?: string
           dispatch_job_id: string
+          error_code?: string | null
+          error_detail?: string | null
           failure_category?: string | null
           id?: string
           is_retriable?: boolean | null
           latency_ms?: number | null
+          lease_expires_at?: string | null
           message_id: string
           organization_id: string
           provider_account_id?: string | null
           provider_id?: string | null
+          provider_idempotency_key?: string | null
           provider_message_id?: string | null
+          provider_status_code?: number | null
+          recipient_hash?: string | null
+          release_control_id?: string | null
+          release_fingerprint_at_claim?: string | null
+          release_state_at_claim?: string | null
+          release_version_at_claim?: number | null
           response_category?: string | null
           response_code?: string | null
           safe_request_metadata?: Json
           safe_response_metadata?: Json
           started_at?: string
           status?: string
+          worker_id?: string | null
         }
         Update: {
           attempt_number?: number
+          certified_commit_at_claim?: string | null
+          claim_token?: string | null
+          claimed_at?: string | null
           completed_at?: string | null
           created_at?: string
           dispatch_job_id?: string
+          error_code?: string | null
+          error_detail?: string | null
           failure_category?: string | null
           id?: string
           is_retriable?: boolean | null
           latency_ms?: number | null
+          lease_expires_at?: string | null
           message_id?: string
           organization_id?: string
           provider_account_id?: string | null
           provider_id?: string | null
+          provider_idempotency_key?: string | null
           provider_message_id?: string | null
+          provider_status_code?: number | null
+          recipient_hash?: string | null
+          release_control_id?: string | null
+          release_fingerprint_at_claim?: string | null
+          release_state_at_claim?: string | null
+          release_version_at_claim?: number | null
           response_category?: string | null
           response_code?: string | null
           safe_request_metadata?: Json
           safe_response_metadata?: Json
           started_at?: string
           status?: string
+          worker_id?: string | null
         }
         Relationships: [
           {
@@ -81989,6 +82031,13 @@ export type Database = {
             columns: ["provider_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_provider"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_delivery_attempt_release_fk"
+            columns: ["release_control_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_release_control"
             referencedColumns: ["id"]
           },
         ]
@@ -83492,6 +83541,81 @@ export type Database = {
             columns: ["template_family_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_template_family"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_webhook_event: {
+        Row: {
+          created_at: string
+          delivery_attempt_id: string | null
+          id: string
+          message_id: string | null
+          normalized_event_type: string | null
+          occurred_at: string | null
+          organization_id: string | null
+          payload_digest: string
+          payload_summary: Json
+          processing_result: string
+          provider_code: string
+          provider_event_id: string
+          provider_message_id: string | null
+          raw_event_type: string
+          received_at: string
+          scope: string
+          signature_verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          delivery_attempt_id?: string | null
+          id?: string
+          message_id?: string | null
+          normalized_event_type?: string | null
+          occurred_at?: string | null
+          organization_id?: string | null
+          payload_digest: string
+          payload_summary?: Json
+          processing_result?: string
+          provider_code: string
+          provider_event_id: string
+          provider_message_id?: string | null
+          raw_event_type: string
+          received_at?: string
+          scope?: string
+          signature_verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          delivery_attempt_id?: string | null
+          id?: string
+          message_id?: string | null
+          normalized_event_type?: string | null
+          occurred_at?: string | null
+          organization_id?: string | null
+          payload_digest?: string
+          payload_summary?: Json
+          processing_result?: string
+          provider_code?: string
+          provider_event_id?: string
+          provider_message_id?: string | null
+          raw_event_type?: string
+          received_at?: string
+          scope?: string
+          signature_verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_webhook_event_delivery_attempt_id_fkey"
+            columns: ["delivery_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_delivery_attempt"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_webhook_event_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_message"
             referencedColumns: ["id"]
           },
         ]
@@ -103973,6 +104097,11 @@ export type Database = {
         Args: { p_organization_id?: string }
         Returns: Json
       }
+      omni_comms_dispatch_diagnostics: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_dispatch_tick_authorize: { Args: never; Returns: Json }
       omni_comms_email_config_summary: {
         Args: { p_organization_id: string }
         Returns: Json
@@ -104734,6 +104863,54 @@ export type Database = {
           p_version_number: number
         }
         Returns: string
+      }
+      omni_comms_priv_dispatch_attempt_complete: {
+        Args: {
+          p_attempt_id: string
+          p_claim_token: string
+          p_error_code?: string
+          p_error_detail?: string
+          p_provider_message_id?: string
+          p_provider_response?: Json
+          p_provider_status_code?: number
+          p_status: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_claim_email: {
+        Args: {
+          p_batch_limit: number
+          p_correlation_id: string
+          p_deployed_revision: string
+          p_worker: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_reclaim_expired_leases: {
+        Args: never
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_record_callback: {
+        Args: {
+          p_normalized_event_type: string
+          p_occurred_at: string
+          p_payload_digest: string
+          p_payload_summary: Json
+          p_provider_code: string
+          p_provider_event_id: string
+          p_provider_message_id: string
+          p_raw_event_type: string
+          p_signature_verified: boolean
+        }
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_suspend_pilot: {
+        Args: {
+          p_reason: string
+          p_release_control_id: string
+          p_trigger: string
+        }
+        Returns: Json
       }
       omni_comms_priv_dry_run_gate_state: { Args: never; Returns: string }
       omni_comms_priv_email_provider_id: { Args: never; Returns: string }
