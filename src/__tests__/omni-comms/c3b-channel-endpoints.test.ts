@@ -123,7 +123,9 @@ const emailEndpoint = (o: Partial<EmailEndpointRow> = {}): EmailEndpointRow => (
 });
 
 function rpcSpy(result: unknown = 'ok') {
-  const rpc = vi.fn(async () => ({ data: result, error: null }));
+  const rpc = vi.fn(
+    async (_fn: string, _args?: Record<string, unknown>) => ({ data: result, error: null }),
+  );
   return { client: { rpc }, rpc };
 }
 
