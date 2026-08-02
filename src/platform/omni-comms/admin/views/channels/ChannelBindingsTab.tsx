@@ -75,6 +75,21 @@ import { identityChannelSupported } from '@/platform/omni-comms/application/chan
 import { DeferredCapabilityCard, Field, SelectField, toastError } from './channelFormPrimitives';
 import { visibleRecords } from './channelReferenceData';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
+import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
+import {
+  DrawerFacts,
+  LifecycleActionDialog,
+  ResourceActionMenu,
+  ResourceDetailsDrawer,
+  ResourceRecordCard,
+  ResourceResponsiveList,
+  ResourceSearchToolbar,
+  backendLifecycleAction,
+  safeLifecycleFacts,
+  useLifecycleDialog,
+  useResourceFilter,
+  type LifecycleActionDescriptor,
+} from './resourceManager';
 import type { ChannelUiDefinition } from './channelUiRegistry';
 
 type Client = ReturnType<typeof useOmniCommsRpcClient>;
@@ -198,6 +213,15 @@ const GenericBindingsPanel: React.FC<{
   const endpoints = summary?.endpoints ?? [];
   const requirement = bindingEndpointRequirement(channel);
 
+  const { filter, setFilter, filtered } = useResourceFilter(
+    rows,
+    (r) => [r.identity_code, r.identity_display_name, r.provider_account_code,
+      r.provider_account_display_name, r.external_sender_ref],
+    (r) => r.status,
+  );
+  const { resourceId, selectResource, clearResource } = useOmniCommsResourceParam();
+  const detailRow = rows.find((r) => r.id === resourceId) ?? null;
+
   const openCreate = () => { setForm(blankForm()); setDialogOpen(true); };
   const openEdit = (row: ChannelBindingRow) => {
     setForm({
@@ -258,16 +282,27 @@ const GenericBindingsPanel: React.FC<{
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <ResourceSearchToolbar
+            filter={filter}
+            onChange={setFilter}
+            placeholder="Search bindings by identity or provider account"
+            total={rows.length}
+            shown={filtered.length}
+            testId="omni-comms-bindings-toolbar"
+          />
           {loading ? (
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Loading bindings…
             </p>
-          ) : rows.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground" data-testid="omni-comms-bindings-none">
-              No {channelName.toLowerCase()} bindings are configured for this scope yet.
+              {rows.length === 0
+                ? `No ${channelName.toLowerCase()} bindings are configured for this scope yet.`
+                : 'No binding matches the current search or status filter.'}
             </p>
           ) : (
+            <ResourceResponsiveList table={(
             <Table>
               <TableHeader>
                 <TableRow>
@@ -283,7 +318,7 @@ const GenericBindingsPanel: React.FC<{
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((row) => (
+                {filtered.map((row) => (
                   <BindingRow
                     key={row.id}
                     row={row}
@@ -293,13 +328,71 @@ const GenericBindingsPanel: React.FC<{
                     endpoint={endpoints.find((e) => e.id === row.channel_endpoint_id)}
                     onEdit={() => openEdit(row)}
                     onChanged={refreshAll}
+                    onViewDetails={() => selectResource(row.id)}
                   />
                 ))}
               </TableBody>
             </Table>
+            )} cards={filtered.map((row) => (
+              <ResourceRecordCard
+                key={row.id}
+                testId={`omni-comms-binding-card-${row.id}`}
+                title={row.identity_display_name}
+                subtitle={row.provider_account_display_name}
+                status={row.status}
+                fields={[
+                  { label: 'Priority', value: String(row.priority) },
+                  { label: 'Scope', value: bindingScopeLabel(row) },
+                ]}
+                actions={(
+                  <BindingRowActions
+                    row={row}
+                    client={client}
+                    blockers={bindingActivationBlockers(
+                      row,
+                      identities.find((i) => i.id === row.sender_identity_id),
+                      accounts.find((a) => a.id === row.provider_account_id),
+                      endpoints.find((e) => e.id === row.channel_endpoint_id),
+                    )}
+                    onEdit={() => openEdit(row)}
+                    onChanged={refreshAll}
+                    onViewDetails={() => selectResource(row.id)}
+                  />
+                )}
+                onOpen={() => selectResource(row.id)}
+              />
+            ))} />
           )}
         </CardContent>
       </Card>
+
+      <ResourceDetailsDrawer
+        open={detailRow !== null}
+        onOpenChange={(open) => { if (!open) clearResource(); }}
+        title={detailRow?.identity_display_name ?? 'Binding'}
+        description={detailRow
+          ? `${channelName} binding to ${detailRow.provider_account_display_name}`
+          : undefined}
+        facts={detailRow ? safeLifecycleFacts(detailRow as never) : undefined}
+        testId="omni-comms-binding-drawer"
+      >
+        {detailRow ? (
+          <DrawerFacts
+            facts={[
+              { label: 'Identity', value: detailRow.identity_code },
+              { label: 'Provider account', value: detailRow.provider_account_code },
+              { label: 'Endpoint', value: bindingEndpointLabel(detailRow) },
+              { label: 'Scope', value: bindingScopeLabel(detailRow) },
+              { label: 'Priority', value: String(detailRow.priority) },
+              { label: 'Status', value: detailRow.status },
+              {
+                label: 'Verification',
+                value: BINDING_VERIFICATION_LABEL[detailRow.verification_status],
+              },
+            ]}
+          />
+        ) : null}
+      </ResourceDetailsDrawer>
 
       <BindingDialog
         open={dialogOpen}
@@ -329,26 +422,44 @@ const STATUS_VARIANT: Record<string, 'default' | 'secondary' | 'outline'> = {
   retired: 'outline',
 };
 
-const BindingRow: React.FC<{
+export function bindingLifecycleActions(
+  row: ChannelBindingRow,
+  blockers: readonly string[],
+): LifecycleActionDescriptor[] {
+  const actions: LifecycleActionDescriptor[] = [];
+  if (row.status === 'draft' || row.status === 'disabled') {
+    actions.push({
+      key: row.status === 'disabled' ? 'reactivate' : 'activate',
+      label: row.status === 'disabled' ? 'Reactivate' : 'Activate',
+      disabled: blockers.length > 0,
+      disabledReason: blockers.join(' '),
+    });
+  }
+  if (row.status === 'active') actions.push({ key: 'disable', label: 'Disable' });
+  if (row.status !== 'retired') {
+    actions.push({ key: 'retire', label: 'Retire', destructive: true });
+  }
+  return actions;
+}
+
+export const BindingRowActions: React.FC<{
   row: ChannelBindingRow;
   client: Client;
-  identity?: BindingIdentityOption;
-  account?: BindingProviderAccountOption;
-  endpoint?: BindingEndpointOption;
+  blockers: readonly string[];
   onEdit: () => void;
   onChanged: () => Promise<void> | void;
-}> = ({ row, client, identity, account, endpoint, onEdit, onChanged }) => {
+  onViewDetails: () => void;
+}> = ({ row, client, blockers, onEdit, onChanged, onViewDetails }) => {
   const [busy, setBusy] = useState(false);
   const isReference = row.data_origin === 'reference_seed';
-  const blockers = bindingActivationBlockers(row, identity, account, endpoint);
 
-  const lifecycle = async (action: 'activate' | 'disable' | 'retire') => {
+  const run = async (
+    key: 'activate' | 'reactivate' | 'disable' | 'retire' | 'verify',
+    reason: string | null,
+  ) => {
     if (isReference) return;
-    let reason: string | null = null;
-    if (action === 'retire') {
-      reason = window.prompt('Retirement reason (required)')?.trim() || null;
-      if (!reason) return;
-    }
+    const action = backendLifecycleAction(key);
+    if (action === 'verify') return;
     setBusy(true);
     try {
       await setChannelBindingLifecycle(client, {
@@ -362,6 +473,41 @@ const BindingRow: React.FC<{
     } catch (e) { toastError(e, `${action} failed`); }
     finally { setBusy(false); }
   };
+
+  const dialog = useLifecycleDialog(run);
+
+  return (
+    <>
+      <ResourceActionMenu
+        testId={`omni-comms-binding-actions-${row.id}`}
+        label={`Actions for binding ${row.identity_display_name}`}
+        disabled={busy || isReference}
+        actions={isReference ? [] : bindingLifecycleActions(row, blockers)}
+        onSelect={dialog.request}
+        onEdit={!isReference && row.status === 'draft' ? onEdit : undefined}
+        onViewDetails={onViewDetails}
+      />
+      <LifecycleActionDialog
+        controller={dialog}
+        resourceLabel="binding"
+        recordLabel={`${row.identity_display_name} → ${row.provider_account_display_name}`}
+      />
+    </>
+  );
+};
+
+const BindingRow: React.FC<{
+  row: ChannelBindingRow;
+  client: Client;
+  identity?: BindingIdentityOption;
+  account?: BindingProviderAccountOption;
+  endpoint?: BindingEndpointOption;
+  onEdit: () => void;
+  onChanged: () => Promise<void> | void;
+  onViewDetails: () => void;
+}> = ({ row, client, identity, account, endpoint, onEdit, onChanged, onViewDetails }) => {
+  const isReference = row.data_origin === 'reference_seed';
+  const blockers = bindingActivationBlockers(row, identity, account, endpoint);
 
   return (
     <TableRow data-testid={`omni-comms-binding-row-${row.id}`}>
@@ -406,30 +552,14 @@ const BindingRow: React.FC<{
             {REFERENCE_BINDING_READ_ONLY_HELP}
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            {row.status === 'draft' ? (
-              <Button size="sm" variant="outline" disabled={busy} onClick={onEdit}>Edit</Button>
-            ) : null}
-            {row.status === 'draft' || row.status === 'disabled' ? (
-              <Button
-                size="sm" disabled={busy || blockers.length > 0}
-                title={blockers.join(' ')}
-                onClick={() => void lifecycle('activate')}
-              >Activate</Button>
-            ) : null}
-            {row.status === 'active' ? (
-              <Button
-                size="sm" variant="outline" disabled={busy}
-                onClick={() => void lifecycle('disable')}
-              >Disable</Button>
-            ) : null}
-            {row.status !== 'retired' ? (
-              <Button
-                size="sm" variant="outline" disabled={busy}
-                onClick={() => void lifecycle('retire')}
-              >Retire</Button>
-            ) : null}
-          </div>
+          <BindingRowActions
+            row={row}
+            client={client}
+            blockers={blockers}
+            onEdit={onEdit}
+            onChanged={onChanged}
+            onViewDetails={onViewDetails}
+          />
         )}
       </TableCell>
     </TableRow>

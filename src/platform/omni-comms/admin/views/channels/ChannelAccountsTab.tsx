@@ -68,6 +68,21 @@ import {
 import { recordProviderAccountCredentialCheck } from '@/platform/omni-comms/application/channelManagementService';
 import { Detail, DeferredCapabilityCard, Field, SelectField, toastError } from './channelFormPrimitives';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
+import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
+import {
+  DrawerFacts,
+  LifecycleActionDialog,
+  ResourceActionMenu,
+  ResourceDetailsDrawer,
+  ResourceRecordCard,
+  ResourceResponsiveList,
+  ResourceSearchToolbar,
+  backendLifecycleAction,
+  safeLifecycleFacts,
+  useLifecycleDialog,
+  useResourceFilter,
+  type LifecycleActionDescriptor,
+} from './resourceManager';
 import type { ChannelUiDefinition } from './channelUiRegistry';
 
 type Client = ReturnType<typeof useOmniCommsRpcClient>;
@@ -251,6 +266,14 @@ export const ChannelAccountsTab: React.FC<{
     );
   }
 
+  const accountFilter = useResourceFilter(
+    accounts,
+    (a) => [a.code, a.display_name, a.provider_adapter_key, a.environment],
+    (a) => a.status,
+  );
+  const accountResource = useOmniCommsResourceParam();
+  const accountDetail = accounts.find((a) => a.id === accountResource.resourceId) ?? null;
+
   return (
     <div className="space-y-4" data-testid="omni-comms-accounts-tab">
       <ReferenceDataControls
@@ -291,14 +314,25 @@ export const ChannelAccountsTab: React.FC<{
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <ResourceSearchToolbar
+            filter={accountFilter.filter}
+            onChange={accountFilter.setFilter}
+            placeholder="Search accounts by code, name or adapter"
+            total={accounts.length}
+            shown={accountFilter.filtered.length}
+            testId="omni-comms-accounts-toolbar"
+          />
           {loading && !data ? (
             <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : accounts.length === 0 ? (
+          ) : accountFilter.filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No provider account exists for this organisation yet.
+              {accounts.length === 0
+                ? 'No provider account exists for this organisation yet.'
+                : 'No provider account matches the current search or status filter.'}
             </p>
           ) : (
+            <ResourceResponsiveList table={(
             <Table>
               <TableHeader>
                 <TableRow>
@@ -314,7 +348,7 @@ export const ChannelAccountsTab: React.FC<{
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accounts.map((a) => (
+                {accountFilter.filtered.map((a) => (
                   <AccountRow
                     key={a.id}
                     account={a}
@@ -322,13 +356,62 @@ export const ChannelAccountsTab: React.FC<{
                     orgId={orgId}
                     onEdit={() => openEdit(a)}
                     onChanged={refreshAll}
+                    onViewDetails={() => accountResource.selectResource(a.id)}
                   />
                 ))}
               </TableBody>
             </Table>
+            )} cards={accountFilter.filtered.map((a) => (
+              <ResourceRecordCard
+                key={a.id}
+                testId={`omni-comms-account-card-${a.code}`}
+                title={a.display_name}
+                subtitle={a.code}
+                status={a.status}
+                fields={[
+                  { label: 'Adapter', value: a.provider_adapter_key },
+                  { label: 'Environment', value: a.environment },
+                  { label: 'Verification', value: a.verification_status },
+                ]}
+                actions={(
+                  <AccountRowActions
+                    account={a}
+                    client={client}
+                    orgId={orgId}
+                    onEdit={() => openEdit(a)}
+                    onChanged={refreshAll}
+                    onViewDetails={() => accountResource.selectResource(a.id)}
+                  />
+                )}
+                onOpen={() => accountResource.selectResource(a.id)}
+              />
+            ))} />
           )}
         </CardContent>
       </Card>
+
+      <ResourceDetailsDrawer
+        open={accountDetail !== null}
+        onOpenChange={(open) => { if (!open) accountResource.clearResource(); }}
+        title={accountDetail?.display_name ?? 'Provider account'}
+        description={accountDetail
+          ? `${definition.name} provider account ${accountDetail.code}`
+          : undefined}
+        facts={accountDetail ? safeLifecycleFacts(accountDetail as never) : undefined}
+        testId="omni-comms-account-drawer"
+      >
+        {accountDetail ? (
+          <DrawerFacts
+            facts={[
+              { label: 'Adapter', value: accountDetail.provider_adapter_key },
+              { label: 'Environment', value: accountDetail.environment },
+              { label: 'Status', value: accountDetail.status },
+              { label: 'Verification', value: accountDetail.verification_status },
+              { label: 'Origin', value: accountDetail.data_origin },
+            ]}
+          />
+        ) : null}
+      </ResourceDetailsDrawer>
 
       <AdvancedEvidenceSection
         accounts={accounts.filter((a) => !isReferenceAccountRow(a))}
@@ -352,32 +435,83 @@ export const ChannelAccountsTab: React.FC<{
   );
 };
 
-// ─── Account row ────────────────────────────────────────────────────
-const AccountRow: React.FC<{
+// ─── Account lifecycle actions ──────────────────────────────────────
+/**
+ * Backend-supported provider-account actions only. A disabled account is
+ * offered as "Reactivate" but invokes the existing `activate` operation.
+ */
+export function accountLifecycleActions(
+  account: ChannelProviderAccountRow,
+  opts: { verifiable: boolean; complete: boolean },
+): LifecycleActionDescriptor[] {
+  const actions: LifecycleActionDescriptor[] = [];
+  if (opts.verifiable) {
+    actions.push({ key: 'verify', label: 'Verify credentials' });
+  }
+  if (account.status === 'draft' || account.status === 'disabled') {
+    const blocked =
+      !opts.verifiable
+        ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
+        : !opts.complete
+          ? 'All required credential references must be configured.'
+          : account.verification_status !== 'verified'
+            ? 'Verified provider credentials are required before activation.'
+            : undefined;
+    actions.push({
+      key: account.status === 'disabled' ? 'reactivate' : 'activate',
+      label: account.status === 'disabled' ? 'Reactivate' : 'Activate',
+      disabled: Boolean(blocked),
+      disabledReason: blocked,
+    });
+  }
+  if (account.status === 'active') actions.push({ key: 'disable', label: 'Disable' });
+  if (account.status !== 'retired') {
+    actions.push({ key: 'retire', label: 'Retire', destructive: true });
+  }
+  return actions;
+}
+
+export const AccountRowActions: React.FC<{
   account: ChannelProviderAccountRow;
   client: Client;
   orgId: string;
   onEdit: () => void;
   onChanged: () => Promise<void> | void;
-}> = ({ account, client, orgId, onEdit, onChanged }) => {
+  onViewDetails: () => void;
+}> = ({ account, client, orgId, onEdit, onChanged, onViewDetails }) => {
   const [busy, setBusy] = useState(false);
   const isReference = account.data_origin === 'reference_seed';
   const verifiable = verificationImplemented(account.provider_adapter_key);
   const complete = credentialsComplete(account);
-  const canActivate = account.status === 'draft' || account.status === 'disabled';
-  const activateLabel = account.status === 'disabled' ? 'Reactivate' : 'Activate';
 
-
-  const lifecycle = async (
-    action: 'activate' | 'disable' | 'retire',
-  ) => {
-    // reference accounts are never passed into a mutation action
+  const verify = async () => {
     if (isReference) return;
-    let reason: string | null = null;
-    if (action === 'retire') {
-      reason = window.prompt('Retirement reason (required)') ?? '';
-      if (!reason.trim()) return;
+    setBusy(true);
+    try {
+      const res = await verifyProviderCredentials({
+        organizationId: orgId,
+        providerAccountId: account.id,
+      });
+      const message =
+        PROVIDER_VERIFICATION_MESSAGES[res.code]
+        ?? 'Verification could not be completed.';
+      if (res.ok) toast.success(message);
+      else toast.error(message);
+      await onChanged();
+    } catch {
+      toast.error(PROVIDER_VERIFICATION_MESSAGES.provider_unavailable);
+    } finally {
+      setBusy(false);
     }
+  };
+
+  const run = async (
+    key: 'activate' | 'reactivate' | 'disable' | 'retire' | 'verify',
+    reason: string | null,
+  ) => {
+    if (isReference) return;
+    const action = backendLifecycleAction(key);
+    if (action === 'verify') { await verify(); return; }
     setBusy(true);
     try {
       await setChannelProviderAccountLifecycle(client, {
@@ -395,27 +529,40 @@ const AccountRow: React.FC<{
     }
   };
 
-  const verify = async () => {
-    if (isReference) return;
-    setBusy(true);
-    try {
+  const dialog = useLifecycleDialog(run);
 
-      const res = await verifyProviderCredentials({
-        organizationId: orgId,
-        providerAccountId: account.id,
-      });
-      const message =
-        PROVIDER_VERIFICATION_MESSAGES[res.code] ??
-        'Verification could not be completed.';
-      if (res.ok) toast.success(message);
-      else toast.error(message);
-      await onChanged();
-    } catch {
-      toast.error(PROVIDER_VERIFICATION_MESSAGES.provider_unavailable);
-    } finally {
-      setBusy(false);
-    }
-  };
+  return (
+    <>
+      <ResourceActionMenu
+        testId={`omni-comms-account-actions-${account.code}`}
+        label={`Actions for ${account.display_name}`}
+        disabled={busy || isReference}
+        actions={isReference ? [] : accountLifecycleActions(account, { verifiable, complete })}
+        onSelect={dialog.request}
+        onEdit={!isReference && account.status === 'draft' ? onEdit : undefined}
+        onViewDetails={onViewDetails}
+      />
+      <LifecycleActionDialog
+        controller={dialog}
+        resourceLabel="provider account"
+        recordLabel={`${account.display_name} (${account.code})`}
+      />
+    </>
+  );
+};
+
+// ─── Account row ────────────────────────────────────────────────────
+const AccountRow: React.FC<{
+  account: ChannelProviderAccountRow;
+  client: Client;
+  orgId: string;
+  onEdit: () => void;
+  onChanged: () => Promise<void> | void;
+  onViewDetails: () => void;
+}> = ({ account, client, orgId, onEdit, onChanged, onViewDetails }) => {
+  const isReference = account.data_origin === 'reference_seed';
+  const verifiable = verificationImplemented(account.provider_adapter_key);
+
 
   return (
     <TableRow data-testid={`omni-comms-account-${account.code}`}>
@@ -473,65 +620,14 @@ const AccountRow: React.FC<{
             {REFERENCE_ACCOUNT_READ_ONLY_HELP}
           </p>
         ) : (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy || account.status !== 'draft'}
-              onClick={onEdit}
-            >
-              Edit draft
-            </Button>
-            {verifiable ? (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy}
-                onClick={() => void verify()}
-                data-testid={`omni-comms-verify-credentials-${account.code}`}
-              >
-                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify credentials'}
-              </Button>
-            ) : null}
-            <Button
-              size="sm"
-              disabled={
-                busy ||
-                !canActivate ||
-                !complete ||
-                (verifiable && account.verification_status !== "verified") ||
-                !verifiable
-              }
-              title={
-                !verifiable
-                  ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
-                  : !complete
-                    ? 'All required credential references must be configured'
-                    : account.verification_status !== "verified"
-                      ? 'Verified provider credentials are required before activation'
-                      : undefined
-              }
-              onClick={() => void lifecycle('activate')}
-            >
-              {activateLabel}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy || account.status !== 'active'}
-              onClick={() => void lifecycle('disable')}
-            >
-              Disable
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy || account.status === 'retired'}
-              onClick={() => void lifecycle('retire')}
-            >
-              Retire
-            </Button>
-          </div>
+          <AccountRowActions
+            account={account}
+            client={client}
+            orgId={orgId}
+            onEdit={onEdit}
+            onChanged={onChanged}
+            onViewDetails={onViewDetails}
+          />
         )}
       </TableCell>
     </TableRow>

@@ -16,6 +16,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
 import { toast } from 'sonner';
 import type { useOmniCommsRpcClient } from '../../hooks/useOmniCommsRpcClient';
 import {
@@ -232,19 +238,21 @@ const PolicyEditor: React.FC<{
 
         <Separator />
 
-        {/* Volume limits */}
-        <section className="space-y-3">
-          <h4 className="text-sm font-semibold">Volume limits</h4>
+        {/* Progressive disclosure: advanced policy declarations */}
+        <Accordion type="multiple" className="w-full" data-testid={`${testId}-advanced`}>
+          <AccordionItem value="volume">
+            <AccordionTrigger className="text-sm font-semibold">Volume limits</AccordionTrigger>
+            <AccordionContent className="space-y-3 pt-1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Field label="Per-minute limit" value={draft.per_minute_limit} onChange={(v) => set('per_minute_limit', v)} placeholder="1–100000" />
             <Field label="Per-day limit" value={draft.per_day_limit} onChange={(v) => set('per_day_limit', v)} placeholder="1–10000000" />
             <Field label="Maximum recipients per request" value={draft.max_recipients_per_request} onChange={(v) => set('max_recipients_per_request', v)} placeholder="1–100000" />
           </div>
-        </section>
-
-        {/* Quiet hours */}
-        <section className="space-y-3">
-          <h4 className="text-sm font-semibold">Quiet hours</h4>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="quiet">
+            <AccordionTrigger className="text-sm font-semibold">Quiet hours</AccordionTrigger>
+            <AccordionContent className="space-y-3 pt-1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Field label="Start (HH:MM)" value={draft.quiet_hours_start} onChange={(v) => set('quiet_hours_start', v)} placeholder="22:00" />
             <Field label="End (HH:MM)" value={draft.quiet_hours_end} onChange={(v) => set('quiet_hours_end', v)} placeholder="06:00" />
@@ -253,11 +261,11 @@ const PolicyEditor: React.FC<{
           <p className="text-xs text-muted-foreground">
             Overnight windows are accepted. No quiet-hour suppression is implemented in C4B.
           </p>
-        </section>
-
-        {/* Reliability declarations */}
-        <section className="space-y-3">
-          <h4 className="text-sm font-semibold">Reliability declarations</h4>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="reliability">
+            <AccordionTrigger className="text-sm font-semibold">Reliability declarations</AccordionTrigger>
+            <AccordionContent className="space-y-3 pt-1">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <SelectField
               label="Retry profile"
@@ -268,35 +276,37 @@ const PolicyEditor: React.FC<{
             <Field label="Request timeout (seconds)" value={draft.request_timeout_seconds} onChange={(v) => set('request_timeout_seconds', v)} placeholder="1–300" />
           </div>
           <p className="text-xs text-muted-foreground">{RELIABILITY_NOTICE}</p>
-        </section>
-
-        {/* Retention */}
-        <section className="space-y-3">
-          <h4 className="text-sm font-semibold">Retention</h4>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="retention">
+            <AccordionTrigger className="text-sm font-semibold">Retention</AccordionTrigger>
+            <AccordionContent className="space-y-3 pt-1">
           <Field label="Retention days" value={draft.retention_days} onChange={(v) => set('retention_days', v)} placeholder="1–3650" />
           <p className="text-xs text-muted-foreground">{RETENTION_NOTICE}</p>
-        </section>
-
-        {/* Cost guardrails */}
-        <section className="space-y-3">
-          <h4 className="text-sm font-semibold">Cost guardrails</h4>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="cost">
+            <AccordionTrigger className="text-sm font-semibold">Cost guardrails</AccordionTrigger>
+            <AccordionContent className="space-y-3 pt-1">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Field label="Currency" value={draft.cost_currency} onChange={(v) => set('cost_currency', v.toUpperCase())} placeholder="XCD" />
             <Field label="Daily ceiling (minor units)" value={draft.daily_cost_limit_minor} onChange={(v) => set('daily_cost_limit_minor', v)} />
             <Field label="Per-message ceiling (minor units)" value={draft.per_message_cost_limit_minor} onChange={(v) => set('per_message_cost_limit_minor', v)} />
           </div>
           <p className="text-xs text-muted-foreground">{COST_NOTICE}</p>
-        </section>
-
-        {/* Channel-specific */}
-        <section className="space-y-3">
-          <h4 className="text-sm font-semibold">Channel-specific controls</h4>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="channel">
+            <AccordionTrigger className="text-sm font-semibold">Channel-specific controls</AccordionTrigger>
+            <AccordionContent className="space-y-3 pt-1">
           <ChannelPolicyConfigFields
             channel={channel}
             value={draft.config}
             onChange={(next) => set('config', next)}
           />
-        </section>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         {issues.length > 0 ? (
           <ul className="text-xs text-destructive list-disc pl-5" data-testid="omni-comms-policy-issues">
