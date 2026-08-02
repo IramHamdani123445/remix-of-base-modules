@@ -43,7 +43,7 @@ export const OMNI_COMMS_PERMISSION_DEFINITIONS: PermissionSourceDefinition[] = [
   {
     permission_key: OMNI_COMMS_PERMISSIONS.operate,
     permission_name: 'Operate Omnichannel Communications',
-    description: 'Perform operational actions (retry, resend, cancel, suppress) inside Omnichannel Communications. Reserved for future stories.',
+    description: 'Perform operational actions (approve and activate a controlled release, suspend, retry, resend, cancel, suppress) inside Omnichannel Communications.',
     module_code: 'OMNI_COMMS',
     domain_code: 'COMMUNICATIONS',
     permission_scope: 'ACTION',
@@ -52,13 +52,13 @@ export const OMNI_COMMS_PERMISSION_DEFINITIONS: PermissionSourceDefinition[] = [
     is_admin_permission: true,
     is_sensitive_permission: true,
     risk_level: 'HIGH',
-    lifecycle_status: 'PLANNED',
+    lifecycle_status: 'ACTIVE',
     source_file: SF,
   },
   {
     permission_key: OMNI_COMMS_PERMISSIONS.configure,
     permission_name: 'Configure Omnichannel Communications',
-    description: 'Manage channels, providers, preferences and other configuration inside Omnichannel Communications. Reserved for future stories.',
+    description: 'Manage channels, providers, release-control configuration and other configuration inside Omnichannel Communications.',
     module_code: 'OMNI_COMMS',
     domain_code: 'COMMUNICATIONS',
     permission_scope: 'ADMIN',
@@ -67,7 +67,7 @@ export const OMNI_COMMS_PERMISSION_DEFINITIONS: PermissionSourceDefinition[] = [
     is_admin_permission: true,
     is_sensitive_permission: true,
     risk_level: 'HIGH',
-    lifecycle_status: 'PLANNED',
+    lifecycle_status: 'ACTIVE',
     source_file: SF,
   },
   {

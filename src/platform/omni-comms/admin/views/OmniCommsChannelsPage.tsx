@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOmniCommsChannelWorkspaceTab } from "../hooks/useOmniCommsTabParam";
 import { useChannelTestDeliveryTransport } from "@/platform/omni-comms/admin/hooks/useChannelTestDeliveryTransport";
+import { useChannelReleaseControlTransport } from "@/platform/omni-comms/admin/hooks/useChannelReleaseControlTransport";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
 import { useOmniCommsSelectedChannel } from "../hooks/useOmniCommsChannelParam";
 import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
@@ -33,6 +34,7 @@ import { ChannelIdentitiesTab } from "./channels/ChannelIdentitiesTab";
 import { ChannelEndpointsTab } from "./channels/ChannelEndpointsTab";
 import { ChannelBindingsTab } from "./channels/ChannelBindingsTab";
 import { ChannelPoliciesTab } from "./channels/ChannelPoliciesTab";
+import { ChannelReleaseControlTab } from "./channels/ChannelReleaseControlTab";
 import { ChannelTestCentreTab } from "./channels/ChannelTestCentreTab";
 import { ChannelDiagnosticsTab } from "./channels/ChannelDiagnosticsTab";
 import {
@@ -49,6 +51,7 @@ import { toastError } from "./channels/channelFormPrimitives";
 export const OmniCommsChannelsPage: React.FC = () => {
   const client = useOmniCommsRpcClient();
   const deliveryTransport = useChannelTestDeliveryTransport();
+  const releaseTransport = useChannelReleaseControlTransport();
   const { organizationId: orgId, organizationName, departmentId, departmentName } = useOmniCommsTenant();
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   // C4B — the shared Email readiness projection resolves policy state from the
@@ -216,6 +219,14 @@ export const OmniCommsChannelsPage: React.FC = () => {
           <ChannelPoliciesTab
             definition={definition} client={client} orgId={orgId}
             departmentId={departmentId} departmentName={departmentName}
+            onChanged={refresh}
+          />
+        </TabsContent>
+        <TabsContent value="release-control">
+          <ChannelReleaseControlTab
+            definition={definition} client={client} orgId={orgId}
+            departmentId={departmentId} departmentName={departmentName}
+            transport={releaseTransport}
             onChanged={refresh}
           />
         </TabsContent>
