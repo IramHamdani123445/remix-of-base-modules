@@ -24,6 +24,8 @@ import {
   OMNI_COMMS_PLANNED_NAV_ITEMS,
   resolveActiveNavItem,
 } from '../navigation/omniCommsNavigation';
+import { mergeOmniCommsHref } from '../navigation/searchParamMerge';
+
 import { useOmniCommsCertificationPosture } from '../hooks/useOmniCommsCertificationPosture';
 import { useOmniCommsTenant } from '../../context/OmniCommsTenantContext';
 
@@ -101,10 +103,11 @@ export const OmniCommsModuleHeader: React.FC = () => {
               return (
                 <li key={item.id}>
                   <Link
-                    to={item.href}
+                    to={mergeOmniCommsHref(item.href, location.search)}
                     aria-current={isActive ? 'page' : undefined}
                     title={item.description}
                     data-testid={`omni-comms-nav-${item.id}`}
+
                     className={cn(
                       'inline-flex min-h-11 items-center rounded-md px-3 text-sm transition-colors',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',

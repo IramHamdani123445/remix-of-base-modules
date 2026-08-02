@@ -23,7 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
 import { useOmniCommsCertificationPosture } from "../hooks/useOmniCommsCertificationPosture";
@@ -275,7 +275,7 @@ const DashboardView: React.FC = () => {
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export const OmniCommsLandingPage: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   // Single canonical parser shared with the module header, deep links and
   // tests. This page never parses `?view=` itself.
   const requested = resolveOverviewView(searchParams.get("view"));
@@ -289,30 +289,17 @@ export const OmniCommsLandingPage: React.FC = () => {
       ? "dashboard"
       : requested;
 
-  const onTabChange = (value: string): void => {
-    const params = new URLSearchParams(searchParams);
-    const next = resolveOverviewView(value);
-    if (next === "dashboard") params.delete("view");
-    else params.set("view", next);
-    setSearchParams(params, { replace: true });
-  };
-
   return (
     <div data-testid="omni-comms-landing" className="space-y-6">
-      <Tabs value={view} onValueChange={onTabChange} className="w-full">
-        <TabsList aria-label="Omnichannel Communications views">
-          <TabsTrigger value="dashboard" data-testid="omni-comms-landing-tab-dashboard">
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger value="setup" data-testid="omni-comms-landing-tab-setup">
-            Setup readiness
-          </TabsTrigger>
-          {nonProduction ? (
-            <TabsTrigger value="safe-test" data-testid="omni-comms-landing-tab-safe-test">
-              Safe test
-            </TabsTrigger>
-          ) : null}
-        </TabsList>
+      {/*
+        UI Phase 1 — this page no longer renders its own tab strip. Dashboard,
+        Setup readiness and Safe test are already offered exactly once, by the
+        module navigation in `OmniCommsModuleHeader`. The `?view=` vocabulary,
+        its aliases and every deep link are unchanged; this component simply
+        renders the resolved view.
+      */}
+      <Tabs value={view} className="w-full">
+
 
         <TabsContent value="dashboard" className="mt-4">
           <DashboardView />

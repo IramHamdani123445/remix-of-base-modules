@@ -12,9 +12,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useOmniCommsChannelWorkspaceTab } from "../hooks/useOmniCommsTabParam";
+import { useOmniCommsCertificationPosture } from "../hooks/useOmniCommsCertificationPosture";
 import { useChannelTestDeliveryTransport } from "@/platform/omni-comms/admin/hooks/useChannelTestDeliveryTransport";
+
 import { useChannelReleaseControlTransport } from "@/platform/omni-comms/admin/hooks/useChannelReleaseControlTransport";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
 import { useOmniCommsSelectedChannel } from "../hooks/useOmniCommsChannelParam";
@@ -29,6 +31,8 @@ import type { ChannelPolicySummary } from "@/platform/omni-comms/application/cha
 import type { EmailConfigSummary } from "@/platform/omni-comms/application/channelManagementTypes";
 import { ChannelCatalogue } from "./channels/ChannelCatalogue";
 import { ChannelWorkspaceHeader } from "./channels/ChannelWorkspaceHeader";
+import { ChannelWorkspaceRail } from "./channels/ChannelWorkspaceRail";
+
 import { ChannelOverviewTab } from "./channels/ChannelOverviewTab";
 import { ChannelAccountsTab } from "./channels/ChannelAccountsTab";
 import { ChannelProvidersTab } from "./channels/ChannelProvidersTab";
@@ -40,11 +44,11 @@ import { ChannelReleaseControlTab } from "./channels/ChannelReleaseControlTab";
 import { ChannelTestCentreTab } from "./channels/ChannelTestCentreTab";
 import { ChannelDiagnosticsTab } from "./channels/ChannelDiagnosticsTab";
 import {
-  CHANNEL_WORKSPACE_TAB_LABELS,
   isTabDisabled,
   resolveChannelUi,
   type ChannelWorkspaceTab,
 } from "./channels/channelUiRegistry";
+
 import { projectEmailReadiness } from "./channels/emailReadiness";
 import { getChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/application/channelTestDeliveryService";
 import type { ChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/application/channelTestDeliveryTypes";
@@ -55,6 +59,10 @@ export const OmniCommsChannelsPage: React.FC = () => {
   const deliveryTransport = useChannelTestDeliveryTransport();
   const releaseTransport = useChannelReleaseControlTransport();
   const { organizationId: orgId, organizationName, departmentId, departmentName } = useOmniCommsTenant();
+  // Environment only decides whether the non-production Safe Test rail link is
+  // offered. No probe is triggered from this page.
+  const { environment } = useOmniCommsCertificationPosture({ autoProbe: false });
+
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   // C4B — the shared Email readiness projection resolves policy state from the
   // generic policy summary (genuine records only; reference never contributes).
@@ -169,19 +177,23 @@ export const OmniCommsChannelsPage: React.FC = () => {
         onRefresh={isEmail ? () => void refresh() : undefined}
       />
 
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="flex w-full flex-nowrap justify-start overflow-x-auto">
-          {(definition.tabs as ChannelWorkspaceTab[]).map((t) => (
-            <TabsTrigger
-              key={t}
-              value={t}
-              className="whitespace-nowrap"
-              disabled={isTabDisabled(definition, t)}
-            >
-              {CHANNEL_WORKSPACE_TAB_LABELS[t]}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/*
+        UI Phase 1 — the ten workspace destinations are presented by a grouped
+        vertical rail (drawer below lg) instead of a single horizontal strip,
+        which clipped Release Control, Test Centre and Diagnostics. The `?tab=`
+        vocabulary, deep links and tab content are unchanged.
+      */}
+      <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
+        <ChannelWorkspaceRail
+          tabs={definition.tabs as ChannelWorkspaceTab[]}
+          activeTab={tab}
+          environment={environment}
+          isTabDisabled={(t) => isTabDisabled(definition, t)}
+          onSelectTab={setTab}
+        />
+
+        <Tabs value={tab} onValueChange={setTab} className="min-w-0">
+
 
 
         <TabsContent value="overview">
@@ -255,8 +267,10 @@ export const OmniCommsChannelsPage: React.FC = () => {
             departmentId={departmentId}
           />
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      </div>
     </div>
+
   );
 };
 
