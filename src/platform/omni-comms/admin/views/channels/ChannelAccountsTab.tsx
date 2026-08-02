@@ -694,7 +694,8 @@ const AdvancedEvidenceSection: React.FC<{
 
       </CardHeader>
       <CardContent className="space-y-3">
-        {accounts.map((a) => (
+        {operational.map((a) => (
+
           <div key={a.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3">
             <Detail label="Account" value={a.code} />
             <Detail label="Health (non-authoritative)" value={a.health_state} />
