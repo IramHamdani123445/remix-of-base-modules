@@ -133,7 +133,11 @@ Deno.serve(async (req) => {
 
   const authz = (auth.data ?? {}) as Record<string, unknown>;
   if (authz.allowed !== true) {
-    return json({ error: "OC403", detail: String(authz.code ?? "permission_denied") }, 403);
+    const denied = BOUNDED_CODE.test(String(authz.code ?? ""))
+      ? String(authz.code)
+      : "permission_denied";
+    return json({ error: "OC403", detail: denied }, 403);
+
   }
   const scopes = Array.isArray(authz.scopes) ? authz.scopes : [];
   if (scopes.length === 0) {
