@@ -573,8 +573,6 @@ PERFORM pg_temp.ok('T7.4 a reconciliation hold is never claimed again',
   AND (SELECT count(*) FROM public.omni_comms_delivery_attempt
         WHERE dispatch_job_id = (f->>'job')::uuid) = 3,
   coalesce(r->>'claimed_jobs','-'));
-END IF;
-
 
 PERFORM set_config('omni_comms.reconciliation','on',true);
 UPDATE public.omni_comms_delivery_attempt SET provider_message_id = 'pmid-t7' WHERE id = a;
@@ -587,6 +585,9 @@ PERFORM pg_temp.ok('T9 late delivered callback resolves reconciliation',
   AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id=(f->>'job')::uuid) = 'completed',
   (SELECT status FROM public.omni_comms_dispatch_job WHERE id=(f->>'job')::uuid) || '/' ||
   (SELECT status FROM public.omni_comms_message WHERE id=(f->>'message')::uuid));
+END IF;
+
+
 
 f := pg_temp.mkfix('t10');
 PERFORM set_config('omni_comms.dispatch_worker','on',true);
