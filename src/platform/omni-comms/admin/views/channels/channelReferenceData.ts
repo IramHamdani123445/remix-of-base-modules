@@ -59,9 +59,22 @@ export function isReferenceSecretRef(ref: string | null | undefined): boolean {
   );
 }
 
+/**
+ * C2 — explicit `data_origin` is authoritative. The naming-convention rules
+ * below remain ONLY as a defensive fallback for an unexpectedly old row that
+ * predates the C2 classification backfill.
+ */
+export function isReferenceDataOrigin(
+  origin: string | null | undefined,
+): boolean {
+  return origin === 'reference_seed';
+}
+
 export function isReferenceProviderAccount(row: ProviderAccountRow): boolean {
+  if (row.data_origin) return isReferenceDataOrigin(row.data_origin);
   return isReferenceCode(row.code) || isReferenceSecretRef(row.secret_ref);
 }
+
 
 export function isReferenceSenderIdentity(row: SenderIdentityRow): boolean {
   return isReferenceCode(row.code) || isReferenceAddress(row.from_address);
