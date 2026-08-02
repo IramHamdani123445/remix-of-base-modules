@@ -17,7 +17,18 @@
 -- queued Email job can ever be claimed, so the system fails CLOSED. The
 -- prerequisite evaluator's check 32 (`business_dispatch_dispatcher_installed`)
 -- then reports `failed`, which blocks any release decision as well.
+--
+-- TRANSACTION MODE — DRY RUN BY DEFAULT (C7 Final Closure Correction)
+-- ----------------------------------------------------------------------------
+-- This script ends with ROLLBACK, not COMMIT. Running it exercises and proves
+-- every statement against the live schema WITHOUT changing anything. Applying
+-- the rollback for real requires an intentional operator change (replacing the
+-- final ROLLBACK with COMMIT) made outside this task, under change control.
+--
+-- Nothing is ever deleted: releases, requests, messages, jobs, attempts,
+-- webhook events and all C5B evidence are preserved in every mode.
 -- ============================================================================
+
 
 BEGIN;
 
