@@ -340,13 +340,13 @@ FROM public.omni_comms_request WHERE caller_module_code = 'omni_comms_c7_test';
 
 \echo '== C7R.56 the claim predicate pairs job status with message status =='
 SELECT CASE WHEN prosrc ~ 'j\.status = ''held''' AND prosrc ~ 'j\.status = ''retry_wait'''
-             AND prosrc ~ 'm\.status IN \(''held'', ''queued''\)'
+             AND prosrc ~ 'm\.status IN \(''held'',''queued''\)'
              AND prosrc ~ 'm\.status = ''dispatching'''
         THEN 'PASS' ELSE 'FAIL' END AS c7r_56
 FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
 
 \echo '== C7R.57 the broad unpaired message-status condition is gone =='
-SELECT CASE WHEN prosrc !~ E'm\\.status IN \\(''held'', ''queued'', ''dispatching''\\)'
+SELECT CASE WHEN prosrc !~ E'm\\.status IN \\(''held'',''queued'',''dispatching''\\)'
         THEN 'PASS' ELSE 'FAIL' END AS c7r_57
 FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
 
@@ -356,7 +356,8 @@ SELECT CASE WHEN prosrc ~ 'next_attempt_at' AND prosrc ~ 'attempt_count < 3'
 FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
 
 \echo '== C7R.59 a retry claim never moves the message status backwards =='
-SELECT CASE WHEN prosrc ~ E'status = ''dispatching''' AND prosrc ~ 'status <> ''dispatching'''
+SELECT CASE WHEN prosrc ~ 'message_status IN \(''held'',''queued''\)'
+             AND prosrc ~ E'status = ''dispatching''\'
         THEN 'PASS' ELSE 'FAIL' END AS c7r_59
 FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
 
