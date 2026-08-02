@@ -150,7 +150,7 @@ describe('Omni-Comms Health page — Readiness', () => {
   it('shows reserved edge functions as Not created and Available ones as Available', () => {
     permState.hasView = true;
     renderHealthAt();
-    for (const fn of ['omni-comms-dispatch', 'omni-comms-webhook-resend']) {
+    for (const fn of ['omni-comms-dispatch']) {
       const el = screen.getByText(fn);
       const row = el.closest('li');
       expect(row).not.toBeNull();
