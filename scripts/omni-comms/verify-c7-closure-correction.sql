@@ -245,3 +245,76 @@ FROM public.omni_comms_delivery_attempt
 WHERE provider_response ? 'message'
    OR provider_response ? 'error'
    OR coalesce(provider_response::text,'') ~ '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}';
+
+-- ===========================================================================
+-- C7F.41 – C7F.52  Final closure correction: claim gates, tenant-scoped
+-- diagnostics, bounded safety suspension and truthful callback lifecycle.
+-- ===========================================================================
+
+\echo '== C7F.41 the bounded claim-safety suspension helper exists and is service-role only =='
+SELECT CASE WHEN count(*) = 1 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7f_41
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname = 'omni_comms_priv_dispatch_claim_safety_suspend'
+  AND NOT has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  AND NOT has_function_privilege('anon', p.oid, 'EXECUTE')
+  AND has_function_privilege('service_role', p.oid, 'EXECUTE');
+
+\echo '== C7F.42 the claim enforces business_dispatch_enabled =='
+SELECT CASE WHEN prosrc ~ 'business_dispatch_disabled' THEN 'PASS' ELSE 'FAIL' END AS c7f_42
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
+
+\echo '== C7F.43 the claim enforces recipient_rules_satisfied =='
+SELECT CASE WHEN prosrc ~ 'recipient_rules_satisfied' AND prosrc ~ 'recipient_not_permitted'
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_43
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
+
+\echo '== C7F.44 an out-of-range batch limit is rejected, not clamped =='
+SELECT CASE WHEN prosrc ~ 'invalid_batch_limit' AND prosrc !~ 'least\(p_batch_limit'
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_44
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
+
+\echo '== C7F.45 the claim resolves the exact persisted provider account and sending domain =='
+SELECT CASE WHEN prosrc ~ 'provider_identity_ambiguous'
+             AND prosrc ~ 'endpoint_tenant_mismatch'
+             AND prosrc ~ 'endpoint_department_mismatch'
+             AND prosrc ~ 'binding_ambiguous'
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_45
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
+
+\echo '== C7F.46 the claim calls the bounded safety suspension helper on denial =='
+SELECT CASE WHEN prosrc ~ 'omni_comms_priv_dispatch_claim_safety_suspend'
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_46
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
+
+\echo '== C7F.47 diagnostics scope the queued producer binding count to the tenant =='
+SELECT CASE WHEN prosrc ~ 'b\.organization_id = p_organization_id'
+             AND prosrc ~ 'permitted_event_codes'
+             AND prosrc ~ 'permitted_caller_modules'
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_47
+FROM pg_proc WHERE proname = 'omni_comms_dispatch_diagnostics';
+
+\echo '== C7F.48 diagnostics remain permission and tenant gated =='
+SELECT CASE WHEN prosrc ~ 'omni_comms_priv_require_tenant_access'
+             AND prosrc ~ 'OC403 permission_denied'
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_48
+FROM pg_proc WHERE proname = 'omni_comms_dispatch_diagnostics';
+
+\echo '== C7F.49 a hard bounce or complaint fails the message before recalculation =='
+SELECT CASE WHEN prosrc ~ 'v_terminal'
+             AND prosrc ~ 'failed_at = coalesce\(failed_at, now\(\)\)'
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_49
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_record_callback';
+
+\echo '== C7F.50 opened or clicked cannot reverse a terminal failure =='
+SELECT CASE WHEN prosrc ~ 'AND NOT v_terminal' THEN 'PASS' ELSE 'FAIL' END AS c7f_50
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_record_callback';
+
+\echo '== C7F.51 an ambiguous callback records a bounded integrity outcome =='
+SELECT CASE WHEN prosrc ~ 'ambiguous_callback' AND prosrc ~ 'release_not_resolvable'
+            THEN 'PASS' ELSE 'FAIL' END AS c7f_51
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_record_callback';
+
+\echo '== C7F.52 live delivery is still disabled everywhere =='
+SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7f_52
+FROM public.omni_comms_channel_setting WHERE live_delivery_enabled IS TRUE;
