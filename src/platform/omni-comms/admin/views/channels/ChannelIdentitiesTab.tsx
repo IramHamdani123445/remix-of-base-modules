@@ -199,7 +199,7 @@ const GenericIdentitiesPanel: React.FC<{
   return (
     <div className="space-y-4">
       <ReferenceDataControls
-        hiddenCount={reference.length}
+        hiddenCount={referenceCount}
         showReference={showReference}
         onToggle={setShowReference}
       />
