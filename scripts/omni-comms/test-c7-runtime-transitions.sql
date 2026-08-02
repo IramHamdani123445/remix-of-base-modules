@@ -164,6 +164,241 @@ BEGIN
                             'event', v_ev, 'claim', 'claim-' || p_tag);
 END $$;
 
+-- ----------------------------------------------------------------------------
+-- pg_temp.mkclaimable(tag) — a COMPLETE controlled-pilot fixture that the REAL
+-- dispatcher can genuinely claim.
+--
+-- Unlike mkfix (which fabricates an already-claimed attempt), this builder
+-- creates every artefact the real claim worker inspects: an operational Email
+-- policy, a genuine provider account with an api_key secret reference, an
+-- active sender identity, verified sending-domain and event-callback
+-- endpoints, a verified binding, passed preflight evidence, accepted C5B
+-- technical delivery evidence with a signature-verified delivered callback, an
+-- active producer-event binding, an active event route with a published
+-- template version, an effective runtime certification and a controlled-pilot
+-- Release Control whose fingerprint is snapshotted onto the dispatch job.
+--
+-- The fixture SENDS NOTHING: it stops at the point where the dispatcher would
+-- hand a claim to the Edge worker, and the whole runner is rolled back through
+-- the sentinel.
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION pg_temp.mkclaimable(p_tag text)
+RETURNS jsonb LANGUAGE plpgsql AS $$
+DECLARE
+  v_org uuid := ('00000000-0000-4000-8000-' || substr(md5('omni_comms_c7c_' || p_tag), 1, 12))::uuid;
+  v_commit text := repeat('a', 40);
+  v_prov uuid; v_acct uuid; v_ident uuid; v_dom uuid; v_cb uuid; v_bind uuid;
+  v_ev uuid; v_evcode text; v_tf uuid; v_tv uuid;
+  v_rel uuid; v_fp text; v_ver integer; v_state text; v_exp timestamptz;
+  v_run uuid; v_del uuid;
+  v_req uuid; v_rcp uuid; v_msg uuid; v_job uuid;
+  v_norm jsonb; v_email text := 'c7.' || p_tag || '@example.test';
+BEGIN
+  SELECT id, code INTO v_ev, v_evcode FROM public.omni_comms_event_definition
+   WHERE status = 'active' ORDER BY code LIMIT 1;
+  IF v_ev IS NULL THEN
+    RETURN NULL;
+  END IF;
+  SELECT id INTO v_prov FROM public.omni_comms_provider
+   WHERE code = 'resend_email' LIMIT 1;
+  IF v_prov IS NULL THEN
+    RETURN NULL;
+  END IF;
+  v_norm := public.omni_comms_priv_channel_test_normalize_target('email', v_email);
+
+  -- Operational Email policy. Live delivery stays FALSE.
+  INSERT INTO public.omni_comms_channel_setting (
+    organization_id, channel, data_origin, enabled, operational_state,
+    live_delivery_enabled, controlled_test_delivery_enabled)
+  VALUES (v_org, 'email', 'user', true, 'pilot_ready', false, true);
+
+  -- Genuine provider account + canonical api_key secret reference.
+  INSERT INTO public.omni_comms_provider_account (
+    organization_id, provider_id, code, display_name, status, data_origin,
+    environment, sandbox_mode)
+  VALUES (v_org, v_prov, 'c7_' || p_tag || '_acct', 'C7 ' || p_tag || ' account',
+          'draft', 'user', 'production', false)
+  RETURNING id INTO v_acct;
+  UPDATE public.omni_comms_provider_account
+     SET status = 'active', activated_at = now(), activated_by = gen_random_uuid(),
+         verification_status = 'verified', verification_result_code = 'verified'
+   WHERE id = v_acct;
+  INSERT INTO public.omni_comms_provider_account_secret_ref (
+    provider_account_id, purpose, secret_ref)
+  VALUES (v_acct, 'api_key', 'OMNI_COMMS_RESEND_C7TEST');
+
+  -- Sender identity.
+  INSERT INTO public.omni_comms_sender_identity (
+    organization_id, code, display_name, channel, identity_type,
+    from_address, from_name, status, data_origin)
+  VALUES (v_org, 'c7_' || p_tag || '_identity', 'C7 ' || p_tag || ' identity', 'email',
+          'email_sender', 'no-reply@c7test.example', 'C7 Test', 'draft', 'user')
+  RETURNING id INTO v_ident;
+  UPDATE public.omni_comms_sender_identity
+     SET status = 'active', activated_at = now(), activated_by = gen_random_uuid()
+   WHERE id = v_ident;
+
+  -- Verified sending domain and active event-callback endpoint.
+  INSERT INTO public.omni_comms_channel_endpoint (
+    organization_id, channel, code, display_name, endpoint_type, status,
+    data_origin, verification_status)
+  VALUES (v_org, 'email', 'c7_' || p_tag || '_domain', 'C7 sending domain',
+          'sending_domain', 'draft', 'user', 'unverified')
+  RETURNING id INTO v_dom;
+  UPDATE public.omni_comms_channel_endpoint
+     SET status = 'active', verification_status = 'verified' WHERE id = v_dom;
+
+  INSERT INTO public.omni_comms_channel_endpoint (
+    organization_id, channel, code, display_name, endpoint_type, status,
+    data_origin, verification_status)
+  VALUES (v_org, 'email', 'c7_' || p_tag || '_callback', 'C7 event callback',
+          'event_callback', 'draft', 'user', 'unverified')
+  RETURNING id INTO v_cb;
+  UPDATE public.omni_comms_channel_endpoint
+     SET status = 'active', verification_status = 'verified' WHERE id = v_cb;
+
+  -- Verified identity-to-provider binding.
+  INSERT INTO public.omni_comms_sender_provider_binding (
+    sender_identity_id, provider_account_id, organization_id, channel,
+    channel_endpoint_id, status, data_origin, verification_status,
+    verification_source, priority)
+  VALUES (v_ident, v_acct, v_org, 'email', v_dom, 'draft', 'user',
+          'unverified', 'none', 10)
+  RETURNING id INTO v_bind;
+  UPDATE public.omni_comms_sender_provider_binding
+     SET status = 'active', activated_at = now(), activated_by = gen_random_uuid(),
+         verification_status = 'verified', verification_source = 'provider',
+         verified_at = now()
+   WHERE id = v_bind;
+
+  -- Passed configuration preflight evidence (full 21-check contract).
+  INSERT INTO public.omni_comms_channel_test_run (
+    organization_id, channel, binding_id, idempotency_key, request_fingerprint,
+    configuration_fingerprint, target_type, target_masked, target_hash,
+    payload_hash, status, result_code, requested_by, checks)
+  VALUES (v_org, 'email', v_bind, 'c7run-' || p_tag, repeat('1', 64), repeat('2', 64),
+          v_norm->>'target_type', v_norm->>'target_masked',
+          lower(v_norm->>'target_hash'), repeat('3', 64), 'passed', 'preflight_passed',
+          gen_random_uuid(),
+          (SELECT jsonb_agg(jsonb_build_object('code', c, 'state', 'passed',
+                                               'label', c, 'detail', 'fixture')
+                            ORDER BY ord)
+             FROM unnest(ARRAY[
+               'tenant_access','channel_supported','effective_policy_present','policy_test_state',
+               'binding_selected','binding_active','binding_scope_valid','provider_account_active',
+               'provider_credentials_complete','provider_credentials_verified','identity_active',
+               'endpoint_requirement','endpoint_active','binding_verification','target_valid',
+               'payload_valid','reference_configuration','live_delivery_disabled',
+               'provider_dispatch','delivery_callback','technical_delivery_result'])
+               WITH ORDINALITY AS t(c, ord)))
+  RETURNING id INTO v_run;
+
+  -- Accepted C5B technical delivery with a signature-verified delivered callback.
+  INSERT INTO public.omni_comms_channel_test_delivery (
+    test_run_id, organization_id, channel, binding_id, idempotency_key,
+    request_fingerprint, configuration_fingerprint, target_type, target_masked,
+    target_hash, payload_hash, requested_by, status)
+  VALUES (v_run, v_org, 'email', v_bind, 'c7del-' || p_tag, repeat('1', 64),
+          repeat('2', 64), v_norm->>'target_type', v_norm->>'target_masked',
+          lower(v_norm->>'target_hash'), repeat('3', 64), gen_random_uuid(), 'accepted')
+  RETURNING id INTO v_del;
+  INSERT INTO public.omni_comms_channel_test_delivery_event (
+    delivery_id, organization_id, event_type, signature_verified, occurred_at)
+  VALUES (v_del, v_org, 'delivered', true, now());
+
+  -- Producer-event binding permitting queued mode for the pilot pair.
+  INSERT INTO public.omni_comms_producer_event_binding (
+    organization_id, caller_module_code, event_definition_id, allowed_modes, status)
+  VALUES (v_org, 'omni_comms_c7_test', v_ev, ARRAY['queued'], 'active');
+
+  -- Active event route with a published template version.
+  INSERT INTO public.omni_comms_template_family (
+    code, name, scope_type, organization_id, status)
+  VALUES ('c7_' || p_tag || '_tf', 'C7 ' || p_tag || ' family', 'organization', v_org, 'draft')
+  RETURNING id INTO v_tf;
+  UPDATE public.omni_comms_template_family
+     SET status = 'active', activated_at = now(), activated_by = gen_random_uuid()
+   WHERE id = v_tf;
+  INSERT INTO public.omni_comms_template_version (
+    template_family_id, version_number, channel, locale, content, status,
+    layout_selection_mode)
+  VALUES (v_tf, 1, 'email', 'en', '{"subject":"C7","text":"C7"}'::jsonb, 'draft',
+          'resolved_default')
+  RETURNING id INTO v_tv;
+  UPDATE public.omni_comms_template_version
+     SET status = 'approved', checksum = repeat('4', 64), approved_at = now(),
+         approved_by = gen_random_uuid()
+   WHERE id = v_tv;
+  UPDATE public.omni_comms_template_version
+     SET status = 'published', published_at = now(), published_by = gen_random_uuid()
+   WHERE id = v_tv;
+  INSERT INTO public.omni_comms_event_route (
+    organization_id, event_definition_id, channel, template_family_id,
+    is_enabled, lifecycle_state)
+  VALUES (v_org, v_ev, 'email', v_tf, true, 'active');
+
+  -- Effective runtime certification (singleton; rolled back with the runner).
+  UPDATE public.omni_comms_runtime_certification
+     SET certification_state = 'certified', certified_commit = v_commit,
+         workflow_run_id = 'c7-runtime-transitions', certified_at = now();
+
+  -- Controlled pilot. The guard computes the release fingerprint.
+  INSERT INTO public.omni_comms_channel_release_control (
+    organization_id, channel, data_origin, release_state, permitted_event_codes,
+    permitted_caller_modules, permitted_modes, pilot_recipient_rules,
+    max_recipients_per_request, max_messages_per_hour, max_messages_per_day,
+    max_messages_total, release_starts_at, release_expires_at, approved_commit,
+    activated_at, activated_by)
+  VALUES (v_org, 'email', 'user', 'controlled_pilot', ARRAY[v_evcode],
+          ARRAY['omni_comms_c7_test'], ARRAY['queued'],
+          jsonb_build_array(jsonb_build_object(
+            'target_hash', lower(v_norm->>'target_hash'),
+            'target_masked', v_norm->>'target_masked')),
+          1, 10, 20, 50, now(), now() + interval '1 day', v_commit, now(),
+          gen_random_uuid())
+  RETURNING id, release_fingerprint, release_version, release_state, release_expires_at
+    INTO v_rel, v_fp, v_ver, v_state, v_exp;
+
+  -- Runtime rows. The message carries the exact persisted resolution snapshot.
+  INSERT INTO public.omni_comms_request (
+    organization_id, event_definition_id, mode, status, idempotency_key,
+    request_fingerprint, caller_module_code, payload_snapshot, requested_channels)
+  VALUES (v_org, v_ev, 'queued', 'accepted', 'c7claim-' || p_tag,
+          md5(p_tag || 'c') || md5(p_tag || 'd'), 'omni_comms_c7_test',
+          '{}'::jsonb, ARRAY['email'])
+  RETURNING id INTO v_req;
+
+  INSERT INTO public.omni_comms_recipient (
+    request_id, organization_id, recipient_type, email_destination,
+    eligibility_status, resolved_channels)
+  VALUES (v_req, v_org, 'external', v_email, 'eligible', ARRAY['email'])
+  RETURNING id INTO v_rcp;
+
+  INSERT INTO public.omni_comms_message (
+    request_id, recipient_id, organization_id, event_definition_id, channel,
+    template_family_id, template_version_id, sender_identity_id, provider_id,
+    provider_account_id, rendered_subject, rendered_text, status)
+  VALUES (v_req, v_rcp, v_org, v_ev, 'email', v_tf, v_tv, v_ident, v_prov, v_acct,
+          'C7 retry claim', 'C7 retry claim', 'held')
+  RETURNING id INTO v_msg;
+
+  INSERT INTO public.omni_comms_dispatch_job (
+    request_id, message_id, organization_id, channel, mode, status, is_runnable,
+    attempt_count, next_attempt_at, release_control_id,
+    release_version_at_decision, release_state_at_decision,
+    release_fingerprint_at_decision, release_expires_at_decision,
+    release_decision_at)
+  VALUES (v_req, v_msg, v_org, 'email', 'queued', 'held', false, 0, now(),
+          v_rel, v_ver, v_state, v_fp, v_exp, now())
+  RETURNING id INTO v_job;
+
+  RETURN jsonb_build_object('org', v_org, 'request', v_req, 'message', v_msg,
+                            'job', v_job, 'release', v_rel, 'event', v_ev,
+                            'binding', v_bind, 'commit', v_commit);
+END $$;
+
+
+
 CREATE OR REPLACE FUNCTION pg_temp.run_transitions() RETURNS void LANGUAGE plpgsql AS $outer$
 DECLARE
   f jsonb; r jsonb; s text; js text; n integer; a uuid; f2 jsonb;
@@ -247,30 +482,57 @@ PERFORM public.omni_comms_priv_dispatch_record_callback(
 PERFORM pg_temp.ok('T5 delivered -> failed succeeds through the verified callback',
   (SELECT status FROM public.omni_comms_message WHERE id = (f2->>'message')::uuid) = 'failed');
 
-f := pg_temp.mkfix('t7');
+-- ----------------------------------------------------------------------------
+-- T7 — the uncertainty runtime driven by the REAL claim worker.
+--
+-- Every attempt below (1, 2 and 3) is created by
+-- public.omni_comms_priv_dispatch_claim_email. No attempt row, lease, status
+-- transition or idempotency key is simulated by hand. This is what proves the
+-- retry-eligibility predicate: attempts two and three exist ONLY if the real
+-- dispatcher agrees to claim a retry_wait job whose message is dispatching.
+-- ----------------------------------------------------------------------------
+f := pg_temp.mkclaimable('t7');
+IF f IS NULL THEN
+  RAISE NOTICE 'T7 REAL-CLAIM TESTS SKIPPED (no active event definition or resend_email provider)';
+ELSE
+
+-- Attempt 1 — initial controlled dispatch: job held + message held.
+r := public.omni_comms_priv_dispatch_claim_email(
+       'c7-test-worker', 1, 'c7-test', f->>'commit', NULL, 'scheduler');
+PERFORM pg_temp.ok('T7.0 the real dispatcher claims the initial controlled dispatch',
+  (r->>'claimed_jobs')::int = 1, coalesce(r->>'blockers','-'));
+a  := ((r->'claims'->0)->>'attempt_id')::uuid;
+js := (r->'claims'->0)->>'claim_token';
+PERFORM public.omni_comms_priv_dispatch_record_payload_hash(a, js, repeat('a', 64));
+PERFORM pg_temp.ok('T7.0b claim 1 is attempt number one and the job is processing',
+  (SELECT attempt_number FROM public.omni_comms_delivery_attempt WHERE id = a) = 1
+  AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id = (f->>'job')::uuid) = 'processing'
+  AND (SELECT status FROM public.omni_comms_message WHERE id = (f->>'message')::uuid) = 'dispatching');
+
 r := public.omni_comms_priv_dispatch_attempt_complete(
-       (f->>'attempt')::uuid, f->>'claim', 'outcome_unknown', NULL, NULL, '{}'::jsonb,
-       'provider_timeout');
+       a, js, 'outcome_unknown', NULL, NULL, '{}'::jsonb, 'provider_timeout');
 PERFORM pg_temp.ok('T7.1 attempt 1 outcome_unknown -> job retry_wait',
-  (SELECT status FROM public.omni_comms_delivery_attempt WHERE id = (f->>'attempt')::uuid) = 'outcome_unknown'
+  (SELECT status FROM public.omni_comms_delivery_attempt WHERE id = a) = 'outcome_unknown'
   AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id = (f->>'job')::uuid) = 'retry_wait'
   AND (SELECT status FROM public.omni_comms_message WHERE id = (f->>'message')::uuid) = 'dispatching',
   (SELECT status FROM public.omni_comms_dispatch_job WHERE id = (f->>'job')::uuid));
 
-PERFORM set_config('omni_comms.dispatch_worker','on',true);
-UPDATE public.omni_comms_dispatch_job SET status='ready', is_runnable=true WHERE id=(f->>'job')::uuid;
-UPDATE public.omni_comms_dispatch_job SET status='leased', is_runnable=false WHERE id=(f->>'job')::uuid;
-UPDATE public.omni_comms_dispatch_job SET status='processing' WHERE id=(f->>'job')::uuid;
-PERFORM set_config('omni_comms.dispatch_worker','off',true);
-INSERT INTO public.omni_comms_delivery_attempt (
-  dispatch_job_id, message_id, organization_id, attempt_number, status,
-  claim_token, provider_idempotency_key, release_control_id, provider_payload_hash,
-  safe_request_metadata, safe_response_metadata)
-VALUES ((f->>'job')::uuid, (f->>'message')::uuid, (f->>'org')::uuid, 2, 'dispatching',
-        'claim-t7-2', 'idem-t7', (f->>'release')::uuid, repeat('a',64), '{}'::jsonb, '{}'::jsonb)
-RETURNING id INTO a;
-PERFORM public.omni_comms_priv_dispatch_attempt_complete(a, 'claim-t7-2', 'outcome_unknown',
-        NULL, NULL, '{}'::jsonb, 'provider_timeout');
+-- Attempt 2 — the retry claim. This is the corrected eligibility pair
+-- (job retry_wait + message dispatching) and is claimed by the real worker.
+UPDATE public.omni_comms_dispatch_job SET next_attempt_at = now() - interval '1 minute'
+ WHERE id = (f->>'job')::uuid;
+r := public.omni_comms_priv_dispatch_claim_email(
+       'c7-test-worker', 1, 'c7-test', f->>'commit', NULL, 'scheduler');
+PERFORM pg_temp.ok('T7.2a the real dispatcher claims attempt two from retry_wait',
+  (r->>'claimed_jobs')::int = 1, coalesce(r->>'blockers','-'));
+a  := ((r->'claims'->0)->>'attempt_id')::uuid;
+js := (r->'claims'->0)->>'claim_token';
+PERFORM public.omni_comms_priv_dispatch_record_payload_hash(a, js, repeat('a', 64));
+PERFORM pg_temp.ok('T7.2b the retry claim never moves the message backwards',
+  (SELECT status FROM public.omni_comms_message WHERE id = (f->>'message')::uuid) = 'dispatching',
+  (SELECT status FROM public.omni_comms_message WHERE id = (f->>'message')::uuid));
+PERFORM public.omni_comms_priv_dispatch_attempt_complete(
+  a, js, 'outcome_unknown', NULL, NULL, '{}'::jsonb, 'provider_timeout');
 SELECT count(*) INTO n FROM public.omni_comms_delivery_attempt
  WHERE dispatch_job_id = (f->>'job')::uuid;
 PERFORM pg_temp.ok('T7.2 second attempt reuses idempotency key and payload hash',
@@ -282,20 +544,19 @@ PERFORM pg_temp.ok('T7.2 second attempt reuses idempotency key and payload hash'
   AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id = (f->>'job')::uuid) = 'retry_wait',
   n::text);
 
-PERFORM set_config('omni_comms.dispatch_worker','on',true);
-UPDATE public.omni_comms_dispatch_job SET status='ready', is_runnable=true WHERE id=(f->>'job')::uuid;
-UPDATE public.omni_comms_dispatch_job SET status='leased', is_runnable=false WHERE id=(f->>'job')::uuid;
-UPDATE public.omni_comms_dispatch_job SET status='processing' WHERE id=(f->>'job')::uuid;
-PERFORM set_config('omni_comms.dispatch_worker','off',true);
-INSERT INTO public.omni_comms_delivery_attempt (
-  dispatch_job_id, message_id, organization_id, attempt_number, status,
-  claim_token, provider_idempotency_key, release_control_id, provider_payload_hash,
-  safe_request_metadata, safe_response_metadata)
-VALUES ((f->>'job')::uuid, (f->>'message')::uuid, (f->>'org')::uuid, 3, 'dispatching',
-        'claim-t7-3', 'idem-t7', (f->>'release')::uuid, repeat('a',64), '{}'::jsonb, '{}'::jsonb)
-RETURNING id INTO a;
-r := public.omni_comms_priv_dispatch_attempt_complete(a, 'claim-t7-3', 'outcome_unknown',
-        NULL, NULL, '{}'::jsonb, 'provider_timeout');
+-- Attempt 3 — the final permitted retry, again through the real worker.
+UPDATE public.omni_comms_dispatch_job SET next_attempt_at = now() - interval '1 minute'
+ WHERE id = (f->>'job')::uuid;
+r := public.omni_comms_priv_dispatch_claim_email(
+       'c7-test-worker', 1, 'c7-test', f->>'commit', NULL, 'scheduler');
+PERFORM pg_temp.ok('T7.3a the real dispatcher claims attempt three',
+  (r->>'claimed_jobs')::int = 1
+  AND ((r->'claims'->0)->>'attempt_number')::int = 3, coalesce(r->>'blockers','-'));
+a  := ((r->'claims'->0)->>'attempt_id')::uuid;
+js := (r->'claims'->0)->>'claim_token';
+PERFORM public.omni_comms_priv_dispatch_record_payload_hash(a, js, repeat('a', 64));
+r := public.omni_comms_priv_dispatch_attempt_complete(
+       a, js, 'outcome_unknown', NULL, NULL, '{}'::jsonb, 'provider_timeout');
 PERFORM pg_temp.ok('T7.3 third outcome_unknown -> non-runnable reconciliation hold',
   (SELECT status FROM public.omni_comms_delivery_attempt WHERE id = a) = 'outcome_unknown'
   AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id=(f->>'job')::uuid) = 'held'
@@ -303,6 +564,15 @@ PERFORM pg_temp.ok('T7.3 third outcome_unknown -> non-runnable reconciliation ho
   AND (SELECT status FROM public.omni_comms_message WHERE id=(f->>'message')::uuid) = 'reconciliation_required',
   (SELECT status FROM public.omni_comms_dispatch_job WHERE id=(f->>'job')::uuid) || '/' ||
   (SELECT status FROM public.omni_comms_message WHERE id=(f->>'message')::uuid));
+
+-- A fourth claim is impossible: the reconciliation hold is not an eligible pair.
+r := public.omni_comms_priv_dispatch_claim_email(
+       'c7-test-worker', 1, 'c7-test', f->>'commit', NULL, 'scheduler');
+PERFORM pg_temp.ok('T7.4 a reconciliation hold is never claimed again',
+  (r->>'claimed_jobs')::int = 0
+  AND (SELECT count(*) FROM public.omni_comms_delivery_attempt
+        WHERE dispatch_job_id = (f->>'job')::uuid) = 3,
+  coalesce(r->>'claimed_jobs','-'));
 
 PERFORM set_config('omni_comms.reconciliation','on',true);
 UPDATE public.omni_comms_delivery_attempt SET provider_message_id = 'pmid-t7' WHERE id = a;
@@ -315,6 +585,9 @@ PERFORM pg_temp.ok('T9 late delivered callback resolves reconciliation',
   AND (SELECT status FROM public.omni_comms_dispatch_job WHERE id=(f->>'job')::uuid) = 'completed',
   (SELECT status FROM public.omni_comms_dispatch_job WHERE id=(f->>'job')::uuid) || '/' ||
   (SELECT status FROM public.omni_comms_message WHERE id=(f->>'message')::uuid));
+END IF;
+
+
 
 f := pg_temp.mkfix('t10');
 PERFORM set_config('omni_comms.dispatch_worker','on',true);

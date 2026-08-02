@@ -129,3 +129,67 @@ describe('C7 closure verifier covers the runtime transition closure', () => {
     expect(VERIFIER).toMatch(/caller_module_code = 'omni_comms_c7_test'/);
   });
 });
+
+describe('C7 retry claim closure — the real dispatcher executes attempts two and three', () => {
+  it('builds a complete claimable controlled-pilot fixture', () => {
+    expect(SUITE).toContain('pg_temp.mkclaimable');
+    for (const artefact of [
+      'omni_comms_channel_setting',
+      'omni_comms_provider_account_secret_ref',
+      'omni_comms_sender_identity',
+      'omni_comms_channel_endpoint',
+      'omni_comms_sender_provider_binding',
+      'omni_comms_channel_test_run',
+      'omni_comms_channel_test_delivery_event',
+      'omni_comms_producer_event_binding',
+      'omni_comms_event_route',
+      'omni_comms_channel_release_control',
+    ]) {
+      expect(SUITE).toContain(`public.${artefact}`);
+    }
+  });
+
+  it('claims every attempt through the real dispatch worker', () => {
+    const claims = SUITE.match(/public\.omni_comms_priv_dispatch_claim_email\(/g) ?? [];
+    expect(claims.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('records the payload hash through the real worker rather than by hand', () => {
+    expect(SUITE).toContain('public.omni_comms_priv_dispatch_record_payload_hash(');
+  });
+
+  it('no longer fabricates retry attempts with manual inserts', () => {
+    expect(SUITE).not.toMatch(/VALUES \(\(f->>'job'\)::uuid, \(f->>'message'\)::uuid, \(f->>'org'\)::uuid, 2,/);
+    expect(SUITE).not.toMatch(/'claim-t7-2'/);
+    expect(SUITE).not.toMatch(/'claim-t7-3'/);
+  });
+
+  const retryCases: Array<[string, RegExp]> = [
+    ['the initial controlled dispatch is claimed', /T7\.0 the real dispatcher claims the initial controlled dispatch/],
+    ['attempt two is claimed from retry_wait', /T7\.2a the real dispatcher claims attempt two from retry_wait/],
+    ['the retry claim preserves message state', /T7\.2b the retry claim never moves the message backwards/],
+    ['attempt three is claimed', /T7\.3a the real dispatcher claims attempt three/],
+    ['a reconciliation hold is never re-claimed', /T7\.4 a reconciliation hold is never claimed again/],
+  ];
+
+  it.each(retryCases)('asserts %s', (_name, pattern) => {
+    expect(SUITE).toMatch(pattern);
+  });
+
+  it('skips safely when the claimable fixture cannot be built', () => {
+    expect(SUITE).toMatch(/T7 REAL-CLAIM TESTS SKIPPED/);
+  });
+
+  it('keeps the retry closure send-free', () => {
+    expect(SUITE).not.toMatch(/live_delivery_enabled\s*=\s*true/i);
+    expect(SUITE).toMatch(/live_delivery_enabled, controlled_test_delivery_enabled\)\n\s*VALUES[^;]*false, true\)/);
+  });
+});
+
+describe('C7 retry closure verifier', () => {
+  it.each([['C7R.56'], ['C7R.57'], ['C7R.58'], ['C7R.59'], ['C7R.60'],
+           ['C7R.61'], ['C7R.62'], ['C7R.63'], ['C7R.64'], ['C7R.65']])(
+    'includes check %s', (code) => {
+      expect(VERIFIER).toContain(code);
+    });
+});

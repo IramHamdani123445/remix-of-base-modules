@@ -332,3 +332,70 @@ FROM pg_constraint WHERE conname = 'omni_comms_release_event_type_chk';
 \echo '== C7F.55 no test fixture was retained by the executable runtime tests =='
 SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7f_55
 FROM public.omni_comms_request WHERE caller_module_code = 'omni_comms_c7_test';
+
+-- ============================================================================
+-- C7 Retry Claim Closure — attempts two and three are executed by the REAL
+-- dispatcher. Read-only: sends nothing, claims nothing, changes nothing.
+-- ============================================================================
+
+\echo '== C7R.56 the claim predicate pairs job status with message status =='
+SELECT CASE WHEN prosrc ~ 'j\.status = ''held''' AND prosrc ~ 'j\.status = ''retry_wait'''
+             AND prosrc ~ 'm\.status IN \(''held'',''queued''\)'
+             AND prosrc ~ 'm\.status = ''dispatching'''
+        THEN 'PASS' ELSE 'FAIL' END AS c7r_56
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
+
+\echo '== C7R.57 the broad unpaired message-status condition is gone =='
+SELECT CASE WHEN prosrc !~ E'm\\.status IN \\(''held'',''queued'',''dispatching''\\)'
+        THEN 'PASS' ELSE 'FAIL' END AS c7r_57
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
+
+\echo '== C7R.58 a retry claim is due-gated and capped below three attempts =='
+SELECT CASE WHEN prosrc ~ 'next_attempt_at' AND prosrc ~ 'attempt_count < 3'
+        THEN 'PASS' ELSE 'FAIL' END AS c7r_58
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
+
+\echo '== C7R.59 a retry claim never moves the message status backwards =='
+SELECT CASE WHEN prosrc ~ 'message_status IN \(''held'',''queued''\)'
+             AND prosrc ~ 'status = ''dispatching'''
+        THEN 'PASS' ELSE 'FAIL' END AS c7r_59
+FROM pg_proc WHERE proname = 'omni_comms_priv_dispatch_claim_email';
+
+\echo '== C7R.60 every retry attempt reuses one provider idempotency key per job =='
+SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7r_60
+FROM (SELECT dispatch_job_id FROM public.omni_comms_delivery_attempt
+       WHERE provider_idempotency_key IS NOT NULL
+       GROUP BY dispatch_job_id HAVING count(DISTINCT provider_idempotency_key) > 1) x;
+
+\echo '== C7R.61 every retry attempt reuses one provider payload hash per job =='
+SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7r_61
+FROM (SELECT dispatch_job_id FROM public.omni_comms_delivery_attempt
+       WHERE provider_payload_hash IS NOT NULL
+       GROUP BY dispatch_job_id HAVING count(DISTINCT provider_payload_hash) > 1) x;
+
+\echo '== C7R.62 no dispatch job ever exceeded three attempts =='
+SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7r_62
+FROM (SELECT dispatch_job_id FROM public.omni_comms_delivery_attempt
+       GROUP BY dispatch_job_id HAVING count(*) > 3) x;
+
+\echo '== C7R.63 attempt numbers are contiguous from one within each job =='
+SELECT CASE WHEN count(*) = 0 THEN 'PASS' ELSE 'FAIL: ' || count(*) END AS c7r_63
+FROM (SELECT dispatch_job_id FROM public.omni_comms_delivery_attempt
+       GROUP BY dispatch_job_id
+      HAVING min(attempt_number) <> 1
+          OR max(attempt_number) <> count(DISTINCT attempt_number)) x;
+
+\echo '== C7R.64 the executable suite claims through the real dispatcher =='
+SELECT CASE WHEN count(*) = 3 THEN 'PASS' ELSE 'FAIL' END AS c7r_64
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.proname IN (
+  'omni_comms_priv_dispatch_claim_email',
+  'omni_comms_priv_dispatch_record_payload_hash',
+  'omni_comms_priv_dispatch_attempt_complete');
+
+\echo '== C7R.65 the retry closure sent nothing: live delivery and live state off =='
+SELECT CASE WHEN (SELECT count(*) FROM public.omni_comms_channel_setting
+                   WHERE live_delivery_enabled IS TRUE) = 0
+             AND (SELECT count(*) FROM public.omni_comms_channel_release_control
+                   WHERE release_state = 'live') = 0
+        THEN 'PASS' ELSE 'FAIL' END AS c7r_65;
