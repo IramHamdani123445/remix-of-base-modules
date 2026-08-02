@@ -366,19 +366,6 @@ END $outer$;
 --     The diagnostics RPC itself requires an authenticated operator, so the
 --     compatibility predicate is exercised directly and identically here.
 -- ===========================================================================
-DO $dept$
-DECLARE
-  v_org uuid := '00000000-0000-4000-8000-00000000c7d1';
-  v_d1 uuid := '00000000-0000-4000-8000-00000000dep1';
-  v_d2 uuid := '00000000-0000-4000-8000-00000000dep2';
-  v_ev uuid;
-  v_org_b uuid; v_d1_b uuid; v_d2_b uuid;
-
-  FUNCTION_PLACEHOLDER text;
-BEGIN
-  NULL;
-END $dept$;
-
 DO $dept2$
 DECLARE
   v_org uuid := '00000000-0000-4000-8000-00000000c7d1';
