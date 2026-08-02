@@ -77,8 +77,12 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     }
   });
 
-  it('runtime objects are service_role_only', () => {
+  it('runtime objects are service_role_only, except the C5A evidence ledger', () => {
     for (const o of OMNI_COMMS_OBJECT_REGISTRY.filter((x) => x.category === 'runtime')) {
+      if (o.name === 'omni_comms_channel_test_run') {
+        expect(o.writeAuthority).toBe('admin_rpc');
+        continue;
+      }
       expect(o.writeAuthority).toBe('service_role_only');
     }
   });

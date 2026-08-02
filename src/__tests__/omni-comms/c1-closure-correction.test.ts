@@ -24,7 +24,7 @@ import {
 } from '@/platform/omni-comms/admin/hooks/useOmniCommsTabParam';
 import {
   EMAIL_READINESS_LABEL,
-  TECHNICAL_TEST_PENDING,
+  CONFIGURATION_PREFLIGHT_PENDING,
   projectEmailReadiness,
 } from '@/platform/omni-comms/admin/views/channels/emailReadiness';
 import type { EmailConfigSummary } from '@/platform/omni-comms/application/channelManagementTypes';
@@ -260,8 +260,9 @@ describe('C1 closure — one Email readiness projection', () => {
     expect(complete.prerequisitesMet).toBe(true);
     expect(complete.state).toBe('prerequisites_met');
     expect(complete.label).toBe('Configuration prerequisites met');
-    expect(complete.explanation).toBe(TECHNICAL_TEST_PENDING);
-    expect(complete.technicalTestImplemented).toBe(true);
+    expect(complete.explanation).toContain(CONFIGURATION_PREFLIGHT_PENDING);
+    expect(complete.configurationPreflightImplemented).toBe(true);
+    expect(complete.providerDeliveryTestImplemented).toBe(false);
     expect(complete.checks.at(-1)?.state).toBe('not_implemented');
     expect(Object.values(EMAIL_READINESS_LABEL)).not.toContain(
       'Configuration complete',

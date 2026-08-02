@@ -33,10 +33,10 @@ import {
 } from '@/platform/omni-comms/application/channelTestCentreService';
 import {
   projectEmailReadiness,
-  EMAIL_TECHNICAL_TEST_IMPLEMENTED,
-  TECHNICAL_TEST_PENDING,
-  TECHNICAL_TEST_CURRENT,
-  TECHNICAL_TEST_STALE,
+  EMAIL_CONFIGURATION_PREFLIGHT_IMPLEMENTED,
+  CONFIGURATION_PREFLIGHT_PENDING,
+  CONFIGURATION_PREFLIGHT_CURRENT,
+  CONFIGURATION_PREFLIGHT_STALE,
 } from '@/platform/omni-comms/admin/views/channels/emailReadiness';
 
 const ROOT = process.cwd();
@@ -104,10 +104,10 @@ describe('C5A — object registry', () => {
     expect(OMNI_COMMS_OBJECT_COUNT).toBe(28);
   });
 
-  it('marks the test-run object AVAILABLE, channel-scoped, admin_rpc', () => {
+  it('marks the test-run object AVAILABLE, runtime evidence, admin_rpc', () => {
     const e = OMNI_COMMS_OBJECT_REGISTRY.find((x) => x.name === 'omni_comms_channel_test_run');
     expect(e?.status).toBe('AVAILABLE');
-    expect(e?.category).toBe('channels_senders_preferences');
+    expect(e?.category).toBe('runtime');
     expect(e?.writeAuthority).toBe('admin_rpc');
   });
 
@@ -216,10 +216,10 @@ describe('C5A — stale-test detection', () => {
 
 describe('C5A — email readiness integration', () => {
   const technical = (s?: ChannelTestCentreSummary | null) =>
-    projectEmailReadiness(null, null, s).checks.find((c) => c.key === 'technical_test')!;
+    projectEmailReadiness(null, null, s).checks.find((c) => c.key === 'configuration_preflight')!;
 
-  it('reports technical testing as implemented', () => {
-    expect(EMAIL_TECHNICAL_TEST_IMPLEMENTED).toBe(true);
+  it('reports configuration preflight as implemented', () => {
+    expect(EMAIL_CONFIGURATION_PREFLIGHT_IMPLEMENTED).toBe(true);
   });
 
   it('keeps the check not_implemented when no Test Centre result is supplied', () => {
@@ -229,19 +229,19 @@ describe('C5A — email readiness integration', () => {
   it('marks the check unmet when no preflight exists', () => {
     const c = technical(makeSummary({ latest_run: null }));
     expect(c.state).toBe('unmet');
-    expect(c.detail).toContain(TECHNICAL_TEST_PENDING);
+    expect(c.detail).toContain(CONFIGURATION_PREFLIGHT_PENDING);
   });
 
   it('marks the check met for a current passed preflight', () => {
     const c = technical(makeSummary());
     expect(c.state).toBe('met');
-    expect(c.detail).toBe(TECHNICAL_TEST_CURRENT);
+    expect(c.detail).toBe(CONFIGURATION_PREFLIGHT_CURRENT);
   });
 
   it('marks the check unmet and stale after a configuration change', () => {
     const c = technical(makeSummary({ latest_run_is_stale: true }));
     expect(c.state).toBe('unmet');
-    expect(c.detail).toBe(TECHNICAL_TEST_STALE);
+    expect(c.detail).toBe(CONFIGURATION_PREFLIGHT_STALE);
   });
 
   it('marks the check unmet for a failed preflight', () => {
@@ -253,10 +253,10 @@ describe('C5A — email readiness integration', () => {
 
   it('surfaces the preflight state in the readiness explanation', () => {
     expect(projectEmailReadiness(null, null, makeSummary()).explanation)
-      .toBe(TECHNICAL_TEST_CURRENT);
+      .toContain(CONFIGURATION_PREFLIGHT_CURRENT);
     expect(projectEmailReadiness(null, null, makeSummary({ latest_run_is_stale: true })).explanation)
-      .toBe(TECHNICAL_TEST_STALE);
-    expect(projectEmailReadiness(null, null).explanation).toBe(TECHNICAL_TEST_PENDING);
+      .toContain(CONFIGURATION_PREFLIGHT_STALE);
+    expect(projectEmailReadiness(null, null).explanation).toContain(CONFIGURATION_PREFLIGHT_PENDING);
   });
 
   it('never labels readiness as "Configuration complete"', () => {

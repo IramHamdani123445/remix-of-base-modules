@@ -16,7 +16,8 @@ import type {
 import { DeferredCapabilityCard } from './channelFormPrimitives';
 import {
   projectEmailReadiness,
-  TECHNICAL_TEST_PENDING,
+  CONFIGURATION_PREFLIGHT_PENDING,
+  PROVIDER_DELIVERY_TEST_DETAIL,
   type EmailReadinessCheck,
   type EmailReadinessCheckState,
   type EmailReadinessProjection,
@@ -55,10 +56,16 @@ export const ChannelOverviewTab: React.FC<{
       { key: 'identity', label: 'Identity', state: 'unmet', detail: 'No identity configured.' },
       { key: 'policy', label: 'Policy', state: 'unmet', detail: 'No policy configured.' },
       {
-        key: 'technical_test',
-        label: 'Technical channel test',
+        key: 'configuration_preflight',
+        label: 'Current configuration preflight passed',
         state: 'not_implemented',
-        detail: `${TECHNICAL_TEST_PENDING} — technical testing is not available yet.`,
+        detail: `${CONFIGURATION_PREFLIGHT_PENDING} — configuration preflight is not available yet.`,
+      },
+      {
+        key: 'provider_delivery_test',
+        label: 'Provider delivery test',
+        state: 'not_implemented',
+        detail: PROVIDER_DELIVERY_TEST_DETAIL,
       },
     ];
     return (

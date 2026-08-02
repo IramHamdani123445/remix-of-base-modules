@@ -47,20 +47,30 @@ export const EMAIL_READINESS_LABEL: Record<EmailReadinessState, string> = {
 };
 
 /** Supporting explanation shown while no current passed preflight exists. */
-export const TECHNICAL_TEST_PENDING = 'Technical test pending';
+export const CONFIGURATION_PREFLIGHT_PENDING = 'Configuration preflight pending';
 
 /** Shown once a current passed preflight exists for the selected binding. */
-export const TECHNICAL_TEST_CURRENT =
+export const CONFIGURATION_PREFLIGHT_CURRENT =
   'Configuration preflight passed for the current configuration. No message '
   + 'has been sent.';
 
 /** Shown when a stored preflight no longer matches the live configuration. */
-export const TECHNICAL_TEST_STALE =
-  'Configuration changed since the last preflight; re-run the Test Centre '
-  + 'preflight.';
+export const CONFIGURATION_PREFLIGHT_STALE =
+  'Configuration changed — run preflight again.';
 
-/** C5A implements the technical configuration preflight (zero-send). */
-export const EMAIL_TECHNICAL_TEST_IMPLEMENTED = true;
+/** C5A closure — provider delivery is a separate, unimplemented capability. */
+export const PROVIDER_DELIVERY_TEST_PENDING = 'Provider delivery test pending';
+
+export const PROVIDER_DELIVERY_TEST_DETAIL =
+  'Configuration preflight does not send an email. Controlled Resend delivery '
+  + 'is not implemented in C5A.';
+
+/** C5A implements the zero-send configuration preflight. */
+export const EMAIL_CONFIGURATION_PREFLIGHT_IMPLEMENTED = true;
+
+/** C5A implements NO provider delivery test. This must never become true here. */
+export const EMAIL_PROVIDER_DELIVERY_TEST_IMPLEMENTED = false;
+
 
 /** C3B introduces no callback receiver route. */
 export const EMAIL_CALLBACK_RECEIVER_IMPLEMENTED = false;
@@ -98,12 +108,15 @@ export interface EmailReadinessProjection {
   readonly state: EmailReadinessState;
   /** Operator-facing state label. Never "Configuration complete". */
   readonly label: string;
-  /** Supporting explanation; always the technical-test caveat in C1. */
+  /** Supporting explanation; always carries the provider-delivery caveat. */
   readonly explanation: string;
   readonly checks: readonly EmailReadinessCheck[];
-  /** True when every required (non technical-test) check is met. */
+  /** True when every required (non not_implemented) check is met. */
   readonly prerequisitesMet: boolean;
-  readonly technicalTestImplemented: boolean;
+  /** C5A — zero-send configuration preflight exists. */
+  readonly configurationPreflightImplemented: boolean;
+  /** C5A — provider delivery test does NOT exist. Always false here. */
+  readonly providerDeliveryTestImplemented: boolean;
   readonly callbackReceiverImplemented: boolean;
   readonly counts: {
     readonly accounts: number;
@@ -276,22 +289,28 @@ export function projectEmailReadiness(
       detail: `${EMAIL_CALLBACK_RECEIVER_PENDING} — C3B stores callback configuration only.`,
     },
     {
-      key: 'technical_test',
-      label: 'Technical channel test (configuration preflight)',
+      key: 'configuration_preflight',
+      label: 'Current configuration preflight passed',
       state: testCentre === undefined
         ? 'not_implemented'
         : testPassed
           ? 'met'
           : 'unmet',
       detail: testCentre === undefined
-        ? `${TECHNICAL_TEST_PENDING} — no Test Centre result supplied.`
+        ? `${CONFIGURATION_PREFLIGHT_PENDING} — no Test Centre result supplied.`
         : testPassed
-          ? TECHNICAL_TEST_CURRENT
+          ? CONFIGURATION_PREFLIGHT_CURRENT
           : testStale
-            ? TECHNICAL_TEST_STALE
-            : `${TECHNICAL_TEST_PENDING} — run a configuration preflight for `
-              + 'the selected binding in the Test Centre.',
+            ? CONFIGURATION_PREFLIGHT_STALE
+            : `${CONFIGURATION_PREFLIGHT_PENDING} — run a configuration preflight `
+              + 'for the selected binding in the Test Centre.',
     } as EmailReadinessCheck,
+    {
+      key: 'provider_delivery_test',
+      label: 'Provider delivery test',
+      state: 'not_implemented',
+      detail: PROVIDER_DELIVERY_TEST_DETAIL,
+    },
   ];
 
   const prerequisitesMet = checks
@@ -304,16 +323,22 @@ export function projectEmailReadiness(
       ? 'prerequisites_met'
       : 'incomplete';
 
+  const preflightExplanation = testPassed
+    ? CONFIGURATION_PREFLIGHT_CURRENT
+    : testStale
+      ? CONFIGURATION_PREFLIGHT_STALE
+      : CONFIGURATION_PREFLIGHT_PENDING;
+
   return {
     state,
     label: EMAIL_READINESS_LABEL[state],
-    explanation: testPassed ? TECHNICAL_TEST_CURRENT
-      : testStale ? TECHNICAL_TEST_STALE
-        : TECHNICAL_TEST_PENDING,
+    explanation: `${preflightExplanation} · ${PROVIDER_DELIVERY_TEST_PENDING}`,
     checks,
     prerequisitesMet: Boolean(summary) && prerequisitesMet,
-    technicalTestImplemented: EMAIL_TECHNICAL_TEST_IMPLEMENTED,
+    configurationPreflightImplemented: EMAIL_CONFIGURATION_PREFLIGHT_IMPLEMENTED,
+    providerDeliveryTestImplemented: EMAIL_PROVIDER_DELIVERY_TEST_IMPLEMENTED,
     callbackReceiverImplemented: EMAIL_CALLBACK_RECEIVER_IMPLEMENTED,
+
     counts,
   };
 }

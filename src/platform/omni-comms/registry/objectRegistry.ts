@@ -262,11 +262,11 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
   },
   {
     name: 'omni_comms_channel_test_run',
-    category: 'channels_senders_preferences',
+    category: 'runtime',
     epic: 4,
     writeAuthority: 'admin_rpc',
     purpose:
-      'Immutable technical configuration-preflight ledger for a channel binding; stores the 21-check outcome, configuration fingerprint, masked target and payload summary only, and never sends a message.',
+      'Immutable configuration-preflight evidence for a selected channel binding. Contains masked and hashed test input only and records no provider delivery.',
     status: 'AVAILABLE',
     introductionStory: 'Channels C5A — Test Centre preflight',
   },
