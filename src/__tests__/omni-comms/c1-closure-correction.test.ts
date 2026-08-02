@@ -290,9 +290,12 @@ describe('C1 closure — preservation and safety', () => {
     ]) expect(accounts).toContain(fn);
     expect(identities).toContain('upsertChannelIdentityDraft');
     expect(identities).toContain('setChannelIdentityLifecycle');
-    expect(bindings).toContain('upsertBindingDraft');
-    expect(bindings).toContain('recordBindingVerification');
-    expect(bindings).toContain('activateBinding');
+    // C4A — preserved through the generic binding model; manual administrator
+    // verification was deliberately removed (provider-owned evidence only).
+    expect(bindings).toContain('upsertChannelBindingDraft');
+    expect(bindings).toContain('setChannelBindingLifecycle');
+    expect(bindings).not.toContain('recordBindingVerification');
+
     expect(policies).toContain('upsertEmailChannelSetting');
   });
 
