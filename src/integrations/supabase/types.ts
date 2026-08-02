@@ -104904,8 +104904,16 @@ export type Database = {
           p_correlation_id: string
           p_deployed_revision: string
           p_execution_context?: string
-          p_scopes: Json
+          p_scopes?: Json
           p_worker: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_claim_safety_suspend: {
+        Args: {
+          p_code: string
+          p_job_id?: string
+          p_release_control_id: string
         }
         Returns: Json
       }
