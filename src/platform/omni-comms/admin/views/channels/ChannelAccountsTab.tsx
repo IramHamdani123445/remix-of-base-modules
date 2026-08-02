@@ -72,6 +72,18 @@ import type { ChannelUiDefinition } from './channelUiRegistry';
 
 type Client = ReturnType<typeof useOmniCommsRpcClient>;
 
+/**
+ * C2 closure — a `reference_seed` account is read-only and non-operational.
+ * It is displayed for demonstration only and is never passed into a mutation.
+ */
+export const REFERENCE_ACCOUNT_READ_ONLY_HELP =
+  'Reference account — read-only and excluded from operational configuration.';
+
+export function isReferenceAccountRow(a: ChannelProviderAccountRow): boolean {
+  return a.data_origin === 'reference_seed';
+}
+
+
 interface FormState {
   id: string | null;
   expectedUpdatedAt: string | null;
@@ -319,10 +331,11 @@ export const ChannelAccountsTab: React.FC<{
       </Card>
 
       <AdvancedEvidenceSection
-        accounts={accounts}
+        accounts={accounts.filter((a) => !isReferenceAccountRow(a))}
         client={client}
         onChanged={refreshAll}
       />
+
 
       {form ? (
         <AccountFormDialog
@@ -351,10 +364,15 @@ const AccountRow: React.FC<{
   const isReference = account.data_origin === 'reference_seed';
   const verifiable = verificationImplemented(account.provider_adapter_key);
   const complete = credentialsComplete(account);
+  const canActivate = account.status === 'draft' || account.status === 'disabled';
+  const activateLabel = account.status === 'disabled' ? 'Reactivate' : 'Activate';
+
 
   const lifecycle = async (
     action: 'activate' | 'disable' | 'retire',
   ) => {
+    // reference accounts are never passed into a mutation action
+    if (isReference) return;
     let reason: string | null = null;
     if (action === 'retire') {
       reason = window.prompt('Retirement reason (required)') ?? '';
@@ -378,8 +396,10 @@ const AccountRow: React.FC<{
   };
 
   const verify = async () => {
+    if (isReference) return;
     setBusy(true);
     try {
+
       const res = await verifyProviderCredentials({
         organizationId: orgId,
         providerAccountId: account.id,
@@ -445,70 +465,79 @@ const AccountRow: React.FC<{
         {new Date(account.updated_at).toLocaleString()}
       </TableCell>
       <TableCell>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy || account.status !== 'draft'}
-            onClick={onEdit}
+        {isReference ? (
+          <p
+            className="text-xs text-muted-foreground max-w-xs"
+            data-testid={`omni-comms-reference-readonly-${account.code}`}
           >
-            Edit draft
-          </Button>
-          {verifiable ? (
+            {REFERENCE_ACCOUNT_READ_ONLY_HELP}
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
               variant="outline"
-              disabled={busy}
-              onClick={() => void verify()}
-              data-testid={`omni-comms-verify-credentials-${account.code}`}
+              disabled={busy || account.status !== 'draft'}
+              onClick={onEdit}
             >
-              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify credentials'}
+              Edit draft
             </Button>
-          ) : null}
-          <Button
-            size="sm"
-            disabled={
-              busy ||
-              account.status !== 'draft' ||
-              !complete ||
-              (verifiable && account.verification_status !== "verified") ||
-              !verifiable
-            }
-            title={
-              !verifiable
-                ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
-                : !complete
-                  ? 'All required credential references must be configured'
-                  : account.verification_status !== "verified"
-                    ? 'Verified provider credentials are required before activation'
-                    : undefined
-            }
-
-            onClick={() => void lifecycle('activate')}
-          >
-            Activate
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy || account.status !== 'active'}
-            onClick={() => void lifecycle('disable')}
-          >
-            Disable
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={busy || account.status === 'retired'}
-            onClick={() => void lifecycle('retire')}
-          >
-            Retire
-          </Button>
-        </div>
+            {verifiable ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void verify()}
+                data-testid={`omni-comms-verify-credentials-${account.code}`}
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify credentials'}
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              disabled={
+                busy ||
+                !canActivate ||
+                !complete ||
+                (verifiable && account.verification_status !== "verified") ||
+                !verifiable
+              }
+              title={
+                !verifiable
+                  ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
+                  : !complete
+                    ? 'All required credential references must be configured'
+                    : account.verification_status !== "verified"
+                      ? 'Verified provider credentials are required before activation'
+                      : undefined
+              }
+              onClick={() => void lifecycle('activate')}
+            >
+              {activateLabel}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || account.status !== 'active'}
+              onClick={() => void lifecycle('disable')}
+            >
+              Disable
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || account.status === 'retired'}
+              onClick={() => void lifecycle('retire')}
+            >
+              Retire
+            </Button>
+          </div>
+        )}
       </TableCell>
     </TableRow>
   );
 };
+
 
 // ─── Create / Edit drawer ───────────────────────────────────────────
 const AccountFormDialog: React.FC<{
@@ -627,7 +656,10 @@ const AdvancedEvidenceSection: React.FC<{
   onChanged: () => Promise<void> | void;
 }> = ({ accounts, client, onChanged }) => {
   const [busy, setBusy] = useState(false);
-  if (accounts.length === 0) return null;
+  // reference accounts never expose manual evidence controls
+  const operational = accounts.filter((a) => !isReferenceAccountRow(a));
+  if (operational.length === 0) return null;
+
 
   const record = async (
     account: ChannelProviderAccountRow,
@@ -662,7 +694,8 @@ const AdvancedEvidenceSection: React.FC<{
 
       </CardHeader>
       <CardContent className="space-y-3">
-        {accounts.map((a) => (
+        {operational.map((a) => (
+
           <div key={a.id} className="flex flex-wrap items-center gap-3 rounded-md border p-3">
             <Detail label="Account" value={a.code} />
             <Detail label="Health (non-authoritative)" value={a.health_state} />
