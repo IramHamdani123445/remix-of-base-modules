@@ -210,6 +210,12 @@ export const ChannelTestDeliveryCard: React.FC<{
       setDiagnostics(d);
       setApprovalEnabled(d.controlled_test_delivery_enabled);
       setRecipientsText(d.controlled_test_recipients.join(', '));
+      if (typeof d.controlled_test_max_deliveries === 'number') {
+        setMaxDeliveries(String(d.controlled_test_max_deliveries));
+      }
+      if (typeof d.controlled_test_min_interval_seconds === 'number') {
+        setMinIntervalSeconds(String(d.controlled_test_min_interval_seconds));
+      }
     } catch (e) {
       toastError(e, 'Failed to load provider test delivery status');
     } finally {
