@@ -80,7 +80,7 @@ BEGIN
     request_fingerprint, caller_module_code, payload_snapshot, requested_channels,
     status)
   VALUES (v_org, p_dept, v_ev, 'queued', 'c7test-' || p_tag,
-          'fp-' || p_tag, 'omni_comms_c7_test', '{}'::jsonb, ARRAY['email'],
+          md5(p_tag) || md5(p_tag), 'omni_comms_c7_test', '{}'::jsonb, ARRAY['email'],
           'accepted')
   RETURNING id INTO v_req;
 
