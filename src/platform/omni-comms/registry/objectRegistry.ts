@@ -76,6 +76,27 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Epic 4 — Story 1',
   },
   {
+    name: 'omni_comms_provider_credential_requirement',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Named credential purposes an installed provider adapter requires, with the accepted secret-reference pattern.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C2 — Generic provider accounts',
+  },
+  {
+    name: 'omni_comms_provider_account_secret_ref',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Bounded secret REFERENCE names configured per provider account and credential purpose. Never holds credential values.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C2 — Generic provider accounts',
+  },
+
+  {
     name: 'omni_comms_sender_identity',
     category: 'channels_senders_preferences',
     epic: 4,
