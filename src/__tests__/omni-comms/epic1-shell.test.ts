@@ -27,13 +27,17 @@ describe('Omni-Comms Epic 1 shell', () => {
     for (const k of keys) expect(k.startsWith('omni_comms.')).toBe(true);
   });
 
-  it('every capability has a definition and only `view` is ACTIVE', () => {
+  it('every capability has a definition; view, configure and operate are ACTIVE (C6)', () => {
     const defsByKey = new Map(OMNI_COMMS_PERMISSION_DEFINITIONS.map((d) => [d.permission_key, d]));
     for (const key of Object.values(OMNI_COMMS_PERMISSIONS)) {
       expect(defsByKey.has(key)).toBe(true);
     }
     const active = OMNI_COMMS_PERMISSION_DEFINITIONS.filter((d) => d.lifecycle_status === 'ACTIVE');
-    expect(active.map((d) => d.permission_key)).toEqual([OMNI_COMMS_PERMISSIONS.view]);
+    expect(active.map((d) => d.permission_key).sort()).toEqual([
+      OMNI_COMMS_PERMISSIONS.configure,
+      OMNI_COMMS_PERMISSIONS.operate,
+      OMNI_COMMS_PERMISSIONS.view,
+    ].sort());
   });
 
   it('capabilities are merged into the central permission registry', () => {

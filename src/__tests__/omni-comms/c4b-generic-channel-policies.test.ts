@@ -184,7 +184,7 @@ describe('C4B schema and migration', () => {
     expect(
       OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.name === 'omni_comms_channel_setting'),
     ).toHaveLength(1);
-    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(31);
+    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(33);
   });
 
   it('ships a rollback and a verifier script', () => {
@@ -592,7 +592,7 @@ describe('C4B Email readiness integration', () => {
   it('keeps one shared projection for catalogue, header and overview', () => {
     const page = read(join(ROOT, 'src/platform/omni-comms/admin/views/OmniCommsChannelsPage.tsx'));
     expect(page).toContain('projectEmailReadiness(summary, emailPolicy, testCentre'
-      + ', deliveryDiagnostics)');
+      + ', deliveryDiagnostics, releaseSummary)');
     expect(read(join(CH_DIR, 'ChannelOverviewTab.tsx'))).toContain('projectEmailReadiness');
   });
 });

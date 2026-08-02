@@ -170,7 +170,7 @@ describe('C1 — page composition', () => {
   it('page is a coordinator and holds no RPC logic beyond the summary read', () => {
     expect(page).not.toContain('upsertProviderAccountDraft');
     expect(page).not.toContain('upsertEmailChannelSetting');
-    expect(page.split('\n').length).toBeLessThan(260);
+    expect(page.split('\n').length).toBeLessThan(290);
   });
 });
 

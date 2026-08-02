@@ -44,8 +44,8 @@ function walk(dir: string): string[] {
 }
 
 describe('Epic 1 — Story 5 final verification', () => {
-  it('registers exactly 31 active logical objects with approved statuses', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(31);
+  it('registers exactly 33 active logical objects with approved statuses', () => {
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(33);
     for (const o of OMNI_COMMS_OBJECT_REGISTRY) {
       expect(['PLANNED', 'AVAILABLE']).toContain(o.status);
     }
@@ -59,9 +59,9 @@ describe('Epic 1 — Story 5 final verification', () => {
     }
   });
 
-  it('registers exactly seven permanent routes and eight integrations', () => {
+  it('registers exactly seven permanent routes and nine integrations', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(8);
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(9);
     for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {
       expect(['reserved', 'reused', 'available']).toContain(String(i.status).toLowerCase());
     }
@@ -74,7 +74,7 @@ describe('Epic 1 — Story 5 final verification', () => {
     }
   });
 
-  it('registers all six omni_comms.* capabilities with only omni_comms.view as ACTIVE', () => {
+  it('registers all six omni_comms.* capabilities; C6 activates view, configure and operate', () => {
     expect(OMNI_COMMS_PERMISSION_DEFINITIONS).toHaveLength(6);
     const keys = OMNI_COMMS_PERMISSION_DEFINITIONS.map((p) => p.permission_key).sort();
     expect(keys).toEqual([
@@ -86,8 +86,11 @@ describe('Epic 1 — Story 5 final verification', () => {
       'omni_comms.view_sensitive_content',
     ]);
     const active = OMNI_COMMS_PERMISSION_DEFINITIONS.filter((p) => p.lifecycle_status === 'ACTIVE');
-    expect(active).toHaveLength(1);
-    expect(active[0].permission_key).toBe('omni_comms.view');
+    expect(active.map((p) => p.permission_key).sort()).toEqual([
+      'omni_comms.configure',
+      'omni_comms.operate',
+      'omni_comms.view',
+    ]);
   });
 
   it('AppRoutes.tsx contains exactly seven Omni-Comms routes, each guarded by OmniCommsAdminRoute', () => {

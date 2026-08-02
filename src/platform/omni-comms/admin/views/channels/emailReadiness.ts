@@ -37,14 +37,31 @@ import {
   isDeliveryCurrent,
   latestDelivery,
 } from '@/platform/omni-comms/application/channelTestDeliveryTypes';
+import type { ChannelReleaseControlSummary } from '@/platform/omni-comms/application/channelReleaseControlTypes';
+import {
+  isControlledPilotGovernanceActive,
+  isReleaseControlConfigured,
+  releaseBlockers,
+} from '@/platform/omni-comms/application/channelReleaseControlTypes';
 import { partitionEmailConfig, readinessCounts } from './channelReferenceData';
 
-/** C4B — Release Control is not implemented; activation is never met here. */
-export const EMAIL_RELEASE_CONTROL_IMPLEMENTED = false;
+/** C6 — Release Control governance is implemented (configuration + approval). */
+export const EMAIL_RELEASE_CONTROL_IMPLEMENTED = true;
+
+/**
+ * C6 — business provider dispatch is deliberately NOT implemented. Release
+ * Control decides what is ALLOWED; it never makes a job runnable.
+ */
+export const EMAIL_BUSINESS_DISPATCH_IMPLEMENTED = false;
 
 export const EMAIL_RELEASE_CONTROL_PENDING =
-  'Pilot and live activation are governed by Release Control, which is not '
-  + 'implemented in C4B.';
+  'Release Control is configured but no controlled pilot has been approved and '
+  + 'activated for this scope.';
+
+export const EMAIL_BUSINESS_DISPATCH_PENDING =
+  'Business provider dispatch is not implemented in C6. Jobs created under a '
+  + 'controlled pilot remain held and non-runnable, and live delivery stays '
+  + 'disabled.';
 
 export type EmailReadinessState = 'unknown' | 'incomplete' | 'prerequisites_met';
 
@@ -169,6 +186,11 @@ export function projectEmailReadiness(
    * stays `not_implemented`, so no caller can fabricate delivery proof.
    */
   deliveryDiagnostics?: ChannelTestDeliveryDiagnostics | null,
+  /**
+   * C6 — Release Control summary. When omitted the release checks stay
+   * `not_implemented`, so no caller can fabricate governance approval.
+   */
+  releaseSummary?: ChannelReleaseControlSummary | null,
 ): EmailReadinessProjection {
   const testPassed = Boolean(
     testCentre?.latest_run
@@ -222,6 +244,11 @@ export function projectEmailReadiness(
   );
 
   const yn = (ok: boolean): EmailReadinessCheckState => (ok ? 'met' : 'unmet');
+
+  // C6 — genuine Release Control governance. Never inferred, never assumed.
+  const releaseConfigured = isReleaseControlConfigured(releaseSummary);
+  const releaseBlockerCount = releaseBlockers(releaseSummary?.prerequisites).length;
+  const pilotGovernanceActive = isControlledPilotGovernanceActive(releaseSummary);
 
 
   const checks: EmailReadinessCheck[] = [
@@ -293,10 +320,41 @@ export function projectEmailReadiness(
         : 'No effective policy, so no operational state applies.',
     },
     {
+      key: 'release_control_configured',
+      label: 'Release Control configured for this scope',
+      state: releaseSummary ? yn(releaseConfigured) : 'not_implemented',
+      detail: !releaseSummary
+        ? 'Release Control state has not been loaded for this scope.'
+        : releaseConfigured
+          ? 'A genuine Release Control record governs this scope.'
+          : 'No genuine Release Control record exists for this scope.',
+    } as EmailReadinessCheck,
+    {
+      key: 'release_prerequisites',
+      label: 'Release prerequisites satisfied',
+      state: !releaseSummary
+        ? 'not_implemented'
+        : yn(releaseConfigured && releaseBlockerCount === 0),
+      detail: !releaseSummary
+        ? 'Release prerequisites have not been evaluated.'
+        : releaseBlockerCount === 0 && releaseConfigured
+          ? 'All blocking release prerequisites are satisfied.'
+          : `${releaseBlockerCount} blocking release prerequisite(s) outstanding.`,
+    } as EmailReadinessCheck,
+    {
       key: 'release_control',
-      label: 'Release Control activation',
+      label: 'Controlled pilot approved and active',
+      state: !releaseSummary ? 'not_implemented' : yn(pilotGovernanceActive),
+      detail: pilotGovernanceActive
+        ? 'An approved controlled pilot is active, unexpired and bound to the '
+          + 'certified commit. Live delivery remains disabled.'
+        : EMAIL_RELEASE_CONTROL_PENDING,
+    } as EmailReadinessCheck,
+    {
+      key: 'business_dispatch',
+      label: 'Business provider dispatch',
       state: 'not_implemented',
-      detail: EMAIL_RELEASE_CONTROL_PENDING,
+      detail: EMAIL_BUSINESS_DISPATCH_PENDING,
     },
     {
       key: 'sending_domain',

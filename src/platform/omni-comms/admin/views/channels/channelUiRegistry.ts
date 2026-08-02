@@ -35,6 +35,7 @@ export const CHANNEL_WORKSPACE_TAB_LABELS: Record<ChannelWorkspaceTab, string> =
   endpoints: 'Endpoints',
   bindings: 'Bindings',
   policies: 'Policies',
+  'release-control': 'Release Control',
   'test-centre': 'Test Centre',
   diagnostics: 'Diagnostics',
 };

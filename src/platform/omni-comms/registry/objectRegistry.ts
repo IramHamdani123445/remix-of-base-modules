@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Approved logical object catalogue (26 logical groups: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, the two Channels C2 generic provider-account objects, and the two Channels C3B channel-endpoint objects).
+ * Omni-Comms — Approved logical object catalogue (28 logical groups: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, the two Channels C2 generic provider-account objects, the two Channels C3B channel-endpoint objects, and the two Channels C6 release-control objects).
  *
  * This is the CEILING for the new system. No object listed here has been
  * created. This file does not create tables, policies, functions, or types.
@@ -299,6 +299,26 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
       'Immutable per-attempt provider dispatch ledger for approved technical test deliveries. Each row records one atomic claim and its terminal outcome, including transport uncertainty, so a bounded retry can never hide a duplicate send.',
     status: 'AVAILABLE',
     introductionStory: 'Channels C5B Closure — Retry-safe controlled delivery',
+  },
+  {
+    name: 'omni_comms_channel_release_control',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Mutable per-scope release governance record: release state, permitted events, caller modules, modes, masked pilot recipients, volume and time restrictions, proposal and approval segregation, and the certified-commit binding. Never enables live delivery.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C6 — Release control and controlled-pilot governance',
+  },
+  {
+    name: 'omni_comms_channel_release_event',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc_or_service_role',
+    purpose:
+      'Append-only release governance ledger recording every proposal, cancellation, approval, activation, suspension, expiry and gate denial with the release version, fingerprint and certified commit at the time of the event.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C6 — Release control and controlled-pilot governance',
   },
   {
     name: 'omni_comms_webhook_event',

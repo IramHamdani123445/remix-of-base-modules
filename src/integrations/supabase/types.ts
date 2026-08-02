@@ -81191,6 +81191,203 @@ export type Database = {
           },
         ]
       }
+      omni_comms_channel_release_control: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_commit: string | null
+          certification_recorded_at: string | null
+          certification_workflow_run_id: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          data_origin: string
+          department_id: string | null
+          id: string
+          max_messages_per_day: number
+          max_messages_per_hour: number
+          max_messages_total: number
+          max_recipients_per_request: number
+          organization_id: string
+          permitted_caller_modules: string[]
+          permitted_event_codes: string[]
+          permitted_modes: string[]
+          pilot_recipient_rules: Json
+          proposal_expires_at: string | null
+          proposal_reason: string | null
+          proposed_at: string | null
+          proposed_by: string | null
+          proposed_state: string | null
+          release_expires_at: string | null
+          release_fingerprint: string
+          release_starts_at: string | null
+          release_state: string
+          release_version: number
+          suspended_at: string | null
+          suspended_by: string | null
+          suspension_reason: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_commit?: string | null
+          certification_recorded_at?: string | null
+          certification_workflow_run_id?: string | null
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          id?: string
+          max_messages_per_day?: number
+          max_messages_per_hour?: number
+          max_messages_total?: number
+          max_recipients_per_request?: number
+          organization_id: string
+          permitted_caller_modules?: string[]
+          permitted_event_codes?: string[]
+          permitted_modes?: string[]
+          pilot_recipient_rules?: Json
+          proposal_expires_at?: string | null
+          proposal_reason?: string | null
+          proposed_at?: string | null
+          proposed_by?: string | null
+          proposed_state?: string | null
+          release_expires_at?: string | null
+          release_fingerprint?: string
+          release_starts_at?: string | null
+          release_state?: string
+          release_version?: number
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_commit?: string | null
+          certification_recorded_at?: string | null
+          certification_workflow_run_id?: string | null
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          id?: string
+          max_messages_per_day?: number
+          max_messages_per_hour?: number
+          max_messages_total?: number
+          max_recipients_per_request?: number
+          organization_id?: string
+          permitted_caller_modules?: string[]
+          permitted_event_codes?: string[]
+          permitted_modes?: string[]
+          pilot_recipient_rules?: Json
+          proposal_expires_at?: string | null
+          proposal_reason?: string | null
+          proposed_at?: string | null
+          proposed_by?: string | null
+          proposed_state?: string | null
+          release_expires_at?: string | null
+          release_fingerprint?: string
+          release_starts_at?: string | null
+          release_state?: string
+          release_version?: number
+          suspended_at?: string | null
+          suspended_by?: string | null
+          suspension_reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      omni_comms_channel_release_event: {
+        Row: {
+          actor_id: string | null
+          bounded_snapshot: Json
+          certification_workflow_run_id: string | null
+          certified_commit: string | null
+          channel: string
+          correlation_id: string | null
+          created_at: string
+          department_id: string | null
+          deployed_revision: string | null
+          event_type: string
+          from_state: string | null
+          id: string
+          occurred_at: string
+          organization_id: string
+          reason: string | null
+          release_control_id: string
+          release_fingerprint: string
+          release_version: number
+          to_state: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          bounded_snapshot?: Json
+          certification_workflow_run_id?: string | null
+          certified_commit?: string | null
+          channel: string
+          correlation_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          deployed_revision?: string | null
+          event_type: string
+          from_state?: string | null
+          id?: string
+          occurred_at?: string
+          organization_id: string
+          reason?: string | null
+          release_control_id: string
+          release_fingerprint: string
+          release_version: number
+          to_state?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          bounded_snapshot?: Json
+          certification_workflow_run_id?: string | null
+          certified_commit?: string | null
+          channel?: string
+          correlation_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          deployed_revision?: string | null
+          event_type?: string
+          from_state?: string | null
+          id?: string
+          occurred_at?: string
+          organization_id?: string
+          reason?: string | null
+          release_control_id?: string
+          release_fingerprint?: string
+          release_version?: number
+          to_state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_channel_release_event_release_control_id_fkey"
+            columns: ["release_control_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_release_control"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_channel_setting: {
         Row: {
           channel: string
@@ -81817,6 +82014,12 @@ export type Database = {
           next_attempt_at: string | null
           organization_id: string
           priority: number
+          release_control_id: string | null
+          release_decision_snapshot: Json
+          release_expires_at: string | null
+          release_fingerprint: string | null
+          release_state_snapshot: string | null
+          release_version: number | null
           request_id: string
           scheduled_at: string | null
           status: string
@@ -81842,6 +82045,12 @@ export type Database = {
           next_attempt_at?: string | null
           organization_id: string
           priority?: number
+          release_control_id?: string | null
+          release_decision_snapshot?: Json
+          release_expires_at?: string | null
+          release_fingerprint?: string | null
+          release_state_snapshot?: string | null
+          release_version?: number | null
           request_id: string
           scheduled_at?: string | null
           status?: string
@@ -81867,6 +82076,12 @@ export type Database = {
           next_attempt_at?: string | null
           organization_id?: string
           priority?: number
+          release_control_id?: string | null
+          release_decision_snapshot?: Json
+          release_expires_at?: string | null
+          release_fingerprint?: string | null
+          release_state_snapshot?: string | null
+          release_version?: number | null
           request_id?: string
           scheduled_at?: string | null
           status?: string
@@ -103609,6 +103824,73 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_channel_release_control_cancel_proposal: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_release_control_propose_pilot: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_release_control_set_basic_state: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
+          p_target_state: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_release_control_summary: {
+        Args: {
+          p_channel?: string
+          p_department_id?: string
+          p_history_limit?: number
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_release_control_suspend: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_release_control_upsert_configuration: {
+        Args: {
+          p_channel: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_max_messages_per_day: number
+          p_max_messages_per_hour: number
+          p_max_messages_total: number
+          p_max_recipients_per_request: number
+          p_organization_id: string
+          p_permitted_caller_modules: string[]
+          p_permitted_event_codes: string[]
+          p_permitted_modes: string[]
+          p_recipient_input: Json
+          p_release_expires_at: string
+          p_release_starts_at: string
+        }
+        Returns: Json
+      }
       omni_comms_channel_setting_upsert: {
         Args: {
           p_channel: string
@@ -104176,6 +104458,129 @@ export type Database = {
           p_expected_updated_at: string
           p_id: string
           p_organization_id: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_channel_release_approve_activate: {
+        Args: {
+          p_actor_id: string
+          p_approval_note: string
+          p_correlation_id: string
+          p_deployed_revision: string
+          p_expected_fingerprint: string
+          p_expected_updated_at: string
+          p_release_control_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_release_decision: {
+        Args: {
+          p_caller_module_code: string
+          p_channel: string
+          p_department_id: string
+          p_deployed_revision: string
+          p_event_code: string
+          p_mode: string
+          p_organization_id: string
+          p_recipient_hashes: string[]
+          p_requested_message_count: number
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_release_effective: {
+        Args: {
+          p_channel: string
+          p_department_id: string
+          p_organization_id: string
+        }
+        Returns: {
+          activated_at: string | null
+          activated_by: string | null
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_commit: string | null
+          certification_recorded_at: string | null
+          certification_workflow_run_id: string | null
+          channel: string
+          created_at: string
+          created_by: string | null
+          data_origin: string
+          department_id: string | null
+          id: string
+          max_messages_per_day: number
+          max_messages_per_hour: number
+          max_messages_total: number
+          max_recipients_per_request: number
+          organization_id: string
+          permitted_caller_modules: string[]
+          permitted_event_codes: string[]
+          permitted_modes: string[]
+          pilot_recipient_rules: Json
+          proposal_expires_at: string | null
+          proposal_reason: string | null
+          proposed_at: string | null
+          proposed_by: string | null
+          proposed_state: string | null
+          release_expires_at: string | null
+          release_fingerprint: string
+          release_starts_at: string | null
+          release_state: string
+          release_version: number
+          suspended_at: string | null
+          suspended_by: string | null
+          suspension_reason: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "omni_comms_channel_release_control"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      omni_comms_priv_channel_release_expire_if_due: {
+        Args: { p_release_control_id: string }
+        Returns: boolean
+      }
+      omni_comms_priv_channel_release_fingerprint: {
+        Args: {
+          p_row: Database["public"]["Tables"]["omni_comms_channel_release_control"]["Row"]
+        }
+        Returns: string
+      }
+      omni_comms_priv_channel_release_json: {
+        Args: {
+          p_row: Database["public"]["Tables"]["omni_comms_channel_release_control"]["Row"]
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_release_prerequisites: {
+        Args: {
+          p_channel: string
+          p_department_id: string
+          p_deployed_revision: string
+          p_organization_id: string
+          p_release_control_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_release_recipient_rules: {
+        Args: { p_channel: string; p_input: Json }
+        Returns: Json
+      }
+      omni_comms_priv_channel_release_record_event: {
+        Args: {
+          p_actor_id: string
+          p_correlation_id: string
+          p_deployed_revision?: string
+          p_event_type: string
+          p_from_state: string
+          p_reason: string
+          p_row: Database["public"]["Tables"]["omni_comms_channel_release_control"]["Row"]
+          p_snapshot?: Json
+          p_to_state: string
         }
         Returns: string
       }

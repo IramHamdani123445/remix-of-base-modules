@@ -46,6 +46,13 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     purpose: 'Sole initial email provider. Credentials live in Edge Function Secrets. Reachable only from the approved test-delivery boundary; no live dispatch adapter exists.',
     status: 'Reserved',
   },
+  {
+    name: 'omni-comms-release-control',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Trusted approval boundary for controlled-pilot activation: verifies the second approver, matches the deployed revision against the certified commit server-side, and records the activation. Contacts no provider and sends nothing.',
+    status: 'Available',
+  },
   // Shared platform assets (3) — reused, not re-created
   {
     name: 'core-documents',

@@ -33,8 +33,8 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
   const errors: string[] = [];
 
   // Objects
-  if (OMNI_COMMS_OBJECT_REGISTRY.length !== 31) {
-    errors.push(`Object registry must contain 31 entries, found ${OMNI_COMMS_OBJECT_REGISTRY.length}.`);
+  if (OMNI_COMMS_OBJECT_REGISTRY.length !== 33) {
+    errors.push(`Object registry must contain 33 entries, found ${OMNI_COMMS_OBJECT_REGISTRY.length}.`);
   }
   const seenObjects = new Set<string>();
   for (const o of OMNI_COMMS_OBJECT_REGISTRY) {
@@ -88,8 +88,8 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
   }
 
   // Integrations
-  if (OMNI_COMMS_INTEGRATION_REGISTRY.length !== 8) {
-    errors.push(`Integration registry must contain 8 entries, found ${OMNI_COMMS_INTEGRATION_REGISTRY.length}.`);
+  if (OMNI_COMMS_INTEGRATION_REGISTRY.length !== 9) {
+    errors.push(`Integration registry must contain 9 entries, found ${OMNI_COMMS_INTEGRATION_REGISTRY.length}.`);
   }
   const seenIntegrations = new Set<string>();
   for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {
