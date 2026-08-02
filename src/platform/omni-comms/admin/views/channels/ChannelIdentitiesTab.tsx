@@ -213,7 +213,7 @@ const GenericIdentitiesPanel: React.FC<{
             </CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={() => void load(showReference)} disabled={loading}>
               <RefreshCcw className="h-4 w-4 mr-1" /> Refresh
             </Button>
             <Button size="sm" onClick={openCreate} data-testid="omni-comms-create-identity">
