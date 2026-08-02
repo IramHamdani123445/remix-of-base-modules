@@ -95,9 +95,38 @@ Deno.serve(async (req) => {
 
   const client = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-  // 1. C7 — business delivery evidence, normalization and automatic
-  //    controlled-pilot suspension. Unmatched callbacks are recorded as
-  //    `unmatched` and ignored.
+  // ── Matching order (C7 Closure Correction) ──────────────────────────────
+  // 1. C5B controlled channel-test delivery is matched FIRST. A technical
+  //    test callback can never be mistaken for business delivery evidence.
+  // 2. Only when no channel-test delivery owns the provider message id is the
+  //    C7 business path consulted.
+  // 3. A provider message id that matches more than one business attempt is
+  //    recorded as ambiguous and NEVER used to mutate delivery evidence.
+  const { data: testResult, error: testError } = await client.rpc(
+    "omni_comms_priv_channel_test_delivery_record_event",
+    {
+      p_provider_message_id: providerMessageId,
+      p_event_type: testEventName,
+      p_provider_event_id: svixId || null,
+      p_occurred_at: occurredAt,
+      p_payload_summary: summary,
+      p_signature_verified: true,
+    },
+  );
+  if (testError) {
+    console.error("omni-comms-webhook-resend channel-test record failure:", testError.message);
+  }
+  const testRecord = (testResult ?? {}) as Record<string, unknown>;
+  const testMatched =
+    testRecord.recorded === true &&
+    testRecord.code !== "unmatched" &&
+    testRecord.code !== "unmatched_ignored";
+  if (testMatched) {
+    return json({ accepted: true, scope: "channel_test", ...testRecord });
+  }
+
+  // 2. C7 — business delivery evidence, normalization and automatic
+  //    controlled-pilot suspension.
   const business = await client.rpc("omni_comms_priv_dispatch_record_callback", {
     p_provider_code: "resend_email",
     p_provider_event_id: svixId || `${providerMessageId}:${rawType}:${occurredAt ?? ""}`,
@@ -111,29 +140,15 @@ Deno.serve(async (req) => {
   });
   if (business.error) {
     console.error("omni-comms-webhook-resend business record failure:", business.error.message);
+    return json({ error: "record_failed", detail: business.error.message }, 500);
   }
   const businessResult = (business.data ?? {}) as Record<string, unknown>;
+  if (businessResult.code === "callback_ambiguous") {
+    return json({ accepted: true, scope: "unmatched", ...businessResult });
+  }
   if (businessResult.code === "callback_recorded") {
     return json({ accepted: true, scope: "business", ...businessResult });
   }
 
-  // 2. C5B — approved technical channel-test evidence (unchanged behaviour).
-  const { data: result, error } = await client.rpc(
-    "omni_comms_priv_channel_test_delivery_record_event",
-    {
-      p_provider_message_id: providerMessageId,
-      p_event_type: testEventName,
-      p_provider_event_id: svixId || null,
-      p_occurred_at: occurredAt,
-      p_payload_summary: summary,
-      p_signature_verified: true,
-    },
-  );
-
-  if (error) {
-    console.error("omni-comms-webhook-resend record failure:", error.message);
-    return json({ error: "record_failed", detail: error.message }, 500);
-  }
-
-  return json({ accepted: true, scope: "channel_test", ...(result as Record<string, unknown>) });
+  return json({ accepted: true, scope: "unmatched", ...businessResult });
 });

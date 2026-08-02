@@ -27,7 +27,10 @@
 //     unavailable.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { sendResendEmail } from "../_shared/omni-comms/resendAdapter.ts";
+import {
+  canonicalProviderPayloadHash,
+  sendResendEmail,
+} from "../_shared/omni-comms/resendAdapter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,35 +68,48 @@ Deno.serve(async (req) => {
   }
 
   // ── Bounded, non-sensitive input ONLY ───────────────────────────────────
+  // Strict ALLOW-LIST: exactly two optional keys are accepted. Anything else
+  // — including unknown keys — is refused. A caller can never influence WHAT
+  // is sent, only how many already-authorised jobs may be drained.
   let raw: Record<string, unknown> = {};
   try {
     raw = (await req.json()) as Record<string, unknown>;
   } catch {
     raw = {};
   }
-  const forbidden = [
-    "jobId", "job_id", "messageId", "message_id", "recipient", "to",
-    "provider", "providerId", "credential", "secret", "secretRef",
-    "eventCode", "callerModule", "callerModuleCode", "releaseId",
-    "releaseControlId", "subject", "body", "html", "text",
-  ].filter((k) => k in raw);
-  if (forbidden.length > 0) {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return json({ error: "OC422", detail: "dispatch_input_invalid" }, 400);
+  }
+  const ALLOWED_INPUT_KEYS = new Set(["batchLimit", "correlationId"]);
+  const rejected = Object.keys(raw).filter((k) => !ALLOWED_INPUT_KEYS.has(k));
+  if (rejected.length > 0) {
     return json(
-      { error: "OC422", detail: "caller_supplied_dispatch_input_forbidden", fields: forbidden },
+      { error: "OC422", detail: "caller_supplied_dispatch_input_forbidden", fields: rejected },
       400,
     );
   }
+  if ("batchLimit" in raw && !Number.isInteger(raw.batchLimit)) {
+    return json({ error: "OC422", detail: "batch_limit_invalid" }, 400);
+  }
+  if (
+    "correlationId" in raw &&
+    raw.correlationId !== null &&
+    (typeof raw.correlationId !== "string" ||
+      !/^[A-Za-z0-9_.:-]{1,120}$/.test(raw.correlationId))
+  ) {
+    return json({ error: "OC422", detail: "correlation_id_invalid" }, 400);
+  }
 
   const batchLimit = Math.min(
-    Math.max(Number.isFinite(Number(raw.batchLimit)) ? Number(raw.batchLimit) : 1, 1),
+    Math.max(Number.isInteger(raw.batchLimit) ? Number(raw.batchLimit) : 1, 1),
     MAX_BATCH_LIMIT,
   );
-  const correlationId =
-    typeof raw.correlationId === "string" && /^[A-Za-z0-9_.:-]{1,120}$/.test(raw.correlationId)
-      ? raw.correlationId
-      : null;
+  const correlationId = typeof raw.correlationId === "string" ? raw.correlationId : null;
 
-  // ── Operator authorisation (capability only; grants no content control) ──
+  // ── Operator authorisation ──────────────────────────────────────────────
+  // Returns the capability decision AND the tenant scopes the actor may
+  // operate. The scope set is derived server-side from the actor's own
+  // assignments; it is never supplied by the caller.
   const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
@@ -104,6 +120,10 @@ Deno.serve(async (req) => {
   const authz = (auth.data ?? {}) as Record<string, unknown>;
   if (authz.allowed !== true) {
     return json({ error: "OC403", detail: String(authz.code ?? "permission_denied") }, 403);
+  }
+  const scopes = Array.isArray(authz.scopes) ? authz.scopes : [];
+  if (scopes.length === 0) {
+    return json({ error: "OC403", detail: "no_operable_scope" }, 403);
   }
 
   const service = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -117,6 +137,8 @@ Deno.serve(async (req) => {
     p_batch_limit: batchLimit,
     p_correlation_id: correlationId,
     p_deployed_revision: DEPLOYED_REVISION,
+    p_scopes: scopes,
+    p_execution_context: "operator",
   });
   if (claimed.error) {
     console.error("omni-comms-dispatch claim failed:", claimed.error.message);
@@ -132,8 +154,7 @@ Deno.serve(async (req) => {
     const claimToken = String(claim.claim_token ?? "");
     if (!attemptId || !claimToken) continue;
 
-    const outcome = await sendResendEmail({
-      secretRef: String(claim.secret_ref ?? ""),
+    const providerPayload = {
       fromAddress: String(claim.from_address ?? ""),
       fromName: (claim.from_name as string | null) ?? null,
       replyTo: (claim.reply_to_address as string | null) ?? null,
@@ -141,6 +162,44 @@ Deno.serve(async (req) => {
       subject: String(claim.subject ?? ""),
       text: String(claim.text_body ?? ""),
       html: (claim.html_body as string | null) ?? null,
+    };
+
+    // ── Payload fingerprint gate — MUST succeed before the provider is
+    //    contacted. A retry that carries different content under the same
+    //    deterministic idempotency key is refused, not sent.
+    const payloadHash = await canonicalProviderPayloadHash(providerPayload);
+    const hashGate = await service.rpc("omni_comms_priv_dispatch_record_payload_hash", {
+      p_attempt_id: attemptId,
+      p_claim_token: claimToken,
+      p_payload_hash: payloadHash,
+    });
+    const gate = (hashGate.data ?? {}) as Record<string, unknown>;
+    if (hashGate.error || gate.ok !== true) {
+      const gateCode = String(gate.code ?? hashGate.error?.message ?? "payload_hash_rejected");
+      const gateFailure = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
+        p_attempt_id: attemptId,
+        p_claim_token: claimToken,
+        p_status: "rejected",
+        p_provider_message_id: null,
+        p_provider_status_code: null,
+        p_provider_response: { category: "pre_dispatch_guard" },
+        p_error_code: gateCode,
+        p_error_detail: "Refused before contacting the provider by the payload fingerprint gate.",
+      });
+      results.push({
+        attempt_id: attemptId,
+        attempt_number: claim.attempt_number ?? null,
+        outcome: "blocked",
+        result_code: gateCode,
+        provider_contacted: false,
+        recorded: !gateFailure.error,
+      });
+      continue;
+    }
+
+    const outcome = await sendResendEmail({
+      secretRef: String(claim.secret_ref ?? ""),
+      ...providerPayload,
       // Deterministic: identical on every safe retry of this message.
       idempotencyKey: String(claim.provider_idempotency_key ?? ""),
     });
@@ -169,6 +228,7 @@ Deno.serve(async (req) => {
       attempt_number: claim.attempt_number ?? null,
       outcome: outcome.status,
       result_code: outcome.resultCode,
+      provider_contacted: true,
       recorded: !completion.error,
     });
   }

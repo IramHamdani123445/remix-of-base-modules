@@ -177,11 +177,28 @@ export function releaseWarnings(
   return (checks ?? []).filter((c) => c.state === 'warning');
 }
 
-/** The C6 terminal check always stays `not_implemented`. */
+/**
+ * Terminal prerequisite check 32.
+ *
+ * C7 Closure Correction: this is now a truthful dispatcher-installation
+ * check. It reports whether the controlled business dispatch RPCs exist —
+ * without them dispatch fails closed. The legacy C6 code is still accepted so
+ * that a database that has not yet received the closure migration renders
+ * correctly.
+ */
+export const BUSINESS_DISPATCH_CHECK_CODES = [
+  'business_dispatch_dispatcher_installed',
+  'business_dispatch_not_implemented_c6',
+] as const;
+
 export function businessDispatchCheck(
   checks: readonly ReleasePrerequisiteCheck[] | null | undefined,
 ): ReleasePrerequisiteCheck | null {
-  return (checks ?? []).find((c) => c.code === 'business_dispatch_not_implemented_c6') ?? null;
+  return (
+    (checks ?? []).find((c) =>
+      (BUSINESS_DISPATCH_CHECK_CODES as readonly string[]).includes(c.code),
+    ) ?? null
+  );
 }
 
 export function isReferenceRelease(r: ChannelReleaseControl | null | undefined): boolean {
