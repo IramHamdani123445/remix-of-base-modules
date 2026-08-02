@@ -339,7 +339,7 @@ const IdentityRow: React.FC<{
         {identityChannelValue(row)}
       </TableCell>
       <TableCell className="text-sm">
-        {row.department_id ? (departmentName ?? 'Department') : 'Organisation-wide'}
+        {identityScopeLabel(row)}
       </TableCell>
       <TableCell>
         <Badge variant={STATUS_VARIANT[row.status] ?? 'outline'}>{row.status}</Badge>
