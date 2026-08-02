@@ -5,8 +5,8 @@
  *   - Never imports the browser Supabase singleton; the caller passes a bound
  *     Omni-Comms RPC client.
  *   - Never queries tables directly; only bounded SECURITY DEFINER RPCs.
- *   - Never imports a provider SDK, never calls sendCommunication, never
- *     performs a DNS lookup, never fetches an endpoint URL, and never creates
+ *   - Never imports a provider SDK, never emits through the sending facade,
+ *     never performs a DNS lookup, never fetches an endpoint URL, and never creates
  *     a request, message, dispatch job or delivery attempt.
  */
 import {

@@ -1,8 +1,7 @@
 -- Omni-Comms Channels C3B — rollback for the channel-endpoint objects.
 --
 -- Scope: ONLY the objects introduced by C3B. This script does not touch the
--- Legacy Communication Hub, notification_*, core_template*, or any object from
--- Channels C1, C2 or C3A.
+-- Legacy Communication Hub or any object from Channels C1, C2 or C3A.
 --
 -- Run inside a transaction and verify before committing.
 

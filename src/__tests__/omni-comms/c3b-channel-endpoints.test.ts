@@ -178,9 +178,9 @@ describe('C3B — schema contract', () => {
     expect(OMNI_COMMS_SECRET_REF_PATTERN.source).toContain('OMNI_COMMS_');
   });
   it('12. grants the endpoint tables to service_role', () => {
-    expect(SQL).toMatch(/GRANT ALL ON public\.omni_comms_channel_endpoint TO service_role/);
+    expect(SQL).toMatch(/GRANT ALL ON TABLE public\.omni_comms_channel_endpoint TO service_role/);
     expect(SQL).toMatch(
-      /GRANT ALL ON public\.omni_comms_channel_endpoint_secret_ref TO service_role/,
+      /GRANT ALL ON TABLE public\.omni_comms_channel_endpoint_secret_ref TO service_role/,
     );
   });
 });

@@ -8,7 +8,8 @@
  *   - No provider SDK type is imported or modelled.
  *   - No credential VALUE is modelled; only bounded Edge secret reference
  *     NAMES (`OMNI_COMMS_*`).
- *   - No DNS record, no callback receiver, no dispatch/runtime shape.
+ *   - No DNS record, no callback receiver, no dispatch or runtime shape, and
+ *     no emission through the sending facade.
  *   - An endpoint is NEVER represented as externally verified by this screen.
  */
 import type { OmniCommsChannel } from '@/platform/omni-comms/domain/channelCatalogue';
