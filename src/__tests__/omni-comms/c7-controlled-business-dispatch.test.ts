@@ -119,7 +119,10 @@ describe('C7 — claim, lease and dispatch order', () => {
   });
 
   it('never treats a rejected stale claim as a delivery outcome', () => {
-    expect(dispatch).toContain('evidence write rejected');
+    // Final Closure Correction: the log is now a bounded code + correlation
+    // reference only, never a raw database message.
+    expect(dispatch).toContain('evidence_record_failed correlation=');
+
     expect(dispatch).toContain('recorded: !completion.error');
   });
 

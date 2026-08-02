@@ -48,6 +48,14 @@ const DEPLOYED_REVISION = Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "";
 const DISPATCHABLE_CHANNEL = "email";
 const MAX_BATCH_LIMIT = 10;
 
+/**
+ * Browser-facing details are bounded symbolic codes ONLY. A raw RPC, database
+ * or provider message is never returned to a caller and never logged: it can
+ * embed recipients, rendered content, credential references or values.
+ */
+const BOUNDED_CODE = /^[a-z][a-z0-9_]{0,63}$/;
+
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -115,11 +123,21 @@ Deno.serve(async (req) => {
   });
   const auth = await userClient.rpc("omni_comms_dispatch_tick_authorize");
   if (auth.error) {
-    return json({ error: "OC403", detail: auth.error.message }, 403);
+    // Bounded browser-facing detail only. The raw database error may embed
+    // identifiers or values and is never returned or logged.
+    console.error(
+      `omni-comms-dispatch authorization_failed correlation=${correlationId ?? "none"}`,
+    );
+    return json({ error: "OC403", detail: "authorization_failed" }, 403);
   }
+
   const authz = (auth.data ?? {}) as Record<string, unknown>;
   if (authz.allowed !== true) {
-    return json({ error: "OC403", detail: String(authz.code ?? "permission_denied") }, 403);
+    const denied = BOUNDED_CODE.test(String(authz.code ?? ""))
+      ? String(authz.code)
+      : "permission_denied";
+    return json({ error: "OC403", detail: denied }, 403);
+
   }
   const scopes = Array.isArray(authz.scopes) ? authz.scopes : [];
   if (scopes.length === 0) {
@@ -141,9 +159,12 @@ Deno.serve(async (req) => {
     p_execution_context: "operator",
   });
   if (claimed.error) {
-    console.error("omni-comms-dispatch claim failed:", claimed.error.message);
-    return json({ error: "OC500", detail: claimed.error.message }, 500);
+    console.error(
+      `omni-comms-dispatch dispatch_claim_failed correlation=${correlationId ?? "none"}`,
+    );
+    return json({ error: "OC500", detail: "dispatch_claim_failed" }, 500);
   }
+
 
   const plan = (claimed.data ?? {}) as Record<string, unknown>;
   const claims = Array.isArray(plan.claims) ? (plan.claims as Record<string, unknown>[]) : [];
@@ -175,7 +196,11 @@ Deno.serve(async (req) => {
     });
     const gate = (hashGate.data ?? {}) as Record<string, unknown>;
     if (hashGate.error || gate.ok !== true) {
-      const gateCode = String(gate.code ?? hashGate.error?.message ?? "payload_hash_rejected");
+      // Bounded code only — a raw RPC message is never surfaced or stored.
+      const gateCode = BOUNDED_CODE.test(String(gate.code ?? ""))
+        ? String(gate.code)
+        : "payload_hash_rejected";
+
       const gateFailure = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
         p_attempt_id: attemptId,
         p_claim_token: claimToken,
@@ -219,9 +244,13 @@ Deno.serve(async (req) => {
       p_error_detail: outcome.errorDetail,
     });
     if (completion.error) {
-      // A stale claim must never be treated as a delivery outcome.
-      console.error("omni-comms-dispatch evidence write rejected:", completion.error.message);
+      // A stale claim must never be treated as a delivery outcome. Only a
+      // bounded internal code and correlation reference are logged.
+      console.error(
+        `omni-comms-dispatch evidence_record_failed correlation=${correlationId ?? "none"} attempt=${attemptId}`,
+      );
     }
+
 
     results.push({
       attempt_id: attemptId,

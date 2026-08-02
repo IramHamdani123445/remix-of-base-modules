@@ -50,16 +50,49 @@ export interface ResendSendResult {
   readonly latencyMs: number;
 }
 
-/** Keeps only bounded, non-sensitive fields from a provider response. */
+/**
+ * Bounded provider CODE allow-list (C7 Final Closure Correction).
+ *
+ * A provider-supplied classification may be retained as evidence ONLY when it
+ * is a short, symbolic, allow-listed token. Free-text provider `message` /
+ * `error` bodies are never retained: they routinely embed recipient Email
+ * addresses, request echoes, account identifiers and validation values.
+ */
+export const PROVIDER_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+
+/** Bounded provider message-id allow-list. */
+export const PROVIDER_MESSAGE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
+
+export function boundedProviderCode(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return PROVIDER_CODE_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+export function boundedProviderMessageId(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return PROVIDER_MESSAGE_ID_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+/**
+ * Keeps ONLY bounded, allow-listed, non-sensitive fields from a provider
+ * response. Arbitrary provider text is discarded, never truncated-and-kept.
+ */
 export function redactProviderResponse(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== "object") return {};
   const r = raw as Record<string, unknown>;
   const out: Record<string, unknown> = {};
-  for (const key of ["id", "name", "message", "statusCode", "error"]) {
-    const v = r[key];
-    if (typeof v === "string") out[key] = v.slice(0, 300);
-    else if (typeof v === "number" || typeof v === "boolean") out[key] = v;
-  }
+  const id = boundedProviderMessageId(r.id);
+  if (id) out.id = id;
+  const code = boundedProviderCode(r.name);
+  if (code) out.provider_code = code;
+  if (typeof r.statusCode === "number") out.statusCode = r.statusCode;
+  // `message` and `error` are DELIBERATELY dropped: unrestricted provider text
+  // may contain Email addresses, request details or sensitive values. Only the
+  // fact that text was present is recorded.
+  if (typeof r.message === "string" && r.message !== "") out.message_present = true;
+  if (r.error !== undefined && r.error !== null) out.error_present = true;
   return out;
 }
 
@@ -68,27 +101,56 @@ export function isUncertainStatus(status: number): boolean {
   return status === 408 || status === 429 || status >= 500;
 }
 
-/** Resolves the credential VALUE for a bounded reference name. */
+/**
+ * The Deno runtime global. Declared locally so this Edge module can also be
+ * imported by the Node-based test runner, where `Deno` is stubbed.
+ */
+declare const Deno: { env: { get(name: string): string | undefined } };
+
+/** Bounded outcome of a credential-reference resolution. */
+export type ResolvedSecret =
+  | { ok: true; apiKey: string }
+  | { ok: false; errorCode: string; detail: string };
+
+
+/**
+ * Resolves the credential VALUE for a bounded reference name.
+ *
+ * The reference NAME is never echoed back: it must not reach delivery-attempt
+ * evidence, webhook evidence, message events, diagnostics, browser responses
+ * or logs. Only bounded codes and bounded generic text are returned.
+ */
 export function resolveSecret(
   secretRef: string,
-): { ok: true; apiKey: string } | { ok: false; errorCode: string; detail: string } {
+): ResolvedSecret {
+
   if (!OMNI_COMMS_SECRET_REF_PATTERN.test(secretRef ?? "")) {
     return {
       ok: false,
       errorCode: "secret_reference_invalid",
-      detail: "The configured credential reference name is not permitted.",
+      detail: "The configured provider credential is unavailable.",
     };
   }
-  const apiKey = Deno.env.get(secretRef) ?? "";
+  let apiKey = "";
+  try {
+    apiKey = Deno.env.get(secretRef) ?? "";
+  } catch {
+    return {
+      ok: false,
+      errorCode: "credential_resolution_failed",
+      detail: "The configured provider credential is unavailable.",
+    };
+  }
   if (apiKey.trim() === "") {
     return {
       ok: false,
       errorCode: "credential_missing",
-      detail: `No stored value for credential reference ${secretRef}.`,
+      detail: "The configured provider credential is unavailable.",
     };
   }
   return { ok: true, apiKey };
 }
+
 
 /**
  * Sends one Email through Resend. Never throws: every path returns a bounded,
@@ -98,19 +160,21 @@ export async function sendResendEmail(
   input: ResendSendInput,
 ): Promise<ResendSendResult> {
   const started = Date.now();
-  const secret = resolveSecret(input.secretRef);
-  if (!secret.ok) {
+  const secret: ResolvedSecret = resolveSecret(input.secretRef);
+  if (secret.ok === false) {
+    const failure = secret;
     return {
       status: "failed",
       resultCode: "configuration_invalid",
       providerMessageId: null,
       providerStatusCode: null,
       providerResponse: {},
-      errorCode: secret.errorCode,
-      errorDetail: secret.detail,
+      errorCode: failure.errorCode,
+      errorDetail: failure.detail,
       latencyMs: 0,
     };
   }
+
   if (!input.fromAddress) {
     return {
       status: "failed",
@@ -160,12 +224,12 @@ export async function sendResendEmail(
         providerMessageId: null,
         providerStatusCode: res.status,
         providerResponse: { ...redacted, latency_ms: latencyMs },
-        errorCode: typeof redacted.name === "string"
-          ? redacted.name
-          : uncertain
-            ? "provider_outcome_unknown"
-            : "provider_error",
-        errorDetail: typeof redacted.message === "string" ? redacted.message : null,
+        // Bounded allow-listed classification only — never provider free text.
+        errorCode: boundedProviderCode(redacted.provider_code) ??
+          (uncertain ? "provider_outcome_unknown" : "provider_error"),
+        errorDetail: uncertain
+          ? "The provider outcome is uncertain."
+          : "The provider rejected the request.",
         latencyMs,
       };
     }
@@ -173,7 +237,7 @@ export async function sendResendEmail(
     return {
       status: "accepted",
       resultCode: "provider_accepted",
-      providerMessageId: typeof redacted.id === "string" ? redacted.id : null,
+      providerMessageId: boundedProviderMessageId(redacted.id),
       providerStatusCode: res.status,
       providerResponse: { ...redacted, latency_ms: latencyMs },
       errorCode: null,
@@ -182,12 +246,8 @@ export async function sendResendEmail(
     };
   } catch (e) {
     const aborted = e instanceof DOMException && e.name === "AbortError";
-    const detail = aborted
-      ? "provider request timed out"
-      : e instanceof Error
-        ? e.message
-        : "provider request failed";
-    // The request may have reached the provider — never assert failure.
+    // The transport error text is NEVER retained: it can embed the endpoint,
+    // request details or resolved values. Only a bounded classification is.
     return {
       status: "outcome_unknown",
       resultCode: "provider_outcome_unknown",
@@ -195,10 +255,13 @@ export async function sendResendEmail(
       providerStatusCode: null,
       providerResponse: {},
       errorCode: aborted ? "provider_timeout" : "provider_unreachable",
-      errorDetail: detail,
+      errorDetail: aborted
+        ? "The provider request timed out."
+        : "The provider could not be reached.",
       latencyMs: Date.now() - started,
     };
   } finally {
+
     clearTimeout(timer);
   }
 }

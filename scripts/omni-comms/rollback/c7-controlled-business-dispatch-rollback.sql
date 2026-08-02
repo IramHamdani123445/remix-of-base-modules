@@ -17,7 +17,18 @@
 -- queued Email job can ever be claimed, so the system fails CLOSED. The
 -- prerequisite evaluator's check 32 (`business_dispatch_dispatcher_installed`)
 -- then reports `failed`, which blocks any release decision as well.
+--
+-- TRANSACTION MODE — DRY RUN BY DEFAULT (C7 Final Closure Correction)
+-- ----------------------------------------------------------------------------
+-- This script ends with ROLLBACK, not COMMIT. Running it exercises and proves
+-- every statement against the live schema WITHOUT changing anything. Applying
+-- the rollback for real requires an intentional operator change (replacing the
+-- final ROLLBACK with COMMIT) made outside this task, under change control.
+--
+-- Nothing is ever deleted: releases, requests, messages, jobs, attempts,
+-- webhook events and all C5B evidence are preserved in every mode.
 -- ============================================================================
+
 
 BEGIN;
 
@@ -51,8 +62,33 @@ UPDATE public.omni_comms_delivery_attempt
        lease_expires_at = NULL
  WHERE status IN ('started', 'dispatching', 'retry_scheduled');
 
+-- 2b. Explicitly suspend EVERY currently active controlled-pilot release that
+--     the dispatcher rollback affects. Removing the dispatcher must never
+--     leave a release advertising an active controlled pilot it can no longer
+--     honour.
+--
+--     The release-event ledger is append-only, so history is NEVER rewritten:
+--     suspension goes through the canonical private governance worker
+--     `omni_comms_priv_dispatch_suspend_pilot`, which records a new
+--     `suspended` release event and preserves every prior event.
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT id FROM public.omni_comms_channel_release_control
+     WHERE release_state = 'controlled_pilot'
+     ORDER BY id
+  LOOP
+    PERFORM public.omni_comms_priv_dispatch_suspend_pilot(
+      r.id,
+      'dispatcher_rollback',
+      'dispatcher_rolled_back');
+  END LOOP;
+END $$;
+
 -- 3. Remove the C7 dispatch RPCs (fail-closed: no claim surface remains).
 --    Signatures match the C7 Closure Correction exactly.
+
 DROP FUNCTION IF EXISTS public.omni_comms_priv_dispatch_claim_email(text, integer, text, text, jsonb, text);
 DROP FUNCTION IF EXISTS public.omni_comms_priv_dispatch_claim_email(text, integer, text, text);
 DROP FUNCTION IF EXISTS public.omni_comms_priv_dispatch_scheduler_tick(text, integer, text, text);
@@ -80,9 +116,15 @@ DROP FUNCTION IF EXISTS public.omni_comms_dispatch_diagnostics(uuid, uuid);
 ALTER TABLE public.omni_comms_delivery_attempt
   ENABLE TRIGGER omni_comms_delivery_attempt_immutable_trg;
 
-COMMIT;
+-- 7. DRY RUN BY DEFAULT. The script ends with ROLLBACK so that a review run
+--    proves every statement without changing anything. Applying the rollback
+--    for real is an intentional operator change: replace the ROLLBACK below
+--    with COMMIT under change control. No evidence is ever deleted in either
+--    mode.
+ROLLBACK;
 
 -- Post-rollback expectations:
+
 --   * no claim RPC exists                    -> claimed_jobs is impossible;
 --   * prerequisite check 32                  -> failed (fails closed);
 --   * live_delivery_enabled = false          -> unchanged;

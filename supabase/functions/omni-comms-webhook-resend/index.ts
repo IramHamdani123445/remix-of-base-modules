@@ -114,7 +114,14 @@ Deno.serve(async (req) => {
     },
   );
   if (testError) {
-    console.error("omni-comms-webhook-resend channel-test record failure:", testError.message);
+    // C5B-FIRST BOUNDARY: if the technical-test matching RPC itself fails we
+    // do NOT know whether this provider message id belongs to a channel test.
+    // Continuing into C7 business matching could record a technical-test
+    // callback as unmatched business evidence, so processing stops here.
+    console.error(
+      `omni-comms-webhook-resend channel_test_record_failed provider_event=${svixId || "none"}`,
+    );
+    return json({ error: "record_failed" }, 500);
   }
   const testRecord = (testResult ?? {}) as Record<string, unknown>;
   const testMatched =
@@ -139,9 +146,14 @@ Deno.serve(async (req) => {
     p_signature_verified: true,
   });
   if (business.error) {
-    console.error("omni-comms-webhook-resend business record failure:", business.error.message);
-    return json({ error: "record_failed", detail: business.error.message }, 500);
+    // Bounded response and bounded log only — the raw database error may
+    // contain recipient, content or account values.
+    console.error(
+      `omni-comms-webhook-resend business_record_failed provider_event=${svixId || "none"}`,
+    );
+    return json({ error: "record_failed" }, 500);
   }
+
   const businessResult = (business.data ?? {}) as Record<string, unknown>;
   if (businessResult.code === "callback_ambiguous") {
     return json({ accepted: true, scope: "unmatched", ...businessResult });
