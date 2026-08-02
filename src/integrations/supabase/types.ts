@@ -81920,7 +81920,7 @@ export type Database = {
           retired_by: string | null
           retirement_reason: string | null
           sandbox_mode: boolean
-          secret_ref: string
+          secret_ref: string | null
           status: string
           updated_at: string
           updated_by: string | null
@@ -81949,7 +81949,7 @@ export type Database = {
           retired_by?: string | null
           retirement_reason?: string | null
           sandbox_mode?: boolean
-          secret_ref: string
+          secret_ref?: string | null
           status?: string
           updated_at?: string
           updated_by?: string | null
@@ -81978,7 +81978,7 @@ export type Database = {
           retired_by?: string | null
           retirement_reason?: string | null
           sandbox_mode?: boolean
-          secret_ref?: string
+          secret_ref?: string | null
           status?: string
           updated_at?: string
           updated_by?: string | null
