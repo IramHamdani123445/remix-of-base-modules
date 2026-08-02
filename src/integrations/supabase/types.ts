@@ -82015,11 +82015,12 @@ export type Database = {
           organization_id: string
           priority: number
           release_control_id: string | null
-          release_decision_snapshot: Json
-          release_expires_at: string | null
-          release_fingerprint: string | null
-          release_state_snapshot: string | null
-          release_version: number | null
+          release_decision_at: string | null
+          release_decision_snapshot: Json | null
+          release_expires_at_decision: string | null
+          release_fingerprint_at_decision: string | null
+          release_state_at_decision: string | null
+          release_version_at_decision: number | null
           request_id: string
           scheduled_at: string | null
           status: string
@@ -82046,11 +82047,12 @@ export type Database = {
           organization_id: string
           priority?: number
           release_control_id?: string | null
-          release_decision_snapshot?: Json
-          release_expires_at?: string | null
-          release_fingerprint?: string | null
-          release_state_snapshot?: string | null
-          release_version?: number | null
+          release_decision_at?: string | null
+          release_decision_snapshot?: Json | null
+          release_expires_at_decision?: string | null
+          release_fingerprint_at_decision?: string | null
+          release_state_at_decision?: string | null
+          release_version_at_decision?: number | null
           request_id: string
           scheduled_at?: string | null
           status?: string
@@ -82077,11 +82079,12 @@ export type Database = {
           organization_id?: string
           priority?: number
           release_control_id?: string | null
-          release_decision_snapshot?: Json
-          release_expires_at?: string | null
-          release_fingerprint?: string | null
-          release_state_snapshot?: string | null
-          release_version?: number | null
+          release_decision_at?: string | null
+          release_decision_snapshot?: Json | null
+          release_expires_at_decision?: string | null
+          release_fingerprint_at_decision?: string | null
+          release_state_at_decision?: string | null
+          release_version_at_decision?: number | null
           request_id?: string
           scheduled_at?: string | null
           status?: string
@@ -104978,6 +104981,10 @@ export type Database = {
       omni_comms_priv_reject_nonlocal_refs: {
         Args: { p_schema: Json }
         Returns: undefined
+      }
+      omni_comms_priv_release_decision_snapshot_bounded: {
+        Args: { p_snapshot: Json }
+        Returns: boolean
       }
       omni_comms_priv_require_capability: {
         Args: { p_action: string }
