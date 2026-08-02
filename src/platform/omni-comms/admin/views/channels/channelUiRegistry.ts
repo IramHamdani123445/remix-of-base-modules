@@ -29,6 +29,7 @@ export type ChannelWorkspaceTab = OmniCommsGenericTab;
 
 export const CHANNEL_WORKSPACE_TAB_LABELS: Record<ChannelWorkspaceTab, string> = {
   overview: 'Overview',
+  providers: 'Providers',
   accounts: 'Accounts',
   identities: 'Identities',
   endpoints: 'Endpoints',
