@@ -159,8 +159,8 @@ describe('C5A closure — 3. explicit capability flags', () => {
     // C5B implements approved provider TEST delivery. It is still a distinct
     // capability: a passed preflight never implies delivery.
     expect(EMAIL_PROVIDER_DELIVERY_TEST_IMPLEMENTED).toBe(true);
-    expect(EMAIL_CONFIGURATION_PREFLIGHT_IMPLEMENTED)
-      .not.toBe(EMAIL_PROVIDER_DELIVERY_TEST_IMPLEMENTED === false);
+    expect<boolean>(EMAIL_CONFIGURATION_PREFLIGHT_IMPLEMENTED).toBe(true);
+
     // With no delivery evidence supplied, readiness must not claim delivery.
     expect(projectEmailReadiness(null, null, summary()).providerDeliveryTestImplemented)
       .toBe(true);
