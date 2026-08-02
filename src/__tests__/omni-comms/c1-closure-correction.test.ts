@@ -231,6 +231,31 @@ describe('C1 closure — one Email readiness projection', () => {
           },
         ] as never,
       }),
+      // C4B — readiness additionally requires a genuine effective policy.
+      {
+        organization_id: 'org1', department_id: null, department_name: null,
+        channel: 'email',
+        organization_policy: null, department_policy: null,
+        effective_policy: {
+          id: 'p1', organization_id: 'org1', department_id: null,
+          department_name: null, channel: 'email',
+          operational_state: 'configuration', department_override_enabled: true,
+          enabled: true, live_delivery_enabled: false,
+          per_minute_limit: null, per_day_limit: null,
+          max_recipients_per_request: null,
+          quiet_hours_start: null, quiet_hours_end: null,
+          quiet_hours_timezone: null, retry_profile: 'none',
+          request_timeout_seconds: null, retention_days: null,
+          cost_currency: null, daily_cost_limit_minor: null,
+          per_message_cost_limit_minor: null, channel_policy_config: {},
+          data_origin: 'user', created_at: '2026-01-01T00:00:00Z',
+          created_by: null, updated_at: '2026-01-01T00:00:00Z', updated_by: null,
+        },
+        effective_source: 'organisation_baseline',
+        department_override_count: 0, reference_policies: [],
+        hidden_reference_count: 0, can_configure: true,
+        generated_at: '2026-08-02T00:00:00Z',
+      } as never,
     );
     expect(complete.prerequisitesMet).toBe(true);
     expect(complete.state).toBe('prerequisites_met');
@@ -296,7 +321,8 @@ describe('C1 closure — preservation and safety', () => {
     expect(bindings).toContain('setChannelBindingLifecycle');
     expect(bindings).not.toContain('recordBindingVerification');
 
-    expect(policies).toContain('upsertEmailChannelSetting');
+    // C4B — generic policy mutation supersedes the Email-only setting RPC.
+    expect(policies).toContain('upsertChannelPolicy');
   });
 
   it('12. no migration, provider call, send or runtime mutation is introduced', () => {

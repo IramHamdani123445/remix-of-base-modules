@@ -81194,49 +81194,85 @@ export type Database = {
       omni_comms_channel_setting: {
         Row: {
           channel: string
+          channel_policy_config: Json
+          cost_currency: string | null
           created_at: string
           created_by: string | null
+          daily_cost_limit_minor: number | null
+          data_origin: string
           department_id: string | null
+          department_override_enabled: boolean
           enabled: boolean
           id: string
           live_delivery_enabled: boolean
+          max_recipients_per_request: number | null
+          operational_state: string
           organization_id: string
+          per_day_limit: number | null
+          per_message_cost_limit_minor: number | null
           per_minute_limit: number | null
           quiet_hours_end: string | null
           quiet_hours_start: string | null
           quiet_hours_timezone: string | null
+          request_timeout_seconds: number | null
+          retention_days: number | null
+          retry_profile: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           channel: string
+          channel_policy_config?: Json
+          cost_currency?: string | null
           created_at?: string
           created_by?: string | null
+          daily_cost_limit_minor?: number | null
+          data_origin?: string
           department_id?: string | null
+          department_override_enabled?: boolean
           enabled?: boolean
           id?: string
           live_delivery_enabled?: boolean
+          max_recipients_per_request?: number | null
+          operational_state?: string
           organization_id: string
+          per_day_limit?: number | null
+          per_message_cost_limit_minor?: number | null
           per_minute_limit?: number | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           quiet_hours_timezone?: string | null
+          request_timeout_seconds?: number | null
+          retention_days?: number | null
+          retry_profile?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           channel?: string
+          channel_policy_config?: Json
+          cost_currency?: string | null
           created_at?: string
           created_by?: string | null
+          daily_cost_limit_minor?: number | null
+          data_origin?: string
           department_id?: string | null
+          department_override_enabled?: boolean
           enabled?: boolean
           id?: string
           live_delivery_enabled?: boolean
+          max_recipients_per_request?: number | null
+          operational_state?: string
           organization_id?: string
+          per_day_limit?: number | null
+          per_message_cost_limit_minor?: number | null
           per_minute_limit?: number | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           quiet_hours_timezone?: string | null
+          request_timeout_seconds?: number | null
+          retention_days?: number | null
+          retry_profile?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -103081,6 +103117,28 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_channel_policy_summary: {
+        Args: {
+          p_channel?: string
+          p_department_id?: string
+          p_include_reference?: boolean
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_policy_upsert: {
+        Args: {
+          p_channel: string
+          p_channel_policy_config?: Json
+          p_common_policy: Json
+          p_correlation_id?: string
+          p_department_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_organization_id: string
+        }
+        Returns: string
+      }
       omni_comms_channel_provider_account_set_lifecycle: {
         Args: {
           p_action: string
@@ -103609,6 +103667,26 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_priv_channel_policy_json: {
+        Args: {
+          p_row: Database["public"]["Tables"]["omni_comms_channel_setting"]["Row"]
+        }
+        Returns: Json
+      }
+      omni_comms_priv_channel_policy_upsert: {
+        Args: {
+          p_actor_id: string
+          p_channel: string
+          p_channel_policy_config: Json
+          p_common_policy: Json
+          p_correlation_id: string
+          p_department_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_organization_id: string
+        }
+        Returns: string
+      }
       omni_comms_priv_compute_checksum: {
         Args: {
           p_event_code: string
@@ -103722,6 +103800,14 @@ export type Database = {
           p_endpoint_config: Json
           p_endpoint_type: string
           p_secret_refs: Json
+        }
+        Returns: Json
+      }
+      omni_comms_priv_normalize_channel_policy: {
+        Args: {
+          p_channel: string
+          p_channel_policy_config: Json
+          p_common_policy: Json
         }
         Returns: Json
       }
