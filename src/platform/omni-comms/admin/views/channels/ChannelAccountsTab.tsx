@@ -8,7 +8,7 @@
  *
  * Boundaries (permanent):
  *   - No provider SDK import.
- *   - No sendCommunication() call, no request/message/job/attempt creation.
+ *   - No façade emission call, no request/message/job/attempt creation.
  *   - Only bounded secret REFERENCE names are entered or displayed; a raw
  *     credential value is never requested, stored, returned or logged.
  *   - Reference/simulation data is hidden by default and never contributes to
