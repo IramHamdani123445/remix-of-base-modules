@@ -70,7 +70,7 @@ async def main() -> int:
         await page.screenshot(path=str(SCREENSHOTS / "1_overview.png"))
 
         # 2. Setup Wizard tab is present on the existing route.
-        tab = page.get_by_test_id("omni-comms-landing-tab-setup")
+        tab = page.get_by_test_id("omni-comms-nav-setup")
         if await tab.count() == 0:
             failures.append("Setup Wizard tab is missing from Overview.")
         else:
