@@ -359,6 +359,33 @@ export const ChannelTestDeliveryCard: React.FC<{
             onChange={setRecipientsText}
             placeholder="qa.mailbox@example.com"
           />
+          <div className="grid gap-3 md:grid-cols-3">
+            <Field
+              label="Approval window (hours, max 24)"
+              value={expiresInHours}
+              onChange={setExpiresInHours}
+              placeholder="4"
+            />
+            <Field
+              label="Maximum deliveries (1–20)"
+              value={maxDeliveries}
+              onChange={setMaxDeliveries}
+              placeholder="5"
+            />
+            <Field
+              label="Minimum spacing (seconds, 30–3600)"
+              value={minIntervalSeconds}
+              onChange={setMinIntervalSeconds}
+              placeholder="60"
+            />
+          </div>
+          {diagnostics?.controlled_test_approval_expires_at ? (
+            <p className="text-xs text-muted-foreground" data-testid="omni-comms-test-delivery-approval-expiry">
+              Approval expires{' '}
+              {new Date(diagnostics.controlled_test_approval_expires_at).toLocaleString()}
+              {isApprovalActive(diagnostics) ? '' : ' — expired'}
+            </p>
+          ) : null}
           <Button
             size="sm"
             variant="secondary"
@@ -369,20 +396,20 @@ export const ChannelTestDeliveryCard: React.FC<{
           </Button>
         </div>
 
-        <Field
-          label="Test message subject"
-          value={subject}
-          onChange={setSubject}
-          placeholder="Omni-Comms channel test"
-        />
+        <div className="grid gap-3 md:grid-cols-2" data-testid="omni-comms-test-delivery-content">
+          <Detail label="Preflight subject" value={subject || '—'} />
+          <Detail label="Preflight body" value={bodyText || '—'} />
+        </div>
         <p className="text-xs text-muted-foreground">
-          The subject is prefixed with [TEST] and the body states plainly that the
-          message is a technical test with no personal or case information.
+          The provider message must carry exactly the subject and body that passed the
+          configuration preflight; the server rejects any other content.
         </p>
 
         <div className="text-xs text-muted-foreground" data-testid="omni-comms-test-delivery-idempotency">
           Delivery key: <span className="font-mono">{idempotencyKey}</span>
-          {' — retrying the same delivery returns the existing evidence without sending again.'}
+          {' — retrying the same delivery reuses the provider idempotency key, so it '}
+          {'returns the existing evidence instead of sending again.'}
+          {current ? ` Attempts used: ${attemptsUsed}/${MAX_DELIVERY_ATTEMPTS}.` : ''}
         </div>
 
         {blockReason ? (
@@ -400,7 +427,11 @@ export const ChannelTestDeliveryCard: React.FC<{
             data-testid="omni-comms-test-delivery-send"
           >
             <Send className="h-4 w-4 mr-1" />
-            {sending ? 'Sending test message…' : 'Send provider test message'}
+            {sending
+              ? 'Sending test message…'
+              : retryable
+                ? 'Retry safely (same idempotency key)'
+                : 'Send provider test message'}
           </Button>
           <Button
             variant="secondary"
