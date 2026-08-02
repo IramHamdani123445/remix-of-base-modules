@@ -124,9 +124,10 @@ describe('C1 — URL channel and tab state', () => {
     }
   });
 
-  it('9. old providers tab aliases to overview', () => {
-    expect(resolveChannelWorkspaceTab('providers')).toBe('overview');
+  it('9. providers is now a first-class tab (C2.1), no longer aliased', () => {
+    expect(resolveChannelWorkspaceTab('providers')).toBe('providers');
   });
+
 
   it('10. old senders tab aliases to identities', () => {
     expect(resolveChannelWorkspaceTab('senders')).toBe('identities');
