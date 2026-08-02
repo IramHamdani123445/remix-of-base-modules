@@ -226,7 +226,7 @@ export const ChannelAccountsTab: React.FC<{
           title={`${definition.name} provider accounts`}
           description={NO_PROVIDER_ADAPTER_MESSAGE}
           bullets={definition.accounts.examples}
-          footer={`${definition.accounts.meaning} Provider adapters are installed by the platform, never created here.`}
+          footer={`${definition.accounts.meaning} Provider adapters are installed by the platform. No account can be created here. Live delivery remains unavailable.`}
         />
         {referenceProviders.length > 0 && showReference ? (
           <p className="text-xs text-muted-foreground">
