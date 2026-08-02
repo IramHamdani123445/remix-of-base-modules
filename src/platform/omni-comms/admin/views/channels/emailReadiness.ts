@@ -126,7 +126,19 @@ export interface EmailReadinessProjection {
 export function projectEmailReadiness(
   summary: EmailConfigSummary | null | undefined,
   policySummary?: ChannelPolicySummary | null,
+  /**
+   * C5A — Test Centre summary for the selected binding. When omitted the
+   * technical-test check stays `not_implemented` (callers that cannot supply
+   * a preflight result must not be able to fabricate readiness).
+   */
+  testCentre?: ChannelTestCentreSummary | null,
 ): EmailReadinessProjection {
+  const testPassed = Boolean(
+    testCentre?.latest_run
+    && !testCentre.latest_run_is_stale
+    && testCentre.latest_run.status === 'passed',
+  );
+  const testStale = Boolean(testCentre?.latest_run && testCentre.latest_run_is_stale);
   const part = partitionEmailConfig({
     accounts: summary?.provider_accounts,
     senders: summary?.sender_identities,
