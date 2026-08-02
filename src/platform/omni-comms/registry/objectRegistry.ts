@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Approved logical object catalogue (23 objects: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, and the two Channels C2 generic provider-account objects).
+ * Omni-Comms — Approved logical object catalogue (25 objects: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, the two Channels C2 generic provider-account objects, and the two Channels C3B channel-endpoint objects).
  *
  * This is the CEILING for the new system. No object listed here has been
  * created. This file does not create tables, policies, functions, or types.
@@ -95,6 +95,29 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     status: 'AVAILABLE',
     introductionStory: 'Channels C2 — Generic provider accounts',
   },
+
+  {
+    name: 'omni_comms_channel_endpoint',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Provider-independent channel endpoint configuration: sending domains, callbacks, webhooks, internal realtime endpoints and print render services. Configuration only — no DNS, provider or callback call is made.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C3B — Domains and channel endpoints',
+  },
+  {
+    name: 'omni_comms_channel_endpoint_secret_ref',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Bounded Edge secret REFERENCE names per endpoint and purpose (signing, verification, auth). Never holds credential values.',
+    status: 'AVAILABLE',
+    introductionStory: 'Channels C3B — Domains and channel endpoints',
+  },
+
+
 
   {
     name: 'omni_comms_sender_identity',

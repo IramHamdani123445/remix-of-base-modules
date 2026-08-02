@@ -81061,6 +81061,136 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_channel_endpoint: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          channel: string
+          code: string
+          created_at: string
+          created_by: string | null
+          data_origin: string
+          department_id: string | null
+          display_name: string
+          endpoint_config: Json
+          endpoint_type: string
+          id: string
+          organization_id: string
+          provider_account_id: string | null
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          verification_checked_at: string | null
+          verification_detail: string | null
+          verification_result_code: string | null
+          verification_status: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          channel: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          display_name: string
+          endpoint_config?: Json
+          endpoint_type: string
+          id?: string
+          organization_id: string
+          provider_account_id?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          verification_checked_at?: string | null
+          verification_detail?: string | null
+          verification_result_code?: string | null
+          verification_status?: string
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          channel?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          display_name?: string
+          endpoint_config?: Json
+          endpoint_type?: string
+          id?: string
+          organization_id?: string
+          provider_account_id?: string | null
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          verification_checked_at?: string | null
+          verification_detail?: string | null
+          verification_result_code?: string | null
+          verification_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_channel_endpoint_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_channel_endpoint_secret_ref: {
+        Row: {
+          channel_endpoint_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          purpose: string
+          secret_ref: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          channel_endpoint_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          purpose: string
+          secret_ref: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          channel_endpoint_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          purpose?: string
+          secret_ref?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_channel_endpoint_secret_ref_channel_endpoint_id_fkey"
+            columns: ["channel_endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_endpoint"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_channel_setting: {
         Row: {
           channel: string
@@ -102806,6 +102936,42 @@ export type Database = {
         Args: { p_apply?: boolean; p_organization_code?: string }
         Returns: Json
       }
+      omni_comms_channel_endpoint_set_lifecycle: {
+        Args: {
+          p_action: string
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
+        }
+        Returns: string
+      }
+      omni_comms_channel_endpoint_summary: {
+        Args: {
+          p_channel?: string
+          p_department_id?: string
+          p_include_reference?: boolean
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_channel_endpoint_upsert_draft: {
+        Args: {
+          p_channel: string
+          p_code: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_display_name: string
+          p_endpoint_config?: Json
+          p_endpoint_type: string
+          p_expected_updated_at: string
+          p_id: string
+          p_organization_id: string
+          p_provider_account_id: string
+          p_secret_refs?: Json
+        }
+        Returns: string
+      }
       omni_comms_channel_identity_set_lifecycle: {
         Args: {
           p_action: string
@@ -103280,6 +103446,35 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_priv_channel_endpoint_lifecycle: {
+        Args: {
+          p_action: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_channel_endpoint_upsert: {
+        Args: {
+          p_actor_id: string
+          p_channel: string
+          p_code: string
+          p_correlation_id: string
+          p_department_id: string
+          p_display_name: string
+          p_endpoint_config: Json
+          p_endpoint_type: string
+          p_expected_updated_at: string
+          p_id: string
+          p_organization_id: string
+          p_provider_account_id: string
+          p_secret_refs: Json
+        }
+        Returns: string
+      }
       omni_comms_priv_channel_identity_lifecycle: {
         Args: {
           p_action: string
@@ -103327,6 +103522,10 @@ export type Database = {
       }
       omni_comms_priv_dry_run_gate_state: { Args: never; Returns: string }
       omni_comms_priv_email_provider_id: { Args: never; Returns: string }
+      omni_comms_priv_endpoint_requires_account: {
+        Args: { p_channel: string; p_config: Json; p_endpoint_type: string }
+        Returns: boolean
+      }
       omni_comms_priv_escape_ilike: {
         Args: { p_input: string }
         Returns: string
@@ -103409,6 +103608,23 @@ export type Database = {
       omni_comms_priv_next_event_sequence: {
         Args: { p_request_id: string }
         Returns: number
+      }
+      omni_comms_priv_normalize_channel_endpoint: {
+        Args: {
+          p_channel: string
+          p_endpoint_config: Json
+          p_endpoint_type: string
+          p_secret_refs: Json
+        }
+        Returns: Json
+      }
+      omni_comms_priv_normalize_endpoint_domain: {
+        Args: { p_domain: string; p_field: string }
+        Returns: string
+      }
+      omni_comms_priv_normalize_endpoint_url: {
+        Args: { p_field: string; p_url: string }
+        Returns: string
       }
       omni_comms_priv_normalize_identity_config: {
         Args: { p_channel: string; p_config: Json; p_identity_type: string }
@@ -103600,6 +103816,16 @@ export type Database = {
       }
       omni_comms_priv_validate_channel_content: {
         Args: { p_channel: string; p_content: Json }
+        Returns: undefined
+      }
+      omni_comms_priv_validate_endpoint_account: {
+        Args: {
+          p_account_id: string
+          p_channel: string
+          p_organization_id: string
+          p_require_active: boolean
+          p_required: boolean
+        }
         Returns: undefined
       }
       omni_comms_priv_validate_schema: {

@@ -607,7 +607,7 @@ describe('Phase 3 — registry ceilings', () => {
   });
 
   it('keeps exactly twenty-one logical database objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(25);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(27);
   });
 });
 
