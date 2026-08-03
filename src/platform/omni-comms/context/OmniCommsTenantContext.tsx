@@ -139,6 +139,11 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
         writeSession(SESSION_ORG_KEY, null);
         setDeptIdState(null);
         writeSession(SESSION_DEPT_KEY, null);
+      } else if (!organizationId && active.length === 1) {
+        // Single authorised organisation: select it so administration screens
+        // are not gated behind a selector with only one possible answer.
+        setOrgIdState(active[0].id);
+        writeSession(SESSION_ORG_KEY, active[0].id);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load organisations");
