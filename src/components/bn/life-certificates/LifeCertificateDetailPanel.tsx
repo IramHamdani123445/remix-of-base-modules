@@ -164,9 +164,11 @@ const LifeCertificateDetailPanel: React.FC<Props> = ({ lifeCertificateId, onClos
                     </Alert>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                      {field('Document', o.evidence.document_name)}
+                      {field('Document', o.evidence.evidence_document?.file_name ?? o.evidence.document_name)}
                       {field('Evidence type', o.evidence.evidence_type)}
-                      {field('Version', String(o.evidence.evidence_version ?? '—'))}
+                      {field('Receipt revision', String(o.evidence.evidence_receipt_revision ?? '—'))}
+                      {field('Document type', o.evidence.evidence_document?.document_type_code)}
+
                       {field(
                         'Integrity evidence',
                         o.evidence.evidence_integrity_status === 'VERIFIED'
