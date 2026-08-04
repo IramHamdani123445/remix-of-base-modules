@@ -712,11 +712,19 @@ export default function CaseDetailView() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Notices</CardTitle>
-                <Button size="sm" variant="outline" onClick={() => navigate('/compliance/enforcement/notices', {
-                  state: { prefill: { case_id: c.id, case_number: c.case_number, employer_id: c.employer_id, employer_name: c.employer_name } }
-                })}>
-                  <Mail className="h-4 w-4 mr-1" />Create Notice
-                </Button>
+                {!caseIsClosed && noticesFeatureEnabled && (
+                  <PermissionButton
+                    moduleName={COMPLIANCE_MODULE}
+                    actionName="create"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => navigate('/compliance/enforcement/notices', {
+                      state: { prefill: { case_id: c.id, case_number: c.case_number, employer_id: c.employer_id, employer_name: c.employer_name } }
+                    })}
+                  >
+                    <Mail className="h-4 w-4 mr-1" />Create Notice
+                  </PermissionButton>
+                )}
               </div>
             </CardHeader>
             <CardContent>
