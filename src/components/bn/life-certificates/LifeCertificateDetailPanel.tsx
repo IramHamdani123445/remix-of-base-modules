@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { AlertTriangle, Lock, ShieldAlert, EyeOff } from 'lucide-react';
 import { useActionPermissions } from '@/hooks/useActionPermission';
-import { useBnFeatureEnabled } from '@/lib/bn/featureToggles';
+import { useLifeCertificateActionsEnabled } from '@/hooks/bn/useLifeCertificateActionsEnabled';
 import {
   fetchDetail, fetchTimeline,
   type LifeCertificateDetail, type LifeCertificateTimeline,
