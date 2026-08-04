@@ -99920,6 +99920,10 @@ export type Database = {
         Args: { p_actor: string; p_cert: string }
         Returns: boolean
       }
+      _bn_lc_can_access_award: {
+        Args: { p_actor: string; p_award: string }
+        Returns: boolean
+      }
       _bn_lc_comm: {
         Args: {
           p_award: string
