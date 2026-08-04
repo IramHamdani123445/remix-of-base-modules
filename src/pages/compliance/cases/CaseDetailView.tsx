@@ -373,32 +373,26 @@ export default function CaseDetailView() {
             {/* Forward to Legal — full 6-step wizard vs. quick hand-off */}
             {!caseIsClosed && !(c as any).lg_intake_id && !(c as any).legal_case_id &&
               isComplianceFeatureEnabled('legal.handoff') && (
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <PermissionButton
-                    moduleName={COMPLIANCE_MODULE}
-                    actionName="edit"
-                    size="sm"
-                    title="Full 6-step referral: select items, review history and attach documents before sending to Legal."
-                    onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}
-                  >
-                    <Scale className="h-4 w-4 mr-1" />Refer to Legal (Wizard)
-                  </PermissionButton>
-                  <PermissionButton
-                    moduleName={COMPLIANCE_MODULE}
-                    actionName="edit"
-                    size="sm"
-                    variant="outline"
-                    title="Fast hand-off: sends the whole case to Legal intake without item selection."
-                    onClick={() => setForwardLegalOpen(true)}
-                  >
-                    <Send className="h-4 w-4 mr-1" />Quick Forward
-                  </PermissionButton>
-                </div>
-                <p className="text-[11px] text-muted-foreground max-w-md">
-                  Wizard = full referral with item selection, history and documents. Quick Forward =
-                  immediate hand-off of the whole case to Legal intake.
-                </p>
+              <div className="flex items-center gap-2">
+                <PermissionButton
+                  moduleName={COMPLIANCE_MODULE}
+                  actionName="edit"
+                  size="sm"
+                  title="Full 6-step referral: select items, review history and attach documents before sending to Legal. Wizard = full referral with item selection, history and documents."
+                  onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}
+                >
+                  <Scale className="h-4 w-4 mr-1" />Refer to Legal (Wizard)
+                </PermissionButton>
+                <PermissionButton
+                  moduleName={COMPLIANCE_MODULE}
+                  actionName="edit"
+                  size="sm"
+                  variant="outline"
+                  title="Fast hand-off: sends the whole case to Legal intake without item selection. Quick Forward = immediate hand-off of the whole case to Legal intake."
+                  onClick={() => setForwardLegalOpen(true)}
+                >
+                  <Send className="h-4 w-4 mr-1" />Quick Forward
+                </PermissionButton>
               </div>
             )}
 
