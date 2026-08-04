@@ -598,11 +598,21 @@ export default function CaseDetailView() {
           <TabsTrigger value="violations">
             <Link2 className="h-4 w-4 mr-2" />Violations ({linkedViolations.length})
           </TabsTrigger>
-          <TabsTrigger value="notices">
-            <Mail className="h-4 w-4 mr-2" />Notices ({caseNotices.length})
+          {noticesFeatureEnabled && (
+            <TabsTrigger value="notices">
+              <Mail className="h-4 w-4 mr-2" />Notices ({caseNotices.length})
+            </TabsTrigger>
+          )}
+          {arrangementsFeatureEnabled && (
+            <TabsTrigger value="arrangements">
+              <DollarSign className="h-4 w-4 mr-2" />Arrangements ({caseArrangements.length})
+            </TabsTrigger>
+          )}
+          <TabsTrigger value="documents">
+            <FolderOpen className="h-4 w-4 mr-2" />Documents
           </TabsTrigger>
-          <TabsTrigger value="arrangements">
-            <DollarSign className="h-4 w-4 mr-2" />Arrangements ({caseArrangements.length})
+          <TabsTrigger value="inspections">
+            <ClipboardCheck className="h-4 w-4 mr-2" />Inspections
           </TabsTrigger>
           <TabsTrigger value="history">
             <History className="h-4 w-4 mr-2" />History ({caseHistory.length})
