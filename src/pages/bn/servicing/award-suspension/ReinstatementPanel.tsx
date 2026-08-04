@@ -240,6 +240,11 @@ export function ReinstatementPanel({
 
           <div className="space-y-1">
             <h4 className="text-xs font-medium">Arrears (server-calculated)</h4>
+            {!canViewPaymentImpact && (
+              <p className="text-xs text-muted-foreground">
+                Arrears figures require the payment-impact permission.
+              </p>
+            )}
             {arrearsError && <p className="text-xs text-destructive">{arrearsError}</p>}
             {arrears && (
               <div className="rounded-md border p-2 text-xs space-y-1">
