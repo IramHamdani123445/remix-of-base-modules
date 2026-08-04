@@ -763,8 +763,10 @@ export default function CaseDetailView() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Payment Arrangements</CardTitle>
-                {!['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status) && (Number(c.total_amount ?? 0) - Number(c.amount_collected ?? 0)) > 0 && (
-                  <Button
+                {!caseIsClosed && arrangementsFeatureEnabled && (Number(c.total_amount ?? 0) - Number(c.amount_collected ?? 0)) > 0 && (
+                  <PermissionButton
+                    moduleName={COMPLIANCE_MODULE}
+                    actionName="create"
                     size="sm"
                     variant="outline"
                     onClick={() => setArrangementDialogOpen(true)}
@@ -772,7 +774,7 @@ export default function CaseDetailView() {
                     title={!(c as any).assigned_officer_id ? 'Assign an officer to this case before creating an arrangement' : undefined}
                   >
                     <HandshakeIcon className="h-4 w-4 mr-1" />New Arrangement
-                  </Button>
+                  </PermissionButton>
                 )}
               </div>
             </CardHeader>
