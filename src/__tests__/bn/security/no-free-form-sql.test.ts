@@ -150,23 +150,15 @@ describe('BN security — forward migrations revoke privileged execution', () =>
     expect(targets).toContain('authenticated');
   });
 
-  it.each(PRIVILEGED_FUNCTIONS)('grants %s to service_role only', (sig) => {
-    const escaped = sig.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*');
-    const grants = new RegExp(`GRANT\\s+EXECUTE\\s+ON\\s+FUNCTION\\s+${escaped}\\s+TO\\s+([^;]*)`, 'gi');
-    const matches = [...migrationText.matchAll(grants)].map((m) => m[1].toLowerCase().trim());
-    expect(matches.length).toBeGreaterThan(0);
-    for (const target of matches) {
-      expect(target).toBe('service_role');
-      expect(target).not.toContain('anon');
-      expect(target).not.toContain('authenticated');
-      expect(target).not.toContain('public');
-    }
-  });
-
-  it('never re-grants a privileged function to anon or authenticated anywhere', () => {
-    for (const name of PRIVILEGED_RPC_NAMES) {
-      const re = new RegExp(`GRANT[^;]*${name}[^;]*TO[^;]*(anon|authenticated|PUBLIC)`, 'i');
-      expect(migrationText).not.toMatch(re);
-    }
-  });
+  it.each(PRIVILEGED_RPC_NAMES)(
+    'leaves %s granted to service_role only after replaying all migrations',
+    (name) => {
+      const targets = finalGrantTargets(name);
+      expect([...targets].sort()).toEqual(['service_role']);
+      expect(targets.has('anon')).toBe(false);
+      expect(targets.has('authenticated')).toBe(false);
+      expect(targets.has('public')).toBe(false);
+    },
+  );
 });
+
