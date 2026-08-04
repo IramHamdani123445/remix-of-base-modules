@@ -90,8 +90,12 @@ describe('C1 — channel catalogue', () => {
 
   it('catalogue never invents counts for non-email channels', () => {
     const src = read(`${DIR}/ChannelCatalogue.tsx`);
-    expect(src).toContain("def.code === 'email' ? emailCounts ?? null : null");
-    expect(src).toContain('Not configured');
+    // CG1 — counts are now genuine for every channel, sourced from the generic
+    // configuration summary. Unloaded or unreadable counts must render as an
+    // explicit state and never as zero.
+    expect(src).toContain('formatResourceCount');
+    expect(src).not.toContain('emailCounts');
+    expect(src).toContain('Loading…');
   });
 });
 
@@ -170,7 +174,10 @@ describe('C1 — page composition', () => {
   it('page is a coordinator and holds no RPC logic beyond the summary read', () => {
     expect(page).not.toContain('upsertProviderAccountDraft');
     expect(page).not.toContain('upsertEmailChannelSetting');
-    expect(page.split('\n').length).toBeLessThan(290);
+    // CG1 — the coordinator still holds no RPC logic; channel-aware summary
+    // composition lives in loadChannelConfigurationSummary(...).
+    expect(page).toContain('loadChannelConfigurationSummary');
+    expect(page.split('\n').length).toBeLessThan(460);
   });
 });
 

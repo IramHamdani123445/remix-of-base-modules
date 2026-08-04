@@ -57,9 +57,13 @@ describe('C1 — channel catalogue', () => {
     }
   });
 
-  it('gives webhook an endpoints tab and no identities tab', () => {
+  it('CG1 — webhook is planned, so it exposes overview only', () => {
+    // The shared database objects do not represent webhook yet. Schema support
+    // and UI applicability are separate concerns: nothing configurable may be
+    // offered for a channel the shared objects cannot store.
     const d = getChannelDescriptor('webhook');
-    expect(d.tabs).toContain('endpoints');
+    expect(d.databaseSupported).toBe(false);
+    expect(d.tabs).toEqual(['overview']);
     expect(d.tabs).not.toContain('identities');
   });
 
