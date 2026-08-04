@@ -23214,6 +23214,39 @@ export type Database = {
           },
         ]
       }
+      ce_case_command_idempotency: {
+        Row: {
+          actor_user_id: string
+          command_name: string
+          correlation_id: string | null
+          created_at: string
+          id: string
+          idempotency_key: string
+          result_json: Json
+          updated_at: string
+        }
+        Insert: {
+          actor_user_id: string
+          command_name: string
+          correlation_id?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          result_json: Json
+          updated_at?: string
+        }
+        Update: {
+          actor_user_id?: string
+          command_name?: string
+          correlation_id?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          result_json?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_case_correspondence: {
         Row: {
           attachments: Json | null
@@ -100096,6 +100129,11 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_actor_can: {
+        Args: { _capability: string; _user_id: string }
+        Returns: boolean
+      }
+      ce_actor_user_code: { Args: { _user_id: string }; Returns: string }
       ce_allocate_employer_payment: {
         Args: {
           p_allocation_mode?: string
@@ -100150,6 +100188,20 @@ export type Database = {
           write_offs: number
         }[]
       }
+      ce_case_command_audit: {
+        Args: {
+          _action: string
+          _actor: string
+          _after: Json
+          _correlation_id: string
+          _entity_id: string
+          _event_code: string
+          _outcome: string
+          _reason: string
+        }
+        Returns: undefined
+      }
+      ce_compliance_role: { Args: { _user_id: string }; Returns: string }
       ce_create_employer_snapshot: {
         Args: {
           p_employer_id: string
@@ -100172,6 +100224,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_feature_flag_enabled: { Args: { _flag_key: string }; Returns: boolean }
       ce_fetch_unobserved_payments: {
         Args: { p_employer_id?: string; p_limit?: number }
         Returns: {
@@ -100246,6 +100299,33 @@ export type Database = {
           total_paid: number
           unresolved_breach_count: number
           warning_message: string
+        }[]
+      }
+      ce_list_case_documents: {
+        Args: { p_case_id: string }
+        Returns: {
+          created_at: string
+          description: string
+          document_type: string
+          id: string
+          is_confidential: boolean
+          is_masked: boolean
+          title: string
+          uploaded_by_name: string
+          verified: boolean
+        }[]
+      }
+      ce_list_case_inspections: {
+        Args: { p_case_id: string; p_include_employer?: boolean }
+        Returns: {
+          id: string
+          inspection_number: string
+          inspection_type: string
+          inspector_name: string
+          scheduled_date: string
+          scope: string
+          status: string
+          visit_date: string
         }[]
       }
       ce_mark_payment_observed: {
@@ -100331,6 +100411,18 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      ce_request_case_action: {
+        Args: {
+          p_case_id: string
+          p_correlation_id?: string
+          p_idempotency_key?: string
+          p_metadata?: Json
+          p_reason: string
+          p_request_type: string
+          p_target_case_id?: string
+        }
+        Returns: Json
+      }
       ce_reverse_financial_event: {
         Args: {
           p_original_entry_id: string
@@ -100346,6 +100438,17 @@ export type Database = {
           p_reversed_by?: string
         }
         Returns: string
+      }
+      ce_review_case_request: {
+        Args: {
+          p_approve: boolean
+          p_correlation_id?: string
+          p_expected_status?: string
+          p_idempotency_key?: string
+          p_notes: string
+          p_request_id: string
+        }
+        Returns: Json
       }
       ce_run_employer_compliance_refresh: {
         Args: { p_batch_size?: number; p_dry_run?: boolean }
@@ -100374,6 +100477,15 @@ export type Database = {
       ce_run_stale_employer_review: {
         Args: { p_dry_run?: boolean; p_stale_months?: number }
         Returns: Json
+      }
+      ce_search_merge_candidates: {
+        Args: { p_case_id: string; p_limit?: number; p_search: string }
+        Returns: {
+          case_number: string
+          employer_name: string
+          id: string
+          status: string
+        }[]
       }
       ce_sync_c3_to_ledger: {
         Args: {
