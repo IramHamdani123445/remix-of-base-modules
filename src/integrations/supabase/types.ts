@@ -101906,6 +101906,87 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_mr_actor: { Args: never; Returns: string }
+      _bn_mr_assert_access: {
+        Args: { p_actor: string; p_obligation: string }
+        Returns: undefined
+      }
+      _bn_mr_assert_enabled: { Args: never; Returns: undefined }
+      _bn_mr_assert_provider_eligible: {
+        Args: {
+          p_as_of: string
+          p_claim: string
+          p_product: string
+          p_provider: string
+          p_required_specialties: string[]
+          p_review_type: string
+        }
+        Returns: undefined
+      }
+      _bn_mr_audit: {
+        Args: {
+          p_action: string
+          p_actor: string
+          p_after: Json
+          p_before: Json
+          p_correlation: string
+          p_entity_id: string
+          p_event_code: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      _bn_mr_can_access: {
+        Args: { p_actor: string; p_obligation: string }
+        Returns: boolean
+      }
+      _bn_mr_can_access_award: {
+        Args: { p_actor: string; p_award: string }
+        Returns: boolean
+      }
+      _bn_mr_comm: {
+        Args: {
+          p_award: string
+          p_context: Json
+          p_correlation: string
+          p_event_code: string
+          p_idem: string
+          p_obligation: string
+          p_recipient_category: string
+        }
+        Returns: string
+      }
+      _bn_mr_event: {
+        Args: {
+          p_actor: string
+          p_actor_category: string
+          p_correlation: string
+          p_detail: Json
+          p_entity_id: string
+          p_entity_type: string
+          p_event_code: string
+          p_from: string
+          p_obligation: string
+          p_to: string
+        }
+        Returns: undefined
+      }
+      _bn_mr_policy_snapshot: { Args: { p_policy: string }; Returns: Json }
+      _bn_mr_provider_for_user: { Args: { p_actor: string }; Returns: string }
+      _bn_mr_provider_snapshot: { Args: { p_provider: string }; Returns: Json }
+      _bn_mr_require: {
+        Args: { p_action: string; p_actor: string }
+        Returns: undefined
+      }
+      _bn_mr_require_record: {
+        Args: { p_id: string; p_label: string }
+        Returns: undefined
+      }
+      _bn_mr_today: { Args: never; Returns: string }
+      _bn_mr_trigger_matches: {
+        Args: { p_condition: Json; p_ctx: Json; p_rule_code: string }
+        Returns: boolean
+      }
       _bn_reinst_decide: {
         Args: {
           p_correlation: string
@@ -103042,6 +103123,10 @@ export type Database = {
       bn_materialize_external_tasks: {
         Args: { p_claim_id: string }
         Returns: number
+      }
+      bn_medical_review_board_requirement_v1: {
+        Args: { p_obligation_id: string }
+        Returns: Json
       }
       bn_mortality_check_actor_permission: {
         Args: {
