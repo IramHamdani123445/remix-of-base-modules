@@ -96,8 +96,19 @@ const LifeCertificateManagement: React.FC = () => {
   }, [bucket, debounced, offset, awardId]);
 
   useEffect(() => {
+    // A malformed deep link must never be silently downgraded to the general
+    // worklist — no RPC call is made at all until the parameter is absent or
+    // a valid UUID.
+    if (invalidAwardParam) {
+      setRows([]);
+      setTotal(0);
+      setAwardContext(null);
+      setLoading(false);
+      return;
+    }
     if (isAuthReady && isAuthenticated && canView) void load();
-  }, [isAuthReady, isAuthenticated, canView, load]);
+  }, [isAuthReady, isAuthenticated, canView, load, invalidAwardParam]);
+
 
   const counts = useMemo(() => ({
     due: rows.filter((r) => ['DUE', 'REMINDER_SENT'].includes(r.obligation_status)).length,
