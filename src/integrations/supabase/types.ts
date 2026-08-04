@@ -13380,6 +13380,468 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_medical_board: {
+        Row: {
+          applicable_product_ids: string[]
+          applicable_review_types: string[]
+          board_code: string
+          board_name: string
+          chairperson_required: boolean
+          claimant_attendance_required: boolean
+          conflict_declaration_required: boolean
+          created_at: string
+          created_by: string | null
+          determination_binding: boolean
+          effective_from: string
+          effective_to: string | null
+          examining_doctor_may_attend: boolean
+          id: string
+          is_active: boolean
+          meeting_mode: string
+          minimum_quorum: number
+          required_specialties: string[]
+          review_mode: string
+          secretary_required: boolean
+          substitute_members_permitted: boolean
+          updated_at: string
+          voting_rule: string
+        }
+        Insert: {
+          applicable_product_ids?: string[]
+          applicable_review_types?: string[]
+          board_code: string
+          board_name: string
+          chairperson_required?: boolean
+          claimant_attendance_required?: boolean
+          conflict_declaration_required?: boolean
+          created_at?: string
+          created_by?: string | null
+          determination_binding?: boolean
+          effective_from?: string
+          effective_to?: string | null
+          examining_doctor_may_attend?: boolean
+          id?: string
+          is_active?: boolean
+          meeting_mode?: string
+          minimum_quorum?: number
+          required_specialties?: string[]
+          review_mode?: string
+          secretary_required?: boolean
+          substitute_members_permitted?: boolean
+          updated_at?: string
+          voting_rule?: string
+        }
+        Update: {
+          applicable_product_ids?: string[]
+          applicable_review_types?: string[]
+          board_code?: string
+          board_name?: string
+          chairperson_required?: boolean
+          claimant_attendance_required?: boolean
+          conflict_declaration_required?: boolean
+          created_at?: string
+          created_by?: string | null
+          determination_binding?: boolean
+          effective_from?: string
+          effective_to?: string | null
+          examining_doctor_may_attend?: boolean
+          id?: string
+          is_active?: boolean
+          meeting_mode?: string
+          minimum_quorum?: number
+          required_specialties?: string[]
+          review_mode?: string
+          secretary_required?: boolean
+          substitute_members_permitted?: boolean
+          updated_at?: string
+          voting_rule?: string
+        }
+        Relationships: []
+      }
+      bn_medical_board_case: {
+        Row: {
+          assessment_id: string | null
+          bn_award_id: string
+          board_id: string
+          board_type: string
+          case_reference: string
+          correlation_id: string
+          created_at: string
+          deferral_reason: string | null
+          deferred_until: string | null
+          determination_binding: boolean
+          id: string
+          obligation_id: string
+          referred_at: string
+          referred_by: string | null
+          required_completion_date: string | null
+          required_quorum: number
+          required_specialties: string[]
+          row_version: number
+          status: string
+          trigger_rule_id: string | null
+          trigger_snapshot: Json
+          updated_at: string
+        }
+        Insert: {
+          assessment_id?: string | null
+          bn_award_id: string
+          board_id: string
+          board_type?: string
+          case_reference: string
+          correlation_id?: string
+          created_at?: string
+          deferral_reason?: string | null
+          deferred_until?: string | null
+          determination_binding?: boolean
+          id?: string
+          obligation_id: string
+          referred_at?: string
+          referred_by?: string | null
+          required_completion_date?: string | null
+          required_quorum?: number
+          required_specialties?: string[]
+          row_version?: number
+          status?: string
+          trigger_rule_id?: string | null
+          trigger_snapshot?: Json
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string | null
+          bn_award_id?: string
+          board_id?: string
+          board_type?: string
+          case_reference?: string
+          correlation_id?: string
+          created_at?: string
+          deferral_reason?: string | null
+          deferred_until?: string | null
+          determination_binding?: boolean
+          id?: string
+          obligation_id?: string
+          referred_at?: string
+          referred_by?: string | null
+          required_completion_date?: string | null
+          required_quorum?: number
+          required_specialties?: string[]
+          row_version?: number
+          status?: string
+          trigger_rule_id?: string | null
+          trigger_snapshot?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_board_case_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_assessment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_board_case_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_board_case_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_board_case_trigger_rule_id_fkey"
+            columns: ["trigger_rule_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_board_trigger_rule"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_board_case_participant: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          board_case_id: string
+          conflict_declared: boolean
+          conflict_details: string | null
+          id: string
+          member_id: string
+          member_role: string
+          member_specialty: string | null
+          member_user_id: string | null
+          participated: boolean
+          participation_recorded_at: string | null
+          recused: boolean
+          session_id: string | null
+          vote: string | null
+          vote_outcome_code: string | null
+          vote_reason: string | null
+          voted_at: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          board_case_id: string
+          conflict_declared?: boolean
+          conflict_details?: string | null
+          id?: string
+          member_id: string
+          member_role: string
+          member_specialty?: string | null
+          member_user_id?: string | null
+          participated?: boolean
+          participation_recorded_at?: string | null
+          recused?: boolean
+          session_id?: string | null
+          vote?: string | null
+          vote_outcome_code?: string | null
+          vote_reason?: string | null
+          voted_at?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          board_case_id?: string
+          conflict_declared?: boolean
+          conflict_details?: string | null
+          id?: string
+          member_id?: string
+          member_role?: string
+          member_specialty?: string | null
+          member_user_id?: string | null
+          participated?: boolean
+          participation_recorded_at?: string | null
+          recused?: boolean
+          session_id?: string | null
+          vote?: string | null
+          vote_outcome_code?: string | null
+          vote_reason?: string | null
+          voted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_board_case_participant_board_case_id_fkey"
+            columns: ["board_case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_board_case_participant_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board_member"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_board_case_participant_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board_session"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_board_determination: {
+        Row: {
+          board_case_id: string
+          correction_reason: string | null
+          created_at: string
+          decided_at: string
+          determination_summary: string
+          finalised: boolean
+          id: string
+          impairment_percentage: number | null
+          is_binding: boolean
+          outcome_code: string
+          quorum_at_determination: number
+          recorded_by: string | null
+          revision_no: number
+          superseded_by: string | null
+          votes_abstain: number
+          votes_against: number
+          votes_for: number
+        }
+        Insert: {
+          board_case_id: string
+          correction_reason?: string | null
+          created_at?: string
+          decided_at?: string
+          determination_summary: string
+          finalised?: boolean
+          id?: string
+          impairment_percentage?: number | null
+          is_binding?: boolean
+          outcome_code: string
+          quorum_at_determination: number
+          recorded_by?: string | null
+          revision_no?: number
+          superseded_by?: string | null
+          votes_abstain?: number
+          votes_against?: number
+          votes_for?: number
+        }
+        Update: {
+          board_case_id?: string
+          correction_reason?: string | null
+          created_at?: string
+          decided_at?: string
+          determination_summary?: string
+          finalised?: boolean
+          id?: string
+          impairment_percentage?: number | null
+          is_binding?: boolean
+          outcome_code?: string
+          quorum_at_determination?: number
+          recorded_by?: string | null
+          revision_no?: number
+          superseded_by?: string | null
+          votes_abstain?: number
+          votes_against?: number
+          votes_for?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_board_determination_board_case_id_fkey"
+            columns: ["board_case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_board_determination_superseded_by_fkey"
+            columns: ["superseded_by"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board_determination"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_board_member: {
+        Row: {
+          board_id: string
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_active: boolean
+          member_name: string
+          member_role: string
+          member_user_id: string | null
+          provider_id: string | null
+          specialty: string | null
+        }
+        Insert: {
+          board_id: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          member_name: string
+          member_role: string
+          member_user_id?: string | null
+          provider_id?: string | null
+          specialty?: string | null
+        }
+        Update: {
+          board_id?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          member_name?: string
+          member_role?: string
+          member_user_id?: string | null
+          provider_id?: string | null
+          specialty?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_board_member_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_board_member_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_board_session: {
+        Row: {
+          board_case_id: string
+          board_id: string
+          created_at: string
+          id: string
+          location_reference: string | null
+          meeting_mode: string
+          quorum_met: boolean | null
+          scheduled_at: string
+          scheduled_by: string | null
+          session_reference: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          board_case_id: string
+          board_id: string
+          created_at?: string
+          id?: string
+          location_reference?: string | null
+          meeting_mode?: string
+          quorum_met?: boolean | null
+          scheduled_at: string
+          scheduled_by?: string | null
+          session_reference: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          board_case_id?: string
+          board_id?: string
+          created_at?: string
+          id?: string
+          location_reference?: string | null
+          meeting_mode?: string
+          quorum_met?: boolean | null
+          scheduled_at?: string
+          scheduled_by?: string | null
+          session_reference?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_board_session_board_case_id_fkey"
+            columns: ["board_case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_board_session_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bn_medical_claim_expense: {
         Row: {
           approved_amount: number | null
@@ -13725,6 +14187,208 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_medical_provider: {
+        Row: {
+          classification: string
+          conflict_restrictions: Json
+          contract_status: string
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          facility_id: string | null
+          fee_arrangement: string
+          id: string
+          licence_expiry_date: string | null
+          licence_issue_date: string | null
+          licensing_authority: string | null
+          portal_user_id: string | null
+          practitioner_name: string
+          provider_code: string
+          provider_status: string
+          provider_type: string
+          registration_number: string | null
+          row_version: number
+          service_locations: string[]
+          specialties: string[]
+          updated_at: string
+          updated_by: string | null
+          verification_date: string | null
+          verification_status: string
+          verified_by: string | null
+        }
+        Insert: {
+          classification: string
+          conflict_restrictions?: Json
+          contract_status?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          facility_id?: string | null
+          fee_arrangement?: string
+          id?: string
+          licence_expiry_date?: string | null
+          licence_issue_date?: string | null
+          licensing_authority?: string | null
+          portal_user_id?: string | null
+          practitioner_name: string
+          provider_code: string
+          provider_status?: string
+          provider_type: string
+          registration_number?: string | null
+          row_version?: number
+          service_locations?: string[]
+          specialties?: string[]
+          updated_at?: string
+          updated_by?: string | null
+          verification_date?: string | null
+          verification_status?: string
+          verified_by?: string | null
+        }
+        Update: {
+          classification?: string
+          conflict_restrictions?: Json
+          contract_status?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          facility_id?: string | null
+          fee_arrangement?: string
+          id?: string
+          licence_expiry_date?: string | null
+          licence_issue_date?: string | null
+          licensing_authority?: string | null
+          portal_user_id?: string | null
+          practitioner_name?: string
+          provider_code?: string
+          provider_status?: string
+          provider_type?: string
+          registration_number?: string | null
+          row_version?: number
+          service_locations?: string[]
+          specialties?: string[]
+          updated_at?: string
+          updated_by?: string | null
+          verification_date?: string | null
+          verification_status?: string
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_provider_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_facility"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_provider_approval: {
+        Row: {
+          bn_product_id: string | null
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          is_active: boolean
+          provider_id: string
+          review_type: string | null
+        }
+        Insert: {
+          bn_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          provider_id: string
+          review_type?: string | null
+        }
+        Update: {
+          bn_product_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          is_active?: boolean
+          provider_id?: string
+          review_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_provider_approval_bn_product_id_fkey"
+            columns: ["bn_product_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_provider_approval_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_provider_credential: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          credential_reference: string | null
+          credential_type: string
+          document_id: string | null
+          expires_on: string | null
+          id: string
+          issued_on: string | null
+          provider_id: string
+          verification_status: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          credential_reference?: string | null
+          credential_type: string
+          document_id?: string | null
+          expires_on?: string | null
+          id?: string
+          issued_on?: string | null
+          provider_id: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          credential_reference?: string | null
+          credential_type?: string
+          document_id?: string | null
+          expires_on?: string | null
+          id?: string
+          issued_on?: string | null
+          provider_id?: string
+          verification_status?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_provider_credential_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bn_medical_provider_type: {
         Row: {
           created_at: string
@@ -14057,6 +14721,1104 @@ export type Database = {
           },
         ]
       }
+      bn_medical_review_administrative_decision: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          assessment_id: string | null
+          board_case_id: string | null
+          board_determination_id: string | null
+          board_determination_outcome: string | null
+          correlation_id: string
+          created_at: string
+          created_by: string | null
+          decision_authority: string
+          decision_reference: string
+          departure_reason: string | null
+          effective_date: string | null
+          evidence_snapshot: Json
+          id: string
+          made_at: string | null
+          made_by: string | null
+          medical_recommendation_accepted: boolean | null
+          next_review_date: string | null
+          obligation_id: string
+          outcome_code: string | null
+          provider_medical_opinion: string | null
+          reason_code: string | null
+          reason_narrative: string | null
+          returned_reason: string | null
+          row_version: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assessment_id?: string | null
+          board_case_id?: string | null
+          board_determination_id?: string | null
+          board_determination_outcome?: string | null
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          decision_authority?: string
+          decision_reference: string
+          departure_reason?: string | null
+          effective_date?: string | null
+          evidence_snapshot?: Json
+          id?: string
+          made_at?: string | null
+          made_by?: string | null
+          medical_recommendation_accepted?: boolean | null
+          next_review_date?: string | null
+          obligation_id: string
+          outcome_code?: string | null
+          provider_medical_opinion?: string | null
+          reason_code?: string | null
+          reason_narrative?: string | null
+          returned_reason?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assessment_id?: string | null
+          board_case_id?: string | null
+          board_determination_id?: string | null
+          board_determination_outcome?: string | null
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          decision_authority?: string
+          decision_reference?: string
+          departure_reason?: string | null
+          effective_date?: string | null
+          evidence_snapshot?: Json
+          id?: string
+          made_at?: string | null
+          made_by?: string | null
+          medical_recommendation_accepted?: boolean | null
+          next_review_date?: string | null
+          obligation_id?: string
+          outcome_code?: string | null
+          provider_medical_opinion?: string | null
+          reason_code?: string | null
+          reason_narrative?: string | null
+          returned_reason?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_administrative_de_board_determination_id_fkey"
+            columns: ["board_determination_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board_determination"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_administrative_decision_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_assessment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_administrative_decision_board_case_id_fkey"
+            columns: ["board_case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_board_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_administrative_decision_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_appointment: {
+        Row: {
+          correlation_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          location_reference: string | null
+          non_attendance_category: string | null
+          non_attendance_notes: string | null
+          obligation_id: string
+          reasonable_cause_outcome: string | null
+          reasonable_cause_reviewed: boolean
+          recorded_at: string | null
+          recorded_by: string | null
+          referral_id: string
+          reschedule_count: number
+          responsibility: string
+          row_version: number
+          scheduled_at: string | null
+          sequence_no: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_reference?: string | null
+          non_attendance_category?: string | null
+          non_attendance_notes?: string | null
+          obligation_id: string
+          reasonable_cause_outcome?: string | null
+          reasonable_cause_reviewed?: boolean
+          recorded_at?: string | null
+          recorded_by?: string | null
+          referral_id: string
+          reschedule_count?: number
+          responsibility?: string
+          row_version?: number
+          scheduled_at?: string | null
+          sequence_no?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          location_reference?: string | null
+          non_attendance_category?: string | null
+          non_attendance_notes?: string | null
+          obligation_id?: string
+          reasonable_cause_outcome?: string | null
+          reasonable_cause_reviewed?: boolean
+          recorded_at?: string | null
+          recorded_by?: string | null
+          referral_id?: string
+          reschedule_count?: number
+          responsibility?: string
+          row_version?: number
+          scheduled_at?: string | null
+          sequence_no?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_appointment_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_appointment_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_referral"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_assessment: {
+        Row: {
+          attendance_result: string | null
+          clinical_narrative: string | null
+          conflict_declared: boolean
+          conflict_details: string | null
+          correlation_id: string
+          created_at: string
+          created_by: string | null
+          evidence_reviewed: Json
+          examination_date: string | null
+          expected_duration_months: number | null
+          facility_id: string | null
+          functional_conclusion: string | null
+          functional_limitations: Json
+          further_evidence_required: boolean
+          id: string
+          identity_verification_method: string | null
+          impairment_percentage: number | null
+          incapacity_nature: string | null
+          locked_at: string | null
+          medical_outcome: string | null
+          obligation_id: string
+          prognosis_category: string | null
+          provider_declaration_complete: boolean
+          provider_id: string | null
+          receipt_revision: number
+          recommended_next_review_date: string | null
+          referral_id: string
+          rejection_reason: string | null
+          row_version: number
+          specialist_required: boolean
+          status: string
+          submission_channel: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          updated_at: string
+          validated_at: string | null
+          validated_by: string | null
+          work_capacity_opinion: string | null
+        }
+        Insert: {
+          attendance_result?: string | null
+          clinical_narrative?: string | null
+          conflict_declared?: boolean
+          conflict_details?: string | null
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          evidence_reviewed?: Json
+          examination_date?: string | null
+          expected_duration_months?: number | null
+          facility_id?: string | null
+          functional_conclusion?: string | null
+          functional_limitations?: Json
+          further_evidence_required?: boolean
+          id?: string
+          identity_verification_method?: string | null
+          impairment_percentage?: number | null
+          incapacity_nature?: string | null
+          locked_at?: string | null
+          medical_outcome?: string | null
+          obligation_id: string
+          prognosis_category?: string | null
+          provider_declaration_complete?: boolean
+          provider_id?: string | null
+          receipt_revision?: number
+          recommended_next_review_date?: string | null
+          referral_id: string
+          rejection_reason?: string | null
+          row_version?: number
+          specialist_required?: boolean
+          status?: string
+          submission_channel?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          work_capacity_opinion?: string | null
+        }
+        Update: {
+          attendance_result?: string | null
+          clinical_narrative?: string | null
+          conflict_declared?: boolean
+          conflict_details?: string | null
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          evidence_reviewed?: Json
+          examination_date?: string | null
+          expected_duration_months?: number | null
+          facility_id?: string | null
+          functional_conclusion?: string | null
+          functional_limitations?: Json
+          further_evidence_required?: boolean
+          id?: string
+          identity_verification_method?: string | null
+          impairment_percentage?: number | null
+          incapacity_nature?: string | null
+          locked_at?: string | null
+          medical_outcome?: string | null
+          obligation_id?: string
+          prognosis_category?: string | null
+          provider_declaration_complete?: boolean
+          provider_id?: string | null
+          receipt_revision?: number
+          recommended_next_review_date?: string | null
+          referral_id?: string
+          rejection_reason?: string | null
+          row_version?: number
+          specialist_required?: boolean
+          status?: string
+          submission_channel?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          work_capacity_opinion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_assessment_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_facility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_assessment_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_assessment_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_provider"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_assessment_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: true
+            referencedRelation: "bn_medical_review_referral"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_assessment_addendum: {
+        Row: {
+          addendum_content: Json
+          addendum_type: string
+          assessment_id: string
+          created_at: string
+          id: string
+          prior_snapshot: Json
+          request_reason: string | null
+          requested_at: string | null
+          requested_by: string | null
+          revision_no: number
+          submitted_at: string | null
+          submitted_by: string | null
+        }
+        Insert: {
+          addendum_content?: Json
+          addendum_type: string
+          assessment_id: string
+          created_at?: string
+          id?: string
+          prior_snapshot: Json
+          request_reason?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          revision_no: number
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Update: {
+          addendum_content?: Json
+          addendum_type?: string
+          assessment_id?: string
+          created_at?: string
+          id?: string
+          prior_snapshot?: Json
+          request_reason?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          revision_no?: number
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_assessment_addendum_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_assessment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_board_trigger_rule: {
+        Row: {
+          board_type: string
+          completion_offset_days: number
+          condition: Json
+          created_at: string
+          created_by: string | null
+          determination_binding: boolean
+          evaluation_order: number
+          id: string
+          is_active: boolean
+          policy_id: string
+          required_quorum: number
+          required_specialties: string[]
+          rule_code: string
+          rule_name: string
+          updated_at: string
+        }
+        Insert: {
+          board_type?: string
+          completion_offset_days?: number
+          condition?: Json
+          created_at?: string
+          created_by?: string | null
+          determination_binding?: boolean
+          evaluation_order?: number
+          id?: string
+          is_active?: boolean
+          policy_id: string
+          required_quorum?: number
+          required_specialties?: string[]
+          rule_code: string
+          rule_name: string
+          updated_at?: string
+        }
+        Update: {
+          board_type?: string
+          completion_offset_days?: number
+          condition?: Json
+          created_at?: string
+          created_by?: string | null
+          determination_binding?: boolean
+          evaluation_order?: number
+          id?: string
+          is_active?: boolean
+          policy_id?: string
+          required_quorum?: number
+          required_specialties?: string[]
+          rule_code?: string
+          rule_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_board_trigger_rule_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_policy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_communication_intent: {
+        Row: {
+          bn_award_id: string | null
+          context: Json
+          correlation_id: string | null
+          created_at: string
+          delivery_status: string
+          event_code: string
+          id: string
+          idempotency_key: string
+          obligation_id: string | null
+          recipient_category: string
+          recipient_reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          bn_award_id?: string | null
+          context?: Json
+          correlation_id?: string | null
+          created_at?: string
+          delivery_status?: string
+          event_code: string
+          id?: string
+          idempotency_key: string
+          obligation_id?: string | null
+          recipient_category?: string
+          recipient_reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bn_award_id?: string | null
+          context?: Json
+          correlation_id?: string | null
+          created_at?: string
+          delivery_status?: string
+          event_code?: string
+          id?: string
+          idempotency_key?: string
+          obligation_id?: string | null
+          recipient_category?: string
+          recipient_reference?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_communication_intent_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_event: {
+        Row: {
+          actor_category: string | null
+          actor_user_id: string | null
+          correlation_id: string | null
+          detail: Json
+          entity_id: string | null
+          entity_type: string
+          event_code: string
+          from_status: string | null
+          id: string
+          obligation_id: string | null
+          occurred_at: string
+          to_status: string | null
+        }
+        Insert: {
+          actor_category?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          detail?: Json
+          entity_id?: string | null
+          entity_type: string
+          event_code: string
+          from_status?: string | null
+          id?: string
+          obligation_id?: string | null
+          occurred_at?: string
+          to_status?: string | null
+        }
+        Update: {
+          actor_category?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          detail?: Json
+          entity_id?: string | null
+          entity_type?: string
+          event_code?: string
+          from_status?: string | null
+          id?: string
+          obligation_id?: string | null
+          occurred_at?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_event_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_evidence_access_log: {
+        Row: {
+          access_kind: string
+          accessed_at: string
+          actor_user_id: string
+          assessment_id: string | null
+          correlation_id: string | null
+          evidence_link_id: string | null
+          id: string
+          obligation_id: string | null
+        }
+        Insert: {
+          access_kind: string
+          accessed_at?: string
+          actor_user_id: string
+          assessment_id?: string | null
+          correlation_id?: string | null
+          evidence_link_id?: string | null
+          id?: string
+          obligation_id?: string | null
+        }
+        Update: {
+          access_kind?: string
+          accessed_at?: string
+          actor_user_id?: string
+          assessment_id?: string | null
+          correlation_id?: string | null
+          evidence_link_id?: string | null
+          id?: string
+          obligation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_evidence_access_log_evidence_link_id_fkey"
+            columns: ["evidence_link_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_evidence_link"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_evidence_link: {
+        Row: {
+          assessment_id: string | null
+          board_case_id: string | null
+          created_at: string
+          created_by: string | null
+          document_id: string | null
+          document_title: string | null
+          evidence_class: string
+          evidence_type: string
+          id: string
+          obligation_id: string
+          referral_id: string | null
+          released_to_board: boolean
+          released_to_provider: boolean
+        }
+        Insert: {
+          assessment_id?: string | null
+          board_case_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          document_title?: string | null
+          evidence_class: string
+          evidence_type: string
+          id?: string
+          obligation_id: string
+          referral_id?: string | null
+          released_to_board?: boolean
+          released_to_provider?: boolean
+        }
+        Update: {
+          assessment_id?: string | null
+          board_case_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_id?: string | null
+          document_title?: string | null
+          evidence_class?: string
+          evidence_type?: string
+          id?: string
+          obligation_id?: string
+          referral_id?: string | null
+          released_to_board?: boolean
+          released_to_provider?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_evidence_link_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_assessment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_evidence_link_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_evidence_link_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_referral"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_idempotency: {
+        Row: {
+          actor_user_id: string | null
+          command_code: string
+          created_at: string
+          idempotency_key: string
+          request_fingerprint: string
+          response: Json
+        }
+        Insert: {
+          actor_user_id?: string | null
+          command_code: string
+          created_at?: string
+          idempotency_key: string
+          request_fingerprint: string
+          response: Json
+        }
+        Update: {
+          actor_user_id?: string | null
+          command_code?: string
+          created_at?: string
+          idempotency_key?: string
+          request_fingerprint?: string
+          response?: Json
+        }
+        Relationships: []
+      }
+      bn_medical_review_obligation: {
+        Row: {
+          assigned_to: string | null
+          bn_award_id: string
+          bn_claim_id: string | null
+          bn_product_id: string | null
+          bn_product_version_id: string | null
+          communication_status: string
+          correlation_id: string
+          created_at: string
+          created_by: string | null
+          deferred_until: string | null
+          due_date: string
+          generated_by_command: string | null
+          grace_end_date: string | null
+          id: string
+          notice_due_date: string | null
+          obligation_reference: string
+          policy_id: string
+          policy_snapshot: Json
+          policy_version_no: number
+          review_period_end: string
+          review_period_start: string
+          review_reason: string
+          review_type: string
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+          workbasket_id: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          bn_award_id: string
+          bn_claim_id?: string | null
+          bn_product_id?: string | null
+          bn_product_version_id?: string | null
+          communication_status?: string
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          deferred_until?: string | null
+          due_date: string
+          generated_by_command?: string | null
+          grace_end_date?: string | null
+          id?: string
+          notice_due_date?: string | null
+          obligation_reference: string
+          policy_id: string
+          policy_snapshot: Json
+          policy_version_no: number
+          review_period_end: string
+          review_period_start: string
+          review_reason?: string
+          review_type: string
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          workbasket_id?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          bn_award_id?: string
+          bn_claim_id?: string | null
+          bn_product_id?: string | null
+          bn_product_version_id?: string | null
+          communication_status?: string
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          deferred_until?: string | null
+          due_date?: string
+          generated_by_command?: string | null
+          grace_end_date?: string | null
+          id?: string
+          notice_due_date?: string | null
+          obligation_reference?: string
+          policy_id?: string
+          policy_snapshot?: Json
+          policy_version_no?: number
+          review_period_end?: string
+          review_period_start?: string
+          review_reason?: string
+          review_type?: string
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          workbasket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_obligation_bn_award_id_fkey"
+            columns: ["bn_award_id"]
+            isOneToOne: false
+            referencedRelation: "bn_award"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_obligation_bn_claim_id_fkey"
+            columns: ["bn_claim_id"]
+            isOneToOne: false
+            referencedRelation: "bn_claim"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_obligation_bn_product_id_fkey"
+            columns: ["bn_product_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_obligation_bn_product_version_id_fkey"
+            columns: ["bn_product_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product_version"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_obligation_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_policy"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_policy: {
+        Row: {
+          appointment_responsibility: string
+          assessment_model: string
+          bn_product_id: string
+          bn_product_version_id: string | null
+          board_determination_binding: boolean
+          board_mode: string
+          business_days_only: boolean
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          final_decision_authority: string
+          grace_period_days: number
+          id: string
+          independent_assessment_required: boolean
+          initial_review_offset_days: number
+          jurisdiction_code: string | null
+          lifecycle_state: string
+          max_deferral_days: number
+          next_review_authority: string
+          non_attendance_handling: string
+          notes: string | null
+          notice_period_days: number
+          policy_code: string
+          policy_name: string
+          provider_fee_responsibility: string
+          provider_selection_model: string
+          published_at: string | null
+          published_by: string | null
+          recurring_interval_months: number | null
+          referral_acceptance_deadline_days: number
+          reinstatement_proposal_conditions: Json
+          report_deadline_days: number
+          required_evidence_types: string[]
+          required_specialties: string[]
+          review_type: string
+          second_opinion_mode: string
+          suspension_proposal_conditions: Json
+          timezone_code: string
+          treating_doctor_permitted: boolean
+          updated_at: string
+          updated_by: string | null
+          version_no: number
+        }
+        Insert: {
+          appointment_responsibility?: string
+          assessment_model: string
+          bn_product_id: string
+          bn_product_version_id?: string | null
+          board_determination_binding?: boolean
+          board_mode?: string
+          business_days_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          effective_from: string
+          effective_to?: string | null
+          final_decision_authority?: string
+          grace_period_days?: number
+          id?: string
+          independent_assessment_required?: boolean
+          initial_review_offset_days?: number
+          jurisdiction_code?: string | null
+          lifecycle_state?: string
+          max_deferral_days?: number
+          next_review_authority?: string
+          non_attendance_handling?: string
+          notes?: string | null
+          notice_period_days?: number
+          policy_code: string
+          policy_name: string
+          provider_fee_responsibility?: string
+          provider_selection_model: string
+          published_at?: string | null
+          published_by?: string | null
+          recurring_interval_months?: number | null
+          referral_acceptance_deadline_days?: number
+          reinstatement_proposal_conditions?: Json
+          report_deadline_days?: number
+          required_evidence_types?: string[]
+          required_specialties?: string[]
+          review_type: string
+          second_opinion_mode?: string
+          suspension_proposal_conditions?: Json
+          timezone_code?: string
+          treating_doctor_permitted?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          version_no?: number
+        }
+        Update: {
+          appointment_responsibility?: string
+          assessment_model?: string
+          bn_product_id?: string
+          bn_product_version_id?: string | null
+          board_determination_binding?: boolean
+          board_mode?: string
+          business_days_only?: boolean
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          final_decision_authority?: string
+          grace_period_days?: number
+          id?: string
+          independent_assessment_required?: boolean
+          initial_review_offset_days?: number
+          jurisdiction_code?: string | null
+          lifecycle_state?: string
+          max_deferral_days?: number
+          next_review_authority?: string
+          non_attendance_handling?: string
+          notes?: string | null
+          notice_period_days?: number
+          policy_code?: string
+          policy_name?: string
+          provider_fee_responsibility?: string
+          provider_selection_model?: string
+          published_at?: string | null
+          published_by?: string | null
+          recurring_interval_months?: number | null
+          referral_acceptance_deadline_days?: number
+          reinstatement_proposal_conditions?: Json
+          report_deadline_days?: number
+          required_evidence_types?: string[]
+          required_specialties?: string[]
+          review_type?: string
+          second_opinion_mode?: string
+          suspension_proposal_conditions?: Json
+          timezone_code?: string
+          treating_doctor_permitted?: boolean
+          updated_at?: string
+          updated_by?: string | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_policy_bn_product_id_fkey"
+            columns: ["bn_product_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_policy_bn_product_version_id_fkey"
+            columns: ["bn_product_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product_version"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_referral: {
+        Row: {
+          acceptance_deadline: string | null
+          appointment_responsibility: string
+          bn_award_id: string
+          bn_claim_id: string | null
+          claimant_person_id: string | null
+          consent_status: string
+          correlation_id: string
+          created_at: string
+          created_by: string | null
+          decline_reason: string | null
+          evidence_release_scope: string
+          id: string
+          issued_at: string | null
+          obligation_id: string
+          provider_id: string | null
+          provider_snapshot: Json | null
+          referral_reference: string
+          referring_officer: string | null
+          report_deadline: string | null
+          responded_at: string | null
+          review_questions: Json
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          acceptance_deadline?: string | null
+          appointment_responsibility?: string
+          bn_award_id: string
+          bn_claim_id?: string | null
+          claimant_person_id?: string | null
+          consent_status?: string
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          decline_reason?: string | null
+          evidence_release_scope?: string
+          id?: string
+          issued_at?: string | null
+          obligation_id: string
+          provider_id?: string | null
+          provider_snapshot?: Json | null
+          referral_reference: string
+          referring_officer?: string | null
+          report_deadline?: string | null
+          responded_at?: string | null
+          review_questions?: Json
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          acceptance_deadline?: string | null
+          appointment_responsibility?: string
+          bn_award_id?: string
+          bn_claim_id?: string | null
+          claimant_person_id?: string | null
+          consent_status?: string
+          correlation_id?: string
+          created_at?: string
+          created_by?: string | null
+          decline_reason?: string | null
+          evidence_release_scope?: string
+          id?: string
+          issued_at?: string | null
+          obligation_id?: string
+          provider_id?: string | null
+          provider_snapshot?: Json | null
+          referral_reference?: string
+          referring_officer?: string | null
+          report_deadline?: string | null
+          responded_at?: string | null
+          review_questions?: Json
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_referral_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_referral_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bn_medical_review_schedule: {
         Row: {
           bn_award_id: string
@@ -14112,6 +15874,164 @@ export type Database = {
             columns: ["bn_award_id"]
             isOneToOne: false
             referencedRelation: "bn_award"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_scheduler_attempt: {
+        Row: {
+          attempt_kind: string
+          attempt_no: number
+          attempted_at: string
+          error_code: string | null
+          error_detail: string | null
+          id: string
+          obligation_id: string | null
+          outcome: string
+        }
+        Insert: {
+          attempt_kind: string
+          attempt_no?: number
+          attempted_at?: string
+          error_code?: string | null
+          error_detail?: string | null
+          id?: string
+          obligation_id?: string | null
+          outcome: string
+        }
+        Update: {
+          attempt_kind?: string
+          attempt_no?: number
+          attempted_at?: string
+          error_code?: string | null
+          error_detail?: string | null
+          id?: string
+          obligation_id?: string | null
+          outcome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_scheduler_attempt_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_submission_receipt: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          id: string
+          portal_not_used_reason: string
+          provider_id: string | null
+          provider_verification_method: string
+          received_at: string
+          receiving_officer: string
+          signed_report_document_id: string | null
+          structured_fields_transcribed: boolean
+          submission_method: string
+          transcribing_officer: string | null
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          id?: string
+          portal_not_used_reason: string
+          provider_id?: string | null
+          provider_verification_method: string
+          received_at?: string
+          receiving_officer: string
+          signed_report_document_id?: string | null
+          structured_fields_transcribed?: boolean
+          submission_method: string
+          transcribing_officer?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          id?: string
+          portal_not_used_reason?: string
+          provider_id?: string | null
+          provider_verification_method?: string
+          received_at?: string
+          receiving_officer?: string
+          signed_report_document_id?: string | null
+          structured_fields_transcribed?: boolean
+          submission_method?: string
+          transcribing_officer?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_submission_receipt_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_assessment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_submission_receipt_provider_id_fkey"
+            columns: ["provider_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_medical_review_suspension_link: {
+        Row: {
+          correlation_id: string
+          created_at: string
+          decision_id: string | null
+          id: string
+          idempotency_key: string
+          obligation_id: string
+          proposal_kind: string
+          proposal_status: string
+          proposed_at: string
+          proposed_by: string | null
+          suspension_event_id: string | null
+        }
+        Insert: {
+          correlation_id: string
+          created_at?: string
+          decision_id?: string | null
+          id?: string
+          idempotency_key: string
+          obligation_id: string
+          proposal_kind: string
+          proposal_status?: string
+          proposed_at?: string
+          proposed_by?: string | null
+          suspension_event_id?: string | null
+        }
+        Update: {
+          correlation_id?: string
+          created_at?: string
+          decision_id?: string | null
+          id?: string
+          idempotency_key?: string
+          obligation_id?: string
+          proposal_kind?: string
+          proposal_status?: string
+          proposed_at?: string
+          proposed_by?: string | null
+          suspension_event_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_medical_review_suspension_link_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_administrative_decision"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_medical_review_suspension_link_obligation_id_fkey"
+            columns: ["obligation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_medical_review_obligation"
             referencedColumns: ["id"]
           },
         ]
