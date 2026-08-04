@@ -123,7 +123,7 @@ export const CaseRequestActions = ({ caseId, caseStatus, caseNumber }: Props) =>
     },
     onSuccess: () => {
       toast.success(`${open} request submitted for review`);
-      setOpen(null); setReason(''); setTargetCaseId('');
+      setOpen(null); setReason(''); setTargetCaseId(''); setMergeSearch(''); setSelectedTargetLabel('');
     },
     onError: (e: any) =>
       toast.error(e?.message || 'Failed to submit request', {
