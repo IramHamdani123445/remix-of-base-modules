@@ -1,0 +1,14 @@
+{
+  "generator": "scripts/ci/generate-baseline.py",
+  "generated_at_utc": "2026-08-04T21:37:17Z",
+  "migration_cutoff_inclusive": "20260804210445_7d729526-50d5-4035-9afb-5cc7491bb1b1.sql",
+  "migrations_contained": 1298,
+  "schemas": [
+    "public"
+  ],
+  "schema_sql_sha256": "f0234a6c2b897e0c4e7d20c83fa2542b884ef8ee2e14541d85eed59656c8700b",
+  "schema_sql_bytes": 9581560,
+  "contains_data": false,
+  "contains_secrets": false,
+  "contains_ownership": false
+}

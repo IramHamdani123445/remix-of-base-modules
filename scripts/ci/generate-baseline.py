@@ -45,7 +45,8 @@ MIGRATIONS_DIR = ROOT / "supabase" / "migrations"
 PLATFORM_SCHEMAS = {
     "auth", "storage", "realtime", "vault", "supabase_functions",
     "extensions", "graphql", "graphql_public", "cron", "pgmq", "pgbouncer",
-    "net", "information_schema", "pg_catalog", "pg_toast", "public_stub",
+    "net", "information_schema", "pg_catalog", "pg_toast",
+    "supabase_migrations", "_analytics", "_realtime", "pgsodium", "pgsodium_masks",
 }
 APP_ROLES = ("anon", "authenticated", "service_role", "PUBLIC")
 
@@ -152,18 +153,14 @@ def gen_sequences(schemas):
              s.min_value::text, s.max_value::text, s.cache_size::text,
              s.cycle::text
       FROM pg_sequences s
+      JOIN pg_class sc ON sc.relname = s.sequencename
+      JOIN pg_namespace sn ON sn.oid = sc.relnamespace AND sn.nspname = s.schemaname
       WHERE {schema_filter('s.schemaname', schemas)}
+        AND NOT EXISTS (SELECT 1 FROM pg_depend d
+                        WHERE d.objid = sc.oid AND d.deptype IN ('a', 'i'))
       ORDER BY 1, 2
     """)
     for ns, name, dtype, start, inc, mn, mx, cache, cyc in rows:
-        owned = q(f"""
-          SELECT 1 FROM pg_depend d
-          JOIN pg_class c ON c.oid = d.objid
-          JOIN pg_namespace n ON n.oid = c.relnamespace
-          WHERE d.deptype = 'a' AND c.relname = '{name}' AND n.nspname = '{ns}'
-        """)
-        if owned:
-            continue  # identity / serial sequences come with their table
         yield (f"CREATE SEQUENCE IF NOT EXISTS {ns}.{name} AS {dtype} "
                f"START WITH {start} INCREMENT BY {inc} MINVALUE {mn} "
                f"MAXVALUE {mx} CACHE {cache}"
@@ -172,39 +169,39 @@ def gen_sequences(schemas):
 
 def gen_tables(schemas):
     yield section("TABLES (columns only; defaults, constraints and indexes follow)")
-    tables = q(f"""
-      SELECT n.nspname, c.relname
-      FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    rows = q(f"""
+      SELECT n.nspname, c.relname, a.attname,
+             format_type(a.atttypid, a.atttypmod),
+             a.attnotnull::text,
+             COALESCE(a.attidentity, ''),
+             COALESCE(a.attgenerated, ''),
+             COALESCE(pg_get_expr(ad.adbin, ad.adrelid), '')
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+      LEFT JOIN pg_attrdef ad ON ad.adrelid = a.attrelid AND ad.adnum = a.attnum
       WHERE c.relkind IN ('r', 'p') AND {schema_filter('n.nspname', schemas)}
-      ORDER BY 1, 2
+      ORDER BY n.nspname, c.relname, a.attnum
     """)
-    for ns, name in tables:
-        cols = q(f"""
-          SELECT a.attname,
-                 format_type(a.atttypid, a.atttypmod),
-                 a.attnotnull::text,
-                 COALESCE(a.attidentity, ''),
-                 COALESCE(a.attgenerated, ''),
-                 COALESCE(pg_get_expr(ad.adbin, ad.adrelid), '')
-          FROM pg_attribute a
-          LEFT JOIN pg_attrdef ad ON ad.adrelid = a.attrelid AND ad.adnum = a.attnum
-          WHERE a.attrelid = '{ns}.{quote_ident(name)}'::regclass
-            AND a.attnum > 0 AND NOT a.attisdropped
-          ORDER BY a.attnum
-        """)
-        parts = []
-        for cname, ctype, notnull, identity, generated, default in cols:
-            piece = f"  {quote_ident(cname)} {ctype}"
-            if identity:
-                kind = "ALWAYS" if identity == "a" else "BY DEFAULT"
-                piece += f" GENERATED {kind} AS IDENTITY"
-            elif generated == "s" and default:
-                piece += f" GENERATED ALWAYS AS ({default}) STORED"
-            if notnull == "true":
-                piece += " NOT NULL"
-            parts.append(piece)
-        yield (f"CREATE TABLE IF NOT EXISTS {ns}.{quote_ident(name)} (\n"
-               + ",\n".join(parts) + "\n);\n")
+    grouped: dict[tuple[str, str], list[str]] = {}
+    order: list[tuple[str, str]] = []
+    for ns, tbl, cname, ctype, notnull, identity, generated, default in rows:
+        key = (ns, tbl)
+        if key not in grouped:
+            grouped[key] = []
+            order.append(key)
+        piece = f"  {quote_ident(cname)} {ctype}"
+        if identity:
+            kind = "ALWAYS" if identity == "a" else "BY DEFAULT"
+            piece += f" GENERATED {kind} AS IDENTITY"
+        elif generated == "s" and default:
+            piece += f" GENERATED ALWAYS AS ({default}) STORED"
+        if notnull == "true":
+            piece += " NOT NULL"
+        grouped[key].append(piece)
+    for ns, tbl in order:
+        yield (f"CREATE TABLE IF NOT EXISTS {ns}.{quote_ident(tbl)} (\n"
+               + ",\n".join(grouped[(ns, tbl)]) + "\n);\n")
 
 
 def quote_ident(name: str) -> str:
@@ -216,18 +213,13 @@ def quote_ident(name: str) -> str:
 def gen_functions(schemas):
     yield section("FUNCTIONS AND PROCEDURES")
     rows = q(f"""
-      SELECT p.oid::text, n.nspname, p.proname,
-             pg_get_function_identity_arguments(p.oid)
+      SELECT replace(pg_get_functiondef(p.oid), chr(30), ' ')
       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
       WHERE {schema_filter('n.nspname', schemas)}
-        AND p.prokind IN ('f', 'p', 'a', 'w')
+        AND p.prokind IN ('f', 'p')
       ORDER BY n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)
     """)
-    for oid, ns, name, args in rows:
-        defn = q(f"SELECT pg_get_functiondef({oid})")
-        if not defn:
-            continue
-        body = defn[0][0]
+    for (body,) in [tuple(r) for r in rows]:
         yield body.rstrip().rstrip(";") + ";\n"
 
 
@@ -291,46 +283,44 @@ def gen_indexes(schemas):
 def gen_views(schemas):
     yield section("VIEWS AND MATERIALIZED VIEWS (dependency ordered)")
     rows = q(f"""
-      SELECT c.oid::text, n.nspname, c.relname, c.relkind
+      SELECT c.oid::text, n.nspname, c.relname, c.relkind,
+             replace(pg_get_viewdef(c.oid, true), chr(30), ' '),
+             COALESCE((
+               SELECT string_agg(DISTINCT dc.oid::text, ',')
+               FROM pg_depend dep
+               JOIN pg_rewrite r ON r.oid = dep.objid
+               JOIN pg_class dc ON dc.oid = dep.refobjid
+               WHERE r.ev_class = c.oid AND dc.relkind IN ('v', 'm')
+                 AND dc.oid <> c.oid), '')
       FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
       WHERE c.relkind IN ('v', 'm') AND {schema_filter('n.nspname', schemas)}
       ORDER BY n.nspname, c.relname
     """)
-    # Topologically order by view-on-view dependencies, tie-broken by name.
-    deps = {}
-    for oid, ns, name, kind in rows:
-        d = q(f"""
-          SELECT DISTINCT dc.oid::text
-          FROM pg_depend dep
-          JOIN pg_rewrite r ON r.oid = dep.objid
-          JOIN pg_class dc ON dc.oid = dep.refobjid
-          WHERE r.ev_class = {oid} AND dc.relkind IN ('v', 'm')
-            AND dc.oid <> {oid}
-        """)
-        deps[oid] = {x[0] for x in d}
-    emitted, pending = set(), list(rows)
-    guard = 0
-    while pending and guard < 50:
-        guard += 1
-        progressed = False
-        rest = []
-        for oid, ns, name, kind in pending:
-            if deps[oid] - emitted - {oid}:
-                rest.append((oid, ns, name, kind))
+    items = [(r[0], r[1], r[2], r[3], r[4], set(filter(None, r[5].split(",")))) for r in rows]
+
+    def emit(oid, ns, name, kind, defn):
+        prefix = ("CREATE MATERIALIZED VIEW IF NOT EXISTS" if kind == "m"
+                  else "CREATE OR REPLACE VIEW")
+        return f"{prefix} {ns}.{quote_ident(name)} AS\n{defn.rstrip().rstrip(';')};\n"
+
+    emitted: set[str] = set()
+    pending = items
+    for _ in range(50):
+        if not pending:
+            break
+        rest, progressed = [], False
+        for oid, ns, name, kind, defn, deps in pending:
+            if deps - emitted:
+                rest.append((oid, ns, name, kind, defn, deps))
                 continue
-            defn = q(f"SELECT pg_get_viewdef({oid}, true)")[0][0]
-            word = "MATERIALIZED VIEW" if kind == "m" else "VIEW"
-            prefix = "CREATE MATERIALIZED VIEW IF NOT EXISTS" if kind == "m" else "CREATE OR REPLACE VIEW"
-            yield f"{prefix} {ns}.{quote_ident(name)} AS\n{defn.rstrip().rstrip(';')};\n"
+            yield emit(oid, ns, name, kind, defn)
             emitted.add(oid)
             progressed = True
         pending = rest
         if not progressed:
             break
-    for oid, ns, name, kind in pending:  # cyclic / unresolved: emit last
-        defn = q(f"SELECT pg_get_viewdef({oid}, true)")[0][0]
-        prefix = "CREATE MATERIALIZED VIEW IF NOT EXISTS" if kind == "m" else "CREATE OR REPLACE VIEW"
-        yield f"{prefix} {ns}.{quote_ident(name)} AS\n{defn.rstrip().rstrip(';')};\n"
+    for oid, ns, name, kind, defn, deps in pending:
+        yield emit(oid, ns, name, kind, defn)
 
 
 def gen_triggers(schemas):
