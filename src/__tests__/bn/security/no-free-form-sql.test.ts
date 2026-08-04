@@ -22,12 +22,45 @@ import { globSync } from 'node:fs';
 const read = (p: string) => (existsSync(p) ? readFileSync(p, 'utf8') : '');
 
 const MIGRATIONS_DIR = 'supabase/migrations';
-const migrationText = existsSync(MIGRATIONS_DIR)
+// Chronological order — Supabase migration filenames are timestamp-prefixed.
+const migrationFiles = existsSync(MIGRATIONS_DIR)
   ? readdirSync(MIGRATIONS_DIR)
       .filter((f) => f.endsWith('.sql'))
-      .map((f) => read(`${MIGRATIONS_DIR}/${f}`))
-      .join('\n')
-  : '';
+      .sort()
+  : [];
+const migrationText = migrationFiles.map((f) => read(`${MIGRATIONS_DIR}/${f}`)).join('\n');
+
+/**
+ * Replays every GRANT/REVOKE statement in chronological order and returns the
+ * final effective privilege targets for a function name. Historical migrations
+ * legitimately granted these functions to `authenticated`; only the FINAL state
+ * matters for the security boundary.
+ */
+function finalGrantTargets(fnName: string): Set<string> {
+  const effective = new Set<string>();
+  for (const file of migrationFiles) {
+    const sql = read(`${MIGRATIONS_DIR}/${file}`);
+    const statements = sql.split(';');
+    for (const raw of statements) {
+      const stmt = raw.replace(/--[^\n]*/g, '').trim();
+      if (!stmt) continue;
+      const re = new RegExp(`\\b(GRANT|REVOKE)\\b[\\s\\S]*\\b${fnName}\\s*\\(`, 'i');
+      if (!re.test(stmt)) continue;
+      const isGrant = /^GRANT\b/i.test(stmt);
+      const tail = stmt.split(isGrant ? /\bTO\b/i : /\bFROM\b/i).slice(1).join(' ');
+      const roles = tail
+        .split(',')
+        .map((r) => r.trim().toLowerCase().replace(/["\s]/g, ''))
+        .filter(Boolean);
+      for (const role of roles) {
+        if (isGrant) effective.add(role);
+        else effective.delete(role);
+      }
+    }
+  }
+  return effective;
+}
+
 
 const PRIVILEGED_FUNCTIONS = [
   'public.bn_run_select(text)',
