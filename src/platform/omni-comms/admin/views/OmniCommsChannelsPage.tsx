@@ -121,6 +121,14 @@ export const OmniCommsChannelsPage: React.FC = () => {
     ? "overview"
     : rawTab;
 
+  /*
+   * Keep the URL honest: an out-of-capability tab is rewritten to Overview so
+   * breadcrumbs, the rail and the rendered surface can never disagree.
+   */
+  useEffect(() => {
+    if (definition && rawTab !== tab) setTab(tab);
+  }, [definition, rawTab, tab, setTab]);
+
   const isEmail = definition?.code === "email";
   const showCatalogue = !definition;
 
