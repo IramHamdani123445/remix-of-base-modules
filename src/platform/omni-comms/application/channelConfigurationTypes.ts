@@ -58,5 +58,9 @@ export function formatResourceCount(
   if (summary.state === 'unavailable') return 'Unavailable';
   if (summary.state === 'not_applicable') return 'Not applicable';
   const value = which === 'total' ? summary.total : summary.active;
-  return value === null ? 'Unknown' : String(value);
+  if (value === null) return 'Unknown';
+  // A genuine, successfully read zero is stated as "Not configured" so it can
+  // never be confused with an unloaded or unreadable count.
+  return value === 0 ? 'Not configured' : String(value);
 }
+
