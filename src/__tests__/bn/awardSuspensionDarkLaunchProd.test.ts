@@ -42,11 +42,19 @@ describe('BN-MENU-S1: Award Suspension is menu-visible and read-only', () => {
     );
   });
 
+  it('Life Certificates is a registered read-only workspace in production', async () => {
+    // BN-LC-NAV: screen visibility is independent of mutation enablement;
+    // Life Certificate commands stay dark-launched via app_modules.actions_enabled=false.
+    vi.stubEnv('MODE', 'production');
+    vi.stubEnv('PROD', 'true' as any);
+    const mod = await reloadModule();
+    expect(mod.isFeatureEnabled('bn.servicing.lifeCert')).toBe(true);
+  });
+
   it('other servicing flags remain hidden by default in production', async () => {
     vi.stubEnv('MODE', 'production');
     vi.stubEnv('PROD', 'true' as any);
     const mod = await reloadModule();
-    expect(mod.isFeatureEnabled('bn.servicing.lifeCert')).toBe(false);
     expect(mod.isFeatureEnabled('bn.servicing.overpayment')).toBe(false);
     expect(mod.isFeatureEnabled('bn.servicing.medicalReview')).toBe(false);
   });
