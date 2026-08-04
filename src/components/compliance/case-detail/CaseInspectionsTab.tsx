@@ -98,7 +98,7 @@ export function CaseInspectionsTab({ caseId, employerId }: Props) {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => navigate(`/compliance/inspections/${i.id}`)}
+                      onClick={() => navigate(`/compliance/field/audit-report/${i.id}`)}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
