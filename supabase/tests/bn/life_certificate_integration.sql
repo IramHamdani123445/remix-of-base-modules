@@ -405,6 +405,153 @@ BEGIN
   END;
 END $adapter$;
 
+-- =====================================================================
+-- 7. Terminal-state hardening of the shared communication adapter
+-- =====================================================================
+INSERT INTO public.bn_life_certificate_communication_intent
+  (id, life_certificate_id, bn_award_id, event_code, idempotency_key, correlation_id, delivery_status, context)
+VALUES
+  ('eeeeeeee-0000-4000-8000-000000000002'::uuid, :lc_id::uuid, :award_id::uuid, 'BN_LC_REMINDER',
+   'bn-lc-harness-intent-cancelled', 'corr-bn-lc-cancelled', 'PENDING', '{"harness":true}'::jsonb),
+  ('eeeeeeee-0000-4000-8000-000000000003'::uuid, :lc_id::uuid, :award_id::uuid, 'BN_LC_REMINDER',
+   'bn-lc-harness-intent-race', 'corr-bn-lc-race', 'PENDING', '{"harness":true}'::jsonb),
+  ('eeeeeeee-0000-4000-8000-000000000004'::uuid, :lc_id::uuid, :award_id::uuid, 'BN_LC_REMINDER',
+   'bn-lc-harness-intent-flow', 'corr-bn-lc-flow', 'PENDING', '{"harness":true}'::jsonb),
+  ('eeeeeeee-0000-4000-8000-000000000005'::uuid, :lc_id::uuid, :award_id::uuid, 'BN_LC_REMINDER',
+   'bn-lc-harness-intent-failed', 'corr-bn-lc-failed', 'FAILED', '{"harness":true}'::jsonb);
+
+DO $terminal$
+DECLARE
+  v jsonb; v_status text; v_count integer; v_attempts integer; v_ref text;
+  c_cancel uuid := 'eeeeeeee-0000-4000-8000-000000000002'::uuid;
+  c_race   uuid := 'eeeeeeee-0000-4000-8000-000000000003'::uuid;
+  c_flow   uuid := 'eeeeeeee-0000-4000-8000-000000000004'::uuid;
+  c_failed uuid := 'eeeeeeee-0000-4000-8000-000000000005'::uuid;
+  v_req uuid; v_req2 uuid;
+BEGIN
+  RAISE NOTICE '--- terminal-state hardening ---';
+
+  -- 7a. Transition matrix.
+  IF public._bn_comm_transition_allowed('DELIVERED','REQUESTED') THEN RAISE EXCEPTION 'FAIL: DELIVERED regressed'; END IF;
+  IF public._bn_comm_transition_allowed('FAILED','RETRY')        THEN RAISE EXCEPTION 'FAIL: FAILED became retryable'; END IF;
+  IF public._bn_comm_transition_allowed('CANCELLED','REQUESTED') THEN RAISE EXCEPTION 'FAIL: CANCELLED reopened'; END IF;
+  IF public._bn_comm_transition_allowed('QUEUED','REQUESTED')    THEN RAISE EXCEPTION 'FAIL: QUEUED regressed'; END IF;
+  IF NOT public._bn_comm_transition_allowed('PENDING','REQUESTED')   THEN RAISE EXCEPTION 'FAIL: PENDING->REQUESTED blocked'; END IF;
+  IF NOT public._bn_comm_transition_allowed('DISPATCHED','DELIVERED') THEN RAISE EXCEPTION 'FAIL: DISPATCHED->DELIVERED blocked'; END IF;
+  IF NOT public._bn_comm_transition_allowed('REQUESTED','CANCELLED')  THEN RAISE EXCEPTION 'FAIL: REQUESTED->CANCELLED blocked'; END IF;
+
+  -- 7b. A CANCELLED intent can never be dispatched.
+  UPDATE public.bn_life_certificate_communication_intent
+     SET delivery_status = 'CANCELLED' WHERE id = c_cancel;
+  v := public.bn_communication_adapter_dispatch_v1('BN_LIFE_CERTIFICATE', c_cancel);
+  IF v->>'status' <> 'NO_OP' OR v->>'error_code' <> 'E_INTENT_CANCELLED' THEN
+    RAISE EXCEPTION 'FAIL: cancelled dispatch returned %', v; END IF;
+
+  SELECT count(*) INTO v_count FROM public.communication_request
+   WHERE idempotency_key = 'bn-comm:BN_LIFE_CERTIFICATE:'||c_cancel::text;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'FAIL: cancelled intent created a communication_request'; END IF;
+  SELECT count(*) INTO v_count FROM public.communication_recipient r
+    JOIN public.communication_request q ON q.id = r.request_id
+   WHERE q.idempotency_key = 'bn-comm:BN_LIFE_CERTIFICATE:'||c_cancel::text;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'FAIL: cancelled intent created a recipient'; END IF;
+  SELECT count(*) INTO v_count FROM public.bn_communication_dispatch
+   WHERE source_intent_id = c_cancel;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'FAIL: cancelled intent created a dispatch ledger row'; END IF;
+
+  SELECT delivery_status, COALESCE(attempts,0) INTO v_status, v_attempts
+    FROM public.bn_life_certificate_communication_intent WHERE id = c_cancel;
+  IF v_status <> 'CANCELLED' THEN RAISE EXCEPTION 'FAIL: cancelled intent moved to %', v_status; END IF;
+
+  -- 7c. Failure recording does not disturb a CANCELLED intent.
+  v := public.bn_communication_adapter_record_failure_v1('BN_LIFE_CERTIFICATE', c_cancel, 'E_PROVIDER_DOWN');
+  IF v->>'status' <> 'NO_OP' OR v->>'error_code' <> 'E_INTENT_CANCELLED' THEN
+    RAISE EXCEPTION 'FAIL: record_failure on cancelled returned %', v; END IF;
+  SELECT delivery_status, COALESCE(attempts,0) INTO v_status, v_count
+    FROM public.bn_life_certificate_communication_intent WHERE id = c_cancel;
+  IF v_status <> 'CANCELLED' OR v_count <> v_attempts THEN
+    RAISE EXCEPTION 'FAIL: record_failure mutated cancelled intent (% / %)', v_status, v_count; END IF;
+
+  -- 7d. Synchronisation does not disturb a CANCELLED intent (no ledger row exists,
+  --     and the guarded update refuses the transition regardless).
+  PERFORM public.bn_communication_adapter_sync_v1(200);
+  SELECT delivery_status INTO v_status
+    FROM public.bn_life_certificate_communication_intent WHERE id = c_cancel;
+  IF v_status <> 'CANCELLED' THEN RAISE EXCEPTION 'FAIL: sync changed cancelled intent to %', v_status; END IF;
+
+  -- 7e. Terminal FAILED requires explicit manual recovery.
+  v := public.bn_communication_adapter_dispatch_v1('BN_LIFE_CERTIFICATE', c_failed);
+  IF v->>'status' <> 'NO_OP' OR v->>'error_code' <> 'E_INTENT_TERMINAL_FAILED' THEN
+    RAISE EXCEPTION 'FAIL: terminal FAILED dispatched: %', v; END IF;
+  v := public.bn_communication_adapter_record_failure_v1('BN_LIFE_CERTIFICATE', c_failed, 'E_PROVIDER_DOWN');
+  IF v->>'status' <> 'NO_OP' THEN RAISE EXCEPTION 'FAIL: FAILED became retryable: %', v; END IF;
+  SELECT delivery_status INTO v_status
+    FROM public.bn_life_certificate_communication_intent WHERE id = c_failed;
+  IF v_status <> 'FAILED' THEN RAISE EXCEPTION 'FAIL: FAILED intent moved to %', v_status; END IF;
+
+  -- 7f. Missing intents are reported honestly.
+  v := public.bn_communication_adapter_record_failure_v1('BN_LIFE_CERTIFICATE',
+        '00000000-0000-4000-8000-0000000000ff'::uuid, 'E_PROVIDER_DOWN');
+  IF v->>'error_code' <> 'E_INTENT_NOT_FOUND' THEN
+    RAISE EXCEPTION 'FAIL: missing intent reported as %', v; END IF;
+
+  -- 7g. Race: cancellation lands after pending-feed selection, before dispatch.
+  SELECT count(*) INTO v_count FROM public.bn_communication_adapter_pending_v1(200) p
+   WHERE p.source_intent_id = c_race;
+  IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: race intent not selected by the pending feed'; END IF;
+  UPDATE public.bn_life_certificate_communication_intent
+     SET delivery_status = 'CANCELLED' WHERE id = c_race;   -- cancellation after selection
+  v := public.bn_communication_adapter_dispatch_v1('BN_LIFE_CERTIFICATE', c_race);
+  IF v->>'status' <> 'NO_OP' OR v->>'error_code' <> 'E_INTENT_CANCELLED' THEN
+    RAISE EXCEPTION 'FAIL: post-selection cancellation ignored: %', v; END IF;
+  SELECT count(*) INTO v_count FROM public.communication_request
+   WHERE idempotency_key = 'bn-comm:BN_LIFE_CERTIFICATE:'||c_race::text;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'FAIL: raced cancellation still produced a request'; END IF;
+
+  -- 7h. Normal lifecycle still works end to end, and replay stays singular.
+  v := public.bn_communication_adapter_dispatch_v1('BN_LIFE_CERTIFICATE', c_flow);
+  IF v->>'status' <> 'DISPATCHED' THEN RAISE EXCEPTION 'FAIL: flow dispatch %', v; END IF;
+  v_req := (v->>'communication_request_id')::uuid;
+  v := public.bn_communication_adapter_dispatch_v1('BN_LIFE_CERTIFICATE', c_flow);
+  v_req2 := (v->>'communication_request_id')::uuid;
+  IF v->>'status' <> 'REPLAYED' OR v_req2 <> v_req THEN
+    RAISE EXCEPTION 'FAIL: flow replay % / %', v->>'status', v_req2; END IF;
+  SELECT count(*) INTO v_count FROM public.communication_request
+   WHERE idempotency_key = 'bn-comm:BN_LIFE_CERTIFICATE:'||c_flow::text;
+  IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: replay produced % requests', v_count; END IF;
+  SELECT count(*) INTO v_count FROM public.communication_recipient WHERE request_id = v_req;
+  IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: replay produced % recipients', v_count; END IF;
+
+  UPDATE public.communication_request SET status = 'queued' WHERE id = v_req;
+  PERFORM public.bn_communication_adapter_sync_v1(200);
+  UPDATE public.communication_request SET status = 'sent' WHERE id = v_req;
+  PERFORM public.bn_communication_adapter_sync_v1(200);
+  UPDATE public.communication_request SET status = 'delivered' WHERE id = v_req;
+  PERFORM public.bn_communication_adapter_sync_v1(200);
+  SELECT delivery_status, delivery_reference INTO v_status, v_ref
+    FROM public.bn_life_certificate_communication_intent WHERE id = c_flow;
+  IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: flow ended at %', v_status; END IF;
+
+  -- 7i. An unknown Hub status can never regress DELIVERED back to REQUESTED.
+  UPDATE public.communication_request SET status = 'martian' WHERE id = v_req;
+  PERFORM public.bn_communication_adapter_sync_v1(200);
+  SELECT delivery_status INTO v_status
+    FROM public.bn_life_certificate_communication_intent WHERE id = c_flow;
+  IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: DELIVERED regressed to %', v_status; END IF;
+
+  -- 7j. Delivered intents are immune to dispatch and failure recording.
+  v := public.bn_communication_adapter_dispatch_v1('BN_LIFE_CERTIFICATE', c_flow);
+  IF v->>'status' NOT IN ('REPLAYED','NO_OP') THEN
+    RAISE EXCEPTION 'FAIL: delivered intent re-dispatched: %', v; END IF;
+  v := public.bn_communication_adapter_record_failure_v1('BN_LIFE_CERTIFICATE', c_flow, 'E_PROVIDER_DOWN');
+  IF v->>'status' <> 'NO_OP' OR v->>'error_code' <> 'E_INTENT_ALREADY_DELIVERED' THEN
+    RAISE EXCEPTION 'FAIL: record_failure on delivered returned %', v; END IF;
+  SELECT delivery_status, delivery_reference INTO v_status, v_ref
+    FROM public.bn_life_certificate_communication_intent WHERE id = c_flow;
+  IF v_status <> 'DELIVERED' OR v_ref IS DISTINCT FROM v_req::text THEN
+    RAISE EXCEPTION 'FAIL: delivered evidence altered (% / %)', v_status, v_ref; END IF;
+END $terminal$;
+
 DO $done$ BEGIN RAISE NOTICE 'BN_LC_HARNESS_RESULT: PASS (all scenarios executed, nothing skipped)'; END $done$;
 
 ROLLBACK;
+
