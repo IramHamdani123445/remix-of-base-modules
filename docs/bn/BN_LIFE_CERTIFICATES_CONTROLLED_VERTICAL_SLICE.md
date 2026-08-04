@@ -541,3 +541,25 @@ authorisation rather than a superuser bypass.
 Life Certificates remain **dark-launched** (`actions_enabled = false`).
 `/bn/life-certificates` stays the canonical workspace. No Medical Reviews or
 other Benefits slice was started.
+
+## Shared communication adapter — terminal-state hardening
+
+Permitted communication transitions (enforced by `public._bn_comm_transition_allowed`):
+
+| From | Allowed to |
+| --- | --- |
+| PENDING | PENDING, RETRY, REQUESTED, FAILED, CANCELLED |
+| RETRY | RETRY, REQUESTED, FAILED, CANCELLED |
+| REQUESTED | REQUESTED, QUEUED, DISPATCHED, DELIVERED, FAILED, CANCELLED |
+| QUEUED | QUEUED, DISPATCHED, DELIVERED, FAILED, CANCELLED |
+| DISPATCHED | DISPATCHED, DELIVERED, FAILED, CANCELLED |
+| DELIVERED | DELIVERED |
+| FAILED | FAILED |
+| CANCELLED | CANCELLED |
+
+- `bn_communication_adapter_dispatch_v1` re-reads `delivery_status` **while the intent row is locked**, so a cancellation landing between pending-feed selection and dispatch is honoured. CANCELLED → `NO_OP` / `E_INTENT_CANCELLED` with no `communication_request`, no recipient and no ledger row; DELIVERED → `NO_OP` / `E_INTENT_ALREADY_DELIVERED` returning the existing reference; FAILED → `NO_OP` / `E_INTENT_TERMINAL_FAILED` (explicit manual recovery required); an existing request is still `REPLAYED` verbatim.
+- `bn_communication_adapter_record_failure_v1` locks the intent, no-ops on CANCELLED/DELIVERED/FAILED while preserving status, delivery reference and attempts, and returns `E_INTENT_NOT_FOUND` when no intent exists.
+- `bn_communication_adapter_sync_v1` applies Hub statuses only through the transition matrix, so an unknown Hub status can never regress DELIVERED/FAILED/CANCELLED back to REQUESTED.
+- `supabase/functions/bn-communication-adapter` classifies terminal `NO_OP` results as successful non-retry outcomes (`noop` counter) and never records a second failure for them.
+- Coverage: `supabase/tests/bn/life_certificate_integration.sql` section 7 (cancellation, race, terminal FAILED, delivered immunity, unknown-status regression, replay singularity, full PENDING→DELIVERED flow) and `src/__tests__/bn/servicing/communicationAdapterTerminalState.test.ts`.
+- Life Certificates remain dark-launched (`app_modules.actions_enabled = false`).

@@ -99897,6 +99897,10 @@ export type Database = {
         Returns: Json
       }
       _bn_comm_map_hub_status: { Args: { p_status: string }; Returns: string }
+      _bn_comm_transition_allowed: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
+      }
       _bn_lc_actor: { Args: never; Returns: string }
       _bn_lc_assert_enabled: { Args: never; Returns: undefined }
       _bn_lc_audit: {
