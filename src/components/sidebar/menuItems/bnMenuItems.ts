@@ -180,13 +180,6 @@ const _bnMenuItemsRaw = [
         requiresPermission: "benefits_management",
         description: "Live bn_ table row counts and screen-to-table mapping",
       },
-      {
-        title: "SQL Editor",
-        url: "/bn/admin/sql",
-        icon: Code2,
-        requiresPermission: "benefits_management",
-        description: "Run read-only SQL against the Benefits database",
-      },
     ],
   },
   {
