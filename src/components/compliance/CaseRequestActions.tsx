@@ -36,9 +36,35 @@ export const CaseRequestActions = ({ caseId, caseStatus, caseNumber }: Props) =>
   const [open, setOpen] = useState<CaseRequestType | null>(null);
   const [reason, setReason] = useState('');
   const [targetCaseId, setTargetCaseId] = useState('');
+  const [mergeSearch, setMergeSearch] = useState('');
+  const [selectedTargetLabel, setSelectedTargetLabel] = useState('');
   const [closureMapping, setClosureMapping] = useState<ResolvedMapping | null>(null);
 
   const closed = ['RESOLVED', 'CLOSED', 'COMPLETED'].includes(caseStatus);
+
+  // Debounced search term for the merge target picker.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(mergeSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [mergeSearch]);
+
+  const { data: candidateCases = [], isFetching: isSearching } = useQuery({
+    queryKey: ['ce-case-merge-candidates', debouncedSearch, caseId],
+    enabled: open === 'MERGE' && debouncedSearch.length >= 2,
+    queryFn: async () => {
+      const term = debouncedSearch.replace(/[%,]/g, '');
+      const { data, error } = await supabase
+        .from('ce_cases')
+        .select('id, case_number, employer_name, status')
+        .or(`case_number.ilike.%${term}%,employer_name.ilike.%${term}%`)
+        .neq('id', caseId)
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; case_number: string; employer_name: string | null; status: string }>;
+    },
+  });
+
 
   // Resolve the workflow mapping when the closure dialog opens so we can
   // surface the resolved workflow name + fallback behavior to the user.
