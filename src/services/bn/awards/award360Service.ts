@@ -342,17 +342,41 @@ export async function listAwardPayments(awardId: string, limit = 100): Promise<A
   }));
 }
 
+
+// BN-AWARD360 — Life Certificates read boundary.
+// `bn_life_certificate` grants are revoked from the browser roles, so all
+// reads go through the secured, award-scoped query RPC.
+interface LifeCertRpcRow {
+  id: string;
+  required_for_period: string | null;
+  due_date: string | null;
+  submitted_date: string | null;
+  verified_date: string | null;
+  verification_method: string | null;
+  status: string | null;
+  remarks: string | null;
+}
+
+async function fetchAwardLifeCertificateRows(
+  awardId: string,
+  opts: { tolerateError?: boolean } = {},
+): Promise<LifeCertRpcRow[]> {
+  const { data, error } = await (db as unknown as {
+    rpc: (n: string, a: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc('bn_life_certificate_award_list_v1', { p_award_id: awardId, p_limit: 200 });
+  if (error) {
+    // Summary/overview surfaces degrade to empty; the paged tab surfaces errors.
+    if (opts.tolerateError) return [];
+    throw error;
+  }
+  return (Array.isArray(data) ? data : []) as LifeCertRpcRow[];
+}
+
 // ─── Life Certificates ───────────────────────────────────────────────────
 export async function listAwardLifeCertificates(
   awardId: string,
 ): Promise<AwardLifeCertificateItem[]> {
-  const { data } = await db
-    .from('bn_life_certificate')
-    .select(
-      'id, required_for_period, due_date, submitted_date, verified_date, verification_method, status, remarks',
-    )
-    .eq('bn_award_id', awardId)
-    .order('due_date', { ascending: false });
+  const data = await fetchAwardLifeCertificateRows(awardId, { tolerateError: true });
   const today = new Date();
   return ((data ?? []) as any[]).map((r) => {
     const overdue =
@@ -1705,14 +1729,7 @@ export async function listAwardLifeCertificatesPaged(
   award: { status?: string | null; awardType?: string | null } | null = null,
 ): Promise<AwardPagedResult<AwardLifeCertificateItem, AwardLifeCertificateSummary>> {
   const warnings: string[] = [];
-  const { data, error } = await db
-    .from('bn_life_certificate')
-    .select(
-      'id, required_for_period, due_date, submitted_date, verified_date, verification_method, status, remarks',
-    )
-    .eq('bn_award_id', q.awardId)
-    .order('due_date', { ascending: false });
-  if (error) throw error;
+  const data = await fetchAwardLifeCertificateRows(q.awardId);
 
   const today = new Date();
   const all: AwardLifeCertificateItem[] = ((data ?? []) as any[]).map((r) => {

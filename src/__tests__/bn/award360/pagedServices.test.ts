@@ -23,8 +23,13 @@ function makeThenable(payload: { data: any; error: any; count?: number }) {
 }
 
 const fromMock = vi.fn();
+// Life certificates are read through a secured RPC (table grants are revoked).
+const rpcMock = vi.fn();
 vi.mock('@/integrations/supabase/client', () => ({
-  supabase: { from: (t: string) => fromMock(t) },
+  supabase: {
+    from: (t: string) => fromMock(t),
+    rpc: (n: string, a: Record<string, unknown>) => rpcMock(n, a),
+  },
 }));
 
 import {
@@ -35,6 +40,7 @@ import {
 
 beforeEach(() => {
   fromMock.mockReset();
+  rpcMock.mockReset();
 });
 
 describe('BN-AWARD360-B1 · listAwardSchedulesPaged', () => {
@@ -92,7 +98,7 @@ describe('BN-AWARD360-B1 · listAwardPaymentsPaged', () => {
 
 describe('BN-AWARD360-B1 · listAwardLifeCertificatesPaged', () => {
   it('surfaces Supabase errors on the base query', async () => {
-    fromMock.mockReturnValue(makeThenable({ data: null, error: { message: 'x' } }));
+    rpcMock.mockResolvedValue({ data: null, error: { message: 'x' } });
     await expect(
       listAwardLifeCertificatesPaged({ awardId: 'a', page: 1, pageSize: 10 }),
     ).rejects.toBeTruthy();
@@ -102,7 +108,7 @@ describe('BN-AWARD360-B1 · listAwardLifeCertificatesPaged', () => {
     const rows = [
       { id: '1', required_for_period: '2020', due_date: '2020-01-01', submitted_date: null, verified_date: null, verification_method: null, status: 'PENDING', remarks: null },
     ];
-    fromMock.mockReturnValue(makeThenable({ data: rows, error: null }));
+    rpcMock.mockResolvedValue({ data: rows, error: null });
     const res = await listAwardLifeCertificatesPaged({ awardId: 'a', page: 1, pageSize: 10 });
     expect(res.summary.overdueCycles).toBe(1);
     expect(res.summary.compliance.state).toBe('OVERDUE');

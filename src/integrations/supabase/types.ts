@@ -100788,6 +100788,10 @@ export type Database = {
           total_weeks: number
         }[]
       }
+      bn_life_certificate_award_list_v1: {
+        Args: { p_award_id: string; p_limit?: number }
+        Returns: Json
+      }
       bn_life_certificate_case_evidence_v1: {
         Args: { p_suspension_event_id: string }
         Returns: Json
