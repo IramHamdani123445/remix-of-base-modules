@@ -203,7 +203,9 @@ export interface ExecutionResult {
 }
 
 export const isExecutionFailure = (result: ExecutionResult): boolean =>
-  result.execution_status === 'FAILED' || result.status === 'EXECUTION_FAILED';
+  result.execution_status === 'FAILED' ||
+  result.execution_status === 'EXECUTION_FAILED' ||
+  result.status === 'EXECUTION_FAILED';
 
 export interface ReinstatementResult {
   reinstatement_id: string;
