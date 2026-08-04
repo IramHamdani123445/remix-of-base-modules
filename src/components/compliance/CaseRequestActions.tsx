@@ -9,7 +9,8 @@
  * queue can route accordingly.
  */
 import { useEffect, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { PermissionButton } from '@/components/ui/permission-button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -36,9 +37,35 @@ export const CaseRequestActions = ({ caseId, caseStatus, caseNumber }: Props) =>
   const [open, setOpen] = useState<CaseRequestType | null>(null);
   const [reason, setReason] = useState('');
   const [targetCaseId, setTargetCaseId] = useState('');
+  const [mergeSearch, setMergeSearch] = useState('');
+  const [selectedTargetLabel, setSelectedTargetLabel] = useState('');
   const [closureMapping, setClosureMapping] = useState<ResolvedMapping | null>(null);
 
   const closed = ['RESOLVED', 'CLOSED', 'COMPLETED'].includes(caseStatus);
+
+  // Debounced search term for the merge target picker.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(mergeSearch.trim()), 300);
+    return () => clearTimeout(t);
+  }, [mergeSearch]);
+
+  const { data: candidateCases = [], isFetching: isSearching } = useQuery({
+    queryKey: ['ce-case-merge-candidates', debouncedSearch, caseId],
+    enabled: open === 'MERGE' && debouncedSearch.length >= 2,
+    queryFn: async () => {
+      const term = debouncedSearch.replace(/[%,]/g, '');
+      const { data, error } = await supabase
+        .from('ce_cases')
+        .select('id, case_number, employer_name, status')
+        .or(`case_number.ilike.%${term}%,employer_name.ilike.%${term}%`)
+        .neq('id', caseId)
+        .limit(20);
+      if (error) throw error;
+      return (data ?? []) as Array<{ id: string; case_number: string; employer_name: string | null; status: string }>;
+    },
+  });
+
 
   // Resolve the workflow mapping when the closure dialog opens so we can
   // surface the resolved workflow name + fallback behavior to the user.
@@ -96,7 +123,7 @@ export const CaseRequestActions = ({ caseId, caseStatus, caseNumber }: Props) =>
     },
     onSuccess: () => {
       toast.success(`${open} request submitted for review`);
-      setOpen(null); setReason(''); setTargetCaseId('');
+      setOpen(null); setReason(''); setTargetCaseId(''); setMergeSearch(''); setSelectedTargetLabel('');
     },
     onError: (e: any) =>
       toast.error(e?.message || 'Failed to submit request', {
@@ -166,10 +193,48 @@ export const CaseRequestActions = ({ caseId, caseStatus, caseNumber }: Props) =>
               </div>
             )}
             {open === 'MERGE' && (
-              <div>
-                <label className="text-xs text-muted-foreground">Target case ID (UUID)</label>
-                <Input value={targetCaseId} onChange={(e) => setTargetCaseId(e.target.value)}
-                  placeholder="UUID of the case to merge into" />
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">
+                  Target case (search by case number or employer)
+                </label>
+                <Input
+                  value={mergeSearch}
+                  onChange={(e) => { setMergeSearch(e.target.value); setTargetCaseId(''); }}
+                  placeholder="Type at least 2 characters, e.g. CE-2026 or employer name"
+                />
+                {selectedTargetLabel ? (
+                  <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                    <span>Merging into <span className="font-medium">{selectedTargetLabel}</span></span>
+                    <Button variant="ghost" size="sm" onClick={() => { setTargetCaseId(''); setSelectedTargetLabel(''); }}>
+                      Change
+                    </Button>
+                  </div>
+                ) : mergeSearch.trim().length >= 2 ? (
+                  <div className="max-h-48 overflow-y-auto rounded-md border">
+                    {isSearching && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
+                    )}
+                    {!isSearching && candidateCases.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">No matching open cases found</div>
+                    )}
+                    {candidateCases.map((cc) => (
+                      <button
+                        key={cc.id}
+                        type="button"
+                        className="flex w-full flex-col items-start px-3 py-2 text-left text-xs hover:bg-accent"
+                        onClick={() => {
+                          setTargetCaseId(cc.id);
+                          setSelectedTargetLabel(`${cc.case_number}${cc.employer_name ? ` — ${cc.employer_name}` : ''}`);
+                        }}
+                      >
+                        <span className="font-medium">{cc.case_number}</span>
+                        <span className="text-muted-foreground">
+                          {cc.employer_name || 'Unknown employer'} · {cc.status}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
             <div>
