@@ -12,9 +12,12 @@
  *     the database schema is NOT extended in C1.
  */
 import {
+  isTabApplicable,
   OMNI_COMMS_CHANNEL_CATALOGUE,
+  OMNI_COMMS_CHANNEL_RESOURCES,
   OMNI_COMMS_GENERIC_TABS,
   type OmniCommsChannel,
+  type OmniCommsChannelCapabilityMatrix,
   type OmniCommsChannelDescriptor,
   type OmniCommsGenericTab,
 } from '@/platform/omni-comms/domain/channelCatalogue';
@@ -95,6 +98,8 @@ export interface ChannelUiDefinition extends ChannelUiCopy {
   /** Whether the CURRENT database schema supports this channel value. */
   readonly databaseSupported: boolean;
   readonly tabs: readonly ChannelWorkspaceTab[];
+  /** Canonical capability matrix (schemaSupported vs uiApplicable). */
+  readonly capabilities: OmniCommsChannelCapabilityMatrix;
   /** Future policy fields — displayed, never saved, for non-email channels. */
   readonly policies: readonly string[];
 }
@@ -251,6 +256,7 @@ export const OMNI_COMMS_CHANNEL_UI_CATALOGUE: readonly ChannelUiDefinition[] =
     implementationState: deriveImplementationState(d),
     databaseSupported: d.databaseSupported,
     tabs: d.tabs,
+    capabilities: d.capabilities,
     policies: FUTURE_POLICY_FIELDS,
   }));
 
@@ -275,13 +281,26 @@ export function isChannelConfigurable(def: ChannelUiDefinition): boolean {
   return def.implementationState === 'configuring';
 }
 
-/** Planned channels expose no configurable tabs beyond read-only explanation. */
+/**
+ * CG1 — a tab is disabled when it is not part of the channel's approved
+ * capability. Planned channels therefore expose Overview only.
+ */
 export function isTabDisabled(
   def: ChannelUiDefinition,
   tab: ChannelWorkspaceTab,
 ): boolean {
-  if (def.implementationState !== 'planned') return false;
-  return tab !== 'overview' && tab !== 'endpoints';
+  return !isTabApplicable(def.code, tab);
+}
+
+/** Truthful reason a resource is not offered for this channel. */
+export function capabilityReason(
+  def: ChannelUiDefinition,
+  tab: ChannelWorkspaceTab,
+): string | null {
+  if (tab === 'overview') return null;
+  if (!(OMNI_COMMS_CHANNEL_RESOURCES as readonly string[]).includes(tab)) return null;
+  const c = def.capabilities[tab as (typeof OMNI_COMMS_CHANNEL_RESOURCES)[number]];
+  return c && !c.uiApplicable ? c.reason : null;
 }
 
 /** Structural self-check used by tests. */
@@ -298,6 +317,9 @@ export function validateChannelUiCatalogue(): string[] {
       problems.push('email must be presented as configuring');
     }
     if (d.tabs.length === 0) problems.push(`${d.code}: no tabs declared`);
+    if (d.code !== 'email' && d.tabs.includes('release-control')) {
+      problems.push(`${d.code}: Release Control is an Email-only contract`);
+    }
     for (const t of d.tabs) {
       if (!(CHANNEL_WORKSPACE_TABS as readonly string[]).includes(t)) {
         problems.push(`${d.code}: unknown tab ${t}`);

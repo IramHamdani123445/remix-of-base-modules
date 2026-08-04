@@ -28,8 +28,10 @@ export function useOmniCommsSelectedChannel(): UseOmniCommsSelectedChannelResult
     (next: string) => {
       const params = new URLSearchParams(searchParams);
       params.set('channel', next);
-      // A channel switch invalidates the previous channel's tab selection.
+      // A channel switch invalidates the previous channel's tab selection AND
+      // any selected resource: a resource id is never valid across channels.
       params.delete('tab');
+      params.delete('resource');
       setSearchParams(params, { replace: true });
     },
     [searchParams, setSearchParams],
@@ -39,6 +41,7 @@ export function useOmniCommsSelectedChannel(): UseOmniCommsSelectedChannelResult
     const params = new URLSearchParams(searchParams);
     params.delete('channel');
     params.delete('tab');
+    params.delete('resource');
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 

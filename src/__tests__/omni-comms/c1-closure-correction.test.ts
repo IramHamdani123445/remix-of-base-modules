@@ -197,7 +197,10 @@ describe('C1 closure — one Email readiness projection', () => {
 
   it('9. catalogue, header and Overview use the same projection', () => {
     expect(page).toContain('projectEmailReadiness');
-    expect(page).toContain('emailReadiness.label');
+    // CG1 — the page passes the shared Email projection through the generic
+    // readiness layer, which copies the Email verdict verbatim.
+    expect(page).toContain('emailProjection');
+    expect(page).toContain('projectChannelReadiness');
     expect(read(`${DIR}/ChannelOverviewTab.tsx`)).toContain('projectEmailReadiness');
     // the overview no longer builds its own checklist
     expect(read(`${DIR}/ChannelOverviewTab.tsx`)).not.toContain(

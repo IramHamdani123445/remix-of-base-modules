@@ -1,8 +1,9 @@
 /**
- * Omni-Comms C1 — channel catalogue (default Channels view).
+ * Omni-Comms C1 / CG1 — channel catalogue (default Channels view).
  *
- * Truthful, read-only cards. Only Email reports real counts; every other
- * channel shows an explicit empty/planned state and never invented numbers.
+ * Truthful, read-only cards. Counts come from the GENERIC configuration
+ * summary for every channel whose approved workflow exposes the resource.
+ * Unloaded or unreadable counts are shown as explicit states — never zero.
  */
 import React from 'react';
 import {
@@ -17,25 +18,32 @@ import {
   OMNI_COMMS_CHANNEL_UI_CATALOGUE,
   type ChannelUiDefinition,
 } from './channelUiRegistry';
+import {
+  formatResourceCount,
+  type ChannelConfigurationSummary,
+} from '@/platform/omni-comms/application/channelConfigurationTypes';
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   Mail, MessageSquare, MessagesSquare, BellRing, Inbox, Webhook, Printer, PhoneCall,
 };
 
-export interface ChannelCatalogueCounts {
-  /** Genuine (non-reference) provider accounts. */
-  providerAccounts: number;
-  /** Genuine active sender identities. */
-  activeIdentities: number;
-  readiness: string;
-  /** Supporting explanation (technical test pending). */
-  readinessExplanation?: string;
+export interface ChannelCatalogueReadiness {
+  /** Configuration readiness label (never a delivery claim). */
+  configurationLabel: string;
+  /** Delivery readiness label, reported separately and always truthfully. */
+  deliveryLabel: string;
+  /** Optional supporting explanation for configuration readiness. */
+  explanation?: string;
 }
 
 export interface ChannelCatalogueProps {
   onSelect: (channel: string) => void;
-  /** Counts are supplied for email only; other channels stay truthful. */
-  emailCounts?: ChannelCatalogueCounts | null;
+  /** Generic per-channel configuration summaries, keyed by channel code. */
+  summaries?: Record<string, ChannelConfigurationSummary> | null;
+  /** Readiness per channel, keyed by channel code. */
+  readiness?: Record<string, ChannelCatalogueReadiness> | null;
+  /** True while the catalogue counts are still being read. */
+  loading?: boolean;
 }
 
 function stateVariant(def: ChannelUiDefinition) {
@@ -44,9 +52,13 @@ function stateVariant(def: ChannelUiDefinition) {
   return 'secondary' as const;
 }
 
+const LOADING = 'Loading…';
+
 export const ChannelCatalogue: React.FC<ChannelCatalogueProps> = ({
   onSelect,
-  emailCounts,
+  summaries,
+  readiness,
+  loading = false,
 }) => (
   <div
     className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
@@ -55,7 +67,16 @@ export const ChannelCatalogue: React.FC<ChannelCatalogueProps> = ({
     {OMNI_COMMS_CHANNEL_UI_CATALOGUE.map((def) => {
       const Icon = ICONS[def.icon] ?? Radio;
       const planned = def.implementationState === 'planned';
-      const counts = def.code === 'email' ? emailCounts ?? null : null;
+      const summary = summaries?.[def.code] ?? null;
+      const channelReadiness = readiness?.[def.code] ?? null;
+
+      const accountsText = loading && !summary
+        ? LOADING
+        : formatResourceCount(summary?.resources.accounts);
+      const identitiesText = loading && !summary
+        ? LOADING
+        : formatResourceCount(summary?.resources.identities, 'active');
+
       return (
         <Card key={def.code} data-testid={`omni-comms-channel-card-${def.code}`}>
           <CardHeader>
@@ -72,22 +93,37 @@ export const ChannelCatalogue: React.FC<ChannelCatalogueProps> = ({
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">{def.statusText}</p>
-            <dl className="grid grid-cols-3 gap-2 text-sm">
+            <dl className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Accounts</dt>
-                <dd>{counts ? counts.providerAccounts : 'Not configured'}</dd>
+                <dd data-testid={`omni-comms-channel-accounts-${def.code}`}>
+                  {accountsText}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Active identities</dt>
-                <dd>{counts ? counts.activeIdentities : 'Not configured'}</dd>
+                <dd data-testid={`omni-comms-channel-identities-${def.code}`}>
+                  {identitiesText}
+                </dd>
               </div>
+            </dl>
+            <dl className="text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Readiness</dt>
-                <dd>
-                  {counts ? counts.readiness : 'Unknown'}
-                  {counts?.readinessExplanation ? (
+                <dd data-testid={`omni-comms-channel-readiness-${def.code}`}>
+                  {channelReadiness
+                    ? channelReadiness.configurationLabel
+                    : loading
+                      ? LOADING
+                      : 'Configuration readiness unknown'}
+                  <span className="block text-xs text-muted-foreground">
+                    {channelReadiness
+                      ? channelReadiness.deliveryLabel
+                      : 'Delivery adapter not installed'}
+                  </span>
+                  {channelReadiness?.explanation ? (
                     <span className="block text-xs text-muted-foreground">
-                      {counts.readinessExplanation}
+                      {channelReadiness.explanation}
                     </span>
                   ) : null}
                 </dd>

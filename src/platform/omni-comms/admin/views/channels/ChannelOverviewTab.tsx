@@ -23,6 +23,16 @@ import {
   type EmailReadinessProjection,
 } from './emailReadiness';
 import type { ChannelUiDefinition } from './channelUiRegistry';
+import type { ChannelReadinessProjection } from './channelReadiness';
+import {
+  channelCapability,
+  OMNI_COMMS_CHANNEL_RESOURCES,
+} from '@/platform/omni-comms/domain/channelCatalogue';
+import {
+  formatResourceCount,
+  type ChannelConfigurationSummary,
+} from '@/platform/omni-comms/application/channelConfigurationTypes';
+
 
 const StateIcon: React.FC<{ state: EmailReadinessCheckState }> = ({ state }) => {
   if (state === 'met') return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
@@ -49,25 +59,22 @@ export const ChannelOverviewTab: React.FC<{
   summary: EmailConfigSummary | null;
   /** Shared projection supplied by the page for email; recomputed if absent. */
   readiness?: EmailReadinessProjection | null;
-}> = ({ definition, summary, readiness }) => {
+  /** CG1 — generic two-facet readiness for any channel. */
+  channelReadiness?: ChannelReadinessProjection | null;
+  /** CG1 — generic configuration summary for non-Email channels. */
+  configuration?: ChannelConfigurationSummary | null;
+}> = ({ definition, summary, readiness, channelReadiness, configuration }) => {
   if (definition.code !== 'email') {
-    const items: EmailReadinessCheck[] = [
-      { key: 'account', label: 'Provider account', state: 'unmet', detail: 'No provider account configured.' },
-      { key: 'identity', label: 'Identity', state: 'unmet', detail: 'No identity configured.' },
-      { key: 'policy', label: 'Policy', state: 'unmet', detail: 'No policy configured.' },
-      {
-        key: 'configuration_preflight',
-        label: 'Current configuration preflight passed',
-        state: 'not_implemented',
-        detail: `${CONFIGURATION_PREFLIGHT_PENDING} — configuration preflight is not available yet.`,
-      },
-      {
-        key: 'provider_delivery_test',
-        label: 'Provider delivery test',
-        state: 'not_implemented',
-        detail: PROVIDER_DELIVERY_TEST_DETAIL,
-      },
-    ];
+    /*
+     * CG1 — truthful non-Email overview. Counts come from the generic summary
+     * and unloaded/unreadable resources are reported as such, never as zero.
+     * Nothing here claims provider contact or delivery readiness.
+     */
+    const resources = OMNI_COMMS_CHANNEL_RESOURCES.filter(
+      (r) => channelCapability(definition.code, r).uiApplicable
+        && r !== 'release-control' && r !== 'diagnostics' && r !== 'test-centre',
+    );
+
     return (
       <div className="space-y-4">
         <Card data-testid="omni-comms-channel-overview">
@@ -75,8 +82,50 @@ export const ChannelOverviewTab: React.FC<{
             <CardTitle>{definition.name} readiness</CardTitle>
             <CardDescription>{definition.statusText}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Checklist items={items} />
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-muted-foreground">Configuration readiness</p>
+                <p className="text-sm font-medium" data-testid="omni-comms-configuration-readiness">
+                  {channelReadiness?.configuration.label ?? 'Configuration readiness unknown'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {channelReadiness?.configuration.detail
+                    ?? 'No configuration summary has been loaded for this scope yet.'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Delivery readiness</p>
+                <p className="text-sm font-medium" data-testid="omni-comms-delivery-readiness">
+                  {channelReadiness?.delivery.label ?? 'Delivery adapter not installed'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {channelReadiness?.delivery.detail
+                    ?? 'No delivery adapter is installed for this channel.'}
+                </p>
+              </div>
+            </div>
+
+            {definition.databaseSupported ? (
+              <ul className="space-y-2 text-sm" data-testid="omni-comms-channel-resource-counts">
+                {resources.map((resource) => (
+                  <li key={resource} className="flex items-center justify-between gap-3">
+                    <span className="capitalize">{resource.replace('-', ' ')}</span>
+                    <span
+                      className="text-muted-foreground"
+                      data-testid={`omni-comms-overview-count-${resource}`}
+                    >
+                      {formatResourceCount(configuration?.resources[resource], 'active')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                The shared database objects do not yet represent this channel, so
+                no configuration can be recorded for it.
+              </p>
+            )}
           </CardContent>
         </Card>
         <DeferredCapabilityCard
@@ -88,6 +137,7 @@ export const ChannelOverviewTab: React.FC<{
       </div>
     );
   }
+
 
   const projection = readiness ?? projectEmailReadiness(summary);
   const provider = summary?.provider ?? null;
