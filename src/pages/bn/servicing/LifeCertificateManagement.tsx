@@ -11,11 +11,12 @@ import {
   ShieldAlert, Lock, PauseCircle, PlayCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSearchParams } from 'react-router-dom';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useActionPermissions } from '@/hooks/useActionPermission';
 import {
-  fetchWorklist, LIFE_CERTIFICATE_BUCKETS,
-  type LifeCertificateBucket, type LifeCertificateWorklistRow,
+  fetchWorklist, isUuid, LIFE_CERTIFICATE_BUCKETS,
+  type LifeCertificateBucket, type LifeCertificateWorklist, type LifeCertificateWorklistRow,
 } from '@/services/bn/lifeCertificateViewService';
 import { LifeCertificateCommandError } from '@/services/bn/lifeCertificateCommandService';
 import LifeCertificateDetailPanel from '@/components/bn/life-certificates/LifeCertificateDetailPanel';
@@ -52,6 +53,21 @@ const LifeCertificateManagement: React.FC = () => {
   const [failure, setFailure] = useState<{ code: string; message: string } | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Award 360 deep link: /bn/life-certificates?awardId=<uuid>
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawAwardId = searchParams.get('awardId');
+  const awardId = isUuid(rawAwardId) ? rawAwardId : null;
+  const invalidAwardParam = !!rawAwardId && !awardId;
+  const [awardContext, setAwardContext] =
+    useState<LifeCertificateWorklist['award']>(null);
+
+  const clearAwardScope = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('awardId');
+    setSearchParams(next, { replace: true });
+    setOffset(0);
+  }, [searchParams, setSearchParams]);
+
   useEffect(() => {
     const t = setTimeout(() => { setDebounced(search); setOffset(0); }, 300);
     return () => clearTimeout(t);
@@ -61,18 +77,22 @@ const LifeCertificateManagement: React.FC = () => {
     setLoading(true);
     setFailure(null);
     try {
-      const result = await fetchWorklist({ bucket, search: debounced || null, limit: PAGE_SIZE, offset });
+      const result = await fetchWorklist({
+        bucket, search: debounced || null, limit: PAGE_SIZE, offset, awardId,
+      });
       setRows(result.rows ?? []);
       setTotal(result.total ?? 0);
+      setAwardContext(result.award ?? null);
     } catch (e) {
       const err = e as LifeCertificateCommandError;
       setFailure({ code: err.code ?? 'E_UNKNOWN', message: err.message });
       setRows([]);
       setTotal(0);
+      setAwardContext(null);
     } finally {
       setLoading(false);
     }
-  }, [bucket, debounced, offset]);
+  }, [bucket, debounced, offset, awardId]);
 
   useEffect(() => {
     if (isAuthReady && isAuthenticated && canView) void load();
@@ -128,6 +148,35 @@ const LifeCertificateManagement: React.FC = () => {
           releases payment holds or raises arrears directly.
         </AlertDescription>
       </Alert>
+
+      {invalidAwardParam && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Invalid award link</AlertTitle>
+          <AlertDescription className="flex items-center gap-3">
+            The award reference in the link is not valid, so the full worklist is shown instead.
+            <Button size="sm" variant="outline" onClick={clearAwardScope}>Clear</Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {awardId && (
+        <Alert>
+          <FileCheck2 className="h-4 w-4" />
+          <AlertTitle>Filtered to one award</AlertTitle>
+          <AlertDescription className="flex flex-wrap items-center gap-3">
+            <span>
+              Showing life certificate obligations for award{' '}
+              <strong>{awardContext?.award_number ?? awardId.slice(0, 8)}</strong>
+              {awardContext?.ssn ? <> — SSN <span className="font-mono">{awardContext.ssn}</span></> : null}
+              {awardContext?.benefit_code ? <> ({awardContext.benefit_code})</> : null}.
+            </span>
+            <Button size="sm" variant="outline" onClick={clearAwardScope}>
+              Show all obligations
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[

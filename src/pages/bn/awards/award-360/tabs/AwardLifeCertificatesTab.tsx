@@ -4,6 +4,7 @@
  * Does NOT import unsafe verify/reminder helpers from legacy servicing modules.
  */
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AwardStatusBadge, dt, KV } from '../components';
@@ -137,7 +138,9 @@ export const AwardLifeCertificatesTab: React.FC<Props> = ({ awardId, award, canV
           <Award360Pagination page={page} pageSize={pageSize} total={q.data.total} onPage={setPage} onPageSize={(s) => { setPageSize(s); setPage(1); }} />
         ) : null}
         <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm" variant="outline"><a href={`/bn/life-certificates?awardId=${awardId}`}>Open Life Certificate Management</a></Button>
+          <Button asChild size="sm" variant="outline">
+            <Link to={`/bn/life-certificates?awardId=${awardId}`}>Open Life Certificate Centre</Link>
+          </Button>
           <Button size="sm" variant="outline" disabled title="Record-receipt command not enabled">Record receipt</Button>
           <Button size="sm" variant="outline" disabled title="Verify command not enabled">Verify</Button>
           <Button size="sm" variant="outline" disabled title="Reject command not enabled">Reject</Button>
@@ -186,7 +189,9 @@ export const AwardLifeCertificatesTab: React.FC<Props> = ({ awardId, award, canV
           ] : []}
           actions={
             <>
-              <Button asChild size="sm" variant="outline"><a href={`/bn/life-certificates?awardId=${awardId}`}>Open in LCM workspace</a></Button>
+              <Button asChild size="sm" variant="outline">
+                <Link to={`/bn/life-certificates?awardId=${awardId}`}>Open Life Certificate Centre</Link>
+              </Button>
               <Button size="sm" variant="outline" disabled title="Verify command not enabled">Verify</Button>
               <Button size="sm" variant="outline" disabled title="Reminder command not enabled">Send reminder</Button>
             </>

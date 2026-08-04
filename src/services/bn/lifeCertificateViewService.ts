@@ -72,6 +72,14 @@ export interface LifeCertificateWorklist {
   limit: number;
   offset: number;
   identity_masked: boolean;
+  /** Present only when the worklist is scoped to a single award. */
+  award?: {
+    id: string;
+    award_number: string | null;
+    ssn: string;
+    benefit_code: string | null;
+    status: string;
+  } | null;
 }
 
 export interface LifeCertificateEvidence {
@@ -152,23 +160,44 @@ async function query<T>(name: string, args: Record<string, unknown>): Promise<T>
         ? 'E_UNAUTHENTICATED'
         : message.includes('E_OBLIGATION_NOT_FOUND')
           ? 'E_OBLIGATION_NOT_FOUND'
-          : 'E_UNKNOWN';
+          : message.includes('E_RECORD_FORBIDDEN')
+            ? 'E_RECORD_FORBIDDEN'
+            : message.includes('E_AWARD_NOT_FOUND')
+              ? 'E_AWARD_NOT_FOUND'
+              : message.includes('E_SEARCH_TOO_SHORT')
+                ? 'E_SEARCH_TOO_SHORT'
+                : 'E_UNKNOWN';
     throw new LifeCertificateCommandError(code, describeLifeCertificateFailure(code));
   }
   return data as T;
 }
+
+/** RFC 4122 shape check — never send a caller-supplied string straight to the RPC. */
+export const isUuid = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
 export function fetchWorklist(input: {
   bucket: LifeCertificateBucket;
   search?: string | null;
   limit?: number;
   offset?: number;
+  /** Optional award scope used by the Award 360 deep link. */
+  awardId?: string | null;
 }): Promise<LifeCertificateWorklist> {
-  return query('bn_life_certificate_worklist_v1', {
+  const awardId = isUuid(input.awardId) ? input.awardId : null;
+  if (input.awardId && !awardId) {
+    throw new LifeCertificateCommandError(
+      'E_INVALID_AWARD_REFERENCE',
+      'The award reference in the link is not valid.',
+    );
+  }
+  return query('bn_life_certificate_worklist_v2', {
     p_bucket: input.bucket,
     p_search: input.search ?? null,
     p_limit: Math.min(input.limit ?? 50, 200),
     p_offset: input.offset ?? 0,
+    p_award_id: awardId,
   });
 }
 

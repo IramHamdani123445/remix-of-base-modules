@@ -53,6 +53,7 @@ export type LifeCertificateErrorCode =
   | 'E_MILESTONE_NOT_DUE'
   | 'E_RECORD_FORBIDDEN'
   | 'E_SEARCH_TOO_SHORT'
+  | 'E_INVALID_AWARD_REFERENCE'
   | 'E_EVIDENCE_SUPERSEDED'
   | 'E_UNKNOWN';
 
@@ -91,6 +92,7 @@ export const LIFE_CERTIFICATE_ERROR_MESSAGES: Record<LifeCertificateErrorCode, s
   E_MILESTONE_NOT_DUE: 'That milestone is not yet due for this obligation.',
   E_RECORD_FORBIDDEN: 'This record is outside your assigned office, workbasket or caseload.',
   E_SEARCH_TOO_SHORT: 'Enter at least 4 characters to search.',
+  E_INVALID_AWARD_REFERENCE: 'The award reference in the link is not valid.',
   E_EVIDENCE_SUPERSEDED: 'That document version has been superseded and cannot be used as evidence.',
   E_UNKNOWN: 'The command could not be completed.',
 };
