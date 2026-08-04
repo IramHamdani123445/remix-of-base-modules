@@ -95,7 +95,7 @@ export default function CaseDetailView() {
   const { userCode } = useUserCode();
   const { user } = useSupabaseAuth();
   const currentUserCode = userCode || 'UNKNOWN';
-  const complianceRole = useComplianceRole();
+  
   // Case ownership (re)assignment uses the shared capability model rather than
   // a raw role comparison, so Admin / legacy manage_compliance holders pass too.
   const canManageAssignments = useHasCapability(COMPLIANCE_CAPABILITIES.CASES_MANAGE);
