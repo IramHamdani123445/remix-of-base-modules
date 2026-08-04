@@ -40,6 +40,10 @@ vi.mock('@/integrations/supabase/client', () => {
       if (!holder.recorder) throw new Error('AwardQueryRecorder not initialised');
       return holder.recorder.client().from(table);
     },
+    rpc(name: string, args: Record<string, unknown>) {
+      if (!holder.recorder) throw new Error('AwardQueryRecorder not initialised');
+      return holder.recorder.client().rpc(name, args);
+    },
   };
   return { supabase };
 });
