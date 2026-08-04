@@ -96,10 +96,15 @@ export const ChannelWorkspaceHeader: React.FC<ChannelWorkspaceHeaderProps> = ({
           {channelReadiness.delivery.label}
         </Badge>
       ) : null}
-      {!readiness || readiness.state === 'unknown' ? (
+      {/*
+        The legacy single-verdict badge only appears where the generic
+        two-facet projection is absent, so a channel is never labelled twice.
+      */}
+      {channelReadiness ? null : !readiness || readiness.state === 'unknown' ? (
         <Badge variant="secondary" data-testid="omni-comms-readiness-badge">
           Readiness unknown
         </Badge>
+
       ) : readiness.state === 'prerequisites_met' ? (
         <Badge variant="secondary" data-testid="omni-comms-readiness-badge">
           <CircleDashed className="h-3 w-3 mr-1" />
