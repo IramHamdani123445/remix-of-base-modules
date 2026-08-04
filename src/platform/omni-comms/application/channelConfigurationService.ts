@@ -24,6 +24,7 @@ import { getChannelIdentitySummary } from './channelIdentityService';
 import { getChannelEndpointSummary } from './channelEndpointService';
 import { getChannelBindingSummary } from './channelBindingService';
 import { getChannelPolicySummary } from './channelPolicyService';
+import { isPolicyChannel } from './channelPolicyTypes';
 import { identityChannelSupported } from './channelIdentityTypes';
 import { endpointChannelSupported } from './channelEndpointTypes';
 import type {
