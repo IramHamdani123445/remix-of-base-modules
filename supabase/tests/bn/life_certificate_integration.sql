@@ -112,8 +112,11 @@ INSERT INTO public.bn_product (id, benefit_code, benefit_name, category, branch,
 VALUES (:product::uuid, 'LCTEST', 'LC Harness Product', 'LONG_TERM', 'LT', 'PERIODIC', 'SKN', 'ACTIVE');
 
 -- Accessible claim: explicitly assigned to the authorised user's code.
+-- The profiles trigger derives user_code, so read it back rather than
+-- assuming the value supplied at insert time survived.
 INSERT INTO public.bn_claim (id, claim_number, ssn, product_id, status, assigned_to, contact_email)
-VALUES (:claim_id::uuid, 'LC-CLM-0001', '123456789', :product::uuid, 'APPROVED', 'BNLCAUTH', 'claimant@test.local');
+SELECT :claim_id::uuid, 'LC-CLM-0001', '123456789', :product::uuid, 'APPROVED', p.user_code, 'claimant@test.local'
+  FROM public.profiles p WHERE p.id = :u_auth::uuid;
 
 -- Inaccessible claim: assigned to nobody the test users can reach.
 INSERT INTO public.bn_claim (id, claim_number, ssn, product_id, status, assigned_to)
