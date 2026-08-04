@@ -59,4 +59,6 @@ project_id = "xynceskeiiisiefqlgxo"
     verify_jwt = false
   [functions.bn-award-suspension-runner]
     verify_jwt = false
+  [functions.bn-life-certificate-runner]
+    verify_jwt = false
 
