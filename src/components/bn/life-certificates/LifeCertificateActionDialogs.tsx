@@ -90,22 +90,32 @@ const LifeCertificateActionDialogs: React.FC<Props> = ({
     if (action !== 'receive' || !awardId) return;
     let cancelled = false;
     void (async () => {
-      const { data } = await supabase
-        .from('bn_award')
-        .select('bn_claim_id')
-        .eq('id', awardId)
-        .maybeSingle();
-      const claimId = (data as { bn_claim_id?: string } | null)?.bn_claim_id;
+      const client = supabase as unknown as {
+        from: (t: string) => {
+          select: (c: string) => {
+            eq: (c: string, v: string) => {
+              maybeSingle: () => Promise<{ data: Record<string, unknown> | null }>;
+              order: (c: string, o: { ascending: boolean }) => {
+                limit: (n: number) => Promise<{ data: Record<string, unknown>[] | null }>;
+              };
+            };
+          };
+        };
+      };
+      const { data } = await client.from('bn_award').select('bn_claim_id').eq('id', awardId).maybeSingle();
+      const claimId = data?.bn_claim_id as string | undefined;
       if (!claimId) { if (!cancelled) setDocuments([]); return; }
-      const { data: docs } = await supabase
+      const { data: docs } = await client
         .from('bn_claim_document')
-        .select('id,document_name,document_type,uploaded_at')
-        .eq('bn_claim_id', claimId)
+        .select('id,document_name,document_type_code,uploaded_at')
+        .eq('claim_id', claimId)
         .order('uploaded_at', { ascending: false })
         .limit(50);
       if (cancelled) return;
-      setDocuments(((docs ?? []) as { id: string; document_name: string | null; document_type: string | null }[])
-        .map((d) => ({ value: d.id, label: `${d.document_name ?? 'Document'} · ${d.document_type ?? 'UNSPECIFIED'}` })));
+      setDocuments((docs ?? []).map((d) => ({
+        value: String(d.id),
+        label: `${(d.document_name as string) ?? 'Document'} · ${(d.document_type_code as string) ?? 'UNSPECIFIED'}`,
+      })));
     })();
     return () => { cancelled = true; };
   }, [action, awardId]);
