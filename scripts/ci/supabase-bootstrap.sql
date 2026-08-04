@@ -10,11 +10,14 @@
 -- Never put secrets, production data or environment-specific ownership here.
 
 -- ---------------------------------------------------------------- extensions
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-CREATE EXTENSION IF NOT EXISTS "btree_gist";
-CREATE EXTENSION IF NOT EXISTS "unaccent";
+-- Extensions live in the `extensions` schema exactly as they do on
+-- Supabase, so the baseline's public schema stays free of extension
+-- functions and object parity with the canonical database is exact.
+CREATE SCHEMA IF NOT EXISTS extensions;
+CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS "pg_trgm" WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS "btree_gist" WITH SCHEMA extensions;
 
 -- ------------------------------------------------------------------- schemas
 CREATE SCHEMA IF NOT EXISTS auth;
@@ -150,6 +153,15 @@ BEGIN
   RETURN parts[array_length(parts, 1)];
 END
 $fn$;
+
+-- ------------------------------------------------------- search_path parity
+-- Supabase resolves extension functions through the database search_path.
+DO $$
+BEGIN
+  EXECUTE format('ALTER DATABASE %I SET search_path = public, extensions',
+                 current_database());
+END $$;
+SET search_path = public, extensions;
 
 -- ------------------------------------------------------------------- grants
 GRANT USAGE ON SCHEMA auth, storage, extensions, graphql_public
