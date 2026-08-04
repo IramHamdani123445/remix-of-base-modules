@@ -66,9 +66,10 @@ VALUES (:u_auth::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 
        (:u_unauth::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
         'bn-lc-unauthorised@test.local', 'x', now(), now(), now(), '{}'::jsonb, '{}'::jsonb);
 
-INSERT INTO public.profiles (id, full_name, email, user_code, is_active)
-VALUES (:u_auth::uuid,  'BN LC Authorised',   'bn-lc-authorised@test.local',   'BNLCAUTH', true),
-       (:u_unauth::uuid,'BN LC Unauthorised', 'bn-lc-unauthorised@test.local', 'BNLCNONE', true);
+-- first_name/last_name are required by the profiles user_code trigger.
+INSERT INTO public.profiles (id, first_name, last_name, full_name, email, user_code, is_active)
+VALUES (:u_auth::uuid,  'BN', 'Authorised',   'BN LC Authorised',   'bn-lc-authorised@test.local',   'BNLCAUTH', true),
+       (:u_unauth::uuid,'BN', 'Unauthorised', 'BN LC Unauthorised', 'bn-lc-unauthorised@test.local', 'BNLCNONE', true);
 
 -- Role + Life Certificate `view` permission for BOTH users. The only
 -- difference between them is record scope, so the forbidden cases prove
