@@ -140,3 +140,79 @@ communication façade; this slice only writes audit and case events.
   until then the runner is invoked on demand.
 - Live-environment grant verification for the new RPCs is performed at publish
   time, consistent with the Phase 0 security closure.
+
+---
+
+## 12. Defect-correction pass (hold boundaries, failure safety, evidence)
+
+### 12.1 Payment-hold release boundary
+
+`_bn_susp_release_holds` now takes the reinstatement effective date and the
+arrears status, and classifies every held record before touching it:
+
+| Case | Rule | Recorded action |
+| --- | --- | --- |
+| Period ends before the effective date | Never released — the money is settled through arrears | `RETAINED` / `SUSPENDED_PERIOD_SETTLED_VIA_ARREARS` |
+| Period straddles the effective date | Retained and a `PRORATION_REVIEW` payment exception is raised | `RETAINED` / `STRADDLES_REINSTATEMENT_REQUIRES_PRORATION` |
+| Period starts on or after the effective date | Released only when still `HELD`, unbatched, unpaid and free of open exceptions | `RELEASED` / `SAFE_RELEASE_ON_OR_AFTER_REINSTATEMENT` |
+| Status changed since the hold | Left alone | `RETAINED` / `NOT_RELEASABLE_STATE_CHANGED` |
+| Batched or already paid | Left alone | `RETAINED` / `BATCHED_OR_PAID_REQUIRES_MANUAL_REVIEW` |
+
+When arrears are `REVIEW_REQUIRED`, suspended-period records are retained under
+`SUSPENDED_PERIOD_HELD_PENDING_ARREARS_REVIEW` and no money moves.
+
+Double-payment guard: before raising an arrears instruction, the reinstatement
+command asserts that no suspended-period record was released in the same
+transaction; if one was, the whole reinstatement aborts with
+`E_PAYMENT_HOLD_FAILED`.
+
+### 12.2 Sanitized failure persistence
+
+`bn_award_suspension_execute_v1` and `bn_award_suspension_execute_scheduled_v1`
+no longer store or return `SQLERRM`. On failure they persist only:
+
+- an approved short code (`E_PAYMENT_IMPACT_FAILED`, `E_PAYMENT_HOLD_FAILED`,
+  `E_AUDIT_FAILED`, `E_COMMUNICATION_INTENT_FAILED`,
+  `E_CALCULATION_PERSIST_FAILED`, `E_EXECUTION_INTERNAL`),
+- the correlation id, attempt time and attempt count.
+
+Technical detail (SQLSTATE and message text) is written to
+`public.bn_susp_operational_error_log`, which has RLS enabled, no policies and
+no grants to `anon` or `authenticated`. The UI renders the code through
+`describeExecutionFailure()`, so operators never see raw database text.
+
+### 12.3 Calculation evidence fails closed
+
+`_bn_susp_persist_arrears_run` no longer swallows persistence errors. It raises
+`E_CALCULATION_PERSIST_FAILED` when the run cannot be inserted, when the trace
+row count does not match the calculated trace, or when the run does not belong
+to the claim being reinstated. Because it runs inside the reinstatement
+transaction, a failure rolls back the award reinstatement and any arrears
+instruction: no figure can exist without reproducible evidence.
+
+### 12.4 Communication boundary
+
+`_bn_susp_comm` no longer inserts `QUEUED` rows into `bn_communication_log` —
+nothing dispatched from that table, so those rows were misleading. It now
+records a communication **intent** in the platform audit trail
+(`BN.SUSPENSION.COMMUNICATION_INTENT`) with the event code and context, leaving
+template resolution, queueing and dispatch entirely to the shared communication
+façade.
+
+### 12.5 Scheduler authentication
+
+`bn-award-suspension-runner` requires the
+`x-bn-suspension-runner-secret` header to match
+`BN_AWARD_SUSPENSION_RUNNER_SECRET`; unauthenticated invocations are rejected
+with `401` before any scan. The runner reads `suspension_id` from
+`bn_award_suspension_due_for_execution_v1` and returns only sanitized outcome
+codes.
+
+### 12.6 Verification
+
+`supabase/verify/bn_award_suspension_defect_closure.sql` checks the release
+signature, error-log grants, the absence of raw error text on cases, the absence
+of suspension rows in `bn_communication_log`, calculation-evidence completeness,
+the no-release-inside-suspended-period invariant, straddling exceptions, and
+execution grants. Application-side coverage lives in
+`src/__tests__/bn/servicing/awardSuspensionClosure.test.ts` (19 tests).
