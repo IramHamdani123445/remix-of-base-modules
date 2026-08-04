@@ -54,15 +54,6 @@ vi.mock('@/hooks/bn/useLifeCertificateActionsEnabled', () => ({
   useLifeCertificateActionsEnabled: () => state.actionsEnabled,
 }));
 
-vi.mock('@/lib/bn/featureToggles', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/bn/featureToggles')>();
-  return {
-    ...actual,
-    isFeatureEnabled: (flag: string) =>
-      flag === 'bn.servicing.lifeCert' ? state.flagEnabled : true,
-  };
-});
-
 vi.mock('@/services/bn/lifeCertificateViewService', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/bn/lifeCertificateViewService')>();
   return { ...actual, fetchWorklist: mocks.fetchWorklistMock };
@@ -70,7 +61,7 @@ vi.mock('@/services/bn/lifeCertificateViewService', async (importOriginal) => {
 
 // Imported after the mocks are registered.
 import LifeCertificateManagement from '@/pages/bn/servicing/LifeCertificateManagement';
-import { BnWorkspaceGate } from '@/lib/bn/featureToggles';
+import { BnWorkspaceGate, setFeatureOverride } from '@/lib/bn/featureToggles';
 
 const LocationProbe: React.FC = () => {
   const loc = useLocation();
@@ -119,6 +110,7 @@ describe('Life Certificates — rendered route behaviour', () => {
     state.canView = true;
     state.flagEnabled = true;
     state.actionsEnabled = false;
+    setFeatureOverride('bn.servicing.lifeCert', null);
     fetchWorklistMock.mockReset();
     fetchWorklistMock.mockResolvedValue(emptyResult);
   });
@@ -131,7 +123,7 @@ describe('Life Certificates — rendered route behaviour', () => {
   });
 
   it('renders bn-workspace-unavailable when the workspace flag is off', async () => {
-    state.flagEnabled = false;
+    setFeatureOverride('bn.servicing.lifeCert', false);
     renderRoutes('/bn/life-certificates');
     expect(await screen.findByTestId('bn-workspace-unavailable')).toBeInTheDocument();
     expect(screen.getByTestId('location').textContent).toBe('/bn/life-certificates');
