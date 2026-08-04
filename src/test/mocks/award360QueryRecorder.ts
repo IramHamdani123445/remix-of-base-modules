@@ -195,6 +195,11 @@ const RPC_BACKING_TABLE: Record<string, string> = {
   bn_life_certificate_award_list_v1: 'bn_life_certificate',
 };
 
+/** RPC argument → the table column it scopes, so scope evidence still holds. */
+const RPC_ARG_COLUMN: Record<string, Record<string, string>> = {
+  bn_life_certificate_award_list_v1: { p_award_id: 'bn_award_id' },
+};
+
 // ─── recorder ─────────────────────────────────────────────────────────────
 export class AwardQueryRecorder {
   readonly queries: RecordedAwardQuery[] = [];
@@ -300,7 +305,9 @@ export class AwardQueryRecorder {
           occurrence,
           table,
           selectedColumns: [],
-          filters: Object.entries(args).map(([column, value]) => ({ method: 'rpc', column, value })),
+          filters: Object.entries(args)
+            .filter(([arg]) => RPC_ARG_COLUMN[name]?.[arg])
+            .map(([arg, value]) => ({ method: 'eq', column: RPC_ARG_COLUMN[name][arg], value })),
           orderColumns: [],
           containmentColumns: [],
           head: false,
