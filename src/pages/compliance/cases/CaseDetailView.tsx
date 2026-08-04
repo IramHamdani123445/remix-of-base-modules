@@ -35,6 +35,7 @@ import { AssignmentDialog } from '@/components/compliance/AssignmentDialog';
 import { ForwardToLegalDialog } from '@/components/compliance/ForwardToLegalDialog';
 import { UserCheck, Send } from 'lucide-react';
 import { useHasCapability } from '@/hooks/useHasCapability';
+import { useComplianceRole } from '@/hooks/useComplianceRole';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
 import { PermissionButton } from '@/components/ui/permission-button';
@@ -98,6 +99,7 @@ export default function CaseDetailView() {
   // Case ownership (re)assignment uses the shared capability model rather than
   // a raw role comparison, so Admin / legacy manage_compliance holders pass too.
   const canManageAssignments = useHasCapability(COMPLIANCE_CAPABILITIES.CASES_MANAGE);
+  const complianceRole = useComplianceRole();
 
   // Resolve the current user's officer identifiers (UUID + inspector codes) so
   // we can tell if this case is theirs, regardless of which identifier shape
@@ -446,12 +448,12 @@ export default function CaseDetailView() {
                 Request Waiver
               </PermissionButton>
             )}
-            {/* Add to Inspection Planning — assigned officer or case-manage capability */}
+            {/* Add to / Remove from Inspection Planning — assigned officer or Compliance Head only */}
             {(() => {
               const isAssignedOfficer =
                 !!(c as any).assigned_officer_id &&
                 myOfficerIds.includes((c as any).assigned_officer_id);
-              const canNominate = isAssignedOfficer || canManageAssignments;
+              const canNominate = isAssignedOfficer || complianceRole === 'head';
               if (!canNominate || caseIsClosed || !c.employer_id) return null;
               if (!isComplianceFeatureEnabled('inspections.planning')) return null;
               if (existingNomination) {
