@@ -43,6 +43,7 @@ export default function AwardSuspensionPage() {
   const [canPropose, setCanPropose] = useState(false);
   const [canApprove, setCanApprove] = useState(false);
   const [canAudit, setCanAudit] = useState(false);
+  const [canExecute, setCanExecute] = useState(false);
 
   const [awards, setAwards] = useState<AwardSuspensionListItem[]>([]);
   const [requests, setRequests] = useState<SuspensionRequestListItem[]>([]);
@@ -66,17 +67,19 @@ export default function AwardSuspensionPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [v, p, a, au] = await Promise.all([
+        const [v, p, a, au, ex] = await Promise.all([
           hasPermission('bn_award_suspension', 'view'),
           hasPermission('bn_award_suspension', 'propose'),
           hasPermission('bn_award_suspension', 'approve'),
           hasPermission('bn_award_suspension', 'audit'),
+          hasPermission('bn_award_suspension', 'execute'),
         ]);
         if (cancelled) return;
         setCanView(Boolean(v));
         setCanPropose(Boolean(p));
         setCanApprove(Boolean(a));
         setCanAudit(Boolean(au));
+        setCanExecute(Boolean(ex));
       } catch {
         if (!cancelled) setCanView(false);
       }
@@ -347,6 +350,9 @@ export default function AwardSuspensionPage() {
         }}
         canApprove={canApprove}
         canAudit={canAudit}
+        canExecute={canExecute}
+        canPropose={canPropose}
+        currentUserId={user?.id ?? null}
         actionsEnabled={actionsEnabled}
       />
 

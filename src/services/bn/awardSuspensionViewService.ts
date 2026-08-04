@@ -163,6 +163,45 @@ export interface SuspensionAuditEntry {
   correlationId: string | null;
 }
 
+/**
+ * BN-SUSP-EXEC — operational execution / reinstatement state for a case.
+ * Read-only projection of the columns owned by the server commands.
+ */
+export interface SuspensionExecutionState {
+  caseKind: 'SUSPENSION' | 'REINSTATEMENT';
+  rowVersion: number;
+  executionStatus:
+    | 'NOT_DUE'
+    | 'SCHEDULED'
+    | 'EXECUTING'
+    | 'EXECUTED'
+    | 'FAILED'
+    | 'NOT_APPLICABLE';
+  executedAt: string | null;
+  executedByUserId: string | null;
+  executionAttempts: number;
+  lastExecutionError: string | null;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+  /** True when the effective date has been reached. */
+  due: boolean;
+  reinstatementOfId: string | null;
+  arrearsSnapshot: unknown | null;
+}
+
+export interface LinkedReinstatementCase {
+  reinstatementId: string;
+  status: string;
+  rowVersion: number;
+  effectiveFrom: string | null;
+  proposedByUserId: string | null;
+  proposedAt: string;
+  reasonCode: string | null;
+  narrative: string | null;
+  executionStatus: string;
+  arrearsSnapshot: unknown | null;
+}
+
 export interface SuspensionRequestDetails {
   request: SuspensionRequestListItem & {
     narrative: string | null;
@@ -172,6 +211,8 @@ export interface SuspensionRequestDetails {
   timeline: SuspensionTimelineItem[];
   approvalRoute: SuspensionApprovalRouteItem[];
   audit: SuspensionAuditEntry[];
+  execution: SuspensionExecutionState;
+  reinstatement: LinkedReinstatementCase | null;
   /** Section-level warnings so the UI can surface partial failures honestly. */
   warnings: string[];
 }
@@ -1177,6 +1218,55 @@ export async function getSuspensionRequestDetails(
     correlationId: e.correlation_id ?? null,
   };
 
+  const ev = e as any;
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Linked reinstatement case (if one has been proposed for this suspension).
+  let reinstatement: LinkedReinstatementCase | null = null;
+  if ((ev.case_kind ?? 'SUSPENSION') === 'SUSPENSION') {
+    try {
+      const { data: r } = await db
+        .from('bn_award_suspension_event')
+        .select('*')
+        .eq('reinstatement_of_id', e.id)
+        .order('entered_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (r) {
+        const rr = r as any;
+        reinstatement = {
+          reinstatementId: rr.id,
+          status: rr.status,
+          rowVersion: rr.row_version ?? 1,
+          effectiveFrom: rr.suspended_to ?? null,
+          proposedByUserId: rr.proposed_by_user_id ?? null,
+          proposedAt: rr.entered_at,
+          reasonCode: rr.reason_code ?? null,
+          narrative: rr.reason_text ?? null,
+          executionStatus: rr.execution_status ?? 'NOT_APPLICABLE',
+          arrearsSnapshot: rr.arrears_snapshot ?? null,
+        };
+      }
+    } catch {
+      warnings.push('Reinstatement case could not be loaded.');
+    }
+  }
+
+  const execution: SuspensionExecutionState = {
+    caseKind: (ev.case_kind ?? 'SUSPENSION') as 'SUSPENSION' | 'REINSTATEMENT',
+    rowVersion: ev.row_version ?? 1,
+    executionStatus: (ev.execution_status ?? 'NOT_DUE') as SuspensionExecutionState['executionStatus'],
+    executedAt: ev.executed_at ?? null,
+    executedByUserId: ev.executed_by_user_id ?? null,
+    executionAttempts: ev.execution_attempts ?? 0,
+    lastExecutionError: ev.last_execution_error ?? null,
+    effectiveFrom: e.suspended_from ?? null,
+    effectiveTo: ev.suspended_to ?? null,
+    due: Boolean(e.suspended_from) && String(e.suspended_from) <= today,
+    reinstatementOfId: ev.reinstatement_of_id ?? null,
+    arrearsSnapshot: ev.arrears_snapshot ?? null,
+  };
+
   return {
     request: requestSummary,
     award: {
@@ -1200,6 +1290,8 @@ export async function getSuspensionRequestDetails(
     timeline,
     approvalRoute,
     audit,
+    execution,
+    reinstatement,
     warnings,
   };
 }
