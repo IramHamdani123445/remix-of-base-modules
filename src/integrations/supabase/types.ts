@@ -6158,6 +6158,7 @@ export type Database = {
           modified_by: string | null
           next_review_date: string | null
           notes: string | null
+          row_version: number
           ssn: string
           start_date: string
           status: string
@@ -6180,6 +6181,7 @@ export type Database = {
           modified_by?: string | null
           next_review_date?: string | null
           notes?: string | null
+          row_version?: number
           ssn: string
           start_date: string
           status?: string
@@ -6202,6 +6204,7 @@ export type Database = {
           modified_by?: string | null
           next_review_date?: string | null
           notes?: string | null
+          row_version?: number
           ssn?: string
           start_date?: string
           status?: string
@@ -6551,16 +6554,25 @@ export type Database = {
       }
       bn_award_suspension_event: {
         Row: {
+          arrears_calc_run_id: string | null
+          arrears_snapshot: Json | null
           bn_award_id: string
+          case_kind: string
           correlation_id: string | null
           entered_at: string
           entered_by: string | null
+          executed_at: string | null
+          executed_by_user_id: string | null
+          execution_attempts: number
+          execution_status: string
           id: string
+          last_execution_error: string | null
           modified_at: string
           modified_by: string | null
           proposed_by_user_id: string | null
           reason_code: string | null
           reason_text: string | null
+          reinstatement_of_id: string | null
           resumed_at: string | null
           resumed_by: string | null
           row_version: number
@@ -6571,16 +6583,25 @@ export type Database = {
           workflow_instance_id: string | null
         }
         Insert: {
+          arrears_calc_run_id?: string | null
+          arrears_snapshot?: Json | null
           bn_award_id: string
+          case_kind?: string
           correlation_id?: string | null
           entered_at?: string
           entered_by?: string | null
+          executed_at?: string | null
+          executed_by_user_id?: string | null
+          execution_attempts?: number
+          execution_status?: string
           id?: string
+          last_execution_error?: string | null
           modified_at?: string
           modified_by?: string | null
           proposed_by_user_id?: string | null
           reason_code?: string | null
           reason_text?: string | null
+          reinstatement_of_id?: string | null
           resumed_at?: string | null
           resumed_by?: string | null
           row_version?: number
@@ -6591,16 +6612,25 @@ export type Database = {
           workflow_instance_id?: string | null
         }
         Update: {
+          arrears_calc_run_id?: string | null
+          arrears_snapshot?: Json | null
           bn_award_id?: string
+          case_kind?: string
           correlation_id?: string | null
           entered_at?: string
           entered_by?: string | null
+          executed_at?: string | null
+          executed_by_user_id?: string | null
+          execution_attempts?: number
+          execution_status?: string
           id?: string
+          last_execution_error?: string | null
           modified_at?: string
           modified_by?: string | null
           proposed_by_user_id?: string | null
           reason_code?: string | null
           reason_text?: string | null
+          reinstatement_of_id?: string | null
           resumed_at?: string | null
           resumed_by?: string | null
           row_version?: number
@@ -6619,10 +6649,79 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bn_award_suspension_event_reinstatement_of_id_fkey"
+            columns: ["reinstatement_of_id"]
+            isOneToOne: false
+            referencedRelation: "bn_award_suspension_event"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bn_award_suspension_event_workflow_instance_id_fkey"
             columns: ["workflow_instance_id"]
             isOneToOne: false
             referencedRelation: "core_workflow_instance"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_award_suspension_payment_impact: {
+        Row: {
+          amount: number | null
+          bn_award_id: string
+          created_at: string
+          created_by_user_id: string | null
+          detail: Json
+          exception_id: string | null
+          id: string
+          impact_action: string
+          new_status: string | null
+          phase: string
+          previous_status: string | null
+          reason: string | null
+          record_id: string
+          record_type: string
+          suspension_id: string
+        }
+        Insert: {
+          amount?: number | null
+          bn_award_id: string
+          created_at?: string
+          created_by_user_id?: string | null
+          detail?: Json
+          exception_id?: string | null
+          id?: string
+          impact_action: string
+          new_status?: string | null
+          phase?: string
+          previous_status?: string | null
+          reason?: string | null
+          record_id: string
+          record_type: string
+          suspension_id: string
+        }
+        Update: {
+          amount?: number | null
+          bn_award_id?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          detail?: Json
+          exception_id?: string | null
+          id?: string
+          impact_action?: string
+          new_status?: string | null
+          phase?: string
+          previous_status?: string | null
+          reason?: string | null
+          record_id?: string
+          record_type?: string
+          suspension_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_award_suspension_payment_impact_suspension_id_fkey"
+            columns: ["suspension_id"]
+            isOneToOne: false
+            referencedRelation: "bn_award_suspension_event"
             referencedColumns: ["id"]
           },
         ]
@@ -99192,7 +99291,23 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_reinst_decide: {
+        Args: {
+          p_correlation: string
+          p_decision: string
+          p_expected_row_version: number
+          p_narrative: string
+          p_reason_code: string
+          p_reinstatement_id: string
+          p_task_id: string
+        }
+        Returns: Json
+      }
       _bn_susp_actor: { Args: never; Returns: string }
+      _bn_susp_arrears: {
+        Args: { p_award_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
       _bn_susp_assert_module_enabled: { Args: never; Returns: undefined }
       _bn_susp_audit: {
         Args: {
@@ -99216,6 +99331,37 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bn_susp_comm: {
+        Args: {
+          p_award_id: string
+          p_context: Json
+          p_correlation: string
+          p_event_code: string
+          p_user_code: string
+        }
+        Returns: string
+      }
+      _bn_susp_execute_core: {
+        Args: {
+          p_actor: string
+          p_correlation: string
+          p_narrative: string
+          p_susp_id: string
+          p_user_code: string
+        }
+        Returns: Json
+      }
+      _bn_susp_payment_impact: {
+        Args: {
+          p_actor: string
+          p_apply: boolean
+          p_award_id: string
+          p_from: string
+          p_susp_id: string
+          p_user_code: string
+        }
+        Returns: Json
+      }
       _bn_susp_receipt_lookup: {
         Args: {
           p_actor: string
@@ -99235,6 +99381,15 @@ export type Database = {
           p_response: Json
         }
         Returns: undefined
+      }
+      _bn_susp_release_holds: {
+        Args: {
+          p_actor: string
+          p_award_id: string
+          p_susp_id: string
+          p_user_code: string
+        }
+        Returns: Json
       }
       _bn_susp_resolve_policy_levels: {
         Args: never
@@ -99788,6 +99943,64 @@ export type Database = {
           row_version: number
         }[]
       }
+      bn_award_reinstatement_approve_v1: {
+        Args: {
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_narrative: string
+          p_reinstatement_id: string
+          p_task_id: string
+        }
+        Returns: Json
+      }
+      bn_award_reinstatement_calculate_arrears_v1: {
+        Args: { p_reinstatement_id: string }
+        Returns: Json
+      }
+      bn_award_reinstatement_execute_v1: {
+        Args: {
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_narrative: string
+          p_reinstatement_id: string
+        }
+        Returns: Json
+      }
+      bn_award_reinstatement_propose_v1: {
+        Args: {
+          p_correlation_id: string
+          p_effective_from: string
+          p_idempotency_key: string
+          p_narrative: string
+          p_reason_code: string
+          p_suspension_id: string
+        }
+        Returns: Json
+      }
+      bn_award_reinstatement_reject_v1: {
+        Args: {
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_narrative: string
+          p_reason_code: string
+          p_reinstatement_id: string
+          p_task_id: string
+        }
+        Returns: Json
+      }
+      bn_award_reinstatement_withdraw_v1: {
+        Args: {
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_narrative: string
+          p_reinstatement_id: string
+        }
+        Returns: Json
+      }
       bn_award_suspension_approve_v1: {
         Args: {
           p_correlation_id: string
@@ -99797,6 +100010,39 @@ export type Database = {
           p_suspension_id: string
           p_task_id: string
         }
+        Returns: Json
+      }
+      bn_award_suspension_due_for_execution_v1: {
+        Args: { p_limit?: number }
+        Returns: {
+          bn_award_id: string
+          execution_attempts: number
+          row_version: number
+          status: string
+          suspended_from: string
+          suspension_id: string
+        }[]
+      }
+      bn_award_suspension_execute_scheduled_v1: {
+        Args: {
+          p_correlation_id: string
+          p_idempotency_key: string
+          p_suspension_id: string
+        }
+        Returns: Json
+      }
+      bn_award_suspension_execute_v1: {
+        Args: {
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_narrative: string
+          p_suspension_id: string
+        }
+        Returns: Json
+      }
+      bn_award_suspension_preview_payment_impact_v1: {
+        Args: { p_suspension_id: string }
         Returns: Json
       }
       bn_award_suspension_propose_v1: {

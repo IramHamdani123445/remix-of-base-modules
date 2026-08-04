@@ -15,6 +15,8 @@ import {
 import { SuspensionStatusBadge } from './SuspensionStatusBadge';
 import { SuspensionTimeline } from './SuspensionTimeline';
 import { formatDate, formatMoney } from './suspensionViewModels';
+import { SuspensionExecutionPanel } from './SuspensionExecutionPanel';
+import { ReinstatementPanel } from './ReinstatementPanel';
 
 interface Props {
   open: boolean;
@@ -23,6 +25,11 @@ interface Props {
   canApprove: boolean;
   canAudit: boolean;
   actionsEnabled?: boolean;
+  /** `bn_award_suspension.execute` — required for execution/reinstatement execution. */
+  canExecute?: boolean;
+  /** `bn_award_suspension.propose` — required to raise a reinstatement case. */
+  canPropose?: boolean;
+  currentUserId?: string | null;
 }
 
 export function SuspensionRequestDrawer({
@@ -32,10 +39,15 @@ export function SuspensionRequestDrawer({
   canApprove,
   canAudit,
   actionsEnabled = false,
+  canExecute = false,
+  canPropose = false,
+  currentUserId = null,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<SuspensionRequestDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  const reload = () => setReloadToken((t) => t + 1);
 
   useEffect(() => {
     if (!open || !requestId) return;
@@ -57,7 +69,7 @@ export function SuspensionRequestDrawer({
     return () => {
       cancelled = true;
     };
-  }, [open, requestId, canAudit]);
+  }, [open, requestId, canAudit, reloadToken]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -257,6 +269,31 @@ export function SuspensionRequestDrawer({
                 )}
               </section>
             )}
+
+            <SuspensionExecutionPanel
+              suspensionId={data.request.requestId}
+              caseStatus={data.request.status}
+              execution={data.execution}
+              currency={data.award.currency}
+              canExecute={canExecute}
+              canViewImpact={canExecute || canApprove}
+              actionsEnabled={actionsEnabled}
+              onExecuted={reload}
+            />
+
+            <ReinstatementPanel
+              suspensionId={data.request.requestId}
+              caseStatus={data.request.status}
+              execution={data.execution}
+              reinstatement={data.reinstatement}
+              currency={data.award.currency}
+              currentUserId={currentUserId}
+              canPropose={canPropose}
+              canApprove={canApprove}
+              canExecute={canExecute}
+              actionsEnabled={actionsEnabled}
+              onChanged={reload}
+            />
 
             {canApprove && (
               <section className="rounded-md border p-3 space-y-2">
