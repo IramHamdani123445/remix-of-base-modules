@@ -47,8 +47,8 @@ export function PermissionButton({
 
   // Admin users always have access
   if (isAdmin) {
-    return withDisabledTooltip(
-      <Button {...props} onClick={onClick}>
+    return withTooltip(
+      <Button {...props} title={undefined} onClick={onClick}>
         {children}
       </Button>
     );
@@ -77,8 +77,8 @@ export function PermissionButton({
     );
   }
 
-  return withDisabledTooltip(
-    <Button {...props} onClick={onClick}>
+  return withTooltip(
+    <Button {...props} title={undefined} onClick={onClick}>
       {children}
     </Button>
   );
