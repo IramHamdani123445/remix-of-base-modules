@@ -58,7 +58,7 @@ describe('BN award suspension — command error mapping', () => {
     ['E_TASK_NOT_OPEN', 'E_TASK_NOT_OPEN'],
     ['E_IDEMPOTENCY_PAYLOAD_MISMATCH', 'E_IDEMPOTENCY_PAYLOAD_MISMATCH'],
     ['E_FORBIDDEN', 'E_FORBIDDEN'],
-    ['E_ROW_VERSION_CONFLICT', 'E_ROW_VERSION_CONFLICT'],
+    ['E_STALE_ROW_VERSION', 'E_STALE_ROW_VERSION'],
   ];
 
   it.each(cases)('maps %s to a typed, human-readable error', (raw, code) => {
