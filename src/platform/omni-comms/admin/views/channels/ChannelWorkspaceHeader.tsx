@@ -14,6 +14,7 @@ import {
   type ChannelUiDefinition,
 } from './channelUiRegistry';
 import type { EmailReadinessProjection } from './emailReadiness';
+import type { ChannelReadinessProjection } from './channelReadiness';
 
 export interface ChannelWorkspaceHeaderProps {
   definition: ChannelUiDefinition;
@@ -25,6 +26,11 @@ export interface ChannelWorkspaceHeaderProps {
    * readiness signal (email in C1); null for every other channel.
    */
   readiness?: EmailReadinessProjection | null;
+  /**
+   * CG1 — the generic two-facet readiness projection. Configuration readiness
+   * and delivery readiness are rendered SEPARATELY and never merged.
+   */
+  channelReadiness?: ChannelReadinessProjection | null;
   onBack: () => void;
   onRefresh?: () => void;
 }
@@ -35,6 +41,7 @@ export const ChannelWorkspaceHeader: React.FC<ChannelWorkspaceHeaderProps> = ({
   departmentName,
   loading,
   readiness,
+  channelReadiness,
   onBack,
   onRefresh,
 }) => (
@@ -64,7 +71,31 @@ export const ChannelWorkspaceHeader: React.FC<ChannelWorkspaceHeaderProps> = ({
         {departmentName ? ` · ${departmentName}` : ' · All departments'}
       </p>
     </div>
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
+      {channelReadiness ? (
+        <Badge
+          variant={
+            channelReadiness.configuration.state === 'ready'
+              ? 'secondary'
+              : channelReadiness.configuration.state === 'incomplete'
+                ? 'destructive'
+                : 'outline'
+          }
+          title={channelReadiness.configuration.detail}
+          data-testid="omni-comms-configuration-readiness-badge"
+        >
+          {channelReadiness.configuration.label}
+        </Badge>
+      ) : null}
+      {channelReadiness ? (
+        <Badge
+          variant="outline"
+          title={channelReadiness.delivery.detail}
+          data-testid="omni-comms-delivery-readiness-badge"
+        >
+          {channelReadiness.delivery.label}
+        </Badge>
+      ) : null}
       {!readiness || readiness.state === 'unknown' ? (
         <Badge variant="secondary" data-testid="omni-comms-readiness-badge">
           Readiness unknown
