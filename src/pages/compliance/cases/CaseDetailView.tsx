@@ -35,6 +35,7 @@ import { AssignmentDialog } from '@/components/compliance/AssignmentDialog';
 import { ForwardToLegalDialog } from '@/components/compliance/ForwardToLegalDialog';
 import { UserCheck, Send } from 'lucide-react';
 import { useHasCapability } from '@/hooks/useHasCapability';
+import { useComplianceRole } from '@/hooks/useComplianceRole';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
 import { PermissionButton } from '@/components/ui/permission-button';
