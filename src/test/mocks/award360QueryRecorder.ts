@@ -203,6 +203,11 @@ const RPC_PROJECTION: Record<string, string[]> = {
   ],
 };
 
+/** Ordering the secured RPC applies server-side. */
+const RPC_ORDER: Record<string, string[]> = {
+  bn_life_certificate_award_list_v1: ['due_date'],
+};
+
 /** RPC argument → the table column it scopes, so scope evidence still holds. */
 const RPC_ARG_COLUMN: Record<string, Record<string, string>> = {
   bn_life_certificate_award_list_v1: { p_award_id: 'bn_award_id' },
@@ -316,7 +321,7 @@ export class AwardQueryRecorder {
           filters: Object.entries(args)
             .filter(([arg]) => RPC_ARG_COLUMN[name]?.[arg])
             .map(([arg, value]) => ({ method: 'eq', column: RPC_ARG_COLUMN[name][arg], value })),
-          orderColumns: [],
+          orderColumns: [...(RPC_ORDER[name] ?? [])],
           containmentColumns: [],
           head: false,
         };
