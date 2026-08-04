@@ -2,12 +2,28 @@
 
 ## Phase 0 Audit (read-only). No implementation performed.
 
-**Gate status:** BLOCKED. The instruction is explicit — implementation may not
-begin until the Life Certificate database integration workflow
-(`.github/workflows/bn-life-certificate-integration.yml`) is **confirmed green**.
-That workflow runs on GitHub Actions, which is not reachable from this
-environment, so its result cannot be observed or asserted here. No Medical
-Review code, migration, route, permission or seed has been created.
+**Gate status:** UNBLOCKED — locally reproducible, pending the GitHub Actions run.
+
+The gate was previously blocked because
+`.github/workflows/bn-life-certificate-integration.yml` could not build a
+schema: 827 of 1298 migrations fail when replayed from an empty database,
+because much of the schema predates migrations and no migration creates it.
+
+That baseline defect is now fixed. Both clean-database workflows build their
+schema through `scripts/ci/bootstrap-supabase-test-db.sh`
+(Supabase substrate -> `supabase/baseline/schema.sql` -> every migration after
+the cutoff). On a database built that way from scratch:
+
+- `supabase/verify/bn_life_certificate_effective_grants.sql` — passed
+- `supabase/tests/bn/life_certificate_integration.sql` —
+  `BN_LC_HARNESS_RESULT: PASS`, no scenario skipped
+
+Rationale and regeneration procedure: `supabase/baseline/README.md`.
+
+Medical Review implementation still may not begin until the
+`bn-life-certificate-integration` workflow is observed green on GitHub
+Actions, which is outside this environment. No Medical Review code,
+migration, route, permission or seed has been created.
 
 ---
 
