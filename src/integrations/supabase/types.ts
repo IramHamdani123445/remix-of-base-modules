@@ -18123,6 +18123,45 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_susp_operational_error_log: {
+        Row: {
+          command: string
+          correlation_id: string | null
+          created_at: string
+          detail: string | null
+          entity_id: string | null
+          id: string
+          occurred_at: string
+          safe_code: string
+          sqlstate: string | null
+          stage: string | null
+        }
+        Insert: {
+          command: string
+          correlation_id?: string | null
+          created_at?: string
+          detail?: string | null
+          entity_id?: string | null
+          id?: string
+          occurred_at?: string
+          safe_code: string
+          sqlstate?: string | null
+          stage?: string | null
+        }
+        Update: {
+          command?: string
+          correlation_id?: string | null
+          created_at?: string
+          detail?: string | null
+          entity_id?: string | null
+          id?: string
+          occurred_at?: string
+          safe_code?: string
+          sqlstate?: string | null
+          stage?: string | null
+        }
+        Relationships: []
+      }
       bn_timeline_rule: {
         Row: {
           days_value: number | null
@@ -99351,6 +99390,18 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_susp_log_operational_error: {
+        Args: {
+          p_command: string
+          p_correlation: string
+          p_detail: string
+          p_entity: string
+          p_safe_code: string
+          p_sqlstate: string
+          p_stage: string
+        }
+        Returns: undefined
+      }
       _bn_susp_payment_impact: {
         Args: {
           p_actor: string
@@ -99389,7 +99440,9 @@ export type Database = {
       _bn_susp_release_holds: {
         Args: {
           p_actor: string
+          p_arrears_status?: string
           p_award_id: string
+          p_effective_date: string
           p_susp_id: string
           p_user_code: string
         }
@@ -99406,6 +99459,10 @@ export type Database = {
           restricted_action: boolean
           self_approval_allowed: boolean
         }[]
+      }
+      _bn_susp_safe_code: {
+        Args: { p_sqlstate: string; p_stage: string }
+        Returns: string
       }
       _bn_susp_user_code: { Args: { p_user_id: string }; Returns: string }
       _ch_extract_domain: { Args: { p_email: string }; Returns: string }

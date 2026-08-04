@@ -40,7 +40,14 @@ export type SuspensionCommandErrorCode =
   | 'E_TASK_NOT_FOR_CASE'
   | 'E_TASK_NOT_OPEN'
   | 'E_IDEMPOTENCY_PAYLOAD_MISMATCH'
+  | 'E_PAYMENT_IMPACT_FAILED'
+  | 'E_PAYMENT_HOLD_FAILED'
+  | 'E_AUDIT_FAILED'
+  | 'E_COMMUNICATION_INTENT_FAILED'
+  | 'E_CALCULATION_PERSIST_FAILED'
+  | 'E_EXECUTION_INTERNAL'
   | 'E_UNKNOWN';
+
 
 export class SuspensionCommandError extends Error {
   readonly code: SuspensionCommandErrorCode;
@@ -59,7 +66,10 @@ const KNOWN_CODES: SuspensionCommandErrorCode[] = [
   'E_INVALID_EFFECTIVE_DATE', 'E_INVALID_REASON_CODE', 'E_NARRATIVE_REQUIRED',
   'E_REASON_REQUIRED', 'E_ONLY_PROPOSED_MAY_WITHDRAW',
   'E_TASK_NOT_FOR_CASE', 'E_TASK_NOT_OPEN', 'E_IDEMPOTENCY_PAYLOAD_MISMATCH',
+  'E_PAYMENT_IMPACT_FAILED', 'E_PAYMENT_HOLD_FAILED', 'E_AUDIT_FAILED',
+  'E_COMMUNICATION_INTENT_FAILED', 'E_CALCULATION_PERSIST_FAILED', 'E_EXECUTION_INTERNAL',
 ];
+
 
 export const SUSPENSION_ERROR_MESSAGES: Record<SuspensionCommandErrorCode, string> = {
   E_FEATURE_DISABLED: 'Award suspension actions are currently disabled for this environment.',
@@ -85,8 +95,28 @@ export const SUSPENSION_ERROR_MESSAGES: Record<SuspensionCommandErrorCode, strin
   E_TASK_NOT_OPEN: 'The approval task has already been completed.',
   E_IDEMPOTENCY_PAYLOAD_MISMATCH:
     'This case changed since the action was prepared. Refresh and try again.',
+  E_PAYMENT_IMPACT_FAILED:
+    'The payment impact could not be applied, so nothing was changed. Please retry.',
+  E_PAYMENT_HOLD_FAILED:
+    'Payment holds could not be applied or released safely, so nothing was changed.',
+  E_AUDIT_FAILED: 'The audit record could not be written, so the action was rolled back.',
+  E_COMMUNICATION_INTENT_FAILED:
+    'The communication intent could not be recorded, so the action was rolled back.',
+  E_CALCULATION_PERSIST_FAILED:
+    'The calculation evidence could not be stored, so no arrears were raised.',
+  E_EXECUTION_INTERNAL: 'Execution could not be completed. The case remains retryable.',
   E_UNKNOWN: 'The command could not be completed.',
 };
+
+/**
+ * Server-side failures are persisted as an approved short code only — never as
+ * raw database text. This turns the stored code into an operator-safe sentence.
+ */
+export function describeExecutionFailure(code: string | null | undefined): string {
+  const known = KNOWN_CODES.find((c) => (code ?? '').includes(c));
+  return SUSPENSION_ERROR_MESSAGES[known ?? 'E_UNKNOWN'];
+}
+
 
 export function toCommandError(message: string | null | undefined): SuspensionCommandError {
   const raw = message ?? '';
@@ -198,9 +228,16 @@ export interface ExecutionResult {
   award_status?: string;
   row_version?: number;
   payment_impact?: Omit<PaymentImpactPreview, 'items'>;
-  /** Present only when the server persisted a failed execution attempt. */
-  error?: string;
+  /**
+   * Approved short failure code (never raw database text) persisted by the
+   * server when an execution attempt failed.
+   */
+  error_code?: string;
+  correlation_id?: string;
+  attempt_count?: number;
+  attempted_at?: string;
 }
+
 
 export const isExecutionFailure = (result: ExecutionResult): boolean =>
   result.execution_status === 'FAILED' ||

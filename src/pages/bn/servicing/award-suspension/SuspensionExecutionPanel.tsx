@@ -14,9 +14,11 @@ import { Loader2, ShieldAlert, AlertTriangle, CheckCircle2, Clock } from 'lucide
 import {
   executeSuspension,
   previewSuspensionPaymentImpact,
+  describeExecutionFailure,
   SuspensionCommandError,
   type PaymentImpactPreview,
 } from '@/services/bn/awardSuspensionCommandService';
+
 import type { SuspensionExecutionState } from '@/services/bn/awardSuspensionViewService';
 import { formatMoney } from './suspensionViewModels';
 
@@ -134,10 +136,12 @@ export function SuspensionExecutionPanel({
         <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive flex gap-2">
           <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" aria-hidden />
           <span>
-            Last execution failed: {execution.lastExecutionError}. The case remains retryable.
+            Last execution failed: {describeExecutionFailure(execution.lastExecutionError)} The case
+            remains retryable; technical detail is retained in the restricted operational log.
           </span>
         </p>
       )}
+
 
       {canViewImpact && (
         <div className="space-y-2">

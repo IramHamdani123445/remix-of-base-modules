@@ -18,7 +18,7 @@ const corsHeaders = {
 };
 
 type DueRow = {
-  id: string;
+  suspension_id: string;
   bn_award_id: string;
   suspended_from: string | null;
   row_version: number | null;
@@ -41,6 +41,17 @@ Deno.serve(async (req) => {
 
   const startedAt = Date.now();
   const correlationId = crypto.randomUUID();
+
+  // The runner is invoked by the scheduler, never by a browser. It requires a
+  // shared secret header; without it no scan or execution takes place.
+  const expectedSecret = Deno.env.get("BN_AWARD_SUSPENSION_RUNNER_SECRET");
+  if (!expectedSecret || req.headers.get("x-bn-suspension-runner-secret") !== expectedSecret) {
+    console.warn("[bn-award-suspension-runner] rejected unauthenticated invocation", correlationId);
+    return new Response(JSON.stringify({ correlationId, error: "unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     const db = createClient(
@@ -68,7 +79,7 @@ Deno.serve(async (req) => {
     for (const row of rows) {
       if ((row.execution_attempts ?? 0) >= MAX_ATTEMPTS) {
         results.push({
-          suspensionId: row.id,
+          suspensionId: row.suspension_id,
           awardId: row.bn_award_id,
           outcome: "failed",
           error: "max_attempts_exceeded",
@@ -77,10 +88,10 @@ Deno.serve(async (req) => {
       }
 
       const idempotencyKey =
-        `suspension_execute_scheduled:${row.id}:${row.suspended_from ?? "na"}`;
+        `suspension_execute_scheduled:${row.suspension_id}:${row.suspended_from ?? "na"}`;
 
       const { data, error } = await db.rpc("bn_award_suspension_execute_scheduled_v1", {
-        p_suspension_id: row.id,
+        p_suspension_id: row.suspension_id,
         p_idempotency_key: idempotencyKey,
         p_correlation_id: correlationId,
       });
@@ -89,17 +100,17 @@ Deno.serve(async (req) => {
         // The command persists its own EXECUTION_FAILED state; the runner only
         // records the outcome so the batch continues with the next case.
         results.push({
-          suspensionId: row.id,
+          suspensionId: row.suspension_id,
           awardId: row.bn_award_id,
           outcome: "failed",
-          error: error.message,
+          error: "execution_command_failed",
         });
         continue;
       }
 
       const replayed = Boolean((data as Record<string, unknown> | null)?.replayed);
       results.push({
-        suspensionId: row.id,
+        suspensionId: row.suspension_id,
         awardId: row.bn_award_id,
         outcome: replayed ? "replayed" : "executed",
       });
@@ -121,8 +132,9 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "unexpected_error";
-    console.error("[bn-award-suspension-runner] failed", message);
-    return new Response(JSON.stringify({ correlationId, error: message }), {
+    console.error("[bn-award-suspension-runner] failed", correlationId, message);
+    // Raw error text is never returned to the caller.
+    return new Response(JSON.stringify({ correlationId, error: "runner_failed" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
