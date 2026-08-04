@@ -18,7 +18,9 @@ import { AlertTriangle, RefreshCw, Database, CheckCircle2, HelpCircle, ShieldChe
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const db = supabase as any;
+const db = supabase as unknown as {
+  rpc: (fn: string) => Promise<{ data: unknown; error: { message: string } | null }>;
+};
 
 /** Known screen → table mapping (audited from src/pages/bn/* + hooks/services). */
 const SCREEN_TABLE_MAP: Record<string, string[]> = {
@@ -114,8 +116,10 @@ export default function BenefitsDiagnostics() {
       const { data, error } = await db.rpc('bn_list_tables');
       if (error) throw error;
       setRows((data ?? []) as ApiRow[]);
-    } catch (e: any) {
-      toast.error('Failed to load diagnostics', { description: e?.message });
+    } catch (e) {
+      toast.error('Failed to load diagnostics', {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setLoading(false);
     }
