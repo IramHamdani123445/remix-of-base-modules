@@ -157,7 +157,7 @@ def gen_sequences(schemas):
       JOIN pg_namespace sn ON sn.oid = sc.relnamespace AND sn.nspname = s.schemaname
       WHERE {schema_filter('s.schemaname', schemas)}
         AND NOT EXISTS (SELECT 1 FROM pg_depend d
-                        WHERE d.objid = sc.oid AND d.deptype IN ('a', 'i'))
+                        WHERE d.objid = sc.oid AND d.deptype = 'i')
       ORDER BY 1, 2
     """)
     for ns, name, dtype, start, inc, mn, mx, cache, cyc in rows:
@@ -205,8 +205,7 @@ def gen_tables(schemas):
 
 
 def quote_ident(name: str) -> str:
-    if name.isidentifier() and name.islower() and not name[0].isdigit():
-        return name
+    """Always quote: column and table names include SQL reserved words."""
     return '"' + name.replace('"', '""') + '"'
 
 
@@ -257,7 +256,7 @@ def gen_constraints(schemas):
         for ns, tbl, con, defn in rows:
             yield (f"DO $do$ BEGIN ALTER TABLE {ns}.{quote_ident(tbl)} "
                    f"ADD CONSTRAINT {quote_ident(con)} {defn};\n"
-                   f"EXCEPTION WHEN duplicate_object THEN NULL "
+                   f"EXCEPTION WHEN duplicate_object THEN NULL; "
                    f"WHEN duplicate_table THEN NULL; END $do$;\n")
 
 
