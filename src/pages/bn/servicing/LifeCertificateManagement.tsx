@@ -11,7 +11,7 @@ import {
   ShieldAlert, Lock, PauseCircle, PlayCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useActionPermissions } from '@/hooks/useActionPermission';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/services/bn/lifeCertificateViewService';
 import { LifeCertificateCommandError } from '@/services/bn/lifeCertificateCommandService';
 import LifeCertificateDetailPanel from '@/components/bn/life-certificates/LifeCertificateDetailPanel';
+import { useLifeCertificateActionsState } from '@/hooks/bn/useLifeCertificateActionsEnabled';
 
 const PAGE_SIZE = 50;
 
@@ -41,6 +42,7 @@ const statusTone: Record<string, string> = {
 const LifeCertificateManagement: React.FC = () => {
   const { isAuthReady, isAuthenticated } = useSupabaseAuth();
   const { can, isAdmin, isLoading: permsLoading } = useActionPermissions('bn_life_certificate');
+  const actionsState = useLifeCertificateActionsState();
 
   const canView = isAdmin || can('view');
   const [bucket, setBucket] = useState<LifeCertificateBucket>('ALL');
