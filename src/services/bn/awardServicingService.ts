@@ -222,14 +222,9 @@ export async function updateAwardStatus(
 }
 
 // ---------- Life certificates ----------
-export async function fetchLifeCertificates(): Promise<BnLifeCertificateRow[]> {
-  const { data, error } = await db
-    .from('bn_life_certificate')
-    .select('*')
-    .order('due_date', { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as BnLifeCertificateRow[];
-}
+// Retired: direct `bn_life_certificate` selects are denied at the database
+// boundary. Use `@/services/bn/lifeCertificateViewService` (worklist/detail
+// query RPCs) or the award-scoped loaders in `award360Service`.
 
 // Life Certificate mutations were retired from the browser boundary.
 // All Life Certificate state changes now run through the versioned server
