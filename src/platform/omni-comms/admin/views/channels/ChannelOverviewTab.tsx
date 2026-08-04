@@ -23,6 +23,16 @@ import {
   type EmailReadinessProjection,
 } from './emailReadiness';
 import type { ChannelUiDefinition } from './channelUiRegistry';
+import type { ChannelReadinessProjection } from './channelReadiness';
+import {
+  channelCapability,
+  OMNI_COMMS_CHANNEL_RESOURCES,
+} from '@/platform/omni-comms/domain/channelCatalogue';
+import {
+  formatResourceCount,
+  type ChannelConfigurationSummary,
+} from '@/platform/omni-comms/application/channelConfigurationTypes';
+
 
 const StateIcon: React.FC<{ state: EmailReadinessCheckState }> = ({ state }) => {
   if (state === 'met') return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
