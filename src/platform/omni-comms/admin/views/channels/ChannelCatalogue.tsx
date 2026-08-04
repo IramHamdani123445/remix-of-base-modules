@@ -93,7 +93,7 @@ export const ChannelCatalogue: React.FC<ChannelCatalogueProps> = ({
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">{def.statusText}</p>
-            <dl className="grid grid-cols-3 gap-2 text-sm">
+            <dl className="grid grid-cols-2 gap-2 text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Accounts</dt>
                 <dd data-testid={`omni-comms-channel-accounts-${def.code}`}>
@@ -106,6 +106,8 @@ export const ChannelCatalogue: React.FC<ChannelCatalogueProps> = ({
                   {identitiesText}
                 </dd>
               </div>
+            </dl>
+            <dl className="text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Readiness</dt>
                 <dd data-testid={`omni-comms-channel-readiness-${def.code}`}>

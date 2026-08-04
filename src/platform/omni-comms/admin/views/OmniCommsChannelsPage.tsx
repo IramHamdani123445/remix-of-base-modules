@@ -72,9 +72,13 @@ import { getChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/applica
 import type { ChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/application/channelTestDeliveryTypes";
 import { toastError } from "./channels/channelFormPrimitives";
 
-/** Channels whose counts are worth reading for the catalogue cards. */
+/**
+ * Channels whose counts are read for the catalogue cards. Every channel the
+ * shared schema can represent is counted through the SAME generic contracts —
+ * Email included, so no card is left guessing.
+ */
 const COUNTABLE_CHANNELS: readonly OmniCommsChannel[] = OMNI_COMMS_CHANNEL_CATALOGUE
-  .filter((d) => d.databaseSupported && d.channel !== "email")
+  .filter((d) => d.databaseSupported)
   .map((d) => d.channel);
 
 export const OmniCommsChannelsPage: React.FC = () => {
