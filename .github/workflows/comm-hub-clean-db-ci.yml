@@ -59,7 +59,7 @@ jobs:
       - name: Run Omni-Comms vitest suite
         run: bunx vitest run src/__tests__/omni-comms/
   migrate-from-zero:
-    name: Apply every migration from zero
+    name: Clean database build (baseline + forward migrations)
     runs-on: ubuntu-latest
     services:
       postgres:
