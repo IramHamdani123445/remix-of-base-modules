@@ -245,6 +245,8 @@ export default function CaseDetailView() {
 
   const c = caseData as any;
   const caseIsClosed = ['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status);
+  const noticesFeatureEnabled = isComplianceFeatureEnabled('notices.generate');
+  const arrangementsFeatureEnabled = isComplianceFeatureEnabled('arrangements.new');
   const activeViolationCount = linkedViolations.filter(
     (v: any) => ['OPEN', 'IN_PROGRESS', 'UNDER_REVIEW', 'ESCALATED'].includes(v.status)
   ).length;
