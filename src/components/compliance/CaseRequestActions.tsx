@@ -166,10 +166,48 @@ export const CaseRequestActions = ({ caseId, caseStatus, caseNumber }: Props) =>
               </div>
             )}
             {open === 'MERGE' && (
-              <div>
-                <label className="text-xs text-muted-foreground">Target case ID (UUID)</label>
-                <Input value={targetCaseId} onChange={(e) => setTargetCaseId(e.target.value)}
-                  placeholder="UUID of the case to merge into" />
+              <div className="space-y-2">
+                <label className="text-xs text-muted-foreground">
+                  Target case (search by case number or employer)
+                </label>
+                <Input
+                  value={mergeSearch}
+                  onChange={(e) => { setMergeSearch(e.target.value); setTargetCaseId(''); }}
+                  placeholder="Type at least 2 characters, e.g. CE-2026 or employer name"
+                />
+                {selectedTargetLabel ? (
+                  <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                    <span>Merging into <span className="font-medium">{selectedTargetLabel}</span></span>
+                    <Button variant="ghost" size="sm" onClick={() => { setTargetCaseId(''); setSelectedTargetLabel(''); }}>
+                      Change
+                    </Button>
+                  </div>
+                ) : mergeSearch.trim().length >= 2 ? (
+                  <div className="max-h-48 overflow-y-auto rounded-md border">
+                    {isSearching && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">Searching…</div>
+                    )}
+                    {!isSearching && candidateCases.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">No matching open cases found</div>
+                    )}
+                    {candidateCases.map((cc) => (
+                      <button
+                        key={cc.id}
+                        type="button"
+                        className="flex w-full flex-col items-start px-3 py-2 text-left text-xs hover:bg-accent"
+                        onClick={() => {
+                          setTargetCaseId(cc.id);
+                          setSelectedTargetLabel(`${cc.case_number}${cc.employer_name ? ` — ${cc.employer_name}` : ''}`);
+                        }}
+                      >
+                        <span className="font-medium">{cc.case_number}</span>
+                        <span className="text-muted-foreground">
+                          {cc.employer_name || 'Unknown employer'} · {cc.status}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
             <div>
