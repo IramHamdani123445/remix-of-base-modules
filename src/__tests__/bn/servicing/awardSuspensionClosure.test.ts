@@ -15,6 +15,8 @@ import {
   listSuspensionPaymentImpact,
   previewReinstatementArrears,
   SuspensionCommandError,
+  describeExecutionFailure,
+  SUSPENSION_ERROR_MESSAGES,
   type ExecutionResult,
 } from '@/services/bn/awardSuspensionCommandService';
 
@@ -120,5 +122,44 @@ describe('BN award suspension — reinstatement proposal payload', () => {
       p_reason_code: 'EVIDENCE_RECEIVED',
       p_narrative: 'Certificate received and verified.',
     });
+  });
+});
+
+describe('BN award suspension — sanitized failure reporting', () => {
+  it('maps every approved operational failure code to an operator-safe sentence', () => {
+    const codes = [
+      'E_PAYMENT_IMPACT_FAILED',
+      'E_PAYMENT_HOLD_FAILED',
+      'E_AUDIT_FAILED',
+      'E_COMMUNICATION_INTENT_FAILED',
+      'E_CALCULATION_PERSIST_FAILED',
+      'E_EXECUTION_INTERNAL',
+    ];
+    for (const code of codes) {
+      const text = describeExecutionFailure(code);
+      expect(text.length).toBeGreaterThan(0);
+      expect(text).not.toContain('E_');
+      expect(text.toLowerCase()).not.toContain('sqlstate');
+    }
+  });
+
+  it('never echoes raw database text back to the operator', () => {
+    const text = describeExecutionFailure(
+      'ERROR: null value in column "amount" of relation "bn_payment_instruction"'
+    );
+    expect(text).not.toContain('bn_payment_instruction');
+    expect(text).toBe(SUSPENSION_ERROR_MESSAGES.E_UNKNOWN);
+  });
+
+  it('treats a sanitized EXECUTION_FAILED payload as a failure', () => {
+    const result = {
+      execution_status: 'FAILED',
+      status: 'EXECUTION_FAILED',
+      error_code: 'E_PAYMENT_HOLD_FAILED',
+      correlation_id: 'c-1',
+      attempt_count: 2,
+    } as unknown as ExecutionResult;
+    expect(isExecutionFailure(result)).toBe(true);
+    expect(Object.keys(result)).not.toContain('error');
   });
 });
