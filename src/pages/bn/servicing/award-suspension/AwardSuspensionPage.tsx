@@ -44,6 +44,12 @@ export default function AwardSuspensionPage() {
   const [canApprove, setCanApprove] = useState(false);
   const [canAudit, setCanAudit] = useState(false);
   const [canExecute, setCanExecute] = useState(false);
+  // Reinstatement is governed by its own `resume_*` actions server-side; the
+  // suspension propose/approve/execute permissions must NOT stand in for them.
+  const [canResumePropose, setCanResumePropose] = useState(false);
+  const [canResumeApprove, setCanResumeApprove] = useState(false);
+  const [canResumeExecute, setCanResumeExecute] = useState(false);
+  const [canViewPaymentImpact, setCanViewPaymentImpact] = useState(false);
 
   const [awards, setAwards] = useState<AwardSuspensionListItem[]>([]);
   const [requests, setRequests] = useState<SuspensionRequestListItem[]>([]);
@@ -67,12 +73,16 @@ export default function AwardSuspensionPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [v, p, a, au, ex] = await Promise.all([
+        const [v, p, a, au, ex, rp, ra, re, vpi] = await Promise.all([
           hasPermission('bn_award_suspension', 'view'),
           hasPermission('bn_award_suspension', 'propose'),
           hasPermission('bn_award_suspension', 'approve'),
           hasPermission('bn_award_suspension', 'audit'),
           hasPermission('bn_award_suspension', 'execute'),
+          hasPermission('bn_award_suspension', 'resume_propose'),
+          hasPermission('bn_award_suspension', 'resume_approve'),
+          hasPermission('bn_award_suspension', 'resume_execute'),
+          hasPermission('bn_award_suspension', 'view_payment_impact'),
         ]);
         if (cancelled) return;
         setCanView(Boolean(v));
@@ -80,6 +90,10 @@ export default function AwardSuspensionPage() {
         setCanApprove(Boolean(a));
         setCanAudit(Boolean(au));
         setCanExecute(Boolean(ex));
+        setCanResumePropose(Boolean(rp));
+        setCanResumeApprove(Boolean(ra));
+        setCanResumeExecute(Boolean(re));
+        setCanViewPaymentImpact(Boolean(vpi));
       } catch {
         if (!cancelled) setCanView(false);
       }
@@ -352,6 +366,10 @@ export default function AwardSuspensionPage() {
         canAudit={canAudit}
         canExecute={canExecute}
         canPropose={canPropose}
+        canResumePropose={canResumePropose}
+        canResumeApprove={canResumeApprove}
+        canResumeExecute={canResumeExecute}
+        canViewPaymentImpact={canViewPaymentImpact}
         currentUserId={user?.id ?? null}
         actionsEnabled={actionsEnabled}
       />

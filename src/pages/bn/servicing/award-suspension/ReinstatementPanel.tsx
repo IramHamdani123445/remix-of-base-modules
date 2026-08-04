@@ -35,12 +35,20 @@ interface Props {
   reinstatement: LinkedReinstatementCase | null;
   currency: string | null;
   currentUserId: string | null;
+  /** `bn_award_suspension.resume_propose` */
   canPropose: boolean;
+  /** `bn_award_suspension.resume_approve` */
   canApprove: boolean;
+  /** `bn_award_suspension.resume_execute` */
   canExecute: boolean;
+  /** `bn_award_suspension.view_payment_impact` — gates arrears figures. */
+  canViewPaymentImpact?: boolean;
   actionsEnabled: boolean;
   onChanged: () => void;
 }
+
+/** Reason codes must be provided; free text is rejected server-side. */
+const REASON_CODE_PATTERN = /^[A-Z][A-Z0-9_]{2,39}$/;
 
 export function ReinstatementPanel({
   suspensionId,
@@ -52,6 +60,7 @@ export function ReinstatementPanel({
   canPropose,
   canApprove,
   canExecute,
+  canViewPaymentImpact = false,
   actionsEnabled,
   onChanged,
 }: Props) {
@@ -69,7 +78,9 @@ export function ReinstatementPanel({
     execution.executionStatus === 'EXECUTED' || caseStatus === 'EXECUTED';
 
   const loadArrears = useCallback(async () => {
-    if (!reinstatement) return;
+    // Arrears are money figures: never requested without the dedicated
+    // `view_payment_impact` permission.
+    if (!reinstatement || !canViewPaymentImpact) return;
     setArrearsError(null);
     try {
       setArrears(await previewReinstatementArrears(reinstatement.reinstatementId));
@@ -78,7 +89,7 @@ export function ReinstatementPanel({
         e instanceof SuspensionCommandError ? e.message : 'Arrears could not be calculated.'
       );
     }
-  }, [reinstatement]);
+  }, [reinstatement, canViewPaymentImpact]);
 
   useEffect(() => {
     void loadArrears();
@@ -103,15 +114,30 @@ export function ReinstatementPanel({
 
   const isProposer =
     !!reinstatement && !!currentUserId && reinstatement.proposedByUserId === currentUserId;
-  const pending =
-    !!reinstatement &&
-    ['PROPOSED', 'PENDING_APPROVAL', 'PENDING_LEVEL_1', 'PENDING_LEVEL_2'].includes(
-      reinstatement.status
-    );
+  // Server vocabulary — `bn_award_suspension_event.status` for reinstatement
+  // cases is REINSTATEMENT_PROPOSED / REINSTATEMENT_APPROVED / … / RESUMED.
+  const pending = !!reinstatement && reinstatement.status === 'REINSTATEMENT_PROPOSED';
   const approvedNotExecuted =
     !!reinstatement &&
-    reinstatement.status === 'APPROVED' &&
+    reinstatement.status === 'REINSTATEMENT_APPROVED' &&
     reinstatement.executionStatus !== 'EXECUTED';
+
+  const today = new Date().toISOString().slice(0, 10);
+  const reasonCodeValid = REASON_CODE_PATTERN.test(reasonCode.trim());
+  const narrativeValid = narrative.trim().length >= 10;
+  const effectiveFromValid = !!effectiveFrom && effectiveFrom <= today;
+  const proposeBlockedReason = !effectiveFrom
+    ? 'Enter the reinstatement effective date.'
+    : !effectiveFromValid
+      ? 'The effective date cannot be in the future.'
+      : !reasonCodeValid
+        ? 'Enter a valid reason code (upper-case letters, digits and underscores).'
+        : !narrativeValid
+          ? 'A narrative of at least 10 characters is required.'
+          : null;
+  // The reinstatement can only be executed once its effective date has passed.
+  const executeDue =
+    !!reinstatement && !!reinstatement.effectiveFrom && reinstatement.effectiveFrom <= today;
 
   return (
     <section className="rounded-md border p-3 space-y-3" data-testid="reinstatement-panel">
@@ -164,16 +190,18 @@ export function ReinstatementPanel({
             rows={2}
             value={narrative}
             onChange={(e) => setNarrative(e.target.value)}
-            placeholder="Narrative / justification"
+            placeholder="Narrative / justification (required, min. 10 characters)"
           />
+          {canPropose && proposeBlockedReason && (
+            <p className="text-xs text-muted-foreground">{proposeBlockedReason}</p>
+          )}
           <div className="flex justify-end">
             <Button
               size="sm"
               disabled={
                 !actionsEnabled ||
                 !canPropose ||
-                !effectiveFrom ||
-                !reasonCode ||
+                proposeBlockedReason !== null ||
                 busy === 'propose'
               }
               onClick={() =>
@@ -183,8 +211,8 @@ export function ReinstatementPanel({
                     proposeReinstatement({
                       suspensionId,
                       effectiveFrom,
-                      reasonCode,
-                      narrative: narrative.trim() || null,
+                      reasonCode: reasonCode.trim(),
+                      narrative: narrative.trim(),
                     }),
                   'Reinstatement proposed and routed for approval.'
                 )
@@ -212,6 +240,11 @@ export function ReinstatementPanel({
 
           <div className="space-y-1">
             <h4 className="text-xs font-medium">Arrears (server-calculated)</h4>
+            {!canViewPaymentImpact && (
+              <p className="text-xs text-muted-foreground">
+                Arrears figures require the payment-impact permission.
+              </p>
+            )}
             {arrearsError && <p className="text-xs text-destructive">{arrearsError}</p>}
             {arrears && (
               <div className="rounded-md border p-2 text-xs space-y-1">
@@ -331,7 +364,9 @@ export function ReinstatementPanel({
                 {approvedNotExecuted && (
                   <Button
                     size="sm"
-                    disabled={!actionsEnabled || !canExecute || busy === 'execute'}
+                    disabled={
+                      !actionsEnabled || !canExecute || !executeDue || busy === 'execute'
+                    }
                     onClick={() =>
                       run(
                         'execute',
@@ -341,7 +376,9 @@ export function ReinstatementPanel({
                             expectedRowVersion: reinstatement.rowVersion,
                             narrative: decisionNote.trim() || undefined,
                           }),
-                        'Reinstatement executed; award returned to active and arrears recorded.'
+                        arrears?.status === 'REVIEW_REQUIRED'
+                          ? 'Reinstatement executed; award returned to active. Arrears were parked for manual review — no payment was raised.'
+                          : 'Reinstatement executed; award returned to active and arrears recorded.'
                       )
                     }
                   >
@@ -352,6 +389,18 @@ export function ReinstatementPanel({
                   </Button>
                 )}
               </div>
+              {approvedNotExecuted && !executeDue && (
+                <p className="text-xs text-muted-foreground">
+                  Execution becomes available on the effective date
+                  {reinstatement.effectiveFrom ? ` (${reinstatement.effectiveFrom})` : ''}.
+                </p>
+              )}
+              {approvedNotExecuted && arrears?.status === 'REVIEW_REQUIRED' && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Arrears cannot be derived automatically. Executing will reinstate the award
+                  and record an arrears review item; no arrears payment will be raised.
+                </p>
+              )}
               {pending && isProposer && (
                 <p className="text-xs text-muted-foreground">
                   Maker–checker: you proposed this reinstatement, so you cannot approve or

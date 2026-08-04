@@ -25,10 +25,18 @@ interface Props {
   canApprove: boolean;
   canAudit: boolean;
   actionsEnabled?: boolean;
-  /** `bn_award_suspension.execute` — required for execution/reinstatement execution. */
+  /** `bn_award_suspension.execute` — required for suspension execution. */
   canExecute?: boolean;
-  /** `bn_award_suspension.propose` — required to raise a reinstatement case. */
+  /** `bn_award_suspension.propose` — required to raise a suspension case. */
   canPropose?: boolean;
+  /** `bn_award_suspension.resume_propose` — required to raise a reinstatement. */
+  canResumePropose?: boolean;
+  /** `bn_award_suspension.resume_approve` — required to decide a reinstatement. */
+  canResumeApprove?: boolean;
+  /** `bn_award_suspension.resume_execute` — required to execute a reinstatement. */
+  canResumeExecute?: boolean;
+  /** `bn_award_suspension.view_payment_impact` — required for payment/arrears figures. */
+  canViewPaymentImpact?: boolean;
   currentUserId?: string | null;
 }
 
@@ -41,6 +49,10 @@ export function SuspensionRequestDrawer({
   actionsEnabled = false,
   canExecute = false,
   canPropose = false,
+  canResumePropose = false,
+  canResumeApprove = false,
+  canResumeExecute = false,
+  canViewPaymentImpact = false,
   currentUserId = null,
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -276,7 +288,7 @@ export function SuspensionRequestDrawer({
               execution={data.execution}
               currency={data.award.currency}
               canExecute={canExecute}
-              canViewImpact={canExecute || canApprove}
+              canViewImpact={canViewPaymentImpact}
               actionsEnabled={actionsEnabled}
               onExecuted={reload}
             />
@@ -288,9 +300,10 @@ export function SuspensionRequestDrawer({
               reinstatement={data.reinstatement}
               currency={data.award.currency}
               currentUserId={currentUserId}
-              canPropose={canPropose}
-              canApprove={canApprove}
-              canExecute={canExecute}
+              canPropose={canResumePropose}
+              canApprove={canResumeApprove}
+              canExecute={canResumeExecute}
+              canViewPaymentImpact={canViewPaymentImpact}
               actionsEnabled={actionsEnabled}
               onChanged={reload}
             />
