@@ -1,8 +1,10 @@
 # BN Life Certificates — seeded database integration harness.
 #
-# Provisions a clean Postgres, applies every migration from zero, then runs
-# the seeded transaction/rollback harness in
+# Provisions a clean Postgres via scripts/ci/bootstrap-supabase-test-db.sh
+# (Supabase substrate + supabase/baseline/schema.sql + every migration after
+# the baseline cutoff), then runs the seeded transaction/rollback harness in
 # supabase/tests/bn/life_certificate_integration.sql.
+# See supabase/baseline/README.md for why a baseline replaces from-zero replay.
 #
 # The harness is authoritative: it seeds its own identity, permissions,
 # record scope and business fixtures, executes the real worklist RPC under
@@ -24,6 +26,8 @@ on:
       - "src/components/bn/life-certificates/**"
       - "src/__tests__/bn/servicing/**"
       - "scripts/bn/**"
+      - "scripts/ci/**"
+      - "supabase/baseline/**"
       - ".github/workflows/bn-life-certificate-integration.yml"
   push:
     branches:

@@ -1,8 +1,10 @@
 # Checkpoint A foundation for the Communication Hub clean-database CI.
 #
 # This workflow protects against migrations that only apply on top of the
-# existing shared database. It provisions a clean Postgres instance and
-# applies every migration in order from zero. Additional gates (Supabase
+# existing shared database. It provisions a clean Postgres instance with
+# scripts/ci/bootstrap-supabase-test-db.sh — Supabase substrate, then
+# supabase/baseline/schema.sql, then every migration after the baseline
+# cutoff. See supabase/baseline/README.md. Additional gates (Supabase
 # type verification, RPC smoke tests, Edge contract tests, Vitest, and an
 # uploaded evidence artifact) land in Checkpoint C — but the from-zero
 # protection begins now.
@@ -24,6 +26,8 @@ on:
       - "src/__tests__/comm-hub/**"
       - "src/__tests__/omni-comms/**"
       - "scripts/omni-comms/**"
+      - "scripts/ci/**"
+      - "supabase/baseline/**"
       - ".github/workflows/comm-hub-clean-db-ci.yml"
   push:
     branches:
@@ -40,6 +44,8 @@ on:
       - "src/__tests__/comm-hub/**"
       - "src/__tests__/omni-comms/**"
       - "scripts/omni-comms/**"
+      - "scripts/ci/**"
+      - "supabase/baseline/**"
       - ".github/workflows/comm-hub-clean-db-ci.yml"
   workflow_dispatch:
 
