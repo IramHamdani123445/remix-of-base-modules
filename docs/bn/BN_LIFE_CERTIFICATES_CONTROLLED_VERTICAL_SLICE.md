@@ -454,3 +454,90 @@ all checks pass.
 
 Life Certificates remain **dark-launched**: no action is reachable in the UI
 until the module actions are enabled.
+
+---
+
+## Operational verification pass (final)
+
+### 9. Award-level access enforcement
+`public._bn_lc_can_access_award(actor, award_id)` is now the single authority
+for deciding whether an actor may see an award's Life Certificate context. It
+resolves the same record scope the rest of Benefits uses:
+
+1. direct claim assignment (`bn_claim.assigned_to` for the actor's user code),
+2. workbasket / queue assignment for the claim,
+3. office / organisational scope, and
+4. explicit administrative override roles.
+
+`bn_life_certificate_worklist_v2` calls it **before** returning any award
+context. Consequences proven by the harness:
+
+- accessible award with obligations → rows + award context, identity masked
+  unless `view_sensitive_identity` is held;
+- accessible award with **no** obligations → empty list with safe context;
+- inaccessible award with no obligations → `E_RECORD_FORBIDDEN` (identical to
+  the populated case, so obligation existence cannot be inferred);
+- unknown award id → `E_AWARD_NOT_FOUND`.
+
+### 10. Deep-link handling
+`LifeCertificateManagement.tsx` validates `?awardId=` client-side. A malformed
+value renders a dedicated **"Invalid award link"** state and issues **no RPC at
+all** — it is never silently downgraded to the general worklist. Valid links
+render an award-scoped banner with a "Show all" clear action.
+
+### 11. Authoritative dark-launch banner
+`useLifeCertificateActionsState` reads `app_modules.actions_enabled` for
+`bn_life_certificate`. The workspace banner is driven by that value and fails
+closed on loading/error, so the banner can never claim actions are available
+when the database says otherwise.
+
+### 12. Rendered route behaviour tests
+`src/__tests__/bn/servicing/lifeCertificateRouteRender.test.tsx` renders real
+components inside `MemoryRouter` and proves: canonical `/bn/life-certificates`
+rendering, legacy path redirects, feature-gate "Unavailable" panel, award-scoped
+banner, "Show all" clearing, invalid deep-link state with no RPC call, and the
+read-only banner while actions are disabled.
+
+### 13. Seeded database harness
+`supabase/tests/bn/life_certificate_integration.sql` is a **seeded**
+transaction/rollback harness, not a smoke test. Inside one transaction it
+creates its own auth users, profiles, role and module permission grants,
+record scope, product, claims, awards and one obligation, then rolls
+everything back. It depends on no pre-existing business rows and **never
+skips**: a missing precondition raises and fails the run.
+
+Scenarios executed:
+
+| Area | Proof |
+|------|-------|
+| Structure | required RPCs, adapter source registration and module row exist |
+| Permissions | seeded grant takes effect; sensitive-identity permission absent by default |
+| Worklist RPC | executed as role `authenticated` with `request.jwt.claims` set — scoped award, empty accessible award, `E_AWARD_NOT_FOUND`, `E_RECORD_FORBIDDEN` for an inaccessible empty award, page-size cap, `E_SEARCH_TOO_SHORT` |
+| Record scope | second user with the same module permission but no scope is blocked and sees no rows in the unscoped worklist |
+| Masking | SSN masked without `view_sensitive_identity`, revealed after granting it |
+| Surface isolation | `authenticated` cannot execute adapter RPCs or read `bn_communication_dispatch` |
+| Intent contract | all 8 canonical statuses accepted, unknown status rejected by the check constraint |
+| Status mapping | `_bn_comm_map_hub_status` for sent/queued/delivered/bounced/failed/unknown |
+| Adapter end to end | pending → dispatch → exactly one request + one recipient → idempotent replay → sync through queued/sent/delivered/bounced → unknown status fallback → CANCELLED never overwritten → failure never mutates the obligation → unregistered source rejected |
+
+Run locally against an approved isolated Test database:
+
+```bash
+BN_TEST_DATABASE_URL=postgres://... bun run test:bn-life-certificate-db
+```
+
+The runner also executes the effective-grant verifier first and fails if the
+harness output contains `SKIP` or omits `BN_LC_HARNESS_RESULT: PASS`.
+
+### 14. CI wiring
+`.github/workflows/bn-life-certificate-integration.yml` provisions a clean
+Postgres, applies every migration from zero, runs the grant verifier, runs the
+seeded harness (uploading its log as an evidence artifact), and runs the
+Benefits servicing vitest suite. Its `auth.uid()/auth.role()/auth.jwt()` stubs
+read `request.jwt.claims`, so the harness exercises real session-scoped
+authorisation rather than a superuser bypass.
+
+### 15. Status
+Life Certificates remain **dark-launched** (`actions_enabled = false`).
+`/bn/life-certificates` stays the canonical workspace. No Medical Reviews or
+other Benefits slice was started.

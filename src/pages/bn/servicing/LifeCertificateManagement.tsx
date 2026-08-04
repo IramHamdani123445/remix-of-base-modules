@@ -11,7 +11,7 @@ import {
   ShieldAlert, Lock, PauseCircle, PlayCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { useActionPermissions } from '@/hooks/useActionPermission';
 import {
@@ -20,6 +20,7 @@ import {
 } from '@/services/bn/lifeCertificateViewService';
 import { LifeCertificateCommandError } from '@/services/bn/lifeCertificateCommandService';
 import LifeCertificateDetailPanel from '@/components/bn/life-certificates/LifeCertificateDetailPanel';
+import { useLifeCertificateActionsState } from '@/hooks/bn/useLifeCertificateActionsEnabled';
 
 const PAGE_SIZE = 50;
 
@@ -41,6 +42,7 @@ const statusTone: Record<string, string> = {
 const LifeCertificateManagement: React.FC = () => {
   const { isAuthReady, isAuthenticated } = useSupabaseAuth();
   const { can, isAdmin, isLoading: permsLoading } = useActionPermissions('bn_life_certificate');
+  const actionsState = useLifeCertificateActionsState();
 
   const canView = isAdmin || can('view');
   const [bucket, setBucket] = useState<LifeCertificateBucket>('ALL');
@@ -96,8 +98,19 @@ const LifeCertificateManagement: React.FC = () => {
   }, [bucket, debounced, offset, awardId]);
 
   useEffect(() => {
+    // A malformed deep link must never be silently downgraded to the general
+    // worklist — no RPC call is made at all until the parameter is absent or
+    // a valid UUID.
+    if (invalidAwardParam) {
+      setRows([]);
+      setTotal(0);
+      setAwardContext(null);
+      setLoading(false);
+      return;
+    }
     if (isAuthReady && isAuthenticated && canView) void load();
-  }, [isAuthReady, isAuthenticated, canView, load]);
+  }, [isAuthReady, isAuthenticated, canView, load, invalidAwardParam]);
+
 
   const counts = useMemo(() => ({
     due: rows.filter((r) => ['DUE', 'REMINDER_SENT'].includes(r.obligation_status)).length,
@@ -126,6 +139,37 @@ const LifeCertificateManagement: React.FC = () => {
     );
   }
 
+  if (invalidAwardParam) {
+    return (
+      <div className="space-y-6 p-6" data-testid="bn-lc-invalid-award-link">
+        <div>
+          <h1 className="t-page-title">Life Certificates</h1>
+          <p className="t-page-subtitle mt-1">
+            Policy-driven proof-of-life obligations, verification and controlled escalation
+          </p>
+        </div>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Invalid award link</AlertTitle>
+          <AlertDescription className="space-y-3">
+            <p>
+              The award reference in this link is not a valid award identifier. No obligations have been
+              loaded — unrelated records are never shown because a deep link is malformed.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button size="sm" variant="outline" onClick={clearAwardScope}>
+                Show all obligations
+              </Button>
+              <Button asChild size="sm" variant="ghost">
+                <Link to="/bn/awards">Back to Awards</Link>
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-4">
@@ -140,26 +184,33 @@ const LifeCertificateManagement: React.FC = () => {
         </Button>
       </div>
 
-      <Alert>
+      {/* Authoritative dark-launch banner — driven by app_modules.actions_enabled,
+          the same flag the detail panel and the server commands use. */}
+      <Alert data-testid="bn-lc-launch-banner">
         <ShieldAlert className="h-4 w-4" />
-        <AlertTitle>Dark launch</AlertTitle>
+        <AlertTitle>
+          {actionsState.isLoading
+            ? 'Checking action availability…'
+            : actionsState.isError
+              ? 'Action availability unknown'
+              : actionsState.actionsEnabled
+                ? 'Life Certificate actions active'
+                : 'Read-only / dark launch'}
+        </AlertTitle>
         <AlertDescription>
-          Life Certificate actions are disabled until controlled Test validation completes. Suspension and
-          reinstatement always run through the Award Suspension boundary — this module never changes an award,
-          releases payment holds or raises arrears directly.
+          {actionsState.isLoading && 'Action availability is being confirmed; actions stay disabled until it is known.'}
+          {actionsState.isError && 'Action availability could not be confirmed, so actions remain disabled (fail closed).'}
+          {!actionsState.isLoading && !actionsState.isError && !actionsState.actionsEnabled &&
+            'Life Certificate actions are disabled until controlled Test validation completes. '}
+          {!actionsState.isLoading && !actionsState.isError && (
+            <>
+              Suspension and reinstatement always run through the Award Suspension boundary — this module never
+              changes an award, releases payment holds or raises arrears directly.
+            </>
+          )}
         </AlertDescription>
       </Alert>
 
-      {invalidAwardParam && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Invalid award link</AlertTitle>
-          <AlertDescription className="flex items-center gap-3">
-            The award reference in the link is not valid, so the full worklist is shown instead.
-            <Button size="sm" variant="outline" onClick={clearAwardScope}>Clear</Button>
-          </AlertDescription>
-        </Alert>
-      )}
 
       {awardId && (
         <Alert>
