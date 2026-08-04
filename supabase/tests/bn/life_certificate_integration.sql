@@ -265,6 +265,9 @@ BEGIN
     RAISE EXCEPTION 'FAIL: sensitive identity not revealed with the permission'; END IF;
 END $wl3$;
 RESET ROLE;
+-- Leave the browser session behind: the service-context sections below must
+-- run with auth.uid() NULL, exactly like the Edge Function does.
+SELECT set_config('request.jwt.claims', '', true);
 
 -- =====================================================================
 -- 4. Communication intent status constraint
