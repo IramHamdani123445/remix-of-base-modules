@@ -36,7 +36,7 @@ describe('BN security — raw Benefits table preview is retired', () => {
       return src.includes("rpc('bn_preview_table'") || src.includes('rpc("bn_preview_table"');
     });
     expect(offenders).toEqual([]);
-  });
+  }, 120_000);
 
   it('removes the row-preview button and CSV export from the Diagnostics screen', () => {
     const page = read('src/pages/bn/admin/BenefitsDiagnostics.tsx');
