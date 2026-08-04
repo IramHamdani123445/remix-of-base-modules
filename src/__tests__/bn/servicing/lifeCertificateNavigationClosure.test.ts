@@ -109,7 +109,19 @@ describe('Communication status contract', () => {
   });
 
   it('proves browser roles cannot reach adapter internals', () => {
-    expect(harness).toContain('_bn_comm_map_hub_status(text)');
+    expect(harness).toContain('_bn_comm_map_hub_status');
     expect(harness).toContain('bn_communication_adapter_source');
+    expect(harness).toContain('service-only adapter RPC');
+  });
+
+  it('is a seeded harness that never skips a scenario', () => {
+    expect(harness).toContain('INSERT INTO auth.users');
+    expect(harness).toContain('INSERT INTO public.bn_award');
+    expect(harness).toContain('SET LOCAL ROLE authenticated');
+    expect(harness).toContain('bn_life_certificate_worklist_v2');
+    expect(harness).toContain('bn_communication_adapter_dispatch_v1');
+    expect(harness).toContain('BN_LC_HARNESS_RESULT: PASS');
+    expect(harness).not.toMatch(/RAISE NOTICE 'SKIP/);
   });
 });
+
