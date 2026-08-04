@@ -96,8 +96,9 @@ export default function CaseDetailView() {
   const { user } = useSupabaseAuth();
   const currentUserCode = userCode || 'UNKNOWN';
   const complianceRole = useComplianceRole();
-  // Only Compliance Head/Admin may (re)assign case ownership.
-  const canManageAssignments = complianceRole === 'head';
+  // Case ownership (re)assignment uses the shared capability model rather than
+  // a raw role comparison, so Admin / legacy manage_compliance holders pass too.
+  const canManageAssignments = useHasCapability(COMPLIANCE_CAPABILITIES.CASES_MANAGE);
 
   // Resolve the current user's officer identifiers (UUID + inspector codes) so
   // we can tell if this case is theirs, regardless of which identifier shape
