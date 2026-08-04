@@ -24,11 +24,45 @@ import {
 } from '@/platform/omni-comms/domain/channelCatalogue';
 import {
   formatResourceCount,
+  type ChannelConfigurationSummary,
+  type ChannelResourceState,
+  type ChannelResourceSummary,
 } from '@/platform/omni-comms/application/channelConfigurationTypes';
+import type {
+  OmniCommsChannel,
+  OmniCommsChannelResource,
+} from '@/platform/omni-comms/domain/channelCatalogue';
 import {
   projectChannelReadiness,
   projectChannelConfigurationReadiness,
 } from '@/platform/omni-comms/admin/views/channels/channelReadiness';
+
+function resourceSummary(
+  resource: OmniCommsChannelResource,
+  state: ChannelResourceState,
+  total: number | null = null,
+): ChannelResourceSummary {
+  return { resource, state, total, active: total, message: state };
+}
+
+function configurationSummary(
+  channel: OmniCommsChannel,
+  state: ChannelResourceState,
+  total: number | null = null,
+): ChannelConfigurationSummary {
+  const resources = Object.fromEntries(
+    OMNI_COMMS_CHANNEL_RESOURCES.map((r) => [r, resourceSummary(r, state, total)]),
+  ) as ChannelConfigurationSummary['resources'];
+  return {
+    channel,
+    organizationId: 'org-test',
+    departmentId: null,
+    resources,
+    loading: state === 'loading',
+    unavailableResources: state === 'unavailable' ? OMNI_COMMS_CHANNEL_RESOURCES : [],
+    generatedAt: new Date(0).toISOString(),
+  };
+}
 
 const ROOT = join(process.cwd(), 'src/platform/omni-comms');
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
@@ -157,13 +191,13 @@ describe('CG1 — generic configuration summary', () => {
 describe('CG1 — truthful counts and readiness', () => {
   it('unloaded and unavailable counts are never rendered as zero', () => {
     expect(formatResourceCount(undefined)).not.toBe('0');
-    expect(formatResourceCount({ state: 'loading', total: null, active: null }))
+    expect(formatResourceCount(resourceSummary('identities', 'loading')))
       .toMatch(/loading/i);
-    expect(formatResourceCount({ state: 'unavailable', total: null, active: null }))
+    expect(formatResourceCount(resourceSummary('identities', 'unavailable')))
       .toMatch(/unavailable/i);
-    expect(formatResourceCount({ state: 'not_applicable', total: null, active: null }))
+    expect(formatResourceCount(resourceSummary('identities', 'not_applicable')))
       .toMatch(/not applicable/i);
-    expect(formatResourceCount({ state: 'ready', total: 0, active: 0 }))
+    expect(formatResourceCount(resourceSummary('identities', 'ready', 0)))
       .toMatch(/not configured/i);
   });
 
@@ -180,36 +214,21 @@ describe('CG1 — truthful counts and readiness', () => {
   });
 
   it('configuration ready never implies delivery ready', () => {
-    const resources = Object.fromEntries(
-      OMNI_COMMS_CHANNEL_RESOURCES.map((r) => [
-        r,
-        { state: 'ready' as const, total: 1, active: 1 },
-      ]),
-    );
-    const facet = projectChannelConfigurationReadiness(
-      'sms',
-      { channel: 'sms', resources: resources as never },
-      false,
-    );
+    const summary = configurationSummary('sms', 'ready', 1);
+    const facet = projectChannelConfigurationReadiness('sms', summary, false);
     expect(facet.state).toBe('ready');
     expect(facet.label).toBe('Configuration ready');
     const projection = projectChannelReadiness({
       channel: 'sms',
-      configurationSummary: { channel: 'sms', resources: resources as never },
+      configurationSummary: summary,
     });
     expect(projection.delivery.state).toBe('adapter_not_installed');
   });
 
   it('partial data yields unavailable, not a readiness verdict', () => {
-    const resources = Object.fromEntries(
-      OMNI_COMMS_CHANNEL_RESOURCES.map((r) => [
-        r,
-        { state: 'unavailable' as const, total: null, active: null },
-      ]),
-    );
     const facet = projectChannelConfigurationReadiness(
       'sms',
-      { channel: 'sms', resources: resources as never },
+      configurationSummary('sms', 'unavailable'),
       false,
     );
     expect(facet.state).toBe('unavailable');
