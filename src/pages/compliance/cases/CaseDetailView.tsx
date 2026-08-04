@@ -637,6 +637,15 @@ export default function CaseDetailView() {
           />
         </TabsContent>
 
+        <TabsContent value="documents" className="space-y-4">
+          <CaseDocumentsTab caseId={id!} />
+        </TabsContent>
+
+        <TabsContent value="inspections" className="space-y-4">
+          <CaseInspectionsTab caseId={id!} employerId={c.employer_id} />
+        </TabsContent>
+
+
 
 
 
