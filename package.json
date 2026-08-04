@@ -18,6 +18,7 @@
     "test:bn-environment-integration": "vitest run src/__tests__/integration/localSupabaseEnvironment.integration.test.ts",
     "test:bn-suspension-static": "vitest run src/__tests__/bn/awardSuspensionAccessFoundation.test.ts src/__tests__/bn/awardSuspensionDarkLaunchProd.test.ts",
     "test:comm-hub-preflight-matrix": "bash scripts/comm-hub/run-preflight-matrix.sh",
+    "test:bn-life-certificate-db": "psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/life_certificate_integration.sql",
     "check:omni-comms-architecture": "bunx tsx scripts/omni-comms/check-architecture.ts"
   },
   "dependencies": {
