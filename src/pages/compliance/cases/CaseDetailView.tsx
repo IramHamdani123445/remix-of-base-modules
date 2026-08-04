@@ -446,12 +446,12 @@ export default function CaseDetailView() {
                 Request Waiver
               </PermissionButton>
             )}
-            {/* Add to Inspection Planning — assigned officer or case-manage capability */}
+            {/* Add to / Remove from Inspection Planning — assigned officer or Compliance Head only */}
             {(() => {
               const isAssignedOfficer =
                 !!(c as any).assigned_officer_id &&
                 myOfficerIds.includes((c as any).assigned_officer_id);
-              const canNominate = isAssignedOfficer || canManageAssignments;
+              const canNominate = isAssignedOfficer || complianceRole === 'head';
               if (!canNominate || caseIsClosed || !c.employer_id) return null;
               if (!isComplianceFeatureEnabled('inspections.planning')) return null;
               if (existingNomination) {
