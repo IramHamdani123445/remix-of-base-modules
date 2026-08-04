@@ -121,3 +121,48 @@ in the reason field.
 No `sendCommunication`, no provider adapters, no channel adapters, no workers,
 no API clients, no DB repositories, no communication tables, no edge functions,
 no queues.
+
+## Channel generalisation (CG1)
+
+The Channels workspace is ONE shared administration model for every channel.
+There are no per-channel copies of the workspace, the tabs or the resource
+managers.
+
+**Canonical capability matrix.** `domain/channelCatalogue.ts` is the single
+source of truth. Each channel/resource pair declares:
+
+- `schemaSupported` — the shared database object can store this channel;
+- `uiApplicable` — the resource is part of the approved operator workflow.
+
+A resource is offered only when `uiApplicable` is true. Database
+representability alone is never sufficient. Tabs are derived from the matrix
+(`deriveTabsFromCapabilities`); never hand-list tabs in a component.
+
+Current decisions:
+
+- SMS and WhatsApp expose Endpoints, mirroring the server contract in
+  `omni_comms_priv_normalize_channel_endpoint`.
+- Push identities stay hidden until the product model changes.
+- In-App and Print keep their narrow surface.
+- Release Control is Email-only.
+- Webhook and Voice are planned: Overview only, no configuration surface.
+
+**Generic configuration summary.** `application/channelConfigurationService.ts`
+composes the EXISTING generic summary contracts. It creates no tables and no
+RPCs, and it never invokes Release Control contracts for a non-Email channel.
+
+**Two readiness concepts, never merged.**
+`admin/views/channels/channelReadiness.ts` reports `configurationReadiness` and
+`deliveryReadiness` independently, so "Configuration ready · Delivery adapter
+not installed" is a valid, truthful result. Email delegates verbatim to
+`projectEmailReadiness(...)`; the Email verdict is copied, never recomputed.
+
+**Truthfulness.** Unloaded, unreadable and not-applicable counts render as
+explicit states (`Loading…`, `Unavailable`, `Not applicable`, `Unknown`) and a
+genuine zero renders as `Not configured`. Nothing outside Email claims provider
+contact, callback verification or delivery acceptance.
+
+**Coordinator rule.** `OmniCommsChannelsPage` selects and renders only. An
+out-of-capability tab resolves to Overview and the URL is rewritten to match.
+Changing channel clears the deep-linked `?resource=`.
+
