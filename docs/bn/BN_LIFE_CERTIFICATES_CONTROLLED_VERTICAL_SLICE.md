@@ -351,3 +351,106 @@ tests assert the three agree.
    are still free text rather than a reference-data selector storing an id.
 4. **Payment jurisdiction data.** No jurisdiction attribute exists on the award or
    claim, so jurisdiction-scoped policies can only produce review exclusions.
+
+---
+
+## Final source-security and lifecycle closure
+
+### 1. Permission surface completed
+All 18 Life Certificate actions plus `view` are now seeded in `module_actions`
+for module `bn_life_certificate` (generate, send_reminder, receive, verify,
+reject, request_resubmission, waive, defer, escalate, propose_suspension,
+propose_reinstatement, clear_scheduler_attempts, view, view_all_records,
+view_evidence, view_confidential_evidence, view_sensitive_identity, audit,
+admin). Previously several commands checked a permission that did not exist,
+which made them either unreachable or admin-only by accident.
+
+`clear_milestone_attempts` no longer reuses an unrelated permission: it requires
+the dedicated `clear_scheduler_attempts` action.
+
+### 2. Record-scope enforcement
+Every mutation command (`verify`, `reject`, `request_resubmission`, `waive`,
+`defer`, `escalate_to_suspension`, `propose_reinstatement`, `receive`,
+`mark_milestone`, `clear_milestone_attempts`) now calls
+`_bn_lc_require_record(actor, life_certificate_id)` **after** the module
+permission check. Holding a module permission is no longer sufficient to act on
+an obligation the officer is not assigned to, unless they hold
+`view_all_records`.
+
+### 3. Honest evidence versioning
+`evidence_version` is deprecated. Evidence now carries:
+
+- `evidence_receipt_revision` (integer) — incremented once per accepted receipt.
+- `evidence_document_snapshot` (jsonb) — file name, document type, mime type and
+  size captured from `bn_claim_document` at receipt time.
+
+`bn_life_certificate_detail_v1` exposes the revision and a safe document
+summary; the reinstatement proposal links the exact revision and snapshot that
+justified it, through `bn_life_certificate_case_evidence_link`.
+
+### 4. Corrected milestone lifecycle
+
+```text
+NOT_DUE ──REMINDER_n──▶ REMINDER_SENT ──DUE──▶ DUE ──grace elapsed──▶ OVERDUE
+   │                          │                  │                       │
+   └──────────DUE─────────────┘                  │                       │
+                                         evidence received               │
+                                                 ▼                       ▼
+                                     PENDING_VERIFICATION      SUSPENSION_PROPOSED
+                                                 │                (proposal only)
+                                          verified ▼
+                                             SATISFIED
+```
+
+- `DUE` is reachable from both `NOT_DUE` and `REMINDER_SENT`; reminder history
+  is preserved across the transition.
+- Reminders are ignored once evidence exists, and late reminders never
+  re-open a satisfied obligation.
+- The scheduler feed and the command each validate the due date independently.
+
+### 5. Date authority
+`bn-life-certificate-runner` no longer accepts `asOf` from the request body.
+The business date is computed server-side, so no caller can back-date or
+forward-date a milestone scan.
+
+### 6. Shared communication adapter
+Benefits modules never send. They append to their own outbox; the shared
+adapter is the only bridge to the sending spine:
+
+```text
+module outbox intent
+   → bn_communication_adapter_pending_v1   (service-role feed)
+   → bn_communication_adapter_dispatch_v1  (creates ONE communication_request)
+   → communication hub (template, branding, sender, approval, dispatch)
+   → bn_communication_adapter_sync_v1      (status back onto the intent)
+```
+
+- `bn_communication_dispatch` is the reusable ledger keyed by
+  `(source_module, source_intent_id)` and by a deterministic `dispatch_key`, so
+  a retry can never produce a second request.
+- Recipients come from approved claim contact data; if none exists the intent
+  fails with `E_NO_APPROVED_CONTACT` and the obligation is untouched.
+- Communication failures only advance the intent's attempt count and delivery
+  status. They never alter obligation state.
+- `bn-communication-adapter` edge function drains the outbox on a schedule
+  behind `BN_COMMUNICATION_ADAPTER_SECRET`.
+
+### 7. Privilege verification
+`supabase/verify/bn_life_certificate_effective_grants.sql` now uses
+`has_table_privilege` and `has_function_privilege` and **raises an exception**
+when `anon` or `authenticated` can reach any Life Certificate table, the BN
+dispatch ledger, a private helper, or a scheduler/adapter command. It also
+fails when a mutation command is missing the record-scope guard. Current run:
+all checks pass.
+
+### 8. Classified blockers before live use
+| # | Blocker | Class | Owner |
+|---|---------|-------|-------|
+| 1 | `actions_enabled = false` — the module is dark-launched | Governance | Benefits business owner |
+| 2 | Document store exposes no content hash, so integrity is snapshot-based only | Data | Documents platform |
+| 3 | Communication templates for LC event codes not yet approved in the hub | Configuration | Communication Hub admin |
+| 4 | Scheduler secrets not yet provisioned in the Live environment | Operations | Platform operations |
+| 5 | Officer record assignments not yet loaded for production caseloads | Data | Benefits operations |
+
+Life Certificates remain **dark-launched**: no action is reachable in the UI
+until the module actions are enabled.

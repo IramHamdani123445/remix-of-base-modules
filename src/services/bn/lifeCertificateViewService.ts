@@ -79,7 +79,15 @@ export interface LifeCertificateEvidence {
   document_id?: string | null;
   document_name?: string | null;
   evidence_type?: string | null;
-  evidence_version?: number | null;
+  /** Honest count of accepted evidence receipts for this obligation. */
+  evidence_receipt_revision?: number | null;
+  evidence_document?: {
+    file_name?: string | null;
+    document_type_code?: string | null;
+    mime_type?: string | null;
+    file_size?: string | number | null;
+  } | null;
+
   evidence_integrity_status?: string | null;
   issuing_authority?: string | null;
   certificate_date?: string | null;

@@ -35,3 +35,58 @@ SELECT proname, pg_get_function_arguments(oid)
   FROM pg_proc
  WHERE proname = 'bn_life_certificate_mark_milestone_v1'
    AND pg_get_function_arguments(oid) LIKE '%p_as_of%';
+
+-- =====================================================================
+-- 6. EFFECTIVE privilege verification (fails loudly, not silently).
+--    aclexplode only reports explicit ACL entries; the checks below use
+--    has_*_privilege so inherited or PUBLIC-default access is caught too.
+-- =====================================================================
+DO $verify$
+DECLARE r record; v_bad text[] := '{}';
+BEGIN
+  -- 6a. No browser role may touch any Life Certificate or BN communication
+  --     dispatch table directly, in any way.
+  FOR r IN
+    SELECT c.relname, role_name, priv
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      CROSS JOIN unnest(ARRAY['anon','authenticated']) AS role_name
+      CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS priv
+     WHERE n.nspname = 'public' AND c.relkind = 'r'
+       AND (c.relname LIKE 'bn_life_certificate%' OR c.relname = 'bn_communication_dispatch')
+       AND has_table_privilege(role_name, c.oid, priv)
+  LOOP
+    v_bad := v_bad || format('TABLE %s: %s has %s', r.relname, r.role_name, r.priv);
+  END LOOP;
+
+  -- 6b. Private helpers and scheduler / adapter surfaces must be unreachable
+  --     from anon and authenticated, including via PUBLIC EXECUTE defaults.
+  FOR r IN
+    SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, role_name
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      CROSS JOIN unnest(ARRAY['anon','authenticated']) AS role_name
+     WHERE n.nspname = 'public'
+       AND (p.proname LIKE '\_bn\_lc\_%'
+            OR p.proname LIKE 'bn_communication_adapter\_%'
+            OR p.proname IN ('bn_life_certificate_due_milestones_v1',
+                             'bn_life_certificate_record_milestone_failure_v1'))
+       AND has_function_privilege(role_name, p.oid, 'EXECUTE')
+  LOOP
+    v_bad := v_bad || format('FUNCTION %s(%s): %s has EXECUTE', r.proname, r.args, r.role_name);
+  END LOOP;
+
+  IF array_length(v_bad, 1) > 0 THEN
+    RAISE EXCEPTION 'UNSAFE EFFECTIVE PRIVILEGES: %', array_to_string(v_bad, E'\n');
+  END IF;
+
+  RAISE NOTICE 'Effective privilege verification passed.';
+END $verify$;
+
+-- 7. Every Life Certificate mutation command must carry the record-scope guard.
+SELECT p.proname
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public'
+   AND p.proname ~ '^bn_life_certificate_(verify|reject|request_resubmission|waive|defer|escalate_to_suspension|propose_reinstatement|receive)_v1$'
+   AND position('_bn_lc_require_record' in pg_get_functiondef(p.oid)) = 0;

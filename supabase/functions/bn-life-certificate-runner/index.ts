@@ -60,11 +60,15 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } },
     );
 
-    let body: { asOf?: string; limit?: number; dryRun?: boolean } = {};
+    // Date authority is server-side only: callers cannot back-date or
+    // forward-date a scan, so milestones can never be forced early or replayed
+    // against a fabricated business date.
+    let body: { limit?: number } = {};
     try { body = await req.json(); } catch { /* scheduler may post an empty body */ }
 
-    const asOf = body.asOf ?? new Date().toISOString().slice(0, 10);
+    const asOf = new Date().toISOString().slice(0, 10);
     const limit = Math.min(body.limit ?? MAX_BATCH, MAX_BATCH);
+
 
     const { data: due, error: dueError } = await db.rpc(
       "bn_life_certificate_due_milestones_v1",
