@@ -99362,6 +99362,10 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_susp_persist_arrears_run: {
+        Args: { p_arrears: Json; p_claim_id: string; p_user_code: string }
+        Returns: string
+      }
       _bn_susp_receipt_lookup: {
         Args: {
           p_actor: string
@@ -100040,6 +100044,23 @@ export type Database = {
           p_suspension_id: string
         }
         Returns: Json
+      }
+      bn_award_suspension_payment_impact_list_v1: {
+        Args: { p_limit?: number; p_offset?: number; p_suspension_id: string }
+        Returns: {
+          amount: number
+          created_at: string
+          exception_id: string
+          id: string
+          impact_action: string
+          new_status: string
+          phase: string
+          previous_status: string
+          reason: string
+          record_id: string
+          record_type: string
+          total_count: number
+        }[]
       }
       bn_award_suspension_preview_payment_impact_v1: {
         Args: { p_suspension_id: string }
