@@ -62,8 +62,9 @@ const LifeCertificateManagement: React.FC = () => {
     useState<LifeCertificateWorklist['award']>(null);
 
   const clearAwardScope = useCallback(() => {
-    const next = new URLSearchParams(searchParams);
-    next.delete('awardId');
+    const next = new URLSearchParams(
+      Array.from(searchParams.entries()).filter(([key]) => key !== 'awardId'),
+    );
     setSearchParams(next, { replace: true });
     setOffset(0);
   }, [searchParams, setSearchParams]);
