@@ -31,7 +31,7 @@ const field = (label: string, value: React.ReactNode) => (
 
 const LifeCertificateDetailPanel: React.FC<Props> = ({ lifeCertificateId, onClose, onChanged }) => {
   const { can, isAdmin } = useActionPermissions('bn_life_certificate');
-  const actionsEnabled = useBnFeatureEnabled('bn_life_certificate');
+  const actionsEnabled = useLifeCertificateActionsEnabled();
 
   const [detail, setDetail] = useState<LifeCertificateDetail | null>(null);
   const [timeline, setTimeline] = useState<LifeCertificateTimeline | null>(null);
