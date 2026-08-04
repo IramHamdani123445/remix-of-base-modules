@@ -34,7 +34,6 @@ import {
   Wrench,
   FlaskConical,
   Mail,
-  Code2,
 } from "lucide-react";
 import { filterMenuByFeatures } from "@/lib/bn/featureToggles";
 

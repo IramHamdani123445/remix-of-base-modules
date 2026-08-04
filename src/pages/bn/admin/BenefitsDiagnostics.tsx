@@ -14,8 +14,7 @@ import { Input } from '@/components/ui/input';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { AlertTriangle, RefreshCw, Database, CheckCircle2, HelpCircle, Eye, Code2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { AlertTriangle, RefreshCw, Database, CheckCircle2, HelpCircle, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import TablePreviewDialog from '@/components/bn/admin/TablePreviewDialog';
