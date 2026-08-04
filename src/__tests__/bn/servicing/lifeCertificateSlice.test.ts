@@ -120,7 +120,7 @@ describe('Life Certificate query boundary', () => {
     await fetchDetail('lc-1');
     await fetchTimeline('lc-1');
     expect(rpcMock.mock.calls.map((c) => c[0])).toEqual([
-      'bn_life_certificate_worklist_v1',
+      'bn_life_certificate_worklist_v2',
       'bn_life_certificate_detail_v1',
       'bn_life_certificate_timeline_v1',
     ]);

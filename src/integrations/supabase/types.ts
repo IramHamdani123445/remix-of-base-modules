@@ -9256,6 +9256,33 @@ export type Database = {
           },
         ]
       }
+      bn_communication_adapter_source: {
+        Row: {
+          created_at: string
+          is_enabled: boolean
+          notes: string | null
+          source_module: string
+          source_table: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          is_enabled?: boolean
+          notes?: string | null
+          source_module: string
+          source_table: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          is_enabled?: boolean
+          notes?: string | null
+          source_module?: string
+          source_table?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bn_communication_dispatch: {
         Row: {
           attempts: number
@@ -99869,6 +99896,7 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_comm_map_hub_status: { Args: { p_status: string }; Returns: string }
       _bn_lc_actor: { Args: never; Returns: string }
       _bn_lc_assert_enabled: { Args: never; Returns: undefined }
       _bn_lc_audit: {
@@ -101056,6 +101084,16 @@ export type Database = {
       }
       bn_life_certificate_worklist_v1: {
         Args: {
+          p_bucket?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_worklist_v2: {
+        Args: {
+          p_award_id?: string
           p_bucket?: string
           p_limit?: number
           p_offset?: number

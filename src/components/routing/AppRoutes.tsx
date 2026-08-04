@@ -16,7 +16,7 @@ const Employer360LegacyRedirect = () => {
   const { employerId } = useParams();
   return <Navigate to={`/compliance/field/employer-360/${employerId ?? ''}`} replace />;
 };
-import { BnFeatureGate } from '@/lib/bn/featureToggles';
+import { BnFeatureGate, BnWorkspaceGate } from '@/lib/bn/featureToggles';
 import { BnModuleRouteGate } from '@/components/bn/access/BnModuleRouteGate';
 
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
@@ -2580,7 +2580,7 @@ export const AppRoutes = () => {
       <Route path="/bn/worklist" element={<BnFeatureGate flag="bn.claims.workbench"><BnClaimWorklistEnhanced /></BnFeatureGate>} />
       <Route path="/bn/payment-history" element={<BnFeatureGate flag="bn.payments"><BnPaymentHistoryInquiry /></BnFeatureGate>} />
       <Route path="/bn/audit-history" element={<BnFeatureGate flag="bn.enabled"><BnAuditDecisionHistory /></BnFeatureGate>} />
-      <Route path="/bn/life-certificates" element={<BnFeatureGate flag="bn.servicing.lifeCert"><BnLifeCertificateManagement /></BnFeatureGate>} />
+      <Route path="/bn/life-certificates" element={<BnWorkspaceGate flag="bn.servicing.lifeCert" title="Life Certificates"><BnLifeCertificateManagement /></BnWorkspaceGate>} />
       <Route path="/bn/medical-reviews" element={<BnFeatureGate flag="bn.servicing.medicalReview"><BnMedicalReviewScheduler /></BnFeatureGate>} />
       <Route path="/bn/overpayments" element={<BnFeatureGate flag="bn.servicing.overpayment"><BnOverpaymentRecovery /></BnFeatureGate>} />
       <Route path="/bn/mortality" element={<BnFeatureGate flag="bn.gap.mortality"><BnMortalityPage /></BnFeatureGate>} />

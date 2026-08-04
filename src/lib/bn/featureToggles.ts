@@ -50,7 +50,10 @@ const DEFAULTS: Record<BnFeatureFlag, boolean> = {
   "bn.historicalInquiry": true,
   "bn.awards": true,
   "bn.payments": true,
-  "bn.servicing.lifeCert": false,
+  // BN-LC-NAV: default true — registered servicing workspace, read-only.
+  // Life Certificate mutations remain dark-launched server-side via
+  // app_modules.actions_enabled=false; screen visibility is independent.
+  "bn.servicing.lifeCert": true,
   "bn.servicing.overpayment": false,
   "bn.servicing.medicalReview": false,
   // BN-MENU-S1: default true — screen/menu visibility only.
@@ -241,6 +244,37 @@ export const BnFeatureGate: React.FC<{
   if (isFeatureEnabled(flag)) return React.createElement(React.Fragment, null, children);
   const target = fallback ?? (isFeatureEnabled("bn.enabled") ? "/bn/dashboard" : "/");
   return React.createElement(Navigate, { to: target, replace: true });
+};
+
+/**
+ * Workspace guard for *registered* BN servicing workspaces.
+ *
+ * Unlike `BnFeatureGate`, this never silently redirects: a registered
+ * workspace whose flag is off renders an explicit, explainable unavailable
+ * state so operators are not bounced to the dashboard without reason.
+ */
+export const BnWorkspaceGate: React.FC<{
+  flag: BnFeatureFlag;
+  title: string;
+  children: React.ReactNode;
+}> = ({ flag, title, children }) => {
+  if (isFeatureEnabled(flag)) return React.createElement(React.Fragment, null, children);
+  return React.createElement(
+    "div",
+    { className: "p-6", "data-testid": "bn-workspace-unavailable" },
+    React.createElement(
+      "div",
+      { className: "rounded-lg border bg-card p-6 max-w-2xl" },
+      React.createElement("h1", { className: "text-xl font-semibold" }, title),
+      React.createElement(
+        "p",
+        { className: "mt-2 text-sm text-muted-foreground" },
+        "This workspace is registered but has been switched off for this environment. " +
+          "No data is shown and no action is available. Contact Benefits administration if you " +
+          "expected access here.",
+      ),
+    ),
+  );
 };
 
 /**
