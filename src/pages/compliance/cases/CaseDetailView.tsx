@@ -34,7 +34,6 @@ import { ComplianceTimeline } from '@/components/compliance/ComplianceTimeline';
 import { AssignmentDialog } from '@/components/compliance/AssignmentDialog';
 import { ForwardToLegalDialog } from '@/components/compliance/ForwardToLegalDialog';
 import { UserCheck, Send } from 'lucide-react';
-import { useComplianceRole } from '@/hooks/useComplianceRole';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
