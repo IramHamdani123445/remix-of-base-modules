@@ -203,6 +203,10 @@ export async function loadChannelConfigurationSummary(
         );
         break;
       case 'policies':
+        if (!isPolicyChannel(channel)) {
+          resources[resource] = notApplicable(channel, resource);
+          break;
+        }
         run(resource, async () => {
           const policy = await getChannelPolicySummary(client, {
             organizationId,
