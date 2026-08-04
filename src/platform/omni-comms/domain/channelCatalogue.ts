@@ -1,17 +1,30 @@
 /**
- * Omni-Comms C1 — canonical channel catalogue.
+ * Omni-Comms C1 / CG1 — canonical channel catalogue.
  *
- * SINGLE source of truth for which communication channels exist, what
- * administration tabs each one exposes, and which seed namespace each channel
- * owns. Everything downstream (channel selector, generic tab shell, seed
- * packs, later adapter chunks C6–C10) MUST read from this file rather than
- * hard-coding channel identifiers.
+ * SINGLE source of truth for which communication channels exist, which shared
+ * administration resources each one exposes, and which seed namespace each
+ * channel owns. Everything downstream (channel selector, generic tab shell,
+ * workspace rail, seed packs, later adapter chunks) MUST read from this file
+ * rather than hard-coding channel identifiers or tab lists.
+ *
+ * CG1 introduces the canonical CAPABILITY MATRIX. Two distinct concepts are
+ * modelled and must never be collapsed:
+ *
+ *   - `schemaSupported` — the shared database object can physically store a
+ *     row for this channel (the table constraint / server-side normaliser
+ *     accepts the value).
+ *   - `uiApplicable`    — the resource is part of the APPROVED operator
+ *     workflow for this channel and is therefore mounted in the workspace.
+ *
+ * A resource is NEVER exposed merely because a shared table accepts the
+ * channel value. `tabs` is DERIVED from `uiApplicable`, so the catalogue, the
+ * workspace rail and the tests can never disagree.
  *
  * Boundaries (permanent):
  *   - No provider SDK imports here. This module is pure metadata.
  *   - No Legacy Communication Hub references.
- *   - `implemented: false` channels are fail-closed: the shell renders a
- *     reserved placeholder and no configuration surface is mounted.
+ *   - `implemented: false` channels are fail-closed: no delivery adapter is
+ *     installed and no message can be produced from the workspace.
  */
 
 export const OMNI_COMMS_CHANNELS = [
@@ -46,7 +59,17 @@ export const OMNI_COMMS_GENERIC_TABS = [
 
 export type OmniCommsGenericTab = (typeof OMNI_COMMS_GENERIC_TABS)[number];
 
-/** Delivery shape a channel uses — drives which tabs are meaningful. */
+/**
+ * Configurable resources. `overview` is not a resource — it is the always-on
+ * landing surface of every channel workspace.
+ */
+export const OMNI_COMMS_CHANNEL_RESOURCES = OMNI_COMMS_GENERIC_TABS.filter(
+  (t) => t !== 'overview',
+) as readonly Exclude<OmniCommsGenericTab, 'overview'>[];
+
+export type OmniCommsChannelResource = (typeof OMNI_COMMS_CHANNEL_RESOURCES)[number];
+
+/** Delivery shape a channel uses — drives which resources are meaningful. */
 export type OmniCommsChannelKind =
   | 'addressed' // has sender identities + recipient addresses (email, sms, whatsapp, voice)
   | 'device' // targets registered devices/tokens (push)
@@ -56,6 +79,23 @@ export type OmniCommsChannelKind =
 
 /** Build chunk that owns delivery for this channel. */
 export type OmniCommsChannelChunk = 'C6' | 'C7' | 'C8' | 'C9' | 'C10';
+
+/**
+ * Capability of ONE shared resource for ONE channel.
+ *
+ * `schemaSupported` describes the database contract. `uiApplicable` describes
+ * the approved product workflow. They are deliberately independent.
+ */
+export interface OmniCommsChannelCapability {
+  readonly schemaSupported: boolean;
+  readonly uiApplicable: boolean;
+  /** Truthful operator-facing reason, required whenever the two differ. */
+  readonly reason: string;
+}
+
+export type OmniCommsChannelCapabilityMatrix = Readonly<
+  Record<OmniCommsChannelResource, OmniCommsChannelCapability>
+>;
 
 export interface OmniCommsChannelDescriptor {
   /** Stable machine identifier. Used in URLs, DB rows and seed namespaces. */
@@ -68,16 +108,19 @@ export interface OmniCommsChannelDescriptor {
   /** Owning build chunk for the delivery adapter. */
   readonly chunk: OmniCommsChannelChunk;
   /**
-   * True only when the channel has a real administration surface wired.
-   * Everything else renders the reserved placeholder (fail-closed).
+   * True only when a genuine DELIVERY adapter is installed for this channel.
+   * Configuration is available for every schema-supported channel; delivery is
+   * a separate, stricter claim.
    */
   readonly implemented: boolean;
   /**
-   * Whether the CURRENT database schema accepts this channel value. Channels
-   * without schema support cannot be configured at all (fail-closed).
+   * Whether the CURRENT database schema accepts this channel value at all.
+   * Channels without schema support cannot be configured (fail-closed).
    */
   readonly databaseSupported: boolean;
-  /** Tabs this channel exposes, in canonical order. */
+  /** Canonical capability matrix. `tabs` is derived from it. */
+  readonly capabilities: OmniCommsChannelCapabilityMatrix;
+  /** Tabs this channel exposes, in canonical order. DERIVED — never authored. */
   readonly tabs: readonly OmniCommsGenericTab[];
   /**
    * Seed isolation namespace. Reference/simulation seed data for a channel
@@ -89,12 +132,60 @@ export interface OmniCommsChannelDescriptor {
   readonly reservedProviders: readonly string[];
 }
 
-function tabs(...t: OmniCommsGenericTab[]): readonly OmniCommsGenericTab[] {
-  const order = OMNI_COMMS_GENERIC_TABS as readonly string[];
-  return [...new Set(t)].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+const APPROVED = 'Part of the approved operator workflow for this channel.';
+const NO_SCHEMA =
+  'The shared database object does not accept this channel value yet.';
+
+function cap(
+  schemaSupported: boolean,
+  uiApplicable: boolean,
+  reason: string = uiApplicable ? APPROVED : NO_SCHEMA,
+): OmniCommsChannelCapability {
+  return { schemaSupported, uiApplicable, reason };
 }
 
-export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[] = [
+/** All resources unsupported — used by planned channels. */
+function plannedMatrix(): OmniCommsChannelCapabilityMatrix {
+  const out = {} as Record<OmniCommsChannelResource, OmniCommsChannelCapability>;
+  for (const r of OMNI_COMMS_CHANNEL_RESOURCES) out[r] = cap(false, false, NO_SCHEMA);
+  return out;
+}
+
+function matrix(
+  entries: Partial<Record<OmniCommsChannelResource, OmniCommsChannelCapability>>,
+): OmniCommsChannelCapabilityMatrix {
+  const out = {} as Record<OmniCommsChannelResource, OmniCommsChannelCapability>;
+  for (const r of OMNI_COMMS_CHANNEL_RESOURCES) {
+    out[r] = entries[r] ?? cap(false, false, NO_SCHEMA);
+  }
+  return out;
+}
+
+/** Derive the canonical, ordered tab list from the capability matrix. */
+export function deriveTabsFromCapabilities(
+  m: OmniCommsChannelCapabilityMatrix,
+): readonly OmniCommsGenericTab[] {
+  return OMNI_COMMS_GENERIC_TABS.filter(
+    (t) => t === 'overview' || m[t as OmniCommsChannelResource]?.uiApplicable,
+  );
+}
+
+const RELEASE_CONTROL_EMAIL_ONLY =
+  'Release Control governs the controlled Email pilot only. No Release '
+  + 'Control contract exists for this channel.';
+
+const NOT_IN_PRODUCT_WORKFLOW =
+  'The shared table can represent this channel, but the resource is not part '
+  + 'of the approved operator workflow for it.';
+
+const PUSH_IDENTITY_REASON =
+  'Push targets registered device tokens. Sender identities are not part of '
+  + 'the canonical Push product model.';
+
+interface CatalogueSeed
+  extends Omit<OmniCommsChannelDescriptor, 'tabs' | 'seedNamespace'> {}
+
+const SEEDS: readonly CatalogueSeed[] = [
   {
     channel: 'email',
     label: 'Email',
@@ -103,8 +194,17 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C6',
     implemented: true,
     databaseSupported: true,
-    tabs: tabs('overview', 'providers', 'accounts', 'identities', 'endpoints', 'bindings', 'policies', 'release-control', 'test-centre', 'diagnostics'),
-    seedNamespace: 'omni_comms_seed:email',
+    capabilities: matrix({
+      providers: cap(true, true),
+      accounts: cap(true, true),
+      identities: cap(true, true),
+      endpoints: cap(true, true),
+      bindings: cap(true, true),
+      policies: cap(true, true),
+      'release-control': cap(true, true),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
     reservedProviders: ['resend'],
   },
   {
@@ -115,8 +215,19 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C7',
     implemented: false,
     databaseSupported: true,
-    tabs: tabs('overview', 'providers', 'accounts', 'identities', 'bindings', 'policies', 'test-centre', 'diagnostics'),
-    seedNamespace: 'omni_comms_seed:sms',
+    capabilities: matrix({
+      providers: cap(true, true),
+      accounts: cap(true, true),
+      identities: cap(true, true),
+      // CG1 — the server-side endpoint normaliser accepts SMS
+      // delivery_callback and inbound_callback.
+      endpoints: cap(true, true),
+      bindings: cap(true, true),
+      policies: cap(true, true),
+      'release-control': cap(false, false, RELEASE_CONTROL_EMAIL_ONLY),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
     reservedProviders: [],
   },
   {
@@ -127,8 +238,19 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C8',
     implemented: false,
     databaseSupported: true,
-    tabs: tabs('overview', 'providers', 'accounts', 'identities', 'bindings', 'policies', 'test-centre', 'diagnostics'),
-    seedNamespace: 'omni_comms_seed:whatsapp',
+    capabilities: matrix({
+      providers: cap(true, true),
+      accounts: cap(true, true),
+      identities: cap(true, true),
+      // CG1 — the server-side endpoint normaliser accepts the WhatsApp
+      // business_webhook endpoint type.
+      endpoints: cap(true, true),
+      bindings: cap(true, true),
+      policies: cap(true, true),
+      'release-control': cap(false, false, RELEASE_CONTROL_EMAIL_ONLY),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
     reservedProviders: [],
   },
   {
@@ -139,8 +261,19 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C9',
     implemented: false,
     databaseSupported: true,
-    tabs: tabs('overview', 'providers', 'accounts', 'bindings', 'policies', 'test-centre', 'diagnostics'),
-    seedNamespace: 'omni_comms_seed:push',
+    capabilities: matrix({
+      providers: cap(true, true),
+      accounts: cap(true, true),
+      // Representable, but deliberately hidden: the canonical Push product
+      // model has no sender identity.
+      identities: cap(true, false, PUSH_IDENTITY_REASON),
+      endpoints: cap(false, false, NO_SCHEMA),
+      bindings: cap(true, true),
+      policies: cap(true, true),
+      'release-control': cap(false, false, RELEASE_CONTROL_EMAIL_ONLY),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
     reservedProviders: [],
   },
   {
@@ -151,8 +284,17 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C9',
     implemented: false,
     databaseSupported: true,
-    tabs: tabs('overview', 'policies', 'test-centre', 'diagnostics'),
-    seedNamespace: 'omni_comms_seed:in_app',
+    capabilities: matrix({
+      providers: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      accounts: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      identities: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      endpoints: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      bindings: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      policies: cap(true, true),
+      'release-control': cap(false, false, RELEASE_CONTROL_EMAIL_ONLY),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
     reservedProviders: [],
   },
   {
@@ -163,8 +305,7 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C10',
     implemented: false,
     databaseSupported: false,
-    tabs: tabs('overview', 'endpoints', 'bindings', 'policies', 'test-centre', 'diagnostics'),
-    seedNamespace: 'omni_comms_seed:webhook',
+    capabilities: plannedMatrix(),
     reservedProviders: [],
   },
   {
@@ -175,8 +316,17 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C10',
     implemented: false,
     databaseSupported: true,
-    tabs: tabs('overview', 'identities', 'policies', 'test-centre', 'diagnostics'),
-    seedNamespace: 'omni_comms_seed:print',
+    capabilities: matrix({
+      providers: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      accounts: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      identities: cap(true, true),
+      endpoints: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      bindings: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      policies: cap(true, true),
+      'release-control': cap(false, false, RELEASE_CONTROL_EMAIL_ONLY),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
     reservedProviders: [],
   },
   {
@@ -187,11 +337,17 @@ export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[]
     chunk: 'C10',
     implemented: false,
     databaseSupported: false,
-    tabs: tabs('overview', 'providers', 'accounts', 'identities', 'bindings', 'policies', 'test-centre', 'diagnostics'),
-    seedNamespace: 'omni_comms_seed:voice',
+    capabilities: plannedMatrix(),
     reservedProviders: [],
   },
-] as const;
+];
+
+export const OMNI_COMMS_CHANNEL_CATALOGUE: readonly OmniCommsChannelDescriptor[] =
+  SEEDS.map((s) => ({
+    ...s,
+    tabs: deriveTabsFromCapabilities(s.capabilities),
+    seedNamespace: `omni_comms_seed:${s.channel}`,
+  }));
 
 const BY_CHANNEL = new Map<string, OmniCommsChannelDescriptor>(
   OMNI_COMMS_CHANNEL_CATALOGUE.map((d) => [d.channel, d]),
@@ -223,6 +379,41 @@ export function getChannelDescriptor(
 
 export function getImplementedChannels(): readonly OmniCommsChannelDescriptor[] {
   return OMNI_COMMS_CHANNEL_CATALOGUE.filter((d) => d.implemented);
+}
+
+/** Capability lookup — the ONE way to ask "is this resource offered here?". */
+export function channelCapability(
+  channel: OmniCommsChannel,
+  resource: OmniCommsChannelResource,
+): OmniCommsChannelCapability {
+  return getChannelDescriptor(channel).capabilities[resource];
+}
+
+export function isResourceUiApplicable(
+  channel: OmniCommsChannel,
+  resource: OmniCommsChannelResource,
+): boolean {
+  return channelCapability(channel, resource).uiApplicable;
+}
+
+/** True when the tab is part of this channel's approved workspace. */
+export function isTabApplicable(
+  channel: OmniCommsChannel,
+  tab: OmniCommsGenericTab,
+): boolean {
+  if (tab === 'overview') return true;
+  return isResourceUiApplicable(channel, tab as OmniCommsChannelResource);
+}
+
+/**
+ * Resolve a requested tab for a channel. An out-of-capability tab (stale deep
+ * link, hand-edited URL, channel switch) always falls back to Overview.
+ */
+export function resolveApplicableTab(
+  channel: OmniCommsChannel,
+  requested: OmniCommsGenericTab,
+): OmniCommsGenericTab {
+  return isTabApplicable(channel, requested) ? requested : 'overview';
 }
 
 /** Seed namespace for a channel — the only legal prefix for its seed rows. */
@@ -279,6 +470,38 @@ export function validateChannelCatalogue(): string[] {
     }
     if (d.implemented && !d.databaseSupported) {
       errors.push(`Channel ${d.channel} is implemented but has no schema support`);
+    }
+
+    // Capability integrity.
+    for (const r of OMNI_COMMS_CHANNEL_RESOURCES) {
+      const c = d.capabilities[r];
+      if (!c) {
+        errors.push(`Channel ${d.channel} is missing capability ${r}`);
+        continue;
+      }
+      if (c.uiApplicable && !c.schemaSupported) {
+        errors.push(
+          `Channel ${d.channel} exposes ${r} without database schema support`,
+        );
+      }
+      if (!c.reason.trim()) {
+        errors.push(`Channel ${d.channel} capability ${r} has no reason`);
+      }
+      if (!d.databaseSupported && (c.schemaSupported || c.uiApplicable)) {
+        errors.push(
+          `Planned channel ${d.channel} must not claim capability ${r}`,
+        );
+      }
+    }
+
+    // Release Control is an Email-only governance contract.
+    if (d.channel !== 'email' && d.capabilities['release-control'].uiApplicable) {
+      errors.push(`Channel ${d.channel} must not expose Release Control`);
+    }
+
+    const derived = deriveTabsFromCapabilities(d.capabilities);
+    if (derived.join(',') !== d.tabs.join(',')) {
+      errors.push(`Channel ${d.channel} tabs are not derived from capabilities`);
     }
   }
 
