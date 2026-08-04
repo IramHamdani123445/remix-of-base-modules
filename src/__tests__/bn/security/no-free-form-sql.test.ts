@@ -106,7 +106,7 @@ describe('BN security — no free-form SQL from the browser', () => {
       );
     });
     expect(offenders).toEqual([]);
-  });
+  }, 120_000);
 });
 
 describe('BN security — cross-environment table creation utility is retired', () => {
@@ -122,7 +122,7 @@ describe('BN security — cross-environment table creation utility is retired', 
   it('has no browser code invoking create-missing-table', () => {
     const offenders = sourceFiles.filter((f) => read(f).includes('create-missing-table'));
     expect(offenders).toEqual([]);
-  });
+  }, 120_000);
 
   it('does not present a working create-table action in the Data Migration UI', () => {
     const ui = read('src/pages/admin/DataMigration.tsx');

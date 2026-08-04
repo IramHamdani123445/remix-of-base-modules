@@ -14,12 +14,13 @@ import { Input } from '@/components/ui/input';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { AlertTriangle, RefreshCw, Database, CheckCircle2, HelpCircle, Eye } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Database, CheckCircle2, HelpCircle, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import TablePreviewDialog from '@/components/bn/admin/TablePreviewDialog';
 
-const db = supabase as any;
+const db = supabase as unknown as {
+  rpc: (fn: string) => Promise<{ data: unknown; error: { message: string } | null }>;
+};
 
 /** Known screen → table mapping (audited from src/pages/bn/* + hooks/services). */
 const SCREEN_TABLE_MAP: Record<string, string[]> = {
@@ -108,7 +109,6 @@ export default function BenefitsDiagnostics() {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('');
   const [showOnly, setShowOnly] = useState<'all' | 'orphan' | 'empty' | 'populated'>('all');
-  const [previewTable, setPreviewTable] = useState<string | null>(null);
 
   const loadAll = async () => {
     setLoading(true);
@@ -116,8 +116,10 @@ export default function BenefitsDiagnostics() {
       const { data, error } = await db.rpc('bn_list_tables');
       if (error) throw error;
       setRows((data ?? []) as ApiRow[]);
-    } catch (e: any) {
-      toast.error('Failed to load diagnostics', { description: e?.message });
+    } catch (e) {
+      toast.error('Failed to load diagnostics', {
+        description: e instanceof Error ? e.message : String(e),
+      });
     } finally {
       setLoading(false);
     }
@@ -171,6 +173,9 @@ export default function BenefitsDiagnostics() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Badge variant="outline" className="gap-1 text-emerald-700 border-emerald-300">
+            <ShieldCheck className="h-3 w-3" /> Metadata only
+          </Badge>
           <Button variant="outline" size="sm" onClick={loadAll} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
@@ -240,7 +245,6 @@ export default function BenefitsDiagnostics() {
                 <TableHead className="w-44">Last created</TableHead>
                 <TableHead>Screens</TableHead>
                 <TableHead className="w-32">Status</TableHead>
-                <TableHead className="w-20 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -292,17 +296,6 @@ export default function BenefitsDiagnostics() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2"
-                        disabled={errored}
-                        onClick={() => setPreviewTable(r.table_name)}
-                      >
-                        <Eye className="h-3.5 w-3.5 mr-1" /> View
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -311,12 +304,11 @@ export default function BenefitsDiagnostics() {
           <p className="text-xs text-muted-foreground mt-4">
             <strong>Orphan</strong> = table exists in the database but no <code>/bn/*</code> screen
             currently reads from it. <strong>Empty</strong> = zero rows. The Benefits module ships
-            with <em>no</em> client-side mock arrays; every list reads live from these tables.
+            with <em>no</em> client-side mock arrays; every list reads live from these tables. Raw row preview and CSV export were permanently retired (BN Phase 0 security closure) — this screen exposes object metadata only, never record content.
           </p>
         </CardContent>
       </Card>
 
-      <TablePreviewDialog tableName={previewTable} onClose={() => setPreviewTable(null)} />
     </div>
   );
 }

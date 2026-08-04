@@ -42,13 +42,21 @@ All five are `SECURITY DEFINER`, owner `postgres`, `search_path=public`
 Browser callers: none remain (regression-tested).
 Edge-function callers: only the now-deleted `create-missing-table` used them.
 
-### Related surfaces observed but NOT changed (out of this slice's scope)
+### Related surfaces — CORRECTED and now remediated (final Phase 0 slice)
 
-`bn_list_tables()` and `bn_preview_table(text,int,int)` are `SECURITY DEFINER`, dynamic-SQL,
-table-name-accepting functions still granted to `anon`/`authenticated`, used by the Benefits
-Diagnostics screen and `TablePreviewDialog`. They are read-only but permit reading any public table.
-Recorded as a **remaining risk** below; changing them would alter Benefits functionality, which this
-slice was instructed not to touch.
+An earlier revision of this document stated that `bn_list_tables()` and
+`bn_preview_table(text,int,int)` "permit reading any public table". **That statement was wrong and
+is retracted.** The deployed definitions read from the Test database show:
+
+- `bn_list_tables()` enumerates only objects matching `bn\_%` in `public`, and returns **metadata
+  only** (object name, table/view, row count, `has_created_at`, `max(created_at)`). It returns no
+  record content.
+- `bn_preview_table(text,int,int)` enforced a `^bn_[a-z0-9_]+$` identifier pattern, an existence
+  check, and a hard 500-row cap. It could not target non-`bn_` objects.
+
+The **real** concern was narrower and still material: raw rows of Benefits-owned tables (all columns,
+unmasked) were readable by **any broadly authenticated user**, plus `anon` and `PUBLIC`, with no
+Benefits-administrator authorisation, no audit event and no export control.
 
 ---
 
@@ -67,7 +75,7 @@ slice was instructed not to touch.
 | Check | Finding |
 |---|---|
 | Who could invoke it | **Anyone on the internet** |
-| JWT verification | **No** — no `supabase/config.toml` entry, deployed with `verify_jwt = false` |
+| JWT verification | **NOT VERIFIED.** There is no `supabase/config.toml` entry for this function. Absence of a config entry does **not** by itself prove the historical deployed gateway setting; the deployed `verify_jwt` value could not be read from this environment. Independently of the gateway, the function code never read or validated the `Authorization` header. |
 | Independent user verification | **No** — the `Authorization` header was never read |
 | Admin permission check | **No** |
 | Callable outside the UI | **Yes**, trivially by direct HTTP POST |
@@ -143,7 +151,7 @@ are **not applicable** — the utility was retired rather than secured, so the e
 | Applied to Test database | **YES** — verified by reading `pg_proc.proacl` |
 | Applied to Live database | **NOT VERIFIED** — applies on publish; no live DB access from this environment |
 | Effective grants in Live | **NOT VERIFIED** |
-| Edge function removal deployed | **NOT VERIFIED** — source deleted; live removal not confirmed |
+| Remote edge function deleted | **NOT VERIFIED.** Source deletion does **not** by itself remove an already-deployed remote edge function. No mechanism available in this environment proves remote deletion or unreachability. |
 | UI bundle with removed route deployed | **NOT VERIFIED** |
 
 Deployment is **not** inferred from the Git commit.
@@ -167,8 +175,128 @@ Deployment is **not** inferred from the Git commit.
 
 ## 11. Final recommendation
 
-1. **Publish** so the revocation migration and the edge-function deletion reach Live, then re-verify
+1. **Publish** so the revocation migration reaches Live, then re-verify
    `proacl` in Live and confirm the function no longer responds.
 2. Open a follow-up security slice for residual items 2–4 above.
 3. Keep all cross-environment schema change in the controlled migration process. Do not reintroduce
    browser-driven DDL, and do not add a live service-role secret.
+
+---
+
+## 12. Benefits Diagnostics closure (final Phase 0 slice)
+
+### 12.1 Authorization audit — BEFORE
+
+| Surface | Before |
+|---|---|
+| Route `/bn/admin/diagnostics` | **Unguarded.** `<Route path="/bn/admin/diagnostics" element={<BnDiagnostics />} />` — no `BnFeatureGate`, no permission wrapper. Direct URL entry succeeded for any session reaching the app shell. |
+| UI authorization | None inside the page. Only the sidebar entry carried `requiresPermission: "benefits_management"` — menu hiding, not security. |
+| `bn_list_tables()` grants | `PUBLIC`, `anon`, `authenticated`, `service_role` |
+| `bn_preview_table(text,int,int)` grants | `PUBLIC`, `anon`, `authenticated`, `service_role` |
+| Direct RPC bypass | **Yes.** Both RPCs were callable with the publishable anon key via PostgREST without ever loading the screen or the menu. |
+| Objects exposed | Every `public.bn\_%` table/view. `bn_preview_table` returned **all columns of the first 500 rows** of any of them. |
+| Sensitive data displayable | **Yes** — claim, award, decision, payment, bank/EFT and medical-review Benefits tables were previewable with unmasked columns. |
+| CSV download | **Yes** — `TablePreviewDialog` exported the current 100-row page verbatim, all columns, no masking. |
+| Production necessity of raw previews | **None found.** No requirement, runbook or approval in the repository justifies generic raw row viewing in production. |
+
+### 12.2 Remediation selected — RETIRE the raw preview
+
+The raw row-preview capability was **retired**, not secured:
+
+- `src/components/bn/admin/TablePreviewDialog.tsx` deleted.
+- "View" row-preview buttons and the Actions column removed from `BenefitsDiagnostics.tsx`.
+- CSV export removed entirely.
+- Retained diagnostics are non-sensitive metadata only: object name, object type, existence,
+  row count, last `created_at`, screen mapping, and orphan/empty health flags.
+- `public.bn_preview_table(text,int,int)` — `REVOKE ALL` from `PUBLIC`, `anon`, `authenticated`,
+  then **dropped**. No approved backend consumer remained.
+
+### 12.3 Route hardening
+
+`/bn/admin/diagnostics` is now wrapped in the repository's existing
+`PermissionProtectedRoute` gate with `moduleName="benefits_management"`. No parallel authorization
+framework was introduced. Behaviour:
+
+- unauthenticated → redirected to `/login` (fail closed);
+- authenticated without the module permission and not Admin → redirected to `/unauthorized`;
+- Admin or permitted user → allowed.
+
+Sidebar visibility is no longer the only control.
+
+### 12.4 Database hardening — `bn_list_tables()`
+
+Rewritten in the forward migration to be **fail-closed at the database**, independent of the UI:
+
+- raises `42501` when `auth.uid()` is NULL;
+- raises `42501` unless `public.is_admin(uid)` **or**
+  `public.has_permission(uid, 'benefits_management', 'admin')`;
+- returns metadata only — never record content;
+- `REVOKE ALL` from `PUBLIC` and `anon`; `GRANT EXECUTE` to `authenticated` (still gated in-body)
+  and `service_role`.
+
+### 12.5 Effective grants — AFTER (Test, read from `pg_proc.proacl`)
+
+```
+bn_list_tables   | {postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres,sandbox_exec_*=X/postgres}
+bn_preview_table | (function does not exist — dropped)
+```
+
+No `=X` (PUBLIC) and no `anon=X` remain. `authenticated` retains EXECUTE on `bn_list_tables()` only
+because the authorisation decision is enforced inside the function body; a non-admin caller receives
+`42501`.
+
+### 12.6 Tests added
+
+`src/__tests__/bn/security/diagnostics-authorization.test.ts` — proves the dialog file is gone, no
+browser call to `bn_preview_table`, no CSV export code, the route is wrapped in the permission gate,
+the gate denies unauthenticated and non-permitted users while permitting admins, and the forward
+migration revokes + drops `bn_preview_table` and fail-closes `bn_list_tables()`.
+
+---
+
+## 13. Live deployment verification (performed, not inferred)
+
+Live (`production`) `pg_proc.proacl` was read directly on 2026-08-04:
+
+| Function | Live grants observed | Verdict |
+|---|---|---|
+| `bn_run_select(text)` | **function not present in Live** | Not exposed in Live |
+| `admin_execute_ddl(text)` | `PUBLIC`, `anon`, `authenticated`, `service_role` | **STILL EXPOSED — migration NOT applied to Live** |
+| `admin_bulk_insert_jsonb(text,jsonb)` | `PUBLIC`, `anon`, `authenticated`, `service_role` | **STILL EXPOSED — migration NOT applied to Live** |
+| `admin_create_enum_if_not_exists(text,text[])` | `PUBLIC`, `anon`, `authenticated`, `service_role` | **STILL EXPOSED — migration NOT applied to Live** |
+| `get_table_ddl_info(text)` | `PUBLIC`, `anon`, `authenticated`, `service_role` | **STILL EXPOSED — migration NOT applied to Live** |
+| `bn_preview_table(text,int,int)` | **function not present in Live** | Matches the approved final design (retired) |
+| `bn_list_tables()` | **function not present in Live** | Metadata function not yet in Live; hardened definition will arrive on publish |
+
+Conclusion: **neither grant-remediation migration (`20260804105547`, `20260804113900`) nor this
+slice's migration has reached the Live database.** They apply on publish.
+
+| Item | Status |
+|---|---|
+| Grant-remediation migrations applied to Test | **VERIFIED** |
+| Grant-remediation migrations applied to Live | **VERIFIED NOT APPLIED** (see table above) |
+| Remote `create-missing-table` edge function deleted / unreachable | **NOT VERIFIED.** Source deletion does not prove remote deletion; no invocation or registry check was available from this environment. |
+| Deployed Live UI no longer exposes `/bn/admin/sql` | **NOT VERIFIED** |
+| Deployed Live UI no longer exposes cross-environment table creation | **NOT VERIFIED** |
+| Diagnostics security change deployed to Live | **NOT VERIFIED** (source + Test only) |
+| Live grants for `bn_preview_table` / `bn_list_tables` match approved design | `bn_preview_table` **VERIFIED absent**; `bn_list_tables` absent in Live, so the hardened definition is **NOT YET DEPLOYED** |
+
+**Action required by the owner: publish.** Until then the Live database still grants four privileged
+DDL/metadata functions to `PUBLIC`, `anon` and `authenticated`. This is now the highest residual risk
+and it is confirmed, not hypothetical.
+
+---
+
+## 14. Remaining security risks (updated)
+
+1. **Live still exposes `admin_execute_ddl`, `admin_bulk_insert_jsonb`,
+   `admin_create_enum_if_not_exists` and `get_table_ddl_info` to `PUBLIC`/`anon`/`authenticated`** —
+   confirmed by direct Live `proacl` read. Remediated only on publish.
+2. Remote deletion of `create-missing-table` is unproven.
+3. Other `SECURITY DEFINER` business RPCs that accept table names
+   (`analyze_c3_config_change`, `upsert_c3_config_with_split`, `lg_list_unmapped_reference_values`)
+   remain granted to `authenticated` and were not reviewed line-by-line.
+4. The remaining Data Migration edge functions (`data-migration-analyze`, `data-migration-sync`,
+   `import-seed-data`, `bulk-data-transfer`) were not audited.
+5. `bn_list_tables()` still discloses Benefits object names and row counts to Benefits admins —
+   accepted, non-record metadata.
