@@ -23,7 +23,8 @@ export type LifeCertificateBucket =
   | 'VERIFIED'
   | 'WAIVED_DEFERRED'
   | 'SUSPENSIONS'
-  | 'REINSTATEMENTS';
+  | 'REINSTATEMENTS'
+  | 'MANUAL_INTERVENTION';
 
 export const LIFE_CERTIFICATE_BUCKETS: { key: LifeCertificateBucket; label: string }[] = [
   { key: 'ALL', label: 'All obligations' },
@@ -36,6 +37,7 @@ export const LIFE_CERTIFICATE_BUCKETS: { key: LifeCertificateBucket; label: stri
   { key: 'WAIVED_DEFERRED', label: 'Waived / deferred' },
   { key: 'SUSPENSIONS', label: 'Suspensions initiated' },
   { key: 'REINSTATEMENTS', label: 'Reinstatements initiated' },
+  { key: 'MANUAL_INTERVENTION', label: 'Manual intervention required' },
 ];
 
 export interface LifeCertificateWorklistRow {
@@ -58,6 +60,10 @@ export interface LifeCertificateWorklistRow {
   suspension_event_id: string | null;
   reinstatement_event_id: string | null;
   row_version: number;
+  /** Masked unless the caller holds `view_sensitive_identity`. */
+  manual_intervention_required: boolean;
+  scheduler_failed_attempts: number;
+  scheduler_last_error_code: string | null;
 }
 
 export interface LifeCertificateWorklist {
@@ -65,6 +71,7 @@ export interface LifeCertificateWorklist {
   total: number;
   limit: number;
   offset: number;
+  identity_masked: boolean;
 }
 
 export interface LifeCertificateEvidence {
@@ -73,7 +80,7 @@ export interface LifeCertificateEvidence {
   document_name?: string | null;
   evidence_type?: string | null;
   evidence_version?: number | null;
-  checksum?: string | null;
+  evidence_integrity_status?: string | null;
   issuing_authority?: string | null;
   certificate_date?: string | null;
 }

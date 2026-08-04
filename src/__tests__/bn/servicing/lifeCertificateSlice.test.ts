@@ -15,7 +15,11 @@ import {
   describeLifeCertificateFailure, LifeCertificateCommandError,
   LIFE_CERTIFICATE_MAX_BATCH,
 } from '@/services/bn/lifeCertificateCommandService';
-import { fetchWorklist, fetchDetail, fetchTimeline } from '@/services/bn/lifeCertificateViewService';
+import { clearMilestoneAttempts } from '@/services/bn/lifeCertificateCommandService';
+import { fetchWorklist, fetchDetail, fetchTimeline, LIFE_CERTIFICATE_BUCKETS } from '@/services/bn/lifeCertificateViewService';
+import {
+  planMilestoneWork, milestoneIdempotencyKey, MAX_ATTEMPTS, MAX_BATCH, type DueRow,
+} from '../../../../supabase/functions/bn-life-certificate-runner/plan';
 
 const ok = (data: unknown = { status: 'OK' }) => ({ data, error: null });
 const fail = (message: string) => ({ data: null, error: { message } });
@@ -200,11 +204,11 @@ describe('Life Certificate scheduler runner', () => {
     expect(src).toContain('status: 401');
   });
 
-  it('uses deterministic idempotency, bounded batches and max attempts', () => {
-    const src = read(runner);
-    expect(src).toContain('const idempotencyKey = `lc:${row.life_certificate_id}:${row.milestone}:${row.milestone_date}`');
-    expect(src).toContain('MAX_BATCH = 200');
-    expect(src).toContain('MAX_ATTEMPTS = 5');
+  it('calls the canonical due-feed RPC name', () => {
+    const src = readCode(runner);
+    expect(src).toContain('bn_life_certificate_due_milestones_v1');
+    expect(src).not.toContain('bn_life_certificate_due_for_milestone_v1');
+    expect(src).not.toContain('p_as_of: asOf,\n          p_idempotency_key');
   });
 
   it('delegates outcomes to the server command and sanitizes errors', () => {
@@ -213,5 +217,109 @@ describe('Life Certificate scheduler runner', () => {
     expect(src).toContain('function sanitize');
     expect(src).not.toMatch(/\.from\(["']bn_life_certificate/);
     expect(src).not.toMatch(/ssn|first_name|last_name/i);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Executable scheduler contract — the runner's real planning code is imported
+// and exercised against actual due-feed row shapes (no source-string checks).
+// ---------------------------------------------------------------------------
+describe('Life Certificate scheduler contract (executable)', () => {
+  const row = (over: Partial<DueRow> = {}): DueRow => ({
+    life_certificate_id: 'lc-1',
+    bn_award_id: 'aw-1',
+    milestone: 'REMINDER_1',
+    milestone_date: '2026-03-18',
+    attempts: 0,
+    row_version: 4,
+    obligation_status: 'DUE',
+    ...over,
+  });
+
+  it('turns a due-feed row into a mark-milestone call with the correct identity', async () => {
+    const [work] = planMilestoneWork([row()]);
+    expect(work.skipped).toBe(false);
+
+    rpcMock.mockResolvedValueOnce(ok({ status: 'APPLIED' }));
+    await markMilestone({
+      lifeCertificateId: work.lifeCertificateId,
+      milestone: work.milestone as 'REMINDER_1',
+      idempotencyKey: work.idempotencyKey,
+    });
+
+    expect(rpcMock.mock.calls[0][0]).toBe('bn_life_certificate_mark_milestone_v1');
+    expect(rpcMock.mock.calls[0][1]).toEqual({
+      p_life_certificate_id: 'lc-1',
+      p_milestone: 'REMINDER_1',
+      p_idempotency_key: 'lc:lc-1:REMINDER_1:2026-03-18',
+      p_correlation_id: null,
+    });
+  });
+
+  it('never sends a caller-supplied as-of date', async () => {
+    await markMilestone({ lifeCertificateId: 'lc-1', milestone: 'OVERDUE' });
+    expect(Object.keys(rpcMock.mock.calls[0][1] as object)).not.toContain('p_as_of');
+  });
+
+  it('gives each configured reminder offset a distinct milestone identity', () => {
+    const plan = planMilestoneWork([
+      row({ milestone: 'REMINDER_1', milestone_date: '2026-03-18' }),
+      row({ milestone: 'REMINDER_2', milestone_date: '2026-03-29' }),
+    ]);
+    expect(plan.map((p) => p.idempotencyKey)).toEqual([
+      'lc:lc-1:REMINDER_1:2026-03-18',
+      'lc:lc-1:REMINDER_2:2026-03-29',
+    ]);
+    expect(new Set(plan.map((p) => p.idempotencyKey)).size).toBe(2);
+  });
+
+  it('replays the same key for the same milestone date (no daily repeat)', () => {
+    const a = milestoneIdempotencyKey(row());
+    const b = milestoneIdempotencyKey(row());
+    expect(a).toBe(b);
+  });
+
+  it('counts first failure and retry, but stops at five failed attempts', () => {
+    expect(planMilestoneWork([row({ attempts: 1 })])[0].skipped).toBe(false);
+    expect(planMilestoneWork([row({ attempts: 4 })])[0].skipped).toBe(false);
+    const parked = planMilestoneWork([row({ attempts: 5 })])[0];
+    expect(parked.skipped).toBe(true);
+    expect(parked.skipReason).toBe('E_MAX_ATTEMPTS');
+  });
+
+  it('does not block a later milestone because of an earlier failed one', () => {
+    const plan = planMilestoneWork([
+      row({ milestone: 'REMINDER_1', attempts: 5 }),
+      row({ milestone: 'OVERDUE', milestone_date: '2026-04-30', attempts: 0 }),
+    ]);
+    expect(plan[0].skipped).toBe(true);
+    expect(plan[1].skipped).toBe(false);
+  });
+
+  it('supports manual recovery through a server command', async () => {
+    await clearMilestoneAttempts({ lifeCertificateId: 'lc-1' });
+    expect(rpcMock.mock.calls[0][0]).toBe('bn_life_certificate_clear_milestone_attempts_v1');
+  });
+
+  it('bounds the batch at 200', () => {
+    const rows = Array.from({ length: 500 }, (_, i) => row({ life_certificate_id: `lc-${i}` }));
+    expect(planMilestoneWork(rows)).toHaveLength(MAX_BATCH);
+    expect(MAX_BATCH).toBe(LIFE_CERTIFICATE_MAX_BATCH);
+    expect(MAX_ATTEMPTS).toBe(5);
+  });
+
+  it('exposes a manual-intervention bucket in the worklist', () => {
+    expect(LIFE_CERTIFICATE_BUCKETS.map((b) => b.key)).toContain('MANUAL_INTERVENTION');
+  });
+});
+
+describe('Life Certificate database grant verifier', () => {
+  it('ships an effective-grant verifier using catalogue privileges', () => {
+    const sql = read('supabase/verify/bn_life_certificate_effective_grants.sql');
+    expect(sql).toContain('pg_proc');
+    expect(sql).toContain('proacl');
+    expect(sql).toContain('aclexplode');
+    expect(sql).toContain('bn_life_certificate_due_for_milestone_v1');
   });
 });

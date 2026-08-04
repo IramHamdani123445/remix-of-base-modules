@@ -50,6 +50,10 @@ export type LifeCertificateErrorCode =
   | 'E_REASON_REQUIRED'
   | 'E_NARRATIVE_REQUIRED'
   | 'E_IDEMPOTENCY_PAYLOAD_MISMATCH'
+  | 'E_MILESTONE_NOT_DUE'
+  | 'E_RECORD_FORBIDDEN'
+  | 'E_SEARCH_TOO_SHORT'
+  | 'E_EVIDENCE_SUPERSEDED'
   | 'E_UNKNOWN';
 
 export const LIFE_CERTIFICATE_ERROR_MESSAGES: Record<LifeCertificateErrorCode, string> = {
@@ -84,6 +88,10 @@ export const LIFE_CERTIFICATE_ERROR_MESSAGES: Record<LifeCertificateErrorCode, s
   E_REASON_REQUIRED: 'A reason code is required.',
   E_NARRATIVE_REQUIRED: 'A narrative is required.',
   E_IDEMPOTENCY_PAYLOAD_MISMATCH: 'This action changed since it was prepared. Refresh and try again.',
+  E_MILESTONE_NOT_DUE: 'That milestone is not yet due for this obligation.',
+  E_RECORD_FORBIDDEN: 'This record is outside your assigned office, workbasket or caseload.',
+  E_SEARCH_TOO_SHORT: 'Enter at least 4 characters to search.',
+  E_EVIDENCE_SUPERSEDED: 'That document version has been superseded and cannot be used as evidence.',
   E_UNKNOWN: 'The command could not be completed.',
 };
 
@@ -133,7 +141,7 @@ export interface GenerateObligationsResult extends LifeCertificateCommandResult 
 }
 
 /** Maximum obligations a single controlled backfill batch may create. */
-export const LIFE_CERTIFICATE_MAX_BATCH = 500;
+export const LIFE_CERTIFICATE_MAX_BATCH = 200;
 
 export function generateObligations(input: {
   policyCode?: string;
@@ -288,21 +296,35 @@ export function deferObligation(input: {
   });
 }
 
-export type LifeCertificateMilestone = 'DUE' | 'REMINDER' | 'GRACE' | 'OVERDUE';
+export type LifeCertificateMilestone = 'DUE' | 'GRACE' | 'OVERDUE' | `REMINDER_${number}`;
 
+/**
+ * Marks a scheduler milestone. The server is the date authority: no `as_of` is
+ * accepted, and the command independently revalidates that the milestone is due
+ * against the persisted obligation dates in the policy timezone.
+ */
 export function markMilestone(input: {
   lifeCertificateId: string;
   milestone: LifeCertificateMilestone;
-  asOf?: string;
   idempotencyKey?: string;
   correlationId?: string;
 }): Promise<LifeCertificateCommandResult> {
   return call('bn_life_certificate_mark_milestone_v1', {
     p_life_certificate_id: input.lifeCertificateId,
     p_milestone: input.milestone,
-    p_as_of: input.asOf ?? null,
     p_idempotency_key: input.idempotencyKey ?? null,
     p_correlation_id: input.correlationId ?? null,
+  });
+}
+
+/** Manual recovery for obligations parked after five failed scheduler attempts. */
+export function clearMilestoneAttempts(input: {
+  lifeCertificateId: string;
+  milestone?: string;
+}): Promise<LifeCertificateCommandResult> {
+  return call('bn_life_certificate_clear_milestone_attempts_v1', {
+    p_life_certificate_id: input.lifeCertificateId,
+    p_milestone: input.milestone ?? null,
   });
 }
 
