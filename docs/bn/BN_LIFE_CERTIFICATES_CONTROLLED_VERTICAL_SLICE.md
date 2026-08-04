@@ -12,7 +12,7 @@ Means Tests, Uprating and Risk Management are explicitly out of scope.
 | Due-date calculation | hard-coded JS dates | none | mock | n/a | browser | policy-driven in SQL, snapshotted per obligation |
 | Worklist | flat table, direct select | `fetchLifeCertificates()` | real, unbounded | module view | direct table read | `bn_life_certificate_worklist_v1` (buckets, paging, cap 200) |
 | Certificate receipt | none | none | n/a | none | none | `bn_life_certificate_receive_v1` with DMS validation |
-| Evidence upload / linking | none | none | n/a | none | none | linked via `bn_claim_document`; version + checksum retained |
+| Evidence upload / linking | none | none | n/a | none | none | linked via `bn_claim_document`; version retained, integrity status recorded (no manufactured checksum) |
 | Verification | dialog | direct `update` to `VERIFIED` | real, unsafe | generic edit | browser mutation | `bn_life_certificate_verify_v1`, maker-checker enforced |
 | Rejection | none | none | n/a | none | none | `bn_life_certificate_reject_v1` (reason + narrative mandatory) |
 | Resubmission | none | none | n/a | none | none | `bn_life_certificate_request_resubmission_v1` |
@@ -169,3 +169,185 @@ Live deployment: not applied.
   require operational sign-off before Test enablement.
 - Legacy `/newbenefit`, `/nbenefit` life certificate screens remain in place for
   parity; retirement needs an approved redirect plan.
+
+
+---
+
+# Appendix A — Defect-correction and database-validation pass
+
+This appendix supersedes any earlier claim in this document that conflicts with it.
+
+## A1. Canonical scheduler RPC and result contract
+
+Canonical name: **`bn_life_certificate_due_milestones_v1(p_as_of date, p_limit integer)`**.
+The earlier `bn_life_certificate_due_for_milestone_v1` has been **dropped** and no
+longer exists in `pg_proc` (verifier query 4).
+
+Verified result contract (from `pg_get_function_result`):
+
+```
+TABLE(life_certificate_id uuid, bn_award_id uuid, milestone text,
+      milestone_date date, attempts integer, row_version integer,
+      obligation_status text)
+```
+
+The runner consumes exactly these fields. Milestone identity is
+`DUE`, `GRACE`, `OVERDUE` or a numbered reminder `REMINDER_<n>` derived from the
+obligation's snapshotted `reminder_offset_days`.
+
+## A2. Attempt tracking
+
+Object: `public.bn_life_certificate_scheduler_attempt`
+(unique on obligation + milestone + milestone date).
+
+- Failures are recorded through `bn_life_certificate_record_milestone_failure_v1`
+  (service-role only; rejected when `auth.uid()` is present).
+- Successful or replayed commands reset the counter — they are never failures.
+- Five failed attempts set `manual_intervention_required` and the runner skips
+  the row with `E_MAX_ATTEMPTS`.
+- A later milestone is a different attempt row, so it is never blocked by an
+  earlier milestone's failures.
+- Technical detail goes to the restricted operational log via
+  `_bn_susp_log_operational_error`; the runner, UI and RPC results only ever see
+  a sanitized `E_*` code.
+- Manual recovery: `bn_life_certificate_clear_milestone_attempts_v1` (requires
+  the `escalate` action plus record-level access, and writes an audit entry).
+- Visibility: the worklist exposes `manual_intervention_required`,
+  `scheduler_failed_attempts`, `scheduler_last_error_code` and a
+  `MANUAL_INTERVENTION` bucket.
+
+## A3. Table and function grants (verified)
+
+`supabase/verify/bn_life_certificate_effective_grants.sql` uses `aclexplode`
+over `pg_class.relacl` and `pg_proc.proacl`. All five queries return **zero rows**:
+
+1. No `anon` / `authenticated` / `PUBLIC` privilege on any `bn_life_certificate*` table
+   (including `bn_life_certificate_policy`, `_event`,
+   `_communication_intent`, `_scheduler_attempt`, `_case_evidence_link`).
+2. No browser-role EXECUTE on any `_bn_lc_*` private helper.
+3. No browser-role EXECUTE on the due-feed or failure-recording RPCs.
+4. The retired due-feed name does not exist.
+5. `bn_life_certificate_mark_milestone_v1` has no `p_as_of` parameter.
+
+All browser reads go through `bn_life_certificate_worklist_v1`,
+`bn_life_certificate_detail_v1` and `bn_life_certificate_timeline_v1`.
+
+## A4. Record-level access and masking
+
+`_bn_lc_can_access(actor, obligation)` grants access when the actor is an admin,
+holds `bn_life_certificate.view_all_records`, is the claim's `assigned_to`
+officer, is the assignee on an active `bn_claim_queue_assignment`, or is a member
+of that assignment's workbasket via `bn_workbaskets_for_user`. It is enforced in
+the worklist (row filter), detail, timeline, receipt, reinstatement proposal,
+milestone command (user-invoked) and case-evidence query. Denials return
+`E_RECORD_FORBIDDEN`.
+
+SSN is masked to the last four digits unless the caller holds
+`bn_life_certificate.view_sensitive_identity`; responses carry
+`identity_masked`. Search requires at least 4 characters, escapes `%`, `_` and
+`\`, is capped at 200 rows, and for masked callers only matches an SSN on exact
+equality — wildcard SSN enumeration is not possible.
+
+## A5. Policy eligibility enforced
+
+Applied at generation: applicable benefit codes, award types, award statuses,
+award start/end vs. the obligation period, policy effective dates, and
+`min_claimant_age` (from `bn_claim_person_snapshot.date_of_birth`).
+When age data is missing the award is counted in `review_required`, not treated
+as eligible. `payment_jurisdictions` is configured-but-unavailable in the current
+data model, so any policy that configures it yields an explicit
+`REVIEW_JURISDICTION_UNKNOWN` exclusion rather than a silent pass.
+The result payload reports `eligible`, `created`, `skipped_existing`,
+`excluded_age` and `review_required`.
+
+## A6. Calendar and reminder rules
+
+`_bn_lc_today(tz)` is the date authority, using the policy timezone.
+`_bn_lc_business_day(date, enabled)` shifts issue, due, grace, escalation and
+reminder dates off weekends and off active `core_calendar_holidays` rows that
+affect workflow deadlines, when `business_days_only` is set. Nothing is
+hard-coded in React.
+
+Reminders come from the snapshotted `reminder_offset_days`: offsets
+`[-14, -3]` produce `REMINDER_1` (due − 14) and `REMINDER_2` (due − 3), each with
+its own milestone date, idempotency identity
+(`lc:<obligation>:<milestone>:<milestone_date>`), event
+(`BN_LIFE_CERT_REMINDER_<n>`) and completion evidence. `reminder_count` is set to
+the reminder index, so a reminder cannot repeat daily.
+
+## A7. Milestone date enforcement
+
+`bn_life_certificate_mark_milestone_v1(p_life_certificate_id, p_milestone,
+p_idempotency_key, p_correlation_id)` no longer accepts an as-of date. It
+recomputes the server date in the policy timezone and validates:
+`DUE` (status `NOT_DUE` and due date reached), `REMINDER_<n>` (that reminder's
+snapshotted date reached and `reminder_count < n`), `GRACE` (past due, within
+grace, not already in grace), `OVERDUE` (past grace end). Early transitions raise
+`E_MILESTONE_NOT_DUE`; terminal/received/verified/waived/deferred states return
+`NO_OP`; repeats replay the stored receipt.
+
+## A8. Award Suspension authority model
+
+**Option A — dual permission** is the approved model, unchanged and now
+documented. Life Certificate escalation and reinstatement require the Life
+Certificate action (`propose_suspension` / `propose_reinstatement`) *and* the
+Award Suspension boundary's own proposal authorization, which is enforced inside
+`bn_award_suspension_propose_v1` / `bn_award_reinstatement_propose_v1`. Life
+Certificates can only ever create proposals; approval and execution stay in Award
+Suspension. Dark-launch dependency: if Life Certificate actions are enabled but
+Award Suspension actions are disabled, the escalation command fails closed inside
+the Award Suspension boundary and the obligation stays `OVERDUE`; if Award
+Suspension is enabled but Life Certificates is disabled, no Life Certificate
+command runs at all (`E_FEATURE_DISABLED`).
+
+## A9. Evidence, DMS integrity and case linkage
+
+The document boundary (`bn_claim_document`) exposes no content checksum, so no
+checksum is manufactured from path or size any more: `evidence_checksum` is left
+null and `evidence_integrity_status = 'UNAVAILABLE'` is recorded and surfaced in
+the UI. Receipt validates the document belongs to the award's claim, is not
+superseded, is of an accepted evidence type and has not been used by another
+obligation.
+
+`bn_life_certificate_case_evidence_link` records the obligation, document id,
+evidence version, integrity status, verification decision, verifier and
+correlation id against the reinstatement case, and is read through
+`bn_life_certificate_case_evidence_v1` (permission + record-scope checked). The
+document itself is never duplicated and no storage path is exposed.
+
+## A10. Batch limit
+
+200 everywhere: database (`LEAST(..., 200)` inside the generation RPC, so a
+direct RPC caller cannot exceed it), `LIFE_CERTIFICATE_MAX_BATCH = 200` in the
+client command service, `MAX_BATCH = 200` in the runner plan module, and the
+tests assert the three agree.
+
+## A11. Verification status
+
+- Migration: applied to Test. Verifier `supabase/verify/bn_life_certificate_effective_grants.sql`
+  returns zero rows on all five checks.
+- Due-feed contract: verified from the catalogue (`pg_get_function_result`).
+- Unit / contract tests: `src/__tests__/bn/servicing/lifeCertificateSlice.test.ts`
+  — 36 passing, including executable due-feed → mark-milestone contract tests
+  that import the runner's real planning module.
+- Benefits suite: 1732 passing, 2 pre-existing Mortality failures unrelated to
+  this slice.
+- Typecheck: clean.
+- Dark launch: unchanged — `actions_enabled = false`.
+
+## A12. Remaining blockers (not closed in this pass)
+
+1. **Communication façade adapter (requirement 13).**
+   `bn_life_certificate_communication_intent` is still a module-local outbox with
+   no consumer transferring rows into the shared Omnichannel/Communication
+   request boundary. Reminder delivery is therefore **not** integrated end to end
+   and no controlled test reminder has been delivered.
+2. **Full database integration test harness (requirement 14).** The executable
+   tests cover the scheduler contract, planning, batch caps and boundary rules;
+   seeded end-to-end DB tests (generation → receipt → verification → suspension →
+   reinstatement against a live schema) are not yet automated.
+3. **Issuing-authority reference data (requirement 12).** Verification validates
+   against the snapshotted `accepted_issuing_authorities` list, but authorities
+   are still free text rather than a reference-data selector storing an id.
+4. **Payment jurisdiction data.** No jurisdiction attribute exists on the award or
+   claim, so jurisdiction-scoped policies can only produce review exclusions.

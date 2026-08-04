@@ -14,20 +14,14 @@
 // ids, milestones and sanitized short error codes appear in the output.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { type DueRow, MAX_BATCH, planMilestoneWork } from "./plan.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type Milestone = "REMINDER" | "GRACE" | "OVERDUE";
-
-type DueRow = {
-  life_certificate_id: string;
-  milestone: Milestone;
-  milestone_date: string;
-  attempts: number | null;
-};
+type Milestone = string;
 
 type ItemResult = {
   lifeCertificateId: string;
@@ -36,10 +30,6 @@ type ItemResult = {
   errorCode?: string;
 };
 
-/** Attempts beyond this are left for manual intervention. */
-const MAX_ATTEMPTS = 5;
-/** Bounded batch so a single invocation cannot run unbounded. */
-const MAX_BATCH = 200;
 
 function sanitize(message: string): string {
   const match = message.match(/E_[A-Z_]+/);
@@ -83,43 +73,56 @@ Deno.serve(async (req) => {
     if (dueError) throw new Error(dueError.message);
 
     const rows = (due ?? []) as DueRow[];
+    const plan = planMilestoneWork(rows);
     const results: ItemResult[] = [];
 
-    for (const row of rows) {
+    for (const item of plan) {
+      const row = { life_certificate_id: item.lifeCertificateId, milestone: item.milestone, milestone_date: item.milestoneDate };
       // Failure isolation: one bad obligation never aborts the batch.
-      if ((row.attempts ?? 0) >= MAX_ATTEMPTS) {
+      if (item.skipped) {
         results.push({
           lifeCertificateId: row.life_certificate_id,
           milestone: row.milestone,
           outcome: "skipped",
-          errorCode: "E_MAX_ATTEMPTS",
+          errorCode: item.skipReason,
         });
         continue;
       }
 
-      const idempotencyKey = `lc:${row.life_certificate_id}:${row.milestone}:${row.milestone_date}`;
+      const idempotencyKey = item.idempotencyKey;
 
       try {
         const { data, error } = await db.rpc("bn_life_certificate_mark_milestone_v1", {
           p_life_certificate_id: row.life_certificate_id,
           p_milestone: row.milestone,
-          p_as_of: asOf,
           p_idempotency_key: idempotencyKey,
           p_correlation_id: correlationId,
         });
         if (error) throw new Error(error.message);
         const status = (data as { status?: string } | null)?.status ?? "OK";
+        // Successful and replayed commands never count as failures.
         results.push({
           lifeCertificateId: row.life_certificate_id,
           milestone: row.milestone,
-          outcome: status === "REPLAYED" ? "replayed" : "processed",
+          outcome: status === "REPLAYED" || status === "NO_OP" ? "replayed" : "processed",
         });
       } catch (e) {
+        const errorCode = sanitize(e instanceof Error ? e.message : "");
+        // Failures are counted per obligation + milestone + milestone date, in
+        // a restricted operational log. Technical detail never leaves the DB.
+        await db.rpc("bn_life_certificate_record_milestone_failure_v1", {
+          p_life_certificate_id: row.life_certificate_id,
+          p_milestone: row.milestone,
+          p_milestone_date: row.milestone_date,
+          p_error_code: errorCode,
+          p_error_detail: e instanceof Error ? e.message : String(e),
+          p_correlation_id: correlationId,
+        });
         results.push({
           lifeCertificateId: row.life_certificate_id,
           milestone: row.milestone,
           outcome: "failed",
-          errorCode: sanitize(e instanceof Error ? e.message : ""),
+          errorCode,
         });
       }
     }

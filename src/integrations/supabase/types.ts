@@ -12693,6 +12693,7 @@ export type Database = {
           escalation_date: string | null
           escalation_status: string
           evidence_checksum: string | null
+          evidence_integrity_status: string
           evidence_is_confidential: boolean
           evidence_status: string
           evidence_type: string | null
@@ -12751,6 +12752,7 @@ export type Database = {
           escalation_date?: string | null
           escalation_status?: string
           evidence_checksum?: string | null
+          evidence_integrity_status?: string
           evidence_is_confidential?: boolean
           evidence_status?: string
           evidence_type?: string | null
@@ -12809,6 +12811,7 @@ export type Database = {
           escalation_date?: string | null
           escalation_status?: string
           evidence_checksum?: string | null
+          evidence_integrity_status?: string
           evidence_is_confidential?: boolean
           evidence_status?: string
           evidence_type?: string | null
@@ -12880,6 +12883,56 @@ export type Database = {
             columns: ["suspension_event_id"]
             isOneToOne: false
             referencedRelation: "bn_award_suspension_event"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_life_certificate_case_evidence_link: {
+        Row: {
+          case_kind: string
+          correlation_id: string | null
+          created_at: string
+          document_id: string | null
+          evidence_integrity_status: string | null
+          evidence_version: number | null
+          id: string
+          life_certificate_id: string
+          suspension_event_id: string
+          verification_decision: string | null
+          verified_by_user_id: string | null
+        }
+        Insert: {
+          case_kind: string
+          correlation_id?: string | null
+          created_at?: string
+          document_id?: string | null
+          evidence_integrity_status?: string | null
+          evidence_version?: number | null
+          id?: string
+          life_certificate_id: string
+          suspension_event_id: string
+          verification_decision?: string | null
+          verified_by_user_id?: string | null
+        }
+        Update: {
+          case_kind?: string
+          correlation_id?: string | null
+          created_at?: string
+          document_id?: string | null
+          evidence_integrity_status?: string | null
+          evidence_version?: number | null
+          id?: string
+          life_certificate_id?: string
+          suspension_event_id?: string
+          verification_decision?: string | null
+          verified_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_life_certificate_case_evidence_link_life_certificate_id_fkey"
+            columns: ["life_certificate_id"]
+            isOneToOne: false
+            referencedRelation: "bn_life_certificate"
             referencedColumns: ["id"]
           },
         ]
@@ -13106,6 +13159,59 @@ export type Database = {
           waiver_conditions?: Json
         }
         Relationships: []
+      }
+      bn_life_certificate_scheduler_attempt: {
+        Row: {
+          cleared_at: string | null
+          cleared_by_user_id: string | null
+          created_at: string
+          failed_attempts: number
+          id: string
+          last_attempt_at: string | null
+          last_error_code: string | null
+          life_certificate_id: string
+          manual_intervention_required: boolean
+          milestone: string
+          milestone_date: string
+          updated_at: string
+        }
+        Insert: {
+          cleared_at?: string | null
+          cleared_by_user_id?: string | null
+          created_at?: string
+          failed_attempts?: number
+          id?: string
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          life_certificate_id: string
+          manual_intervention_required?: boolean
+          milestone: string
+          milestone_date: string
+          updated_at?: string
+        }
+        Update: {
+          cleared_at?: string | null
+          cleared_by_user_id?: string | null
+          created_at?: string
+          failed_attempts?: number
+          id?: string
+          last_attempt_at?: string | null
+          last_error_code?: string | null
+          life_certificate_id?: string
+          manual_intervention_required?: boolean
+          milestone?: string
+          milestone_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_life_certificate_scheduler_attempt_life_certificate_id_fkey"
+            columns: ["life_certificate_id"]
+            isOneToOne: false
+            referencedRelation: "bn_life_certificate"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bn_medical_authorization_rule: {
         Row: {
@@ -99701,6 +99807,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bn_lc_business_day: {
+        Args: { p_date: string; p_enabled: boolean }
+        Returns: string
+      }
+      _bn_lc_can_access: {
+        Args: { p_actor: string; p_cert: string }
+        Returns: boolean
+      }
       _bn_lc_comm: {
         Args: {
           p_award: string
@@ -99727,10 +99841,27 @@ export type Database = {
         }
         Returns: string
       }
+      _bn_lc_mask_ssn: {
+        Args: { p_reveal: boolean; p_ssn: string }
+        Returns: string
+      }
+      _bn_lc_reminder_schedule: {
+        Args: { p_cert: string }
+        Returns: {
+          milestone: string
+          reminder_date: string
+          reminder_index: number
+        }[]
+      }
       _bn_lc_require: {
         Args: { p_action: string; p_actor: string }
         Returns: undefined
       }
+      _bn_lc_require_record: {
+        Args: { p_actor: string; p_cert: string }
+        Returns: undefined
+      }
+      _bn_lc_today: { Args: { p_tz: string }; Returns: string }
       _bn_mortality_dispatch_servicing: {
         Args: {
           p_actor_user_id: string
@@ -100657,6 +100788,14 @@ export type Database = {
           total_weeks: number
         }[]
       }
+      bn_life_certificate_case_evidence_v1: {
+        Args: { p_suspension_event_id: string }
+        Returns: Json
+      }
+      bn_life_certificate_clear_milestone_attempts_v1: {
+        Args: { p_life_certificate_id: string; p_milestone?: string }
+        Returns: Json
+      }
       bn_life_certificate_defer_v1: {
         Args: {
           p_correlation_id?: string
@@ -100673,16 +100812,16 @@ export type Database = {
         Args: { p_life_certificate_id: string }
         Returns: Json
       }
-      bn_life_certificate_due_for_milestone_v1: {
+      bn_life_certificate_due_milestones_v1: {
         Args: { p_as_of?: string; p_limit?: number }
         Returns: {
+          attempts: number
           bn_award_id: string
-          due_date: string
-          escalation_date: string
-          grace_end_date: string
           life_certificate_id: string
           milestone: string
+          milestone_date: string
           obligation_status: string
+          row_version: number
         }[]
       }
       bn_life_certificate_escalate_to_suspension_v1: {
@@ -100708,7 +100847,6 @@ export type Database = {
       }
       bn_life_certificate_mark_milestone_v1: {
         Args: {
-          p_as_of?: string
           p_correlation_id?: string
           p_idempotency_key?: string
           p_life_certificate_id: string
@@ -100740,6 +100878,17 @@ export type Database = {
           p_narrative?: string
           p_received_channel: string
           p_received_date: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_record_milestone_failure_v1: {
+        Args: {
+          p_correlation_id?: string
+          p_error_code: string
+          p_error_detail?: string
+          p_life_certificate_id: string
+          p_milestone: string
+          p_milestone_date: string
         }
         Returns: Json
       }

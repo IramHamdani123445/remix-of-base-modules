@@ -167,7 +167,12 @@ const LifeCertificateDetailPanel: React.FC<Props> = ({ lifeCertificateId, onClos
                       {field('Document', o.evidence.document_name)}
                       {field('Evidence type', o.evidence.evidence_type)}
                       {field('Version', String(o.evidence.evidence_version ?? '—'))}
-                      {field('Checksum', <span className="font-mono text-xs break-all">{o.evidence.checksum ?? '—'}</span>)}
+                      {field(
+                        'Integrity evidence',
+                        o.evidence.evidence_integrity_status === 'VERIFIED'
+                          ? 'Verified against the document store checksum'
+                          : 'Unavailable — the document store provides no trustworthy checksum',
+                      )}
                       {field('Issuing authority', o.evidence.issuing_authority)}
                       {field('Certificate date', o.evidence.certificate_date)}
                     </div>
