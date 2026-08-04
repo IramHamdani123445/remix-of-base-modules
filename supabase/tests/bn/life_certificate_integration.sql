@@ -527,18 +527,19 @@ BEGIN
   SELECT count(*) INTO v_count FROM public.communication_recipient WHERE request_id = v_req;
   IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: replay produced % recipients', v_count; END IF;
 
-  UPDATE public.communication_request SET status = 'queued' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'approved' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
-  UPDATE public.communication_request SET status = 'sent' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'dispatching' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
-  UPDATE public.communication_request SET status = 'delivered' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'completed' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status, delivery_reference INTO v_status, v_ref
     FROM public.bn_life_certificate_communication_intent WHERE id = c_flow;
   IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: flow ended at %', v_status; END IF;
 
-  -- 7i. An unknown Hub status can never regress DELIVERED back to REQUESTED.
-  UPDATE public.communication_request SET status = 'martian' WHERE id = v_req;
+  -- 7i. A partial/failed Hub outcome can never regress DELIVERED.
+  UPDATE public.communication_request SET status = 'partial' WHERE id = v_req;
+  PERFORM public.bn_communication_adapter_sync_v1(200);
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status
     FROM public.bn_life_certificate_communication_intent WHERE id = c_flow;
