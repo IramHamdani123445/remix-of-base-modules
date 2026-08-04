@@ -25,23 +25,25 @@ export function PermissionButton({
   const isAdmin = useIsAdmin();
   const hasPermission = useHasPermission(moduleName, actionName);
 
-  // Disabled buttons swallow pointer events, so a native `title` never shows.
-  // Wrap them in a tooltip trigger so the explanatory text stays reachable.
-  const withDisabledTooltip = (node: React.ReactNode) => {
-    if (!props.disabled || !props.title) return node;
+  // Always render explanatory text through the shared tooltip (never the native
+  // browser `title` bubble) so every button on a page looks consistent, and so
+  // disabled buttons — which swallow pointer events — still surface their hint.
+  const withTooltip = (node: React.ReactNode) => {
+    if (!props.title) return node;
     return (
-      <TooltipProvider>
+      <TooltipProvider delayDuration={200}>
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex">{node}</span>
           </TooltipTrigger>
-          <TooltipContent>
-            <p className="max-w-xs">{props.title}</p>
+          <TooltipContent side="bottom" align="start" className="max-w-xs">
+            <p>{props.title}</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
     );
   };
+
 
   // Admin users always have access
   if (isAdmin) {
