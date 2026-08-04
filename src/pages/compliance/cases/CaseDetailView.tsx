@@ -339,31 +339,64 @@ export default function CaseDetailView() {
               </Button>
             )}
             {/* Create Notice - navigates to notices screen with case prefilled */}
-            {!['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status) && (
-              <Button variant="outline" size="sm" onClick={() => navigate('/compliance/enforcement/notices', {
-                state: { prefill: { case_id: c.id, case_number: c.case_number, employer_id: c.employer_id, employer_name: c.employer_name } }
-              })}>
+            {!caseIsClosed && isComplianceFeatureEnabled('notices.generate') && (
+              <PermissionButton
+                moduleName={COMPLIANCE_MODULE}
+                actionName="create"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/compliance/enforcement/notices', {
+                  state: { prefill: { case_id: c.id, case_number: c.case_number, employer_id: c.employer_id, employer_name: c.employer_name } }
+                })}
+              >
                 <Mail className="h-4 w-4 mr-1" />Create Notice
-              </Button>
+              </PermissionButton>
             )}
             {/* Recommend Legal Escalation */}
-            {['ACTIVE', 'ESCALATED_LEGAL', 'UNDER_REVIEW'].includes(c.status) && (
-              <Button variant="outline" size="sm" onClick={() => navigate('/compliance/enforcement/recommendation-queue', {
-                state: { prefill: { case_id: c.id, case_number: c.case_number, employer_id: c.employer_id, employer_name: c.employer_name, total_amount: c.total_amount } }
-              })}>
+            {['ACTIVE', 'ESCALATED_LEGAL', 'UNDER_REVIEW'].includes(c.status) &&
+              isComplianceFeatureEnabled('legal.approvedEscalations') && (
+              <PermissionButton
+                moduleName={COMPLIANCE_MODULE}
+                actionName="edit"
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/compliance/enforcement/recommendation-queue', {
+                  state: { prefill: { case_id: c.id, case_number: c.case_number, employer_id: c.employer_id, employer_name: c.employer_name, total_amount: c.total_amount } }
+                })}
+              >
                 <Scale className="h-4 w-4 mr-1" />Recommend Legal
-              </Button>
+              </PermissionButton>
             )}
-            {/* Forward to Legal — full 6-step wizard with item selection, history, documents */}
-            {!['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status) && !(c as any).lg_intake_id && !(c as any).legal_case_id && (
-              <>
-                <Button size="sm" onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}>
-                  <Scale className="h-4 w-4 mr-1" />Refer to Legal (Wizard)
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setForwardLegalOpen(true)}>
-                  <Send className="h-4 w-4 mr-1" />Quick Forward
-                </Button>
-              </>
+            {/* Forward to Legal — full 6-step wizard vs. quick hand-off */}
+            {!caseIsClosed && !(c as any).lg_intake_id && !(c as any).legal_case_id &&
+              isComplianceFeatureEnabled('legal.handoff') && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <PermissionButton
+                    moduleName={COMPLIANCE_MODULE}
+                    actionName="edit"
+                    size="sm"
+                    title="Full 6-step referral: select items, review history and attach documents before sending to Legal."
+                    onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}
+                  >
+                    <Scale className="h-4 w-4 mr-1" />Refer to Legal (Wizard)
+                  </PermissionButton>
+                  <PermissionButton
+                    moduleName={COMPLIANCE_MODULE}
+                    actionName="edit"
+                    size="sm"
+                    variant="outline"
+                    title="Fast hand-off: sends the whole case to Legal intake without item selection."
+                    onClick={() => setForwardLegalOpen(true)}
+                  >
+                    <Send className="h-4 w-4 mr-1" />Quick Forward
+                  </PermissionButton>
+                </div>
+                <p className="text-[11px] text-muted-foreground max-w-md">
+                  Wizard = full referral with item selection, history and documents. Quick Forward =
+                  immediate hand-off of the whole case to Legal intake.
+                </p>
+              </div>
             )}
 
             {(c as any).lg_intake_id && !(c as any).legal_case_id && (
@@ -376,15 +409,24 @@ export default function CaseDetailView() {
                 <Scale className="h-4 w-4 mr-1" />View Legal Case {(c as any).lg_case_no ?? ''}
               </Button>
             )}
-            {activeViolationCount > 0 && !['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status) && (
-              <Button variant="destructive" size="sm" onClick={() => setCascadeDialogOpen(true)}>
+            {activeViolationCount > 0 && !caseIsClosed && (
+              <PermissionButton
+                moduleName={COMPLIANCE_MODULE}
+                actionName="edit"
+                variant="destructive"
+                size="sm"
+                onClick={() => setCascadeDialogOpen(true)}
+              >
                 <CheckCircle className="h-4 w-4 mr-1" />
                 Cascade Resolve ({activeViolationCount})
-              </Button>
+              </PermissionButton>
             )}
             {!['RESOLVED', 'CLOSED', 'COMPLETED', 'CSTG_PAYMENT_ARRANGEMENT_ACTIVE'].includes(c.status) &&
+              isComplianceFeatureEnabled('arrangements.new') &&
               (Number(c.total_amount ?? 0) - Number(c.amount_collected ?? 0)) > 0 && (
-              <Button
+              <PermissionButton
+                moduleName={COMPLIANCE_MODULE}
+                actionName="create"
                 size="sm"
                 onClick={() => setArrangementDialogOpen(true)}
                 disabled={!(c as any).assigned_officer_id}
@@ -392,26 +434,34 @@ export default function CaseDetailView() {
               >
                 <HandshakeIcon className="h-4 w-4 mr-1" />
                 Create Payment Arrangement
-              </Button>
+              </PermissionButton>
             )}
-            {!['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status) &&
+            {!caseIsClosed && isComplianceFeatureEnabled('enforcement.waivers') &&
               (Number(c.total_amount ?? 0) - Number(c.amount_collected ?? 0) - Number((c as any).amount_waived ?? 0)) > 0 && (
-              <Button variant="outline" size="sm" onClick={() => setWaiverDialogOpen(true)}>
+              <PermissionButton
+                moduleName={COMPLIANCE_MODULE}
+                actionName="create"
+                variant="outline"
+                size="sm"
+                onClick={() => setWaiverDialogOpen(true)}
+              >
                 <BadgePercent className="h-4 w-4 mr-1" />
                 Request Waiver
-              </Button>
+              </PermissionButton>
             )}
-            {/* Add to Inspection Planning — assigned officer or Compliance Head */}
+            {/* Add to Inspection Planning — assigned officer or case-manage capability */}
             {(() => {
               const isAssignedOfficer =
                 !!(c as any).assigned_officer_id &&
                 myOfficerIds.includes((c as any).assigned_officer_id);
               const canNominate = isAssignedOfficer || canManageAssignments;
-              const caseClosed = ['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status);
-              if (!canNominate || caseClosed || !c.employer_id) return null;
+              if (!canNominate || caseIsClosed || !c.employer_id) return null;
+              if (!isComplianceFeatureEnabled('inspections.planning')) return null;
               if (existingNomination) {
                 return (
-                  <Button
+                  <PermissionButton
+                    moduleName={COMPLIANCE_MODULE}
+                    actionName="edit"
                     type="button"
                     variant="outline"
                     size="sm"
@@ -420,11 +470,13 @@ export default function CaseDetailView() {
                     title={`Queued for week starting ${existingNomination.week_start_date}. Click to remove.`}
                   >
                     <XCircle className="h-4 w-4 mr-1" />Remove from Planning
-                  </Button>
+                  </PermissionButton>
                 );
               }
               return (
-                <Button
+                <PermissionButton
+                  moduleName={COMPLIANCE_MODULE}
+                  actionName="edit"
                   type="button"
                   size="sm"
                   variant="outline"
@@ -432,7 +484,7 @@ export default function CaseDetailView() {
                   title="Queue this case for an inspection in your weekly plan"
                 >
                   <CalendarClock className="h-4 w-4 mr-1" />Add to Inspection Planning
-                </Button>
+                </PermissionButton>
               );
             })()}
             <CaseRequestActions
