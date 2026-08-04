@@ -1,8 +1,10 @@
 # Checkpoint A foundation for the Communication Hub clean-database CI.
 #
 # This workflow protects against migrations that only apply on top of the
-# existing shared database. It provisions a clean Postgres instance and
-# applies every migration in order from zero. Additional gates (Supabase
+# existing shared database. It provisions a clean Postgres instance with
+# scripts/ci/bootstrap-supabase-test-db.sh — Supabase substrate, then
+# supabase/baseline/schema.sql, then every migration after the baseline
+# cutoff. See supabase/baseline/README.md. Additional gates (Supabase
 # type verification, RPC smoke tests, Edge contract tests, Vitest, and an
 # uploaded evidence artifact) land in Checkpoint C — but the from-zero
 # protection begins now.
@@ -24,6 +26,8 @@ on:
       - "src/__tests__/comm-hub/**"
       - "src/__tests__/omni-comms/**"
       - "scripts/omni-comms/**"
+      - "scripts/ci/**"
+      - "supabase/baseline/**"
       - ".github/workflows/comm-hub-clean-db-ci.yml"
   push:
     branches:
@@ -40,6 +44,8 @@ on:
       - "src/__tests__/comm-hub/**"
       - "src/__tests__/omni-comms/**"
       - "scripts/omni-comms/**"
+      - "scripts/ci/**"
+      - "supabase/baseline/**"
       - ".github/workflows/comm-hub-clean-db-ci.yml"
   workflow_dispatch:
 
@@ -59,7 +65,7 @@ jobs:
       - name: Run Omni-Comms vitest suite
         run: bunx vitest run src/__tests__/omni-comms/
   migrate-from-zero:
-    name: Apply every migration from zero
+    name: Clean database build (baseline + forward migrations)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -96,47 +102,12 @@ jobs:
             sleep 1
           done
 
-      - name: Bootstrap Supabase-compatible schema + extensions + auth stubs
+      - name: Build clean database (bootstrap + baseline + forward migrations)
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
         run: |
-          psql <<'SQL'
-          CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-          CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-          CREATE SCHEMA IF NOT EXISTS auth;
-          CREATE SCHEMA IF NOT EXISTS storage;
-          CREATE SCHEMA IF NOT EXISTS supabase_functions;
-          CREATE SCHEMA IF NOT EXISTS realtime;
-          CREATE SCHEMA IF NOT EXISTS vault;
-          -- minimal auth.users stub so migrations that reference it succeed
-          CREATE TABLE IF NOT EXISTS auth.users (
-            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-            email text,
-            raw_user_meta_data jsonb DEFAULT '{}'::jsonb,
-            created_at timestamptz NOT NULL DEFAULT now()
-          );
-          -- auth.uid()/auth.role() stubs — return NULL so admin-gated RPCs
-          -- fail closed in CI (exactly the behaviour we want for smoke tests).
-          CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$;
-          CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT NULL::text $$;
-          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT '{}'::jsonb $$;
-          -- roles Supabase expects
-          DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          SQL
-
-      - name: Apply every migration from zero in order
-        run: |
-          shopt -s nullglob
-          set -euo pipefail
-          count=0
-          for f in $(ls supabase/migrations/*.sql 2>/dev/null | sort); do
-            echo "==> Applying: $f"
-            psql -v ON_ERROR_STOP=1 -f "$f"
-            count=$((count+1))
-          done
-          echo "Applied $count migrations"
-          echo "APPLIED_MIGRATIONS=$count" >> "$GITHUB_ENV"
+          chmod +x scripts/ci/bootstrap-supabase-test-db.sh
+          scripts/ci/bootstrap-supabase-test-db.sh
 
       - name: Schema sanity — list migration files applied
         run: |

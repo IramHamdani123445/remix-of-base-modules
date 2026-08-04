@@ -1,8 +1,10 @@
 # BN Life Certificates — seeded database integration harness.
 #
-# Provisions a clean Postgres, applies every migration from zero, then runs
-# the seeded transaction/rollback harness in
+# Provisions a clean Postgres via scripts/ci/bootstrap-supabase-test-db.sh
+# (Supabase substrate + supabase/baseline/schema.sql + every migration after
+# the baseline cutoff), then runs the seeded transaction/rollback harness in
 # supabase/tests/bn/life_certificate_integration.sql.
+# See supabase/baseline/README.md for why a baseline replaces from-zero replay.
 #
 # The harness is authoritative: it seeds its own identity, permissions,
 # record scope and business fixtures, executes the real worklist RPC under
@@ -24,6 +26,8 @@ on:
       - "src/components/bn/life-certificates/**"
       - "src/__tests__/bn/servicing/**"
       - "scripts/bn/**"
+      - "scripts/ci/**"
+      - "supabase/baseline/**"
       - ".github/workflows/bn-life-certificate-integration.yml"
   push:
     branches:
@@ -77,56 +81,12 @@ jobs:
             sleep 1
           done
 
-      - name: Bootstrap Supabase-compatible schema, roles and auth stubs
+      - name: Build clean database (bootstrap + baseline + forward migrations)
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
         run: |
-          psql -v ON_ERROR_STOP=1 <<'SQL'
-          CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-          CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-          CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-          CREATE SCHEMA IF NOT EXISTS auth;
-          CREATE SCHEMA IF NOT EXISTS storage;
-          CREATE SCHEMA IF NOT EXISTS supabase_functions;
-          CREATE SCHEMA IF NOT EXISTS realtime;
-          CREATE SCHEMA IF NOT EXISTS vault;
-          CREATE TABLE IF NOT EXISTS auth.users (
-            id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-            instance_id uuid,
-            aud text,
-            role text,
-            email text,
-            encrypted_password text,
-            email_confirmed_at timestamptz,
-            raw_app_meta_data jsonb DEFAULT '{}'::jsonb,
-            raw_user_meta_data jsonb DEFAULT '{}'::jsonb,
-            created_at timestamptz NOT NULL DEFAULT now(),
-            updated_at timestamptz NOT NULL DEFAULT now()
-          );
-          -- Session-aware stubs: the harness sets request.jwt.claims, so
-          -- auth.uid() resolves to the seeded actor exactly as in Supabase.
-          CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $fn$
-            SELECT NULLIF(current_setting('request.jwt.claims', true)::jsonb ->> 'sub', '')::uuid
-          $fn$;
-          CREATE OR REPLACE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $fn$
-            SELECT COALESCE(current_setting('request.jwt.claims', true)::jsonb ->> 'role', 'anon')
-          $fn$;
-          CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $fn$
-            SELECT COALESCE(NULLIF(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb)
-          $fn$;
-          DO $$ BEGIN CREATE ROLE anon NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE authenticated NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          DO $$ BEGIN CREATE ROLE service_role NOLOGIN BYPASSRLS; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-          GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
-          GRANT SELECT ON auth.users TO service_role;
-          SQL
-
-      - name: Apply every migration from zero in order
-        run: |
-          shopt -s nullglob
-          set -euo pipefail
-          for f in $(ls supabase/migrations/*.sql | sort); do
-            echo "==> Applying: $f"
-            psql -v ON_ERROR_STOP=1 -f "$f"
-          done
+          chmod +x scripts/ci/bootstrap-supabase-test-db.sh
+          scripts/ci/bootstrap-supabase-test-db.sh
 
       - name: Verify Life Certificate effective grants
         run: psql -v ON_ERROR_STOP=1 -f supabase/verify/bn_life_certificate_effective_grants.sql

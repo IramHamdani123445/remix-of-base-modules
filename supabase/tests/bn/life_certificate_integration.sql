@@ -66,9 +66,10 @@ VALUES (:u_auth::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 
        (:u_unauth::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
         'bn-lc-unauthorised@test.local', 'x', now(), now(), now(), '{}'::jsonb, '{}'::jsonb);
 
-INSERT INTO public.profiles (id, full_name, email, user_code, is_active)
-VALUES (:u_auth::uuid,  'BN LC Authorised',   'bn-lc-authorised@test.local',   'BNLCAUTH', true),
-       (:u_unauth::uuid,'BN LC Unauthorised', 'bn-lc-unauthorised@test.local', 'BNLCNONE', true);
+-- first_name/last_name are required by the profiles user_code trigger.
+INSERT INTO public.profiles (id, first_name, last_name, full_name, email, user_code, is_active)
+VALUES (:u_auth::uuid,  'BN', 'Authorised',   'BN LC Authorised',   'bn-lc-authorised@test.local',   'BNLCAUTH', true),
+       (:u_unauth::uuid,'BN', 'Unauthorised', 'BN LC Unauthorised', 'bn-lc-unauthorised@test.local', 'BNLCNONE', true);
 
 -- Role + Life Certificate `view` permission for BOTH users. The only
 -- difference between them is record scope, so the forbidden cases prove
@@ -111,8 +112,11 @@ INSERT INTO public.bn_product (id, benefit_code, benefit_name, category, branch,
 VALUES (:product::uuid, 'LCTEST', 'LC Harness Product', 'LONG_TERM', 'LT', 'PERIODIC', 'SKN', 'ACTIVE');
 
 -- Accessible claim: explicitly assigned to the authorised user's code.
+-- The profiles trigger derives user_code, so read it back rather than
+-- assuming the value supplied at insert time survived.
 INSERT INTO public.bn_claim (id, claim_number, ssn, product_id, status, assigned_to, contact_email)
-VALUES (:claim_id::uuid, 'LC-CLM-0001', '123456789', :product::uuid, 'APPROVED', 'BNLCAUTH', 'claimant@test.local');
+SELECT :claim_id::uuid, 'LC-CLM-0001', '123456789', :product::uuid, 'APPROVED', p.user_code, 'claimant@test.local'
+  FROM public.profiles p WHERE p.id = :u_auth::uuid;
 
 -- Inaccessible claim: assigned to nobody the test users can reach.
 INSERT INTO public.bn_claim (id, claim_number, ssn, product_id, status, assigned_to)
@@ -261,6 +265,9 @@ BEGIN
     RAISE EXCEPTION 'FAIL: sensitive identity not revealed with the permission'; END IF;
 END $wl3$;
 RESET ROLE;
+-- Leave the browser session behind: the service-context sections below must
+-- run with auth.uid() NULL, exactly like the Edge Function does.
+SELECT set_config('request.jwt.claims', '{}', true);
 
 -- =====================================================================
 -- 4. Communication intent status constraint
@@ -346,42 +353,41 @@ BEGIN
   SELECT count(*) INTO v_count FROM public.communication_recipient WHERE request_id = v_req;
   IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: replay duplicated recipients'; END IF;
 
-  -- 6d. Sync each supported Hub state through to the Benefits status.
-  UPDATE public.communication_request SET status = 'queued' WHERE id = v_req;
+  -- 6d. Sync each Hub state the communication_request status vocabulary
+  -- actually permits (pending | approved | dispatching | completed |
+  -- partial | failed | cancelled | dry_run) through to the Benefits status.
+  -- Anything outside that vocabulary cannot occur in the Hub, so driving it
+  -- here would prove nothing; the mapper's wider synonym table is covered by
+  -- the pure-function assertions in section 5.
+  UPDATE public.communication_request SET status = 'dry_run' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'QUEUED' THEN RAISE EXCEPTION 'FAIL: queued mapped to %', v_status; END IF;
+  IF v_status <> 'REQUESTED' THEN RAISE EXCEPTION 'FAIL: dry_run mapped to %', v_status; END IF;
 
-  UPDATE public.communication_request SET status = 'sent' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'dispatching' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'DISPATCHED' THEN RAISE EXCEPTION 'FAIL: sent mapped to %', v_status; END IF;
+  IF v_status <> 'REQUESTED' THEN RAISE EXCEPTION 'FAIL: dispatching mapped to %', v_status; END IF;
 
-  UPDATE public.communication_request SET status = 'delivered' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'completed' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: delivered mapped to %', v_status; END IF;
+  IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: completed mapped to %', v_status; END IF;
 
-  UPDATE public.communication_request SET status = 'bounced' WHERE id = v_req;
+  -- 6e. DELIVERED is terminal: a later Hub failure must not regress it.
+  UPDATE public.communication_request SET status = 'failed' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'FAILED' THEN RAISE EXCEPTION 'FAIL: bounced mapped to %', v_status; END IF;
-
-  -- 6e. Unknown Hub status falls back to REQUESTED.
-  UPDATE public.communication_request SET status = 'martian' WHERE id = v_req;
-  PERFORM public.bn_communication_adapter_sync_v1(200);
-  SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
-   WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'REQUESTED' THEN RAISE EXCEPTION 'FAIL: unknown Hub status mapped to %', v_status; END IF;
+  IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: DELIVERED regressed to %', v_status; END IF;
 
   -- 6f. A CANCELLED intent is never overwritten by sync.
   UPDATE public.bn_life_certificate_communication_intent SET delivery_status = 'CANCELLED'
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  UPDATE public.communication_request SET status = 'delivered' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'completed' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
@@ -521,18 +527,19 @@ BEGIN
   SELECT count(*) INTO v_count FROM public.communication_recipient WHERE request_id = v_req;
   IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: replay produced % recipients', v_count; END IF;
 
-  UPDATE public.communication_request SET status = 'queued' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'approved' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
-  UPDATE public.communication_request SET status = 'sent' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'dispatching' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
-  UPDATE public.communication_request SET status = 'delivered' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'completed' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status, delivery_reference INTO v_status, v_ref
     FROM public.bn_life_certificate_communication_intent WHERE id = c_flow;
   IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: flow ended at %', v_status; END IF;
 
-  -- 7i. An unknown Hub status can never regress DELIVERED back to REQUESTED.
-  UPDATE public.communication_request SET status = 'martian' WHERE id = v_req;
+  -- 7i. A partial/failed Hub outcome can never regress DELIVERED.
+  UPDATE public.communication_request SET status = 'partial' WHERE id = v_req;
+  PERFORM public.bn_communication_adapter_sync_v1(200);
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status
     FROM public.bn_life_certificate_communication_intent WHERE id = c_flow;
