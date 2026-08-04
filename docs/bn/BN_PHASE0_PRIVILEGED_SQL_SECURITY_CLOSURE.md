@@ -42,13 +42,21 @@ All five are `SECURITY DEFINER`, owner `postgres`, `search_path=public`
 Browser callers: none remain (regression-tested).
 Edge-function callers: only the now-deleted `create-missing-table` used them.
 
-### Related surfaces observed but NOT changed (out of this slice's scope)
+### Related surfaces — CORRECTED and now remediated (final Phase 0 slice)
 
-`bn_list_tables()` and `bn_preview_table(text,int,int)` are `SECURITY DEFINER`, dynamic-SQL,
-table-name-accepting functions still granted to `anon`/`authenticated`, used by the Benefits
-Diagnostics screen and `TablePreviewDialog`. They are read-only but permit reading any public table.
-Recorded as a **remaining risk** below; changing them would alter Benefits functionality, which this
-slice was instructed not to touch.
+An earlier revision of this document stated that `bn_list_tables()` and
+`bn_preview_table(text,int,int)` "permit reading any public table". **That statement was wrong and
+is retracted.** The deployed definitions read from the Test database show:
+
+- `bn_list_tables()` enumerates only objects matching `bn\_%` in `public`, and returns **metadata
+  only** (object name, table/view, row count, `has_created_at`, `max(created_at)`). It returns no
+  record content.
+- `bn_preview_table(text,int,int)` enforced a `^bn_[a-z0-9_]+$` identifier pattern, an existence
+  check, and a hard 500-row cap. It could not target non-`bn_` objects.
+
+The **real** concern was narrower and still material: raw rows of Benefits-owned tables (all columns,
+unmasked) were readable by **any broadly authenticated user**, plus `anon` and `PUBLIC`, with no
+Benefits-administrator authorisation, no audit event and no export control.
 
 ---
 
@@ -67,7 +75,7 @@ slice was instructed not to touch.
 | Check | Finding |
 |---|---|
 | Who could invoke it | **Anyone on the internet** |
-| JWT verification | **No** — no `supabase/config.toml` entry, deployed with `verify_jwt = false` |
+| JWT verification | **NOT VERIFIED.** There is no `supabase/config.toml` entry for this function. Absence of a config entry does **not** by itself prove the historical deployed gateway setting; the deployed `verify_jwt` value could not be read from this environment. Independently of the gateway, the function code never read or validated the `Authorization` header. |
 | Independent user verification | **No** — the `Authorization` header was never read |
 | Admin permission check | **No** |
 | Callable outside the UI | **Yes**, trivially by direct HTTP POST |
@@ -143,7 +151,7 @@ are **not applicable** — the utility was retired rather than secured, so the e
 | Applied to Test database | **YES** — verified by reading `pg_proc.proacl` |
 | Applied to Live database | **NOT VERIFIED** — applies on publish; no live DB access from this environment |
 | Effective grants in Live | **NOT VERIFIED** |
-| Edge function removal deployed | **NOT VERIFIED** — source deleted; live removal not confirmed |
+| Remote edge function deleted | **NOT VERIFIED.** Source deletion does **not** by itself remove an already-deployed remote edge function. No mechanism available in this environment proves remote deletion or unreachability. |
 | UI bundle with removed route deployed | **NOT VERIFIED** |
 
 Deployment is **not** inferred from the Git commit.
@@ -167,7 +175,7 @@ Deployment is **not** inferred from the Git commit.
 
 ## 11. Final recommendation
 
-1. **Publish** so the revocation migration and the edge-function deletion reach Live, then re-verify
+1. **Publish** so the revocation migration reaches Live, then re-verify
    `proacl` in Live and confirm the function no longer responds.
 2. Open a follow-up security slice for residual items 2–4 above.
 3. Keep all cross-environment schema change in the controlled migration process. Do not reintroduce

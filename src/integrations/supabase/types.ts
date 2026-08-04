@@ -99953,13 +99953,6 @@ export type Database = {
         Args: { p_raw: string }
         Returns: Database["public"]["Enums"]["bn_lifecycle_state"]
       }
-      bn_preview_table: {
-        Args: { p_limit?: number; p_offset?: number; p_table: string }
-        Returns: {
-          rows: Json
-          total_count: number
-        }[]
-      }
       bn_product_can_activate: {
         Args: { _product_id: string }
         Returns: {

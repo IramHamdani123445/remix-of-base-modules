@@ -25,6 +25,7 @@ import { InspectorLayout } from '@/components/inspector/InspectorLayout';
 import { ProtectedLayout } from '@/components/layout/ProtectedLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { CommHubAdminRoute } from '@/components/auth/CommHubAdminRoute';
+import { PermissionProtectedRoute } from '@/components/auth/PermissionProtectedRoute';
 import { useLegalAuth } from '@/contexts/LegalAuthContext';
 import React, { Suspense, lazy } from 'react';
 import { AuditFeatureGate } from '@/components/audit/AuditFeatureGate';
@@ -2571,7 +2572,8 @@ export const AppRoutes = () => {
       <Route path="/bn/cheque-stock" element={<BnFeatureGate flag="bn.payments"><BnChequeStock /></BnFeatureGate>} />
       <Route path="/bn/payment-profiles" element={<BnFeatureGate flag="bn.payments"><BnPaymentProfiles /></BnFeatureGate>} />
       <Route path="/bn/config/payment-masters" element={<BnFeatureGate flag="bn.payments"><BnPaymentMasters /></BnFeatureGate>} />
-      <Route path="/bn/admin/diagnostics" element={<BnDiagnostics />} />
+      {/* BN Phase 0 security closure: platform/Benefits-admin gated. Direct URL entry fails closed. */}
+      <Route path="/bn/admin/diagnostics" element={<PermissionProtectedRoute moduleName="benefits_management"><BnDiagnostics /></PermissionProtectedRoute>} />
       <Route path="/bn/history" element={<BnFeatureGate flag="bn.historicalInquiry"><BnHistoricalInquiry /></BnFeatureGate>} />
       <Route path="/bn/exceptions" element={<BnFeatureGate flag="bn.payments"><BnPaymentExceptions /></BnFeatureGate>} />
       <Route path="/bn/post-issue-enhanced" element={<BnFeatureGate flag="bn.payments"><BnPostIssueEnhanced /></BnFeatureGate>} />
