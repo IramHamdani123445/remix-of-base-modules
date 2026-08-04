@@ -9256,6 +9256,65 @@ export type Database = {
           },
         ]
       }
+      bn_communication_dispatch: {
+        Row: {
+          attempts: number
+          communication_request_id: string | null
+          correlation_id: string | null
+          created_at: string
+          dispatch_key: string
+          event_code: string
+          id: string
+          last_error_code: string | null
+          source_entity_id: string | null
+          source_intent_id: string
+          source_module: string
+          source_table: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          communication_request_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          dispatch_key: string
+          event_code: string
+          id?: string
+          last_error_code?: string | null
+          source_entity_id?: string | null
+          source_intent_id: string
+          source_module: string
+          source_table: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          communication_request_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          dispatch_key?: string
+          event_code?: string
+          id?: string
+          last_error_code?: string | null
+          source_entity_id?: string | null
+          source_intent_id?: string
+          source_module?: string
+          source_table?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_communication_dispatch_communication_request_id_fkey"
+            columns: ["communication_request_id"]
+            isOneToOne: false
+            referencedRelation: "communication_request"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bn_communication_log: {
         Row: {
           channel: string
@@ -12693,11 +12752,14 @@ export type Database = {
           escalation_date: string | null
           escalation_status: string
           evidence_checksum: string | null
+          evidence_document_snapshot: Json | null
           evidence_integrity_status: string
           evidence_is_confidential: boolean
+          evidence_receipt_revision: number
           evidence_status: string
           evidence_type: string | null
           evidence_version: number | null
+          evidence_version_status: string
           generation_inputs: Json | null
           grace_end_date: string | null
           id: string
@@ -12752,11 +12814,14 @@ export type Database = {
           escalation_date?: string | null
           escalation_status?: string
           evidence_checksum?: string | null
+          evidence_document_snapshot?: Json | null
           evidence_integrity_status?: string
           evidence_is_confidential?: boolean
+          evidence_receipt_revision?: number
           evidence_status?: string
           evidence_type?: string | null
           evidence_version?: number | null
+          evidence_version_status?: string
           generation_inputs?: Json | null
           grace_end_date?: string | null
           id?: string
@@ -12811,11 +12876,14 @@ export type Database = {
           escalation_date?: string | null
           escalation_status?: string
           evidence_checksum?: string | null
+          evidence_document_snapshot?: Json | null
           evidence_integrity_status?: string
           evidence_is_confidential?: boolean
+          evidence_receipt_revision?: number
           evidence_status?: string
           evidence_type?: string | null
           evidence_version?: number | null
+          evidence_version_status?: string
           generation_inputs?: Json | null
           grace_end_date?: string | null
           id?: string
@@ -12893,8 +12961,11 @@ export type Database = {
           correlation_id: string | null
           created_at: string
           document_id: string | null
+          evidence_document_snapshot: Json | null
           evidence_integrity_status: string | null
+          evidence_receipt_revision: number | null
           evidence_version: number | null
+          evidence_version_status: string
           id: string
           life_certificate_id: string
           suspension_event_id: string
@@ -12906,8 +12977,11 @@ export type Database = {
           correlation_id?: string | null
           created_at?: string
           document_id?: string | null
+          evidence_document_snapshot?: Json | null
           evidence_integrity_status?: string | null
+          evidence_receipt_revision?: number | null
           evidence_version?: number | null
+          evidence_version_status?: string
           id?: string
           life_certificate_id: string
           suspension_event_id: string
@@ -12919,8 +12993,11 @@ export type Database = {
           correlation_id?: string | null
           created_at?: string
           document_id?: string | null
+          evidence_document_snapshot?: Json | null
           evidence_integrity_status?: string | null
+          evidence_receipt_revision?: number | null
           evidence_version?: number | null
+          evidence_version_status?: string
           id?: string
           life_certificate_id?: string
           suspension_event_id?: string
@@ -100738,6 +100815,36 @@ export type Database = {
       bn_clone_product_version_to_draft: {
         Args: { p_source_id: string; p_user_code: string }
         Returns: string
+      }
+      bn_communication_adapter_dispatch_v1: {
+        Args: { p_source_intent_id: string; p_source_module: string }
+        Returns: Json
+      }
+      bn_communication_adapter_pending_v1: {
+        Args: { p_limit?: number }
+        Returns: {
+          attempts: number
+          bn_award_id: string
+          context: Json
+          correlation_id: string
+          event_code: string
+          source_entity_id: string
+          source_intent_id: string
+          source_module: string
+          source_table: string
+        }[]
+      }
+      bn_communication_adapter_record_failure_v1: {
+        Args: {
+          p_error_code: string
+          p_source_intent_id: string
+          p_source_module: string
+        }
+        Returns: Json
+      }
+      bn_communication_adapter_sync_v1: {
+        Args: { p_limit?: number }
+        Returns: Json
       }
       bn_config_health_check: {
         Args: { p_product_version_id?: string }
