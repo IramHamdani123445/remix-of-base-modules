@@ -22,6 +22,16 @@ const fail = (message: string) => ({ data: null, error: { message } });
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8');
 
+/** Source with comments stripped — boundary rules apply to executable code. */
+const readCode = (p: string) =>
+  read(p)
+    .split('\n')
+    .filter((line) => {
+      const t = line.trim();
+      return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*');
+    })
+    .join('\n');
+
 beforeEach(() => {
   rpcMock.mockReset();
   rpcMock.mockResolvedValue(ok());
@@ -137,7 +147,7 @@ describe('Life Certificate boundary regressions', () => {
 
   it('canonical Life Certificate code never imports legacy Benefits mutation services', () => {
     for (const file of canonicalFiles) {
-      const src = read(file);
+      const src = readCode(file);
       expect(src).not.toContain('awardServicingService');
       expect(src).not.toContain('updateAwardStatus');
       expect(src).not.toContain('/newbenefit/');
@@ -147,7 +157,7 @@ describe('Life Certificate boundary regressions', () => {
 
   it('never writes to bn_life_certificate, awards, payments or communication tables from the browser', () => {
     for (const file of canonicalFiles) {
-      const src = read(file);
+      const src = readCode(file);
       expect(src).not.toMatch(/from\(['"]bn_life_certificate/);
       expect(src).not.toMatch(/from\(['"]bn_award['"]\)[\s\S]{0,120}\.update\(/);
       expect(src).not.toMatch(/\.update\(/);
@@ -198,7 +208,7 @@ describe('Life Certificate scheduler runner', () => {
   });
 
   it('delegates outcomes to the server command and sanitizes errors', () => {
-    const src = read(runner);
+    const src = readCode(runner);
     expect(src).toContain('bn_life_certificate_mark_milestone_v1');
     expect(src).toContain('function sanitize');
     expect(src).not.toMatch(/\.from\(["']bn_life_certificate/);
