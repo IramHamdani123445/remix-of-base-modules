@@ -195,6 +195,14 @@ const RPC_BACKING_TABLE: Record<string, string> = {
   bn_life_certificate_award_list_v1: 'bn_life_certificate',
 };
 
+/** Columns the secured RPC projects from its backing table. */
+const RPC_PROJECTION: Record<string, string[]> = {
+  bn_life_certificate_award_list_v1: [
+    'id', 'required_for_period', 'due_date', 'submitted_date', 'verified_date',
+    'verification_method', 'status', 'remarks',
+  ],
+};
+
 /** RPC argument → the table column it scopes, so scope evidence still holds. */
 const RPC_ARG_COLUMN: Record<string, Record<string, string>> = {
   bn_life_certificate_award_list_v1: { p_award_id: 'bn_award_id' },
@@ -304,7 +312,7 @@ export class AwardQueryRecorder {
           executionId,
           occurrence,
           table,
-          selectedColumns: [],
+          selectedColumns: [...(RPC_PROJECTION[name] ?? [])],
           filters: Object.entries(args)
             .filter(([arg]) => RPC_ARG_COLUMN[name]?.[arg])
             .map(([arg, value]) => ({ method: 'eq', column: RPC_ARG_COLUMN[name][arg], value })),
