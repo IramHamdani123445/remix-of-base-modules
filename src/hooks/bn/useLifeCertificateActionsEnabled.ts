@@ -9,8 +9,15 @@ import { supabase } from '@/integrations/supabase/client';
  * The UI mirrors it so actions render disabled rather than failing server-side.
  * Fails closed: any error or missing row means actions stay disabled.
  */
-export function useLifeCertificateActionsEnabled(): boolean {
-  const { data } = useQuery({
+export interface LifeCertificateActionsState {
+  /** Authoritative: true only when the module row says actions are enabled. */
+  actionsEnabled: boolean;
+  isLoading: boolean;
+  isError: boolean;
+}
+
+export function useLifeCertificateActionsState(): LifeCertificateActionsState {
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['bn-life-certificate-actions-enabled'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -18,10 +25,21 @@ export function useLifeCertificateActionsEnabled(): boolean {
         .select('actions_enabled')
         .eq('name', 'bn_life_certificate')
         .maybeSingle();
-      if (error) return false;
+      if (error) throw error;
       return Boolean((data as { actions_enabled?: boolean } | null)?.actions_enabled);
     },
+    retry: false,
     staleTime: 5 * 60 * 1000,
   });
-  return data === true;
+
+  return {
+    // Fail closed while loading or on error.
+    actionsEnabled: data === true && !isLoading && !isError,
+    isLoading,
+    isError,
+  };
+}
+
+export function useLifeCertificateActionsEnabled(): boolean {
+  return useLifeCertificateActionsState().actionsEnabled;
 }
