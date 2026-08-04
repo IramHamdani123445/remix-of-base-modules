@@ -190,6 +190,11 @@ function resolveScopeRule(
   return null;
 }
 
+/** Secured query RPC → the table it reads on the server. */
+const RPC_BACKING_TABLE: Record<string, string> = {
+  bn_life_certificate_award_list_v1: 'bn_life_certificate',
+};
+
 // ─── recorder ─────────────────────────────────────────────────────────────
 export class AwardQueryRecorder {
   readonly queries: RecordedAwardQuery[] = [];
@@ -274,6 +279,54 @@ export class AwardQueryRecorder {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const recorder = this;
     return {
+      /**
+       * Secured query RPCs read a locked-down table on the server. The
+       * recorder attributes the call to the table the RPC reads so
+       * manifest `expectedTables` evidence stays truthful, and response /
+       * error injection continues to key off that table name.
+       */
+      rpc(name: string, args: Record<string, unknown>) {
+        const table = RPC_BACKING_TABLE[name];
+        if (!table) {
+          throw new Error(`[${name}] RPC is not registered in the Award 360 recorder.`);
+        }
+        const executionId = recorder.currentExecutionId;
+        const occurrence =
+          recorder.queries.filter((q) => q.executionId === executionId && q.table === table).length + 1;
+        const record: RecordedAwardQuery = {
+          loaderName: recorder.currentLoader,
+          scenarioId: recorder.currentScenario,
+          executionId,
+          occurrence,
+          table,
+          selectedColumns: [],
+          filters: Object.entries(args).map(([column, value]) => ({ method: 'rpc', column, value })),
+          orderColumns: [],
+          containmentColumns: [],
+          head: false,
+        };
+        recorder.queries.push(record);
+
+        for (const r of recorder.opts.scenarioErrors ?? []) {
+          if (r.table !== table) continue;
+          if (r.loaderName && r.loaderName !== record.loaderName) continue;
+          if (r.scenarioId && r.scenarioId !== record.scenarioId) continue;
+          if (r.occurrence !== undefined && r.occurrence !== record.occurrence) continue;
+          return Promise.resolve({ data: null, error: r.error });
+        }
+        const err = recorder.opts.errors?.[table];
+        if (err) return Promise.resolve({ data: null, error: err });
+
+        for (const r of recorder.opts.scenarioResponses ?? []) {
+          if (r.table !== table) continue;
+          if (r.loaderName && r.loaderName !== record.loaderName) continue;
+          if (r.scenarioId && r.scenarioId !== record.scenarioId) continue;
+          if (r.occurrence !== undefined && r.occurrence !== record.occurrence) continue;
+          return Promise.resolve({ data: Array.isArray(r.data) ? r.data : r.data ? [r.data] : [], error: null });
+        }
+        const raw = recorder.opts.responses?.[table] ?? [];
+        return Promise.resolve({ data: Array.isArray(raw) ? raw : raw ? [raw] : [], error: null });
+      },
       from(table: string) {
         if (!isKnownTable(table) && !recorder.opts.allowUnknownTables) {
           throw new Error(`[${table}] table is not registered in AWARD360_SCHEMA_CONTRACT.`);
