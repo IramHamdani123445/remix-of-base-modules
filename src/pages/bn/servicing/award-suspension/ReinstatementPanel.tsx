@@ -364,7 +364,9 @@ export function ReinstatementPanel({
                 {approvedNotExecuted && (
                   <Button
                     size="sm"
-                    disabled={!actionsEnabled || !canExecute || busy === 'execute'}
+                    disabled={
+                      !actionsEnabled || !canExecute || !executeDue || busy === 'execute'
+                    }
                     onClick={() =>
                       run(
                         'execute',
@@ -374,7 +376,9 @@ export function ReinstatementPanel({
                             expectedRowVersion: reinstatement.rowVersion,
                             narrative: decisionNote.trim() || undefined,
                           }),
-                        'Reinstatement executed; award returned to active and arrears recorded.'
+                        arrears?.status === 'REVIEW_REQUIRED'
+                          ? 'Reinstatement executed; award returned to active. Arrears were parked for manual review — no payment was raised.'
+                          : 'Reinstatement executed; award returned to active and arrears recorded.'
                       )
                     }
                   >
@@ -385,6 +389,18 @@ export function ReinstatementPanel({
                   </Button>
                 )}
               </div>
+              {approvedNotExecuted && !executeDue && (
+                <p className="text-xs text-muted-foreground">
+                  Execution becomes available on the effective date
+                  {reinstatement.effectiveFrom ? ` (${reinstatement.effectiveFrom})` : ''}.
+                </p>
+              )}
+              {approvedNotExecuted && arrears?.status === 'REVIEW_REQUIRED' && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  Arrears cannot be derived automatically. Executing will reinstate the award
+                  and record an arrears review item; no arrears payment will be raised.
+                </p>
+              )}
               {pending && isProposer && (
                 <p className="text-xs text-muted-foreground">
                   Maker–checker: you proposed this reinstatement, so you cannot approve or
