@@ -61,7 +61,18 @@ Deno.serve(async (req) => {
 
     let dispatched = 0;
     let replayed = 0;
+    let noop = 0;
     let failed = 0;
+
+    // Terminal, intentional outcomes. The adapter must never record another
+    // failure for these: the intent is already in a final state (cancelled,
+    // delivered, terminally failed) and retrying would be incorrect.
+    const TERMINAL_NO_OP_CODES = new Set([
+      "E_INTENT_CANCELLED",
+      "E_INTENT_ALREADY_DELIVERED",
+      "E_INTENT_TERMINAL_FAILED",
+      "E_INTENT_NOT_DISPATCHABLE",
+    ]);
 
     for (const row of rows) {
       // Failure isolation: one bad intent never aborts the batch.
@@ -71,10 +82,14 @@ Deno.serve(async (req) => {
           p_source_intent_id: row.source_intent_id,
         });
         if (error) throw new Error(error.message);
-        const status = (data as { status?: string } | null)?.status ?? "FAILED";
+        const result = (data as { status?: string; error_code?: string } | null) ?? {};
+        const status = result.status ?? "FAILED";
         if (status === "DISPATCHED") dispatched += 1;
         else if (status === "REPLAYED") replayed += 1;
-        else failed += 1;
+        else if (status === "NO_OP" && TERMINAL_NO_OP_CODES.has(result.error_code ?? "")) {
+          // Successful non-retry outcome — no failure is recorded.
+          noop += 1;
+        } else failed += 1;
       } catch (e) {
         failed += 1;
         await db.rpc("bn_communication_adapter_record_failure_v1", {
@@ -92,6 +107,7 @@ Deno.serve(async (req) => {
       scanned: rows.length,
       dispatched,
       replayed,
+      noop,
       failed,
       synced: Number((syncData as { synced?: number } | null)?.synced ?? 0),
       durationMs: Date.now() - startedAt,
