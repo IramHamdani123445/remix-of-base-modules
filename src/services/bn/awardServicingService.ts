@@ -231,44 +231,11 @@ export async function fetchLifeCertificates(): Promise<BnLifeCertificateRow[]> {
   return (data ?? []) as BnLifeCertificateRow[];
 }
 
-export async function verifyLifeCertificate(
-  id: string,
-  userCode: string | null,
-  remarks: string | null
-): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
-  const { error } = await db
-    .from('bn_life_certificate')
-    .update({
-      status: 'VERIFIED',
-      submitted_date: today,
-      verified_date: today,
-      verified_by: userCode,
-      remarks,
-      modified_by: userCode,
-    })
-    .eq('id', id);
-  if (error) throw error;
-}
-
-export async function recordLifeCertificateReminder(id: string, userCode: string | null): Promise<void> {
-  const { requireUserCode } = await import('@/lib/bn/requireUserCode');
-  const actor = requireUserCode(userCode, 'recordLifeCertificateReminder');
-  // Reminders aren't tracked in the table directly — append a marker to remarks.
-  const { data: row, error: rErr } = await db
-    .from('bn_life_certificate')
-    .select('remarks')
-    .eq('id', id)
-    .maybeSingle();
-  if (rErr) throw rErr;
-  const stamp = `[Reminder sent ${new Date().toISOString().slice(0, 10)} by ${actor}]`;
-  const next = row?.remarks ? `${row.remarks}\n${stamp}` : stamp;
-  const { error } = await db
-    .from('bn_life_certificate')
-    .update({ remarks: next, modified_by: actor })
-    .eq('id', id);
-  if (error) throw error;
-}
+// Life Certificate mutations were retired from the browser boundary.
+// All Life Certificate state changes now run through the versioned server
+// commands in `@/services/bn/lifeCertificateCommandService` (receive, verify,
+// reject, resubmission, waive, defer, escalate, reinstate). Do not reintroduce
+// direct `bn_life_certificate` writes here.
 
 // ---------- Medical reviews ----------
 export async function fetchMedicalReviews(): Promise<BnMedicalReviewRow[]> {
