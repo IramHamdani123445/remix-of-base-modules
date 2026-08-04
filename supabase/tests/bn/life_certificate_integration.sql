@@ -353,42 +353,41 @@ BEGIN
   SELECT count(*) INTO v_count FROM public.communication_recipient WHERE request_id = v_req;
   IF v_count <> 1 THEN RAISE EXCEPTION 'FAIL: replay duplicated recipients'; END IF;
 
-  -- 6d. Sync each supported Hub state through to the Benefits status.
-  UPDATE public.communication_request SET status = 'queued' WHERE id = v_req;
+  -- 6d. Sync each Hub state the communication_request status vocabulary
+  -- actually permits (pending | approved | dispatching | completed |
+  -- partial | failed | cancelled | dry_run) through to the Benefits status.
+  -- Anything outside that vocabulary cannot occur in the Hub, so driving it
+  -- here would prove nothing; the mapper's wider synonym table is covered by
+  -- the pure-function assertions in section 5.
+  UPDATE public.communication_request SET status = 'dry_run' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'QUEUED' THEN RAISE EXCEPTION 'FAIL: queued mapped to %', v_status; END IF;
+  IF v_status <> 'REQUESTED' THEN RAISE EXCEPTION 'FAIL: dry_run mapped to %', v_status; END IF;
 
-  UPDATE public.communication_request SET status = 'sent' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'dispatching' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'DISPATCHED' THEN RAISE EXCEPTION 'FAIL: sent mapped to %', v_status; END IF;
+  IF v_status <> 'REQUESTED' THEN RAISE EXCEPTION 'FAIL: dispatching mapped to %', v_status; END IF;
 
-  UPDATE public.communication_request SET status = 'delivered' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'completed' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: delivered mapped to %', v_status; END IF;
+  IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: completed mapped to %', v_status; END IF;
 
-  UPDATE public.communication_request SET status = 'bounced' WHERE id = v_req;
+  -- 6e. DELIVERED is terminal: a later Hub failure must not regress it.
+  UPDATE public.communication_request SET status = 'failed' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'FAILED' THEN RAISE EXCEPTION 'FAIL: bounced mapped to %', v_status; END IF;
-
-  -- 6e. Unknown Hub status falls back to REQUESTED.
-  UPDATE public.communication_request SET status = 'martian' WHERE id = v_req;
-  PERFORM public.bn_communication_adapter_sync_v1(200);
-  SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
-   WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  IF v_status <> 'REQUESTED' THEN RAISE EXCEPTION 'FAIL: unknown Hub status mapped to %', v_status; END IF;
+  IF v_status <> 'DELIVERED' THEN RAISE EXCEPTION 'FAIL: DELIVERED regressed to %', v_status; END IF;
 
   -- 6f. A CANCELLED intent is never overwritten by sync.
   UPDATE public.bn_life_certificate_communication_intent SET delivery_status = 'CANCELLED'
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
-  UPDATE public.communication_request SET status = 'delivered' WHERE id = v_req;
+  UPDATE public.communication_request SET status = 'completed' WHERE id = v_req;
   PERFORM public.bn_communication_adapter_sync_v1(200);
   SELECT delivery_status INTO v_status FROM public.bn_life_certificate_communication_intent
    WHERE id = 'eeeeeeee-0000-4000-8000-000000000001'::uuid;
