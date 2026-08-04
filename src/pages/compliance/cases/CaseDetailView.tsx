@@ -35,6 +35,15 @@ import { AssignmentDialog } from '@/components/compliance/AssignmentDialog';
 import { ForwardToLegalDialog } from '@/components/compliance/ForwardToLegalDialog';
 import { UserCheck, Send } from 'lucide-react';
 import { useComplianceRole } from '@/hooks/useComplianceRole';
+import { useHasCapability } from '@/hooks/useHasCapability';
+import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
+import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
+import { PermissionButton } from '@/components/ui/permission-button';
+import { CaseDocumentsTab } from '@/components/compliance/case-detail/CaseDocumentsTab';
+import { CaseInspectionsTab } from '@/components/compliance/case-detail/CaseInspectionsTab';
+import { FolderOpen, ClipboardCheck } from 'lucide-react';
+
+const COMPLIANCE_MODULE = 'manage_compliance';
 
 const getStatusColor = (status: string) => {
   const colors: Record<string, string> = {
