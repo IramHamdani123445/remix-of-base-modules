@@ -12681,54 +12681,177 @@ export type Database = {
       bn_life_certificate: {
         Row: {
           bn_award_id: string
+          certificate_date: string | null
+          communication_status: string
+          correlation_id: string | null
+          deferred_to_date: string | null
+          document_id: string | null
           document_ref: string | null
           due_date: string
           entered_at: string
           entered_by: string | null
+          escalation_date: string | null
+          escalation_status: string
+          evidence_checksum: string | null
+          evidence_is_confidential: boolean
+          evidence_status: string
+          evidence_type: string | null
+          evidence_version: number | null
+          generation_inputs: Json | null
+          grace_end_date: string | null
           id: string
+          issue_date: string | null
+          issuing_authority: string | null
+          last_reminder_at: string | null
           modified_at: string
           modified_by: string | null
+          obligation_period: string | null
+          obligation_period_end: string | null
+          obligation_period_start: string | null
+          obligation_status: string
+          policy_id: string | null
+          policy_snapshot: Json | null
+          policy_version: number | null
+          received_at: string | null
+          received_by_user_id: string | null
+          received_channel: string | null
+          reinstatement_event_id: string | null
+          rejection_narrative: string | null
+          rejection_reason_code: string | null
           remarks: string | null
+          reminder_count: number
           required_for_period: string | null
+          resubmission_due_date: string | null
+          row_version: number
           status: string
           submitted_date: string | null
+          suspension_event_id: string | null
           verification_method: string | null
+          verification_status: string
           verified_by: string | null
+          verified_by_user_id: string | null
           verified_date: string | null
+          waived_by_user_id: string | null
+          waiver_effective_from: string | null
+          waiver_expires_on: string | null
+          waiver_narrative: string | null
+          waiver_reason_code: string | null
         }
         Insert: {
           bn_award_id: string
+          certificate_date?: string | null
+          communication_status?: string
+          correlation_id?: string | null
+          deferred_to_date?: string | null
+          document_id?: string | null
           document_ref?: string | null
           due_date: string
           entered_at?: string
           entered_by?: string | null
+          escalation_date?: string | null
+          escalation_status?: string
+          evidence_checksum?: string | null
+          evidence_is_confidential?: boolean
+          evidence_status?: string
+          evidence_type?: string | null
+          evidence_version?: number | null
+          generation_inputs?: Json | null
+          grace_end_date?: string | null
           id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          last_reminder_at?: string | null
           modified_at?: string
           modified_by?: string | null
+          obligation_period?: string | null
+          obligation_period_end?: string | null
+          obligation_period_start?: string | null
+          obligation_status?: string
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          policy_version?: number | null
+          received_at?: string | null
+          received_by_user_id?: string | null
+          received_channel?: string | null
+          reinstatement_event_id?: string | null
+          rejection_narrative?: string | null
+          rejection_reason_code?: string | null
           remarks?: string | null
+          reminder_count?: number
           required_for_period?: string | null
+          resubmission_due_date?: string | null
+          row_version?: number
           status?: string
           submitted_date?: string | null
+          suspension_event_id?: string | null
           verification_method?: string | null
+          verification_status?: string
           verified_by?: string | null
+          verified_by_user_id?: string | null
           verified_date?: string | null
+          waived_by_user_id?: string | null
+          waiver_effective_from?: string | null
+          waiver_expires_on?: string | null
+          waiver_narrative?: string | null
+          waiver_reason_code?: string | null
         }
         Update: {
           bn_award_id?: string
+          certificate_date?: string | null
+          communication_status?: string
+          correlation_id?: string | null
+          deferred_to_date?: string | null
+          document_id?: string | null
           document_ref?: string | null
           due_date?: string
           entered_at?: string
           entered_by?: string | null
+          escalation_date?: string | null
+          escalation_status?: string
+          evidence_checksum?: string | null
+          evidence_is_confidential?: boolean
+          evidence_status?: string
+          evidence_type?: string | null
+          evidence_version?: number | null
+          generation_inputs?: Json | null
+          grace_end_date?: string | null
           id?: string
+          issue_date?: string | null
+          issuing_authority?: string | null
+          last_reminder_at?: string | null
           modified_at?: string
           modified_by?: string | null
+          obligation_period?: string | null
+          obligation_period_end?: string | null
+          obligation_period_start?: string | null
+          obligation_status?: string
+          policy_id?: string | null
+          policy_snapshot?: Json | null
+          policy_version?: number | null
+          received_at?: string | null
+          received_by_user_id?: string | null
+          received_channel?: string | null
+          reinstatement_event_id?: string | null
+          rejection_narrative?: string | null
+          rejection_reason_code?: string | null
           remarks?: string | null
+          reminder_count?: number
           required_for_period?: string | null
+          resubmission_due_date?: string | null
+          row_version?: number
           status?: string
           submitted_date?: string | null
+          suspension_event_id?: string | null
           verification_method?: string | null
+          verification_status?: string
           verified_by?: string | null
+          verified_by_user_id?: string | null
           verified_date?: string | null
+          waived_by_user_id?: string | null
+          waiver_effective_from?: string | null
+          waiver_expires_on?: string | null
+          waiver_narrative?: string | null
+          waiver_reason_code?: string | null
         }
         Relationships: [
           {
@@ -12738,7 +12861,251 @@ export type Database = {
             referencedRelation: "bn_award"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bn_life_certificate_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "bn_life_certificate_policy"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_life_certificate_reinstatement_event_id_fkey"
+            columns: ["reinstatement_event_id"]
+            isOneToOne: false
+            referencedRelation: "bn_award_suspension_event"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_life_certificate_suspension_event_id_fkey"
+            columns: ["suspension_event_id"]
+            isOneToOne: false
+            referencedRelation: "bn_award_suspension_event"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      bn_life_certificate_communication_intent: {
+        Row: {
+          attempts: number
+          bn_award_id: string
+          context: Json
+          correlation_id: string | null
+          created_at: string
+          delivery_reference: string | null
+          delivery_status: string
+          event_code: string
+          id: string
+          idempotency_key: string
+          last_error_code: string | null
+          life_certificate_id: string
+          module_code: string
+          recipient_reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          bn_award_id: string
+          context?: Json
+          correlation_id?: string | null
+          created_at?: string
+          delivery_reference?: string | null
+          delivery_status?: string
+          event_code: string
+          id?: string
+          idempotency_key: string
+          last_error_code?: string | null
+          life_certificate_id: string
+          module_code?: string
+          recipient_reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          bn_award_id?: string
+          context?: Json
+          correlation_id?: string | null
+          created_at?: string
+          delivery_reference?: string | null
+          delivery_status?: string
+          event_code?: string
+          id?: string
+          idempotency_key?: string
+          last_error_code?: string | null
+          life_certificate_id?: string
+          module_code?: string
+          recipient_reference?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_life_certificate_communication_inte_life_certificate_id_fkey"
+            columns: ["life_certificate_id"]
+            isOneToOne: false
+            referencedRelation: "bn_life_certificate"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_life_certificate_event: {
+        Row: {
+          actor_user_code: string | null
+          actor_user_id: string | null
+          correlation_id: string | null
+          created_at: string
+          event_type: string
+          from_state: string | null
+          id: string
+          idempotency_key: string | null
+          life_certificate_id: string
+          narrative: string | null
+          payload: Json
+          reason_code: string | null
+          to_state: string | null
+        }
+        Insert: {
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          event_type: string
+          from_state?: string | null
+          id?: string
+          idempotency_key?: string | null
+          life_certificate_id: string
+          narrative?: string | null
+          payload?: Json
+          reason_code?: string | null
+          to_state?: string | null
+        }
+        Update: {
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          event_type?: string
+          from_state?: string | null
+          id?: string
+          idempotency_key?: string | null
+          life_certificate_id?: string
+          narrative?: string | null
+          payload?: Json
+          reason_code?: string | null
+          to_state?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_life_certificate_event_life_certificate_id_fkey"
+            columns: ["life_certificate_id"]
+            isOneToOne: false
+            referencedRelation: "bn_life_certificate"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_life_certificate_policy: {
+        Row: {
+          accepted_evidence_types: string[]
+          accepted_issuing_authorities: string[]
+          applicable_award_statuses: string[]
+          applicable_award_types: string[]
+          applicable_benefit_codes: string[]
+          business_days_only: boolean
+          certificate_validity_days: number
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_offset_days: number
+          effective_from: string
+          effective_to: string | null
+          escalation_offset_days: number
+          frequency_months: number
+          grace_days: number
+          id: string
+          is_active: boolean
+          issue_offset_days: number
+          min_claimant_age: number | null
+          obligation_period_kind: string
+          payment_jurisdictions: string[]
+          policy_code: string
+          policy_version: number
+          reinstatement_reason_code: string
+          reminder_offset_days: number[]
+          requires_maker_checker: boolean
+          suspension_reason_code: string
+          timezone: string
+          updated_at: string
+          waiver_conditions: Json
+        }
+        Insert: {
+          accepted_evidence_types?: string[]
+          accepted_issuing_authorities?: string[]
+          applicable_award_statuses?: string[]
+          applicable_award_types?: string[]
+          applicable_benefit_codes?: string[]
+          business_days_only?: boolean
+          certificate_validity_days?: number
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_offset_days?: number
+          effective_from?: string
+          effective_to?: string | null
+          escalation_offset_days?: number
+          frequency_months?: number
+          grace_days?: number
+          id?: string
+          is_active?: boolean
+          issue_offset_days?: number
+          min_claimant_age?: number | null
+          obligation_period_kind?: string
+          payment_jurisdictions?: string[]
+          policy_code: string
+          policy_version?: number
+          reinstatement_reason_code?: string
+          reminder_offset_days?: number[]
+          requires_maker_checker?: boolean
+          suspension_reason_code?: string
+          timezone?: string
+          updated_at?: string
+          waiver_conditions?: Json
+        }
+        Update: {
+          accepted_evidence_types?: string[]
+          accepted_issuing_authorities?: string[]
+          applicable_award_statuses?: string[]
+          applicable_award_types?: string[]
+          applicable_benefit_codes?: string[]
+          business_days_only?: boolean
+          certificate_validity_days?: number
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_offset_days?: number
+          effective_from?: string
+          effective_to?: string | null
+          escalation_offset_days?: number
+          frequency_months?: number
+          grace_days?: number
+          id?: string
+          is_active?: boolean
+          issue_offset_days?: number
+          min_claimant_age?: number | null
+          obligation_period_kind?: string
+          payment_jurisdictions?: string[]
+          policy_code?: string
+          policy_version?: number
+          reinstatement_reason_code?: string
+          reminder_offset_days?: number[]
+          requires_maker_checker?: boolean
+          suspension_reason_code?: string
+          timezone?: string
+          updated_at?: string
+          waiver_conditions?: Json
+        }
+        Relationships: []
       }
       bn_medical_authorization_rule: {
         Row: {
@@ -99319,6 +99686,51 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_lc_actor: { Args: never; Returns: string }
+      _bn_lc_assert_enabled: { Args: never; Returns: undefined }
+      _bn_lc_audit: {
+        Args: {
+          p_action: string
+          p_actor: string
+          p_after: Json
+          p_before: Json
+          p_correlation: string
+          p_entity_id: string
+          p_event_code: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      _bn_lc_comm: {
+        Args: {
+          p_award: string
+          p_cert: string
+          p_context: Json
+          p_correlation: string
+          p_event_code: string
+          p_idem: string
+        }
+        Returns: string
+      }
+      _bn_lc_event: {
+        Args: {
+          p_actor: string
+          p_cert: string
+          p_correlation: string
+          p_from: string
+          p_key: string
+          p_narrative: string
+          p_payload: Json
+          p_reason: string
+          p_to: string
+          p_type: string
+        }
+        Returns: string
+      }
+      _bn_lc_require: {
+        Args: { p_action: string; p_actor: string }
+        Returns: undefined
+      }
       _bn_mortality_dispatch_servicing: {
         Args: {
           p_actor_user_id: string
@@ -100244,6 +100656,152 @@ export type Database = {
           total_wages: number
           total_weeks: number
         }[]
+      }
+      bn_life_certificate_defer_v1: {
+        Args: {
+          p_correlation_id?: string
+          p_deferred_to: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_life_certificate_id: string
+          p_narrative: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_detail_v1: {
+        Args: { p_life_certificate_id: string }
+        Returns: Json
+      }
+      bn_life_certificate_due_for_milestone_v1: {
+        Args: { p_as_of?: string; p_limit?: number }
+        Returns: {
+          bn_award_id: string
+          due_date: string
+          escalation_date: string
+          grace_end_date: string
+          life_certificate_id: string
+          milestone: string
+          obligation_status: string
+        }[]
+      }
+      bn_life_certificate_escalate_to_suspension_v1: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_life_certificate_id: string
+          p_narrative: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_generate_obligations_v1: {
+        Args: {
+          p_as_of?: string
+          p_correlation_id?: string
+          p_idempotency_key?: string
+          p_limit?: number
+          p_policy_code?: string
+          p_preview?: boolean
+        }
+        Returns: Json
+      }
+      bn_life_certificate_mark_milestone_v1: {
+        Args: {
+          p_as_of?: string
+          p_correlation_id?: string
+          p_idempotency_key?: string
+          p_life_certificate_id: string
+          p_milestone: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_propose_reinstatement_v1: {
+        Args: {
+          p_correlation_id?: string
+          p_effective_from?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_life_certificate_id: string
+          p_narrative: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_receive_v1: {
+        Args: {
+          p_certificate_date: string
+          p_correlation_id?: string
+          p_document_id: string
+          p_evidence_type: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_issuing_authority: string
+          p_life_certificate_id: string
+          p_narrative?: string
+          p_received_channel: string
+          p_received_date: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_reject_v1: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_life_certificate_id: string
+          p_narrative: string
+          p_reason_code: string
+          p_resubmission_due_date?: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_request_resubmission_v1: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_life_certificate_id: string
+          p_narrative: string
+          p_resubmission_due_date: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_timeline_v1: {
+        Args: { p_life_certificate_id: string; p_limit?: number }
+        Returns: Json
+      }
+      bn_life_certificate_verify_v1: {
+        Args: {
+          p_checklist?: Json
+          p_correlation_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_life_certificate_id: string
+          p_narrative?: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_waive_v1: {
+        Args: {
+          p_correlation_id?: string
+          p_effective_from: string
+          p_expected_row_version?: number
+          p_expires_on: string
+          p_idempotency_key?: string
+          p_life_certificate_id: string
+          p_narrative: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_life_certificate_worklist_v1: {
+        Args: {
+          p_bucket?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: Json
       }
       bn_list_tables: {
         Args: never
