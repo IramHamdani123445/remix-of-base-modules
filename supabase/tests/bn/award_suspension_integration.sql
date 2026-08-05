@@ -190,9 +190,11 @@ VALUES ('SUSP_HARNESS', 'Harness suspension reason', 'SUSPENSION', ARRAY['suspen
 INSERT INTO public.bn_claim (id, claim_number, ssn, product_id, status, assigned_to)
 VALUES (:claim_id::uuid, 'SUSP-CLM-0001', '223456789', :product::uuid, 'APPROVED', 'BNSPROP');
 
-INSERT INTO public.bn_award (id, award_number, bn_claim_id, ssn, benefit_code, award_type, status, start_date)
-VALUES (:award_id::uuid, 'SUSP-AWD-0001', :claim_id::uuid, '223456789', 'SUSPT', 'PENSION', 'ACTIVE', CURRENT_DATE - 500),
-       (:award_2::uuid,  'SUSP-AWD-0002', :claim_id::uuid, '223456780', 'SUSPT', 'PENSION', 'ACTIVE', CURRENT_DATE - 500);
+-- frequency / base_amount / currency are required for the reinstatement
+-- arrears calculation to resolve a rate instead of REVIEW_REQUIRED.
+INSERT INTO public.bn_award (id, award_number, bn_claim_id, ssn, benefit_code, award_type, status, start_date, frequency, base_amount, currency)
+VALUES (:award_id::uuid, 'SUSP-AWD-0001', :claim_id::uuid, '223456789', 'SUSPT', 'PENSION', 'ACTIVE', CURRENT_DATE - 500, 'MONTHLY', 1000.00, 'XCD'),
+       (:award_2::uuid,  'SUSP-AWD-0002', :claim_id::uuid, '223456780', 'SUSPT', 'PENSION', 'ACTIVE', CURRENT_DATE - 500, 'MONTHLY', 1000.00, 'XCD');
 
 -- =====================================================================
 -- 3. Module gate: closed by default, opened for this transaction only
