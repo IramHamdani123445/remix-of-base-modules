@@ -174,7 +174,7 @@ export function appointmentActionAvailability(ctx: AvailabilityContext) {
     [
       { action: A.manageAppointment, states: ['PENDING', 'SCHEDULED', 'RESCHEDULED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
       // Reasonable cause is an APPOINTMENT command; it is not "defer review".
-      { action: A.manageAppointment, states: ['CLAIMANT_NO_SHOW'], versioned: true, reasonRequired: true, surface: 'BENEFITS', alias: 'reasonable_cause', stateMessage: 'Reasonable cause can only be recorded after a recorded non-attendance.' },
+      { action: A.manageAppointment, states: ['CLAIMANT_NO_SHOW', 'PROVIDER_CANCELLED'], versioned: true, reasonRequired: true, surface: 'BENEFITS', alias: 'reasonable_cause', stateMessage: 'Reasonable cause can only be recorded after a recorded non-attendance or provider cancellation.' },
     ],
     ctx,
   );
