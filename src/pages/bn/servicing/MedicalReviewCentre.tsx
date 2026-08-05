@@ -126,8 +126,14 @@ const MedicalReviewCentre: React.FC = () => {
       } catch (err) {
         const uiState = medicalReviewUiState(err);
         const message = describeMedicalReviewFailure(err);
+        // An access refusal on a real award is a permission problem, not a
+        // missing record — the two must not be collapsed together.
+        const forbidden =
+          uiState === 'PERMISSION_DENIED' ||
+          (err instanceof MedicalReviewError &&
+            (err.code === 'E_RECORD_FORBIDDEN' || err.code === 'E_MEMBER_RECUSED'));
         setAwardState(
-          uiState === 'PERMISSION_DENIED'
+          forbidden
             ? { status: 'forbidden', message }
             : uiState === 'RECORD_UNAVAILABLE'
               ? { status: 'unavailable', message }
