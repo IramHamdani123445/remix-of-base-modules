@@ -251,7 +251,7 @@ export function decisionActionAvailability(
     ),
     ...build(
       [
-        { action: A.approveDecision, states: ['SUBMITTED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', stateMessage: 'Only a submitted decision can be approved or returned.' },
+        { action: A.approveDecision, states: ['PENDING_APPROVAL'], versioned: true, reasonRequired: false, surface: 'BENEFITS', stateMessage: 'Only a submitted decision can be approved or returned.' },
       ],
       { ...ctx, extraBlockedReason: approveExtra },
     ),
