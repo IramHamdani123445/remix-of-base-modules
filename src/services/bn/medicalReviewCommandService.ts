@@ -655,17 +655,19 @@ export const medicalReviewCommandService = {
     reasonNarrative: string;
     idempotencyKey?: string;
   }) {
+    const dto = toDecisionDto(input);
     return callCommand('bn_medical_review_prepare_decision_v1', {
       p_obligation_id: input.obligationId,
       p_assessment_id: input.assessmentId,
       p_board_case_id: input.boardCaseId,
-      p_outcome_code: input.outcomeCode,
-      p_medical_recommendation_accepted: input.medicalRecommendationAccepted,
-      p_departure_reason: input.departureReason,
-      p_effective_date: input.effectiveDate,
-      p_next_review_date: input.nextReviewDate,
-      p_reason_code: input.reasonCode,
-      p_reason_narrative: input.reasonNarrative,
+      p_outcome_code: dto.outcomeCode,
+      p_medical_recommendation_accepted: dto.medicalRecommendationAccepted,
+      p_departure_reason: dto.departureReason,
+      p_effective_date: dto.effectiveDate,
+      p_next_review_date: dto.nextReviewDate,
+      p_reason_code: dto.reasonCode,
+      p_reason_narrative: dto.reasonNarrative,
+
       p_idempotency_key: key(input.idempotencyKey),
     });
   },
