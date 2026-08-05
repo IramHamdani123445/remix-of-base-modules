@@ -102161,6 +102161,18 @@ export type Database = {
         Args: { p_entity: string; p_from: string; p_to: string }
         Returns: undefined
       }
+      _bn_mr_assessment_transition: {
+        Args: {
+          p_actor: string
+          p_assessment: string
+          p_event: string
+          p_expected: number
+          p_reason: string
+          p_rejection: string
+          p_to: string
+        }
+        Returns: Json
+      }
       _bn_mr_audit: {
         Args: {
           p_action: string
@@ -102229,6 +102241,15 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_mr_create_proposal: {
+        Args: {
+          p_actor: string
+          p_decision: string
+          p_kind: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       _bn_mr_create_referral: {
         Args: {
           p_actor: string
@@ -102237,6 +102258,18 @@ export type Database = {
           p_provider: string
           p_purpose: string
           p_reason: string
+        }
+        Returns: Json
+      }
+      _bn_mr_decision_transition: {
+        Args: {
+          p_actor: string
+          p_decision: string
+          p_event: string
+          p_expected: number
+          p_reason: string
+          p_returned_reason: string
+          p_to: string
         }
         Returns: Json
       }
@@ -103450,6 +103483,25 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_approve_decision_v1: {
+        Args: {
+          p_decision_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_assign_board_members_v1: {
+        Args: {
+          p_board_case_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_member_ids: string[]
+          p_reason?: string
+        }
+        Returns: Json
+      }
       bn_medical_review_assign_provider_v1: {
         Args: {
           p_idempotency_key: string
@@ -103472,6 +103524,25 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_complete_decision_v1: {
+        Args: {
+          p_decision_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_declare_board_conflict_v1: {
+        Args: {
+          p_conflict_details: string
+          p_idempotency_key: string
+          p_member_id: string
+          p_reason?: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
       bn_medical_review_decline_referral_v1: {
         Args: {
           p_decline_reason: string
@@ -103479,6 +103550,16 @@ export type Database = {
           p_idempotency_key: string
           p_reason?: string
           p_referral_id: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_defer_board_case_v1: {
+        Args: {
+          p_board_case_id: string
+          p_deferred_until: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason: string
         }
         Returns: Json
       }
@@ -103498,6 +103579,19 @@ export type Database = {
           p_idempotency_key: string
           p_reason?: string
           p_referral_id: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_finalise_board_determination_v1: {
+        Args: {
+          p_board_case_id: string
+          p_determination_summary: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_impairment_percentage: number
+          p_outcome_code: string
+          p_reason?: string
+          p_session_id: string
         }
         Returns: Json
       }
@@ -103524,12 +103618,37 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_lock_assessment_v1: {
+        Args: {
+          p_assessment_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
       bn_medical_review_nominate_treating_doctor_v1: {
         Args: {
           p_idempotency_key: string
           p_obligation_id: string
           p_provider_id: string
           p_reason?: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_prepare_decision_v1: {
+        Args: {
+          p_assessment_id: string
+          p_board_case_id: string
+          p_departure_reason: string
+          p_effective_date: string
+          p_idempotency_key: string
+          p_medical_recommendation_accepted: boolean
+          p_next_review_date: string
+          p_obligation_id: string
+          p_outcome_code: string
+          p_reason_code: string
+          p_reason_narrative: string
         }
         Returns: Json
       }
@@ -103540,6 +103659,22 @@ export type Database = {
           p_policy_id: string
           p_review_reason: string
           p_review_type: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_propose_reinstatement_v1: {
+        Args: {
+          p_decision_id: string
+          p_idempotency_key: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_propose_suspension_v1: {
+        Args: {
+          p_decision_id: string
+          p_idempotency_key: string
+          p_reason: string
         }
         Returns: Json
       }
@@ -103561,12 +103696,44 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_reconvene_board_case_v1: {
+        Args: {
+          p_board_case_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_location_reference: string
+          p_reason?: string
+          p_scheduled_at: string
+        }
+        Returns: Json
+      }
       bn_medical_review_record_attendance_v1: {
         Args: {
           p_appointment_id: string
           p_expected_row_version: number
           p_idempotency_key: string
           p_reason?: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_record_board_participation_v1: {
+        Args: {
+          p_attendance_status: string
+          p_idempotency_key: string
+          p_member_id: string
+          p_reason?: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_record_board_vote_v1: {
+        Args: {
+          p_idempotency_key: string
+          p_member_id: string
+          p_session_id: string
+          p_vote: string
+          p_vote_outcome_code: string
+          p_vote_reason: string
         }
         Returns: Json
       }
@@ -103601,6 +103768,66 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_record_recusal_v1: {
+        Args: {
+          p_idempotency_key: string
+          p_member_id: string
+          p_reason: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_record_staff_receipt_v1: {
+        Args: {
+          p_assessment_id: string
+          p_idempotency_key: string
+          p_portal_not_used_reason: string
+          p_provider_verification_method: string
+          p_reason?: string
+          p_signed_report_document_id: string
+          p_submission_method: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_refer_to_board_v1: {
+        Args: {
+          p_assessment_id: string
+          p_idempotency_key: string
+          p_obligation_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_reject_report_v1: {
+        Args: {
+          p_assessment_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+          p_rejection_reason: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_request_board_evidence_v1: {
+        Args: {
+          p_board_case_id: string
+          p_evidence_types: string[]
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_request_clarification_v1: {
+        Args: {
+          p_assessment_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+          p_request_reason: string
+        }
+        Returns: Json
+      }
       bn_medical_review_request_second_opinion_v1: {
         Args: {
           p_idempotency_key: string
@@ -103621,6 +103848,25 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_return_decision_v1: {
+        Args: {
+          p_decision_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_returned_reason: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_save_assessment_draft_v1: {
+        Args: {
+          p_assessment_id: string
+          p_expected_row_version: number
+          p_fields: Json
+          p_idempotency_key: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
       bn_medical_review_schedule_appointment_v1: {
         Args: {
           p_idempotency_key: string
@@ -103631,12 +103877,80 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_schedule_board_session_v1: {
+        Args: {
+          p_board_case_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_location_reference: string
+          p_meeting_mode: string
+          p_reason?: string
+          p_scheduled_at: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_select_board_v1: {
+        Args: {
+          p_board_case_id: string
+          p_board_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_start_assessment_v1: {
+        Args: {
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+          p_referral_id: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_submit_assessment_v1: {
+        Args: {
+          p_assessment_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_submit_clarification_v1: {
+        Args: {
+          p_addendum_content: Json
+          p_assessment_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_submit_decision_v1: {
+        Args: {
+          p_decision_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
       bn_medical_review_supersede_policy_v1: {
         Args: {
           p_idempotency_key: string
           p_policy_id: string
           p_reason?: string
           p_successor_policy_id: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_validate_report_v1: {
+        Args: {
+          p_assessment_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
         }
         Returns: Json
       }
