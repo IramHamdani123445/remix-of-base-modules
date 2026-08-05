@@ -167,7 +167,11 @@ export function SuspensionProposalDialog({
       <DialogContent
         className="flex w-[calc(100vw-1rem)] max-w-2xl max-h-[calc(100dvh-1rem)] flex-col gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)] sm:max-h-[calc(100dvh-2rem)]"
       >
-        <DialogHeader className="shrink-0 space-y-1 border-b px-4 py-4 pr-12 text-left sm:px-6">
+        {/* pr-12 is repeated at sm so responsive px-* can never remove the
+            clearance reserved for the dialog close control. */}
+        <DialogHeader className="shrink-0 space-y-1 border-b px-4 pr-12 py-4 text-left sm:px-6 sm:pr-12">
+          <div className="min-w-0">
+
           <DialogTitle className="text-base sm:text-lg">New Suspension Request</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">
             Propose a temporary suspension of an active award. The proposal will follow the
