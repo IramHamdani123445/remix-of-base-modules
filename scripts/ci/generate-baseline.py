@@ -50,6 +50,90 @@ PLATFORM_SCHEMAS = {
 }
 APP_ROLES = ("anon", "authenticated", "service_role", "PUBLIC")
 
+# ---------------------------------------------------------------------------
+# PostgreSQL privilege compatibility
+#
+# The canonical database may run a newer PostgreSQL major version than the
+# shared CI database target. Privileges introduced after the CI target are a
+# syntax error on the CI server (`GRANT MAINTAIN` on PostgreSQL 15 fails the
+# whole baseline apply), so the generator — never a hand edit of schema.sql —
+# is responsible for emitting only statements the declared target supports.
+# ---------------------------------------------------------------------------
+
+#: The shared CI PostgreSQL major version. Every workflow that builds a clean
+#: database must use this same major version. Override deliberately with
+#: --pg-target / BASELINE_PG_TARGET_MAJOR, never per workflow.
+DEFAULT_PG_TARGET_MAJOR = 15
+
+#: First PostgreSQL major version in which each ACL privilege exists.
+PRIVILEGE_MIN_MAJOR: dict[str, int] = {
+    "SELECT": 8,
+    "INSERT": 8,
+    "UPDATE": 8,
+    "DELETE": 8,
+    "TRUNCATE": 8,
+    "REFERENCES": 8,
+    "TRIGGER": 8,
+    "USAGE": 8,
+    "EXECUTE": 8,
+    "CREATE": 8,
+    "CONNECT": 8,
+    "TEMPORARY": 8,
+    "SET": 15,
+    "ALTER SYSTEM": 15,
+    "MAINTAIN": 17,
+    "VACUUM": 17,
+    "ANALYZE": 17,
+}
+
+#: Approved compatibility rule: privileges that may be OMITTED when the target
+#: does not support them. Restricted to maintenance-only privileges, which
+#: grant no data access and therefore cannot weaken the CI security model.
+#: Anything else must fail generation rather than be silently discarded.
+OMISSIBLE_WHEN_UNSUPPORTED = frozenset({"MAINTAIN", "VACUUM", "ANALYZE"})
+
+
+class UnsupportedPrivilegeError(RuntimeError):
+    """Raised when a privilege cannot be represented on the declared target."""
+
+
+def privilege_supported(priv: str, target_major: int) -> bool:
+    """Decide whether `priv` may be emitted for `target_major`.
+
+    Returns True when supported, False when it is an approved omission, and
+    raises UnsupportedPrivilegeError when the privilege is unknown or has no
+    approved compatibility rule — the generator never discards silently.
+    """
+    key = " ".join(priv.strip().upper().split())
+    if key not in PRIVILEGE_MIN_MAJOR:
+        raise UnsupportedPrivilegeError(
+            f"unknown privilege {priv!r}: add it to PRIVILEGE_MIN_MAJOR with the "
+            f"PostgreSQL major version that introduced it, and decide explicitly "
+            f"whether it is omissible on older targets"
+        )
+    if PRIVILEGE_MIN_MAJOR[key] <= target_major:
+        return True
+    if key in OMISSIBLE_WHEN_UNSUPPORTED:
+        return False
+    raise UnsupportedPrivilegeError(
+        f"privilege {key!r} requires PostgreSQL {PRIVILEGE_MIN_MAJOR[key]} but the "
+        f"declared CI target is PostgreSQL {target_major}, and no approved "
+        f"compatibility rule exists for it"
+    )
+
+
+#: Populated during generation; reported in the manifest.
+OMITTED_PRIVILEGES: dict[str, int] = {}
+
+
+def emit_privilege(priv: str, target_major: int) -> bool:
+    if privilege_supported(priv, target_major):
+        return True
+    key = " ".join(priv.strip().upper().split())
+    OMITTED_PRIVILEGES[key] = OMITTED_PRIVILEGES.get(key, 0) + 1
+    return False
+
+
 
 def q(sql: str) -> list[list[str]]:
     """Run a query and return rows of columns split on the RS/US separators."""
