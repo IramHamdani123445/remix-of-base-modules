@@ -282,17 +282,74 @@ from CI or a trusted database session. They are **not** claimed as passed.
 
 ---
 
-## 9. Remaining scope
+## 9. Frontend integration layer and actor surfaces (this turn)
+
+### 9.1 Service boundary
+
+| File | Responsibility |
+| --- | --- |
+| `src/services/bn/medicalReviewQueryService.ts` | Secured reads. Every call goes through a `bn_medical_review_*_v1` query RPC; the `jsonb` envelope (`status`, `total`, `limit`, `offset`, `rows`) is normalised into typed rows. No `supabase.from()` against any `bn_medical_review*` table. |
+| `src/services/bn/medicalReviewCommandService.ts` | Command boundary. 49 typed wrappers, each supplying `p_idempotency_key` (UUID, generated per attempt) and, where the RPC declares it, `p_expected_row_version`. Returns `{ status, replayed, noOp }` so callers distinguish `OK` / `REPLAYED` / `NO_OP`. |
+| `src/features/bn/medical-reviews/model/errors.ts` | Maps stable `E_*` SQLSTATE codes to curated user-facing messages and UI states. Raw database text is never surfaced; unmatched throwables collapse to `E_UNKNOWN`. Longest-code-first matching prevents a short code shadowing a terminal one. |
+| `src/features/bn/medical-reviews/model/permissions.ts` | Mirrors the 30 registered `bn.medical_review.*` actions and separates mutating from read-only sets. |
+| `src/hooks/bn/useMedicalReviewActionsState.ts` | Reads `app_modules.actions_enabled` for `bn_medical_review`. Fails closed on loading/error/missing row. |
+
+### 9.2 Authoritative dark launch
+
+`MedicalReviewActionButton` is the only way a Medical Review screen renders a mutating control.
+It composes two independent conditions — the caller's module action permission **and**
+`app_modules.actions_enabled` — and renders disabled with an explanatory tooltip when either
+fails. There is no hard-coded constant, build flag, or env var anywhere in the UI; flipping
+`actions_enabled` in the database is the single switch. `MedicalReviewDarkLaunchBanner` states
+the same fact to the operator.
+
+`bn.servicing.medicalReview` is a **visibility** toggle only. It is now enabled so the workspace
+is discoverable and readable, exactly as Life Certificates. It does not, and cannot, enable a
+mutation.
+
+### 9.3 Three separated actor surfaces
+
+| Surface | Route | Data source | Authority |
+| --- | --- | --- | --- |
+| Benefits Medical Review Centre | `/bn/medical-reviews` | `worklist`, `awardContext`, obligation detail | Internal staff: obligations, referrals, assessments, administrative decision preparation and approval. |
+| Medical Board Workspace | `/bn/medical-reviews/board` | `boardWorklist`, `boardCaseDetail` | Board members and secretaries: sessions, participation, conflicts, **medical determinations only**. No administrative approval, no award/payment/suspension mutation. |
+| Restricted Medical Provider Portal | `/doctor/reviews` | `providerWorklist`, `providerReferralDetail` | External clinicians: only referrals issued to them. No award context, no Board deliberations, no other claimants. |
+
+Scoping is enforced server-side by `_bn_mr_actor()` and the record guards; the screens simply
+render what the RPCs return. Confidential clinical content is withheld behind
+`bn.medical_review.view_confidential_medical_evidence` and replaced by an explicit notice.
+
+The legacy scheduler is preserved unchanged at `/bn/medical-reviews/legacy-scheduler`, and
+`bn_medical_review_schedule` is still untouched.
+
+### 9.4 Award 360 deep link
+
+`AwardMedicalReviewsTab` links to `/bn/medical-reviews?awardId=<uuid>`. A valid id scopes the
+worklist and renders an award-context card with a return link to Award 360 and a "Clear filter"
+control that removes **only** `awardId` from the query string. A malformed `awardId` is never
+downgraded to the general worklist: no RPC runs at all and an explicit "Invalid award link" state
+is rendered.
+
+### 9.5 Frontend test evidence
+
+| Suite | Coverage |
+| --- | --- |
+| `src/__tests__/bn/servicing/medicalReviewRouteRender.test.tsx` | 12 rendered-route behaviour tests: workspace renders, disabled flag renders `bn-workspace-unavailable`, permission denial stays on-route, `actions_enabled=false` disables controls and shows the banner, `actions_enabled=true` enables a permitted action, an unpermitted action stays disabled, deep-link pass-through, filter clearing preserves other params, malformed award makes zero RPC calls, and each actor surface loads only its own data source. |
+| `src/__tests__/bn/medical_reviews_service_architecture.test.ts` | 18 service-architecture assertions: no direct browser table access or mutation anywhere in the Medical Review tree, all reads/commands are versioned RPCs, idempotency keys on every mutating command, `expected_row_version` propagation, replay/no-op distinction, Award Suspension remains proposal-only, error model never echoes database text, and actor-surface separation. |
+| `src/__tests__/bn/medical_reviews_backend.test.ts` | 13 backend source assertions (unchanged). |
+
+## 10. Remaining scope
 
 **Backend blockers:** none. A correction/reconsideration command for terminal records, and a
 scheduler runner for notices and overdue transitions, are deliberately out of Phase 1.
 
-**Deferred to the next turn (UI/service layer):**
-`src/services/bn/medicalReviewCommandService.ts` and `medicalReviewQueryService.ts`,
-the `/bn/medical-reviews` workspace (worklist, review detail, referral, appointment, assessment,
-Board workspace, decision panel, proposal panel), provider portal screens, deep-link and
-invalid-award handling, the authoritative dark-launch banner driven by
-`app_modules.actions_enabled`, and React behaviour tests.
+**Frontend blockers:** none. The service boundary, the three actor surfaces, the Award 360 deep
+link, the authoritative dark launch and the behaviour tests are complete (section 9).
+
+**Deferred:** richer in-panel command dialogs (structured assessment capture, decision drafting
+forms) currently render as gated entry points rather than full wizards, because every one of
+them is inert until `actions_enabled` is flipped. `supabase/tests/bn/medical_review_integration.sql`
+still awaits execution against the seeded Test database.
 
 **Unresolved Social Security policy decisions:** default provider-fee responsibility per product;
 whether Medical Board determinations are binding for employment-injury products; standard
