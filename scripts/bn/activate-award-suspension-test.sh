@@ -31,8 +31,9 @@ if echo "$BN_SUSP_DB_URL" | grep -q "$LIVE_REF_DENYLIST"; then
   exit 1
 fi
 
-if [ "$MODE" != "status" ] && [ "${BN_SUSP_CONFIRM_NONPROD:-}" != "YES" ]; then
-  echo "Refusing: set BN_SUSP_CONFIRM_NONPROD=YES to confirm a non-production target." >&2
+# Production-looking targets are rejected outright, in any mode.
+if echo "$BN_SUSP_DB_URL" | grep -Eqi '(prod|production|live|=live)'; then
+  echo "Refusing: the connection string looks like a production target." >&2
   exit 1
 fi
 
@@ -42,8 +43,38 @@ status() {
        FROM public.app_modules WHERE name = 'bn_award_suspension';"
 }
 
+# Mutating modes must prove the target environment and database identity.
+assert_nonprod() {
+  if [ "${BN_SUSP_CONFIRM_NONPROD:-}" != "YES" ]; then
+    echo "Refusing: set BN_SUSP_CONFIRM_NONPROD=YES to confirm a non-production target." >&2
+    exit 1
+  fi
+
+  case "${BN_SUSP_ENVIRONMENT:-}" in
+    TEST|LOCAL) ;;
+    *)
+      echo "Refusing: set BN_SUSP_ENVIRONMENT to TEST or LOCAL (got '${BN_SUSP_ENVIRONMENT:-<unset>}')." >&2
+      exit 1
+      ;;
+  esac
+
+  if [ -z "${BN_SUSP_EXPECTED_DATABASE:-}" ]; then
+    echo "Refusing: set BN_SUSP_EXPECTED_DATABASE to the expected database name." >&2
+    exit 1
+  fi
+
+  actual_db="$(psql "$BN_SUSP_DB_URL" -At -v ON_ERROR_STOP=1 -c 'SELECT current_database();')"
+  if [ "$actual_db" != "$BN_SUSP_EXPECTED_DATABASE" ]; then
+    echo "Refusing: connected database '$actual_db' does not match BN_SUSP_EXPECTED_DATABASE." >&2
+    exit 1
+  fi
+  echo "Target confirmed: environment=${BN_SUSP_ENVIRONMENT} database=${actual_db}"
+}
+
+
 case "$MODE" in
   enable)
+    assert_nonprod
     psql "$BN_SUSP_DB_URL" -v ON_ERROR_STOP=1 -c \
       "UPDATE public.app_modules
           SET actions_enabled = true, is_enabled = true
@@ -52,6 +83,7 @@ case "$MODE" in
     status
     ;;
   disable)
+    assert_nonprod
     psql "$BN_SUSP_DB_URL" -v ON_ERROR_STOP=1 -c \
       "UPDATE public.app_modules
           SET actions_enabled = false

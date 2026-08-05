@@ -94,8 +94,10 @@ export function SuspensionRequestDrawer({
       >
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            Suspension Request
-            {data && <SuspensionStatusBadge status={data.request.status} />}
+            {data?.request.caseKind === 'REINSTATEMENT'
+              ? 'Reinstatement Request'
+              : 'Suspension Request'}
+            {data && <SuspensionStatusBadge status={data.request.displayStatus} />}
           </SheetTitle>
           <SheetDescription>
             Full request details, approval route and timeline.
@@ -285,20 +287,26 @@ export function SuspensionRequestDrawer({
               </section>
             )}
 
+            {data.request.caseKind === 'SUSPENSION' && (
             <SuspensionExecutionPanel
               suspensionId={data.request.requestId}
-              caseStatus={data.request.status}
+              caseStatus={data.request.eventStatus}
               execution={data.execution}
               currency={data.award.currency}
               canExecute={canExecute}
               canViewImpact={canViewPaymentImpact}
               actionsEnabled={actionsEnabled}
-              onExecuted={reload}
+              onExecuted={() => {
+                reload();
+                onChanged?.();
+              }}
             />
+            )}
 
+            {data.request.caseKind === 'SUSPENSION' && (
             <ReinstatementPanel
               suspensionId={data.request.requestId}
-              caseStatus={data.request.status}
+              caseStatus={data.request.eventStatus}
               execution={data.execution}
               reinstatement={data.reinstatement}
               currency={data.award.currency}
@@ -308,8 +316,12 @@ export function SuspensionRequestDrawer({
               canExecute={canResumeExecute}
               canViewPaymentImpact={canViewPaymentImpact}
               actionsEnabled={actionsEnabled}
-              onChanged={reload}
+              onChanged={() => {
+                reload();
+                onChanged?.();
+              }}
             />
+            )}
 
             <SuspensionDecisionPanel
               details={data}

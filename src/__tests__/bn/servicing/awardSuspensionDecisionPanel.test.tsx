@@ -35,7 +35,10 @@ const details = (over: Record<string, unknown> = {}) =>
   ({
     request: {
       requestId: 'req-1',
-      status: 'PROPOSED',
+      caseKind: 'SUSPENSION',
+      eventStatus: 'PROPOSED',
+      displayStatus: 'PENDING_APPROVAL',
+      status: 'PENDING_APPROVAL',
       rowVersion: 4,
       proposedByUserId: 'user-proposer',
       currentTaskId: 'task-1',

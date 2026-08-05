@@ -13,6 +13,13 @@ const styles: Record<SuspensionRequestStatus, string> = {
   REJECTED: 'bg-destructive/10 text-destructive border-destructive/40',
   WITHDRAWN: 'bg-muted text-muted-foreground border-border',
   CANCELLED: 'bg-muted text-muted-foreground border-border',
+  EXECUTION_FAILED: 'bg-destructive/10 text-destructive border-destructive/40',
+  REINSTATEMENT_PENDING: 'bg-amber-500/10 text-amber-700 border-amber-300 dark:text-amber-300',
+  REINSTATEMENT_APPROVED:
+    'bg-emerald-500/10 text-emerald-700 border-emerald-300 dark:text-emerald-300',
+  REINSTATEMENT_REJECTED: 'bg-destructive/10 text-destructive border-destructive/40',
+  REINSTATEMENT_WITHDRAWN: 'bg-muted text-muted-foreground border-border',
+  UNKNOWN: 'bg-muted text-muted-foreground border-border',
 };
 
 const labels: Record<SuspensionRequestStatus, string> = {
@@ -26,7 +33,14 @@ const labels: Record<SuspensionRequestStatus, string> = {
   REJECTED: 'Rejected',
   WITHDRAWN: 'Withdrawn',
   CANCELLED: 'Cancelled',
+  EXECUTION_FAILED: 'Execution failed',
+  REINSTATEMENT_PENDING: 'Reinstatement pending',
+  REINSTATEMENT_APPROVED: 'Reinstatement approved',
+  REINSTATEMENT_REJECTED: 'Reinstatement rejected',
+  REINSTATEMENT_WITHDRAWN: 'Reinstatement withdrawn',
+  UNKNOWN: 'Unrecognised status',
 };
+
 
 export function SuspensionStatusBadge({
   status,
