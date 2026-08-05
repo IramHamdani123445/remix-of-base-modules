@@ -27,7 +27,20 @@ export function useComplianceRole(): ComplianceOperationalRole {
 
     const names = collected.map((r) => String(r).toLowerCase());
 
+    const isAdmin = names.some(
+      (n) =>
+        n === 'admin' ||
+        n === 'administrator' ||
+        n === 'superadmin' ||
+        n === 'super admin' ||
+        n === 'super_admin' ||
+        n === 'systemadmin' ||
+        n === 'system administrator' ||
+        n.includes('systemadministrator'),
+    );
+    if (isAdmin) return 'head';
     if (names.some((n) => n.includes('compliancehead') || n === 'compliance head')) return 'head';
+
     if (names.some((n) => n.includes('seniorinspector') || n === 'senior inspector')) return 'senior';
     if (
       names.some(
