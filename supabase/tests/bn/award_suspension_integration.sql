@@ -312,8 +312,8 @@ END $propose$;
 DO $selfapprove$
 DECLARE v_err text; v_s uuid; v_t uuid;
 BEGIN
-  SELECT v::uuid INTO v_s FROM bn_susp_harness_state WHERE k = 'suspension_id';
-  SELECT v::uuid INTO v_t FROM bn_susp_harness_state WHERE k = 'task_id';
+  SELECT s.v::uuid INTO v_s FROM bn_susp_harness_state s WHERE s.k = 'suspension_id';
+  SELECT s.v::uuid INTO v_t FROM bn_susp_harness_state s WHERE s.k = 'task_id';
   BEGIN
     PERFORM public.bn_award_suspension_approve_v1(v_s, v_t, 'self approval', 1, NULL, 'harness-a');
     RAISE EXCEPTION 'FAIL: proposer approved its own case';
@@ -330,8 +330,8 @@ DO $approve$
 DECLARE v jsonb; v_err text; v_s uuid; v_t uuid;
 BEGIN
   RAISE NOTICE '--- journey A: approve ---';
-  SELECT v::uuid INTO v_s FROM bn_susp_harness_state WHERE k = 'suspension_id';
-  SELECT v::uuid INTO v_t FROM bn_susp_harness_state WHERE k = 'task_id';
+  SELECT s.v::uuid INTO v_s FROM bn_susp_harness_state s WHERE s.k = 'suspension_id';
+  SELECT s.v::uuid INTO v_t FROM bn_susp_harness_state s WHERE s.k = 'task_id';
 
   -- Stale row version is refused before any state change.
   BEGIN
@@ -365,7 +365,7 @@ DO $forbidden$
 DECLARE v_err text; v_s uuid;
 BEGIN
   RAISE NOTICE '--- least privilege ---';
-  SELECT v::uuid INTO v_s FROM bn_susp_harness_state WHERE k = 'suspension_id';
+  SELECT s.v::uuid INTO v_s FROM bn_susp_harness_state s WHERE s.k = 'suspension_id';
   BEGIN
     PERFORM public.bn_award_suspension_execute_v1(v_s, 2, 'no privilege', NULL, 'harness-a');
     RAISE EXCEPTION 'FAIL: view-only user executed a suspension';
@@ -382,7 +382,7 @@ DO $execute$
 DECLARE v jsonb; v_s uuid; v_rv int;
 BEGIN
   RAISE NOTICE '--- journey A: execute ---';
-  SELECT v::uuid INTO v_s FROM bn_susp_harness_state WHERE k = 'suspension_id';
+  SELECT s.v::uuid INTO v_s FROM bn_susp_harness_state s WHERE s.k = 'suspension_id';
   SELECT row_version INTO v_rv FROM public.bn_award_suspension_event WHERE id = v_s;
 
   v := public.bn_award_suspension_execute_v1(v_s, v_rv, 'executed by harness',
@@ -423,7 +423,7 @@ DO $rprop$
 DECLARE v jsonb; v_err text; v_s uuid;
 BEGIN
   RAISE NOTICE '--- journey B: reinstatement propose ---';
-  SELECT v::uuid INTO v_s FROM bn_susp_harness_state WHERE k = 'suspension_id';
+  SELECT s.v::uuid INTO v_s FROM bn_susp_harness_state s WHERE s.k = 'suspension_id';
 
   -- Narrative is mandatory on reinstatement.
   BEGIN
@@ -463,8 +463,8 @@ DO $rappr$
 DECLARE v jsonb; v_r uuid; v_t uuid; v_rv int;
 BEGIN
   RAISE NOTICE '--- journey B: reinstatement approve ---';
-  SELECT v::uuid INTO v_r FROM bn_susp_harness_state WHERE k = 'reinstatement_id';
-  SELECT v::uuid INTO v_t FROM bn_susp_harness_state WHERE k = 'reinstatement_task_id';
+  SELECT s.v::uuid INTO v_r FROM bn_susp_harness_state s WHERE s.k = 'reinstatement_id';
+  SELECT s.v::uuid INTO v_t FROM bn_susp_harness_state s WHERE s.k = 'reinstatement_task_id';
   SELECT row_version INTO v_rv FROM public.bn_award_suspension_event WHERE id = v_r;
 
   v := public.bn_award_reinstatement_approve_v1(v_r, v_t, 'approved', v_rv,
@@ -485,8 +485,8 @@ DO $rexec$
 DECLARE v jsonb; v_r uuid; v_s uuid; v_rv int;
 BEGIN
   RAISE NOTICE '--- journey B: reinstatement execute ---';
-  SELECT v::uuid INTO v_r FROM bn_susp_harness_state WHERE k = 'reinstatement_id';
-  SELECT v::uuid INTO v_s FROM bn_susp_harness_state WHERE k = 'suspension_id';
+  SELECT s.v::uuid INTO v_r FROM bn_susp_harness_state s WHERE s.k = 'reinstatement_id';
+  SELECT s.v::uuid INTO v_s FROM bn_susp_harness_state s WHERE s.k = 'suspension_id';
   SELECT row_version INTO v_rv FROM public.bn_award_suspension_event WHERE id = v_r;
 
   v := public.bn_award_reinstatement_execute_v1(v_r, v_rv, 'reinstated by harness',
