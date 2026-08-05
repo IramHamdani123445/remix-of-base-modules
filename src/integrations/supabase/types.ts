@@ -103148,30 +103148,18 @@ export type Database = {
         }
         Returns: Json
       }
-      bn_award_suspension_reject_v1:
-        | {
-            Args: {
-              p_correlation_id: string
-              p_expected_row_version: number
-              p_idempotency_key: string
-              p_narrative: string
-              p_suspension_id: string
-              p_task_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_correlation_id: string
-              p_expected_row_version: number
-              p_idempotency_key: string
-              p_narrative: string
-              p_reason_code: string
-              p_suspension_id: string
-              p_task_id: string
-            }
-            Returns: Json
-          }
+      bn_award_suspension_reject_v1: {
+        Args: {
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_narrative: string
+          p_reason_code: string
+          p_suspension_id: string
+          p_task_id: string
+        }
+        Returns: Json
+      }
       bn_award_suspension_withdraw_v1: {
         Args: {
           p_correlation_id: string
