@@ -12,6 +12,9 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 const approveSuspension = vi.fn();
 const rejectSuspension = vi.fn();
 const withdrawSuspension = vi.fn();
+const approveReinstatement = vi.fn();
+const rejectReinstatement = vi.fn();
+const withdrawReinstatement = vi.fn();
 
 vi.mock('@/services/bn/awardSuspensionCommandService', async () => {
   const actual: any = await vi.importActual('@/services/bn/awardSuspensionCommandService');
@@ -20,6 +23,9 @@ vi.mock('@/services/bn/awardSuspensionCommandService', async () => {
     approveSuspension: (...a: unknown[]) => approveSuspension(...a),
     rejectSuspension: (...a: unknown[]) => rejectSuspension(...a),
     withdrawSuspension: (...a: unknown[]) => withdrawSuspension(...a),
+    approveReinstatement: (...a: unknown[]) => approveReinstatement(...a),
+    rejectReinstatement: (...a: unknown[]) => rejectReinstatement(...a),
+    withdrawReinstatement: (...a: unknown[]) => withdrawReinstatement(...a),
   };
 });
 
