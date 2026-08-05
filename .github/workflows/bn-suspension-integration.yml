@@ -18,7 +18,7 @@ on:
       - main
       - develop
       - 'bn/**'
-    paths: &susp_paths
+    paths:
       - '.github/workflows/bn-suspension-integration.yml'
       - 'supabase/migrations/**'
       - 'supabase/baseline/**'
@@ -33,7 +33,20 @@ on:
       - 'src/__tests__/bn/**'
       - 'package.json'
   pull_request:
-    paths: *susp_paths
+    paths:
+      - '.github/workflows/bn-suspension-integration.yml'
+      - 'supabase/migrations/**'
+      - 'supabase/baseline/**'
+      - 'supabase/verify/bn_award_suspension_**'
+      - 'supabase/tests/bn/award_suspension_**'
+      - 'supabase/test-support/**'
+      - 'scripts/ci/**'
+      - 'scripts/bn/activate-award-suspension-test.sh'
+      - 'scripts/bn/__tests__/**'
+      - 'src/pages/bn/servicing/award-suspension/**'
+      - 'src/services/bn/awardSuspension*.ts'
+      - 'src/__tests__/bn/**'
+      - 'package.json'
 
 # No SUPABASE_ACCESS_TOKEN is ever exported and no remote link is performed.
 env:
