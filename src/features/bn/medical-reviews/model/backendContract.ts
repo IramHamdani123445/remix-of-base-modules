@@ -450,7 +450,7 @@ function toJsonData(value: unknown, fallback: unknown): unknown {
  * Unknown UI keys are discarded — they can never reach the command service.
  */
 export function toAssessmentFieldsDto(
-  values: AssessmentFormValues & Record<string, unknown>,
+  values: AssessmentFormValues,
 ): Record<AssessmentFieldKey, unknown> {
   const impairmentRaw = values.impairmentPercentage;
   let impairment: number | null = null;
