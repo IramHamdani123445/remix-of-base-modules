@@ -1086,6 +1086,10 @@ const BnPaymentHistoryInquiry = lazy(() => import('@/pages/bn/history/PaymentHis
 const BnAuditDecisionHistory = lazy(() => import('@/pages/bn/history/AuditDecisionHistory'));
 const BnLifeCertificateManagement = lazy(() => import('@/pages/bn/servicing/LifeCertificateManagement'));
 const BnMedicalReviewScheduler = lazy(() => import('@/pages/bn/servicing/MedicalReviewScheduler'));
+// BN-MR-UI: canonical Medical Review actor surfaces.
+const BnMedicalReviewCentre = lazy(() => import('@/pages/bn/servicing/MedicalReviewCentre'));
+const BnMedicalBoardWorkspace = lazy(() => import('@/pages/bn/servicing/medical-reviews/MedicalBoardWorkspace'));
+
 const BnOverpaymentRecovery = lazy(() => import('@/pages/bn/servicing/OverpaymentRecovery'));
 const BnMortalityPage = lazy(() => import('@/pages/bn/mortality/BnMortalityPage'));
 const BnMortalityRegistrationPage = lazy(() => import('@/pages/bn/mortality/BnMortalityRegistrationPage'));
