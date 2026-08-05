@@ -214,8 +214,11 @@ const _bnMenuItemsRaw = [
         title: "Award Suspension",
         url: "/bn/award-suspension",
         icon: PauseCircle,
-        requiresPermission: "benefits_management",
+        // Least-privilege: menu visibility is gated by the granular module,
+        // not the broad benefits_management grant.
+        requiresPermission: "bn_award_suspension",
       },
+
       {
         title: "Survivors Processing",
         url: "/bn/survivors",
