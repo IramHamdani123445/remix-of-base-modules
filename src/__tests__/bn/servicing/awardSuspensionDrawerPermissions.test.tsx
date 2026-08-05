@@ -59,7 +59,7 @@ const detailsFor = (caseKind: 'SUSPENSION' | 'REINSTATEMENT') => ({
     startDate: '2026-01-01',
   },
   timeline: [],
-  approvals: [],
+  approvalRoute: [],
   audit: [],
   warnings: [],
   execution: null,
