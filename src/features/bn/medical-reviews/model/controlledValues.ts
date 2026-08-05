@@ -1,9 +1,25 @@
 /**
  * BN Medical Reviews — controlled values for the operational forms.
  *
- * These mirror the values the backend commands accept. Free text is only
- * permitted where the command genuinely stores narrative.
+ * Every option below is derived from `backendContract.ts`, which mirrors the
+ * database CHECK constraints and RPC validations. Friendly labels are UI-only;
+ * the submitted value is always the canonical backend code.
+ *
+ * Fields with no database constraint (identity verification, attendance
+ * result, work capacity, prognosis, evidence type, reason code) are still
+ * restricted here so the operational forms stay comparable.
  */
+import {
+  BOARD_ATTENDANCE_STATUS_CODES,
+  BOARD_DETERMINATION_OUTCOME_CODES,
+  BOARD_MEETING_MODES,
+  BOARD_VOTE_CODES,
+  DECISION_OUTCOME_CODE_VALUES,
+  INCAPACITY_NATURE_CODES,
+  MEDICAL_OUTCOME_CODES,
+  NON_ATTENDANCE_CATEGORY_CODES,
+  REASONABLE_CAUSE_OUTCOME_CODES,
+} from './backendContract';
 
 export interface Option {
   value: string;
@@ -13,58 +29,84 @@ export interface Option {
 const opts = (...values: [string, string][]): Option[] =>
   values.map(([value, label]) => ({ value, label }));
 
-/** Non-attendance must distinguish claimant, provider and administrative cause. */
-export const NON_ATTENDANCE_CATEGORIES = opts(
-  ['CLAIMANT_NO_SHOW', 'Claimant — did not attend'],
-  ['CLAIMANT_CANCELLED', 'Claimant — cancelled'],
-  ['CLAIMANT_LATE', 'Claimant — arrived outside the appointment window'],
-  ['PROVIDER_UNAVAILABLE', 'Provider — unavailable'],
-  ['PROVIDER_CANCELLED', 'Provider — cancelled'],
-  ['ADMIN_ERROR', 'Administrative — scheduling or notification error'],
-  ['ADMIN_RESCHEDULED', 'Administrative — rescheduled by Social Security'],
-);
+/** Builds options from a canonical code list plus a label map. */
+function fromCodes(codes: readonly string[], labels: Record<string, string>): Option[] {
+  return codes.map((value) => ({ value, label: labels[value] ?? value }));
+}
 
-export const REASONABLE_CAUSE_OUTCOMES = opts(
-  ['REASONABLE_CAUSE_ACCEPTED', 'Reasonable cause accepted'],
-  ['REASONABLE_CAUSE_REJECTED', 'Reasonable cause rejected'],
-  ['REASONABLE_CAUSE_PENDING', 'Further information required'],
-);
+/* -------------------- Appointment -------------------- */
 
-export const MEETING_MODES = opts(
-  ['IN_PERSON', 'In person'],
-  ['VIRTUAL', 'Virtual'],
-  ['HYBRID', 'Hybrid'],
-);
+export const NON_ATTENDANCE_CATEGORIES = fromCodes(NON_ATTENDANCE_CATEGORY_CODES, {
+  CLAIMANT_NO_SHOW: 'Claimant — did not attend',
+  PROVIDER_CANCELLATION: 'Provider — cancelled',
+  FAILED_NOTICE_DELIVERY: 'Administrative — notice was not delivered',
+  REASONABLE_RESCHEDULING_REQUEST: 'Claimant — reasonable rescheduling request',
+  MEDICAL_EMERGENCY: 'Claimant — medical emergency',
+  TRAVEL_OR_ACCESSIBILITY: 'Claimant — travel or accessibility barrier',
+  ADMINISTRATIVE_SCHEDULING_ERROR: 'Administrative — scheduling error',
+});
 
-export const BOARD_ATTENDANCE_STATUSES = opts(
-  ['PRESENT', 'Present'],
-  ['ABSENT', 'Absent'],
-  ['APOLOGIES', 'Apologies'],
-  ['LATE', 'Joined late'],
-);
+export const REASONABLE_CAUSE_OUTCOMES = fromCodes(REASONABLE_CAUSE_OUTCOME_CODES, {
+  REASONABLE_CAUSE_ACCEPTED: 'Reasonable cause accepted',
+  REASONABLE_CAUSE_REJECTED: 'Reasonable cause rejected',
+  FURTHER_INFORMATION_REQUIRED: 'Further information required',
+});
 
-export const BOARD_VOTES = opts(
-  ['FOR', 'For'],
-  ['AGAINST', 'Against'],
-  ['ABSTAIN', 'Abstain'],
-);
+/* -------------------- Medical Board -------------------- */
 
-export const BOARD_OUTCOME_CODES = opts(
-  ['INCAPACITY_CONTINUES', 'Incapacity continues'],
-  ['INCAPACITY_CEASED', 'Incapacity ceased'],
-  ['PARTIAL_CAPACITY', 'Partial capacity'],
-  ['FURTHER_EVIDENCE_REQUIRED', 'Further evidence required'],
-  ['INCONCLUSIVE', 'Inconclusive'],
-);
+export const MEETING_MODES = fromCodes(BOARD_MEETING_MODES, {
+  IN_PERSON: 'In person',
+  VIRTUAL: 'Virtual',
+  HYBRID: 'Hybrid',
+});
 
-export const DECISION_OUTCOME_CODES = opts(
-  ['REVIEW_SATISFIED', 'Review satisfied — award continues'],
-  ['CONTINUE_WITH_REVIEW', 'Continue with a further review'],
-  ['RECOMMEND_SUSPENSION', 'Recommend suspension'],
-  ['RECOMMEND_REINSTATEMENT', 'Recommend reinstatement'],
-  ['CLOSE_NO_ACTION', 'Close — no further action'],
-);
+export const BOARD_ATTENDANCE_STATUSES = fromCodes(BOARD_ATTENDANCE_STATUS_CODES, {
+  EXPECTED: 'Expected',
+  PRESENT: 'Present',
+  ABSENT: 'Absent',
+  APOLOGIES: 'Apologies',
+  WITHDRAWN: 'Withdrawn',
+});
 
+export const BOARD_VOTES = fromCodes(BOARD_VOTE_CODES, {
+  FOR: 'For',
+  AGAINST: 'Against',
+  ABSTAIN: 'Abstain',
+});
+
+export const BOARD_OUTCOME_CODES = fromCodes(BOARD_DETERMINATION_OUTCOME_CODES, {
+  MEDICAL_OPINION_ACCEPTED: 'Medical opinion accepted',
+  MEDICAL_OPINION_NOT_ACCEPTED: 'Medical opinion not accepted',
+  FURTHER_EVIDENCE_REQUIRED: 'Further evidence required',
+  SPECIALIST_ASSESSMENT_REQUIRED: 'Specialist assessment required',
+  SECOND_OPINION_REQUIRED: 'Second opinion required',
+  TEMPORARY_INCAPACITY_CONFIRMED: 'Temporary incapacity confirmed',
+  PERMANENT_INCAPACITY_CONFIRMED: 'Permanent incapacity confirmed',
+  IMPAIRMENT_PERCENTAGE_DETERMINED: 'Impairment percentage determined',
+  REVIEW_DEFERRED: 'Review deferred',
+  CONFLICTING_EVIDENCE_UNRESOLVED: 'Conflicting evidence unresolved',
+  NEXT_REVIEW_RECOMMENDED: 'Next review recommended',
+});
+
+/* -------------------- Administrative decision -------------------- */
+
+export const DECISION_OUTCOME_CODES = fromCodes(DECISION_OUTCOME_CODE_VALUES, {
+  BENEFIT_CONTINUES: 'Benefit continues',
+  BENEFIT_CONTINUES_UNTIL_DATE: 'Benefit continues until a stated date',
+  TEMPORARY_CONTINUATION: 'Temporary continuation',
+  PERMANENT_CONTINUATION: 'Permanent continuation',
+  NEXT_REVIEW_REQUIRED: 'Next review required',
+  MORE_MEDICAL_EVIDENCE_REQUIRED: 'More medical evidence required',
+  SECOND_OPINION_REQUIRED: 'Second opinion required',
+  MEDICAL_BOARD_REQUIRED: 'Medical Board required',
+  NON_COMPLIANCE_REVIEW: 'Non-compliance review',
+  BENEFIT_NO_LONGER_MEDICALLY_SUPPORTED: 'Benefit no longer medically supported',
+  SUSPENSION_PROPOSAL_REQUIRED: 'Suspension proposal required',
+  REINSTATEMENT_PROPOSAL_REQUIRED: 'Reinstatement proposal required',
+  ADMINISTRATIVE_CLOSURE: 'Administrative closure',
+});
+
+/** Narrative reason codes — audited, not constrained by the schema. */
 export const DECISION_REASON_CODES = opts(
   ['MEDICAL_EVIDENCE_SUPPORTS', 'Medical evidence supports continuation'],
   ['MEDICAL_EVIDENCE_CONTRADICTS', 'Medical evidence does not support continuation'],
@@ -103,20 +145,11 @@ export const WORK_CAPACITY_OPINIONS = opts(
   ['FULL_CAPACITY', 'Full capacity'],
 );
 
-export const EXPECTED_DURATIONS = opts(
-  ['LESS_THAN_3_MONTHS', 'Less than 3 months'],
-  ['THREE_TO_6_MONTHS', '3 to 6 months'],
-  ['SIX_TO_12_MONTHS', '6 to 12 months'],
-  ['MORE_THAN_12_MONTHS', 'More than 12 months'],
-  ['PERMANENT', 'Permanent'],
-);
-
-export const INCAPACITY_NATURES = opts(
-  ['TEMPORARY_TOTAL', 'Temporary total'],
-  ['TEMPORARY_PARTIAL', 'Temporary partial'],
-  ['PERMANENT_TOTAL', 'Permanent total'],
-  ['PERMANENT_PARTIAL', 'Permanent partial'],
-);
+export const INCAPACITY_NATURES = fromCodes(INCAPACITY_NATURE_CODES, {
+  TEMPORARY: 'Temporary',
+  PERMANENT: 'Permanent',
+  INDETERMINATE: 'Indeterminate',
+});
 
 export const PROGNOSIS_CATEGORIES = opts(
   ['IMPROVING', 'Improving'],
@@ -125,11 +158,16 @@ export const PROGNOSIS_CATEGORIES = opts(
   ['UNCERTAIN', 'Uncertain'],
 );
 
-export const MEDICAL_OUTCOMES = opts(
-  ['INCAPACITY_CONTINUES', 'Incapacity continues'],
-  ['INCAPACITY_CEASED', 'Incapacity ceased'],
-  ['PARTIAL_RECOVERY', 'Partial recovery'],
-  ['FURTHER_REVIEW_REQUIRED', 'Further review required'],
-);
-
-export const YES_NO = opts(['YES', 'Yes'], ['NO', 'No']);
+export const MEDICAL_OUTCOMES = fromCodes(MEDICAL_OUTCOME_CODES, {
+  INCAPACITY_CONTINUES: 'Incapacity continues',
+  TEMPORARY_INCAPACITY: 'Temporary incapacity',
+  PERMANENT_INCAPACITY: 'Permanent incapacity',
+  FIT_FOR_WORK: 'Fit for work',
+  FIT_WITH_RESTRICTIONS: 'Fit with restrictions',
+  IMPAIRMENT_PERCENTAGE_RECORDED: 'Impairment percentage recorded',
+  INSUFFICIENT_EVIDENCE: 'Insufficient evidence',
+  SPECIALIST_REVIEW_REQUIRED: 'Specialist review required',
+  SECOND_OPINION_RECOMMENDED: 'Second opinion recommended',
+  UNABLE_TO_ASSESS: 'Unable to assess',
+  CLAIMANT_DID_NOT_ATTEND: 'Claimant did not attend',
+});
