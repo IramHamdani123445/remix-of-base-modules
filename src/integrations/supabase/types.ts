@@ -102235,8 +102235,8 @@ export type Database = {
         Args: {
           p_award: string
           p_claim: string
-          p_employer: string
-          p_person: string
+          p_employer_ref: string
+          p_person_ref: string
           p_provider: string
         }
         Returns: Json
@@ -102289,6 +102289,11 @@ export type Database = {
         Returns: undefined
       }
       _bn_mr_fingerprint: { Args: { p_payload: Json }; Returns: string }
+      _bn_mr_mask_ssn: { Args: { p_value: string }; Returns: string }
+      _bn_mr_page: {
+        Args: { p_limit: number; p_max?: number }
+        Returns: number
+      }
       _bn_mr_policy_snapshot: { Args: { p_policy: string }; Returns: Json }
       _bn_mr_provider_for_user: { Args: { p_actor: string }; Returns: string }
       _bn_mr_provider_snapshot: { Args: { p_provider: string }; Returns: Json }
@@ -102320,6 +102325,7 @@ export type Database = {
       }
       _bn_mr_safe_comm_context: { Args: { p_context: Json }; Returns: Json }
       _bn_mr_safe_detail: { Args: { p_detail: Json }; Returns: Json }
+      _bn_mr_search_term: { Args: { p_term: string }; Returns: string }
       _bn_mr_secretary_boards: { Args: { p_actor: string }; Returns: string[] }
       _bn_mr_terminal: {
         Args: { p_entity: string; p_status: string }
@@ -103483,6 +103489,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_appointment_history_v1: {
+        Args: { p_limit?: number; p_obligation_id: string; p_offset?: number }
+        Returns: Json
+      }
       bn_medical_review_approve_decision_v1: {
         Args: {
           p_decision_id: string
@@ -103490,6 +103500,10 @@ export type Database = {
           p_idempotency_key: string
           p_reason?: string
         }
+        Returns: Json
+      }
+      bn_medical_review_assessment_summary_v1: {
+        Args: { p_obligation_id: string }
         Returns: Json
       }
       bn_medical_review_assign_board_members_v1: {
@@ -103511,8 +103525,36 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_audit_timeline_v1: {
+        Args: { p_limit?: number; p_obligation_id: string; p_offset?: number }
+        Returns: Json
+      }
+      bn_medical_review_award_context_v1: {
+        Args: { p_award_id: string }
+        Returns: Json
+      }
+      bn_medical_review_board_case_detail_v1: {
+        Args: { p_board_case_id: string }
+        Returns: Json
+      }
+      bn_medical_review_board_determination_v1: {
+        Args: { p_board_case_id: string }
+        Returns: Json
+      }
       bn_medical_review_board_requirement_v1: {
         Args: { p_obligation_id: string }
+        Returns: Json
+      }
+      bn_medical_review_board_search_v1: {
+        Args: { p_limit?: number; p_offset?: number; p_term?: string }
+        Returns: Json
+      }
+      bn_medical_review_board_session_v1: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
+      bn_medical_review_board_worklist_v1: {
+        Args: { p_limit?: number; p_offset?: number }
         Returns: Json
       }
       bn_medical_review_close_review_v1: {
@@ -103524,6 +103566,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_communication_history_v1: {
+        Args: { p_limit?: number; p_obligation_id: string; p_offset?: number }
+        Returns: Json
+      }
       bn_medical_review_complete_decision_v1: {
         Args: {
           p_decision_id: string
@@ -103531,6 +103577,14 @@ export type Database = {
           p_idempotency_key: string
           p_reason?: string
         }
+        Returns: Json
+      }
+      bn_medical_review_confidential_evidence_v1: {
+        Args: { p_limit?: number; p_obligation_id: string; p_offset?: number }
+        Returns: Json
+      }
+      bn_medical_review_decision_detail_v1: {
+        Args: { p_obligation_id: string }
         Returns: Json
       }
       bn_medical_review_declare_board_conflict_v1: {
@@ -103571,6 +103625,10 @@ export type Database = {
           p_obligation_id: string
           p_reason: string
         }
+        Returns: Json
+      }
+      bn_medical_review_detail_v1: {
+        Args: { p_obligation_id: string }
         Returns: Json
       }
       bn_medical_review_expire_referral_v1: {
@@ -103636,6 +103694,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_policy_config_v1: {
+        Args: { p_limit?: number; p_offset?: number; p_product_id?: string }
+        Returns: Json
+      }
       bn_medical_review_prepare_decision_v1: {
         Args: {
           p_assessment_id: string
@@ -103662,6 +103724,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_medical_review_proposal_links_v1: {
+        Args: { p_obligation_id: string }
+        Returns: Json
+      }
       bn_medical_review_propose_reinstatement_v1: {
         Args: {
           p_decision_id: string
@@ -103676,6 +103742,24 @@ export type Database = {
           p_idempotency_key: string
           p_reason: string
         }
+        Returns: Json
+      }
+      bn_medical_review_provider_referral_detail_v1: {
+        Args: { p_referral_id: string }
+        Returns: Json
+      }
+      bn_medical_review_provider_search_v1: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_product_id?: string
+          p_review_type?: string
+          p_term: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_provider_worklist_v1: {
+        Args: { p_limit?: number; p_offset?: number }
         Returns: Json
       }
       bn_medical_review_publish_policy_v1: {
@@ -103796,6 +103880,10 @@ export type Database = {
           p_obligation_id: string
           p_reason: string
         }
+        Returns: Json
+      }
+      bn_medical_review_referral_detail_v1: {
+        Args: { p_referral_id: string }
         Returns: Json
       }
       bn_medical_review_reject_report_v1: {
@@ -103960,6 +104048,16 @@ export type Database = {
           p_idempotency_key: string
           p_reason?: string
           p_referral_id: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_worklist_v1: {
+        Args: {
+          p_award_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
         }
         Returns: Json
       }
