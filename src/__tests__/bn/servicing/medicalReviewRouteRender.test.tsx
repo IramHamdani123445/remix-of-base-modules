@@ -168,12 +168,27 @@ describe('Authoritative dark launch', () => {
     expect(screen.getByTestId('mr-action-generate_obligations')).toBeDisabled();
   });
 
+  // Obligation generation is additionally scoped to an award: the Centre only
+  // enables it once a valid award context has loaded.
   it('enables a permitted action once actions_enabled=true', async () => {
+    state.actionsEnabled = true;
+    renderAt(
+      `/bn/medical-reviews?awardId=${AWARD_ID}`,
+      <MedicalReviewCentre />,
+      '/bn/medical-reviews',
+    );
+    await screen.findByTestId('mr-centre');
+    expect(screen.queryByTestId('mr-dark-launch-banner')).toBeNull();
+    await waitFor(() =>
+      expect(screen.getByTestId('mr-action-generate_obligations')).not.toBeDisabled(),
+    );
+  });
+
+  it('keeps obligation generation disabled when the Centre is not award-scoped', async () => {
     state.actionsEnabled = true;
     renderAt('/bn/medical-reviews', <MedicalReviewCentre />);
     await screen.findByTestId('mr-centre');
-    expect(screen.queryByTestId('mr-dark-launch-banner')).toBeNull();
-    expect(screen.getByTestId('mr-action-generate_obligations')).not.toBeDisabled();
+    expect(screen.getByTestId('mr-action-generate_obligations')).toBeDisabled();
   });
 
   it('keeps an unpermitted action disabled even when actions_enabled=true', async () => {

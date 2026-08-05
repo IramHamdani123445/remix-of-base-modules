@@ -338,18 +338,133 @@ is rendered.
 | `src/__tests__/bn/medical_reviews_service_architecture.test.ts` | 18 service-architecture assertions: no direct browser table access or mutation anywhere in the Medical Review tree, all reads/commands are versioned RPCs, idempotency keys on every mutating command, `expected_row_version` propagation, replay/no-op distinction, Award Suspension remains proposal-only, error model never echoes database text, and actor-surface separation. |
 | `src/__tests__/bn/medical_reviews_backend.test.ts` | 13 backend source assertions (unchanged). |
 
-## 10. Remaining scope
+## 10. Operational frontend (this turn)
 
-**Backend blockers:** none. A correction/reconsideration command for terminal records, and a
-scheduler runner for notices and overdue transitions, are deliberately out of Phase 1.
+Section 9 delivered navigation and the service boundary. This section records the conversion of
+those read-oriented surfaces into complete operational workflows. The module remains
+dark-launched: `app_modules.bn_medical_review.actions_enabled` is still `false` in the database,
+and every workflow below was built and tested against a mocked `actions_enabled = true`.
 
-**Frontend blockers:** none. The service boundary, the three actor surfaces, the Award 360 deep
-link, the authoritative dark launch and the behaviour tests are complete (section 9).
+### 10.1 Confidential-evidence access
 
-**Deferred:** richer in-panel command dialogs (structured assessment capture, decision drafting
-forms) currently render as gated entry points rather than full wizards, because every one of
-them is inert until `actions_enabled` is flipped. `supabase/tests/bn/medical_review_integration.sql`
-still awaits execution against the seeded Test database.
+Confidential clinical evidence is no longer prefetched because a user holds the permission.
+`src/components/bn/medical-reviews/ConfidentialEvidenceSection.tsx` renders a collapsed section
+carrying the notice *"Access to confidential medical evidence is audited."* and issues the secured
+RPC only after the operator selects **View confidential medical evidence**. It has a dedicated
+loading state and reports permission-denied, recused-member, not-released and load-failure as four
+distinct states. Content is cleared when the section closes, when the selected review changes, on
+route change and on unmount, and is never written to the URL, local or session storage, a shared
+query cache, analytics, the console, detail exports or print views.
+
+### 10.2 Award deep-link ordering
+
+`MedicalReviewCentre` validates the `awardId` UUID locally; an invalid value issues no RPC and
+renders *Invalid award link*. A valid value loads the secured award-context RPC **first**. A
+refusal (`E_FORBIDDEN`, `E_RECORD_FORBIDDEN`, `E_MEMBER_RECUSED`) renders a permission state, a
+missing record renders a record-unavailable state, and in neither case is the worklist RPC called
+— there is no fallback to the general worklist and award-context errors are never converted to
+`null`. Clearing the award filter preserves every unrelated query parameter.
+
+### 10.3 Section states and worklist behaviour
+
+`useMedicalReviewSection` + `SectionStateView` give each secondary section six independent states
+(loading, loaded, empty, permission denied, failed, not applicable). A failed assessment, decision,
+Board or audit query is now rendered as a section-specific error with a retry control, never as
+"none recorded", and never destroys the main detail. Search below the backend minimum issues no
+RPC and shows *Enter at least 3 characters to search.*; clearing search resets the offset. Summary
+figures are explicitly labelled **Current page** with a note that they are not total workload.
+
+### 10.4 Idempotency lifecycle
+
+`useMedicalReviewSubmission` mints one key when a submission starts and retains it across
+rerenders, transport timeouts, lost responses and user-initiated retries of the same payload. A new
+key is minted only after a success, a confirmed terminal outcome, an intentional payload change, or
+a cancel-and-restart. The controller exposes pending, double-submit prevention, success, replay,
+no-op, controlled error, version conflict and same-key retry.
+
+### 10.5 Version-conflict flow
+
+On `E_VERSION_CONFLICT` the dialog preserves entered form data and the attempted key, reloads the
+canonical record, displays the previous and current row versions, explains that another user
+changed the record, and disables resubmission until the operator confirms the refreshed state. The
+refreshed row version is then used — the command is never silently replayed.
+
+### 10.6 Workflows delivered
+
+| Surface | Workflows |
+| --- | --- |
+| Benefits Medical Review Centre | Assign approved provider, nominate treating doctor, verify nominated provider, issue referral, reassign provider, expire referral, request second opinion; schedule/reschedule appointment, record attendance, claimant non-attendance, provider cancellation, reasonable-cause outcome; validate report, reject incomplete report, request clarification, request addendum, lock accepted assessment; evaluate Board requirement, refer to Board, select Board; prepare / submit / return / approve / complete decision; Create Suspension Proposal and Create Reinstatement Proposal. |
+| Medical Provider Portal | Accept referral, decline referral, schedule/reschedule provider-owned appointment, record provider cancellation, start assessment, save structured draft, submit assessment, submit clarification/addendum. |
+| Medical Board Workspace | Select Board, assign members, schedule session, declare conflict, record recusal, record attendance and participation, request additional evidence, record vote, finalise determination, defer case, reconvene case. |
+
+Provider selection is only ever made through the secured provider-search RPC (`ProviderPicker`);
+arbitrary provider UUID entry is impossible. Provider-side capability is derived by
+`useMedicalReviewProviderCapabilities` from the server-returned provider linkage, referral
+assignment and status, appointment responsibility, assessment status and the authoritative module
+flag — there is no hard-coded provider permission and a browser-supplied provider id is never
+trusted. Award controls are labelled *Create Suspension Proposal* / *Create Reinstatement
+Proposal* only, with the boundary statement that Award Suspension remains responsible for approval,
+execution, payment holds and arrears. No Board control can approve an administrative decision or
+touch award or payment state.
+
+### 10.7 State-driven action availability
+
+`src/features/bn/medical-reviews/model/actionAvailability.ts` centralises availability for
+obligation, referral, appointment, assessment, Board case, Board session, administrative decision
+and award proposal. Each result carries visible, enabled, permission required, required source
+state, required row version, reason required, blocked reason and applicable actor surface.
+Availability is never decided from permission and `actions_enabled` alone — the record lifecycle
+state is always considered. The backend remains authoritative.
+
+### 10.8 Refresh behaviour
+
+After a successful command only the affected sections reload; the selected record stays open, the
+returned row version is adopted, the form and its idempotency key are cleared, and replay/no-op
+outcomes are surfaced verbatim. No command reloads the application.
+
+### 10.9 Test results (actual)
+
+| Suite | Result |
+| --- | --- |
+| `src/__tests__/bn/servicing/medicalReviewInteractions.test.tsx` (new) | **38 passed** — confidential-evidence privacy (8), award deep-link ordering (3), search and counters (4), section failure states (4), idempotency and concurrency (6), version-conflict dialog (1), award-proposal wording and gating (2), maker-checker (3), Board workspace separation (3), provider portal capability (4). |
+| `src/__tests__/bn/servicing/medicalReviewRouteRender.test.tsx` | 13 passed (was 12; obligation generation is now additionally award-scoped, so the dark-launch case was split into scoped and unscoped assertions). |
+| `src/__tests__/bn/medical_reviews_service_architecture.test.ts` | 18 passed (the shared-button assertion now accepts the hook value passed down as a prop and forbids a hard-coded `true`). |
+| `src/__tests__/bn/medical_reviews_backend.test.ts` | 13 passed. |
+| Benefits suite `src/__tests__/bn/` | **1835 passed**, 1 skipped, 14 todo, 3 failed — all three unrelated to Medical Reviews (section 10.10). |
+| Typecheck (`tsgo --noEmit -p tsconfig.app.json`) | Clean, no diagnostics. |
+
+### 10.10 Unrelated failures, recorded separately
+
+Not modified by this change set.
+
+| File | Test | Message | Reproduces without the Medical Review frontend changes |
+| --- | --- | --- | --- |
+| `src/__tests__/bn/gap-modules/mortality/mortalityLifecycleFoundation.test.ts` | `BN Mortality — command catalogue > registers all 15 canonical commands` | Stale command-catalogue expectation. | Yes — pre-existing. |
+| `src/__tests__/bn/mortality/benefitsQueryBoundary.test.ts` | `no browser source calls .from("bn_mortality_*")` | Whole-repository source scan times out under full-suite load. | Yes — passes when the file is run on its own. |
+| `src/__tests__/bn/awardSuspensionWorkspaceReadOnly.test.ts` | `awardSuspensionViewService.ts contains no Supabase write calls and only allow-listed RPCs` | Same whole-repository source-scan timeout under load. | Yes — passes when the file is run on its own. |
+
+The complete Benefits suite is therefore **not** green, and is not claimed to be.
+
+### 10.11 Seeded database harness
+
+`supabase/tests/bn/medical_review_integration.sql` — **CREATED — EXECUTION PENDING.** No trusted
+PostgreSQL/Supabase environment capable of authenticated RPC execution was available from this
+environment, so `BN_MEDICAL_REVIEW_HARNESS_RESULT: PASS` has not been produced. The harness is not
+claimed to have passed.
+
+## 11. Remaining scope
+
+**Dark-launch status:** unchanged. `actions_enabled = false`, the shared communication adapter
+source stays disabled, no live scheduler, no live templates, no production providers, no production
+Board membership, and award/payment execution remain unavailable.
+
+**Remaining activation blockers:** execution of the seeded harness; production policy seeding;
+production provider registry seeding; production Medical Board membership; live template
+activation; the unresolved policy decisions listed below.
+
+**Deliberately not started:** scheduler automation, provider invoicing, accounts-payable
+integration, appeals, correction/reconsideration of terminal cases, live communications, and any
+further Benefits slice.
 
 **Unresolved Social Security policy decisions:** default provider-fee responsibility per product;
 whether Medical Board determinations are binding for employment-injury products; standard
