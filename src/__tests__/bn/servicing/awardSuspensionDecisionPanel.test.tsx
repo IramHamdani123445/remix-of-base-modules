@@ -9,6 +9,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
+// Radix Select needs these DOM APIs, which jsdom does not implement.
+window.HTMLElement.prototype.scrollIntoView = vi.fn();
+window.HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
+window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+
 const approveSuspension = vi.fn();
 const rejectSuspension = vi.fn();
 const withdrawSuspension = vi.fn();
