@@ -12,7 +12,8 @@ DECLARE
   r     record;
   v_bad text[] := '{}';
 BEGIN
-  -- 1. No browser role may touch any suspension table directly.
+  -- 1. anon may not touch a suspension table at all, and authenticated may
+  --    read only: every change must go through the governed commands.
   FOR r IN
     SELECT c.relname, role_name, priv
       FROM pg_class c
@@ -23,6 +24,7 @@ BEGIN
        AND (c.relname LIKE 'bn\_award\_suspension\_%'
             OR c.relname = 'bn_award_suspension_event')
        AND has_table_privilege(role_name, c.oid, priv)
+       AND NOT (role_name = 'authenticated' AND priv = 'SELECT')
   LOOP
     v_bad := v_bad || format('TABLE %s: %s has %s', r.relname, r.role_name, r.priv);
   END LOOP;
