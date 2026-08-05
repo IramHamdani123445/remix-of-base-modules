@@ -410,8 +410,13 @@ export function SuspensionProposalDialog({
             className="min-h-[44px] w-full sm:w-auto"
             onClick={handleSubmit}
             disabled={!actionsEnabled}
-            aria-disabled={!canSubmit}
-            data-invalid={!canSubmit ? 'true' : undefined}
+            // Only the rollout gate exposes a disabled state. An incomplete but
+            // actionable form stays operable so the first attempt reveals errors.
+            aria-disabled={!actionsEnabled ? true : undefined}
+            aria-describedby={
+              showErrors && errorCount > 0 ? 'suspension-validation-summary' : undefined
+            }
+
             title={
               !actionsEnabled
                 ? 'Submission unavailable while suspension controls are under verification.'
