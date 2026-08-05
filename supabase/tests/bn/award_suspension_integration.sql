@@ -129,6 +129,8 @@ SELECT r.id, m.id, ma.id, true
   JOIN public.module_actions ma ON ma.module_id = m.id
   JOIN (VALUES
     ('SUSP_PROPOSER', 'view'),  ('SUSP_PROPOSER', 'propose'), ('SUSP_PROPOSER', 'resume_propose'),
+    -- A proposer may retract its own case; ownership is still enforced by the RPC.
+    ('SUSP_PROPOSER', 'withdraw'),
     ('SUSP_APPROVER', 'view'),  ('SUSP_APPROVER', 'approve'), ('SUSP_APPROVER', 'resume_approve'),
     ('SUSP_EXECUTOR', 'view'),  ('SUSP_EXECUTOR', 'execute'), ('SUSP_EXECUTOR', 'resume_execute'),
     ('SUSP_EXECUTOR', 'view_payment_impact'),
