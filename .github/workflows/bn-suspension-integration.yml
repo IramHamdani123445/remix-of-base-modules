@@ -17,6 +17,11 @@ on:
       - 'src/__tests__/integration/**'
       - 'package.json'
       - 'scripts/run-bn-suspension-integration-local.sh'
+      - 'src/pages/bn/servicing/award-suspension/**'
+      - 'src/services/bn/awardSuspension*.ts'
+      - 'src/__tests__/bn/**'
+      - 'scripts/bn/activate-award-suspension-test.sh'
+      - 'scripts/bn/__tests__/**'
   pull_request:
     paths:
       - '.github/workflows/bn-suspension-integration.yml'
@@ -26,6 +31,11 @@ on:
       - 'src/__tests__/integration/**'
       - 'package.json'
       - 'scripts/run-bn-suspension-integration-local.sh'
+      - 'src/pages/bn/servicing/award-suspension/**'
+      - 'src/services/bn/awardSuspension*.ts'
+      - 'src/__tests__/bn/**'
+      - 'scripts/bn/activate-award-suspension-test.sh'
+      - 'scripts/bn/__tests__/**'
 
 # Explicitly deny remote linking. No SUPABASE_ACCESS_TOKEN is exported.
 env:
@@ -161,6 +171,9 @@ jobs:
 
       - name: Run BN suspension static tests
         run: bun run test:bn-suspension-static
+
+      - name: Run activation-script guard tests
+        run: bash scripts/bn/__tests__/activate-award-suspension-test.spec.sh
 
       - name: Typecheck
         run: bunx tsgo --noEmit
