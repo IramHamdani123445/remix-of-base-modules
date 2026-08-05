@@ -360,7 +360,32 @@ BEGIN
   PERFORM pg_temp.mr_ok('C', 'product_timezone_used',
     (v_neg ->> 'timezone_code') IS NOT NULL,
     v_neg ->> 'timezone_code');
+
+  -- Wildcard provider approvals must be unique (NULLS NOT DISTINCT).
+  BEGIN
+    INSERT INTO public.bn_medical_provider_approval(provider_id, bn_product_id, review_type, is_active)
+    VALUES (pg_temp.mr_uid('PROVIDER_B'), NULL, NULL, true);
+    PERFORM pg_temp.mr_ok('C', 'wildcard_approval_uniqueness', false,
+                          'duplicate wildcard approval was accepted');
+  EXCEPTION WHEN others THEN
+    PERFORM pg_temp.mr_ok('C', 'wildcard_approval_uniqueness', true, SQLERRM);
+  END;
+
+  -- Provider conflict restrictions must be detected before assignment.
+  UPDATE public.bn_medical_provider
+     SET conflict_restrictions = jsonb_build_object(
+           'excluded_award_ids', jsonb_build_array(pg_temp.mr_get('AWARD')))
+   WHERE id = pg_temp.mr_uid('PROVIDER_B');
+
+  PERFORM pg_temp.mr_ok('C', 'provider_conflict_detected',
+    (public._bn_mr_conflict_check(pg_temp.mr_uid('PROVIDER_B'), pg_temp.mr_uid('CLAIM'),
+                                  pg_temp.mr_uid('AWARD'), NULL, NULL) ->> 'conflict') = 'true');
+
+  PERFORM pg_temp.mr_ok('C', 'assigning_provider_a_has_no_conflict',
+    (public._bn_mr_conflict_check(pg_temp.mr_uid('PROVIDER_A'), pg_temp.mr_uid('CLAIM'),
+                                  pg_temp.mr_uid('AWARD'), NULL, NULL) ->> 'conflict') = 'false');
 END $$;
+
 
 -- =====================================================================
 -- TRUSTED CONTEXT — Phase D: transactional dark-launch activation
