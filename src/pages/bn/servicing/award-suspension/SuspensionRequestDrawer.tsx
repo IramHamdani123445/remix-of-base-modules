@@ -6,8 +6,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Button } from '@/components/ui/button';
-import { Loader2, ShieldAlert } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   getSuspensionRequestDetails,
   type SuspensionRequestDetails,
@@ -17,6 +16,7 @@ import { SuspensionTimeline } from './SuspensionTimeline';
 import { formatDate, formatMoney } from './suspensionViewModels';
 import { SuspensionExecutionPanel } from './SuspensionExecutionPanel';
 import { ReinstatementPanel } from './ReinstatementPanel';
+import { SuspensionDecisionPanel } from './SuspensionDecisionPanel';
 
 interface Props {
   open: boolean;
@@ -38,6 +38,8 @@ interface Props {
   /** `bn_award_suspension.view_payment_impact` — required for payment/arrears figures. */
   canViewPaymentImpact?: boolean;
   currentUserId?: string | null;
+  /** Lets the page refresh registers and summary cards after a command. */
+  onChanged?: () => void;
 }
 
 export function SuspensionRequestDrawer({
@@ -54,6 +56,7 @@ export function SuspensionRequestDrawer({
   canResumeExecute = false,
   canViewPaymentImpact = false,
   currentUserId = null,
+  onChanged,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<SuspensionRequestDetails | null>(null);
@@ -308,32 +311,17 @@ export function SuspensionRequestDrawer({
               onChanged={reload}
             />
 
-            {canApprove && (
-              <section className="rounded-md border p-3 space-y-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Approval decision
-                </h3>
-                {!actionsEnabled && (
-                  <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                    <ShieldAlert className="h-3 w-3" aria-hidden />
-                    Approve and Reject are disabled while the feature is dark-launched.
-                  </p>
-                )}
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!actionsEnabled}
-                    aria-disabled={!actionsEnabled}
-                  >
-                    Reject
-                  </Button>
-                  <Button size="sm" disabled={!actionsEnabled} aria-disabled={!actionsEnabled}>
-                    Approve
-                  </Button>
-                </div>
-              </section>
-            )}
+            <SuspensionDecisionPanel
+              details={data}
+              currentUserId={currentUserId}
+              canApprove={canApprove}
+              canPropose={canPropose}
+              actionsEnabled={actionsEnabled}
+              onChanged={() => {
+                reload();
+                onChanged?.();
+              }}
+            />
           </div>
         )}
       </SheetContent>

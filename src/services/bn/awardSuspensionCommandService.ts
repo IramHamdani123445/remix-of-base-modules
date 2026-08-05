@@ -39,6 +39,9 @@ export type SuspensionCommandErrorCode =
   | 'E_ONLY_PROPOSED_MAY_WITHDRAW'
   | 'E_TASK_NOT_FOR_CASE'
   | 'E_TASK_NOT_OPEN'
+  | 'E_TASK_NOT_ACTIONABLE'
+  | 'E_POLICY_NOT_CONFIGURED'
+  | 'E_DUPLICATE_APPROVER'
   | 'E_IDEMPOTENCY_PAYLOAD_MISMATCH'
   | 'E_PAYMENT_IMPACT_FAILED'
   | 'E_PAYMENT_HOLD_FAILED'
@@ -65,7 +68,8 @@ const KNOWN_CODES: SuspensionCommandErrorCode[] = [
   'E_STALE_ROW_VERSION', 'E_SELF_APPROVAL_FORBIDDEN', 'E_CONFLICTING_OPEN_CASE',
   'E_INVALID_EFFECTIVE_DATE', 'E_INVALID_REASON_CODE', 'E_NARRATIVE_REQUIRED',
   'E_REASON_REQUIRED', 'E_ONLY_PROPOSED_MAY_WITHDRAW',
-  'E_TASK_NOT_FOR_CASE', 'E_TASK_NOT_OPEN', 'E_IDEMPOTENCY_PAYLOAD_MISMATCH',
+  'E_TASK_NOT_FOR_CASE', 'E_TASK_NOT_OPEN', 'E_TASK_NOT_ACTIONABLE',
+  'E_POLICY_NOT_CONFIGURED', 'E_DUPLICATE_APPROVER', 'E_IDEMPOTENCY_PAYLOAD_MISMATCH',
   'E_PAYMENT_IMPACT_FAILED', 'E_PAYMENT_HOLD_FAILED', 'E_AUDIT_FAILED',
   'E_COMMUNICATION_INTENT_FAILED', 'E_CALCULATION_PERSIST_FAILED', 'E_EXECUTION_INTERNAL',
 ];
@@ -93,6 +97,10 @@ export const SUSPENSION_ERROR_MESSAGES: Record<SuspensionCommandErrorCode, strin
   E_ONLY_PROPOSED_MAY_WITHDRAW: 'Only a proposed case may be withdrawn.',
   E_TASK_NOT_FOR_CASE: 'The approval task does not belong to this case.',
   E_TASK_NOT_OPEN: 'The approval task has already been completed.',
+  E_TASK_NOT_ACTIONABLE: 'This approval task can no longer be actioned. Refresh and try again.',
+  E_POLICY_NOT_CONFIGURED:
+    'No approval policy is configured for award suspension. Ask an administrator to complete the configuration.',
+  E_DUPLICATE_APPROVER: 'You have already decided an earlier level of this case.',
   E_IDEMPOTENCY_PAYLOAD_MISMATCH:
     'This case changed since the action was prepared. Refresh and try again.',
   E_PAYMENT_IMPACT_FAILED:
@@ -259,7 +267,109 @@ export interface ReinstatementResult {
 
 // ---------------------------------------------------------------- commands
 
+/**
+ * BN-SUSP-CMD — lifecycle command results.
+ * Field names mirror the JSON returned by the versioned server commands.
+ */
+export interface SuspensionLifecycleResult {
+  suspension_id: string;
+  status: string;
+  row_version: number;
+  workflow_instance_id?: string | null;
+  task_id?: string | null;
+  approval_level?: number | null;
+  correlation_id?: string | null;
+  /** Present on approvals that complete the final level. */
+  fully_approved?: boolean;
+}
+
+export type SuspensionProposalResult = SuspensionLifecycleResult;
+
+export const proposeSuspension = (input: {
+  awardId: string;
+  reasonCode: string;
+  effectiveFrom: string;
+  narrative: string;
+  idempotencyKey?: string;
+  correlationId?: string;
+}) =>
+  call<SuspensionProposalResult>('bn_award_suspension_propose_v1', {
+    p_award_id: input.awardId,
+    p_reason_code: input.reasonCode,
+    p_effective_from: input.effectiveFrom,
+    p_narrative: input.narrative,
+    p_idempotency_key:
+      input.idempotencyKey ??
+      stableIdempotencyKey(
+        'suspension_propose',
+        input.awardId,
+        // Proposals have no row version; the payload identity is the
+        // (reason, effective date) tuple so a re-click replays safely while a
+        // genuinely different proposal produces a different key.
+        null,
+      ) + `:${input.reasonCode}:${input.effectiveFrom}`,
+    p_correlation_id: input.correlationId ?? newCorrelationId(),
+  });
+
+export const approveSuspension = (input: {
+  suspensionId: string;
+  taskId: string;
+  narrative?: string | null;
+  expectedRowVersion: number;
+  idempotencyKey?: string;
+  correlationId?: string;
+}) =>
+  call<SuspensionLifecycleResult>('bn_award_suspension_approve_v1', {
+    p_suspension_id: input.suspensionId,
+    p_task_id: input.taskId,
+    p_narrative: input.narrative ?? null,
+    p_expected_row_version: input.expectedRowVersion,
+    p_idempotency_key:
+      input.idempotencyKey ??
+      stableIdempotencyKey('suspension_approve', input.suspensionId, input.expectedRowVersion),
+    p_correlation_id: input.correlationId ?? newCorrelationId(),
+  });
+
+export const rejectSuspension = (input: {
+  suspensionId: string;
+  taskId: string;
+  reasonCode: string;
+  narrative?: string | null;
+  expectedRowVersion: number;
+  idempotencyKey?: string;
+  correlationId?: string;
+}) =>
+  call<SuspensionLifecycleResult>('bn_award_suspension_reject_v1', {
+    p_suspension_id: input.suspensionId,
+    p_task_id: input.taskId,
+    p_reason_code: input.reasonCode,
+    p_narrative: input.narrative ?? null,
+    p_expected_row_version: input.expectedRowVersion,
+    p_idempotency_key:
+      input.idempotencyKey ??
+      stableIdempotencyKey('suspension_reject', input.suspensionId, input.expectedRowVersion),
+    p_correlation_id: input.correlationId ?? newCorrelationId(),
+  });
+
+export const withdrawSuspension = (input: {
+  suspensionId: string;
+  narrative?: string | null;
+  expectedRowVersion: number;
+  idempotencyKey?: string;
+  correlationId?: string;
+}) =>
+  call<SuspensionLifecycleResult>('bn_award_suspension_withdraw_v1', {
+    p_suspension_id: input.suspensionId,
+    p_narrative: input.narrative ?? null,
+    p_expected_row_version: input.expectedRowVersion,
+    p_idempotency_key:
+      input.idempotencyKey ??
+      stableIdempotencyKey('suspension_withdraw', input.suspensionId, input.expectedRowVersion),
+    p_correlation_id: input.correlationId ?? newCorrelationId(),
+  });
+
 export const previewSuspensionPaymentImpact = (suspensionId: string) =>
+
   call<PaymentImpactPreview>('bn_award_suspension_preview_payment_impact_v1', {
     p_suspension_id: suspensionId,
   });
