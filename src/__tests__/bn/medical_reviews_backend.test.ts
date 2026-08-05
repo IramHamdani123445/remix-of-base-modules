@@ -11,13 +11,16 @@ import { describe, expect, it } from 'vitest';
 
 const MIGRATIONS_DIR = join(process.cwd(), 'supabase', 'migrations');
 
-const migrationFiles = readdirSync(MIGRATIONS_DIR).filter((f) =>
-  f.includes('medical_review'),
-);
+const migrationFiles = readdirSync(MIGRATIONS_DIR)
+  .filter((f) => f.endsWith('.sql'))
+  .filter((f) =>
+    readFileSync(join(MIGRATIONS_DIR, f), 'utf8').includes('bn_medical_review_policy'),
+  );
 
 const sql = migrationFiles
   .map((f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8'))
   .join('\n');
+
 
 const harness = readFileSync(
   join(process.cwd(), 'supabase', 'tests', 'bn', 'medical_review_integration.sql'),
