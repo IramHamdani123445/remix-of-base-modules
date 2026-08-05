@@ -455,8 +455,10 @@ def gen_rls(schemas):
                f"EXCEPTION WHEN duplicate_object THEN NULL; END $do$;\n")
 
 
-def gen_grants(schemas):
-    yield section("SCHEMA / TABLE / SEQUENCE / FUNCTION PRIVILEGES")
+def gen_grants(schemas, target_major: int = DEFAULT_PG_TARGET_MAJOR):
+    yield section(
+        f"SCHEMA / TABLE / SEQUENCE / FUNCTION PRIVILEGES "
+        f"(PostgreSQL {target_major} compatible)")
     for s in schemas:
         yield f"GRANT USAGE ON SCHEMA {s} TO anon, authenticated, service_role;\n"
 
@@ -475,6 +477,8 @@ def gen_grants(schemas):
       ORDER BY 1, 2, 3, 4
     """)
     for ns, rel, grantee, priv in rows:
+        if not emit_privilege(priv, target_major):
+            continue
         yield f"GRANT {priv} ON {ns}.{quote_ident(rel)} TO {grantee};\n"
 
     rows = q(f"""
@@ -499,6 +503,8 @@ def gen_grants(schemas):
     for ns, name, args in fns:
         yield f"REVOKE ALL ON FUNCTION {ns}.{quote_ident(name)}({args}) FROM PUBLIC, anon, authenticated, service_role;\n"
     for ns, name, args, grantee, priv in rows:
+        if not emit_privilege(priv, target_major):
+            continue
         yield f"GRANT {priv} ON FUNCTION {ns}.{quote_ident(name)}({args}) TO {grantee};\n"
 
 
@@ -506,6 +512,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cutoff", default=None)
     ap.add_argument("--out", default=str(BASELINE_DIR / "schema.sql"))
+    ap.add_argument(
+        "--pg-target", type=int,
+        default=int(os.environ.get("BASELINE_PG_TARGET_MAJOR", DEFAULT_PG_TARGET_MAJOR)),
+        help="PostgreSQL major version the baseline must remain applicable to.")
     args = ap.parse_args()
 
     migrations = sorted(p.name for p in MIGRATIONS_DIR.glob("*.sql"))
@@ -518,14 +528,16 @@ def main() -> int:
         "-- CANONICAL CI SCHEMA BASELINE — GENERATED FILE, DO NOT EDIT BY HAND.\n"
         "-- Regenerate with: python3 scripts/ci/generate-baseline.py\n"
         f"-- Migration cutoff (inclusive): {cutoff}\n"
+        f"-- PostgreSQL compatibility target: {args.pg_target}\n"
         "-- Contains no data, no secrets and no ownership statements.\n"
         "SET check_function_bodies = off;\n"
         "SET client_min_messages = warning;\n",
     ]
     for gen in (gen_schemas, gen_types, gen_sequences, gen_tables, gen_functions,
                 gen_defaults, gen_constraints, gen_indexes, gen_views,
-                gen_triggers, gen_rls, gen_grants):
+                gen_triggers, gen_rls):
         chunks.extend(gen(schemas))
+    chunks.extend(gen_grants(schemas, args.pg_target))
 
     body = "".join(chunks)
     out = Path(args.out)
@@ -536,6 +548,8 @@ def main() -> int:
         "generator": "scripts/ci/generate-baseline.py",
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "migration_cutoff_inclusive": cutoff,
+        "pg_target_major": args.pg_target,
+        "omitted_unsupported_privileges": dict(sorted(OMITTED_PRIVILEGES.items())),
         "migrations_contained": len(migrations),
         "schemas": schemas,
         "schema_sql_sha256": hashlib.sha256(body.encode()).hexdigest(),
