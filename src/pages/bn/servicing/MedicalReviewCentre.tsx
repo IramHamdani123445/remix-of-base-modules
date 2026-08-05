@@ -36,6 +36,7 @@ import { medicalReviewCommandService } from '@/services/bn/medicalReviewCommandS
 import {
   describeMedicalReviewFailure,
   medicalReviewUiState,
+  MedicalReviewError,
 } from '@/features/bn/medical-reviews/model/errors';
 import {
   MEDICAL_REVIEW_ACTIONS,
