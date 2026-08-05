@@ -425,10 +425,15 @@ export const medicalReviewCommandService = {
     });
   },
 
-  submitClarification(assessmentId: string, addendum: Record<string, unknown>, opts: Versioned) {
+  submitClarification(
+    assessmentId: string,
+    addendum: { narrative?: unknown; addressesRequest?: unknown },
+    opts: Versioned,
+  ) {
     return callCommand('bn_medical_review_submit_clarification_v1', {
       p_assessment_id: assessmentId,
-      p_addendum_content: addendum,
+      p_addendum_content: toAddendumDto(addendum),
+
       p_expected_row_version: opts.expectedRowVersion,
       p_idempotency_key: key(opts.idempotencyKey),
       p_reason: opts.reason ?? null,
