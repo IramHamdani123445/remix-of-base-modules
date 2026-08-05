@@ -2585,7 +2585,13 @@ export const AppRoutes = () => {
       <Route path="/bn/payment-history" element={<BnFeatureGate flag="bn.payments"><BnPaymentHistoryInquiry /></BnFeatureGate>} />
       <Route path="/bn/audit-history" element={<BnFeatureGate flag="bn.enabled"><BnAuditDecisionHistory /></BnFeatureGate>} />
       <Route path="/bn/life-certificates" element={<BnWorkspaceGate flag="bn.servicing.lifeCert" title="Life Certificates"><BnLifeCertificateManagement /></BnWorkspaceGate>} />
-      <Route path="/bn/medical-reviews" element={<BnFeatureGate flag="bn.servicing.medicalReview"><BnMedicalReviewScheduler /></BnFeatureGate>} />
+      {/* BN-MR-UI: canonical Medical Review Centre. Visibility is a workspace
+          toggle; every mutation stays gated by app_modules.actions_enabled. */}
+      <Route path="/bn/medical-reviews" element={<BnWorkspaceGate flag="bn.servicing.medicalReview" title="Medical Reviews"><BnMedicalReviewCentre /></BnWorkspaceGate>} />
+      <Route path="/bn/medical-reviews/board" element={<BnWorkspaceGate flag="bn.servicing.medicalReview" title="Medical Board Workspace"><BnMedicalBoardWorkspace /></BnWorkspaceGate>} />
+      {/* Legacy scheduler preserved unchanged for backward compatibility. */}
+      <Route path="/bn/medical-reviews/legacy-scheduler" element={<BnFeatureGate flag="bn.servicing.medicalReview"><BnMedicalReviewScheduler /></BnFeatureGate>} />
+
       <Route path="/bn/overpayments" element={<BnFeatureGate flag="bn.servicing.overpayment"><BnOverpaymentRecovery /></BnFeatureGate>} />
       <Route path="/bn/mortality" element={<BnFeatureGate flag="bn.gap.mortality"><BnMortalityPage /></BnFeatureGate>} />
       <Route path="/bn/mortality/new" element={<BnFeatureGate flag="bn.gap.mortality"><BnMortalityRegistrationPage /></BnFeatureGate>} />
