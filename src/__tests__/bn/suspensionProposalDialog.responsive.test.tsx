@@ -17,7 +17,7 @@ vi.mock('@/services/bn/awardSuspensionViewService', () => ({
   listSuspensionReasonCodes: mocks.listSuspensionReasonCodesMock,
 }));
 
-const award: any = {
+const award = {
   awardId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
   awardNumber: 'AWD-2026-000000000000-LONG-REFERENCE',
   claimantName: 'Maximiliana Consuela Rodriguez-Fitzgerald-Bartholomew',
@@ -39,7 +39,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof SuspensionPropo
     <SuspensionProposalDialog
       open
       onOpenChange={() => {}}
-      award={award}
+      award={award as never}
       actionsEnabled={false}
       {...props}
     />
@@ -142,7 +142,7 @@ describe('SuspensionProposalDialog — dark launch', () => {
 
 describe('SuspensionProposalDialog — reason loading states', () => {
   it('shows a loading state and disables the selector', async () => {
-    let resolve!: (v: any) => void;
+    let resolve!: (v: typeof okReasons) => void;
     mocks.listSuspensionReasonCodesMock.mockReturnValue(new Promise((r) => (resolve = r)));
     renderDialog();
     expect(await screen.findByText(/Loading suspension reasons/i)).toBeInTheDocument();
