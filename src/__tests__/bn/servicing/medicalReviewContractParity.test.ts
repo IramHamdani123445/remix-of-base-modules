@@ -178,21 +178,21 @@ describe('Medical Review contract parity — command adapters', () => {
 });
 
 describe('Medical Review contract parity — action availability', () => {
-  const ctx = (state: string) => ({ state, actionsEnabled: true, hasPermission: () => true });
+  const ctx = (state: string) => ({ state, actionsEnabled: true, rowVersion: 1, hasPermission: () => true });
 
   it('gates approval on PENDING_APPROVAL, not an invented SUBMITTED state', () => {
-    expect(availability.decisionActionAvailability(ctx('PENDING_APPROVAL') as never)['approve_decision'].allowed).toBe(true);
-    expect(availability.decisionActionAvailability(ctx('SUBMITTED') as never)['approve_decision'].allowed).toBe(false);
+    expect(availability.decisionActionAvailability(ctx('PENDING_APPROVAL') as never)['approve_decision'].enabled).toBe(true);
+    expect(availability.decisionActionAvailability(ctx('SUBMITTED') as never)['approve_decision'].enabled).toBe(false);
   });
 
   it('offers reasonable cause only from a recorded non-attendance', () => {
     const actions = availability.appointmentActionAvailability(ctx('CLAIMANT_NO_SHOW') as never);
-    expect(actions['reasonable_cause'].allowed).toBe(true);
-    expect(availability.appointmentActionAvailability(ctx('SCHEDULED') as never)['reasonable_cause'].allowed).toBe(false);
+    expect(actions['reasonable_cause'].enabled).toBe(true);
+    expect(availability.appointmentActionAvailability(ctx('SCHEDULED') as never)['reasonable_cause'].enabled).toBe(false);
   });
 
   it('finalises a board determination only from IN_SESSION', () => {
-    expect(availability.boardCaseActionAvailability(ctx('IN_SESSION') as never)['record_board_determination'].allowed).toBe(true);
-    expect(availability.boardCaseActionAvailability(ctx('MEMBERS_ASSIGNED') as never)['record_board_determination'].allowed).toBe(false);
+    expect(availability.boardCaseActionAvailability(ctx('IN_SESSION') as never)['record_board_determination'].enabled).toBe(true);
+    expect(availability.boardCaseActionAvailability(ctx('MEMBERS_ASSIGNED') as never)['record_board_determination'].enabled).toBe(false);
   });
 });
