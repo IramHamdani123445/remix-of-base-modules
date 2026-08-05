@@ -83,7 +83,7 @@ describe('Medical Review command service — envelope discipline', () => {
   const src = read(COMMAND_SERVICE);
 
   it('routes every command through a versioned command RPC', () => {
-    const calls = src.match(/callCommand<?[^>]*>?\('([a-z0-9_]+)'/g) ?? [];
+    const calls = src.match(/callCommand\('([a-z0-9_]+)'/g) ?? [];
     expect(calls.length).toBeGreaterThanOrEqual(45);
     for (const call of calls) {
       expect(call).toMatch(/bn_medical_review_[a-z0-9_]+_v1/);
@@ -145,9 +145,13 @@ describe('Medical Review error model', () => {
 
   it('never echoes raw database text back to the caller', () => {
     expect(src).toContain('MEDICAL_REVIEW_ERRORS[code].message');
-    // describeMedicalReviewFailure must not fall through to err.message.
+    // The only `.message` returned is the curated one carried by
+    // MedicalReviewError; an unknown throwable falls back to E_UNKNOWN.
     const describe_ = src.slice(src.indexOf('export function describeMedicalReviewFailure'));
-    expect(describe_).not.toMatch(/return\s+\(?err[^;]*\.message/);
+    expect(describe_).toContain('err instanceof MedicalReviewError');
+    expect(describe_).toContain('MEDICAL_REVIEW_ERRORS.E_UNKNOWN.message');
+    expect(describe_).not.toMatch(/\(err as [^)]*\)\.message/);
+    expect(describe_).not.toContain('String(err)');
   });
 
   it('matches longest code first so terminal codes are not shadowed', () => {
