@@ -83,12 +83,26 @@ function Inner() {
     queryFn: () => listWaiverRequests({ status: statusFilter }),
   });
 
+  // Approved/rejected waivers change the derived case & violation balances, so
+  // the compliance detail caches must be dropped too.
+  const invalidateAffectedRecords = (wv?: WaiverRequest | null) => {
+    qc.invalidateQueries({ queryKey: ['waiver-requests'] });
+    qc.invalidateQueries({ queryKey: ['ce_case_detail'] });
+    qc.invalidateQueries({ queryKey: ['ce_case_waived_amounts'] });
+    qc.invalidateQueries({ queryKey: ['ce_case_violations'] });
+    qc.invalidateQueries({ queryKey: ['ce_violation'] });
+    qc.invalidateQueries({ queryKey: ['ce_violation_waived'] });
+    qc.invalidateQueries({ queryKey: ['ce_cases'] });
+    if (wv?.case_id) qc.invalidateQueries({ queryKey: ['ce_case_detail', wv.case_id] });
+    if (wv?.violation_id) qc.invalidateQueries({ queryKey: ['ce_violation', wv.violation_id] });
+  };
+
   const approve = useMutation({
     mutationFn: (args: { waiverId: string; approvedAmount: number; comments?: string }) =>
       approveWaiver({ ...args, userCode: userCode || 'SYSTEM' }),
-    onSuccess: () => {
+    onSuccess: (_r, args) => {
       toast.success('Waiver approved & applied');
-      qc.invalidateQueries({ queryKey: ['waiver-requests'] });
+      invalidateAffectedRecords((q.data ?? []).find((r) => r.id === args.waiverId));
       setDecision({ open: false, mode: 'approve', wv: null });
     },
     onError: (e: any) => toast.error(e.message || 'Approve failed'),
@@ -96,13 +110,14 @@ function Inner() {
   const reject = useMutation({
     mutationFn: (args: { waiverId: string; reason: string; comments?: string }) =>
       rejectWaiver({ ...args, userCode: userCode || 'SYSTEM' }),
-    onSuccess: () => {
+    onSuccess: (_r, args) => {
       toast.success('Waiver rejected — case returned to normal recovery');
-      qc.invalidateQueries({ queryKey: ['waiver-requests'] });
+      invalidateAffectedRecords((q.data ?? []).find((r) => r.id === args.waiverId));
       setDecision({ open: false, mode: 'reject', wv: null });
     },
     onError: (e: any) => toast.error(e.message || 'Reject failed'),
   });
+
 
   const rows = q.data ?? [];
 
