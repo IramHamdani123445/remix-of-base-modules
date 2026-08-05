@@ -250,6 +250,7 @@ export function SuspensionDecisionPanel({
                     isReinstatement
                       ? approveReinstatement({
                           reinstatementId: req.requestId,
+                          taskId: req.currentTaskId as string,
                           narrative: narrative.trim() || undefined,
                           expectedRowVersion: req.rowVersion,
                         })
