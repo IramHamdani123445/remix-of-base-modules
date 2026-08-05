@@ -29,16 +29,18 @@ const harness = readFileSync(
 
 describe('BN Medical Reviews — migration set', () => {
   it('includes the hardening, command, read and registry migrations', () => {
+    expect(migrationFiles.length).toBeGreaterThanOrEqual(5);
     for (const marker of [
-      'foundation_hardening',
-      'commands_part1',
-      'commands_part2',
-      'reads',
-      'registry',
+      '_bn_mr_validate_policy',
+      'bn_medical_review_generate_obligation_v1',
+      'bn_medical_review_approve_decision_v1',
+      'bn_medical_review_worklist_v1',
+      'core_permission_registry',
     ]) {
-      expect(migrationFiles.some((f) => f.includes(marker))).toBe(true);
+      expect(sql).toContain(marker);
     }
   });
+
 
   it('separates medical from administrative authority', () => {
     expect(sql).toContain('medical_determination_authority');
