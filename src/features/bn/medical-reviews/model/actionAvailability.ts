@@ -243,8 +243,9 @@ export function decisionActionAvailability(
   return {
     ...build(
       [
-        { action: A.prepareDecision, states: ['NONE', 'RETURNED', 'DRAFT'], versioned: false, reasonRequired: true, surface: 'BENEFITS', stateMessage: 'A decision already exists for this review.' },
+        { action: A.prepareDecision, states: ['NONE', 'NOT_READY', 'READY', 'RETURNED'], versioned: false, reasonRequired: true, surface: 'BENEFITS', stateMessage: 'A decision already exists for this review.' },
         { action: A.closeReview, states: ['APPROVED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', stateMessage: 'Only an approved decision can be completed.', alias: 'complete_decision' },
+
       ],
       { ...ctx, extraBlockedReason: prepareExtra },
     ),
