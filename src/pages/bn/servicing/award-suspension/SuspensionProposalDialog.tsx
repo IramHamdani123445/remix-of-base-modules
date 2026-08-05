@@ -38,7 +38,14 @@ interface Props {
 type ReasonsState =
   | { status: 'loading' }
   | { status: 'loaded'; options: SuspensionReasonOption[] }
-  | { status: 'error'; message: string };
+  | { status: 'error' };
+
+/**
+ * Operator-facing copy for a failed reason lookup. The thrown error is never
+ * rendered: raw database text, stack traces, hostnames, request identifiers
+ * and internal function names must not reach the operator surface.
+ */
+const REASONS_ERROR_MESSAGE = 'Suspension reasons could not be loaded.';
 
 type FieldKey = 'award' | 'reason' | 'effectiveDate' | 'narrative' | 'ack';
 
@@ -67,16 +74,20 @@ export function SuspensionProposalDialog({
     setReasonsState({ status: 'loading' });
     listSuspensionReasonCodes()
       .then((options) => setReasonsState({ status: 'loaded', options }))
-      .catch((e: unknown) =>
-        setReasonsState({
-          status: 'error',
-          message:
-            e instanceof Error && e.message
-              ? e.message
-              : 'Suspension reasons could not be loaded.',
-        })
-      );
+      .catch((e: unknown) => {
+        setReasonsState({ status: 'error' });
+        // Approved telemetry boundary only — never the operator surface.
+        void import('@/lib/globalErrorHandler')
+          .then(({ logApplicationError }) =>
+            logApplicationError(e, {
+              module: 'bn_award_suspension',
+              action: 'list_suspension_reason_codes',
+            })
+          )
+          .catch(() => undefined);
+      });
   }, []);
+
 
   useEffect(() => {
     if (!open) return;
@@ -131,7 +142,7 @@ export function SuspensionProposalDialog({
     ];
     for (const [key, el] of order) {
       if (fieldErrors[key] && el) {
-        el.scrollIntoView({ block: 'center' });
+        el.scrollIntoView?.({ block: 'center' });
         el.focus();
         return;
       }
@@ -156,13 +167,18 @@ export function SuspensionProposalDialog({
       <DialogContent
         className="flex w-[calc(100vw-1rem)] max-w-2xl max-h-[calc(100dvh-1rem)] flex-col gap-0 overflow-hidden p-0 sm:w-[calc(100vw-2rem)] sm:max-h-[calc(100dvh-2rem)]"
       >
-        <DialogHeader className="shrink-0 space-y-1 border-b px-4 py-4 pr-12 text-left sm:px-6">
-          <DialogTitle className="text-base sm:text-lg">New Suspension Request</DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
+        {/* pr-12 is repeated at sm so responsive px-* can never remove the
+            clearance reserved for the dialog close control. */}
+        <DialogHeader className="shrink-0 space-y-1 border-b px-4 pr-12 py-4 text-left sm:px-6 sm:pr-12">
+          <DialogTitle className="min-w-0 break-words text-base sm:text-lg">
+            New Suspension Request
+          </DialogTitle>
+          <DialogDescription className="min-w-0 break-words text-xs sm:text-sm">
             Propose a temporary suspension of an active award. The proposal will follow the
             configured maker-checker workflow.
           </DialogDescription>
         </DialogHeader>
+
 
         <div
           data-testid="suspension-proposal-body"
@@ -267,9 +283,8 @@ export function SuspensionProposalDialog({
                 )}
                 {reasonsState.status === 'error' && (
                   <p className="flex flex-wrap items-center gap-2 text-destructive" role="alert">
-                    <span className="min-w-0 break-words">
-                      Suspension reasons could not be loaded.
-                    </span>
+                    <span className="min-w-0 break-words">{REASONS_ERROR_MESSAGE}</span>
+
                     <Button
                       type="button"
                       size="sm"
@@ -372,6 +387,7 @@ export function SuspensionProposalDialog({
 
           {showErrors && errorCount > 0 && (
             <p
+              id="suspension-validation-summary"
               data-testid="suspension-validation-summary"
               role="alert"
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive"
@@ -394,8 +410,13 @@ export function SuspensionProposalDialog({
             className="min-h-[44px] w-full sm:w-auto"
             onClick={handleSubmit}
             disabled={!actionsEnabled}
-            aria-disabled={!canSubmit}
-            data-invalid={!canSubmit ? 'true' : undefined}
+            // Only the rollout gate exposes a disabled state. An incomplete but
+            // actionable form stays operable so the first attempt reveals errors.
+            aria-disabled={!actionsEnabled ? true : undefined}
+            aria-describedby={
+              showErrors && errorCount > 0 ? 'suspension-validation-summary' : undefined
+            }
+
             title={
               !actionsEnabled
                 ? 'Submission unavailable while suspension controls are under verification.'
