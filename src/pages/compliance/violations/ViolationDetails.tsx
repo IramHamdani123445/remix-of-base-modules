@@ -509,6 +509,28 @@ export default function ViolationDetails() {
               </>
             )}
 
+            {/* Assign / Reassign officer — primary supervisory action, surfaced in
+                the header action bar so Admins and Compliance Heads can route a
+                violation into an officer's work queue without scrolling to the
+                Assignment & Routing card. */}
+            {canManageAssignments && !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(currentStatus) && (
+              <Button
+                type="button"
+                variant={v.assigned_to_user_id ? 'outline' : 'default'}
+                size="sm"
+                onClick={() => { clearStuckBodyPointerEvents(); setAssignmentDialogOpen(true); }}
+                title={
+                  v.assigned_to_user_id
+                    ? `Currently assigned to ${v.assigned_to_name || 'an officer'}. Reassign to another officer.`
+                    : 'Assign this violation to an officer so it appears in their work queue.'
+                }
+              >
+                <UserCheck className="h-4 w-4" />
+                <span className="ml-1">{v.assigned_to_user_id ? 'Reassign Officer' : 'Assign Officer'}</span>
+              </Button>
+            )}
+
+
             {/* Navigation buttons */}
             <div className="ml-auto flex gap-2">
               {linkedCase ? (
