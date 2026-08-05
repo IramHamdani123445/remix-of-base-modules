@@ -55,7 +55,10 @@ const DEFAULTS: Record<BnFeatureFlag, boolean> = {
   // app_modules.actions_enabled=false; screen visibility is independent.
   "bn.servicing.lifeCert": true,
   "bn.servicing.overpayment": false,
-  "bn.servicing.medicalReview": false,
+  // BN-MR-UI: default true — registered servicing workspace, read-only.
+  // Medical Review mutations remain dark-launched server-side via
+  // app_modules.actions_enabled=false; screen visibility is independent.
+  "bn.servicing.medicalReview": true,
   // BN-MENU-S1: default true — screen/menu visibility only.
   // Operational mutations are still gated by app_modules.actions_enabled=false
   // and by `effectiveActionsEnabled` composition in the workspace.

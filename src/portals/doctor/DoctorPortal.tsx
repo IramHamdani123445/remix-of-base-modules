@@ -4,6 +4,7 @@ import { ExternalTaskList } from '@/portals/_shared/ExternalTaskList';
 import { ExternalTaskForm } from '@/portals/_shared/ExternalTaskForm';
 import { PortalModulePlaceholder } from '@/portals/_shared/PortalModulePlaceholder';
 import DoctorLanding from '@/portals/doctor/DoctorLanding';
+import MedicalProviderReferralWorkspace from '@/portals/doctor/medical-reviews/MedicalProviderReferralWorkspace';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -48,7 +49,9 @@ export default function DoctorPortal() {
             <Route path="disablement" element={<PortalModulePlaceholder title="Disablement Assessments" description="Loss-of-faculty assessments for Disablement Benefit." internalSource="bn_medical_recommendation" />} />
             <Route path="disablement-assessments" element={<PortalModulePlaceholder title="Disablement Assessments" description="Loss-of-faculty assessments for Disablement Benefit." internalSource="bn_medical_recommendation" />} />
             <Route path="submitted" element={<Reports title="Submitted Reports" description="All medical reports you have submitted." />} />
-            <Route path="reviews" element={<PortalModulePlaceholder title="Medical Review Requests" description="Periodic medical reviews of existing awards." internalSource="bn_medical_review_schedule" />} />
+            {/* BN-MR-UI: restricted Medical Provider surface. Scoping to the
+                signed-in provider identity is enforced inside the RPC. */}
+            <Route path="reviews" element={<MedicalProviderReferralWorkspace />} />
             <Route path="documents" element={<PortalModulePlaceholder title="Provider Documents" description="Documents you uploaded with reports and certificates." internalSource="bn_external_task_document" />} />
             <Route path="messages" element={<Messages />} />
             <Route path="*" element={<Navigate to="/doctor/dashboard" replace />} />
