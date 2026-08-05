@@ -234,7 +234,9 @@ const _bnMenuItemsRaw = [
       { title: "Pensioner Register", url: "/bn/awards", icon: Shield, requiresPermission: "benefits_management", description: "All long-term award entitlements" },
       { title: "Survivor Awards", url: "/bn/awards/survivors", icon: Users, requiresPermission: "benefits_management" },
       { title: "Medical Reviews", url: "/bn/medical-reviews", icon: Stethoscope, requiresPermission: "benefits_management" },
-      { title: "Award Suspensions", url: "/bn/award-suspension", icon: PauseCircle, requiresPermission: "benefits_management" },
+      // Award Suspension intentionally lives only under "Benefit Servicing"
+      // (canonical placement). Do not re-add a duplicate link here.
+
       { title: "Overpayments", url: "/bn/overpayments", icon: AlertTriangle, requiresPermission: "benefits_management" },
       { title: "Award Adjustments", url: "/bn/awards/adjustments", icon: Wrench, requiresPermission: "benefits_management" },
     ],
