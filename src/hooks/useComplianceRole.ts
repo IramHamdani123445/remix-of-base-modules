@@ -4,8 +4,13 @@ import type { ComplianceOperationalRole } from '@/lib/compliance/capabilities';
 
 /**
  * Derives the user's operational role inside the Compliance & Enforcement module.
- * Resolution priority: ComplianceHead > SeniorInspector > ComplianceInspector > other.
+ * Resolution priority: Admin/ComplianceHead > SeniorInspector > ComplianceInspector > other.
+ *
+ * Platform administrators (Admin / SuperAdmin / System Administrator) are treated
+ * as Compliance Head so they retain the full supervisory action set — assignment,
+ * reassignment, verification and reopening — on the Admin Panel.
  */
+
 export function useComplianceRole(): ComplianceOperationalRole {
   const auth = useSupabaseAuth() as any;
 
