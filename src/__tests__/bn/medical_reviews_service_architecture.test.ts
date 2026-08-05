@@ -182,7 +182,15 @@ describe('Medical Review actor surfaces', () => {
       const src = read(file);
       if (file.endsWith('MedicalReviewActionControls.tsx')) continue;
       if (!src.includes('MedicalReviewActionButton')) continue;
-      expect(src, file).toContain('actionsEnabled={actionsState.actionsEnabled}');
+      // The authoritative flag is either read from the hook on a route-level
+      // surface, or passed down as a prop to a nested panel. Either way it must
+      // reach the shared button — no surface may hard-code `true`.
+      expect(
+        src.includes('actionsEnabled={actionsState.actionsEnabled}') ||
+          src.includes('actionsEnabled={actionsEnabled}'),
+        file,
+      ).toBe(true);
+      expect(src, file).not.toContain('actionsEnabled={true}');
     }
   });
 
