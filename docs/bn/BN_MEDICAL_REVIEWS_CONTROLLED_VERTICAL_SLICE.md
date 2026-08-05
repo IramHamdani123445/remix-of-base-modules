@@ -445,12 +445,63 @@ Not modified by this change set.
 
 The complete Benefits suite is therefore **not** green, and is not claimed to be.
 
-### 10.11 Seeded database harness
+### 10.11 Seeded database harness and trusted execution path
 
-`supabase/tests/bn/medical_review_integration.sql` — **CREATED — EXECUTION PENDING.** No trusted
-PostgreSQL/Supabase environment capable of authenticated RPC execution was available from this
-environment, so `BN_MEDICAL_REVIEW_HARNESS_RESULT: PASS` has not been produced. The harness is not
-claimed to have passed.
+`supabase/tests/bn/medical_review_integration.sql` — **CERTIFICATION-GRADE — EXECUTION PENDING ON A
+TRUSTED RUNNER.** The harness is self-seeding and runs in two deliberate contexts:
+
+- **Trusted context** (database-owner-capable role): seeds fixtures, inspects private `_bn_mr_*`
+  helpers, asserts stored state, and performs the transactional dark-launch activation and
+  postflight restoration.
+- **Actor context** (`SET LOCAL ROLE authenticated` plus `request.jwt.claims`): drives every
+  business step through the public RPC surface only. No actor block calls a private helper, and the
+  harness asserts that private helpers remain non-executable for `anon` and `authenticated`.
+
+Everything runs inside one transaction that always ends in `ROLLBACK`, so no fixture, permission
+grant, or activation survives the run.
+
+Coverage: policy validation negatives, wildcard-approval uniqueness, provider conflict detection,
+the full journey (Benefits officer → provider portal → board session with quorum and recusal →
+maker/checker administrative decision), record-scope and masking on reads, stale-version and
+idempotency behaviour (exact replay, payload mismatch, key reuse), communication-context
+allow-listing, and the award proposal boundary (proposal only — award status, suspension events and
+payment impacts are asserted unchanged).
+
+**Idempotency hardening.** `_bn_mr_cmd_begin` / `_bn_mr_cmd_finish` now compare a semantic payload
+fingerprint that deliberately excludes optimistic-concurrency tokens (`version`,
+`expected_row_version`, `row_version`). Same key plus same intent replays; same key plus changed
+business fields raises `E_IDEMPOTENCY_PAYLOAD_MISMATCH`; same key on a different command raises
+`E_IDEMPOTENCY_KEY_REUSED`; concurrent duplicates are resolved by `ON CONFLICT DO NOTHING` so only
+one request can apply.
+
+**Effective-grant verifier.** `supabase/verify/bn_medical_review_effective_grants.sql` checks
+explicit ACLs plus effective privileges (`has_table_privilege` / `has_function_privilege`), requires
+every command to route through `_bn_mr_cmd_actor`, forbids award mutation or suspension execution
+from any Medical Review command, confirms the idempotency guards exist, and fails if the module is
+not dark-launched.
+
+**Runner.** `scripts/bn/run-medical-review-db-tests.sh` requires `BN_TEST_DATABASE_URL` and
+`BN_TEST_DB_CONFIRM=I_UNDERSTAND_THIS_IS_A_TEST_DATABASE`, refuses any URL matching the production
+denylist, never echoes credentials, asserts dark launch before and after, and verifies zero fixture
+residue. Exit codes: `1` harness failure, `2` missing configuration, `3` unsafe target, `4` state
+verification failure.
+
+```bash
+BN_TEST_DATABASE_URL=postgres://… \
+BN_TEST_DB_CONFIRM=I_UNDERSTAND_THIS_IS_A_TEST_DATABASE \
+scripts/bn/run-medical-review-db-tests.sh
+```
+
+**Trusted CI.** `.github/workflows/bn-medical-review-integration.yml` is `workflow_dispatch` only,
+requires the literal confirmation input `RUN`, executes in the protected `medical-review-test`
+environment (which holds `BN_TEST_DATABASE_URL`), and uploads the harness log as retained evidence.
+
+Static guarantees over these artefacts are asserted by
+`src/__tests__/bn/medical_reviews_db_certification.test.ts`. The runtime evidence line
+`BN_MR_HARNESS_RESULT: PASS` can only be produced by the trusted runner; it has **not** been
+produced from the development sandbox, whose restricted role cannot execute the private helpers or
+seed `auth.users`.
+
 
 ## 11. Remaining scope
 

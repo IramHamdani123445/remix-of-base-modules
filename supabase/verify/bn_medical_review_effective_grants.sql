@@ -1,0 +1,114 @@
+-- =====================================================================
+-- BN Medical Reviews — effective grant verifier
+-- Expect ZERO rows from every plain query, and no exception from the
+-- effective-privilege DO block.
+-- =====================================================================
+
+-- 1. No direct table privileges for anon / authenticated / PUBLIC on any
+--    Medical Review table (explicit ACL entries).
+SELECT c.relname, pg_get_userbyid(x.grantee) AS grantee, x.privilege_type
+  FROM pg_class c
+  JOIN pg_namespace n ON n.oid = c.relnamespace
+  CROSS JOIN LATERAL aclexplode(c.relacl) x
+ WHERE n.nspname = 'public'
+   AND c.relkind = 'r'
+   AND (c.relname LIKE 'bn_medical_review%' OR c.relname LIKE 'bn_medical_board%'
+        OR c.relname LIKE 'bn_medical_provider%')
+   AND pg_get_userbyid(x.grantee) IN ('anon','authenticated','public');
+
+-- 2. Private helpers must not be executable by browser roles.
+SELECT p.proname, pg_get_userbyid(x.grantee) AS grantee
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  CROSS JOIN LATERAL aclexplode(p.proacl) x
+ WHERE n.nspname = 'public'
+   AND p.proname LIKE '\_bn\_mr\_%'
+   AND pg_get_userbyid(x.grantee) IN ('anon','authenticated','public');
+
+-- 3. Every Medical Review command must route through the command actor
+--    guard (module enablement + permission) rather than raw auth.uid().
+SELECT p.proname
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public'
+   AND p.proname ~ '^bn_medical_review_(generate_obligation|assign_provider|issue_referral|accept_referral|decline_referral|schedule_appointment|reschedule_appointment|record_attendance|record_non_attendance|record_reasonable_cause|start_assessment|save_assessment_draft|submit_assessment|validate_report|reject_report|request_clarification|refer_to_board|assign_board_members|schedule_board_session|record_board_participation|record_board_vote|record_recusal|declare_board_conflict|finalise_board_determination|prepare_decision|submit_decision|approve_decision|return_decision|complete_decision|propose_suspension|propose_reinstatement|close_review|defer_review)_v1$'
+   AND position('_bn_mr_cmd_actor' in pg_get_functiondef(p.oid)) = 0;
+
+-- 4. No Medical Review command may mutate an award or execute a suspension.
+SELECT p.proname
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE n.nspname = 'public'
+   AND p.proname LIKE 'bn_medical_review\_%'
+   AND (pg_get_functiondef(p.oid) ~* 'UPDATE\s+public\.bn_award\s'
+        OR pg_get_functiondef(p.oid) ~* 'bn_award_suspension_execute');
+
+-- 5. Idempotency hardening must be present in the command pipeline.
+SELECT 'missing_payload_mismatch_guard' AS problem
+ WHERE position('E_IDEMPOTENCY_PAYLOAD_MISMATCH' in
+       (SELECT pg_get_functiondef(oid) FROM pg_proc
+         WHERE proname = '_bn_mr_cmd_begin' AND pronamespace = 'public'::regnamespace)) = 0;
+
+SELECT 'missing_key_reuse_guard' AS problem
+ WHERE position('E_IDEMPOTENCY_KEY_REUSED' in
+       (SELECT pg_get_functiondef(oid) FROM pg_proc
+         WHERE proname = '_bn_mr_cmd_finish' AND pronamespace = 'public'::regnamespace)) = 0;
+
+-- =====================================================================
+-- 6. EFFECTIVE privilege verification (inherited and PUBLIC defaults too).
+-- =====================================================================
+DO $verify$
+DECLARE r record; v_bad text[] := '{}';
+BEGIN
+  FOR r IN
+    SELECT c.relname, role_name, priv
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      CROSS JOIN unnest(ARRAY['anon','authenticated']) AS role_name
+      CROSS JOIN unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE']) AS priv
+     WHERE n.nspname = 'public' AND c.relkind = 'r'
+       AND (c.relname LIKE 'bn_medical_review%' OR c.relname LIKE 'bn_medical_board%'
+            OR c.relname LIKE 'bn_medical_provider%')
+       AND has_table_privilege(role_name, c.oid, priv)
+  LOOP
+    v_bad := v_bad || format('TABLE %s: %s has %s', r.relname, r.role_name, r.priv);
+  END LOOP;
+
+  FOR r IN
+    SELECT p.proname, pg_get_function_identity_arguments(p.oid) AS args, role_name
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      CROSS JOIN unnest(ARRAY['anon','authenticated']) AS role_name
+     WHERE n.nspname = 'public'
+       AND p.proname LIKE '\_bn\_mr\_%'
+       AND has_function_privilege(role_name, p.oid, 'EXECUTE')
+  LOOP
+    v_bad := v_bad || format('FUNCTION %s(%s): %s has EXECUTE', r.proname, r.args, r.role_name);
+  END LOOP;
+
+  IF array_length(v_bad, 1) > 0 THEN
+    RAISE EXCEPTION 'UNSAFE EFFECTIVE PRIVILEGES: %', array_to_string(v_bad, E'\n');
+  END IF;
+
+  RAISE NOTICE 'Medical Review effective privilege verification passed.';
+END $verify$;
+
+-- =====================================================================
+-- 7. Dark-launch state must hold in the target database.
+-- =====================================================================
+DO $dark$
+DECLARE v_enabled boolean;
+BEGIN
+  SELECT COALESCE(actions_enabled, false) INTO v_enabled
+    FROM public.app_modules WHERE name = 'bn_medical_review';
+
+  IF v_enabled IS NULL THEN
+    RAISE EXCEPTION 'bn_medical_review module is not registered in app_modules';
+  END IF;
+
+  IF v_enabled THEN
+    RAISE EXCEPTION 'bn_medical_review actions_enabled is TRUE — module must stay dark-launched';
+  END IF;
+
+  RAISE NOTICE 'Medical Review dark-launch verification passed.';
+END $dark$;

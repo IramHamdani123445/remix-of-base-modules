@@ -118,7 +118,7 @@ describe('BN Medical Reviews — SQL harness', () => {
       'snapshot_contains_board',
       'wildcard_approval_uniqueness',
       'provider_conflict_detected',
-      'facility_without_actor_rejected',
+      'assigning_provider_a_has_no_conflict',
       'comm_allowlist_drops_clinical_fields',
       'obligation_terminal_not_reopenable',
       'no_direct_award_mutation_in_mr_commands',

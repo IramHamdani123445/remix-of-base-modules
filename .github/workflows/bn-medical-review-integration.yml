@@ -1,0 +1,55 @@
+name: BN Medical Review — seeded database integration
+
+# Trusted execution path for the Medical Review certification harness.
+# Manual dispatch only. Runs against the approved isolated Test database
+# using a database-owner-capable role held in the protected environment
+# `medical-review-test`. The harness runs in one transaction and rolls
+# back; the runner additionally asserts dark-launch and zero residue.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type RUN to confirm this targets an isolated Test database'
+        required: true
+        default: ''
+
+concurrency:
+  group: bn-medical-review-integration
+  cancel-in-progress: false
+
+jobs:
+  harness:
+    name: Seeded harness (trusted role)
+    runs-on: ubuntu-latest
+    environment: medical-review-test
+    timeout-minutes: 20
+    steps:
+      - name: Guard on explicit confirmation
+        if: ${{ github.event.inputs.confirm != 'RUN' }}
+        run: |
+          echo "Confirmation input must be exactly 'RUN'." >&2
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Run effective-grant verifier and seeded harness
+        env:
+          BN_TEST_DATABASE_URL: ${{ secrets.BN_TEST_DATABASE_URL }}
+          BN_TEST_DB_CONFIRM: I_UNDERSTAND_THIS_IS_A_TEST_DATABASE
+        run: |
+          chmod +x scripts/bn/run-medical-review-db-tests.sh
+          ./scripts/bn/run-medical-review-db-tests.sh 2>&1 | tee harness-output.log
+
+      - name: Upload harness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bn-medical-review-harness-evidence
+          path: harness-output.log
+          retention-days: 30
