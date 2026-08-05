@@ -142,7 +142,7 @@ export function SuspensionProposalDialog({
     ];
     for (const [key, el] of order) {
       if (fieldErrors[key] && el) {
-        el.scrollIntoView({ block: 'center' });
+        el.scrollIntoView?.({ block: 'center' });
         el.focus();
         return;
       }
