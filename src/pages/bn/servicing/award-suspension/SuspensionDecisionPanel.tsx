@@ -250,6 +250,7 @@ export function SuspensionDecisionPanel({
                     isReinstatement
                       ? approveReinstatement({
                           reinstatementId: req.requestId,
+                          taskId: req.currentTaskId as string,
                           narrative: narrative.trim() || undefined,
                           expectedRowVersion: req.rowVersion,
                         })
@@ -334,6 +335,7 @@ export function SuspensionDecisionPanel({
                     isReinstatement
                       ? rejectReinstatement({
                           reinstatementId: req.requestId,
+                          taskId: req.currentTaskId as string,
                           reasonCode: rejectReason,
                           narrative: rejectNarrative.trim() || undefined,
                           expectedRowVersion: req.rowVersion,

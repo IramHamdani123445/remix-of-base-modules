@@ -9,9 +9,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
+// Radix Select needs these DOM APIs, which jsdom does not implement.
+window.HTMLElement.prototype.scrollIntoView = vi.fn();
+window.HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
+window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+
 const approveSuspension = vi.fn();
 const rejectSuspension = vi.fn();
 const withdrawSuspension = vi.fn();
+const approveReinstatement = vi.fn();
+const rejectReinstatement = vi.fn();
+const withdrawReinstatement = vi.fn();
 
 vi.mock('@/services/bn/awardSuspensionCommandService', async () => {
   const actual: any = await vi.importActual('@/services/bn/awardSuspensionCommandService');
@@ -20,6 +28,9 @@ vi.mock('@/services/bn/awardSuspensionCommandService', async () => {
     approveSuspension: (...a: unknown[]) => approveSuspension(...a),
     rejectSuspension: (...a: unknown[]) => rejectSuspension(...a),
     withdrawSuspension: (...a: unknown[]) => withdrawSuspension(...a),
+    approveReinstatement: (...a: unknown[]) => approveReinstatement(...a),
+    rejectReinstatement: (...a: unknown[]) => rejectReinstatement(...a),
+    withdrawReinstatement: (...a: unknown[]) => withdrawReinstatement(...a),
   };
 });
 
@@ -51,6 +62,9 @@ beforeEach(() => {
   approveSuspension.mockReset().mockResolvedValue({});
   rejectSuspension.mockReset().mockResolvedValue({});
   withdrawSuspension.mockReset().mockResolvedValue({});
+  approveReinstatement.mockReset().mockResolvedValue({});
+  rejectReinstatement.mockReset().mockResolvedValue({});
+  withdrawReinstatement.mockReset().mockResolvedValue({});
 });
 
 describe('Journey A — maker-checker', () => {
@@ -186,5 +200,173 @@ describe('task openness', () => {
   });
   it.each(['COMPLETED', 'CANCELLED', null, undefined])('treats %s as closed', (s) => {
     expect(isTaskOpen(s as string | null)).toBe(false);
+  });
+});
+
+/**
+ * BN-SUSP-REINST — reinstatement decision routing.
+ * Suspension permissions must never authorise reinstatement decisions, and the
+ * real open task id from the secured read contract must be forwarded.
+ */
+const reinstatement = (over: Record<string, unknown> = {}) =>
+  details({
+    caseKind: 'REINSTATEMENT',
+    eventStatus: 'REINSTATEMENT_PROPOSED',
+    currentTaskId: 'task-r1',
+    ...over,
+  });
+
+describe('Journey D — reinstatement decisions', () => {
+  it('approves with the reinstatement id, real task id and row version', async () => {
+    render(
+      <SuspensionDecisionPanel
+        details={reinstatement()}
+        currentUserId="user-approver"
+        canApprove
+        canPropose={false}
+        actionsEnabled
+        onChanged={() => {}}
+      />
+    );
+    fireEvent.click(screen.getByTestId('approve-button'));
+    await waitFor(() =>
+      expect(approveReinstatement).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reinstatementId: 'req-1',
+          taskId: 'task-r1',
+          expectedRowVersion: 4,
+        })
+      )
+    );
+    expect(approveSuspension).not.toHaveBeenCalled();
+  });
+
+  it('rejects with the real task id and the selected reason', async () => {
+    render(
+      <SuspensionDecisionPanel
+        details={reinstatement()}
+        currentUserId="user-approver"
+        canApprove
+        canPropose={false}
+        actionsEnabled
+        onChanged={() => {}}
+      />
+    );
+    fireEvent.click(screen.getByTestId('reject-button'));
+    const trigger = await screen.findByLabelText(/Rejection reason/i);
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    const option = await screen.findByText('Insufficient evidence');
+    fireEvent.click(option);
+    await waitFor(() => expect(screen.getByTestId('confirm-reject')).toBeEnabled());
+    fireEvent.click(screen.getByTestId('confirm-reject'));
+    await waitFor(() =>
+      expect(rejectReinstatement).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reinstatementId: 'req-1',
+          taskId: 'task-r1',
+          reasonCode: 'INSUFFICIENT_EVIDENCE',
+          expectedRowVersion: 4,
+        })
+      )
+    );
+    expect(rejectSuspension).not.toHaveBeenCalled();
+  });
+
+  it('lets the reinstatement proposer withdraw but never approve or reject', async () => {
+    render(
+      <SuspensionDecisionPanel
+        details={reinstatement()}
+        currentUserId="user-proposer"
+        canApprove
+        canPropose
+        actionsEnabled
+        onChanged={() => {}}
+      />
+    );
+    expect(screen.queryByTestId('approve-button')).toBeNull();
+    expect(screen.queryByTestId('reject-button')).toBeNull();
+    fireEvent.click(screen.getByTestId('withdraw-button'));
+    await waitFor(() =>
+      expect(withdrawReinstatement).toHaveBeenCalledWith(
+        expect.objectContaining({ reinstatementId: 'req-1', expectedRowVersion: 4 })
+      )
+    );
+    expect(withdrawSuspension).not.toHaveBeenCalled();
+  });
+
+  it('never calls reinstatement commands for a suspension case', async () => {
+    render(
+      <SuspensionDecisionPanel
+        details={details()}
+        currentUserId="user-approver"
+        canApprove
+        canPropose={false}
+        actionsEnabled
+        onChanged={() => {}}
+      />
+    );
+    fireEvent.click(screen.getByTestId('approve-button'));
+    await waitFor(() => expect(approveSuspension).toHaveBeenCalled());
+    expect(approveReinstatement).not.toHaveBeenCalled();
+  });
+
+  it('shows no controls when the caller only holds suspension approval', () => {
+    // The drawer passes resume permissions for a reinstatement; a
+    // suspension-only approver therefore arrives with canApprove=false.
+    const { container } = render(
+      <SuspensionDecisionPanel
+        details={reinstatement()}
+        currentUserId="user-approver"
+        canApprove={false}
+        canPropose={false}
+        actionsEnabled
+        onChanged={() => {}}
+      />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('shows reinstatement controls for a resume_approve holder', () => {
+    render(
+      <SuspensionDecisionPanel
+        details={reinstatement()}
+        currentUserId="user-approver"
+        canApprove
+        canPropose={false}
+        actionsEnabled
+        onChanged={() => {}}
+      />
+    );
+    expect(screen.getByTestId('approve-button')).toBeEnabled();
+  });
+
+  it('disables decisions when the reinstatement task is closed', () => {
+    render(
+      <SuspensionDecisionPanel
+        details={reinstatement({ taskStatus: 'COMPLETED' })}
+        currentUserId="user-approver"
+        canApprove
+        canPropose={false}
+        actionsEnabled
+        onChanged={() => {}}
+      />
+    );
+    expect(screen.getByTestId('approve-button')).toBeDisabled();
+  });
+
+  it('fails closed when no task id was supplied', () => {
+    render(
+      <SuspensionDecisionPanel
+        details={reinstatement({ currentTaskId: null })}
+        currentUserId="user-approver"
+        canApprove
+        canPropose={false}
+        actionsEnabled
+        onChanged={() => {}}
+      />
+    );
+    expect(screen.getByTestId('approve-button')).toBeDisabled();
+    expect(screen.getByTestId('reject-button')).toBeDisabled();
+    expect(approveReinstatement).not.toHaveBeenCalled();
   });
 });
