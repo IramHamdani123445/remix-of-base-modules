@@ -265,8 +265,9 @@ export function decisionActionAvailability(
 export function awardProposalActionAvailability(ctx: AvailabilityContext) {
   return build(
     [
-      { action: A.proposeSuspension, states: ['APPROVED', 'COMPLETE'], versioned: false, reasonRequired: true, surface: 'BENEFITS', stateMessage: 'A proposal can only be raised from an approved administrative decision.' },
-      { action: A.proposeReinstatement, states: ['APPROVED', 'COMPLETE'], versioned: false, reasonRequired: true, surface: 'BENEFITS', stateMessage: 'A proposal can only be raised from an approved administrative decision.' },
+      { action: A.proposeSuspension, states: ['APPROVED', 'COMPLETED'], versioned: false, reasonRequired: true, surface: 'BENEFITS', stateMessage: 'A proposal can only be raised from an approved administrative decision.' },
+      { action: A.proposeReinstatement, states: ['APPROVED', 'COMPLETED'], versioned: false, reasonRequired: true, surface: 'BENEFITS', stateMessage: 'A proposal can only be raised from an approved administrative decision.' },
+
     ],
     ctx,
   );
