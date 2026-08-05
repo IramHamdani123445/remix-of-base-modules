@@ -33,14 +33,13 @@ import type { ActionAvailability } from '@/features/bn/medical-reviews/model/act
 import { MEDICAL_REVIEW_ACTIONS } from '@/features/bn/medical-reviews/model/permissions';
 import {
   ATTENDANCE_OUTCOMES,
-  EXPECTED_DURATIONS,
   IDENTITY_VERIFICATION_METHODS,
   INCAPACITY_NATURES,
   MEDICAL_OUTCOMES,
   PROGNOSIS_CATEGORIES,
   WORK_CAPACITY_OPINIONS,
-  YES_NO,
 } from '@/features/bn/medical-reviews/model/controlledValues';
+
 
 type Row = Record<string, unknown>;
 const s = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
