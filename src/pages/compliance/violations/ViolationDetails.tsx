@@ -25,6 +25,8 @@ import { ViolationActionConfirmDialog, ConfirmActionType } from '@/components/co
 import { violationLifecycleService, ViolationStatus } from '@/services/violationLifecycleService';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { fetchViolationById } from '@/services/complianceDataService';
+import { fetchViolationWaivedAmount, computeOutstanding } from '@/services/complianceWaiverAmounts';
+
 import { confirmViolation, rejectViolation } from '@/services/verificationQueueService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -129,6 +131,14 @@ export default function ViolationDetails() {
     queryFn: () => fetchViolationById(id!),
     enabled: !!id,
   });
+
+  // Approved waivers reduce the displayed outstanding amount at read time.
+  const { data: violationWaived = 0 } = useQuery({
+    queryKey: ['ce_violation_waived', id],
+    queryFn: () => fetchViolationWaivedAmount(id!),
+    enabled: !!id,
+  });
+
 
 
   const { data: otherViolations = [] } = useQuery({
@@ -237,6 +247,8 @@ export default function ViolationDetails() {
   // ============================================
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ['ce_violation', id] });
+    queryClient.invalidateQueries({ queryKey: ['ce_violation_waived', id] });
+
     queryClient.invalidateQueries({ queryKey: ['ce_violation_history', id] });
     queryClient.invalidateQueries({ queryKey: ['ce_violation_linked_case', id] });
   };
@@ -385,6 +397,10 @@ export default function ViolationDetails() {
   }
 
   const v = violationData as any;
+  const violationGross = Number(v.total_amount) || 0;
+  const violationWaivedAmount = Number(violationWaived) || 0;
+  const violationOutstanding = computeOutstanding(violationGross, 0, violationWaivedAmount);
+
   const typeName = v.ce_violation_types?.name ?? 'Unknown Type';
   const typeCategory = v.ce_violation_types?.category ?? '';
   const currentStatus = (v.status as string) || 'OPEN';
@@ -431,11 +447,17 @@ export default function ViolationDetails() {
               </p>
             </div>
             <div className="text-right">
-              <div className="text-sm text-muted-foreground">Total Amount</div>
+              <div className="text-sm text-muted-foreground">Outstanding Amount</div>
               <div className="text-2xl font-bold text-destructive">
-                {formatCurrency(Number(v.total_amount) || 0)}
+                {formatCurrency(violationOutstanding)}
               </div>
+              {violationWaivedAmount > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  After waiver of {formatCurrency(violationWaivedAmount)}
+                </div>
+              )}
             </div>
+
           </div>
 
           {/* Lifecycle Action Buttons */}
@@ -555,8 +577,14 @@ export default function ViolationDetails() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Due</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold text-destructive">{formatCurrency(Number(v.total_amount) || 0)}</div>
+            <div className="text-xl font-bold text-destructive">{formatCurrency(violationOutstanding)}</div>
+            {violationWaivedAmount > 0 && (
+              <div className="text-xs text-muted-foreground">
+                Gross {formatCurrency(violationGross)} · Waived {formatCurrency(violationWaivedAmount)}
+              </div>
+            )}
           </CardContent>
+
         </Card>
       </div>
 

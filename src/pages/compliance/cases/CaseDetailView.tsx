@@ -27,6 +27,8 @@ import {
 } from '@/components/ui/dialog';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { fetchCaseById } from '@/services/complianceDataService';
+import { fetchCaseWaivedAmounts, computeOutstanding } from '@/services/complianceWaiverAmounts';
+
 import { caseViolationService } from '@/services/caseViolationService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -134,6 +136,15 @@ export default function CaseDetailView() {
     queryFn: () => caseViolationService.getCaseViolations(id!),
     enabled: !!id,
   });
+
+  // Approved waivers reduce the displayed balance without touching the gross
+  // totals stored on the case / violation records.
+  const { data: waivedAmounts } = useQuery({
+    queryKey: ['ce_case_waived_amounts', id],
+    queryFn: () => fetchCaseWaivedAmounts(id!),
+    enabled: !!id,
+  });
+
 
   const { data: caseHistory = [] } = useQuery({
     queryKey: ['ce_case_history', id],
@@ -247,6 +258,17 @@ export default function CaseDetailView() {
 
   const c = caseData as any;
   const caseIsClosed = ['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status);
+
+  // Waiver-adjusted financials (approved waivers reduce the balance on read).
+  const caseGrossTotal = Number(c.total_amount) || 0;
+  const caseCollected = Number(c.amount_collected) || 0;
+  const caseWaived = Math.max(
+    Number(waivedAmounts?.caseTotal ?? 0),
+    Number(c.amount_waived ?? 0),
+  );
+  const caseOutstanding = computeOutstanding(caseGrossTotal, caseCollected, caseWaived);
+  const violationWaivedMap = waivedAmounts?.byViolation ?? {};
+
   const noticesFeatureEnabled = isComplianceFeatureEnabled('notices.generate');
   const arrangementsFeatureEnabled = isComplianceFeatureEnabled('arrangements.new');
   const activeViolationCount = linkedViolations.filter(
@@ -319,10 +341,16 @@ export default function CaseDetailView() {
               </p>
             </div>
             <div className="text-right">
-              <div className="text-sm text-muted-foreground">Total Amount</div>
+              <div className="text-sm text-muted-foreground">Outstanding Amount</div>
               <div className="text-2xl font-bold text-destructive">
-                {formatCurrency(Number(c.total_amount) || 0)}
+                {formatCurrency(caseOutstanding)}
               </div>
+              {caseWaived > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  After waiver of {formatCurrency(caseWaived)}
+                </div>
+              )}
+
               <Button
                 variant="link"
                 size="sm"
@@ -422,7 +450,7 @@ export default function CaseDetailView() {
             )}
             {!['RESOLVED', 'CLOSED', 'COMPLETED', 'CSTG_PAYMENT_ARRANGEMENT_ACTIVE'].includes(c.status) &&
               isComplianceFeatureEnabled('arrangements.new') &&
-              (Number(c.total_amount ?? 0) - Number(c.amount_collected ?? 0)) > 0 && (
+              caseOutstanding > 0 && (
               <PermissionButton
                 moduleName={COMPLIANCE_MODULE}
                 actionName="create"
@@ -436,7 +464,7 @@ export default function CaseDetailView() {
               </PermissionButton>
             )}
             {!caseIsClosed && isComplianceFeatureEnabled('enforcement.waivers') &&
-              (Number(c.total_amount ?? 0) - Number(c.amount_collected ?? 0) - Number((c as any).amount_waived ?? 0)) > 0 && (
+              caseOutstanding > 0 && (
               <PermissionButton
                 moduleName={COMPLIANCE_MODULE}
                 actionName="create"
@@ -586,9 +614,15 @@ export default function CaseDetailView() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Collected</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{formatCurrency(Number(c.amount_collected) || 0)}</div>
+            <div className="text-xl font-bold">{formatCurrency(caseCollected)}</div>
+            {caseWaived > 0 && (
+              <div className="text-xs text-muted-foreground">
+                Waived {formatCurrency(caseWaived)} of {formatCurrency(caseGrossTotal)}
+              </div>
+            )}
           </CardContent>
         </Card>
+
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -685,7 +719,24 @@ export default function CaseDetailView() {
                                 : v.period_from)
                             : (v.period || '-')}
                         </TableCell>
-                        <TableCell>{formatCurrency(Number(v.total_amount) || 0)}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            const gross = Number(v.total_amount) || 0;
+                            const vWaived = Number(violationWaivedMap[v.id] ?? 0);
+                            const net = computeOutstanding(gross, 0, vWaived);
+                            return (
+                              <div>
+                                <div>{formatCurrency(net)}</div>
+                                {vWaived > 0 && (
+                                  <div className="text-xs text-muted-foreground">
+                                    Waived {formatCurrency(vWaived)}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
+
                         <TableCell className="text-xs text-muted-foreground">
                           {v.linked_at ? formatDate(v.linked_at) : '-'}
                         </TableCell>
@@ -759,7 +810,7 @@ export default function CaseDetailView() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Payment Arrangements</CardTitle>
-                {!caseIsClosed && arrangementsFeatureEnabled && (Number(c.total_amount ?? 0) - Number(c.amount_collected ?? 0)) > 0 && (
+                {!caseIsClosed && arrangementsFeatureEnabled && caseOutstanding > 0 && (
                   <PermissionButton
                     moduleName={COMPLIANCE_MODULE}
                     actionName="create"
@@ -918,10 +969,8 @@ export default function CaseDetailView() {
           case_id: c.id,
           fund: (c as any).fund_type ?? null,
           source: 'CASE',
-          defaultAmount: Math.max(
-            0,
-            Number(c.total_amount ?? 0) - Number(c.amount_collected ?? 0) - Number((c as any).amount_waived ?? 0),
-          ),
+          defaultAmount: caseOutstanding,
+
         }}
         onCreated={() => queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] })}
       />
@@ -941,9 +990,8 @@ export default function CaseDetailView() {
         onOpenChange={setForwardLegalOpen}
         ceCaseId={c.id}
         ceCaseNumber={c.case_number}
-        outstandingAmount={
-          Number(c.total_amount ?? 0) - Number(c.amount_collected ?? 0) - Number((c as any).amount_waived ?? 0)
-        }
+        outstandingAmount={caseOutstanding}
+
       />
 
       <AddToInspectionPlanningDialog
@@ -973,11 +1021,12 @@ export default function CaseDetailView() {
             const penalty = Number(c.total_penalties) || 0;
             const interest = Number(c.total_interest) || 0;
             const componentTotal = principal + penalty + interest;
-            const total = Number(c.total_amount) || 0;
+            const total = caseGrossTotal;
             const other = Math.max(0, total - componentTotal);
-            const collected = Number(c.amount_collected) || 0;
-            const waived = Number((c as any).amount_waived) || 0;
-            const netOutstanding = Math.max(0, total - collected - waived);
+            const collected = caseCollected;
+            const waived = caseWaived;
+            const netOutstanding = caseOutstanding;
+
 
             const rows: Array<{ label: string; value: number; muted?: boolean; strong?: boolean }> = [
               { label: 'Principal Contribution', value: principal },
