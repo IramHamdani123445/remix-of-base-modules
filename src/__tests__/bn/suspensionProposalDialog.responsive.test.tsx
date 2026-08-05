@@ -117,12 +117,71 @@ describe('SuspensionProposalDialog — progressive validation', () => {
     await screen.findByText('New Suspension Request');
     fireEvent.click(screen.getByRole('button', { name: /submit for approval/i }));
     expect(await screen.findByText(/Narrative must be at least 20 characters/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /submit for approval/i })).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
   });
 });
+
+describe('SuspensionProposalDialog — submit accessibility state', () => {
+  it('does not expose an invalid but actionable submit as disabled', async () => {
+    renderDialog({ actionsEnabled: true });
+    const submit = await screen.findByRole('button', { name: /submit for approval/i });
+    expect(submit).not.toBeDisabled();
+    expect(submit).not.toHaveAttribute('aria-disabled');
+  });
+
+  it('associates the validation summary with the submit button after an attempt', async () => {
+    renderDialog({ actionsEnabled: true });
+    const submit = await screen.findByRole('button', { name: /submit for approval/i });
+    expect(submit).not.toHaveAttribute('aria-describedby');
+    fireEvent.click(submit);
+    const summary = await screen.findByTestId('suspension-validation-summary');
+    expect(summary).toHaveAttribute('id', 'suspension-validation-summary');
+    expect(submit).toHaveAttribute('aria-describedby', 'suspension-validation-summary');
+  });
+
+  it('marks the dark-launch submit natively and semantically disabled', async () => {
+    renderDialog({ actionsEnabled: false });
+    const submit = await screen.findByRole('button', { name: /submit for approval/i });
+    expect(submit).toBeDisabled();
+    expect(submit).toHaveAttribute('aria-disabled', 'true');
+  });
+});
+
+describe('SuspensionProposalDialog — header close clearance', () => {
+  it('reserves right-side clearance at both mobile and sm breakpoints', async () => {
+    renderDialog();
+    const title = await screen.findByText('New Suspension Request');
+    const header = title.closest('div')!;
+    expect(header.className).toMatch(/(^|\s)pr-12(\s|$)/);
+    expect(header.className).toMatch(/(^|\s)sm:pr-12(\s|$)/);
+    expect(header.className).toMatch(/(^|\s)px-4(\s|$)/);
+    expect(header.className).toMatch(/(^|\s)sm:px-6(\s|$)/);
+  });
+
+  it('wraps long headings and descriptions safely', async () => {
+    renderDialog();
+    const title = await screen.findByText('New Suspension Request');
+    expect(title.className).toMatch(/break-words/);
+    expect(title.className).toMatch(/min-w-0/);
+    const description = screen.getByText(/Propose a temporary suspension/i);
+    expect(description.className).toMatch(/break-words/);
+  });
+});
+
+describe('SuspensionProposalDialog — error disclosure', () => {
+  it('shows a controlled message and never the thrown error text', async () => {
+    mocks.listSuspensionReasonCodesMock.mockRejectedValue(
+      new Error('relation "public.bn_suspension_reason" does not exist at db-prod-01')
+    );
+    const { container } = renderDialog();
+    expect(
+      await screen.findByText(/Suspension reasons could not be loaded\./i)
+    ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/relation "public/);
+    expect(container.textContent).not.toMatch(/db-prod-01/);
+    expect(container.textContent).not.toMatch(/does not exist/);
+  });
+});
+
 
 describe('SuspensionProposalDialog — dark launch', () => {
   it('shows one compact read-only banner and keeps submit disabled', async () => {
