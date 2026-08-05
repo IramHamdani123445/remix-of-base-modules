@@ -12,10 +12,11 @@ import { describe, expect, it } from 'vitest';
 const MIGRATIONS_DIR = join(process.cwd(), 'supabase', 'migrations');
 
 const migrationFiles = readdirSync(MIGRATIONS_DIR)
-  .filter((f) => f.endsWith('.sql'))
+  .filter((f) => f.endsWith('.sql') && f >= '20260805')
   .filter((f) =>
-    readFileSync(join(MIGRATIONS_DIR, f), 'utf8').includes('bn_medical_review_policy'),
+    readFileSync(join(MIGRATIONS_DIR, f), 'utf8').includes('bn_medical_review'),
   );
+
 
 const sql = migrationFiles
   .map((f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8'))
