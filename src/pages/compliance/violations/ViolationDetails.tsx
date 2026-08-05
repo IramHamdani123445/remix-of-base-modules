@@ -942,7 +942,12 @@ export default function ViolationDetails() {
         entityId={v.id}
         currentOfficerId={(v as any).assigned_to_user_id || null}
         currentOfficerName={v.assigned_to_name || null}
-        onAssigned={() => queryClient.invalidateQueries({ queryKey: ['ce_violation', id] })}
+        onAssigned={() => {
+          invalidateAll();
+          queryClient.invalidateQueries({ queryKey: ['ce_violation_assignments', id] });
+          queryClient.invalidateQueries({ queryKey: ['ce_violations'] });
+        }}
+
       />
 
       {v.employer_id && (
