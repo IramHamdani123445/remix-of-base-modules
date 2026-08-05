@@ -5,7 +5,11 @@
  * /remarks when the sensitive view capability is denied. No mutations.
  */
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowUpRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 import { AwardStatusBadge, dt, KV } from '../components';
 import { Award360DataTable, type Award360Column } from '../components/Award360DataTable';
 import { Award360FilterBar } from '../components/Award360FilterBar';
@@ -246,7 +250,16 @@ export const AwardMedicalReviewsTab: React.FC<Props> = ({ awardId, canView, canV
           <Award360ActionButton availability={actions.schedule} label="Schedule Review" />
           <Award360ActionButton availability={actions.recordOutcome} label="Record Outcome" />
           <Award360ActionButton availability={actions.referBoard} label="Refer to Medical Board" />
+          {/* BN-MR-UI: deep link into the canonical Medical Review Centre, scoped
+              to this award. Navigation only — no capability is granted here. */}
+          <Link to={`/bn/medical-reviews?awardId=${encodeURIComponent(awardId)}`}>
+            <Button variant="outline" size="sm" data-testid="award360-open-medical-review-centre">
+              Open Medical Review Centre
+              <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
+            </Button>
+          </Link>
         </div>
+
 
         <Award360DetailDrawer
           open={!!state.selectedId}

@@ -198,6 +198,13 @@ const _bnMenuItemsRaw = [
         requiresPermission: "benefits_management",
       },
       {
+        title: "Medical Board Workspace",
+        url: "/bn/medical-reviews/board",
+        icon: Stethoscope,
+        requiresPermission: "benefits_management",
+      },
+
+      {
         title: "Overpayments",
         url: "/bn/overpayments",
         icon: AlertTriangle,
