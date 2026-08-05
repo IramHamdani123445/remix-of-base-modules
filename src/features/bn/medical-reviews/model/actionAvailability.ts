@@ -141,11 +141,11 @@ export function obligationActionAvailability(ctx: AvailabilityContext) {
 export function referralActionAvailability(ctx: AvailabilityContext) {
   return build(
     [
-      { action: A.verifyCredentials, states: ['NOMINATED', 'DRAFT'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
-      { action: A.issueReferral, states: ['DRAFT', 'VERIFIED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
-      { action: A.assignProvider, states: ['ISSUED', 'DECLINED', 'EXPIRED'], versioned: true, reasonRequired: true, surface: 'BENEFITS', alias: 'reassign_provider' },
+      { action: A.assignProvider, states: ['DRAFT', 'PROVIDER_SELECTION_REQUIRED', 'REASSIGNMENT_REQUIRED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
+      { action: A.issueReferral, states: ['PROVIDER_ASSIGNED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', stateMessage: 'A provider must be assigned before the referral can be issued.' },
+      { action: A.assignProvider, states: ['DECLINED', 'EXPIRED', 'REASSIGNMENT_REQUIRED'], versioned: true, reasonRequired: true, surface: 'BENEFITS', alias: 'reassign_provider' },
       { action: A.issueReferral, states: ['ISSUED', 'ACCEPTED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', alias: 'expire_referral' },
-      { action: A.requestSecondOpinion, states: ['REPORT_ACCEPTED', 'REPORT_SUBMITTED', 'COMPLETE'], versioned: false, reasonRequired: true, surface: 'BENEFITS' },
+      { action: A.requestSecondOpinion, states: ['REPORT_SUBMITTED', 'COMPLETED'], versioned: false, reasonRequired: true, surface: 'BENEFITS' },
     ],
     ctx,
   );
@@ -157,7 +157,7 @@ export function providerReferralActionAvailability(ctx: AvailabilityContext) {
     [
       { action: A.submitAssessment, states: ['ISSUED'], versioned: true, reasonRequired: false, surface: 'PROVIDER', stateMessage: 'Only an issued referral can be accepted.', alias: 'accept_referral' },
       { action: A.declareConflict, states: ['ISSUED'], versioned: true, reasonRequired: true, surface: 'PROVIDER', stateMessage: 'Only an issued referral can be declined.', alias: 'decline_referral' },
-      { action: A.manageAppointment, states: ['ACCEPTED', 'IN_PROGRESS'], versioned: true, reasonRequired: false, surface: 'PROVIDER' },
+      { action: A.manageAppointment, states: ['ACCEPTED', 'ASSESSMENT_IN_PROGRESS'], versioned: true, reasonRequired: false, surface: 'PROVIDER' },
     ],
     ctx,
   );
@@ -170,8 +170,9 @@ export function providerReferralActionAvailability(ctx: AvailabilityContext) {
 export function appointmentActionAvailability(ctx: AvailabilityContext) {
   return build(
     [
-      { action: A.manageAppointment, states: ['SCHEDULED', 'RESCHEDULED', 'PENDING'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
-      { action: A.deferReview, states: ['MISSED', 'NON_ATTENDED'], versioned: true, reasonRequired: true, surface: 'BENEFITS', alias: 'reasonable_cause' },
+      { action: A.manageAppointment, states: ['PENDING', 'SCHEDULED', 'RESCHEDULED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
+      // Reasonable cause is an APPOINTMENT command; it is not "defer review".
+      { action: A.manageAppointment, states: ['CLAIMANT_NO_SHOW'], versioned: true, reasonRequired: true, surface: 'BENEFITS', alias: 'reasonable_cause', stateMessage: 'Reasonable cause can only be recorded after a recorded non-attendance.' },
     ],
     ctx,
   );
@@ -184,10 +185,10 @@ export function appointmentActionAvailability(ctx: AvailabilityContext) {
 export function assessmentActionAvailability(ctx: AvailabilityContext) {
   return build(
     [
-      { action: A.submitAssessment, states: ['DRAFT', 'IN_PROGRESS'], versioned: true, reasonRequired: false, surface: 'PROVIDER' },
-      { action: A.validateReport, states: ['SUBMITTED', 'CLARIFIED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
-      { action: A.requestSecondOpinion, states: ['ACCEPTED', 'VALIDATED', 'LOCKED'], versioned: false, reasonRequired: true, surface: 'BENEFITS' },
-      { action: A.validateReport, states: ['ACCEPTED', 'VALIDATED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', alias: 'lock_assessment' },
+      { action: A.submitAssessment, states: ['DRAFT'], versioned: true, reasonRequired: false, surface: 'PROVIDER' },
+      { action: A.validateReport, states: ['SUBMITTED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
+      { action: A.requestSecondOpinion, states: ['VALIDATED', 'LOCKED'], versioned: false, reasonRequired: true, surface: 'BENEFITS' },
+      { action: A.validateReport, states: ['VALIDATED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', alias: 'lock_assessment' },
     ],
     ctx,
   );
@@ -200,13 +201,14 @@ export function assessmentActionAvailability(ctx: AvailabilityContext) {
 export function boardCaseActionAvailability(ctx: AvailabilityContext) {
   return build(
     [
-      { action: A.manageBoardCase, states: ['OPEN', 'PENDING_BOARD', 'AWAITING_EVIDENCE', 'DEFERRED'], versioned: true, reasonRequired: false, surface: 'BOARD' },
-      { action: A.manageBoardSession, states: ['OPEN', 'PENDING_BOARD', 'BOARD_SELECTED', 'AWAITING_EVIDENCE', 'DEFERRED'], versioned: true, reasonRequired: false, surface: 'BOARD' },
-      { action: A.recordBoardDetermination, states: ['IN_SESSION', 'VOTING_COMPLETE', 'SESSION_HELD'], versioned: true, reasonRequired: false, surface: 'BOARD', stateMessage: 'A determination can only be finalised after a held session.' },
+      { action: A.manageBoardCase, states: ['REFERRED', 'SCHEDULED', 'MEMBERS_ASSIGNED', 'EVIDENCE_REQUESTED', 'DEFERRED'], versioned: true, reasonRequired: false, surface: 'BOARD' },
+      { action: A.manageBoardSession, states: ['MEMBERS_ASSIGNED', 'EVIDENCE_REQUESTED', 'SCHEDULED', 'DEFERRED'], versioned: true, reasonRequired: false, surface: 'BOARD' },
+      { action: A.recordBoardDetermination, states: ['IN_SESSION'], versioned: true, reasonRequired: false, surface: 'BOARD', stateMessage: 'A determination can only be finalised from a held session.' },
     ],
     ctx,
   );
 }
+
 
 export function boardSessionActionAvailability(ctx: AvailabilityContext) {
   return build(
