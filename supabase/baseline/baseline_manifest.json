@@ -1,13 +1,17 @@
 {
   "generator": "scripts/ci/generate-baseline.py",
-  "generated_at_utc": "2026-08-04T21:38:05Z",
-  "migration_cutoff_inclusive": "20260804210445_7d729526-50d5-4035-9afb-5cc7491bb1b1.sql",
-  "migrations_contained": 1298,
+  "generated_at_utc": "2026-08-05T20:42:14Z",
+  "migration_cutoff_inclusive": "20260805160341_e2d2304c-53ab-44cc-ab05-22dd97418c51.sql",
+  "pg_target_major": 15,
+  "omitted_unsupported_privileges": {
+    "MAINTAIN": 4752
+  },
+  "migrations_contained": 1309,
   "schemas": [
     "public"
   ],
-  "schema_sql_sha256": "7bd44b03bcac84cdaeeb5e0734632f3b4d44258a0d5a9de0d83f923fce110fe5",
-  "schema_sql_bytes": 9778250,
+  "schema_sql_sha256": "f1ee89860263cf3aadd29527c805340aa9cc244d5c7f327e3b4b5ae58b49c1f3",
+  "schema_sql_bytes": 9827252,
   "contains_data": false,
   "contains_secrets": false,
   "contains_ownership": false
