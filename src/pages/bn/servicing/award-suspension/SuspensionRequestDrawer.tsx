@@ -323,11 +323,13 @@ export function SuspensionRequestDrawer({
             />
             )}
 
+            {/* BN-SUSP-PERM — case-specific permission routing. Suspension
+                approval rights must never authorise reinstatement decisions. */}
             <SuspensionDecisionPanel
               details={data}
               currentUserId={currentUserId}
-              canApprove={canApprove}
-              canPropose={canPropose}
+              canApprove={data.request.caseKind === 'REINSTATEMENT' ? canResumeApprove : canApprove}
+              canPropose={data.request.caseKind === 'REINSTATEMENT' ? canResumePropose : canPropose}
               actionsEnabled={actionsEnabled}
               onChanged={() => {
                 reload();
