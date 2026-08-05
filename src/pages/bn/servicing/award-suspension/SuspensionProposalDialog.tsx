@@ -74,16 +74,20 @@ export function SuspensionProposalDialog({
     setReasonsState({ status: 'loading' });
     listSuspensionReasonCodes()
       .then((options) => setReasonsState({ status: 'loaded', options }))
-      .catch((e: unknown) =>
-        setReasonsState({
-          status: 'error',
-          message:
-            e instanceof Error && e.message
-              ? e.message
-              : 'Suspension reasons could not be loaded.',
-        })
-      );
+      .catch((e: unknown) => {
+        setReasonsState({ status: 'error' });
+        // Approved telemetry boundary only — never the operator surface.
+        void import('@/lib/globalErrorHandler')
+          .then(({ logApplicationError }) =>
+            logApplicationError(e, {
+              module: 'bn_award_suspension',
+              action: 'list_suspension_reason_codes',
+            })
+          )
+          .catch(() => undefined);
+      });
   }, []);
+
 
   useEffect(() => {
     if (!open) return;
