@@ -47,10 +47,11 @@ export const NON_ATTENDANCE_CATEGORIES = fromCodes(NON_ATTENDANCE_CATEGORY_CODES
 });
 
 export const REASONABLE_CAUSE_OUTCOMES = fromCodes(REASONABLE_CAUSE_OUTCOME_CODES, {
-  REASONABLE_CAUSE_ACCEPTED: 'Reasonable cause accepted',
-  REASONABLE_CAUSE_REJECTED: 'Reasonable cause rejected',
-  FURTHER_INFORMATION_REQUIRED: 'Further information required',
+  CAUSE_ACCEPTED: 'Reasonable cause accepted',
+  CAUSE_REJECTED: 'Reasonable cause rejected',
+  FURTHER_EVIDENCE_REQUIRED: 'Further evidence required',
 });
+
 
 /* -------------------- Medical Board -------------------- */
 
