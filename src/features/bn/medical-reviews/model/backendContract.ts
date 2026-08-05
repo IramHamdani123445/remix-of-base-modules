@@ -329,10 +329,11 @@ export const BOARD_MEETING_MODES = ['IN_PERSON', 'VIRTUAL', 'HYBRID'] as const;
 
 /** `reasonable_cause_outcome` is free of a CHECK constraint; the UI still restricts it. */
 export const REASONABLE_CAUSE_OUTCOME_CODES = [
-  'REASONABLE_CAUSE_ACCEPTED',
-  'REASONABLE_CAUSE_REJECTED',
-  'FURTHER_INFORMATION_REQUIRED',
+  'CAUSE_ACCEPTED',
+  'CAUSE_REJECTED',
+  'FURTHER_EVIDENCE_REQUIRED',
 ] as const;
+
 
 export type AppointmentResponsibility = (typeof APPOINTMENT_RESPONSIBILITY_CODES)[number];
 
