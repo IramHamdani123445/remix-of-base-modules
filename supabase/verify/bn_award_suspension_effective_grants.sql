@@ -92,10 +92,12 @@ BEGIN
     v_bad := v_bad || format('MISSING %s: authenticated lacks EXECUTE', r.sig);
   END LOOP;
 
-  -- 6. Every command must be SECURITY DEFINER with a pinned search_path,
-  --    and must include `extensions` where pgcrypto lives.
+  -- 6. Every data-touching command must be SECURITY DEFINER with a pinned
+  --    search_path, and must include `extensions` where pgcrypto lives.
+  --    IMMUTABLE pure helpers read nothing, so they need no definer rights.
   FOR r IN
-    SELECT p.oid::regprocedure::text AS sig, p.prosecdef, p.proconfig, p.prosrc
+    SELECT p.oid::regprocedure::text AS sig, p.prosecdef, p.proconfig, p.prosrc,
+           p.provolatile
       FROM pg_proc p
       JOIN pg_namespace n ON n.oid = p.pronamespace
      WHERE n.nspname = 'public'
@@ -103,7 +105,7 @@ BEGIN
             OR p.proname LIKE 'bn\_award\_reinstatement\_%'
             OR p.proname LIKE '\_bn\_susp\_%')
   LOOP
-    IF NOT r.prosecdef THEN
+    IF NOT r.prosecdef AND r.provolatile <> 'i' THEN
       v_bad := v_bad || format('SECDEF %s: not SECURITY DEFINER', r.sig);
     END IF;
     IF r.proconfig IS NULL
