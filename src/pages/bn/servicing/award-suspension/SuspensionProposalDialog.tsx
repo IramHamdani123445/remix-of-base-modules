@@ -388,6 +388,7 @@ export function SuspensionProposalDialog({
 
           {showErrors && errorCount > 0 && (
             <p
+              id="suspension-validation-summary"
               data-testid="suspension-validation-summary"
               role="alert"
               className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive"
