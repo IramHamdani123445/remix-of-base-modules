@@ -213,8 +213,9 @@ export function boardCaseActionAvailability(ctx: AvailabilityContext) {
 export function boardSessionActionAvailability(ctx: AvailabilityContext) {
   return build(
     [
-      { action: A.recordBoardParticipation, states: ['SCHEDULED', 'IN_SESSION', 'HELD'], versioned: false, reasonRequired: false, surface: 'BOARD' },
-      { action: A.declareConflict, states: ['SCHEDULED', 'IN_SESSION'], versioned: false, reasonRequired: true, surface: 'BOARD' },
+      { action: A.recordBoardParticipation, states: ['SCHEDULED', 'HELD'], versioned: false, reasonRequired: false, surface: 'BOARD' },
+      { action: A.declareConflict, states: ['SCHEDULED', 'HELD'], versioned: false, reasonRequired: true, surface: 'BOARD' },
+
     ],
     ctx,
   );
