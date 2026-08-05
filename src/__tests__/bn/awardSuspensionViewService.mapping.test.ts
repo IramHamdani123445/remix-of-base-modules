@@ -398,11 +398,12 @@ describe('BN-UI-S1.2 · canonical schema mapping', () => {
       expect(resolveDisplayStatus('ACTIVE', null)).toBe('APPLIED');
       expect(resolveDisplayStatus('RESUMED', null)).toBe('APPLIED');
     });
-    it('normaliseEventStatus rejects legacy PENDING_APPROVAL and coerces to PROPOSED', () => {
-      expect(normaliseEventStatus('PENDING_APPROVAL')).toBe('PROPOSED');
-      expect(normaliseEventStatus('PENDING_LEVEL_1')).toBe('PROPOSED');
-      expect(normaliseEventStatus('bogus')).toBe('PROPOSED');
+    it('normaliseEventStatus fails closed to UNKNOWN for non-canonical values', () => {
+      expect(normaliseEventStatus('PENDING_APPROVAL')).toBe('UNKNOWN');
+      expect(normaliseEventStatus('PENDING_LEVEL_1')).toBe('UNKNOWN');
+      expect(normaliseEventStatus('bogus')).toBe('UNKNOWN');
     });
+
   });
 
   // ── Listings apply the resolver ─────────────────────────────────────

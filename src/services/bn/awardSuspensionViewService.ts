@@ -42,8 +42,9 @@ const SUSPENSION_WORKFLOW = {
 
 // ─────────────────────────── Types ───────────────────────────
 /**
- * BN-UI-S1.2 — Canonical event lifecycle values stored in
- * `bn_award_suspension_event.status`.
+ * BN-SUSP-STATUS — Canonical event lifecycle values stored in
+ * `bn_award_suspension_event.status`. `UNKNOWN` is a fail-closed sentinel for
+ * values the client does not recognise; it must never enable a command.
  */
 export type SuspensionEventStatus =
   | 'PROPOSED'
@@ -51,11 +52,32 @@ export type SuspensionEventStatus =
   | 'REJECTED'
   | 'WITHDRAWN'
   | 'ACTIVE'
-  | 'RESUMED';
+  | 'RESUMED'
+  | 'EXECUTION_FAILED'
+  | 'REINSTATEMENT_PROPOSED'
+  | 'REINSTATEMENT_APPROVED'
+  | 'REINSTATEMENT_REJECTED'
+  | 'REINSTATEMENT_WITHDRAWN'
+  | 'UNKNOWN';
+
+export const SUSPENSION_EVENT_STATUSES = [
+  'PROPOSED',
+  'APPROVED',
+  'REJECTED',
+  'WITHDRAWN',
+  'ACTIVE',
+  'RESUMED',
+  'EXECUTION_FAILED',
+  'REINSTATEMENT_PROPOSED',
+  'REINSTATEMENT_APPROVED',
+  'REINSTATEMENT_REJECTED',
+  'REINSTATEMENT_WITHDRAWN',
+] as const;
 
 /**
  * Display-only status derived from event + workflow task via
- * `resolveDisplayStatus`. Never written to the database.
+ * `resolveDisplayStatus`. Never written to the database and never used to
+ * decide whether a lifecycle command is available.
  */
 export type SuspensionRequestStatus =
   | 'PROPOSED'
@@ -67,7 +89,14 @@ export type SuspensionRequestStatus =
   | 'REJECTED'
   | 'WITHDRAWN'
   | 'APPLIED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'EXECUTION_FAILED'
+  | 'REINSTATEMENT_PENDING'
+  | 'REINSTATEMENT_APPROVED'
+  | 'REINSTATEMENT_REJECTED'
+  | 'REINSTATEMENT_WITHDRAWN'
+  | 'UNKNOWN';
+
 
 export interface AwardSuspensionListItem {
   awardId: string;
@@ -101,6 +130,11 @@ export interface SuspensionRequestListItem {
   /** Trusted maker identity used for maker-checker UI gating. */
   proposedByUserId: string | null;
   proposedAt: string;
+  /** Raw canonical lifecycle status from the database (fail-closed UNKNOWN). */
+  eventStatus: SuspensionEventStatus;
+  /** Display-only status. Never use to decide command availability. */
+  displayStatus: SuspensionRequestStatus;
+  /** @deprecated Alias of `displayStatus`; kept for existing call sites. */
   status: SuspensionRequestStatus;
   /** Optimistic-concurrency token required by every lifecycle command. */
   rowVersion: number;
@@ -275,35 +309,35 @@ const daysBetween = (fromIso: string, toIso: string = new Date().toISOString()):
 };
 
 /**
- * BN-UI-S1.2 — Normalise raw event.status to its canonical form. Legacy
- * fixtures that stored PENDING_APPROVAL are coerced to PROPOSED so we do
- * not re-introduce non-canonical values. Only truly-canonical values are
- * returned.
+ * BN-SUSP-STATUS — Normalise raw event.status to its canonical form.
+ * Unrecognised values fail closed to `UNKNOWN` (they are NEVER coerced to
+ * PROPOSED, which previously made unknown rows look actionable).
  */
 export const normaliseEventStatus = (raw: unknown): SuspensionEventStatus => {
   const s = String(raw ?? '').toUpperCase();
-  if (
-    s === 'PROPOSED' ||
-    s === 'APPROVED' ||
-    s === 'REJECTED' ||
-    s === 'WITHDRAWN' ||
-    s === 'ACTIVE' ||
-    s === 'RESUMED'
-  ) {
-    return s;
-  }
-  // Legacy/invalid — treat as PROPOSED so display remains truthful.
-  return 'PROPOSED';
+  return (SUSPENSION_EVENT_STATUSES as readonly string[]).includes(s)
+    ? (s as SuspensionEventStatus)
+    : 'UNKNOWN';
 };
 
 /**
- * BN-UI-S1.2 — Combine canonical event.status with the *current* workflow
- * task to produce a display-only status. See BN-UI-S1.2 mapping table.
+ * BN-SUSP-STATUS — Combine canonical event.status with the *current* workflow
+ * task to produce a display-only status. Execution failure and unknown states
+ * are surfaced explicitly rather than being flattened into PROPOSED.
  */
 export function resolveDisplayStatus(
   eventStatus: SuspensionEventStatus,
   currentTask: { task_status?: string | null; metadata?: unknown } | null | undefined,
 ): SuspensionRequestStatus {
+  const pending = (): SuspensionRequestStatus => {
+    const level = numMetaField(currentTask?.metadata, 'approval_level');
+    if (level === 1) return 'PENDING_LEVEL_1';
+    if (level === 2) return 'PENDING_LEVEL_2';
+    if (level != null && level > 2) return 'PENDING_LEVEL_N';
+    return 'PENDING_APPROVAL';
+  };
+  const taskOpen = !!currentTask && isOpenTaskStatus(currentTask.task_status);
+
   switch (eventStatus) {
     case 'APPROVED':
       return 'APPROVED';
@@ -314,17 +348,24 @@ export function resolveDisplayStatus(
     case 'ACTIVE':
     case 'RESUMED':
       return 'APPLIED';
+    case 'EXECUTION_FAILED':
+      return 'EXECUTION_FAILED';
+    case 'REINSTATEMENT_PROPOSED':
+      return taskOpen ? pending() : 'REINSTATEMENT_PENDING';
+    case 'REINSTATEMENT_APPROVED':
+      return 'REINSTATEMENT_APPROVED';
+    case 'REINSTATEMENT_REJECTED':
+      return 'REINSTATEMENT_REJECTED';
+    case 'REINSTATEMENT_WITHDRAWN':
+      return 'REINSTATEMENT_WITHDRAWN';
     case 'PROPOSED':
-    default: {
-      if (!currentTask || !isOpenTaskStatus(currentTask.task_status)) return 'PROPOSED';
-      const level = numMetaField(currentTask.metadata, 'approval_level');
-      if (level === 1) return 'PENDING_LEVEL_1';
-      if (level === 2) return 'PENDING_LEVEL_2';
-      if (level != null && level > 2) return 'PENDING_LEVEL_N';
-      return 'PENDING_APPROVAL';
-    }
+      return taskOpen ? pending() : 'PROPOSED';
+    case 'UNKNOWN':
+    default:
+      return 'UNKNOWN';
   }
 }
+
 
 const metaField = (meta: unknown, key: string): string | null => {
   if (!meta || typeof meta !== 'object') return null;
@@ -744,7 +785,8 @@ export async function listSuspensionRequests(): Promise<SuspensionRequestListIte
     const pvPolicyLevels = pvPolicies.map((p) => p.level ?? 0).filter((n) => n > 0);
     const totalLevels = deriveTotalLevels(instanceTasks, pvPolicyLevels);
     const due = cur?.due_at ?? null;
-    const status = deriveRequestStatus(e, cur);
+    const eventStatus = normaliseEventStatus(e.status);
+    const status = resolveDisplayStatus(eventStatus, cur);
     return {
       requestId: e.id,
       awardId: e.bn_award_id,
@@ -757,6 +799,8 @@ export async function listSuspensionRequests(): Promise<SuspensionRequestListIte
       proposedBy: e.proposed_by_user_id ?? e.entered_by ?? null,
       proposedByUserId: e.proposed_by_user_id ?? null,
       proposedAt: e.entered_at,
+      eventStatus,
+      displayStatus: status,
       status,
       rowVersion: e.row_version ?? 1,
       caseKind: (e.case_kind ?? 'SUSPENSION') as 'SUSPENSION' | 'REINSTATEMENT',
@@ -967,7 +1011,9 @@ export async function listMyApprovalTasks(userId: string | null): Promise<Suspen
         proposedBy: e.proposed_by_user_id ?? e.entered_by ?? null,
         proposedByUserId: e.proposed_by_user_id ?? null,
         proposedAt: e.entered_at,
-        status: deriveRequestStatus(e, task),
+        eventStatus: normaliseEventStatus(e.status),
+        displayStatus: resolveDisplayStatus(normaliseEventStatus(e.status), task),
+        status: resolveDisplayStatus(normaliseEventStatus(e.status), task),
         rowVersion: e.row_version ?? 1,
         caseKind: (e.case_kind ?? 'SUSPENSION') as 'SUSPENSION' | 'REINSTATEMENT',
         executionStatus: e.execution_status ?? null,
@@ -1231,7 +1277,9 @@ export async function getSuspensionRequestDetails(
     proposedBy: e.proposed_by_user_id ?? e.entered_by ?? null,
     proposedByUserId: e.proposed_by_user_id ?? null,
     proposedAt: e.entered_at,
-    status: deriveRequestStatus(e, cur),
+    eventStatus: normaliseEventStatus((e as any).status),
+    displayStatus: resolveDisplayStatus(normaliseEventStatus((e as any).status), cur),
+    status: resolveDisplayStatus(normaliseEventStatus((e as any).status), cur),
     rowVersion: (e as any).row_version ?? 1,
     caseKind: ((e as any).case_kind ?? 'SUSPENSION') as 'SUSPENSION' | 'REINSTATEMENT',
     executionStatus: (e as any).execution_status ?? null,

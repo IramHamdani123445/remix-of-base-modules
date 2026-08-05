@@ -58,6 +58,9 @@ export function SuspensionRequestsRegister({
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return rows.filter((r) => {
+      // BN-SUSP-REG — the register lists suspension cases only. Linked
+      // reinstatement cases are reached from the suspension they belong to.
+      if (r.caseKind === 'REINSTATEMENT') return false;
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
       if (!q) return true;
       return (

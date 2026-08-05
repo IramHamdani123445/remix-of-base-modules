@@ -37,6 +37,9 @@ import {
   approveSuspension,
   rejectSuspension,
   withdrawSuspension,
+  approveReinstatement,
+  rejectReinstatement,
+  withdrawReinstatement,
   SuspensionCommandError,
 } from '@/services/bn/awardSuspensionCommandService';
 import {
@@ -50,13 +53,15 @@ const OPEN_TASK_STATUSES = new Set(['OPEN', 'PENDING', 'IN_PROGRESS', 'ASSIGNED'
 export const isTaskOpen = (taskStatus: string | null | undefined): boolean =>
   OPEN_TASK_STATUSES.has(String(taskStatus ?? '').toUpperCase());
 
-const PROPOSED_STATUSES = new Set([
-  'PROPOSED',
-  'PENDING_APPROVAL',
-  'PENDING_LEVEL_1',
-  'PENDING_LEVEL_2',
-  'PENDING_LEVEL_N',
-]);
+/**
+ * BN-SUSP-STATUS — Availability is decided from the RAW event status only.
+ * Display statuses (PENDING_LEVEL_1 etc.) are presentation and must never
+ * gate a command.
+ */
+const OPEN_EVENT_STATUSES: Record<'SUSPENSION' | 'REINSTATEMENT', string> = {
+  SUSPENSION: 'PROPOSED',
+  REINSTATEMENT: 'REINSTATEMENT_PROPOSED',
+};
 
 interface Props {
   details: SuspensionRequestDetails;
@@ -76,9 +81,11 @@ export function SuspensionDecisionPanel({
   onChanged,
 }: Props) {
   const req = details.request;
+  const caseKind = req.caseKind === 'REINSTATEMENT' ? 'REINSTATEMENT' : 'SUSPENSION';
+  const isReinstatement = caseKind === 'REINSTATEMENT';
   const isProposer = Boolean(currentUserId && req.proposedByUserId === currentUserId);
   const taskOpen = isTaskOpen(req.taskStatus) && Boolean(req.currentTaskId);
-  const caseOpen = PROPOSED_STATUSES.has(req.status);
+  const caseOpen = req.eventStatus === OPEN_EVENT_STATUSES[caseKind];
 
   const [busy, setBusy] = useState<null | 'approve' | 'reject' | 'withdraw'>(null);
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +133,10 @@ export function SuspensionDecisionPanel({
   );
 
   const showApproval = canApprove && !isProposer && caseOpen;
-  const showWithdraw = canPropose && isProposer && req.status === 'PROPOSED';
+  // Withdraw stays available for the whole open window (including while an
+  // approval task is pending), not only before routing starts.
+  const showWithdraw = canPropose && isProposer && caseOpen;
+  const noun = isReinstatement ? 'reinstatement' : 'suspension';
   if (!showApproval && !showWithdraw) return null;
 
   const selectedReason = reasons.find((r) => r.code === rejectReason);
@@ -198,12 +208,18 @@ export function SuspensionDecisionPanel({
               void run(
                 'withdraw',
                 () =>
-                  withdrawSuspension({
-                    suspensionId: req.requestId,
-                    narrative: narrative.trim() || null,
-                    expectedRowVersion: req.rowVersion,
-                  }),
-                'The request was withdrawn.'
+                  isReinstatement
+                    ? withdrawReinstatement({
+                        reinstatementId: req.requestId,
+                        narrative: narrative.trim() || undefined,
+                        expectedRowVersion: req.rowVersion,
+                      })
+                    : withdrawSuspension({
+                        suspensionId: req.requestId,
+                        narrative: narrative.trim() || null,
+                        expectedRowVersion: req.rowVersion,
+                      }),
+                `The ${noun} request was withdrawn.`
               )
             }
           >
@@ -231,13 +247,19 @@ export function SuspensionDecisionPanel({
                 void run(
                   'approve',
                   () =>
-                    approveSuspension({
-                      suspensionId: req.requestId,
-                      taskId: req.currentTaskId as string,
-                      narrative: narrative.trim() || null,
-                      expectedRowVersion: req.rowVersion,
-                    }),
-                  'The request was approved.'
+                    isReinstatement
+                      ? approveReinstatement({
+                          reinstatementId: req.requestId,
+                          narrative: narrative.trim() || undefined,
+                          expectedRowVersion: req.rowVersion,
+                        })
+                      : approveSuspension({
+                          suspensionId: req.requestId,
+                          taskId: req.currentTaskId as string,
+                          narrative: narrative.trim() || null,
+                          expectedRowVersion: req.rowVersion,
+                        }),
+                  `The ${noun} request was approved.`
                 )
               }
             >
@@ -251,7 +273,7 @@ export function SuspensionDecisionPanel({
       <Dialog open={rejectOpen} onOpenChange={(v) => !busy && setRejectOpen(v)}>
         <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Reject suspension request</DialogTitle>
+            <DialogTitle>Reject {noun} request</DialogTitle>
             <DialogDescription>
               A rejection reason is required. The proposer will see this decision in the case
               history.
@@ -309,14 +331,21 @@ export function SuspensionDecisionPanel({
                 void run(
                   'reject',
                   () =>
-                    rejectSuspension({
-                      suspensionId: req.requestId,
-                      taskId: req.currentTaskId as string,
-                      reasonCode: rejectReason,
-                      narrative: rejectNarrative.trim() || null,
-                      expectedRowVersion: req.rowVersion,
-                    }),
-                  'The request was rejected.'
+                    isReinstatement
+                      ? rejectReinstatement({
+                          reinstatementId: req.requestId,
+                          reasonCode: rejectReason,
+                          narrative: rejectNarrative.trim() || undefined,
+                          expectedRowVersion: req.rowVersion,
+                        })
+                      : rejectSuspension({
+                          suspensionId: req.requestId,
+                          taskId: req.currentTaskId as string,
+                          reasonCode: rejectReason,
+                          narrative: rejectNarrative.trim() || null,
+                          expectedRowVersion: req.rowVersion,
+                        }),
+                  `The ${noun} request was rejected.`
                 )
               }
             >

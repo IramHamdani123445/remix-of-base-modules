@@ -15,6 +15,7 @@ import {
   executeSuspension,
   previewSuspensionPaymentImpact,
   describeExecutionFailure,
+  isExecutionFailure,
   SuspensionCommandError,
   type PaymentImpactPreview,
 } from '@/services/bn/awardSuspensionCommandService';
@@ -24,6 +25,7 @@ import { formatMoney } from './suspensionViewModels';
 
 interface Props {
   suspensionId: string;
+  /** RAW `bn_award_suspension_event.status` — never a display status. */
   caseStatus: string;
   execution: SuspensionExecutionState;
   currency: string | null;
@@ -93,7 +95,22 @@ export function SuspensionExecutionPanel({
         expectedRowVersion: execution.rowVersion,
         narrative: narrative.trim() || null,
       });
-      setDone(`Suspension executed. Award status: ${r.award_status}.`);
+      // BN-SUSP-EXEC — a 200 response is NOT success. The command returns a
+      // sanitized failure envelope that must be reported as a failure, and
+      // "executed" is only claimed when the award really is suspended.
+      if (isExecutionFailure(r)) {
+        setActionError(
+          `${describeExecutionFailure(
+            (r as { error_code?: string | null }).error_code ?? null,
+          )} The case remains retryable.`,
+        );
+      } else if (r.award_status === 'SUSPENDED') {
+        setDone('Suspension executed. The award is now suspended.');
+      } else {
+        setActionError(
+          `The command completed but the award status is ${r.award_status ?? 'unchanged'}. Refresh the case before retrying.`,
+        );
+      }
       onExecuted();
     } catch (e) {
       setActionError(
