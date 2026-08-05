@@ -170,14 +170,15 @@ export function SuspensionProposalDialog({
         {/* pr-12 is repeated at sm so responsive px-* can never remove the
             clearance reserved for the dialog close control. */}
         <DialogHeader className="shrink-0 space-y-1 border-b px-4 pr-12 py-4 text-left sm:px-6 sm:pr-12">
-          <div className="min-w-0">
-
-          <DialogTitle className="text-base sm:text-lg">New Suspension Request</DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm">
+          <DialogTitle className="min-w-0 break-words text-base sm:text-lg">
+            New Suspension Request
+          </DialogTitle>
+          <DialogDescription className="min-w-0 break-words text-xs sm:text-sm">
             Propose a temporary suspension of an active award. The proposal will follow the
             configured maker-checker workflow.
           </DialogDescription>
         </DialogHeader>
+
 
         <div
           data-testid="suspension-proposal-body"
