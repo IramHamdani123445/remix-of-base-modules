@@ -141,7 +141,9 @@ export function obligationActionAvailability(ctx: AvailabilityContext) {
 export function referralActionAvailability(ctx: AvailabilityContext) {
   return build(
     [
+      { action: A.verifyCredentials, states: ['DRAFT', 'PROVIDER_SELECTION_REQUIRED', 'PROVIDER_ASSIGNED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', stateMessage: 'Provider credentials are verified before the referral is issued.' },
       { action: A.assignProvider, states: ['DRAFT', 'PROVIDER_SELECTION_REQUIRED', 'REASSIGNMENT_REQUIRED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
+
       { action: A.issueReferral, states: ['PROVIDER_ASSIGNED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', stateMessage: 'A provider must be assigned before the referral can be issued.' },
       { action: A.assignProvider, states: ['DECLINED', 'EXPIRED', 'REASSIGNMENT_REQUIRED'], versioned: true, reasonRequired: true, surface: 'BENEFITS', alias: 'reassign_provider' },
       { action: A.issueReferral, states: ['ISSUED', 'ACCEPTED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', alias: 'expire_referral' },
