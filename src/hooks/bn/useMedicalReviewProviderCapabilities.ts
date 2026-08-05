@@ -73,8 +73,8 @@ export function useMedicalReviewProviderCapabilities(
 
   return useMemo(() => {
     const linked = !!linkedProviderId;
-    const assigned =
-      linked && (referralProviderId === null || referralProviderId === linkedProviderId);
+    // Fail closed: an unknown assigned provider is NOT treated as "mine".
+    const assigned = linked && referralProviderId === linkedProviderId;
 
     const status = (referralStatus ?? '').toUpperCase();
     const assessmentStatus = String(
@@ -88,7 +88,9 @@ export function useMedicalReviewProviderCapabilities(
         '',
     ).toUpperCase();
 
-    const assessmentLocked = /LOCKED|ACCEPTED|VALIDATED|SUBMITTED/.test(assessmentStatus);
+    // Canonical assessment states that end provider editing.
+    const assessmentLocked = /^(SUBMITTED|VALIDATED|LOCKED)$/.test(assessmentStatus);
+
 
     const gate = (
       key: string,

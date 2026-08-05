@@ -524,7 +524,7 @@ describe('Version-conflict dialog flow', () => {
     q.decisionDetail.mockResolvedValue([
       {
         decision_id: 'dec-1',
-        decision_status: 'SUBMITTED',
+        decision_status: 'PENDING_APPROVAL',
         row_version: 4,
         outcome_code: 'REVIEW_SATISFIED',
         prepared_by_current_user: false,
@@ -595,7 +595,7 @@ describe('Administrative maker-checker', () => {
     const available = decisionActionAvailability({
       hasPermission: () => true,
       actionsEnabled: true,
-      state: 'SUBMITTED',
+      state: 'PENDING_APPROVAL',
       rowVersion: 4,
       preparedByCurrentUser: true,
     });
@@ -607,7 +607,7 @@ describe('Administrative maker-checker', () => {
     const available = decisionActionAvailability({
       hasPermission: () => true,
       actionsEnabled: true,
-      state: 'SUBMITTED',
+      state: 'PENDING_APPROVAL',
       rowVersion: 4,
       preparedByCurrentUser: false,
     });

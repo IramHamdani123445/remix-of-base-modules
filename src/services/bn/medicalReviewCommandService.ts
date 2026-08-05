@@ -14,6 +14,18 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { mapMedicalReviewError, MedicalReviewError } from '@/features/bn/medical-reviews/model/errors';
+import {
+  toAddendumDto,
+  toAssessmentFieldsDto,
+  toBoardDeterminationDto,
+  toBoardParticipationDto,
+  toBoardVoteDto,
+  toDecisionDto,
+  toNonAttendanceDto,
+  toReasonableCauseDto,
+  type AssessmentFormValues,
+} from '@/features/bn/medical-reviews/model/backendContract';
+
 
 export type CommandStatus = 'OK' | 'REPLAYED' | 'NO_OP' | 'UNKNOWN';
 
@@ -298,6 +310,7 @@ export const medicalReviewCommandService = {
     });
   },
 
+  /** `category` must be a canonical `non_attendance_category` value. */
   recordNonAttendance(
     appointmentId: string,
     category: string,
@@ -305,10 +318,11 @@ export const medicalReviewCommandService = {
     reason: string,
     opts: Versioned,
   ) {
+    const dto = toNonAttendanceDto({ category, notes });
     return callCommand('bn_medical_review_record_non_attendance_v1', {
       p_appointment_id: appointmentId,
-      p_category: category,
-      p_notes: notes,
+      p_category: dto.category,
+      p_notes: dto.notes,
       p_expected_row_version: opts.expectedRowVersion,
       p_idempotency_key: key(opts.idempotencyKey),
       p_reason: reason,
@@ -325,15 +339,18 @@ export const medicalReviewCommandService = {
     });
   },
 
+  /** Appointment workflow only — never the obligation defer command. */
   recordReasonableCause(appointmentId: string, outcome: string, reason: string, opts: Versioned) {
+    const dto = toReasonableCauseDto({ outcome });
     return callCommand('bn_medical_review_record_reasonable_cause_v1', {
       p_appointment_id: appointmentId,
-      p_outcome: outcome,
+      p_outcome: dto.outcome,
       p_expected_row_version: opts.expectedRowVersion,
       p_idempotency_key: key(opts.idempotencyKey),
       p_reason: reason,
     });
   },
+
 
   /* ---------------- Assessment ---------------- */
 
@@ -346,10 +363,15 @@ export const medicalReviewCommandService = {
     });
   },
 
-  saveAssessmentDraft(assessmentId: string, fields: Record<string, unknown>, opts: Versioned) {
+  /**
+   * Accepts UI form values and maps them through the authoritative adapter,
+   * so no unmapped or wrongly-typed key can ever reach `p_fields`.
+   */
+  saveAssessmentDraft(assessmentId: string, fields: AssessmentFormValues, opts: Versioned) {
     return callCommand('bn_medical_review_save_assessment_draft_v1', {
       p_assessment_id: assessmentId,
-      p_fields: fields,
+      p_fields: toAssessmentFieldsDto(fields),
+
       p_expected_row_version: opts.expectedRowVersion,
       p_idempotency_key: key(opts.idempotencyKey),
       p_reason: opts.reason ?? null,
@@ -403,10 +425,15 @@ export const medicalReviewCommandService = {
     });
   },
 
-  submitClarification(assessmentId: string, addendum: Record<string, unknown>, opts: Versioned) {
+  submitClarification(
+    assessmentId: string,
+    addendum: { narrative?: unknown; addressesRequest?: unknown },
+    opts: Versioned,
+  ) {
     return callCommand('bn_medical_review_submit_clarification_v1', {
       p_assessment_id: assessmentId,
-      p_addendum_content: addendum,
+      p_addendum_content: toAddendumDto(addendum),
+
       p_expected_row_version: opts.expectedRowVersion,
       p_idempotency_key: key(opts.idempotencyKey),
       p_reason: opts.reason ?? null,
@@ -504,7 +531,7 @@ export const medicalReviewCommandService = {
     return callCommand('bn_medical_review_record_board_participation_v1', {
       p_session_id: sessionId,
       p_member_id: memberId,
-      p_attendance_status: attendanceStatus,
+      p_attendance_status: toBoardParticipationDto({ attendanceStatus }).attendanceStatus,
       p_idempotency_key: key(opts.idempotencyKey),
       p_reason: opts.reason ?? null,
     });
@@ -542,12 +569,17 @@ export const medicalReviewCommandService = {
     voteReason: string;
     idempotencyKey?: string;
   }) {
+    const vote = toBoardVoteDto({
+      vote: input.vote,
+      voteOutcomeCode: input.voteOutcomeCode,
+      voteReason: input.voteReason,
+    });
     return callCommand('bn_medical_review_record_board_vote_v1', {
       p_session_id: input.sessionId,
       p_member_id: input.memberId,
-      p_vote: input.vote,
-      p_vote_outcome_code: input.voteOutcomeCode,
-      p_vote_reason: input.voteReason,
+      p_vote: vote.vote,
+      p_vote_outcome_code: vote.voteOutcomeCode,
+      p_vote_reason: vote.voteReason,
       p_idempotency_key: key(input.idempotencyKey),
     });
   },
@@ -562,12 +594,18 @@ export const medicalReviewCommandService = {
     idempotencyKey?: string;
     reason?: string | null;
   }) {
+    const dto = toBoardDeterminationDto({
+      outcomeCode: input.outcomeCode,
+      determinationSummary: input.determinationSummary,
+      impairmentPercentage: input.impairmentPercentage,
+    });
     return callCommand('bn_medical_review_finalise_board_determination_v1', {
       p_board_case_id: input.boardCaseId,
       p_session_id: input.sessionId,
-      p_outcome_code: input.outcomeCode,
-      p_determination_summary: input.determinationSummary,
-      p_impairment_percentage: input.impairmentPercentage,
+      p_outcome_code: dto.outcomeCode,
+      p_determination_summary: dto.determinationSummary,
+      p_impairment_percentage: dto.impairmentPercentage,
+
       p_expected_row_version: input.expectedRowVersion,
       p_idempotency_key: key(input.idempotencyKey),
       p_reason: input.reason ?? null,
@@ -617,17 +655,19 @@ export const medicalReviewCommandService = {
     reasonNarrative: string;
     idempotencyKey?: string;
   }) {
+    const dto = toDecisionDto(input);
     return callCommand('bn_medical_review_prepare_decision_v1', {
       p_obligation_id: input.obligationId,
       p_assessment_id: input.assessmentId,
       p_board_case_id: input.boardCaseId,
-      p_outcome_code: input.outcomeCode,
-      p_medical_recommendation_accepted: input.medicalRecommendationAccepted,
-      p_departure_reason: input.departureReason,
-      p_effective_date: input.effectiveDate,
-      p_next_review_date: input.nextReviewDate,
-      p_reason_code: input.reasonCode,
-      p_reason_narrative: input.reasonNarrative,
+      p_outcome_code: dto.outcomeCode,
+      p_medical_recommendation_accepted: dto.medicalRecommendationAccepted,
+      p_departure_reason: dto.departureReason,
+      p_effective_date: dto.effectiveDate,
+      p_next_review_date: dto.nextReviewDate,
+      p_reason_code: dto.reasonCode,
+      p_reason_narrative: dto.reasonNarrative,
+
       p_idempotency_key: key(input.idempotencyKey),
     });
   },
