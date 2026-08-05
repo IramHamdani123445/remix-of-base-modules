@@ -38,7 +38,14 @@ interface Props {
 type ReasonsState =
   | { status: 'loading' }
   | { status: 'loaded'; options: SuspensionReasonOption[] }
-  | { status: 'error'; message: string };
+  | { status: 'error' };
+
+/**
+ * Operator-facing copy for a failed reason lookup. The thrown error is never
+ * rendered: raw database text, stack traces, hostnames, request identifiers
+ * and internal function names must not reach the operator surface.
+ */
+const REASONS_ERROR_MESSAGE = 'Suspension reasons could not be loaded.';
 
 type FieldKey = 'award' | 'reason' | 'effectiveDate' | 'narrative' | 'ack';
 
