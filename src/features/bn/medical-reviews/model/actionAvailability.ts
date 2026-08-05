@@ -142,7 +142,7 @@ export function referralActionAvailability(ctx: AvailabilityContext) {
       { action: A.verifyCredentials, states: ['NOMINATED', 'DRAFT'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
       { action: A.issueReferral, states: ['DRAFT', 'VERIFIED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
       { action: A.assignProvider, states: ['ISSUED', 'DECLINED', 'EXPIRED'], versioned: true, reasonRequired: true, surface: 'BENEFITS' },
-      { action: A.expireReferral, states: ['ISSUED', 'ACCEPTED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
+      { action: A.issueReferral, states: ['ISSUED', 'ACCEPTED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
       { action: A.requestSecondOpinion, states: ['REPORT_ACCEPTED', 'REPORT_SUBMITTED', 'COMPLETE'], versioned: false, reasonRequired: true, surface: 'BENEFITS' },
     ],
     ctx,
