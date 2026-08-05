@@ -372,6 +372,7 @@ export default function AwardSuspensionPage() {
         canViewPaymentImpact={canViewPaymentImpact}
         currentUserId={user?.id ?? null}
         actionsEnabled={actionsEnabled}
+        onChanged={() => void loadAll()}
       />
 
       <SuspensionProposalDialog
@@ -379,6 +380,13 @@ export default function AwardSuspensionPage() {
         onOpenChange={setProposalOpen}
         award={proposalAward}
         actionsEnabled={actionsEnabled}
+        onSubmitted={(result) => {
+          // Refresh awards, requests and the approval queue, then move the
+          // operator to the request that was just created.
+          void loadAll();
+          setTab('requests');
+          if (result?.suspension_id) openRequest(result.suspension_id);
+        }}
       />
     </div>
   );

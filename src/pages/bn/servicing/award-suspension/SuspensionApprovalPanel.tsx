@@ -1,21 +1,26 @@
 /**
  * Compact approval-review panel intended for embedding in the drawer or a
- * dedicated review workspace. Approve/Reject remain disabled while
- * actionsEnabled=false. This component is UI-only and never mutates data.
+ * dedicated review workspace. Approve/Reject are delegated to
+ * `SuspensionDecisionPanel`, which is the only sanctioned command surface.
  */
-import { Button } from '@/components/ui/button';
-import { ShieldAlert } from 'lucide-react';
 import type { SuspensionRequestDetails } from '@/services/bn/awardSuspensionViewService';
+import { SuspensionDecisionPanel } from './SuspensionDecisionPanel';
 import { formatDate, formatMoney } from './suspensionViewModels';
 
 export function SuspensionApprovalPanel({
   details,
   canApprove,
   actionsEnabled = false,
+  canPropose = false,
+  currentUserId = null,
+  onChanged,
 }: {
   details: SuspensionRequestDetails;
   canApprove: boolean;
   actionsEnabled?: boolean;
+  canPropose?: boolean;
+  currentUserId?: string | null;
+  onChanged?: () => void;
 }) {
   if (!canApprove) return null;
   return (
@@ -34,20 +39,14 @@ export function SuspensionApprovalPanel({
       <p className="text-xs text-muted-foreground italic">
         Maker-checker enforced: administrators cannot bypass the assigned approval level.
       </p>
-      {!actionsEnabled && (
-        <p className="text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1">
-          <ShieldAlert className="h-3 w-3" aria-hidden />
-          Approve/Reject disabled while dark-launched.
-        </p>
-      )}
-      <div className="flex justify-end gap-2">
-        <Button variant="outline" size="sm" disabled={!actionsEnabled}>
-          Reject
-        </Button>
-        <Button size="sm" disabled={!actionsEnabled}>
-          Approve
-        </Button>
-      </div>
+      <SuspensionDecisionPanel
+        details={details}
+        currentUserId={currentUserId}
+        canApprove={canApprove}
+        canPropose={canPropose}
+        actionsEnabled={actionsEnabled}
+        onChanged={() => onChanged?.()}
+      />
     </div>
   );
 }

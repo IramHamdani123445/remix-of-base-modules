@@ -98,8 +98,18 @@ export interface SuspensionRequestListItem {
   reasonCode: string | null;
   reasonText: string | null;
   proposedBy: string | null;
+  /** Trusted maker identity used for maker-checker UI gating. */
+  proposedByUserId: string | null;
   proposedAt: string;
   status: SuspensionRequestStatus;
+  /** Optimistic-concurrency token required by every lifecycle command. */
+  rowVersion: number;
+  /** SUSPENSION or REINSTATEMENT — never inferred from labels. */
+  caseKind: 'SUSPENSION' | 'REINSTATEMENT';
+  /** Server execution state of the case. */
+  executionStatus: string | null;
+  /** Actual open workflow task id — never inferred from array position. */
+  currentTaskId: string | null;
   currentApprovalLevel: number | null;
   totalApprovalLevels: number | null;
   currentTaskCode: string | null;
@@ -134,6 +144,8 @@ export interface SuspensionTimelineItem {
 
 export interface SuspensionApprovalRouteItem {
   level: number;
+  /** Real workflow task id for this route row (null for planned levels). */
+  taskId: string | null;
   taskCode: string | null;
   policyId: string | null;
   role: string | null;
@@ -384,20 +396,28 @@ export async function getAwardSuspensionRolloutState(): Promise<AwardSuspensionR
 }
 
 // ─────────────────────────── Reasons ───────────────────────────
-export async function listSuspensionReasonCodes(): Promise<SuspensionReasonOption[]> {
+/** Active reason codes whose `applicable_actions` include the given action. */
+export async function listReasonCodesForAction(action: string): Promise<SuspensionReasonOption[]> {
   const { data, error } = await db
     .from('bn_reason_code')
     .select('reason_code, reason_label, applicable_actions, is_active, requires_narrative')
     .eq('is_active', true);
   if (error) throw error;
   return (data ?? [])
-    .filter((r: any) => Array.isArray(r.applicable_actions) && r.applicable_actions.includes('SUSPEND'))
+    .filter((r: any) => Array.isArray(r.applicable_actions) && r.applicable_actions.includes(action))
     .map((r: any) => ({
       code: r.reason_code,
       label: r.reason_label ?? r.reason_code,
       requiresNarrative: Boolean(r.requires_narrative),
     }));
 }
+
+export const listSuspensionReasonCodes = (): Promise<SuspensionReasonOption[]> =>
+  listReasonCodesForAction('SUSPEND');
+
+/** Reason codes valid on a suspension rejection decision. */
+export const listSuspensionRejectionReasonCodes = (): Promise<SuspensionReasonOption[]> =>
+  listReasonCodesForAction('SUSPEND_REJECT');
 
 // ─────────────────────────── Awards register ───────────────────────────
 export async function listAwardsForSuspension(): Promise<AwardSuspensionListItem[]> {
@@ -658,7 +678,7 @@ export async function listSuspensionRequests(): Promise<SuspensionRequestListIte
   const { data: events, error } = await db
     .from('bn_award_suspension_event')
     .select(
-      'id, bn_award_id, status, suspended_from, reason_code, reason_text, proposed_by_user_id, entered_at, entered_by, workflow_instance_id, modified_at, correlation_id'
+      'id, bn_award_id, status, suspended_from, reason_code, reason_text, proposed_by_user_id, entered_at, entered_by, workflow_instance_id, modified_at, correlation_id, row_version, case_kind, execution_status'
     )
     .order('entered_at', { ascending: false });
   if (error) throw error;
@@ -735,8 +755,13 @@ export async function listSuspensionRequests(): Promise<SuspensionRequestListIte
       reasonCode: e.reason_code ?? null,
       reasonText: e.reason_text ?? null,
       proposedBy: e.proposed_by_user_id ?? e.entered_by ?? null,
+      proposedByUserId: e.proposed_by_user_id ?? null,
       proposedAt: e.entered_at,
       status,
+      rowVersion: e.row_version ?? 1,
+      caseKind: (e.case_kind ?? 'SUSPENSION') as 'SUSPENSION' | 'REINSTATEMENT',
+      executionStatus: e.execution_status ?? null,
+      currentTaskId: cur?.id ?? null,
       currentApprovalLevel: approvalLevel,
       totalApprovalLevels: totalLevels,
       currentTaskCode: cur?.task_code ?? null,
@@ -868,7 +893,7 @@ export async function listMyApprovalTasks(userId: string | null): Promise<Suspen
   const { data: eventsData, error: evErr } = await db
     .from('bn_award_suspension_event')
     .select(
-      'id, bn_award_id, status, suspended_from, reason_code, reason_text, proposed_by_user_id, entered_at, entered_by, workflow_instance_id, modified_at, correlation_id'
+      'id, bn_award_id, status, suspended_from, reason_code, reason_text, proposed_by_user_id, entered_at, entered_by, workflow_instance_id, modified_at, correlation_id, row_version, case_kind, execution_status'
     )
     .in('workflow_instance_id', matchedInstanceIds);
   if (evErr) throw evErr;
@@ -940,8 +965,13 @@ export async function listMyApprovalTasks(userId: string | null): Promise<Suspen
         reasonCode: e.reason_code ?? null,
         reasonText: e.reason_text ?? null,
         proposedBy: e.proposed_by_user_id ?? e.entered_by ?? null,
+        proposedByUserId: e.proposed_by_user_id ?? null,
         proposedAt: e.entered_at,
         status: deriveRequestStatus(e, task),
+        rowVersion: e.row_version ?? 1,
+        caseKind: (e.case_kind ?? 'SUSPENSION') as 'SUSPENSION' | 'REINSTATEMENT',
+        executionStatus: e.execution_status ?? null,
+        currentTaskId: task.id,
         currentApprovalLevel: numMetaField(task.metadata, 'approval_level'),
         totalApprovalLevels: deriveTotalLevels([task], pvPolicyLevels),
         currentTaskCode: task.task_code ?? null,
@@ -1084,6 +1114,7 @@ export async function getSuspensionRequestDetails(
                 : 'PENDING';
       return {
         level: numMetaField(t.metadata, 'approval_level') ?? idx + 1,
+        taskId: t.id,
         taskCode: t.task_code ?? null,
         policyId: metaField(t.metadata, 'policy_id'),
         role: t.assigned_to_role_key ?? null,
@@ -1103,6 +1134,7 @@ export async function getSuspensionRequestDetails(
     if (p.level != null && !existingLevels.has(p.level)) {
       approvalRoute.push({
         level: p.level,
+        taskId: null,
         taskCode: null,
         policyId: p.id,
         role: null,
@@ -1197,8 +1229,13 @@ export async function getSuspensionRequestDetails(
     reasonCode: e.reason_code ?? null,
     reasonText: e.reason_text ?? null,
     proposedBy: e.proposed_by_user_id ?? e.entered_by ?? null,
+    proposedByUserId: e.proposed_by_user_id ?? null,
     proposedAt: e.entered_at,
     status: deriveRequestStatus(e, cur),
+    rowVersion: (e as any).row_version ?? 1,
+    caseKind: ((e as any).case_kind ?? 'SUSPENSION') as 'SUSPENSION' | 'REINSTATEMENT',
+    executionStatus: (e as any).execution_status ?? null,
+    currentTaskId: cur?.id ?? null,
     currentApprovalLevel: cur ? numMetaField(cur.metadata, 'approval_level') : null,
     totalApprovalLevels: deriveTotalLevels(tasks, policyLevels),
     currentTaskCode: cur?.task_code ?? null,

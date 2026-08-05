@@ -25,6 +25,11 @@ import {
   type AwardSuspensionListItem,
   type SuspensionReasonOption,
 } from '@/services/bn/awardSuspensionViewService';
+import {
+  proposeSuspension,
+  SuspensionCommandError,
+  type SuspensionProposalResult,
+} from '@/services/bn/awardSuspensionCommandService';
 import { formatDate, formatMoney } from './suspensionViewModels';
 
 interface Props {
@@ -33,6 +38,8 @@ interface Props {
   award: AwardSuspensionListItem | null;
   narrativeMinLength?: number;
   actionsEnabled?: boolean;
+  /** Called after a successful proposal so registers/queues can refresh. */
+  onSubmitted?: (result: SuspensionProposalResult) => void;
 }
 
 type ReasonsState =
@@ -55,6 +62,7 @@ export function SuspensionProposalDialog({
   award,
   narrativeMinLength = 20,
   actionsEnabled = false,
+  onSubmitted,
 }: Props) {
   const [reasonCode, setReasonCode] = useState<string>('');
   const [reasonsState, setReasonsState] = useState<ReasonsState>({ status: 'loading' });
@@ -64,6 +72,9 @@ export function SuspensionProposalDialog({
   const [narrative, setNarrative] = useState('');
   const [ack, setAck] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [commandError, setCommandError] = useState<string | null>(null);
+  const inFlight = useRef(false);
 
   const reasonTriggerRef = useRef<HTMLButtonElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
@@ -96,6 +107,9 @@ export function SuspensionProposalDialog({
     setAck(false);
     setSubmitAttempted(false);
     setEffectiveDate(new Date().toISOString().slice(0, 10));
+    setCommandError(null);
+    setSubmitting(false);
+    inFlight.current = false;
     loadReasons();
   }, [open, loadReasons]);
 
@@ -149,15 +163,39 @@ export function SuspensionProposalDialog({
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setSubmitAttempted(true);
     if (!canSubmit) {
       // Never dispatch a business command while the gate is closed or the form invalid.
       window.setTimeout(focusFirstInvalid, 0);
       return;
     }
-    // Submission remains governed by the authoritative rollout gate; no RPC is
-    // wired in this read-only slice.
+    // Double-submit protection: the ref blocks a second click landing inside
+    // the same tick, before React has re-rendered the busy state.
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setSubmitting(true);
+    setCommandError(null);
+    try {
+      const result = await proposeSuspension({
+        awardId: award!.awardId,
+        reasonCode,
+        effectiveFrom: effectiveDate,
+        narrative: narrative.trim(),
+      });
+      onSubmitted?.(result);
+      onOpenChange(false);
+    } catch (e) {
+      // Entered values are deliberately preserved so the operator can retry.
+      setCommandError(
+        e instanceof SuspensionCommandError
+          ? e.message
+          : 'The suspension proposal could not be submitted.'
+      );
+    } finally {
+      inFlight.current = false;
+      setSubmitting(false);
+    }
   };
 
   const narrativeLength = narrative.trim().length;
@@ -385,6 +423,17 @@ export function SuspensionProposalDialog({
             </span>
           </p>
 
+          {commandError && (
+            <p
+              data-testid="suspension-command-error"
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0 break-words">{commandError}</span>
+            </p>
+          )}
+
           {showErrors && errorCount > 0 && (
             <p
               id="suspension-validation-summary"
@@ -402,17 +451,19 @@ export function SuspensionProposalDialog({
           <Button
             variant="outline"
             className="min-h-[44px] w-full sm:w-auto"
+            disabled={submitting}
             onClick={() => onOpenChange(false)}
           >
             Cancel
           </Button>
           <Button
             className="min-h-[44px] w-full sm:w-auto"
-            onClick={handleSubmit}
-            disabled={!actionsEnabled}
+            data-testid="suspension-submit"
+            onClick={() => void handleSubmit()}
+            disabled={!actionsEnabled || submitting}
             // Only the rollout gate exposes a disabled state. An incomplete but
             // actionable form stays operable so the first attempt reveals errors.
-            aria-disabled={!actionsEnabled ? true : undefined}
+            aria-disabled={!actionsEnabled || submitting ? true : undefined}
             aria-describedby={
               showErrors && errorCount > 0 ? 'suspension-validation-summary' : undefined
             }
@@ -423,7 +474,8 @@ export function SuspensionProposalDialog({
                 : undefined
             }
           >
-            Submit for approval
+            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />}
+            {submitting ? 'Submitting…' : 'Submit for approval'}
           </Button>
         </DialogFooter>
       </DialogContent>
