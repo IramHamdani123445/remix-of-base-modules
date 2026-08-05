@@ -310,6 +310,7 @@ export const medicalReviewCommandService = {
     });
   },
 
+  /** `category` must be a canonical `non_attendance_category` value. */
   recordNonAttendance(
     appointmentId: string,
     category: string,
@@ -317,10 +318,11 @@ export const medicalReviewCommandService = {
     reason: string,
     opts: Versioned,
   ) {
+    const dto = toNonAttendanceDto({ category, notes });
     return callCommand('bn_medical_review_record_non_attendance_v1', {
       p_appointment_id: appointmentId,
-      p_category: category,
-      p_notes: notes,
+      p_category: dto.category,
+      p_notes: dto.notes,
       p_expected_row_version: opts.expectedRowVersion,
       p_idempotency_key: key(opts.idempotencyKey),
       p_reason: reason,
@@ -337,15 +339,18 @@ export const medicalReviewCommandService = {
     });
   },
 
+  /** Appointment workflow only — never the obligation defer command. */
   recordReasonableCause(appointmentId: string, outcome: string, reason: string, opts: Versioned) {
+    const dto = toReasonableCauseDto({ outcome });
     return callCommand('bn_medical_review_record_reasonable_cause_v1', {
       p_appointment_id: appointmentId,
-      p_outcome: outcome,
+      p_outcome: dto.outcome,
       p_expected_row_version: opts.expectedRowVersion,
       p_idempotency_key: key(opts.idempotencyKey),
       p_reason: reason,
     });
   },
+
 
   /* ---------------- Assessment ---------------- */
 
