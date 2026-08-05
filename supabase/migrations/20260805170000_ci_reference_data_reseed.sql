@@ -293,3 +293,28 @@ UPDATE public.role_permissions rp
    AND rp.role_id = r.id
    AND ma.action_name IN ('execute', 'resume_execute', 'view_payment_impact')
    AND rp.is_granted = false;
+-- =====================================================================
+-- Benefits approval policy areas (reference data).
+--
+-- Defect closed here: `_bn_susp_resolve_policy_levels()` resolves policies
+-- with policy_area = 'award_suspension', but that code was never present in
+-- bn_policy_area, and bn_approval_policy.policy_area is a foreign key to it.
+-- No award suspension approval policy could therefore ever be configured,
+-- so propose/approve failed with E_POLICY_NOT_CONFIGURED on every
+-- environment. Registering the area is configuration only: it grants no
+-- access and does not activate the module.
+-- =====================================================================
+INSERT INTO public.bn_policy_area (code, display_name, description, sort_order, is_active)
+VALUES
+  ('ELIGIBILITY', 'Eligibility Overrides', 'Override failed eligibility rules or full eligibility decision', 10, true),
+  ('CALCULATION', 'Calculation Overrides', 'Override calculation inputs, caps, or final amount', 20, true),
+  ('DOCUMENTS', 'Document Waivers', 'Waive mandatory documents or accept alternates', 30, true),
+  ('AMENDMENTS', 'Claim Amendments', 'Edit locked claim fields after stage cutoff', 40, true),
+  ('PARTICIPANTS', 'Participant Changes', 'Add/remove/edit participants after lock', 50, true),
+  ('WORKFLOW', 'Workflow Overrides', 'Skip, re-route or unlock workflow steps', 60, true),
+  ('AWARD', 'Award Overrides', 'Backdate, suspend, reinstate, life-cert exceptions', 70, true),
+  ('PAYMENT', 'Payment Overrides', 'Release holds, method/bank/amount override', 80, true),
+  ('COMMUNICATION', 'Communication Overrides', 'Re-send, suppress, re-template communications', 90, true),
+  ('CONFIG_PUBLISH', 'Configuration Publish', 'Approvals required before a product version (incl. its rules) can move from Draft to Active.', 100, true),
+  ('award_suspension', 'Award Suspension Approvals', 'Approval routing for award suspension and reinstatement cases', 110, true)
+ON CONFLICT (code) DO NOTHING;
