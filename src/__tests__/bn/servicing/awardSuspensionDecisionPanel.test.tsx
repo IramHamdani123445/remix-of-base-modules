@@ -57,6 +57,9 @@ beforeEach(() => {
   approveSuspension.mockReset().mockResolvedValue({});
   rejectSuspension.mockReset().mockResolvedValue({});
   withdrawSuspension.mockReset().mockResolvedValue({});
+  approveReinstatement.mockReset().mockResolvedValue({});
+  rejectReinstatement.mockReset().mockResolvedValue({});
+  withdrawReinstatement.mockReset().mockResolvedValue({});
 });
 
 describe('Journey A — maker-checker', () => {
