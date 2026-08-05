@@ -1,7 +1,16 @@
-name: BN Suspension Integration (Local Supabase)
+# BN Award Suspension — seeded clean-database integration harness.
+#
+# Replaces the previous full-history `supabase db reset` replay, which is
+# impossible from zero (see supabase/baseline/README.md): the database is
+# built from the Supabase substrate + the reviewed baseline schema + every
+# migration after the cutoff, exactly like the Life Certificate workflow.
+#
+# Gates, all mandatory:
+#   1. supabase/verify/bn_award_suspension_effective_grants.sql
+#   2. supabase/tests/bn/award_suspension_integration.sql -> BN_SUSP_HARNESS_RESULT: PASS
+#   3. static/unit suites and typecheck
+name: BN Suspension Integration (Clean Database)
 
-# BN-ENV-T1.2 — trigger on all mandated branches plus workflow_dispatch and
-# relevant PRs, with narrow path filters to avoid unrelated churn.
 on:
   workflow_dispatch: {}
   push:
@@ -12,196 +21,127 @@ on:
     paths:
       - '.github/workflows/bn-suspension-integration.yml'
       - 'supabase/migrations/**'
-      - 'supabase/verify/**'
+      - 'supabase/baseline/**'
+      - 'supabase/verify/bn_award_suspension_**'
+      - 'supabase/tests/bn/award_suspension_**'
       - 'supabase/test-support/**'
-      - 'src/__tests__/integration/**'
-      - 'package.json'
-      - 'scripts/run-bn-suspension-integration-local.sh'
+      - 'scripts/ci/**'
+      - 'scripts/bn/activate-award-suspension-test.sh'
+      - 'scripts/bn/__tests__/**'
       - 'src/pages/bn/servicing/award-suspension/**'
       - 'src/services/bn/awardSuspension*.ts'
       - 'src/__tests__/bn/**'
-      - 'scripts/bn/activate-award-suspension-test.sh'
-      - 'scripts/bn/__tests__/**'
+      - 'package.json'
   pull_request:
     paths:
       - '.github/workflows/bn-suspension-integration.yml'
       - 'supabase/migrations/**'
-      - 'supabase/verify/**'
+      - 'supabase/baseline/**'
+      - 'supabase/verify/bn_award_suspension_**'
+      - 'supabase/tests/bn/award_suspension_**'
       - 'supabase/test-support/**'
-      - 'src/__tests__/integration/**'
-      - 'package.json'
-      - 'scripts/run-bn-suspension-integration-local.sh'
+      - 'scripts/ci/**'
+      - 'scripts/bn/activate-award-suspension-test.sh'
+      - 'scripts/bn/__tests__/**'
       - 'src/pages/bn/servicing/award-suspension/**'
       - 'src/services/bn/awardSuspension*.ts'
       - 'src/__tests__/bn/**'
-      - 'scripts/bn/activate-award-suspension-test.sh'
-      - 'scripts/bn/__tests__/**'
+      - 'package.json'
 
-# Explicitly deny remote linking. No SUPABASE_ACCESS_TOKEN is exported.
+# No SUPABASE_ACCESS_TOKEN is ever exported and no remote link is performed.
 env:
   BN_TEST_LIVE_PROJECT_REF_DENYLIST: xynceskeiiisiefqlgxo
-  # BN-ENV-T1.2 — pinned Supabase CLI. SQL files are executed via psql
-  # against the local DB_URL from `supabase status -o env`, because
-  # `supabase db query` does not exist in this pinned version.
-  SUPABASE_CLI_VERSION: '1.200.3'
 
 jobs:
-  bn-suspension-integration:
-    name: BN suspension integration (local Supabase)
+  suspension-db:
+    name: Seeded Award Suspension database harness
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
     env:
-      BN_REQUIRE_LOCAL_SUPABASE_TESTS: 'YES'
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # BN-ENV-T1.3 — the previous "grep for live ref" step matched its own
-      # source (the grep pattern contains the ref) and is removed. Runtime
-      # protections (API/DB URL guards, hosted-host rejection, live-ref
-      # denylist across API_URL/DB_URL/keys, no `supabase link`, no access
-      # token, no remote push) remain the source of safety.
-
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.3
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Install Supabase CLI (pinned)
-        uses: supabase/setup-cli@v1
-        with:
-          version: 1.200.3
-
-      - name: Install PostgreSQL client
+      - name: Install psql
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
-          psql --version
 
-      - name: Early command-capability check
+      - name: Wait for Postgres
         run: |
-          supabase --version
-          psql --version
-          supabase db reset --help >/dev/null
-          supabase status --help >/dev/null
-
-      - name: Confirm Docker availability
-        run: docker version && docker info
-
-      - name: Report committed migration count
-        run: |
-          MIGRATION_COUNT="$(find supabase/migrations -type f -name '*.sql' | wc -l | tr -d ' ')"
-          echo "Committed migration count: ${MIGRATION_COUNT}"
-          echo "BN_MIGRATION_COUNT=${MIGRATION_COUNT}" >> "$GITHUB_ENV"
-
-      - name: Start local Supabase
-        run: supabase start
-
-
-      - name: Reset local database (apply all repository migrations)
-        run: supabase db reset --local
-
-      - name: Export local Supabase credentials and validate DB_URL
-        run: |
-          set -euo pipefail
-          supabase status -o env > .supabase.local.env
-          # shellcheck disable=SC1091
-          source .supabase.local.env
-
-          # API URL must be local.
-          case "${API_URL:-}" in
-            http://127.0.0.1:*|http://localhost:*) ;;
-            *) echo "Refusing non-local API_URL: ${API_URL:-<unset>}"; exit 1 ;;
-          esac
-
-          # Explicit DB_URL guard: allow only local Postgres hosts.
-          if [ -z "${DB_URL:-}" ]; then
-            echo "DB_URL is empty"; exit 1
-          fi
-          case "${DB_URL}" in
-            postgresql://*@127.0.0.1:*|postgresql://*@localhost:*|postgres://*@127.0.0.1:*|postgres://*@localhost:*) ;;
-            *) echo "Refusing non-local DB_URL host"; exit 1 ;;
-          esac
-          case "${DB_URL}" in
-            *supabase.co*|*supabase.com*|*pooler.supabase*)
-              echo "Refusing hosted Supabase DB_URL"; exit 1 ;;
-          esac
-
-          # Denylist the live project ref anywhere in credentials.
-          if echo "${API_URL:-}${ANON_KEY:-}${SERVICE_ROLE_KEY:-}${DB_URL:-}" \
-             | grep -q "xynceskeiiisiefqlgxo"; then
-            echo "Denylisted live project ref found in local credentials"; exit 1
-          fi
-
-          {
-            echo "BN_TEST_SUPABASE_URL=${API_URL}"
-            echo "BN_TEST_ANON_KEY=${ANON_KEY}"
-            echo "BN_TEST_SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}"
-            echo "BN_TEST_CONFIRM_NONPROD=YES"
-            echo "BN_TEST_ENVIRONMENT=LOCAL_SUPABASE"
-            echo "BN_TEST_DB_URL=${DB_URL}"
-          } >> "$GITHUB_ENV"
-          rm -f .supabase.local.env
-
-      - name: Install auth.uid() probe (test-support, not a migration)
-        run: |
-          psql "$BN_TEST_DB_URL" \
-            -v ON_ERROR_STOP=1 \
-            -f supabase/test-support/bn_env_auth_uid_probe.sql
-
-      - name: Run migration verification SQL
-        run: |
-          if [ -f supabase/verify/bn_award_suspension_backend.sql ]; then
-            psql "$BN_TEST_DB_URL" \
-              -v ON_ERROR_STOP=1 \
-              -f supabase/verify/bn_award_suspension_backend.sql
-          fi
-          if [ -f supabase/verify/bn_award_suspension_access_seed.sql ]; then
-            psql "$BN_TEST_DB_URL" \
-              -v ON_ERROR_STOP=1 \
-              -f supabase/verify/bn_award_suspension_access_seed.sql
-          fi
-
-      - name: Run BN environment integration tests
-        run: bun run test:bn-environment-integration
-
-      - name: Run BN suspension static tests
-        run: bun run test:bn-suspension-static
-
-      - name: Run activation-script guard tests
-        run: bash scripts/bn/__tests__/activate-award-suspension-test.spec.sh
-
-      - name: Typecheck
-        run: bunx tsgo --noEmit
-
-      - name: Capture diagnostics on failure
-        if: failure()
-        run: |
-          set +e
-          mkdir -p artifacts
-          supabase status > artifacts/supabase-status.txt 2>&1 || true
-          docker ps -a  > artifacts/docker-ps.txt 2>&1 || true
-          # Discover local Supabase container names (supabase_db_*, supabase_auth_*)
-          # and dump their logs individually — CLI 1.200.3 has no confirmed
-          # `supabase logs --local`, so we go straight to Docker.
-          for pattern in supabase_db_ supabase_auth_ supabase_kong_ supabase_rest_; do
-            for cid in $(docker ps -a --format '{{.Names}}' | grep "^${pattern}" || true); do
-              docker logs "$cid" > "artifacts/${cid}.log" 2>&1 || true
-            done
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -U postgres && break
+            sleep 1
           done
 
+      - name: Build clean database (bootstrap + baseline + forward migrations)
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: |
+          chmod +x scripts/ci/bootstrap-supabase-test-db.sh
+          scripts/ci/bootstrap-supabase-test-db.sh
 
-      - name: Upload logs on failure
-        if: failure()
+      - name: Verify Award Suspension effective grants
+        run: psql -v ON_ERROR_STOP=1 -f supabase/verify/bn_award_suspension_effective_grants.sql
+
+      - name: Run seeded Award Suspension harness
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/award_suspension_integration.sql 2>&1 \
+            | tee /tmp/bn-susp-harness.log
+          if grep -qi 'SKIP' /tmp/bn-susp-harness.log; then
+            echo "FAIL: harness skipped a scenario"; exit 1
+          fi
+          grep -q 'BN_SUSP_HARNESS_RESULT: PASS' /tmp/bn-susp-harness.log \
+            || { echo "FAIL: harness did not report PASS"; exit 1; }
+
+      - name: Assert the module is still dark-launched
+        run: |
+          set -euo pipefail
+          state="$(psql -At -v ON_ERROR_STOP=1 \
+            -c "SELECT actions_enabled FROM public.app_modules WHERE name = 'bn_award_suspension';")"
+          [ "$state" = "f" ] || { echo "FAIL: module activated in CI (actions_enabled=$state)"; exit 1; }
+
+      - name: Upload harness evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bn-suspension-integration-logs
-          path: artifacts/
+          name: bn-suspension-harness-log
+          path: /tmp/bn-susp-harness.log
+          if-no-files-found: warn
 
-      - name: Stop local Supabase
-        if: always()
-        run: supabase stop --no-backup || true
+  suspension-static:
+    name: Award Suspension static, unit and guard tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.3
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Run BN suspension static tests
+        run: bun run test:bn-suspension-static
+      - name: Run activation-script guard tests
+        run: bash scripts/bn/__tests__/activate-award-suspension-test.spec.sh
+      - name: Typecheck
+        run: bunx tsgo --noEmit

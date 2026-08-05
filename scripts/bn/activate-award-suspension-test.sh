@@ -25,7 +25,7 @@ LIVE_REF_DENYLIST="xynceskeiiisiefqlgxo"
 
 # Canonical environment marker. Set BN_SUSP_ENV_MARKER_TABLE to override.
 MARKER_TABLE="${BN_SUSP_ENV_MARKER_TABLE:-public.platform_environment_marker}"
-MARKER_COLUMN="${BN_SUSP_ENV_MARKER_COLUMN:-environment_code}"
+MARKER_COLUMN="${BN_SUSP_ENV_MARKER_COLUMN:-environment_kind}"
 
 if [ -z "${BN_SUSP_DB_URL:-}" ]; then
   echo "BN_SUSP_DB_URL is not set. Refusing to run." >&2
@@ -93,7 +93,22 @@ assert_nonprod() {
     echo "AWARD SUSPENSION ACTIVATION BLOCKED — CANONICAL ENVIRONMENT MARKER MISSING" >&2
     exit 6
   fi
+  marker_rows="$(q "SELECT count(*) FROM ${MARKER_TABLE};")"
+  if [ "$marker_rows" != "1" ]; then
+    echo "AWARD SUSPENSION ACTIVATION BLOCKED — the environment marker must hold exactly one row (found ${marker_rows})" >&2
+    exit 6
+  fi
   marker_value="$(q "SELECT upper(${MARKER_COLUMN}::text) FROM ${MARKER_TABLE} LIMIT 1;")"
+  marker_allows="$(q "SELECT allows_controlled_test_activation FROM ${MARKER_TABLE} LIMIT 1;")"
+  if [ "$marker_allows" != "t" ]; then
+    echo "AWARD SUSPENSION ACTIVATION BLOCKED — this environment does not allow controlled test activation" >&2
+    exit 6
+  fi
+  marker_ref="$(q "SELECT coalesce(project_ref,'') FROM ${MARKER_TABLE} LIMIT 1;")"
+  if [ "$marker_ref" = "$LIVE_REF_DENYLIST" ]; then
+    echo "AWARD SUSPENSION ACTIVATION BLOCKED — the marker identifies the denylisted live project" >&2
+    exit 6
+  fi
   case "$marker_value" in
     TEST|LOCAL) ;;
     *)
@@ -145,7 +160,7 @@ assert_ready() {
       WHERE group_code IN ('BN_AWARD_SUSPENSION_REASON','BN_AWARD_SUSPENSION_REJECTION');" "t"
 
   require "module actions registered" \
-    "SELECT count(*) >= 4 FROM public.app_module_actions ma
+    "SELECT count(*) >= 4 FROM public.module_actions ma
       JOIN public.app_modules m ON m.id = ma.module_id
       WHERE m.name = 'bn_award_suspension';" "t"
 
@@ -153,6 +168,17 @@ assert_ready() {
     "SELECT count(*) >= 1 FROM public.role_permissions rp
       JOIN public.permissions p ON p.id = rp.permission_id
       WHERE p.name LIKE 'bn_award_suspension%';" "t"
+
+  require "environment marker still permits controlled activation" \
+    "SELECT allows_controlled_test_activation FROM ${MARKER_TABLE} LIMIT 1;" "t"
+
+  echo "  running effective-grant verifier…"
+  if ! psql "$BN_SUSP_DB_URL" -v ON_ERROR_STOP=1 -q \
+        -f supabase/verify/bn_award_suspension_effective_grants.sql >/dev/null 2>&1; then
+    echo "AWARD SUSPENSION ACTIVATION BLOCKED — effective-grant verifier failed" >&2
+    exit 5
+  fi
+  echo "  ok: effective-grant verifier passed"
 
   require "no unauthorized anon grants on suspension RPCs" \
     "SELECT count(*) = 0 FROM pg_proc p, aclexplode(p.proacl) a, pg_roles r

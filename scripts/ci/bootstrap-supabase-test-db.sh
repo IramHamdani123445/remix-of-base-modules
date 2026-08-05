@@ -93,4 +93,21 @@ for path in "$MIGRATIONS_DIR"/*.sql; do
   APPLIED=$((APPLIED + 1))
 done
 
+# --- 5. environment marker (CI databases are disposable) --------------------
+# Seeded here, never by a migration: a migration would also stamp the shared
+# Test and Live databases, and activation guards must never be able to read
+# "CI" from a persistent environment.
+echo "==> stamping the environment marker as CI"
+psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 <<'SQL'
+INSERT INTO public.platform_environment_marker
+  (id, environment_kind, environment_label, allows_controlled_test_activation, notes)
+VALUES (true, 'CI', 'Disposable CI database', false,
+        'Seeded by scripts/ci/bootstrap-supabase-test-db.sh')
+ON CONFLICT (id) DO UPDATE
+  SET environment_kind = excluded.environment_kind,
+      environment_label = excluded.environment_label,
+      allows_controlled_test_activation = false,
+      notes = excluded.notes;
+SQL
+
 echo "==> bootstrap complete (${APPLIED} migration(s) applied on top of the baseline)"

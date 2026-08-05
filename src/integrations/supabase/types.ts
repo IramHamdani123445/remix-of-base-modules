@@ -87116,6 +87116,39 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_environment_marker: {
+        Row: {
+          allows_controlled_test_activation: boolean
+          created_at: string
+          environment_kind: string
+          environment_label: string
+          id: boolean
+          notes: string | null
+          project_ref: string | null
+          updated_at: string
+        }
+        Insert: {
+          allows_controlled_test_activation?: boolean
+          created_at?: string
+          environment_kind: string
+          environment_label: string
+          id?: boolean
+          notes?: string | null
+          project_ref?: string | null
+          updated_at?: string
+        }
+        Update: {
+          allows_controlled_test_activation?: boolean
+          created_at?: string
+          environment_kind?: string
+          environment_label?: string
+          id?: boolean
+          notes?: string | null
+          project_ref?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null

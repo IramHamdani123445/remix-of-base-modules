@@ -50,6 +50,90 @@ PLATFORM_SCHEMAS = {
 }
 APP_ROLES = ("anon", "authenticated", "service_role", "PUBLIC")
 
+# ---------------------------------------------------------------------------
+# PostgreSQL privilege compatibility
+#
+# The canonical database may run a newer PostgreSQL major version than the
+# shared CI database target. Privileges introduced after the CI target are a
+# syntax error on the CI server (`GRANT MAINTAIN` on PostgreSQL 15 fails the
+# whole baseline apply), so the generator — never a hand edit of schema.sql —
+# is responsible for emitting only statements the declared target supports.
+# ---------------------------------------------------------------------------
+
+#: The shared CI PostgreSQL major version. Every workflow that builds a clean
+#: database must use this same major version. Override deliberately with
+#: --pg-target / BASELINE_PG_TARGET_MAJOR, never per workflow.
+DEFAULT_PG_TARGET_MAJOR = 15
+
+#: First PostgreSQL major version in which each ACL privilege exists.
+PRIVILEGE_MIN_MAJOR: dict[str, int] = {
+    "SELECT": 8,
+    "INSERT": 8,
+    "UPDATE": 8,
+    "DELETE": 8,
+    "TRUNCATE": 8,
+    "REFERENCES": 8,
+    "TRIGGER": 8,
+    "USAGE": 8,
+    "EXECUTE": 8,
+    "CREATE": 8,
+    "CONNECT": 8,
+    "TEMPORARY": 8,
+    "SET": 15,
+    "ALTER SYSTEM": 15,
+    "MAINTAIN": 17,
+    "VACUUM": 17,
+    "ANALYZE": 17,
+}
+
+#: Approved compatibility rule: privileges that may be OMITTED when the target
+#: does not support them. Restricted to maintenance-only privileges, which
+#: grant no data access and therefore cannot weaken the CI security model.
+#: Anything else must fail generation rather than be silently discarded.
+OMISSIBLE_WHEN_UNSUPPORTED = frozenset({"MAINTAIN", "VACUUM", "ANALYZE"})
+
+
+class UnsupportedPrivilegeError(RuntimeError):
+    """Raised when a privilege cannot be represented on the declared target."""
+
+
+def privilege_supported(priv: str, target_major: int) -> bool:
+    """Decide whether `priv` may be emitted for `target_major`.
+
+    Returns True when supported, False when it is an approved omission, and
+    raises UnsupportedPrivilegeError when the privilege is unknown or has no
+    approved compatibility rule — the generator never discards silently.
+    """
+    key = " ".join(priv.strip().upper().split())
+    if key not in PRIVILEGE_MIN_MAJOR:
+        raise UnsupportedPrivilegeError(
+            f"unknown privilege {priv!r}: add it to PRIVILEGE_MIN_MAJOR with the "
+            f"PostgreSQL major version that introduced it, and decide explicitly "
+            f"whether it is omissible on older targets"
+        )
+    if PRIVILEGE_MIN_MAJOR[key] <= target_major:
+        return True
+    if key in OMISSIBLE_WHEN_UNSUPPORTED:
+        return False
+    raise UnsupportedPrivilegeError(
+        f"privilege {key!r} requires PostgreSQL {PRIVILEGE_MIN_MAJOR[key]} but the "
+        f"declared CI target is PostgreSQL {target_major}, and no approved "
+        f"compatibility rule exists for it"
+    )
+
+
+#: Populated during generation; reported in the manifest.
+OMITTED_PRIVILEGES: dict[str, int] = {}
+
+
+def emit_privilege(priv: str, target_major: int) -> bool:
+    if privilege_supported(priv, target_major):
+        return True
+    key = " ".join(priv.strip().upper().split())
+    OMITTED_PRIVILEGES[key] = OMITTED_PRIVILEGES.get(key, 0) + 1
+    return False
+
+
 
 def q(sql: str) -> list[list[str]]:
     """Run a query and return rows of columns split on the RS/US separators."""
@@ -371,8 +455,10 @@ def gen_rls(schemas):
                f"EXCEPTION WHEN duplicate_object THEN NULL; END $do$;\n")
 
 
-def gen_grants(schemas):
-    yield section("SCHEMA / TABLE / SEQUENCE / FUNCTION PRIVILEGES")
+def gen_grants(schemas, target_major: int = DEFAULT_PG_TARGET_MAJOR):
+    yield section(
+        f"SCHEMA / TABLE / SEQUENCE / FUNCTION PRIVILEGES "
+        f"(PostgreSQL {target_major} compatible)")
     for s in schemas:
         yield f"GRANT USAGE ON SCHEMA {s} TO anon, authenticated, service_role;\n"
 
@@ -391,6 +477,8 @@ def gen_grants(schemas):
       ORDER BY 1, 2, 3, 4
     """)
     for ns, rel, grantee, priv in rows:
+        if not emit_privilege(priv, target_major):
+            continue
         yield f"GRANT {priv} ON {ns}.{quote_ident(rel)} TO {grantee};\n"
 
     rows = q(f"""
@@ -415,6 +503,8 @@ def gen_grants(schemas):
     for ns, name, args in fns:
         yield f"REVOKE ALL ON FUNCTION {ns}.{quote_ident(name)}({args}) FROM PUBLIC, anon, authenticated, service_role;\n"
     for ns, name, args, grantee, priv in rows:
+        if not emit_privilege(priv, target_major):
+            continue
         yield f"GRANT {priv} ON FUNCTION {ns}.{quote_ident(name)}({args}) TO {grantee};\n"
 
 
@@ -422,6 +512,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cutoff", default=None)
     ap.add_argument("--out", default=str(BASELINE_DIR / "schema.sql"))
+    ap.add_argument(
+        "--pg-target", type=int,
+        default=int(os.environ.get("BASELINE_PG_TARGET_MAJOR", DEFAULT_PG_TARGET_MAJOR)),
+        help="PostgreSQL major version the baseline must remain applicable to.")
     args = ap.parse_args()
 
     migrations = sorted(p.name for p in MIGRATIONS_DIR.glob("*.sql"))
@@ -434,14 +528,16 @@ def main() -> int:
         "-- CANONICAL CI SCHEMA BASELINE — GENERATED FILE, DO NOT EDIT BY HAND.\n"
         "-- Regenerate with: python3 scripts/ci/generate-baseline.py\n"
         f"-- Migration cutoff (inclusive): {cutoff}\n"
+        f"-- PostgreSQL compatibility target: {args.pg_target}\n"
         "-- Contains no data, no secrets and no ownership statements.\n"
         "SET check_function_bodies = off;\n"
         "SET client_min_messages = warning;\n",
     ]
     for gen in (gen_schemas, gen_types, gen_sequences, gen_tables, gen_functions,
                 gen_defaults, gen_constraints, gen_indexes, gen_views,
-                gen_triggers, gen_rls, gen_grants):
+                gen_triggers, gen_rls):
         chunks.extend(gen(schemas))
+    chunks.extend(gen_grants(schemas, args.pg_target))
 
     body = "".join(chunks)
     out = Path(args.out)
@@ -452,6 +548,8 @@ def main() -> int:
         "generator": "scripts/ci/generate-baseline.py",
         "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "migration_cutoff_inclusive": cutoff,
+        "pg_target_major": args.pg_target,
+        "omitted_unsupported_privileges": dict(sorted(OMITTED_PRIVILEGES.items())),
         "migrations_contained": len(migrations),
         "schemas": schemas,
         "schema_sql_sha256": hashlib.sha256(body.encode()).hexdigest(),

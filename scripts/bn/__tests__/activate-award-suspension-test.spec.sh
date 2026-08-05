@@ -23,7 +23,10 @@ done
 case "$sql" in
   *current_database*)          echo "${STUB_DB:-skn_test}" ;;
   *to_regclass*marker*|*platform_environment_marker\'*) echo "${STUB_MARKER_PRESENT:-t}" ;;
-  *environment_code*)          echo "${STUB_MARKER:-TEST}" ;;
+  *count\(\*\)\ FROM\ public.platform_environment_marker*) echo "${STUB_MARKER_ROWS:-1}" ;;
+  *allows_controlled_test_activation*) echo "${STUB_MARKER_ALLOWS:-t}" ;;
+  *project_ref*)               echo "${STUB_MARKER_REF:-}" ;;
+  *environment_kind*)          echo "${STUB_MARKER:-TEST}" ;;
   *bn_approval_policy*)        echo "${STUB_POLICY:-t}" ;;
   *count\(\*\)\ FROM\ public.app_modules*) echo "1" ;;
   *UPDATE\ public.app_modules*) echo "${STUB_UPDATED:-1}" ;;
@@ -74,6 +77,16 @@ expect "missing environment marker" 6 "CANONICAL ENVIRONMENT MARKER MISSING" \
     BN_SUSP_EXPECTED_DATABASE=skn_test "$SCRIPT" enable
 expect "production marker rejected" 6 "not TEST or LOCAL" \
   base_env STUB_MARKER=PRODUCTION BN_SUSP_CONFIRM_NONPROD=YES BN_SUSP_ENVIRONMENT=TEST \
+    BN_SUSP_EXPECTED_DATABASE=skn_test "$SCRIPT" enable
+
+expect "marker forbidding controlled activation" 6 "does not allow controlled test activation" \
+  base_env STUB_MARKER_ALLOWS=f BN_SUSP_CONFIRM_NONPROD=YES BN_SUSP_ENVIRONMENT=TEST \
+    BN_SUSP_EXPECTED_DATABASE=skn_test "$SCRIPT" enable
+expect "ambiguous marker rejected" 6 "exactly one row" \
+  base_env STUB_MARKER_ROWS=2 BN_SUSP_CONFIRM_NONPROD=YES BN_SUSP_ENVIRONMENT=TEST \
+    BN_SUSP_EXPECTED_DATABASE=skn_test "$SCRIPT" enable
+expect "marker naming the live project rejected" 6 "denylisted live project" \
+  base_env STUB_MARKER_REF=xynceskeiiisiefqlgxo BN_SUSP_CONFIRM_NONPROD=YES BN_SUSP_ENVIRONMENT=TEST \
     BN_SUSP_EXPECTED_DATABASE=skn_test "$SCRIPT" enable
 
 # --- readiness --------------------------------------------------------------
