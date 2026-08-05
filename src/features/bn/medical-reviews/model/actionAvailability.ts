@@ -56,6 +56,8 @@ interface Spec {
   surface: MedicalReviewActorSurface;
   /** Message when the record state does not permit the action. */
   stateMessage?: string;
+  /** Result key when several controls share one permission (e.g. expire vs issue). */
+  alias?: string;
 }
 
 function evaluate(spec: Spec, ctx: AvailabilityContext): ActionAvailability {
@@ -90,7 +92,7 @@ function evaluate(spec: Spec, ctx: AvailabilityContext): ActionAvailability {
 
 function build(specs: Spec[], ctx: AvailabilityContext): Record<string, ActionAvailability> {
   const out: Record<string, ActionAvailability> = {};
-  for (const spec of specs) out[spec.action] = evaluate(spec, ctx);
+  for (const spec of specs) out[spec.alias ?? spec.action] = evaluate(spec, ctx);
   return out;
 }
 
@@ -141,8 +143,8 @@ export function referralActionAvailability(ctx: AvailabilityContext) {
     [
       { action: A.verifyCredentials, states: ['NOMINATED', 'DRAFT'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
       { action: A.issueReferral, states: ['DRAFT', 'VERIFIED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
-      { action: A.assignProvider, states: ['ISSUED', 'DECLINED', 'EXPIRED'], versioned: true, reasonRequired: true, surface: 'BENEFITS' },
-      { action: A.issueReferral, states: ['ISSUED', 'ACCEPTED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
+      { action: A.assignProvider, states: ['ISSUED', 'DECLINED', 'EXPIRED'], versioned: true, reasonRequired: true, surface: 'BENEFITS', alias: 'reassign_provider' },
+      { action: A.issueReferral, states: ['ISSUED', 'ACCEPTED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', alias: 'expire_referral' },
       { action: A.requestSecondOpinion, states: ['REPORT_ACCEPTED', 'REPORT_SUBMITTED', 'COMPLETE'], versioned: false, reasonRequired: true, surface: 'BENEFITS' },
     ],
     ctx,
@@ -153,8 +155,8 @@ export function referralActionAvailability(ctx: AvailabilityContext) {
 export function providerReferralActionAvailability(ctx: AvailabilityContext) {
   return build(
     [
-      { action: A.submitAssessment, states: ['ISSUED'], versioned: true, reasonRequired: false, surface: 'PROVIDER', stateMessage: 'Only an issued referral can be accepted.' },
-      { action: A.declareConflict, states: ['ISSUED'], versioned: true, reasonRequired: true, surface: 'PROVIDER', stateMessage: 'Only an issued referral can be declined.' },
+      { action: A.submitAssessment, states: ['ISSUED'], versioned: true, reasonRequired: false, surface: 'PROVIDER', stateMessage: 'Only an issued referral can be accepted.', alias: 'accept_referral' },
+      { action: A.declareConflict, states: ['ISSUED'], versioned: true, reasonRequired: true, surface: 'PROVIDER', stateMessage: 'Only an issued referral can be declined.', alias: 'decline_referral' },
       { action: A.manageAppointment, states: ['ACCEPTED', 'IN_PROGRESS'], versioned: true, reasonRequired: false, surface: 'PROVIDER' },
     ],
     ctx,
@@ -169,7 +171,7 @@ export function appointmentActionAvailability(ctx: AvailabilityContext) {
   return build(
     [
       { action: A.manageAppointment, states: ['SCHEDULED', 'RESCHEDULED', 'PENDING'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
-      { action: A.deferReview, states: ['MISSED', 'NON_ATTENDED'], versioned: true, reasonRequired: true, surface: 'BENEFITS' },
+      { action: A.deferReview, states: ['MISSED', 'NON_ATTENDED'], versioned: true, reasonRequired: true, surface: 'BENEFITS', alias: 'reasonable_cause' },
     ],
     ctx,
   );
@@ -185,6 +187,7 @@ export function assessmentActionAvailability(ctx: AvailabilityContext) {
       { action: A.submitAssessment, states: ['DRAFT', 'IN_PROGRESS'], versioned: true, reasonRequired: false, surface: 'PROVIDER' },
       { action: A.validateReport, states: ['SUBMITTED', 'CLARIFIED'], versioned: true, reasonRequired: false, surface: 'BENEFITS' },
       { action: A.requestSecondOpinion, states: ['ACCEPTED', 'VALIDATED', 'LOCKED'], versioned: false, reasonRequired: true, surface: 'BENEFITS' },
+      { action: A.validateReport, states: ['ACCEPTED', 'VALIDATED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', alias: 'lock_assessment' },
     ],
     ctx,
   );
@@ -238,7 +241,7 @@ export function decisionActionAvailability(
     ...build(
       [
         { action: A.prepareDecision, states: ['NONE', 'RETURNED', 'DRAFT'], versioned: false, reasonRequired: true, surface: 'BENEFITS', stateMessage: 'A decision already exists for this review.' },
-        { action: A.closeReview, states: ['APPROVED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', stateMessage: 'Only an approved decision can be completed.' },
+        { action: A.closeReview, states: ['APPROVED'], versioned: true, reasonRequired: false, surface: 'BENEFITS', stateMessage: 'Only an approved decision can be completed.', alias: 'complete_decision' },
       ],
       { ...ctx, extraBlockedReason: prepareExtra },
     ),
