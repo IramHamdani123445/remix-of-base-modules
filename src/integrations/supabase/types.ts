@@ -102327,6 +102327,7 @@ export type Database = {
       _bn_mr_safe_detail: { Args: { p_detail: Json }; Returns: Json }
       _bn_mr_search_term: { Args: { p_term: string }; Returns: string }
       _bn_mr_secretary_boards: { Args: { p_actor: string }; Returns: string[] }
+      _bn_mr_semantic_payload: { Args: { p_payload: Json }; Returns: Json }
       _bn_mr_terminal: {
         Args: { p_entity: string; p_status: string }
         Returns: boolean
