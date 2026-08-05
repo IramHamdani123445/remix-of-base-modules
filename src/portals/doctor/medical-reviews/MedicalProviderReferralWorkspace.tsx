@@ -104,25 +104,31 @@ const CapabilityButton: React.FC<{
   );
 };
 
-/** Structured clinical fields. Deliberately excludes benefit-entitlement outcomes. */
+/**
+ * Structured clinical fields. Deliberately excludes benefit-entitlement
+ * outcomes. Field names are UI names; `toAssessmentFieldsDto` maps them to the
+ * exact snake_case `p_fields` contract before any RPC is called.
+ */
 const ASSESSMENT_FIELDS = [
   { name: 'examinationDate', label: 'Examination date', type: 'date' as const, required: true },
   { name: 'identityVerification', label: 'Identity verification', type: 'select' as const, required: true, options: IDENTITY_VERIFICATION_METHODS },
   { name: 'attendance', label: 'Attendance', type: 'select' as const, required: true, options: ATTENDANCE_OUTCOMES },
   { name: 'functionalLimitations', label: 'Functional limitations', type: 'textarea' as const, required: true },
   { name: 'workCapacityOpinion', label: 'Work-capacity opinion', type: 'select' as const, required: true, options: WORK_CAPACITY_OPINIONS },
-  { name: 'expectedDuration', label: 'Expected duration', type: 'select' as const, required: true, options: EXPECTED_DURATIONS },
+  { name: 'expectedDurationMonths', label: 'Expected duration (whole months)', type: 'number' as const, required: true, help: 'A whole number of months, as stored by the assessment record.' },
   { name: 'incapacityNature', label: 'Nature of incapacity', type: 'select' as const, options: INCAPACITY_NATURES },
   { name: 'prognosisCategory', label: 'Prognosis', type: 'select' as const, required: true, options: PROGNOSIS_CATEGORIES },
-  { name: 'impairmentPercentage', label: 'Impairment percentage (where applicable)', type: 'number' as const },
-  { name: 'furtherEvidenceRequired', label: 'Further evidence required', type: 'select' as const, options: YES_NO },
-  { name: 'specialistRequired', label: 'Specialist required', type: 'select' as const, options: YES_NO },
+  { name: 'impairmentPercentage', label: 'Impairment percentage (0–100, where applicable)', type: 'number' as const },
+  { name: 'furtherEvidenceRequired', label: 'Further evidence required', type: 'checkbox' as const },
+  { name: 'specialistRequired', label: 'Specialist required', type: 'checkbox' as const },
   { name: 'recommendedNextReviewDate', label: 'Recommended next review date', type: 'date' as const },
   { name: 'medicalOutcome', label: 'Medical outcome', type: 'select' as const, required: true, options: MEDICAL_OUTCOMES },
   { name: 'clinicalNarrative', label: 'Clinical narrative', type: 'textarea' as const, required: true },
-  { name: 'conflictDeclaration', label: 'I have no undeclared conflict of interest', type: 'checkbox' as const, required: true },
-  { name: 'providerDeclaration', label: 'I certify this report is accurate and complete', type: 'checkbox' as const, required: true },
+  { name: 'conflictDeclared', label: 'I have a conflict of interest to declare', type: 'checkbox' as const, help: 'Tick only if a conflict exists. Details are then required.' },
+  { name: 'conflictDetails', label: 'Conflict details', type: 'textarea' as const },
+  { name: 'providerDeclarationComplete', label: 'I certify this report is accurate and complete', type: 'checkbox' as const, required: true },
 ];
+
 
 const MedicalProviderReferralWorkspace: React.FC = () => {
   const actionsState = useMedicalReviewActionsState();
