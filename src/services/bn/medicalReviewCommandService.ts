@@ -531,7 +531,7 @@ export const medicalReviewCommandService = {
     return callCommand('bn_medical_review_record_board_participation_v1', {
       p_session_id: sessionId,
       p_member_id: memberId,
-      p_attendance_status: attendanceStatus,
+      p_attendance_status: toBoardParticipationDto({ attendanceStatus }).attendanceStatus,
       p_idempotency_key: key(opts.idempotencyKey),
       p_reason: opts.reason ?? null,
     });
