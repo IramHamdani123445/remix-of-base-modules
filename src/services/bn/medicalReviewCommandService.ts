@@ -569,12 +569,17 @@ export const medicalReviewCommandService = {
     voteReason: string;
     idempotencyKey?: string;
   }) {
+    const vote = toBoardVoteDto({
+      vote: input.vote,
+      voteOutcomeCode: input.voteOutcomeCode,
+      voteReason: input.voteReason,
+    });
     return callCommand('bn_medical_review_record_board_vote_v1', {
       p_session_id: input.sessionId,
       p_member_id: input.memberId,
-      p_vote: input.vote,
-      p_vote_outcome_code: input.voteOutcomeCode,
-      p_vote_reason: input.voteReason,
+      p_vote: vote.vote,
+      p_vote_outcome_code: vote.voteOutcomeCode,
+      p_vote_reason: vote.voteReason,
       p_idempotency_key: key(input.idempotencyKey),
     });
   },
@@ -589,12 +594,18 @@ export const medicalReviewCommandService = {
     idempotencyKey?: string;
     reason?: string | null;
   }) {
+    const dto = toBoardDeterminationDto({
+      outcomeCode: input.outcomeCode,
+      determinationSummary: input.determinationSummary,
+      impairmentPercentage: input.impairmentPercentage,
+    });
     return callCommand('bn_medical_review_finalise_board_determination_v1', {
       p_board_case_id: input.boardCaseId,
       p_session_id: input.sessionId,
-      p_outcome_code: input.outcomeCode,
-      p_determination_summary: input.determinationSummary,
-      p_impairment_percentage: input.impairmentPercentage,
+      p_outcome_code: dto.outcomeCode,
+      p_determination_summary: dto.determinationSummary,
+      p_impairment_percentage: dto.impairmentPercentage,
+
       p_expected_row_version: input.expectedRowVersion,
       p_idempotency_key: key(input.idempotencyKey),
       p_reason: input.reason ?? null,
