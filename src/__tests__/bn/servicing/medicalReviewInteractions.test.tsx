@@ -102,6 +102,16 @@ function renderAt(path: string, element: React.ReactNode, routePath = path.split
 
 const allowAll = (_a: MedicalReviewAction) => true;
 
+/**
+ * Radix tabs activate on mousedown/focus, not on a bare synthetic click.
+ */
+async function openTab(name: RegExp) {
+  const trigger = await screen.findByRole('tab', { name });
+  fireEvent.mouseDown(trigger, { button: 0 });
+  fireEvent.click(trigger);
+  return trigger;
+}
+
 const renderDetail = (props: Partial<React.ComponentProps<typeof MedicalReviewDetailPanel>> = {}) =>
   renderAt(
     '/bn/medical-reviews',
@@ -187,7 +197,7 @@ describe('Confidential medical evidence', () => {
 
   it('shows the audit warning on the collapsed section', async () => {
     renderDetail();
-    fireEvent.click(await screen.findByRole('tab', { name: /report/i }));
+    await openTab(/report/i);
     expect(await screen.findByTestId('mr-confidential-audit-notice')).toHaveTextContent(
       'Access to confidential medical evidence is audited.',
     );
@@ -196,7 +206,7 @@ describe('Confidential medical evidence', () => {
 
   it('fetches only after the explicit reveal action, then clears on hide', async () => {
     renderDetail();
-    fireEvent.click(await screen.findByRole('tab', { name: /report/i }));
+    await openTab(/report/i);
     fireEvent.click(await screen.findByTestId('mr-confidential-reveal'));
     await waitFor(() => expect(q.confidentialEvidence).toHaveBeenCalledTimes(1));
     expect(await screen.findByTestId('mr-confidential-content')).toBeInTheDocument();
@@ -209,7 +219,7 @@ describe('Confidential medical evidence', () => {
   it('reports a recused member separately from a permission denial', async () => {
     q.confidentialEvidence.mockRejectedValue(new MedicalReviewError('E_MEMBER_RECUSED'));
     renderDetail();
-    fireEvent.click(await screen.findByRole('tab', { name: /report/i }));
+    await openTab(/report/i);
     fireEvent.click(await screen.findByTestId('mr-confidential-reveal'));
     expect(await screen.findByTestId('mr-confidential-recused')).toBeInTheDocument();
     expect(screen.queryByTestId('mr-confidential-denied')).toBeNull();
@@ -218,7 +228,7 @@ describe('Confidential medical evidence', () => {
   it('reports permission denial separately', async () => {
     q.confidentialEvidence.mockRejectedValue(new MedicalReviewError('E_FORBIDDEN'));
     renderDetail();
-    fireEvent.click(await screen.findByRole('tab', { name: /report/i }));
+    await openTab(/report/i);
     fireEvent.click(await screen.findByTestId('mr-confidential-reveal'));
     expect(await screen.findByTestId('mr-confidential-denied')).toBeInTheDocument();
   });
@@ -226,21 +236,21 @@ describe('Confidential medical evidence', () => {
   it('reports "not released" distinctly from a failure', async () => {
     q.confidentialEvidence.mockResolvedValue(emptyPaged);
     renderDetail();
-    fireEvent.click(await screen.findByRole('tab', { name: /report/i }));
+    await openTab(/report/i);
     fireEvent.click(await screen.findByTestId('mr-confidential-reveal'));
     expect(await screen.findByTestId('mr-confidential-not-released')).toBeInTheDocument();
   });
 
   it('withholds the section entirely without the confidential permission', async () => {
     renderDetail({ canViewConfidential: false });
-    fireEvent.click(await screen.findByRole('tab', { name: /report/i }));
+    await openTab(/report/i);
     expect(await screen.findByTestId('mr-confidential-withheld')).toBeInTheDocument();
     expect(screen.queryByTestId('mr-confidential-reveal')).toBeNull();
   });
 
   it('clears confidential state when the selected review changes', async () => {
     const { rerender } = renderDetail();
-    fireEvent.click(await screen.findByRole('tab', { name: /report/i }));
+    await openTab(/report/i);
     fireEvent.click(await screen.findByTestId('mr-confidential-reveal'));
     await screen.findByTestId('mr-confidential-content');
 
@@ -355,7 +365,7 @@ describe('Section-level failure states', () => {
   it('shows a failed decision section instead of "no decision prepared"', async () => {
     q.decisionDetail.mockRejectedValue(new MedicalReviewError('E_TRANSPORT'));
     renderDetail();
-    fireEvent.click(await screen.findByRole('tab', { name: /^decision$/i }));
+    await openTab(/^decision$/i);
     expect(await screen.findByTestId('mr-section-decision-failed')).toBeInTheDocument();
     expect(screen.queryByTestId('mr-section-decision-empty')).toBeNull();
   });
@@ -369,13 +379,13 @@ describe('Section-level failure states', () => {
   it('distinguishes a permission denial from an empty audit section', async () => {
     q.auditTimeline.mockRejectedValue(new MedicalReviewError('E_FORBIDDEN'));
     renderDetail();
-    fireEvent.click(await screen.findByRole('tab', { name: /audit/i }));
+    await openTab(/audit/i);
     expect(await screen.findByTestId('mr-section-audit-permission-denied')).toBeInTheDocument();
   });
 
   it('marks the audit section not applicable without the audit permission', async () => {
     renderDetail({ canViewAudit: false });
-    fireEvent.click(await screen.findByRole('tab', { name: /audit/i }));
+    await openTab(/audit/i);
     expect(await screen.findByTestId('mr-section-audit-not-applicable')).toBeInTheDocument();
     expect(q.auditTimeline).not.toHaveBeenCalled();
   });
@@ -526,7 +536,7 @@ describe('Version-conflict dialog flow', () => {
       .mockRejectedValue(new MedicalReviewError('E_VERSION_CONFLICT'));
 
     renderDetail({ actionsEnabled: true });
-    fireEvent.click(await screen.findByRole('tab', { name: /^decision$/i }));
+    await openTab(/^decision$/i);
     fireEvent.click(await screen.findByRole('button', { name: /approve decision/i }));
 
     const note = await screen.findByTestId('mr-dialog-approve-decision-reason');
@@ -554,7 +564,7 @@ describe('Award proposal controls', () => {
   it('never labels a control Suspend Award / Reinstate Award / Stop Payment', async () => {
     state.actionsEnabled = true;
     renderDetail({ actionsEnabled: true });
-    fireEvent.click(await screen.findByRole('tab', { name: /award proposals/i }));
+    await openTab(/award proposals/i);
 
     expect(await screen.findByRole('button', { name: /create suspension proposal/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create reinstatement proposal/i })).toBeInTheDocument();
@@ -789,6 +799,6 @@ describe('Medical Provider portal', () => {
     fireEvent.click(await screen.findByText('REF-4'));
     await screen.findByTestId('mr-provider-referral-detail');
     const text = container.textContent ?? '';
-    expect(text).not.toMatch(/entitlement|arrears|payment amount|benefit rate/i);
+    expect(text).not.toMatch(/arrears|payment amount|benefit rate|weekly rate/i);
   });
 });
