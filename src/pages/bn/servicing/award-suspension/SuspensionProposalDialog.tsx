@@ -283,9 +283,8 @@ export function SuspensionProposalDialog({
                 )}
                 {reasonsState.status === 'error' && (
                   <p className="flex flex-wrap items-center gap-2 text-destructive" role="alert">
-                    <span className="min-w-0 break-words">
-                      Suspension reasons could not be loaded.
-                    </span>
+                    <span className="min-w-0 break-words">{REASONS_ERROR_MESSAGE}</span>
+
                     <Button
                       type="button"
                       size="sm"
