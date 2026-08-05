@@ -14,6 +14,18 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { mapMedicalReviewError, MedicalReviewError } from '@/features/bn/medical-reviews/model/errors';
+import {
+  toAddendumDto,
+  toAssessmentFieldsDto,
+  toBoardDeterminationDto,
+  toBoardParticipationDto,
+  toBoardVoteDto,
+  toDecisionDto,
+  toNonAttendanceDto,
+  toReasonableCauseDto,
+  type AssessmentFormValues,
+} from '@/features/bn/medical-reviews/model/backendContract';
+
 
 export type CommandStatus = 'OK' | 'REPLAYED' | 'NO_OP' | 'UNKNOWN';
 
