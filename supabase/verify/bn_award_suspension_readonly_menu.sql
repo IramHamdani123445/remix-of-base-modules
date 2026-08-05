@@ -49,3 +49,22 @@ UNION ALL SELECT 'roles_missing_view_inheritance', 0,
 UNION ALL SELECT 'duplicate_award_suspension_routes', 0,
        (SELECT COUNT(*) FROM public.app_modules
          WHERE route='/bn/award-suspension') - 1;
+
+-- Least-privilege guard: only the sanctioned matrix may hold operational grants.
+WITH susp AS (SELECT id FROM public.app_modules WHERE name='bn_award_suspension')
+SELECT 'unauthorized_operational_grants' AS check_name, 0 AS expected,
+       COUNT(*) AS actual
+  FROM public.role_permissions rp
+  JOIN public.module_actions ma ON ma.id=rp.action_id
+  JOIN public.roles r ON r.id=rp.role_id
+ WHERE ma.module_id=(SELECT id FROM susp)
+   AND rp.is_granted=true
+   AND ma.action_name <> 'view'
+   AND NOT (
+     r.role_name='Admin'
+     OR (r.role_name='BN_AUDITOR'        AND ma.action_name='audit')
+     OR (r.role_name='BN_CLAIMS_OFFICER' AND ma.action_name IN ('propose','resume_propose'))
+     OR (r.role_name='BN_SUPERVISOR'     AND ma.action_name IN ('propose','approve','resume_propose','resume_approve','audit'))
+     OR (r.role_name IN ('BN_MANAGER','BN_DIRECTOR')
+         AND ma.action_name IN ('propose','approve','resume_propose','resume_approve','reverse','audit'))
+   );
