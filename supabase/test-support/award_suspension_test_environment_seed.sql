@@ -57,7 +57,7 @@ BEGIN;
 DO $guard$
 DECLARE
   v_db   text := current_database();
-  v_ref  text := :env_project_ref;
+  v_ref  text := current_setting('bn_provision.project_ref', true);
 BEGIN
   IF v_ref IS NULL OR btrim(v_ref) = '' THEN
     RAISE EXCEPTION 'FAIL: env_project_ref must be a non-empty isolated Test project reference';
@@ -76,8 +76,8 @@ BEGIN
     RAISE EXCEPTION 'FAIL: platform_environment_marker missing — apply the baseline and forward migrations first';
   END IF;
   IF EXISTS (SELECT 1 FROM public.platform_environment_marker
-              WHERE environment_kind IN ('PRODUCTION','CI')) THEN
-    RAISE EXCEPTION 'FAIL: this database is already marked as PRODUCTION or CI';
+              WHERE environment_kind = 'PRODUCTION') THEN
+    RAISE EXCEPTION 'FAIL: this database is already marked as PRODUCTION';
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM public.app_modules WHERE name = 'bn_award_suspension') THEN
@@ -105,22 +105,22 @@ INSERT INTO auth.users (id, instance_id, aud, role, email, encrypted_password,
                         email_confirmed_at, created_at, updated_at,
                         raw_app_meta_data, raw_user_meta_data)
 VALUES
-  (:u_officer::uuid,    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+  ('a7a7a7a7-0000-4000-8000-000000000001'::uuid,    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
    'bn-uat-claims-officer@test.local', 'x', now(), now(), now(), '{}'::jsonb, '{}'::jsonb),
-  (:u_supervisor::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+  ('a7a7a7a7-0000-4000-8000-000000000002'::uuid, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
    'bn-uat-supervisor@test.local', 'x', now(), now(), now(), '{}'::jsonb, '{}'::jsonb),
-  (:u_manager::uuid,    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+  ('a7a7a7a7-0000-4000-8000-000000000003'::uuid,    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
    'bn-uat-manager@test.local', 'x', now(), now(), now(), '{}'::jsonb, '{}'::jsonb),
-  (:u_auditor::uuid,    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+  ('a7a7a7a7-0000-4000-8000-000000000004'::uuid,    '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
    'bn-uat-auditor@test.local', 'x', now(), now(), now(), '{}'::jsonb, '{}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.profiles (id, first_name, last_name, full_name, email, user_code, is_active)
 VALUES
-  (:u_officer::uuid,    'UAT', 'Claims Officer', 'UAT Claims Officer', 'bn-uat-claims-officer@test.local', 'UATCLM', true),
-  (:u_supervisor::uuid, 'UAT', 'Supervisor',     'UAT Supervisor',     'bn-uat-supervisor@test.local',     'UATSUP', true),
-  (:u_manager::uuid,    'UAT', 'Manager',        'UAT Manager',        'bn-uat-manager@test.local',        'UATMGR', true),
-  (:u_auditor::uuid,    'UAT', 'Auditor',        'UAT Auditor',        'bn-uat-auditor@test.local',        'UATAUD', true)
+  ('a7a7a7a7-0000-4000-8000-000000000001'::uuid,    'UAT', 'Claims Officer', 'UAT Claims Officer', 'bn-uat-claims-officer@test.local', 'UATCLM', true),
+  ('a7a7a7a7-0000-4000-8000-000000000002'::uuid, 'UAT', 'Supervisor',     'UAT Supervisor',     'bn-uat-supervisor@test.local',     'UATSUP', true),
+  ('a7a7a7a7-0000-4000-8000-000000000003'::uuid,    'UAT', 'Manager',        'UAT Manager',        'bn-uat-manager@test.local',        'UATMGR', true),
+  ('a7a7a7a7-0000-4000-8000-000000000004'::uuid,    'UAT', 'Auditor',        'UAT Auditor',        'bn-uat-auditor@test.local',        'UATAUD', true)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.roles (id, role_name, description, is_active, is_system_role, mfa_required)
@@ -129,10 +129,10 @@ SELECT gen_random_uuid(), v.role_name, 'Award Suspension controlled UAT actor', 
  WHERE NOT EXISTS (SELECT 1 FROM public.roles r WHERE r.role_name = v.role_name);
 
 INSERT INTO public.user_roles (user_id, role) VALUES
-  (:u_officer::uuid,    'BN_CLAIMS_OFFICER'),
-  (:u_supervisor::uuid, 'BN_SUPERVISOR'),
-  (:u_manager::uuid,    'BN_MANAGER'),
-  (:u_auditor::uuid,    'BN_AUDITOR')
+  ('a7a7a7a7-0000-4000-8000-000000000001'::uuid,    'BN_CLAIMS_OFFICER'),
+  ('a7a7a7a7-0000-4000-8000-000000000002'::uuid, 'BN_SUPERVISOR'),
+  ('a7a7a7a7-0000-4000-8000-000000000003'::uuid,    'BN_MANAGER'),
+  ('a7a7a7a7-0000-4000-8000-000000000004'::uuid,    'BN_AUDITOR')
 ON CONFLICT DO NOTHING;
 
 -- Least-privilege matrix: maker / checker / executor / auditor.
@@ -167,29 +167,29 @@ UPDATE public.role_permissions rp SET is_granted = true
 
 -- Workbasket routing consumed by the approval policy resolver.
 INSERT INTO public.bn_workbasket (id, basket_code, basket_name, assigned_role, is_active)
-VALUES (:basket::uuid, 'BN_SUSP_UAT_L1', 'Award Suspension UAT approvals (level 1)', 'BN_SUPERVISOR', true)
+VALUES ('e7e7e7e7-0000-4000-8000-000000000001'::uuid, 'BN_SUSP_UAT_L1', 'Award Suspension UAT approvals (level 1)', 'BN_SUPERVISOR', true)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.bn_workbasket_role (workbasket_id, role_name, is_primary)
-VALUES (:basket::uuid, 'BN_SUPERVISOR', true)
+VALUES ('e7e7e7e7-0000-4000-8000-000000000001'::uuid, 'BN_SUPERVISOR', true)
 ON CONFLICT DO NOTHING;
 
 -- =====================================================================
 -- 3. Synthetic product, approval policy and reason configuration
 -- =====================================================================
 INSERT INTO public.bn_product (id, benefit_code, benefit_name, category, branch, payment_type, country_code, status)
-VALUES (:product::uuid, 'UATSP', 'UAT Suspension Product (synthetic)', 'LONG_TERM', 'LT', 'PERIODIC', 'SKN', 'ACTIVE')
+VALUES ('b7b7b7b7-0000-4000-8000-000000000001'::uuid, 'UATSP', 'UAT Suspension Product (synthetic)', 'LONG_TERM', 'LT', 'PERIODIC', 'SKN', 'ACTIVE')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.bn_product_version (id, product_id, version_number, effective_from, status)
-VALUES (:pversion::uuid, :product::uuid, 1, CURRENT_DATE - 1000, 'ACTIVE')
+VALUES ('b7b7b7b7-0000-4000-8000-000000000002'::uuid, 'b7b7b7b7-0000-4000-8000-000000000001'::uuid, 1, CURRENT_DATE - 1000, 'ACTIVE')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.bn_approval_policy
   (id, product_version_id, policy_area, action_code, level, is_enabled,
    approval_role, approval_workbasket_id, self_approval_allowed, restricted_action)
-VALUES (:policy::uuid, :pversion::uuid, 'award_suspension', 'approve', 1, true,
-        'BN_SUPERVISOR', :basket::uuid, false, true)
+VALUES ('f7f7f7f7-0000-4000-8000-000000000001'::uuid, 'b7b7b7b7-0000-4000-8000-000000000002'::uuid, 'award_suspension', 'approve', 1, true,
+        'BN_SUPERVISOR', 'e7e7e7e7-0000-4000-8000-000000000001'::uuid, false, true)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.bn_reason_code (reason_code, reason_label, reason_category, applicable_actions, is_active)
@@ -202,15 +202,15 @@ ON CONFLICT DO NOTHING;
 -- 4. Synthetic claims, awards and payment schedules (no real data)
 -- =====================================================================
 INSERT INTO public.bn_claim (id, claim_number, ssn, product_id, status, assigned_to)
-VALUES (:claim_id::uuid, 'UAT-CLM-0001', '900000001', :product::uuid, 'APPROVED', 'UATCLM')
+VALUES ('c7c7c7c7-0000-4000-8000-000000000001'::uuid, 'UAT-CLM-0001', '900000001', 'b7b7b7b7-0000-4000-8000-000000000001'::uuid, 'APPROVED', 'UATCLM')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.bn_award (id, award_number, bn_claim_id, ssn, benefit_code, award_type,
                              status, start_date, frequency, base_amount, currency)
 VALUES
-  (:award_1::uuid, 'UAT-AWD-0001', :claim_id::uuid, '900000001', 'UATSP', 'PENSION', 'ACTIVE', CURRENT_DATE - 500, 'MONTHLY', 1200.00, 'XCD'),
-  (:award_2::uuid, 'UAT-AWD-0002', :claim_id::uuid, '900000002', 'UATSP', 'PENSION', 'ACTIVE', CURRENT_DATE - 400, 'MONTHLY',  850.00, 'XCD'),
-  (:award_3::uuid, 'UAT-AWD-0003', :claim_id::uuid, '900000003', 'UATSP', 'PENSION', 'ACTIVE', CURRENT_DATE - 300, 'MONTHLY',  640.00, 'XCD')
+  ('d7d7d7d7-0000-4000-8000-000000000001'::uuid, 'UAT-AWD-0001', 'c7c7c7c7-0000-4000-8000-000000000001'::uuid, '900000001', 'UATSP', 'PENSION', 'ACTIVE', CURRENT_DATE - 500, 'MONTHLY', 1200.00, 'XCD'),
+  ('d7d7d7d7-0000-4000-8000-000000000002'::uuid, 'UAT-AWD-0002', 'c7c7c7c7-0000-4000-8000-000000000001'::uuid, '900000002', 'UATSP', 'PENSION', 'ACTIVE', CURRENT_DATE - 400, 'MONTHLY',  850.00, 'XCD'),
+  ('d7d7d7d7-0000-4000-8000-000000000003'::uuid, 'UAT-AWD-0003', 'c7c7c7c7-0000-4000-8000-000000000001'::uuid, '900000003', 'UATSP', 'PENSION', 'ACTIVE', CURRENT_DATE - 300, 'MONTHLY',  640.00, 'XCD')
 ON CONFLICT (id) DO NOTHING;
 
 -- Six future monthly schedule rows per award: the payment-impact projection
@@ -226,7 +226,7 @@ SELECT gen_random_uuid(),
        'PENDING', 'EFT', 'Synthetic UAT schedule', 'UATCLM', now(), 'UATCLM', now()
   FROM public.bn_award a
   CROSS JOIN generate_series(0, 5) AS g(n)
- WHERE a.id IN (:award_1::uuid, :award_2::uuid, :award_3::uuid)
+ WHERE a.id IN ('d7d7d7d7-0000-4000-8000-000000000001'::uuid, 'd7d7d7d7-0000-4000-8000-000000000002'::uuid, 'd7d7d7d7-0000-4000-8000-000000000003'::uuid)
    AND NOT EXISTS (
      SELECT 1 FROM public.bn_payment_schedule s
       WHERE s.bn_award_id = a.id
@@ -262,34 +262,34 @@ BEGIN
        WHERE role_name IN ('BN_CLAIMS_OFFICER','BN_SUPERVISOR','BN_MANAGER','BN_AUDITOR')) <> 4 THEN
     RAISE EXCEPTION 'FAIL: UAT actor roles incomplete';
   END IF;
-  IF NOT public.has_permission(:u_officer::uuid, 'bn_award_suspension', 'propose') THEN
+  IF NOT public.has_permission('a7a7a7a7-0000-4000-8000-000000000001'::uuid, 'bn_award_suspension', 'propose') THEN
     RAISE EXCEPTION 'FAIL: BN_CLAIMS_OFFICER did not receive propose';
   END IF;
-  IF public.has_permission(:u_officer::uuid, 'bn_award_suspension', 'approve') THEN
+  IF public.has_permission('a7a7a7a7-0000-4000-8000-000000000001'::uuid, 'bn_award_suspension', 'approve') THEN
     RAISE EXCEPTION 'FAIL: BN_CLAIMS_OFFICER must not hold approve';
   END IF;
-  IF NOT public.has_permission(:u_supervisor::uuid, 'bn_award_suspension', 'approve') THEN
+  IF NOT public.has_permission('a7a7a7a7-0000-4000-8000-000000000002'::uuid, 'bn_award_suspension', 'approve') THEN
     RAISE EXCEPTION 'FAIL: BN_SUPERVISOR did not receive approve';
   END IF;
-  IF public.has_permission(:u_supervisor::uuid, 'bn_award_suspension', 'execute') THEN
+  IF public.has_permission('a7a7a7a7-0000-4000-8000-000000000002'::uuid, 'bn_award_suspension', 'execute') THEN
     RAISE EXCEPTION 'FAIL: BN_SUPERVISOR must not hold execute';
   END IF;
-  IF NOT public.has_permission(:u_manager::uuid, 'bn_award_suspension', 'execute') THEN
+  IF NOT public.has_permission('a7a7a7a7-0000-4000-8000-000000000003'::uuid, 'bn_award_suspension', 'execute') THEN
     RAISE EXCEPTION 'FAIL: BN_MANAGER did not receive execute';
   END IF;
-  IF public.has_permission(:u_auditor::uuid, 'bn_award_suspension', 'propose') THEN
+  IF public.has_permission('a7a7a7a7-0000-4000-8000-000000000004'::uuid, 'bn_award_suspension', 'propose') THEN
     RAISE EXCEPTION 'FAIL: BN_AUDITOR must be read-only';
   END IF;
-  IF NOT public.has_permission(:u_auditor::uuid, 'bn_award_suspension', 'view_payment_impact') THEN
+  IF NOT public.has_permission('a7a7a7a7-0000-4000-8000-000000000004'::uuid, 'bn_award_suspension', 'view_payment_impact') THEN
     RAISE EXCEPTION 'FAIL: BN_AUDITOR did not receive view_payment_impact';
   END IF;
 
   IF (SELECT count(*) FROM public.bn_award
-       WHERE id IN (:award_1::uuid, :award_2::uuid, :award_3::uuid)) <> 3 THEN
+       WHERE id IN ('d7d7d7d7-0000-4000-8000-000000000001'::uuid, 'd7d7d7d7-0000-4000-8000-000000000002'::uuid, 'd7d7d7d7-0000-4000-8000-000000000003'::uuid)) <> 3 THEN
     RAISE EXCEPTION 'FAIL: synthetic awards missing';
   END IF;
   IF (SELECT count(*) FROM public.bn_payment_schedule
-       WHERE bn_award_id IN (:award_1::uuid, :award_2::uuid, :award_3::uuid)) < 18 THEN
+       WHERE bn_award_id IN ('d7d7d7d7-0000-4000-8000-000000000001'::uuid, 'd7d7d7d7-0000-4000-8000-000000000002'::uuid, 'd7d7d7d7-0000-4000-8000-000000000003'::uuid)) < 18 THEN
     RAISE EXCEPTION 'FAIL: synthetic payment schedules incomplete';
   END IF;
 
