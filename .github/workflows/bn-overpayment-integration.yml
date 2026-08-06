@@ -105,7 +105,6 @@ jobs:
             "select count(*) from public.bn_op_action_definition" | tee /tmp/op-catalogue.log
           grep -qx '29' /tmp/op-catalogue.log
 
-
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
 
@@ -127,3 +126,4 @@ jobs:
             /tmp/op-harness.log
             /tmp/op-dark.log
             /tmp/op-residue.log
+            /tmp/op-catalogue.log
