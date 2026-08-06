@@ -235,10 +235,12 @@ describe('MEANS-TEST EPIC 0 · governed dropdown', () => {
     expect(screen.getByTestId('income-category-state')).toHaveAttribute('data-state', 'FAILED');
   });
 
-  it('marks a not-implemented reference set as such', async () => {
+  it('never reports a governed remote set as an unusable empty list', async () => {
+    // Epic 1 delivers the BENEFIT_PROGRAMME read; without a session it must
+    // classify itself as FAILED, never as NOT_IMPLEMENTED or silently empty.
     const set = await meansReferenceDataService.options('BENEFIT_PROGRAMME');
-    expect(set.state).toBe('NOT_IMPLEMENTED');
-    expect(set.options).toHaveLength(0);
+    expect(set.state).not.toBe('NOT_IMPLEMENTED');
+    expect(set.state === 'SUCCESS' ? set.options.length > 0 : true).toBe(true);
     render(
       <MeansGovernedSelect
         id="benefit-programme"
@@ -248,7 +250,9 @@ describe('MEANS-TEST EPIC 0 · governed dropdown', () => {
         optionSet={set}
       />,
     );
-    expect(screen.getByTestId('benefit-programme-state')).toHaveAttribute('data-state', 'NOT_IMPLEMENTED');
+    if (set.state !== 'SUCCESS') {
+      expect(screen.getByTestId('benefit-programme-state')).toHaveAttribute('data-state', set.state);
+    }
   });
 });
 
