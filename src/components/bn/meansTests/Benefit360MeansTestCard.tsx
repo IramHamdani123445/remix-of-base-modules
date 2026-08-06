@@ -98,12 +98,27 @@ export const Benefit360MeansTestCard: React.FC<{ awardId: string | null }> = ({ 
         <CardTitle className="flex items-center gap-2 text-sm">
           <Scale className="h-4 w-4" /> Means test
         </CardTitle>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{String(summary.status ?? '')}</Badge>
           {summary.missing_information === true && <Badge variant="secondary">Missing information</Badge>}
           {summary.pending_verification === true && <Badge variant="secondary">Pending verification</Badge>}
           {summary.pending_approval === true && <Badge variant="secondary">Pending approval</Badge>}
-
+          {/* MT7 posture indicators — no financial detail is exposed here. */}
+          {summary.adjustment_pending === true && (
+            <Badge variant="secondary" data-testid="award360-means-adjustment-pending">
+              Adjustment pending
+            </Badge>
+          )}
+          {summary.approved_not_active === true && (
+            <Badge variant="secondary" data-testid="award360-means-approved-not-active">
+              Approved — not yet active
+            </Badge>
+          )}
+          {summary.rejected === true && (
+            <Badge variant="outline" data-testid="award360-means-rejected">
+              Rejected
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

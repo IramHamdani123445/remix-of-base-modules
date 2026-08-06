@@ -32,23 +32,17 @@ import {
   type BnMeansVerificationRecord,
 } from '@/components/bn/meansTests/BnMeansVerificationPanel';
 import { BnMeansCalculationPanel } from '@/components/bn/meansTests/BnMeansCalculationPanel';
+import { BnMeansAdjustmentsPanel } from '@/components/bn/meansTests/BnMeansAdjustmentsPanel';
+import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApprovalPanel';
+import {
+  BN_MEANS_REASON_LABEL,
+  meansStatusLabel,
+  type BnMeansAdjustmentRow,
+  type BnMeansApprovalContext,
+} from '@/types/bn/meansTests/meansAdjustments';
 
-
-const REASON_LABEL: Record<string, string> = {
-  ACTIONS_DISABLED: 'Actions are disabled while the module is in internal pilot',
-  PERMISSION_DENIED: 'You do not hold the required permission',
-  INVALID_STATE: 'Not available in the current status',
-  NOT_READY_FOR_CALCULATION: 'Outstanding verification blockers prevent calculation',
-
-  MISSING_REQUIRED_INFORMATION: 'Required information is missing',
-  MISSING_EVIDENCE: 'Required evidence has not been attached',
-  STALE_ROW_VERSION: 'The record changed — reload before continuing',
-  MAKER_CHECKER_REQUIRED: 'A separate officer must have performed the preceding step',
-  SELF_APPROVAL_DENIED: 'You cannot approve your own submission',
-  POLICY_NOT_EFFECTIVE: 'The selected policy version is not effective',
-  CURRENCY_MISMATCH: 'Currency does not match the assessment',
-  ALREADY_SUBMITTED: 'The assessment has already been submitted',
-};
+/** Canonical denial wording. Reasons always originate from the backend. */
+const REASON_LABEL: Record<string, string> = BN_MEANS_REASON_LABEL;
 
 export interface BnMeansAssessmentWorkspaceProps {
   assessmentId: string;
@@ -67,6 +61,8 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 }) => {
   const queryClient = useQueryClient();
   const [commandError, setCommandError] = React.useState<BnMeansCommandResult | null>(null);
+  // Only a genuinely successful command clears operator-entered information.
+  const [successToken, setSuccessToken] = React.useState(0);
 
   const detail = useQuery({
     queryKey: ['bn-means-detail', assessmentId],
@@ -79,6 +75,14 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   const readiness = useQuery({
     queryKey: ['bn-means-readiness', assessmentId],
     queryFn: () => meansQueryService.calculationReadiness(assessmentId),
+  });
+  const adjustments = useQuery({
+    queryKey: ['bn-means-adjustments', assessmentId],
+    queryFn: () => meansQueryService.adjustments(assessmentId),
+  });
+  const approval = useQuery({
+    queryKey: ['bn-means-approval-context', assessmentId],
+    queryFn: () => meansQueryService.approvalContext(assessmentId),
   });
 
   const run = useMutation({
@@ -95,9 +99,12 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         return;
       }
       setCommandError(null);
+      setSuccessToken((t) => t + 1);
       queryClient.invalidateQueries({ queryKey: ['bn-means-detail', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-actions', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-readiness', assessmentId] });
+      queryClient.invalidateQueries({ queryKey: ['bn-means-adjustments', assessmentId] });
+      queryClient.invalidateQueries({ queryKey: ['bn-means-approval-context', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
     },
   });
@@ -150,6 +157,33 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           : `Readiness could not be evaluated (${readiness.data.detail ?? readiness.data.code ?? 'unknown error'}).`
         : null;
 
+  // MT7 — adjustments and independent approval, all backend-owned.
+  const adjustmentRows =
+    adjustments.data?.status === 'OK'
+      ? ((adjustments.data.data ?? []) as readonly BnMeansAdjustmentRow[])
+      : [];
+  const adjustmentsUnavailable = adjustments.isError
+    ? 'Adjustments could not be loaded.'
+    : adjustments.data && adjustments.data.status !== 'OK'
+      ? adjustments.data.status === 'DENIED'
+        ? 'You do not have permission to view adjustments for this assessment.'
+        : `Adjustments could not be loaded (${adjustments.data.detail ?? adjustments.data.code ?? 'unknown error'}).`
+      : null;
+  const approvalContext =
+    approval.data?.status === 'OK'
+      ? ((approval.data.data ?? null) as BnMeansApprovalContext | null)
+      : null;
+  const approvalUnavailable = approval.isError
+    ? 'Approval context could not be loaded.'
+    : approval.data && approval.data.status !== 'OK'
+      ? approval.data.status === 'DENIED'
+        ? 'You do not have permission to view the approval context.'
+        : `Approval context could not be loaded (${approval.data.detail ?? approval.data.code ?? 'unknown error'}).`
+      : null;
+  const openAdjustmentCount = adjustmentRows.filter(
+    (a) => a.status === 'REQUESTED' || a.status === 'APPROVED_PENDING_APPLICATION',
+  ).length;
+
 
   const ActionButton: React.FC<{ command: BnMeansCommandName; label: string; payload?: Record<string, unknown> }> = ({
     command,
@@ -193,9 +227,16 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">{String(assessment.status ?? '')}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" data-testid="means-status-badge">
+            {meansStatusLabel(String(assessment.status ?? ''), Boolean(latestCalculation))}
+          </Badge>
           <Badge variant="outline">Version {rowVersion}</Badge>
+          {openAdjustmentCount > 0 && (
+            <Badge variant="outline" data-testid="means-open-adjustments-badge">
+              {openAdjustmentCount} open adjustment{openAdjustmentCount === 1 ? '' : 's'}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -221,7 +262,10 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           <TabsTrigger value="review">Review &amp; submit</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
           <TabsTrigger value="calculation">Calculation</TabsTrigger>
+          <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
+          <TabsTrigger value="approval">Approval</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+
 
         </TabsList>
 
@@ -478,6 +522,45 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
             onCalculate={() => run.mutate({ command: 'BN_MEANS_CALCULATE' })}
           />
         </TabsContent>
+
+        <TabsContent value="adjustments">
+          <BnMeansAdjustmentsPanel
+            adjustments={adjustmentRows}
+            loadFailure={adjustmentsUnavailable}
+            currency={currency}
+            calculationId={
+              approvalContext?.calculation_id ??
+              (latestCalculation?.calculation_id ? String(latestCalculation.calculation_id) : null)
+            }
+            calculationHash={
+              approvalContext?.calculation_hash ??
+              (latestCalculation?.calculation_hash ? String(latestCalculation.calculation_hash) : null)
+            }
+            assessmentVersionId={approvalContext?.assessment_version_id ?? null}
+            rowVersion={rowVersion}
+            requestAction={actionFor('BN_MEANS_REQUEST_ADJUSTMENT')}
+            decideAction={actionFor('BN_MEANS_APPROVE_ADJUSTMENT')}
+            busy={run.isPending}
+            successToken={successToken}
+            onRequest={(payload) => run.mutate({ command: 'BN_MEANS_REQUEST_ADJUSTMENT', payload })}
+            onDecide={(payload) => run.mutate({ command: 'BN_MEANS_APPROVE_ADJUSTMENT', payload })}
+          />
+        </TabsContent>
+
+        <TabsContent value="approval">
+          <BnMeansApprovalPanel
+            context={approvalContext}
+            loadFailure={approvalUnavailable}
+            approveAction={actionFor('BN_MEANS_APPROVE')}
+            rejectAction={actionFor('BN_MEANS_REJECT')}
+            busy={run.isPending}
+            successToken={successToken}
+            onApprove={(payload) => run.mutate({ command: 'BN_MEANS_APPROVE', payload })}
+            onReject={(payload) => run.mutate({ command: 'BN_MEANS_REJECT', payload })}
+          />
+        </TabsContent>
+
+
 
         <TabsContent value="timeline">
 

@@ -13451,60 +13451,108 @@ export type Database = {
       bn_means_adjustment: {
         Row: {
           adjustment_id: string
+          adjustment_reference: string | null
+          application_error: string | null
+          applied_at: string | null
+          applied_calculation_id: string | null
           assessment_id: string
+          assessment_version_id: string | null
+          calculation_id: string | null
           correlation_id: string | null
+          currency_code: string | null
           decided_at: string | null
           decided_by: string | null
           decision_note: string | null
+          decision_reason_code: string | null
           evidence_id: string | null
+          evidence_reference: string | null
           fact_id: string | null
           fact_kind: string
           field_name: string
+          field_or_line_code: string | null
+          financial_effect: number | null
           justification: string
+          original_calculation_hash: string | null
           original_value: Json | null
           proposed_value: Json
           reason_code: string
           requested_at: string
           requested_by: string | null
+          row_version: number
           status: string
+          target_id: string | null
+          target_kind: string | null
+          updated_at: string
         }
         Insert: {
           adjustment_id?: string
+          adjustment_reference?: string | null
+          application_error?: string | null
+          applied_at?: string | null
+          applied_calculation_id?: string | null
           assessment_id: string
+          assessment_version_id?: string | null
+          calculation_id?: string | null
           correlation_id?: string | null
+          currency_code?: string | null
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
+          decision_reason_code?: string | null
           evidence_id?: string | null
+          evidence_reference?: string | null
           fact_id?: string | null
           fact_kind: string
           field_name: string
+          field_or_line_code?: string | null
+          financial_effect?: number | null
           justification: string
+          original_calculation_hash?: string | null
           original_value?: Json | null
           proposed_value: Json
           reason_code: string
           requested_at?: string
           requested_by?: string | null
+          row_version?: number
           status?: string
+          target_id?: string | null
+          target_kind?: string | null
+          updated_at?: string
         }
         Update: {
           adjustment_id?: string
+          adjustment_reference?: string | null
+          application_error?: string | null
+          applied_at?: string | null
+          applied_calculation_id?: string | null
           assessment_id?: string
+          assessment_version_id?: string | null
+          calculation_id?: string | null
           correlation_id?: string | null
+          currency_code?: string | null
           decided_at?: string | null
           decided_by?: string | null
           decision_note?: string | null
+          decision_reason_code?: string | null
           evidence_id?: string | null
+          evidence_reference?: string | null
           fact_id?: string | null
           fact_kind?: string
           field_name?: string
+          field_or_line_code?: string | null
+          financial_effect?: number | null
           justification?: string
+          original_calculation_hash?: string | null
           original_value?: Json | null
           proposed_value?: Json
           reason_code?: string
           requested_at?: string
           requested_by?: string | null
+          row_version?: number
           status?: string
+          target_id?: string | null
+          target_kind?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -13581,6 +13629,7 @@ export type Database = {
         Row: {
           activated_at: string | null
           approved_at: string | null
+          approved_calculation_id: string | null
           assessment_id: string
           assessment_reason: string
           assessment_reference: string
@@ -13594,6 +13643,9 @@ export type Database = {
           created_by: string | null
           currency_code: string
           current_version: number
+          decided_at: string | null
+          decision_justification: string | null
+          decision_reason_code: string | null
           declared_person: Json
           effective_from: string
           effective_to: string | null
@@ -13615,6 +13667,7 @@ export type Database = {
         Insert: {
           activated_at?: string | null
           approved_at?: string | null
+          approved_calculation_id?: string | null
           assessment_id?: string
           assessment_reason: string
           assessment_reference?: string
@@ -13628,6 +13681,9 @@ export type Database = {
           created_by?: string | null
           currency_code: string
           current_version?: number
+          decided_at?: string | null
+          decision_justification?: string | null
+          decision_reason_code?: string | null
           declared_person?: Json
           effective_from: string
           effective_to?: string | null
@@ -13649,6 +13705,7 @@ export type Database = {
         Update: {
           activated_at?: string | null
           approved_at?: string | null
+          approved_calculation_id?: string | null
           assessment_id?: string
           assessment_reason?: string
           assessment_reference?: string
@@ -13662,6 +13719,9 @@ export type Database = {
           created_by?: string | null
           currency_code?: string
           current_version?: number
+          decided_at?: string | null
+          decision_justification?: string | null
+          decision_reason_code?: string | null
           declared_person?: Json
           effective_from?: string
           effective_to?: string | null
@@ -13845,6 +13905,7 @@ export type Database = {
           assessment_version_id: string | null
           calculated_at: string
           calculated_by: string | null
+          calculation_hash: string | null
           calculation_id: string
           calculation_version: string
           correlation_id: string | null
@@ -13857,11 +13918,14 @@ export type Database = {
           input_snapshot: Json
           policy_version_id: string | null
           reassessment_due: string | null
+          recalculation_reason: string | null
           result: string | null
           result_hash: string | null
           rounding_method: string
           rounding_scale: number
+          supersedes_calculation_id: string | null
           threshold_amount: number | null
+          triggering_adjustment_id: string | null
           valid_from: string | null
           valid_until: string | null
           warnings: Json
@@ -13874,6 +13938,7 @@ export type Database = {
           assessment_version_id?: string | null
           calculated_at?: string
           calculated_by?: string | null
+          calculation_hash?: string | null
           calculation_id?: string
           calculation_version?: string
           correlation_id?: string | null
@@ -13886,11 +13951,14 @@ export type Database = {
           input_snapshot: Json
           policy_version_id?: string | null
           reassessment_due?: string | null
+          recalculation_reason?: string | null
           result?: string | null
           result_hash?: string | null
           rounding_method: string
           rounding_scale?: number
+          supersedes_calculation_id?: string | null
           threshold_amount?: number | null
+          triggering_adjustment_id?: string | null
           valid_from?: string | null
           valid_until?: string | null
           warnings?: Json
@@ -13903,6 +13971,7 @@ export type Database = {
           assessment_version_id?: string | null
           calculated_at?: string
           calculated_by?: string | null
+          calculation_hash?: string | null
           calculation_id?: string
           calculation_version?: string
           correlation_id?: string | null
@@ -13915,11 +13984,14 @@ export type Database = {
           input_snapshot?: Json
           policy_version_id?: string | null
           reassessment_due?: string | null
+          recalculation_reason?: string | null
           result?: string | null
           result_hash?: string | null
           rounding_method?: string
           rounding_scale?: number
+          supersedes_calculation_id?: string | null
           threshold_amount?: number | null
+          triggering_adjustment_id?: string | null
           valid_from?: string | null
           valid_until?: string | null
           warnings?: Json
@@ -105335,12 +105407,103 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bn_means_frozen_version: {
+        Args: { p_assessment_id: string }
+        Returns: {
+          assessment_id: string
+          assessment_version_id: string
+          correlation_id: string | null
+          frozen_at: string
+          frozen_by: string | null
+          frozen_reason: string
+          snapshot: Json
+          snapshot_hash: string
+          version_no: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bn_means_assessment_version"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _bn_means_is_editable: { Args: { p_status: string }; Returns: boolean }
+      _bn_means_latest_calculation: {
+        Args: { p_assessment_id: string }
+        Returns: {
+          approved_deductions: number
+          assessable_assets: number
+          assessable_income: number
+          assessment_id: string
+          assessment_version_id: string | null
+          calculated_at: string
+          calculated_by: string | null
+          calculation_hash: string | null
+          calculation_id: string
+          calculation_version: string
+          correlation_id: string | null
+          currency_code: string
+          effective_date: string | null
+          engine_version: string
+          excess_amount: number | null
+          household_size: number
+          input_hash: string
+          input_snapshot: Json
+          policy_version_id: string | null
+          reassessment_due: string | null
+          recalculation_reason: string | null
+          result: string | null
+          result_hash: string | null
+          rounding_method: string
+          rounding_scale: number
+          supersedes_calculation_id: string | null
+          threshold_amount: number | null
+          triggering_adjustment_id: string | null
+          valid_from: string | null
+          valid_until: string | null
+          warnings: Json
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bn_means_calculation"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _bn_means_maker_source: {
         Args: { p_command_name: string }
         Returns: string
       }
+      _bn_means_mt7_execute: {
+        Args: {
+          p_actor: string
+          p_actor_code: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation: string
+          p_justification: string
+          p_payload: Json
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      _bn_means_open_adjustments: {
+        Args: { p_assessment_id: string }
+        Returns: {
+          pending_application: number
+          requested: number
+        }[]
+      }
       _bn_means_readiness: { Args: { p_assessment_id: string }; Returns: Json }
+      _bn_means_recalculate: {
+        Args: {
+          p_actor: string
+          p_adjustment_id: string
+          p_assessment_id: string
+          p_correlation: string
+        }
+        Returns: string
+      }
       _bn_means_round: {
         Args: { p_amount: number; p_method: string; p_scale: number }
         Returns: number
@@ -106869,6 +107032,14 @@ export type Database = {
         Args: { p_claim_id: string }
         Returns: number
       }
+      bn_means_adjustments_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_approval_context_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
       bn_means_assessment_detail_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
@@ -106914,6 +107085,15 @@ export type Database = {
           p_payload: Json
           p_payload_hash: string
           p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_means_queues_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_limit?: number
+          p_offset?: number
+          p_queue_code: string
         }
         Returns: Json
       }

@@ -8,6 +8,14 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 
+// Test hygiene: the Benefit 360 mortality card reads the authenticated actor.
+// The shell tests deliberately render without an auth provider, so the card is
+// stubbed here rather than weakening the card's own auth requirement.
+vi.mock('@/components/bn/mortality/Benefit360MortalityCard', () => ({
+  Benefit360MortalityCard: () => null,
+  default: () => null,
+}));
+
 vi.mock('@/pages/bn/awards/award-360/useAward360Queries', () => {
   const q = <T,>(data: T) => ({ data, isLoading: false, error: null, refetch: vi.fn() }) as any;
   return {

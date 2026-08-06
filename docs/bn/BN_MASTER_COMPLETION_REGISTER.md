@@ -62,7 +62,7 @@ external_uat   = DEFERRED
 | 11 | Mortality | COMPLETE_AND_CERTIFIED | PASS | PASS (grants verifier repaired — v2 command + internal helpers revoked from `anon`/`authenticated`) | dark-launched (`actions_enabled=false`) |
 | 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 13 | Survivors Processing | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
-| 14 | Means Tests | IMPLEMENTATION_IN_PROGRESS (intake + verification + calculation PASS) | DEVELOPMENT_ACCESS_ENABLED (`internal_pilot`) | DEFERRED | MT0–MT6 |
+| 14 | Means Tests | IMPLEMENTATION_IN_PROGRESS (intake + verification + calculation + adjustments/approval PASS) | DEVELOPMENT_ACCESS_ENABLED (`internal_pilot`) | DEFERRED | MT0–MT7 |
 | 15 | Risk Management | CONTRACT_ONLY | n/a | n/a | none |
 | 16 | Uprating | CONTRACT_ONLY | n/a | n/a | none |
 
@@ -300,14 +300,24 @@ external_uat   = DEFERRED
   See `docs/bn/means-tests/BN_MEANS_IMPLEMENTATION_MATRIX.md`.
 - **Delivered:** MT0 reconciliation, MT1 domain (23 tables), MT2 governed command
   and query boundary (`bn_means_execute_command_v1`, work queue, detail,
-  available actions, Benefit 360 summary), MT3 intake slice (create → household →
-  income → asset → deduction → evidence → submit with frozen version),
-  MT4 operational intake workspace, MT5 Benefit 360 card.
-- **Gaps:** MT6 verification and deterministic calculation, MT7 adjustments and
-  approval, MT8 activation and eligibility publication, MT9 lifecycle completion,
+  available actions, Benefit 360 summary), MT3 intake slice (create -> household ->
+  income -> asset -> deduction -> evidence -> submit with frozen version),
+  MT4 operational intake workspace, MT5 Benefit 360 card,
+  MT6 per-fact verification and deterministic calculation with backend-owned
+  readiness (`bn_means_calculation_readiness_v1`, `bn_means_calculation_trace_v1`),
+  MT7 adjustments and independent approval.
+- **MT7 detail:** `BN_MEANS_REQUEST_ADJUSTMENT`, `BN_MEANS_APPROVE_ADJUSTMENT`,
+  `BN_MEANS_APPROVE`, `BN_MEANS_REJECT`; additive adjustment model
+  (`bn_means_adjustment`) with no rewrite of frozen versions, declared facts,
+  verification records or existing calculations; deterministic recalculation via
+  `_bn_means_recalculate` producing a superseding calculation row; maker-checker
+  and self-decision refusal enforced in the database; secured reads
+  `bn_means_adjustments_v1`, `bn_means_approval_context_v1`, `bn_means_queues_v1`;
+  approval attaches to one calculation fingerprint and never activates entitlement.
+- **Gaps:** MT8 activation and eligibility publication, MT9 lifecycle completion,
   clean PostgreSQL 15 certification harness.
 - **Dependencies:** Eligibility, Configuration, Appeals (handoff), Awards (handoff)
-- **Next slice:** MT6 — `BN_MEANS_VERIFY_INFORMATION` and `BN_MEANS_CALCULATE`
+- **Next slice:** MT8 - activation boundary and Eligibility integration
 
 
 ## 15. Risk Management

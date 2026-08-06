@@ -6,6 +6,17 @@
  * successful result: callers receive an explicit status.
  */
 import { supabase } from '@/integrations/supabase/client';
+import type {
+  BnMeansAdjustmentRow,
+  BnMeansApprovalContext,
+  BnMeansQueueCode,
+} from '@/types/bn/meansTests/meansAdjustments';
+
+export type {
+  BnMeansAdjustmentRow,
+  BnMeansApprovalContext,
+  BnMeansQueueCode,
+} from '@/types/bn/meansTests/meansAdjustments';
 
 export type BnMeansQueryStatus = 'OK' | 'DENIED' | 'NOT_FOUND' | 'INVALID' | 'FAILED';
 
@@ -187,4 +198,51 @@ export const meansQueryService = {
     if (error) return failed(error.message);
     return envelope<Record<string, unknown> | null>(data);
   },
+
+  /** MT7 — adjustment register for one assessment. */
+  async adjustments(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<readonly BnMeansAdjustmentRow[]>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_adjustments_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<readonly BnMeansAdjustmentRow[]>(data);
+  },
+
+  /** MT7 — canonical approval context. Never recomputed in React. */
+  async approvalContext(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansApprovalContext>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_approval_context_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansApprovalContext>(data);
+  },
+
+  /** MT7 — secured work queues. Never derived from direct table reads. */
+  async queue(
+    queueCode: BnMeansQueueCode,
+    limit = 50,
+    offset = 0,
+  ): Promise<BnMeansQueryResult<readonly Record<string, unknown>[]>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_queues_v1', {
+      p_actor_user_id: uid,
+      p_queue_code: queueCode,
+      p_limit: limit,
+      p_offset: offset,
+    });
+    if (error) return failed(error.message);
+    return envelope<readonly Record<string, unknown>[]>(data);
+  },
 };
+

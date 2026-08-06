@@ -36,6 +36,14 @@ const spies = {
   pensioner: vi.fn((..._args: any[]) => noopResult),
 };
 
+// Test hygiene: the Benefit 360 mortality card reads the authenticated actor.
+// The shell tests deliberately render without an auth provider, so the card is
+// stubbed here rather than weakening the card's own auth requirement.
+vi.mock('@/components/bn/mortality/Benefit360MortalityCard', () => ({
+  Benefit360MortalityCard: () => null,
+  default: () => null,
+}));
+
 vi.mock('@/pages/bn/awards/award-360/useAward360Queries', () => ({
   useAward360Header: (id: string, enabled: boolean) => spies.header(id, enabled),
   useAward360Overview: (id: string, enabled: boolean, opts: any) => spies.overview(id, enabled, opts),

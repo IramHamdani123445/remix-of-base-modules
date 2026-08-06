@@ -62,10 +62,10 @@ Legend for *Implementation*: `DONE` = database command + typed service shipped;
 | Submit | `BN_MEANS_SUBMIT` | — | DONE | freeze `bn_means_assessment_version`, status → `SUBMITTED` | `write` | `DRAFT`/`INFORMATION_PENDING` | `SUBMITTED` | bumped | yes | records maker | `SUBMITTED` | `MEANS_ASSESSMENT_SUBMITTED` intent | Comm Hub façade | Submission step | `meansIntakeContract` | — |
 | Verify facts | `BN_MEANS_VERIFY_INFORMATION` | — | DELIVERED (MT6) | insert `bn_means_verification` | `verify` | `SUBMITTED`/`VERIFICATION_PENDING` | `VERIFICATION_PENDING`/`CALCULATED` | bumped | yes | no | `VERIFICATION_*` | — | — | Verification panel | — | MT6 |
 | Calculate | `BN_MEANS_CALCULATE` | `BN_MT_ASSESS` | DELIVERED (MT6) | insert `bn_means_calculation` + lines | `decide` | verified | `CALCULATED` | bumped | yes | no | `CALCULATED` | — | — | Calculation trace | — | MT6 |
-| Request adjustment | `BN_MEANS_REQUEST_ADJUSTMENT` | — | PENDING | insert `bn_means_adjustment` | `adjust_request` | `CALCULATED`/`REVIEW_PENDING` | `REVIEW_PENDING` | bumped | yes | records maker | `ADJUSTMENT_REQUESTED` | — | — | Adjustment dialog | — | MT7 |
-| Approve adjustment | `BN_MEANS_APPROVE_ADJUSTMENT` | — | PENDING | update `bn_means_adjustment` | `adjust_approve` | `REVIEW_PENDING` | `CALCULATED` | bumped | yes | **required**, self-approval denied | `ADJUSTMENT_APPROVED` | — | — | Approval dialog | — | MT7 |
-| Approve assessment | `BN_MEANS_APPROVE` | `BN_MT_PASS` | PENDING | insert `bn_means_approval` | `approve` | `CALCULATED`/`APPROVAL_PENDING` | `APPROVED` | bumped | yes | **required**, self-approval denied | `APPROVED` | decision notice | Comm Hub façade | Approval dialog | — | MT7 |
-| Reject assessment | `BN_MEANS_REJECT` | `BN_MT_FAIL` | PENDING | insert `bn_means_approval` | `approve` | `CALCULATED`/`APPROVAL_PENDING` | `REJECTED` | bumped | yes | **required**, self-approval denied | `REJECTED` | decision notice | Comm Hub façade | Approval dialog | — | MT7 |
+| Request adjustment | `BN_MEANS_REQUEST_ADJUSTMENT` | — | DELIVERED (MT7) | insert `bn_means_adjustment` | `adjust_request` | `CALCULATED`/`REVIEW_PENDING` | `REVIEW_PENDING` | bumped | yes | records maker | `ADJUSTMENT_REQUESTED` | — | — | Adjustment dialog | — | MT7 |
+| Approve adjustment | `BN_MEANS_APPROVE_ADJUSTMENT` | — | DELIVERED (MT7) | update `bn_means_adjustment` | `adjust_approve` | `REVIEW_PENDING` | `CALCULATED` | bumped | yes | **required**, self-approval denied | `ADJUSTMENT_APPROVED` | — | — | Approval dialog | — | MT7 |
+| Approve assessment | `BN_MEANS_APPROVE` | `BN_MT_PASS` | DELIVERED (MT7) | insert `bn_means_approval` | `approve` | `CALCULATED`/`APPROVAL_PENDING` | `APPROVED` | bumped | yes | **required**, self-approval denied | `APPROVED` | decision notice | Comm Hub façade | Approval dialog | — | MT7 |
+| Reject assessment | `BN_MEANS_REJECT` | `BN_MT_FAIL` | DELIVERED (MT7) | insert `bn_means_approval` | `approve` | `CALCULATED`/`APPROVAL_PENDING` | `REJECTED` | bumped | yes | **required**, self-approval denied | `REJECTED` | decision notice | Comm Hub façade | Approval dialog | — | MT7 |
 | Activate | `BN_MEANS_ACTIVATE` | `BN_MT_RERUN_ELIGIBILITY` | PENDING | insert `bn_means_fact_publication` | `approve` | `APPROVED` | `ACTIVE` | bumped | yes | no | `ACTIVATED`, `FACT_PUBLISHED` | — | Eligibility engine (rerun request) | Activation action | — | MT8 |
 | Schedule reassessment | `BN_MEANS_SCHEDULE_REASSESSMENT` | — | PENDING | insert `bn_means_reassessment_schedule` | `reassess` | `ACTIVE`/`REASSESSMENT_DUE` | unchanged | bumped | yes | no | `REASSESSMENT_SCHEDULED` | reminder intent | Comm Hub façade | Lifecycle panel | — | MT9 |
 | Record change of circumstance | `BN_MEANS_RECORD_CHANGE_OF_CIRCUMSTANCE` | — | PENDING | insert `bn_means_circumstance_event` | `write` | `ACTIVE`/`REASSESSMENT_DUE` | unchanged | bumped | yes | no | `CHANGE_OF_CIRCUMSTANCE_RECORDED` | — | Risk signal via `bn_cross_module_handoff` | Lifecycle panel | — | MT9 |
@@ -135,3 +135,57 @@ Legend for *Implementation*: `DONE` = database command + typed service shipped;
 ### Evidence
 `src/__tests__/bn/means-tests/meansMt6Surfaces.test.tsx` plus the MT4/MT5
 suite — 40/40 passing.
+
+
+## MT7 delivery record (adjustments and independent approval)
+
+### Adjustment model
+- `bn_means_adjustment` is purely additive. A frozen assessment version, a
+  declared fact, a verification record and an existing calculation are never
+  rewritten. Every adjustment carries the target kind, target reference,
+  original value, proposed treatment, reason code, structured justification,
+  supporting evidence, expected financial effect and the fingerprint of the
+  calculation it was raised against.
+- `BN_MEANS_REQUEST_ADJUSTMENT` is refused unless a current calculation exists
+  and is the latest for the frozen version (`CALCULATION_NOT_LATEST`,
+  `NO_CURRENT_CALCULATION`). The assessment moves to `REVIEW_PENDING` and is
+  reported as "in review — adjustment outstanding".
+
+### Decision and recalculation
+- `BN_MEANS_APPROVE_ADJUSTMENT` requires an officer other than the requester
+  (`SELF_APPROVAL_DENIED`) and the adjustment's own row version.
+- Approval runs `_bn_means_recalculate`, which applies the approved overlay to
+  the previous calculation's facts and policy parameters and writes a **new**
+  calculation with `supersedes_calculation_id`, `triggering_adjustment_id` and a
+  fresh `calculation_hash`. The prior calculation remains authoritative until a
+  successful recalculation exists.
+- A failed application leaves the adjustment `APPROVED_PENDING_APPLICATION` with
+  `application_error` shown, and approval of the assessment is blocked with
+  `ADJUSTMENT_APPLICATION_PENDING`.
+- Rejection records the reason and leaves the original calculation standing.
+
+### Final approval
+- `BN_MEANS_APPROVE` / `BN_MEANS_REJECT` attach to exactly one calculation
+  fingerprint, require complete verification, no outstanding adjustment, an
+  effective policy version and an independent checker.
+- Approval does **not** activate entitlement. Activation and publication are
+  decided by Eligibility (MT8). Approved assessments read
+  "Approved — not yet active".
+- Rejected assessments are retained in full with their evidence and decision
+  history.
+
+### Secured reads
+- `bn_means_adjustments_v1` — adjustment register with requester/decider identity.
+- `bn_means_approval_context_v1` — every approval figure; React recomputes nothing.
+- `bn_means_queues_v1` — the five MT7 work queues.
+
+### Surfaces
+- `BnMeansAdjustmentsPanel` — register, request form and independent decision.
+- `BnMeansApprovalPanel` — approval context, blockers and decision history.
+- Means-Tests page — adjustment and approval queues.
+- Benefit 360 — adjustment-pending, approved-not-active and rejected posture only;
+  no household, income, asset or deduction detail.
+
+### Evidence
+`src/__tests__/bn/means-tests/meansMt7Surfaces.test.tsx` plus the MT4/MT5/MT6
+suites — 54/54 passing.
