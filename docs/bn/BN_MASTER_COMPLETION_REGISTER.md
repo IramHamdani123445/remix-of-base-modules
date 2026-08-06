@@ -62,7 +62,7 @@ external_uat   = DEFERRED
 | 11 | Mortality | COMPLETE_AND_CERTIFIED | PASS | PASS | dark-launched (`actions_enabled=false`) |
 | 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 13 | Survivors Processing | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
-| 14 | Means Tests | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
+| 14 | Means Tests | IMPLEMENTATION_IN_PROGRESS (intake slice PASS) | DARK_LAUNCHED | DEFERRED | MT0–MT5 |
 | 15 | Risk Management | CONTRACT_ONLY | n/a | n/a | none |
 | 16 | Uprating | CONTRACT_ONLY | n/a | n/a | none |
 
@@ -291,11 +291,24 @@ external_uat   = DEFERRED
 
 ## 14. Means Tests
 
-- **Status:** PARTIAL_IMPLEMENTATION
-- **Surface:** `src/pages/bn/meansTests`, `src/services/bn/meansTests`
-- **Gaps:** assessment lifecycle not governed by commands; no audit contract
-- **Dependencies:** Eligibility, Configuration
-- **Next slice:** assessment command catalogue
+- **Classification:** IMPLEMENTATION_IN_PROGRESS
+- **Activation:** DARK_LAUNCHED (`bn_means_tests`, `internal_pilot`, `actions_enabled = false`)
+- **External UAT:** DEFERRED
+- **Surface:** `src/pages/bn/meansTests`, `src/components/bn/meansTests`, `src/services/bn/meansTests`
+- **Contract:** single authoritative 18-command `BN_MEANS_*` model; all 11 legacy
+  `BN_MT_*` commands classified in `src/types/bn/meansTests/meansLegacyReconciliation.ts`.
+  See `docs/bn/means-tests/BN_MEANS_IMPLEMENTATION_MATRIX.md`.
+- **Delivered:** MT0 reconciliation, MT1 domain (23 tables), MT2 governed command
+  and query boundary (`bn_means_execute_command_v1`, work queue, detail,
+  available actions, Benefit 360 summary), MT3 intake slice (create → household →
+  income → asset → deduction → evidence → submit with frozen version),
+  MT4 operational intake workspace, MT5 Benefit 360 card.
+- **Gaps:** MT6 verification and deterministic calculation, MT7 adjustments and
+  approval, MT8 activation and eligibility publication, MT9 lifecycle completion,
+  clean PostgreSQL 15 certification harness.
+- **Dependencies:** Eligibility, Configuration, Appeals (handoff), Awards (handoff)
+- **Next slice:** MT6 — `BN_MEANS_VERIFY_INFORMATION` and `BN_MEANS_CALCULATE`
+
 
 ## 15. Risk Management
 

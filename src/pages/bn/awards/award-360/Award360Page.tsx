@@ -19,6 +19,7 @@ import { useAward360Header, useAward360Overview, useAward360Summary } from './us
 import { AWARD_360_TABS, type Award360TabKey } from './viewModels';
 import { computeAwardAlerts, computeAwardAlertsFromSummary, dedupeAlerts } from './Award360Alerts';
 import { Benefit360MortalityCard } from '@/components/bn/mortality/Benefit360MortalityCard';
+import { Benefit360MeansTestCard } from '@/components/bn/meansTests/Benefit360MeansTestCard';
 import { TabErrorState } from './components';
 
 import { AwardOverviewTab } from './tabs/AwardOverviewTab';
@@ -334,6 +335,9 @@ export default function Award360Page() {
             />
             {/* BN-MORT-M4 — read-only mortality posture for this award. */}
             <Benefit360MortalityCard awardId={id ?? null} />
+            {/* BN-MEANS-MT5 — read-only means-test posture for this award. */}
+            <Benefit360MeansTestCard awardId={id ?? null} />
+
           </div>
         )}
         {activeTab === 'pensioner' && tabAccess.pensioner.visible && (

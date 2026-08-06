@@ -13448,6 +13448,1471 @@ export type Database = {
           },
         ]
       }
+      bn_means_adjustment: {
+        Row: {
+          adjustment_id: string
+          assessment_id: string
+          correlation_id: string | null
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          evidence_id: string | null
+          fact_id: string | null
+          fact_kind: string
+          field_name: string
+          justification: string
+          original_value: Json | null
+          proposed_value: Json
+          reason_code: string
+          requested_at: string
+          requested_by: string | null
+          status: string
+        }
+        Insert: {
+          adjustment_id?: string
+          assessment_id: string
+          correlation_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          evidence_id?: string | null
+          fact_id?: string | null
+          fact_kind: string
+          field_name: string
+          justification: string
+          original_value?: Json | null
+          proposed_value: Json
+          reason_code: string
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+        }
+        Update: {
+          adjustment_id?: string
+          assessment_id?: string
+          correlation_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          evidence_id?: string | null
+          fact_id?: string | null
+          fact_kind?: string
+          field_name?: string
+          justification?: string
+          original_value?: Json | null
+          proposed_value?: Json
+          reason_code?: string
+          requested_at?: string
+          requested_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_adjustment_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_adjustment_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_evidence"
+            referencedColumns: ["evidence_id"]
+          },
+        ]
+      }
+      bn_means_approval: {
+        Row: {
+          approval_id: string
+          assessment_id: string
+          calculation_id: string | null
+          correlation_id: string | null
+          decided_at: string
+          decided_by: string | null
+          decision: string
+          decision_reason: string | null
+          justification: string | null
+          maker_user_id: string | null
+        }
+        Insert: {
+          approval_id?: string
+          assessment_id: string
+          calculation_id?: string | null
+          correlation_id?: string | null
+          decided_at?: string
+          decided_by?: string | null
+          decision: string
+          decision_reason?: string | null
+          justification?: string | null
+          maker_user_id?: string | null
+        }
+        Update: {
+          approval_id?: string
+          assessment_id?: string
+          calculation_id?: string | null
+          correlation_id?: string | null
+          decided_at?: string
+          decided_by?: string | null
+          decision?: string
+          decision_reason?: string | null
+          justification?: string | null
+          maker_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_approval_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_approval_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_calculation"
+            referencedColumns: ["calculation_id"]
+          },
+        ]
+      }
+      bn_means_assessment: {
+        Row: {
+          activated_at: string | null
+          approved_at: string | null
+          assessment_id: string
+          assessment_reason: string
+          assessment_reference: string
+          assigned_to: string | null
+          award_id: string | null
+          benefit_programme: string
+          checker_user_id: string | null
+          claim_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          currency_code: string
+          current_version: number
+          declared_person: Json
+          effective_from: string
+          effective_to: string | null
+          maker_user_id: string | null
+          person_id: number | null
+          policy_version_id: string | null
+          reassessment_due: string | null
+          result: string | null
+          row_version: number
+          status: string
+          submitted_at: string | null
+          superseded_by_assessment_id: string | null
+          supersedes_assessment_id: string | null
+          updated_at: string
+          updated_by: string | null
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          approved_at?: string | null
+          assessment_id?: string
+          assessment_reason: string
+          assessment_reference?: string
+          assigned_to?: string | null
+          award_id?: string | null
+          benefit_programme: string
+          checker_user_id?: string | null
+          claim_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency_code: string
+          current_version?: number
+          declared_person?: Json
+          effective_from: string
+          effective_to?: string | null
+          maker_user_id?: string | null
+          person_id?: number | null
+          policy_version_id?: string | null
+          reassessment_due?: string | null
+          result?: string | null
+          row_version?: number
+          status?: string
+          submitted_at?: string | null
+          superseded_by_assessment_id?: string | null
+          supersedes_assessment_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          approved_at?: string | null
+          assessment_id?: string
+          assessment_reason?: string
+          assessment_reference?: string
+          assigned_to?: string | null
+          award_id?: string | null
+          benefit_programme?: string
+          checker_user_id?: string | null
+          claim_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency_code?: string
+          current_version?: number
+          declared_person?: Json
+          effective_from?: string
+          effective_to?: string | null
+          maker_user_id?: string | null
+          person_id?: number | null
+          policy_version_id?: string | null
+          reassessment_due?: string | null
+          result?: string | null
+          row_version?: number
+          status?: string
+          submitted_at?: string | null
+          superseded_by_assessment_id?: string | null
+          supersedes_assessment_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_assessment_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+          {
+            foreignKeyName: "bn_means_assessment_superseded_by_assessment_id_fkey"
+            columns: ["superseded_by_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_assessment_supersedes_assessment_id_fkey"
+            columns: ["supersedes_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_assessment_version: {
+        Row: {
+          assessment_id: string
+          assessment_version_id: string
+          correlation_id: string | null
+          frozen_at: string
+          frozen_by: string | null
+          frozen_reason: string
+          snapshot: Json
+          snapshot_hash: string
+          version_no: number
+        }
+        Insert: {
+          assessment_id: string
+          assessment_version_id?: string
+          correlation_id?: string | null
+          frozen_at?: string
+          frozen_by?: string | null
+          frozen_reason: string
+          snapshot: Json
+          snapshot_hash: string
+          version_no: number
+        }
+        Update: {
+          assessment_id?: string
+          assessment_version_id?: string
+          correlation_id?: string | null
+          frozen_at?: string
+          frozen_by?: string | null
+          frozen_reason?: string
+          snapshot?: Json
+          snapshot_hash?: string
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_assessment_version_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_asset_fact: {
+        Row: {
+          assessment_id: string
+          asset_fact_id: string
+          category_code: string
+          created_at: string
+          created_by: string | null
+          currency_code: string
+          description: string | null
+          disregard_candidate: boolean
+          evidence_status: string
+          fact_source: string
+          member_id: string | null
+          ownership_share: number
+          superseded_by_fact_id: string | null
+          valuation_amount: number
+          valuation_date: string
+          valuation_source: string | null
+          verification_status: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          assessment_id: string
+          asset_fact_id?: string
+          category_code: string
+          created_at?: string
+          created_by?: string | null
+          currency_code: string
+          description?: string | null
+          disregard_candidate?: boolean
+          evidence_status?: string
+          fact_source?: string
+          member_id?: string | null
+          ownership_share?: number
+          superseded_by_fact_id?: string | null
+          valuation_amount: number
+          valuation_date: string
+          valuation_source?: string | null
+          verification_status?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          asset_fact_id?: string
+          category_code?: string
+          created_at?: string
+          created_by?: string | null
+          currency_code?: string
+          description?: string | null
+          disregard_candidate?: boolean
+          evidence_status?: string
+          fact_source?: string
+          member_id?: string | null
+          ownership_share?: number
+          superseded_by_fact_id?: string | null
+          valuation_amount?: number
+          valuation_date?: string
+          valuation_source?: string | null
+          verification_status?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_asset_fact_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_asset_fact_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_household_member"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "bn_means_asset_fact_superseded_by_fact_id_fkey"
+            columns: ["superseded_by_fact_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_asset_fact"
+            referencedColumns: ["asset_fact_id"]
+          },
+        ]
+      }
+      bn_means_calculation: {
+        Row: {
+          approved_deductions: number
+          assessable_assets: number
+          assessable_income: number
+          assessment_id: string
+          assessment_version_id: string | null
+          calculated_at: string
+          calculated_by: string | null
+          calculation_id: string
+          calculation_version: string
+          correlation_id: string | null
+          currency_code: string
+          excess_amount: number | null
+          household_size: number
+          input_hash: string
+          input_snapshot: Json
+          policy_version_id: string | null
+          result: string | null
+          result_hash: string | null
+          rounding_method: string
+          threshold_amount: number | null
+          warnings: Json
+        }
+        Insert: {
+          approved_deductions?: number
+          assessable_assets?: number
+          assessable_income?: number
+          assessment_id: string
+          assessment_version_id?: string | null
+          calculated_at?: string
+          calculated_by?: string | null
+          calculation_id?: string
+          calculation_version?: string
+          correlation_id?: string | null
+          currency_code: string
+          excess_amount?: number | null
+          household_size?: number
+          input_hash: string
+          input_snapshot: Json
+          policy_version_id?: string | null
+          result?: string | null
+          result_hash?: string | null
+          rounding_method: string
+          threshold_amount?: number | null
+          warnings?: Json
+        }
+        Update: {
+          approved_deductions?: number
+          assessable_assets?: number
+          assessable_income?: number
+          assessment_id?: string
+          assessment_version_id?: string | null
+          calculated_at?: string
+          calculated_by?: string | null
+          calculation_id?: string
+          calculation_version?: string
+          correlation_id?: string | null
+          currency_code?: string
+          excess_amount?: number | null
+          household_size?: number
+          input_hash?: string
+          input_snapshot?: Json
+          policy_version_id?: string | null
+          result?: string | null
+          result_hash?: string | null
+          rounding_method?: string
+          threshold_amount?: number | null
+          warnings?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_calculation_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_calculation_assessment_version_id_fkey"
+            columns: ["assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment_version"
+            referencedColumns: ["assessment_version_id"]
+          },
+          {
+            foreignKeyName: "bn_means_calculation_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+        ]
+      }
+      bn_means_calculation_line: {
+        Row: {
+          applied_amount: number | null
+          calculation_id: string
+          category_code: string | null
+          exclusion_reason: string | null
+          fact_id: string | null
+          fact_kind: string | null
+          included: boolean
+          line_id: string
+          line_kind: string
+          line_no: number
+          narrative: string | null
+          normalised_amount: number | null
+          parameter_id: string | null
+          raw_amount: number | null
+        }
+        Insert: {
+          applied_amount?: number | null
+          calculation_id: string
+          category_code?: string | null
+          exclusion_reason?: string | null
+          fact_id?: string | null
+          fact_kind?: string | null
+          included?: boolean
+          line_id?: string
+          line_kind: string
+          line_no: number
+          narrative?: string | null
+          normalised_amount?: number | null
+          parameter_id?: string | null
+          raw_amount?: number | null
+        }
+        Update: {
+          applied_amount?: number | null
+          calculation_id?: string
+          category_code?: string | null
+          exclusion_reason?: string | null
+          fact_id?: string | null
+          fact_kind?: string | null
+          included?: boolean
+          line_id?: string
+          line_kind?: string
+          line_no?: number
+          narrative?: string | null
+          normalised_amount?: number | null
+          parameter_id?: string | null
+          raw_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_calculation_line_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_calculation"
+            referencedColumns: ["calculation_id"]
+          },
+        ]
+      }
+      bn_means_circumstance_event: {
+        Row: {
+          assessment_id: string
+          change_type: string
+          circumstance_id: string
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          details: Json
+          effective_date: string | null
+          handoff_id: string | null
+          justification: string | null
+          reported_on: string
+          successor_assessment_id: string | null
+        }
+        Insert: {
+          assessment_id: string
+          change_type: string
+          circumstance_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          details?: Json
+          effective_date?: string | null
+          handoff_id?: string | null
+          justification?: string | null
+          reported_on?: string
+          successor_assessment_id?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          change_type?: string
+          circumstance_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          details?: Json
+          effective_date?: string | null
+          handoff_id?: string | null
+          justification?: string | null
+          reported_on?: string
+          successor_assessment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_circumstance_event_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_circumstance_event_successor_assessment_id_fkey"
+            columns: ["successor_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_command_idempotency: {
+        Row: {
+          actor_user_id: string | null
+          assessment_id: string | null
+          command_name: string
+          completed_at: string | null
+          created_at: string
+          entity_version: number | null
+          idempotency_key: string
+          payload_hash: string
+          result_json: Json
+          status: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          assessment_id?: string | null
+          command_name: string
+          completed_at?: string | null
+          created_at?: string
+          entity_version?: number | null
+          idempotency_key: string
+          payload_hash?: string
+          result_json?: Json
+          status?: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          assessment_id?: string | null
+          command_name?: string
+          completed_at?: string | null
+          created_at?: string
+          entity_version?: number | null
+          idempotency_key?: string
+          payload_hash?: string
+          result_json?: Json
+          status?: string
+        }
+        Relationships: []
+      }
+      bn_means_command_maker: {
+        Row: {
+          assessment_id: string
+          correlation_id: string | null
+          maker_role: string
+          maker_user_id: string
+          recorded_at: string
+        }
+        Insert: {
+          assessment_id: string
+          correlation_id?: string | null
+          maker_role: string
+          maker_user_id: string
+          recorded_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          correlation_id?: string | null
+          maker_role?: string
+          maker_user_id?: string
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_command_maker_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_communication_intent: {
+        Row: {
+          assessment_id: string
+          context_data: Json
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          event_code: string
+          idempotency_key: string | null
+          intent_id: string
+          module_code: string
+          recipient_ref: Json
+          status: string
+        }
+        Insert: {
+          assessment_id: string
+          context_data?: Json
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_code: string
+          idempotency_key?: string | null
+          intent_id?: string
+          module_code?: string
+          recipient_ref?: Json
+          status?: string
+        }
+        Update: {
+          assessment_id?: string
+          context_data?: Json
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          event_code?: string
+          idempotency_key?: string | null
+          intent_id?: string
+          module_code?: string
+          recipient_ref?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_communication_intent_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_deduction_fact: {
+        Row: {
+          approval_status: string
+          assessment_id: string
+          category_code: string
+          claim_basis: string | null
+          claimed_amount: number
+          created_at: string
+          created_by: string | null
+          currency_code: string
+          declared_frequency: string
+          deduction_fact_id: string
+          effective_from: string
+          effective_to: string | null
+          evidence_status: string
+          member_id: string | null
+          normalised_annual_amount: number
+          superseded_by_fact_id: string | null
+          verification_status: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          approval_status?: string
+          assessment_id: string
+          category_code: string
+          claim_basis?: string | null
+          claimed_amount: number
+          created_at?: string
+          created_by?: string | null
+          currency_code: string
+          declared_frequency?: string
+          deduction_fact_id?: string
+          effective_from: string
+          effective_to?: string | null
+          evidence_status?: string
+          member_id?: string | null
+          normalised_annual_amount: number
+          superseded_by_fact_id?: string | null
+          verification_status?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          approval_status?: string
+          assessment_id?: string
+          category_code?: string
+          claim_basis?: string | null
+          claimed_amount?: number
+          created_at?: string
+          created_by?: string | null
+          currency_code?: string
+          declared_frequency?: string
+          deduction_fact_id?: string
+          effective_from?: string
+          effective_to?: string | null
+          evidence_status?: string
+          member_id?: string | null
+          normalised_annual_amount?: number
+          superseded_by_fact_id?: string | null
+          verification_status?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_deduction_fact_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_deduction_fact_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_household_member"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "bn_means_deduction_fact_superseded_by_fact_id_fkey"
+            columns: ["superseded_by_fact_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_deduction_fact"
+            referencedColumns: ["deduction_fact_id"]
+          },
+        ]
+      }
+      bn_means_event: {
+        Row: {
+          actor_user_code: string | null
+          actor_user_id: string | null
+          assessment_id: string | null
+          command_name: string | null
+          correlation_id: string | null
+          created_at: string
+          detail: Json
+          event_code: string
+          event_id: string
+          from_status: string | null
+          justification: string | null
+          reason_code: string | null
+          row_version: number | null
+          to_status: string | null
+        }
+        Insert: {
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          assessment_id?: string | null
+          command_name?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          detail?: Json
+          event_code: string
+          event_id?: string
+          from_status?: string | null
+          justification?: string | null
+          reason_code?: string | null
+          row_version?: number | null
+          to_status?: string | null
+        }
+        Update: {
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          assessment_id?: string | null
+          command_name?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          detail?: Json
+          event_code?: string
+          event_id?: string
+          from_status?: string | null
+          justification?: string | null
+          reason_code?: string | null
+          row_version?: number | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_event_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_evidence: {
+        Row: {
+          assessment_id: string
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          dms_document_id: string | null
+          dms_reference: string | null
+          evidence_id: string
+          evidence_type: string
+          fact_id: string | null
+          fact_kind: string | null
+          notes: string | null
+          received_at: string | null
+          status: string
+        }
+        Insert: {
+          assessment_id: string
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dms_document_id?: string | null
+          dms_reference?: string | null
+          evidence_id?: string
+          evidence_type: string
+          fact_id?: string | null
+          fact_kind?: string | null
+          notes?: string | null
+          received_at?: string | null
+          status?: string
+        }
+        Update: {
+          assessment_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dms_document_id?: string | null
+          dms_reference?: string | null
+          evidence_id?: string
+          evidence_type?: string
+          fact_id?: string | null
+          fact_kind?: string | null
+          notes?: string | null
+          received_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_evidence_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_fact_publication: {
+        Row: {
+          assessment_id: string
+          bundle_hash: string
+          calculation_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          eligibility_request_id: string | null
+          eligibility_result_reference: string | null
+          fact_bundle: Json
+          publication_id: string
+          published_at: string | null
+          refusal_reason: string | null
+          status: string
+        }
+        Insert: {
+          assessment_id: string
+          bundle_hash: string
+          calculation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          eligibility_request_id?: string | null
+          eligibility_result_reference?: string | null
+          fact_bundle: Json
+          publication_id?: string
+          published_at?: string | null
+          refusal_reason?: string | null
+          status?: string
+        }
+        Update: {
+          assessment_id?: string
+          bundle_hash?: string
+          calculation_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          eligibility_request_id?: string | null
+          eligibility_result_reference?: string | null
+          fact_bundle?: Json
+          publication_id?: string
+          published_at?: string | null
+          refusal_reason?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_fact_publication_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_fact_publication_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_calculation"
+            referencedColumns: ["calculation_id"]
+          },
+        ]
+      }
+      bn_means_household_member: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          created_by: string | null
+          declared_person: Json
+          dependency_basis: string | null
+          evidence_status: string
+          fact_source: string
+          is_dependant: boolean
+          member_from: string
+          member_id: string
+          member_to: string | null
+          person_id: number | null
+          relationship_code: string
+          shares_residence: boolean
+          superseded_by_fact_id: string | null
+          verification_status: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          created_by?: string | null
+          declared_person?: Json
+          dependency_basis?: string | null
+          evidence_status?: string
+          fact_source?: string
+          is_dependant?: boolean
+          member_from: string
+          member_id?: string
+          member_to?: string | null
+          person_id?: number | null
+          relationship_code: string
+          shares_residence?: boolean
+          superseded_by_fact_id?: string | null
+          verification_status?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          created_by?: string | null
+          declared_person?: Json
+          dependency_basis?: string | null
+          evidence_status?: string
+          fact_source?: string
+          is_dependant?: boolean
+          member_from?: string
+          member_id?: string
+          member_to?: string | null
+          person_id?: number | null
+          relationship_code?: string
+          shares_residence?: boolean
+          superseded_by_fact_id?: string | null
+          verification_status?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_household_member_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_income_fact: {
+        Row: {
+          assessment_id: string
+          basis: string
+          category_code: string
+          created_at: string
+          created_by: string | null
+          currency_code: string
+          declared_amount: number
+          declared_frequency: string
+          effective_from: string
+          effective_to: string | null
+          evidence_status: string
+          fact_source: string
+          income_fact_id: string
+          income_source: string | null
+          member_id: string | null
+          normalised_annual_amount: number
+          superseded_by_fact_id: string | null
+          verification_status: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          assessment_id: string
+          basis?: string
+          category_code: string
+          created_at?: string
+          created_by?: string | null
+          currency_code: string
+          declared_amount: number
+          declared_frequency: string
+          effective_from: string
+          effective_to?: string | null
+          evidence_status?: string
+          fact_source?: string
+          income_fact_id?: string
+          income_source?: string | null
+          member_id?: string | null
+          normalised_annual_amount: number
+          superseded_by_fact_id?: string | null
+          verification_status?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          basis?: string
+          category_code?: string
+          created_at?: string
+          created_by?: string | null
+          currency_code?: string
+          declared_amount?: number
+          declared_frequency?: string
+          effective_from?: string
+          effective_to?: string | null
+          evidence_status?: string
+          fact_source?: string
+          income_fact_id?: string
+          income_source?: string | null
+          member_id?: string | null
+          normalised_annual_amount?: number
+          superseded_by_fact_id?: string | null
+          verification_status?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_income_fact_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_income_fact_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_household_member"
+            referencedColumns: ["member_id"]
+          },
+          {
+            foreignKeyName: "bn_means_income_fact_superseded_by_fact_id_fkey"
+            columns: ["superseded_by_fact_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_income_fact"
+            referencedColumns: ["income_fact_id"]
+          },
+        ]
+      }
+      bn_means_information_request: {
+        Row: {
+          assessment_id: string
+          correlation_id: string | null
+          details: string | null
+          due_date: string | null
+          request_code: string
+          request_id: string
+          requested_at: string
+          requested_by: string | null
+          responded_at: string | null
+          responded_by: string | null
+          status: string
+        }
+        Insert: {
+          assessment_id: string
+          correlation_id?: string | null
+          details?: string | null
+          due_date?: string | null
+          request_code: string
+          request_id?: string
+          requested_at?: string
+          requested_by?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+        }
+        Update: {
+          assessment_id?: string
+          correlation_id?: string | null
+          details?: string | null
+          due_date?: string | null
+          request_code?: string
+          request_id?: string
+          requested_at?: string
+          requested_by?: string | null
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_information_request_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_policy: {
+        Row: {
+          authority_reference: string | null
+          benefit_programme: string
+          created_at: string
+          created_by: string | null
+          policy_code: string
+          policy_id: string
+          policy_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          authority_reference?: string | null
+          benefit_programme: string
+          created_at?: string
+          created_by?: string | null
+          policy_code: string
+          policy_id?: string
+          policy_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          authority_reference?: string | null
+          benefit_programme?: string
+          created_at?: string
+          created_by?: string | null
+          policy_code?: string
+          policy_id?: string
+          policy_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bn_means_policy_category: {
+        Row: {
+          category_code: string
+          category_id: string
+          category_kind: string
+          category_name: string
+          created_at: string
+          display_order: number
+          disregard_rule: Json
+          is_assessable: boolean
+          policy_version_id: string
+          requires_evidence: boolean
+        }
+        Insert: {
+          category_code: string
+          category_id?: string
+          category_kind: string
+          category_name: string
+          created_at?: string
+          display_order?: number
+          disregard_rule?: Json
+          is_assessable?: boolean
+          policy_version_id: string
+          requires_evidence?: boolean
+        }
+        Update: {
+          category_code?: string
+          category_id?: string
+          category_kind?: string
+          category_name?: string
+          created_at?: string
+          display_order?: number
+          disregard_rule?: Json
+          is_assessable?: boolean
+          policy_version_id?: string
+          requires_evidence?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_policy_category_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+        ]
+      }
+      bn_means_policy_version: {
+        Row: {
+          authority_reference: string | null
+          created_at: string
+          created_by: string | null
+          currency_code: string
+          effective_from: string
+          effective_to: string | null
+          household_rules: Json
+          policy_id: string
+          policy_version_id: string
+          reassessment_months: number | null
+          required_evidence: Json
+          rounding_method: string
+          rounding_scale: number
+          status: string
+          threshold_parameters: Json
+          updated_at: string
+          validity_months: number | null
+          version_label: string
+        }
+        Insert: {
+          authority_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency_code: string
+          effective_from: string
+          effective_to?: string | null
+          household_rules?: Json
+          policy_id: string
+          policy_version_id?: string
+          reassessment_months?: number | null
+          required_evidence?: Json
+          rounding_method?: string
+          rounding_scale?: number
+          status?: string
+          threshold_parameters?: Json
+          updated_at?: string
+          validity_months?: number | null
+          version_label: string
+        }
+        Update: {
+          authority_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency_code?: string
+          effective_from?: string
+          effective_to?: string | null
+          household_rules?: Json
+          policy_id?: string
+          policy_version_id?: string
+          reassessment_months?: number | null
+          required_evidence?: Json
+          rounding_method?: string
+          rounding_scale?: number
+          status?: string
+          threshold_parameters?: Json
+          updated_at?: string
+          validity_months?: number | null
+          version_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_policy_version_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_policy"
+            referencedColumns: ["policy_id"]
+          },
+        ]
+      }
+      bn_means_reassessment_schedule: {
+        Row: {
+          assessment_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          due_date: string
+          reason_code: string | null
+          schedule_id: string
+          status: string
+          successor_assessment_id: string | null
+        }
+        Insert: {
+          assessment_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date: string
+          reason_code?: string | null
+          schedule_id?: string
+          status?: string
+          successor_assessment_id?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          due_date?: string
+          reason_code?: string | null
+          schedule_id?: string
+          status?: string
+          successor_assessment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_reassessment_schedule_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_reassessment_schedule_successor_assessment_id_fkey"
+            columns: ["successor_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_verification: {
+        Row: {
+          assessment_id: string
+          correlation_id: string | null
+          evidence_checked: boolean
+          evidence_id: string | null
+          fact_id: string
+          fact_kind: string
+          notes: string | null
+          outcome: string
+          reason_code: string | null
+          verification_id: string
+          verified_at: string
+          verified_by: string | null
+        }
+        Insert: {
+          assessment_id: string
+          correlation_id?: string | null
+          evidence_checked?: boolean
+          evidence_id?: string | null
+          fact_id: string
+          fact_kind: string
+          notes?: string | null
+          outcome: string
+          reason_code?: string | null
+          verification_id?: string
+          verified_at?: string
+          verified_by?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          correlation_id?: string | null
+          evidence_checked?: boolean
+          evidence_id?: string | null
+          fact_id?: string
+          fact_kind?: string
+          notes?: string | null
+          outcome?: string
+          reason_code?: string | null
+          verification_id?: string
+          verified_at?: string
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_verification_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_verification_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_evidence"
+            referencedColumns: ["evidence_id"]
+          },
+        ]
+      }
       bn_medical_authorization_rule: {
         Row: {
           created_at: string
@@ -103810,6 +105275,40 @@ export type Database = {
         Returns: undefined
       }
       _bn_lc_today: { Args: { p_tz: string }; Returns: string }
+      _bn_means_action_for_command: {
+        Args: { p_command_name: string }
+        Returns: string
+      }
+      _bn_means_annualise: {
+        Args: { p_amount: number; p_frequency: string }
+        Returns: number
+      }
+      _bn_means_can_transition: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
+      }
+      _bn_means_event: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_detail: Json
+          p_event_code: string
+          p_from_status: string
+          p_justification: string
+          p_reason_code: string
+          p_row_version: number
+          p_to_status: string
+        }
+        Returns: undefined
+      }
+      _bn_means_is_editable: { Args: { p_status: string }; Returns: boolean }
+      _bn_means_maker_source: {
+        Args: { p_command_name: string }
+        Returns: string
+      }
       _bn_mortality_action_for_command: {
         Args: { p_command_name: string }
         Returns: string
@@ -105333,6 +106832,55 @@ export type Database = {
       bn_materialize_external_tasks: {
         Args: { p_claim_id: string }
         Returns: number
+      }
+      bn_means_assessment_detail_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_available_actions_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_benefit360_summary_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_award_id?: string
+          p_person_id?: number
+        }
+        Returns: Json
+      }
+      bn_means_check_actor_permission: {
+        Args: {
+          p_action_name: string
+          p_actor_user_id: string
+          p_is_mutation: boolean
+        }
+        Returns: Json
+      }
+      bn_means_execute_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_means_work_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
       }
       bn_medical_review_accept_referral_v1: {
         Args: {
