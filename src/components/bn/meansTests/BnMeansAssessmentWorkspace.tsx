@@ -38,6 +38,8 @@ const REASON_LABEL: Record<string, string> = {
   ACTIONS_DISABLED: 'Actions are disabled while the module is in internal pilot',
   PERMISSION_DENIED: 'You do not hold the required permission',
   INVALID_STATE: 'Not available in the current status',
+  NOT_READY_FOR_CALCULATION: 'Outstanding verification blockers prevent calculation',
+
   MISSING_REQUIRED_INFORMATION: 'Required information is missing',
   MISSING_EVIDENCE: 'Required evidence has not been attached',
   STALE_ROW_VERSION: 'The record changed — reload before continuing',
