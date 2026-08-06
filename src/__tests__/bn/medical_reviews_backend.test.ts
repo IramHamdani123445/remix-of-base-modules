@@ -11,16 +11,39 @@ import { describe, expect, it } from 'vitest';
 
 const MIGRATIONS_DIR = join(process.cwd(), 'supabase', 'migrations');
 
-const migrationFiles = readdirSync(MIGRATIONS_DIR)
+/**
+ * The legacy compatibility hardening migration is certified separately: the
+ * Award 360 surfaces read `bn_medical_review_schedule` and
+ * `bn_medical_provider_type` directly, so those two tables keep scoped
+ * `authenticated` grants behind RLS instead of the RPC-only rule that governs
+ * every canonical Medical Review object.
+ */
+const LEGACY_HARDENING_PATTERN =
+  /ALTER TABLE public\.bn_medical_review_schedule ENABLE ROW LEVEL SECURITY/i;
+
+const allMedicalReviewMigrations = readdirSync(MIGRATIONS_DIR)
   .filter((f) => f.endsWith('.sql') && f >= '20260805')
   .filter((f) =>
     readFileSync(join(MIGRATIONS_DIR, f), 'utf8').includes('bn_medical_review'),
   );
 
+const legacyHardeningFiles = allMedicalReviewMigrations.filter((f) =>
+  LEGACY_HARDENING_PATTERN.test(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')),
+);
+
+
+const migrationFiles = allMedicalReviewMigrations.filter(
+  (f) => !legacyHardeningFiles.includes(f),
+);
 
 const sql = migrationFiles
   .map((f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8'))
   .join('\n');
+
+const legacyHardeningSql = legacyHardeningFiles
+  .map((f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8'))
+  .join('\n');
+
 
 
 const harness = readFileSync(
@@ -92,15 +115,52 @@ describe('BN Medical Reviews — migration set', () => {
     expect(sql).toContain('bn_medical_review_communication_intent');
   });
 
-  it('revokes browser access to every Medical Review object', () => {
+  it('revokes browser access to every canonical Medical Review object', () => {
     expect(sql).toMatch(/REVOKE ALL[\s\S]{0,200}FROM\s+(PUBLIC|anon|authenticated)/i);
     expect(sql).not.toMatch(/GRANT\s+(SELECT|INSERT|UPDATE|DELETE)[^;]*TO\s+(anon|authenticated)/i);
   });
 
-  it('leaves the legacy schedule table untouched', () => {
+  it('never alters the legacy schedule table from a canonical migration', () => {
     expect(sql).not.toMatch(/(ALTER|DROP)\s+TABLE\s+(public\.)?bn_medical_review_schedule/i);
   });
 });
+
+describe('BN Medical Reviews — legacy compatibility hardening', () => {
+  it('is applied in exactly one dedicated migration', () => {
+    expect(legacyHardeningFiles).toHaveLength(1);
+  });
+
+  it('removes anonymous access to both legacy tables', () => {
+    for (const table of ['bn_medical_provider_type', 'bn_medical_review_schedule']) {
+      expect(legacyHardeningSql).toMatch(
+        new RegExp(`REVOKE ALL ON public\\.${table} FROM [^;]*anon`, 'i'),
+      );
+    }
+    expect(legacyHardeningSql).not.toMatch(/GRANT[^;]*TO\s+[^;]*\banon\b/i);
+  });
+
+  it('keeps reference data read-only and never grants DELETE to browsers', () => {
+    expect(legacyHardeningSql).toMatch(
+      /GRANT SELECT ON public\.bn_medical_provider_type TO authenticated/i,
+    );
+    expect(legacyHardeningSql).toMatch(
+      /GRANT SELECT, INSERT, UPDATE ON public\.bn_medical_review_schedule TO authenticated/i,
+    );
+    expect(legacyHardeningSql).not.toMatch(/GRANT[^;]*DELETE[^;]*TO\s+authenticated/i);
+  });
+
+  it('places both legacy tables behind row level security with policies', () => {
+    for (const table of ['bn_medical_provider_type', 'bn_medical_review_schedule']) {
+      expect(legacyHardeningSql).toMatch(
+        new RegExp(`ALTER TABLE public\\.${table} ENABLE ROW LEVEL SECURITY`, 'i'),
+      );
+      expect(legacyHardeningSql).toMatch(
+        new RegExp(`CREATE POLICY[\\s\\S]{0,200}ON public\\.${table}`, 'i'),
+      );
+    }
+  });
+});
+
 
 describe('BN Medical Reviews — SQL harness', () => {
   it('runs inside a rolled-back transaction', () => {
