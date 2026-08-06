@@ -283,31 +283,36 @@
     {
       "id": "overpayments",
       "name": "Overpayments",
-      "classification": "PARTIAL_IMPLEMENTATION",
+      "classification": "COMPLETE_AND_CERTIFIED",
       "routes": [
         "/bn/overpayments"
       ],
-      "mutation_boundary": "mixed",
-      "database_tests": false,
-      "blockers": [
-        "no secured database command boundary",
-        "no policy area",
-        "no harness",
-        "no grant verifier",
-        "setOverpaymentRecoveryPlan still mutates bn_overpayment directly from the browser"
-      ],
+      "mutation_boundary": "rpc_only",
+      "database_tests": true,
+      "blockers": [],
       "dependencies": [
         "payments",
         "legal"
       ],
-      "next_slice": "governance foundation and backend boundary",
-      "activation": "n/a",
+      "next_slice": "finance and legal operational readiness",
+      "activation": "DARK_LAUNCHED",
       "external_uat": "DEFERRED",
+      "finance_legal_operations_readiness": "PENDING",
+      "certification": {
+        "workflow": "bn-overpayment-integration.yml",
+        "run_id": "31116272752",
+        "commit": "3a8b893139f5101022e0924617fbd73548e72e54",
+        "conclusion": "success",
+        "markers": [
+          "BN_OP_GRANTS_RESULT: PASS",
+          "BN_OP_HARNESS_RESULT: PASS"
+        ]
+      },
       "legacy_routes": [
         "/bn/servicing/overpayment-recovery"
       ],
-      "commands_catalogued": 25,
-      "commands_implemented": 0,
+      "commands_catalogued": 29,
+      "commands_implemented": 29,
       "implementation_matrix": "docs/bn/BN_OVERPAYMENT_IMPLEMENTATION_MATRIX.md",
       "financial_invariant": "MODEL_A_SIGNED_CONTRA_REVERSAL (corrected 2026-08-06; previous formula double counted reversals)"
     },
