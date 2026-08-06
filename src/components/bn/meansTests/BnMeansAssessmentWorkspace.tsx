@@ -74,6 +74,10 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     queryKey: ['bn-means-actions', assessmentId],
     queryFn: () => meansQueryService.availableActions(assessmentId),
   });
+  const readiness = useQuery({
+    queryKey: ['bn-means-readiness', assessmentId],
+    queryFn: () => meansQueryService.calculationReadiness(assessmentId),
+  });
 
   const run = useMutation({
     mutationFn: (input: { command: BnMeansCommandName; payload?: Record<string, unknown> }) =>
@@ -91,7 +95,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
       setCommandError(null);
       queryClient.invalidateQueries({ queryKey: ['bn-means-detail', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-actions', assessmentId] });
+      queryClient.invalidateQueries({ queryKey: ['bn-means-readiness', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
+    },
+  });
+
     },
   });
 
