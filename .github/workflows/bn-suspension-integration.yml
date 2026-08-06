@@ -122,6 +122,14 @@ jobs:
             -c "SELECT actions_enabled FROM public.app_modules WHERE name = 'bn_award_suspension';")"
           [ "$state" = "f" ] || { echo "FAIL: module activated in CI (actions_enabled=$state)"; exit 1; }
 
+      - name: Assert no fixture residue after rollback
+        run: |
+          set -euo pipefail
+          for t in $(psql -At -v ON_ERROR_STOP=1 -c "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r' AND (c.relname LIKE 'bn\\_award\\_suspension%' OR c.relname LIKE 'bn\\_award\\_reinstatement%' OR c.relname LIKE 'bn\\_susp\\_%');"); do
+            rows="$(psql -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM public.$t;")"
+            [ "$rows" = "0" ] || { echo "FAIL: fixture residue in $t ($rows rows)"; exit 1; }
+          done
+
       - name: Upload harness evidence
         if: always()
         uses: actions/upload-artifact@v4
