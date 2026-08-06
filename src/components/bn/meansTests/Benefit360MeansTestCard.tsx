@@ -19,8 +19,19 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Scale } from 'lucide-react';
 import { meansQueryService } from '@/services/bn/meansTests/meansQueryService';
+import { MeansStartAssessmentAction } from '@/components/bn/meansTests/initiation/MeansStartAssessmentAction';
 
-export const Benefit360MeansTestCard: React.FC<{ awardId: string | null }> = ({ awardId }) => {
+export interface Benefit360MeansTestCardProps {
+  awardId: string | null;
+  /** Programme of the award, used to prefill the initiation wizard. */
+  benefitProgramme?: string | null;
+  /** Entry-point label recorded on the created assessment. */
+  originSurface?: 'AWARD_360' | 'BENEFIT_360';
+}
+
+export const Benefit360MeansTestCard: React.FC<Benefit360MeansTestCardProps> = ({
+  awardId, benefitProgramme = null, originSurface = 'AWARD_360',
+}) => {
   const q = useQuery({
     queryKey: ['bn-means-360', awardId],
     queryFn: () => meansQueryService.benefit360Summary({ awardId }),
@@ -64,8 +75,17 @@ export const Benefit360MeansTestCard: React.FC<{ awardId: string | null }> = ({ 
             <Scale className="h-4 w-4" /> Means test
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">No means-test assessment recorded for this award.</p>
+          <MeansStartAssessmentAction
+            testId="award360-means-start"
+            prefill={{
+              entryContext: 'EXISTING_AWARD_REVIEW',
+              awardId,
+              benefitProgramme,
+              originSurface,
+            }}
+          />
         </CardContent>
       </Card>
     );

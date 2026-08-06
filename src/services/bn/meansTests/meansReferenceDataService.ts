@@ -14,6 +14,8 @@ import type {
   BnMeansOption,
   BnMeansOptionSet,
 } from '@/types/bn/meansTests/meansFieldContract';
+import { reasonCodesForContext } from '@/types/bn/meansTests/meansInitiation';
+import { meansInitiationService } from '@/services/bn/meansTests/meansInitiationService';
 
 export type BnMeansReferenceSet =
   | 'BENEFIT_PROGRAMME'
@@ -43,6 +45,8 @@ export interface BnMeansReferenceFilters {
   policyVersionId?: string;
   effectiveDate?: string;
   lifecycleState?: string;
+  /** Epic 1 — restrict a list to one initiation entry context. */
+  entryContext?: string;
   /** Actions held by the current user; options may be permission-scoped. */
   grants?: readonly string[];
   /** Default true — inactive options are only returned when explicitly asked for. */
@@ -54,6 +58,8 @@ interface CanonicalOption extends BnMeansOption {
   programmes?: readonly string[];
   /** Restrict the option to holders of a module action. */
   requiresAction?: string;
+  /** Restrict the option to specific initiation entry contexts. */
+  entryContexts?: readonly string[];
   /** Restrict the option to specific lifecycle states. */
   lifecycleStates?: readonly string[];
   validFrom?: string;
@@ -74,11 +80,15 @@ const o = (
  */
 const CANONICAL: Partial<Record<BnMeansReferenceSet, readonly CanonicalOption[]>> = {
   ASSESSMENT_REASON: [
+    o('INITIAL_ASSESSMENT', 'Initial assessment', 'First means test recorded for this person and programme.'),
     o('NEW_CLAIM', 'New claim', 'First assessment supporting a benefit claim.'),
-    o('ANNUAL_REVIEW', 'Annual review', 'Scheduled periodic reassessment.'),
+    o('ANNUAL_REVIEW', 'Scheduled review', 'Scheduled periodic reassessment.'),
+    o('AWARD_REVIEW', 'Award review', 'Review of the means behind an award in payment.'),
     o('CHANGE_OF_CIRCUMSTANCE', 'Change of circumstance', 'Household or financial change reported.'),
-    o('APPEAL_DIRECTION', 'Appeal direction', 'Reassessment directed by an appeal outcome.'),
-    o('DATA_CORRECTION', 'Data correction', 'Correction of previously recorded facts.'),
+    o('APPEAL_DIRECTION', 'Appeal outcome', 'Reassessment directed by an appeal outcome.'),
+    o('DATA_CORRECTION', 'Correction', 'Correction of previously recorded facts.'),
+    o('COMPLIANCE_REVIEW', 'Compliance review', 'Review prompted by compliance or data-match intelligence.'),
+    o('POLICY_DIRECTED_REVIEW', 'Policy-directed review', 'Review directed by a policy or uprating instruction.'),
   ],
   CURRENCY: [
     o('XCD', 'East Caribbean Dollar (XCD)'),
@@ -205,16 +215,10 @@ const CANONICAL: Partial<Record<BnMeansReferenceSet, readonly CanonicalOption[]>
 };
 
 /**
- * Sets governed outside the client. They are declared so screens can bind
- * to them today, but they report NOT_IMPLEMENTED rather than pretending to
- * be an empty (and therefore "valid") list.
+ * Sets governed outside the client. Epic 1 delivers their secured reads:
+ * a failure or denial is reported as such, never as an empty list.
  */
-const REMOTE_SETS: Partial<Record<BnMeansReferenceSet, string>> = {
-  BENEFIT_PROGRAMME:
-    'Benefit programmes are governed by the Benefits product catalogue. The Means-Test read is delivered in Epic 1.',
-  POLICY_VERSION:
-    'Effective policy versions are resolved by the calculation policy service. The Means-Test read is delivered in Epic 1.',
-};
+const REMOTE_SETS: readonly BnMeansReferenceSet[] = ['BENEFIT_PROGRAMME', 'POLICY_VERSION'];
 
 function applyFilters(
   options: readonly CanonicalOption[],
@@ -240,13 +244,92 @@ function applyFilters(
     .map(({ value, label, description, isActive }) => ({ value, label, description, isActive }));
 }
 
+/** Entry-context scoping for assessment reasons lives in the initiation contract. */
+function applyEntryContext(
+  set: BnMeansReferenceSet,
+  options: readonly BnMeansOption[],
+  filters: BnMeansReferenceFilters,
+): readonly BnMeansOption[] {
+  if (set !== 'ASSESSMENT_REASON' || !filters.entryContext) return options;
+  const allowed = reasonCodesForContext(filters.entryContext);
+  if (allowed.length === 0) return options;
+  return options.filter((opt) => allowed.includes(opt.value));
+}
+
+function remoteFailure(result: { status: string; code?: string; detail?: string }): BnMeansOptionSet {
+  if (result.status === 'DENIED') {
+    return {
+      state: 'DENIED',
+      options: [],
+      reason: 'You do not hold permission to read this governed list.',
+    };
+  }
+  return {
+    state: 'FAILED',
+    options: [],
+    reason: result.detail ?? result.code ?? 'The governed list could not be loaded.',
+  };
+}
+
+async function benefitProgrammeSet(filters: BnMeansReferenceFilters): Promise<BnMeansOptionSet> {
+  const result = await meansInitiationService.programmes(filters.effectiveDate ?? null);
+  if (result.status !== 'OK') return remoteFailure(result);
+  const rows = result.data ?? [];
+  const options = rows
+    .filter((r) => filters.includeInactive || r.is_active)
+    .map((r) => ({ value: r.value, label: r.label, description: r.description ?? undefined, isActive: r.is_active }));
+  return {
+    state: options.length === 0 ? 'EMPTY' : 'SUCCESS',
+    options,
+    reason:
+      options.length === 0
+        ? 'No benefit programme has a Means-Test policy in force on the selected effective date.'
+        : undefined,
+  };
+}
+
+async function policyVersionSet(filters: BnMeansReferenceFilters): Promise<BnMeansOptionSet> {
+  if (!filters.benefitProgramme || !filters.effectiveDate) {
+    return {
+      state: 'EMPTY',
+      options: [],
+      reason: 'Select a benefit programme and an effective date to resolve the policy version.',
+    };
+  }
+  const result = await meansInitiationService.initiationCheck({
+    entry_context: 'STANDALONE_ASSESSMENT',
+    benefit_programme: filters.benefitProgramme,
+    effective_from: filters.effectiveDate,
+  });
+  if (result.status !== 'OK') return remoteFailure(result);
+  const policy = result.data?.policy_resolution ?? null;
+  if (!policy || policy.state !== 'RESOLVED' || !policy.policy_version_id) {
+    return {
+      state: 'EMPTY',
+      options: [],
+      reason:
+        policy?.state === 'OVERLAPPING'
+          ? 'More than one policy version is in force for this programme and date. This is a configuration error.'
+          : 'No Means-Test policy version is in force for this programme and effective date.',
+    };
+  }
+  return {
+    state: 'SUCCESS',
+    options: [
+      {
+        value: policy.policy_version_id,
+        label: `${policy.policy_name ?? policy.policy_code ?? 'Policy'} — ${policy.version_label ?? 'current version'}`,
+        description: policy.authority_reference ?? undefined,
+        isActive: true,
+      },
+    ],
+  };
+}
+
 export const meansReferenceDataService = {
-  /** Every set this boundary knows about, implemented or not. */
+  /** Every set this boundary knows about. */
   listSets(): readonly BnMeansReferenceSet[] {
-    return [
-      ...(Object.keys(CANONICAL) as BnMeansReferenceSet[]),
-      ...(Object.keys(REMOTE_SETS) as BnMeansReferenceSet[]),
-    ].sort();
+    return [...(Object.keys(CANONICAL) as BnMeansReferenceSet[]), ...REMOTE_SETS].sort();
   },
 
   /** Resolve one governed option set under the supplied filters. */
@@ -254,10 +337,9 @@ export const meansReferenceDataService = {
     set: BnMeansReferenceSet,
     filters: BnMeansReferenceFilters = {},
   ): Promise<BnMeansOptionSet> {
-    const notImplemented = REMOTE_SETS[set];
-    if (notImplemented) {
-      return { state: 'NOT_IMPLEMENTED', options: [], reason: notImplemented };
-    }
+    if (set === 'BENEFIT_PROGRAMME') return benefitProgrammeSet(filters);
+    if (set === 'POLICY_VERSION') return policyVersionSet(filters);
+
     const canonical = CANONICAL[set];
     if (!canonical) {
       return {
@@ -266,7 +348,7 @@ export const meansReferenceDataService = {
         reason: `Unknown Means-Test reference set '${set}'.`,
       };
     }
-    const options = applyFilters(canonical, filters);
+    const options = applyEntryContext(set, applyFilters(canonical, filters), filters);
     return {
       state: options.length === 0 ? 'EMPTY' : 'SUCCESS',
       options,
