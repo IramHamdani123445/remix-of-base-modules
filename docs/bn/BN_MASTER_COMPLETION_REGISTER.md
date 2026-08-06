@@ -239,11 +239,32 @@ external_uat   = DEFERRED
 
 ## 11. Mortality
 
-- **Status:** PARTIAL_IMPLEMENTATION
-- **Surface:** `src/pages/bn/mortality/*`, `scripts/bn/generate-mortality-command-catalog.ts`
-- **Gaps:** catalogue generated but boundary/harness absent
-- **Dependencies:** Award Suspension (death-triggered suspension), Survivors
-- **Next slice:** command boundary + effective-grant verifier
+- **Status:** IMPLEMENTATION_IN_PROGRESS (backend governance closed; certification outstanding)
+- **Surface:** `src/pages/bn/mortality/*`, `supabase/functions/bn-mortality-command`,
+  `scripts/bn/generate-mortality-command-catalog.ts`
+- **Catalogue:** 26 authoritative commands; **all 26 reconciled against real backend execution**
+  (audit 2026-08-06 — the 11 legacy `implemented: false` blockers were verified as either already
+  orchestrated (`_bn_mortality_dispatch_servicing` → `bn_awards_apply_servicing_event`) or closed by
+  this slice)
+- **Governed entry point:** `bn_mortality_execute_command_v2` (SECURITY DEFINER). Enforces in-transaction:
+  dark-launch + granular permission gate (`bn_mortality_check_actor_permission`), idempotent replay with
+  payload-hash mismatch rejection, maker-checker with self-approval prohibition, DMS evidence
+  persistence, governed cross-module handoffs and the closure gate. The unguarded v1 function is
+  revoked from `anon`/`authenticated` and callable only by `service_role`.
+- **New tables:** `bn_cross_module_handoff` (shared governed handoff register with the canonical
+  column contract), `bn_mortality_evidence`, `bn_mortality_required_action`
+- **Handoffs raised (never direct target mutation):** `POTENTIAL_OVERPAYMENT` → `bn_overpayments`,
+  `POTENTIAL_SURVIVOR_ASSESSMENT` → `bn_survivors`, `FUNERAL_GRANT_INTAKE` → `bn_claims`,
+  `LEGAL_ESTATE_REFERRAL` → `legal`
+- **Closure gate:** `BN_MORTALITY_CLOSE_EVENT` rejects with `E_OUTSTANDING_REQUIRED_ACTIONS`;
+  `BN_MORTALITY_COMPLETE_FOLLOWON` rejects with `E_NO_FOLLOWON_RAISED`
+- **Tests:** 44/44 focused mortality suites (incl. the no-direct-mutation architecture gate and the
+  new `mortalityGovernanceClosure.test.ts`); `tsc --noEmit -p tsconfig.app.json` clean
+- **Dark launch:** `bn_mortality` remains `actions_enabled = false`, `rollout_state = internal_pilot`
+- **Remaining to certify:** operational UI tabs (evidence / payments-after-death / handoffs /
+  action-availability reasons), Benefit 360 card, `supabase/verify/bn_mortality_effective_grants.sql`,
+  `supabase/tests/bn/mortality_integration.sql`, and `.github/workflows/bn-mortality-integration.yml`
+- **Dependencies:** Award Suspension (death-triggered suspension), Survivors, Overpayments, Legal, DMS
 
 ## 12. Appeals
 
