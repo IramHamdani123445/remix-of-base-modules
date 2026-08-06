@@ -1,12 +1,14 @@
 /**
- * BN Means-Test Assessments — operational (dark-launched) workspace.
+ * BN Means-Test Assessments — module landing experience (Epic 0).
  *
- * Replaces the read-only pilot notice with the MT4 intake surface:
- * work queue + filters + create dialog + assessment workspace. Every
- * mutation goes through `meansCommandService`; every read through
- * `meansQueryService`. While `actions_enabled = false` the canonical
- * available-actions query reports `ACTIONS_DISABLED` and the UI disables
- * controls with that reason shown.
+ * The entry point for the module: what a Means Test is, where the process
+ * stands, which work areas exist and which are still being built. The
+ * delivered operational surfaces (team work queue, adjustment/approval
+ * queues, assessment workspace) are reachable from here; everything else
+ * states plainly that it is not implemented yet.
+ *
+ * Access is enforced by `BnModuleRouteGate` (fail-closed, database-driven).
+ * Menu visibility is not security — the gate protects direct URL entry.
  */
 import React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
@@ -34,15 +37,126 @@ import {
 import { meansCommandService, type BnMeansCommandResult } from '@/services/bn/meansTests/meansCommandService';
 import { BnMeansAssessmentWorkspace } from '@/components/bn/meansTests/BnMeansAssessmentWorkspace';
 import { BN_MEANS_QUEUES, type BnMeansQueueCode } from '@/types/bn/meansTests/meansAdjustments';
+import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
+import {
+  MEANS_WORK_AREAS,
+  MeansHowItWorksPanel,
+  MeansProcessJourney,
+  MeansTechnicalDetails,
+  MeansWorkAreaCard,
+} from '@/components/bn/meansTests/landing/MeansLanding';
 
 const STATUS_FILTERS = [
   'DRAFT', 'INFORMATION_PENDING', 'SUBMITTED', 'VERIFICATION_PENDING', 'CALCULATED',
   'APPROVAL_PENDING', 'APPROVED', 'ACTIVE', 'REASSESSMENT_DUE', 'REJECTED', 'CLOSED',
 ];
 
-const MeansTestsWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
+/** Nine authoritative Means-Test module actions. */
+export const MEANS_MODULE_ACTIONS = [
+  'view', 'write', 'verify', 'decide', 'adjust_request', 'adjust_approve', 'approve', 'reassess', 'config',
+] as const;
+
+function accessLevelLabel(ctx: BnModuleAccessContext): string {
+  if (ctx.isAdmin) return 'Administrator — all Means-Test actions';
+  const held = MEANS_MODULE_ACTIONS.filter((a) => ctx.can(a));
+  if (held.length === 0) return 'View only';
+  return held.map((a) => humaniseMeansCode(a)).join(', ');
+}
+
+const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const queryClient = useQueryClient();
   const [selected, setSelected] = React.useState<string | null>(null);
+  const [tab, setTab] = React.useState('overview');
+
+  if (selected) {
+    return (
+      <div className="p-4 sm:p-6">
+        <BnMeansAssessmentWorkspace assessmentId={selected} onBack={() => setSelected(null)} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-4 sm:p-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <ClipboardList className="mt-1 h-6 w-6 text-primary" aria-hidden="true" />
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold">Means-Test Assessments</h1>
+            <p className="max-w-2xl text-sm text-muted-foreground">
+              Record and verify a household&apos;s income, assets and allowable deductions, calculate
+              assessed means under the policy in force, and publish the approved result to Eligibility.
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Badge variant="secondary" data-testid="means-development-status">
+                In development — available to authorised development users
+              </Badge>
+              <Badge variant="outline" data-testid="means-access-level">
+                Your access: {accessLevelLabel(ctx)}
+              </Badge>
+            </div>
+          </div>
+        </div>
+        {ctx.can('write') && ctx.actionsEnabled && (
+          <CreateAssessmentDialog
+            onCreated={(assessmentId) => {
+              queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
+              setSelected(assessmentId);
+            }}
+          />
+        )}
+      </header>
+
+      <MeansTechnicalDetails
+        details={{
+          'Module code': ctx.moduleCode,
+          'Rollout state': ctx.rolloutState,
+          'Routes enabled': String(ctx.routesEnabled),
+          'Actions enabled': String(ctx.actionsEnabled),
+          'Module id': ctx.moduleId,
+        }}
+      />
+
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="flex flex-wrap">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="team">Team work queue</TabsTrigger>
+          <TabsTrigger value="approval">Approval queue</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6 pt-4">
+          <MeansProcessJourney />
+
+          <section className="space-y-3" aria-labelledby="means-work-areas-heading">
+            <h2 id="means-work-areas-heading" className="text-lg font-semibold">Work areas</h2>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {MEANS_WORK_AREAS.map((area) => (
+                <MeansWorkAreaCard
+                  key={area.code}
+                  area={area}
+                  permitted={area.requiredAction ? ctx.can(area.requiredAction) : true}
+                  onOpen={() => setTab(area.code === 'APPROVAL_QUEUE' ? 'approval' : 'team')}
+                />
+              ))}
+            </div>
+          </section>
+
+          <MeansHowItWorksPanel />
+        </TabsContent>
+
+        <TabsContent value="team" className="pt-4">
+          <MeansTeamQueue onOpen={setSelected} />
+        </TabsContent>
+
+        <TabsContent value="approval" className="pt-4">
+          <BnMeansQueuesSection onOpen={setSelected} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+const MeansTeamQueue: React.FC<{ onOpen: (assessmentId: string) => void }> = ({ onOpen }) => {
   const [filters, setFilters] = React.useState<BnMeansWorkQueueFilters>({});
   const [search, setSearch] = React.useState('');
 
@@ -51,39 +165,10 @@ const MeansTestsWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
     queryFn: () => meansQueryService.workQueue({ ...filters, search: search || undefined }),
   });
 
-  if (selected) {
-    return (
-      <div className="p-6">
-        <BnMeansAssessmentWorkspace assessmentId={selected} onBack={() => setSelected(null)} />
-      </div>
-    );
-  }
-
-  const rows = (queue.data?.data ?? []) as readonly BnMeansWorkQueueRow[];
+  const rows = (queue.data?.status === 'OK' ? queue.data.data ?? [] : []) as readonly BnMeansWorkQueueRow[];
 
   return (
-    <div className="space-y-6 p-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <ClipboardList className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-2xl font-semibold">Means-Tested Benefits</h1>
-            <p className="text-sm text-muted-foreground">
-              Assessment intake, household and financial facts, evidence, verification and
-              deterministic calculation.
-            </p>
-          </div>
-          {!ctx.actionsEnabled && <Badge variant="secondary">Internal pilot — actions disabled</Badge>}
-        </div>
-        <CreateAssessmentDialog
-          disabled={!ctx.actionsEnabled}
-          onCreated={(assessmentId) => {
-            queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
-            setSelected(assessmentId);
-          }}
-        />
-      </header>
-
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Filters</CardTitle>
@@ -104,7 +189,7 @@ const MeansTestsWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
             >
               <option value="">All statuses</option>
               {STATUS_FILTERS.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>{humaniseMeansCode(s)}</option>
               ))}
             </select>
           </div>
@@ -130,25 +215,27 @@ const MeansTestsWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
 
       <Card>
         <CardHeader>
-          <CardTitle>Work queue</CardTitle>
+          <CardTitle>Team work queue</CardTitle>
           <CardDescription>
-            {queue.data?.status === 'OK' ? `${queue.data.totalCount ?? rows.length} assessment(s)` : 'Loading…'}
+            {queue.data?.status === 'OK'
+              ? `${queue.data.totalCount ?? rows.length} assessment(s)`
+              : 'Assessment count is unavailable until the queue loads.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {queue.isLoading ? (
             <Skeleton className="h-40 w-full" />
           ) : queue.data && queue.data.status === 'DENIED' ? (
-            <Alert variant="destructive">
+            <Alert variant="destructive" data-testid="means-team-queue-denied">
               <ShieldAlert className="h-4 w-4" />
               <AlertTitle>Access denied</AlertTitle>
               <AlertDescription>You do not hold read permission for Means-Test assessments.</AlertDescription>
             </Alert>
-          ) : queue.data && queue.data.status !== 'OK' ? (
-            <Alert variant="destructive">
+          ) : queue.isError || (queue.data && queue.data.status !== 'OK') ? (
+            <Alert variant="destructive" data-testid="means-team-queue-failed">
               <AlertTriangle className="h-4 w-4" />
               <AlertTitle>The work queue could not be loaded</AlertTitle>
-              <AlertDescription>{queue.data.detail ?? queue.data.code ?? 'Unknown error'}</AlertDescription>
+              <AlertDescription>{queue.data?.detail ?? queue.data?.code ?? 'Unknown error'}</AlertDescription>
             </Alert>
           ) : rows.length === 0 ? (
             <p className="text-sm text-muted-foreground">No assessments match the current filters.</p>
@@ -170,14 +257,14 @@ const MeansTestsWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
                 {rows.map((row) => (
                   <TableRow key={row.assessment_id}>
                     <TableCell className="font-medium">{row.assessment_reference}</TableCell>
-                    <TableCell>{row.benefit_programme}</TableCell>
-                    <TableCell>{row.assessment_reason}</TableCell>
-                    <TableCell><Badge variant="outline">{row.status}</Badge></TableCell>
+                    <TableCell>{humaniseMeansCode(row.benefit_programme)}</TableCell>
+                    <TableCell>{humaniseMeansCode(row.assessment_reason)}</TableCell>
+                    <TableCell><Badge variant="outline">{humaniseMeansCode(row.status)}</Badge></TableCell>
                     <TableCell>{row.effective_from}</TableCell>
                     <TableCell>{row.open_information_requests > 0 ? `${row.open_information_requests} open` : '—'}</TableCell>
                     <TableCell>{row.evidence_count}</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="ghost" onClick={() => setSelected(row.assessment_id)}>
+                      <Button size="sm" variant="ghost" onClick={() => onOpen(row.assessment_id)}>
                         Open
                       </Button>
                     </TableCell>
@@ -188,8 +275,6 @@ const MeansTestsWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
           )}
         </CardContent>
       </Card>
-
-      <BnMeansQueuesSection onOpen={(id) => setSelected(id)} />
     </div>
   );
 };
@@ -258,8 +343,8 @@ const BnMeansQueuesSection: React.FC<{ onOpen: (assessmentId: string) => void }>
               {rows.map((row) => (
                 <TableRow key={String(row.queue_item_id ?? row.assessment_id)}>
                   <TableCell className="font-medium">{String(row.assessment_reference ?? '—')}</TableCell>
-                  <TableCell><Badge variant="outline">{String(row.status ?? '—')}</Badge></TableCell>
-                  <TableCell className="text-xs">{String(row.waiting_on ?? definition.label)}</TableCell>
+                  <TableCell><Badge variant="outline">{humaniseMeansCode(String(row.status ?? ''))}</Badge></TableCell>
+                  <TableCell className="text-xs">{humaniseMeansCode(String(row.waiting_on ?? definition.label))}</TableCell>
                   <TableCell className="text-xs">{String(row.waiting_since ?? row.updated_at ?? '—')}</TableCell>
                   <TableCell className="text-right">
                     <Button size="sm" variant="ghost" onClick={() => onOpen(String(row.assessment_id))}>
@@ -276,11 +361,9 @@ const BnMeansQueuesSection: React.FC<{ onOpen: (assessmentId: string) => void }>
   );
 };
 
-
 const CreateAssessmentDialog: React.FC<{
-  disabled: boolean;
   onCreated: (assessmentId: string) => void;
-}> = ({ disabled, onCreated }) => {
+}> = ({ onCreated }) => {
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<BnMeansCommandResult | null>(null);
@@ -320,7 +403,7 @@ const CreateAssessmentDialog: React.FC<{
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={disabled}>
+        <Button>
           <Plus className="mr-2 h-4 w-4" /> New assessment
         </Button>
       </DialogTrigger>
@@ -334,7 +417,7 @@ const CreateAssessmentDialog: React.FC<{
         {error && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>{error.errorCode}</AlertTitle>
+            <AlertTitle>{humaniseMeansCode(error.errorCode)}</AlertTitle>
             <AlertDescription>{error.errorDetail}</AlertDescription>
           </Alert>
         )}
@@ -369,7 +452,7 @@ const Field: React.FC<{
 export default function BnMeansTestsPage() {
   return (
     <BnModuleRouteGate moduleCode="bn_means_tests" requiredAction="view">
-      {(ctx: BnModuleAccessContext) => <MeansTestsWorkspace ctx={ctx} />}
+      {(ctx: BnModuleAccessContext) => <MeansTestsLanding ctx={ctx} />}
     </BnModuleRouteGate>
   );
 }

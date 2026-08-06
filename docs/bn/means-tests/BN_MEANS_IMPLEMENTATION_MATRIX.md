@@ -189,3 +189,82 @@ suite — 40/40 passing.
 ### Evidence
 `src/__tests__/bn/means-tests/meansMt7Surfaces.test.tsx` plus the MT4/MT5/MT6
 suites — 54/54 passing.
+
+---
+
+## Means-Test Epic register (product delivery track)
+
+| Epic | Scope | Status |
+| --- | --- | --- |
+| Epic 0 | Module entry, left navigation, admin permissions, landing experience, shared UX controls, field contract, reference-data boundary | **COMPLETE** |
+| Epic 1 | Assessment initiation (person / claim / award selection and creation redesign) | NOT_STARTED |
+
+### Epic 0 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Menu registration** — exactly one `app_modules` row, `bn_means_tests`,
+display name "Means-Test Assessments", route `/bn/means-tests`, parent
+`benefits_management` (Benefit Management), icon `Scale`, sort order 62
+alongside the other Benefits operational modules,
+`is_enabled = routes_enabled = show_in_menu = true`,
+`rollout_state = internal_pilot` (development access only; Test, Production
+and Live remain inactive). No hard-coded sidebar entry exists — navigation is
+database-driven.
+
+**Admin permission assignment** — the `Admin` role holds all nine authoritative
+module actions (`view`, `write`, `verify`, `decide`, `adjust_request`,
+`adjust_approve`, `approve`, `reassess`, `config`) as explicit
+`role_permissions` rows, not only through the application-level Admin bypass.
+Assignment is idempotent: `module_actions` carries the
+`auto_grant_admin_permission` trigger and `role_permissions` is uniquely keyed
+on `(role_id, module_id, action_id)`.
+
+**Route protection** — `BnModuleRouteGate` remains fail-closed: authenticated
+user → module registered → `is_enabled` → `routes_enabled` → explicit `view`
+(or Admin). The gate now also publishes the caller's full action set through
+`grants` / `can(action)` so surfaces can gate on `verify`, `approve`,
+`reassess` and `config` without re-reading permissions.
+
+**Landing page** — `/bn/means-tests` opens on an operational landing page:
+purpose, development-access status, the caller's access level, a twelve-stage
+process journey (Assessment → … → Reassessment), work-area cards, and a
+"How Means Tests work" panel written for Benefits officers. Unimplemented work
+areas state "Not implemented yet" and never render a fabricated zero count.
+Internal identifiers live only inside a collapsed "Technical details" panel.
+
+**Shared UX controls** — `src/components/bn/meansTests/controls/MeansControls.tsx`:
+searchable lookup (search / loading / empty / failed / denied / selected summary /
+clear), governed dropdown (label vs stored value, description, inactive options,
+failed loads never degraded to an empty valid list), money input (integer minor
+units, no binary floating-point arithmetic, precision, negative control,
+read-only derived mode), percentage input (basis-point conversion, range),
+date field (bounds, accessible errors), boolean switch and decision radio group.
+
+**Field-definition contract** — `src/types/bn/meansTests/meansFieldContract.ts`
+defines control types (`TEXT`, `TEXTAREA`, `SEARCH_LOOKUP`, `SELECT`, `RADIO`,
+`CHECKBOX`, `DATE`, `MONEY`, `PERCENTAGE`, `READ_ONLY`), the canonical load
+states (`LOADING`, `SUCCESS`, `EMPTY`, `DENIED`, `FAILED`, `NOT_IMPLEMENTED`),
+option sources, validation, conditional visibility, permission, read-only rules
+and stored-vs-derived storage.
+
+**Reference-data boundary** —
+`src/services/bn/meansTests/meansReferenceDataService.ts` is the single governed
+supplier of all controlled Means-Test lists, filterable by programme, policy
+version, effective date, lifecycle state, permission and active status. Remotely
+governed sets (benefit programmes, effective policy versions) report
+`NOT_IMPLEMENTED` rather than an empty list.
+
+**Tests** — `src/__tests__/bn/means-tests/meansEpic0Foundation.test.tsx`
+(27 cases) covering navigation and permission facts, landing-page behaviour,
+control state handling, reference-data governance and accessibility. The
+Means-Test suite totals 81 passing tests.
+
+**Known gaps carried into later epics**
+- Benefit programme and policy-version reference reads (Epic 1).
+- "My assessments", verification queue and reassessment queue backend reads.
+- Activation and reassessment stages of the journey.
+- Means-Test configuration screens for holders of `config`.

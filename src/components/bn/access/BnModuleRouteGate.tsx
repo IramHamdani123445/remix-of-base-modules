@@ -57,6 +57,10 @@ export interface BnModuleAccessContext {
   hasWrite: boolean;
   hasDecide: boolean;
   hasAdmin: boolean;
+  /** Every module action granted to the caller (Admin resolves to all). */
+  grants: readonly string[];
+  /** Capability probe for module-specific actions (verify, approve, config…). */
+  can: (action: string) => boolean;
   /** When true the page must render as read-only (no mutation controls). */
   readOnly: boolean;
   reason: string;
@@ -210,6 +214,8 @@ export const BnModuleRouteGate: React.FC<Props> = ({
     hasWrite: hasAction("write"),
     hasDecide: hasAction("decide"),
     hasAdmin: hasAction("admin"),
+    grants: Array.from(grants),
+    can: hasAction,
     readOnly: !moduleRow.actions_enabled,
     reason:
       moduleRow.actions_enabled
