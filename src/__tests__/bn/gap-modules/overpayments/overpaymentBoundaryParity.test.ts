@@ -136,8 +136,9 @@ describe('BN Overpayments — certification assets (B7 / B12 / B13 / B14)', () =
 
   it('the harness rolls back while CI independently asserts zero residue', () => {
     expect(HARNESS_SRC).toContain('ROLLBACK;');
-    expect(HARNESS_SRC).toContain('only cleanup mechanism');
+    expect(HARNESS_SRC).toContain('the only cleanup');
     expect(HARNESS_SRC).toContain('BN_OP_HARNESS_RESULT: PASS');
+    expect(WORKFLOW_SRC).toContain('Fixture residue gate');
   });
 
   it('the harness covers the negative security matrix', () => {
