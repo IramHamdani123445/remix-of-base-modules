@@ -2,7 +2,7 @@
  * Slice 1 — Means-Test Assessment lifecycle foundation tests.
  *
  * Proves:
- *  - Command → capability map completeness (all 18 canonical commands mapped)
+ *  - Command → capability map completeness (all 21 canonical commands mapped)
  *  - Command specs enforce maker-checker + justification where required
  *  - State-machine reachability (canonical path reaches ACTIVE and CLOSED)
  *  - Terminal states have no outbound transitions
@@ -65,8 +65,8 @@ const CANONICAL_COMMANDS: readonly BnMeansCommandName[] = [
 ];
 
 describe('Means-Test command catalogue', () => {
-  it('registers all 18 canonical commands', () => {
-    expect(BN_MEANS_COMMANDS).toHaveLength(18);
+  it('registers all 21 canonical commands', () => {
+    expect(BN_MEANS_COMMANDS).toHaveLength(21);
     for (const c of CANONICAL_COMMANDS) {
       expect(getMeansCommandSpec(c)).toBeDefined();
     }
