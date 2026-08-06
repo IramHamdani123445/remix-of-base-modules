@@ -13,9 +13,22 @@
 # =====================================================================
 set -uo pipefail
 
+# PostgreSQL refuses to run as root. When invoked as root (sandboxes,
+# containers) re-exec the whole suite as an unprivileged local user.
+if [ "$(id -u)" = "0" ]; then
+  PGUSER_NAME="${BN_SUSP_TEST_OS_USER:-pgtest}"
+  id -u "$PGUSER_NAME" >/dev/null 2>&1 || useradd -m "$PGUSER_NAME" >/dev/null 2>&1 || true
+  if id -u "$PGUSER_NAME" >/dev/null 2>&1; then
+    exec su "$PGUSER_NAME" -c "BN_SUSP_TEST_PGBIN='${BN_SUSP_TEST_PGBIN:-}' bash '$(cd "$(dirname "$0")" && pwd)/$(basename "$0")'"
+  fi
+  echo "SKIP — running as root and no unprivileged user could be created" >&2
+  exit 1
+fi
+
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SCRIPT="$ROOT/scripts/bn/provision-award-suspension-test-db.sh"
 REF="uatref01"
+
 
 pass=0; fail=0
 ok()   { echo "ok   — $1"; pass=$((pass+1)); }
