@@ -232,8 +232,9 @@ external_uat   = DEFERRED
   `environment_kind = CI` marker guard, exact-marker gating, evidence upload
 - **Local proof:** the entire workflow sequence was replayed on a clean PostgreSQL 15.17 instance
   from the baseline forward and returned `ALL CI STEPS GREEN ON POSTGRES 15`
-- **Remaining to certify:** an independent GitHub Actions run on managed `main`. Flip to
-  `COMPLETE_AND_CERTIFIED` / `DARK_LAUNCHED` / `DEFERRED` only when that run is green.
+- **Certification closed:** 2026-08-06 on independent GitHub run `31116272752` (success).
+  Remaining non-technical work is finance/legal operational readiness (`PENDING`); no
+  Test/Production/Live activation has been performed.
 - **Dependencies:** Payments, Finance, Legal recovery
 
 ## 11. Mortality
