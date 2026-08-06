@@ -158,11 +158,11 @@ BEGIN
 
   -- ── Journey E: Model A signed contra invariant ───────────────────
   -- confirmed 1500, receipt 300, full reversal 300  ->  outstanding 1500
-  PERFORM public.bn_op_test_set_actor(v_checker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_reverse_transaction_v1(
     v_case,
-     (SELECT id FROM public.bn_op_recovery_transaction WHERE case_id = v_case AND transaction_type = 'RECEIPT' ORDER BY created_at DESC LIMIT 1),
+     (SELECT id FROM public.bn_op_recovery_transaction WHERE case_id = v_case AND txn_type = 'RECEIPT' ORDER BY posted_at DESC LIMIT 1),
      300.00, 'XCD', 'HARNESS_CORRECTION', 'HARNESS:E:REVERSE');
 
   SELECT outstanding_amount INTO v_out FROM public.bn_op_case WHERE id = v_case;
@@ -224,14 +224,14 @@ BEGIN
   PERFORM public.bn_overpayment_approve_waiver_v1(
     v_case, v_waiver, v_waiver_version, 'Approved by checker', 'HARNESS:C:APPROVE');
 
-  PERFORM public.bn_op_test_set_actor(v_maker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_maker, 'role', 'authenticated')::text, true);
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_request_writeoff_v1(
     v_case, v_version, 1000.00, false, 'IRRECOVERABLE', 'Recovery exhausted', 'XCD', 'HARNESS:D:REQUEST');
   SELECT id, row_version INTO v_writeoff, v_writeoff_version
   FROM public.bn_op_writeoff_request WHERE case_id = v_case ORDER BY created_at DESC LIMIT 1;
 
-  PERFORM public.bn_op_test_set_actor(v_checker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
   PERFORM public.bn_overpayment_approve_writeoff_v1(
     v_case, v_writeoff, v_writeoff_version, 'Approved by checker', 'HARNESS:D:APPROVE');
 

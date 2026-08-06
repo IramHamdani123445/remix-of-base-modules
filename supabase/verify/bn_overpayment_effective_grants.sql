@@ -14,7 +14,6 @@
 DO $$
 DECLARE
   v_bad   text;
-  v_count integer;
   v_commands constant text[] := ARRAY[
     'bn_overpayment_create_candidate_v1','bn_overpayment_calculate_liability_v1',
     'bn_overpayment_verify_v1','bn_overpayment_issue_notice_v1',
