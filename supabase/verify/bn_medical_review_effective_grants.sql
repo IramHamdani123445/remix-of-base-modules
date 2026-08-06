@@ -101,9 +101,11 @@ BEGIN
 END $verify$;
 
 -- =====================================================================
--- 6b. Legacy compatibility tables (read directly by Award 360).
---     Contract: no anon access at all, no DELETE for authenticated,
---     row level security enabled with at least one policy.
+-- 6b. Legacy compatibility tables (read directly by Award 360 / Screen 24).
+--     Contract: no anon access at all, no INSERT/UPDATE/DELETE for
+--     authenticated, row level security enabled with at least one policy.
+--     All legacy mutations run through the versioned commands
+--     bn_medical_review_legacy_{schedule,record_outcome,provision}_v1.
 -- =====================================================================
 DO $legacy$
 DECLARE r record; v_bad text[] := '{}'; v_tables text[] :=
@@ -128,16 +130,33 @@ BEGIN
        OR has_table_privilege('anon', r.oid, 'DELETE') THEN
       v_bad := v_bad || format('TABLE %s: anon retains direct privileges', r.relname);
     END IF;
-    IF has_table_privilege('authenticated', r.oid, 'DELETE') THEN
-      v_bad := v_bad || format('TABLE %s: authenticated retains DELETE', r.relname);
+    -- Browser roles must never mutate a legacy Medical Review table directly.
+    IF has_table_privilege('authenticated', r.oid, 'INSERT')
+       OR has_table_privilege('authenticated', r.oid, 'UPDATE')
+       OR has_table_privilege('authenticated', r.oid, 'DELETE') THEN
+      v_bad := v_bad || format('TABLE %s: authenticated retains a direct write privilege', r.relname);
     END IF;
   END LOOP;
 
-  -- Reference data must stay read-only for browser roles.
-  IF has_table_privilege('authenticated', 'public.bn_medical_provider_type', 'INSERT')
-     OR has_table_privilege('authenticated', 'public.bn_medical_provider_type', 'UPDATE') THEN
-    v_bad := v_bad || 'TABLE bn_medical_provider_type: authenticated may write reference data';
-  END IF;
+  -- The governed legacy commands must exist and be executable by the browser
+  -- role, otherwise the scheduler surface has no lawful mutation path.
+  FOR r IN
+    SELECT fn FROM unnest(ARRAY[
+      'bn_medical_review_legacy_schedule_v1',
+      'bn_medical_review_legacy_record_outcome_v1',
+      'bn_medical_review_legacy_provision_v1']) AS fn
+  LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_proc p
+       WHERE p.pronamespace = 'public'::regnamespace
+         AND p.proname = r.fn
+         AND has_function_privilege('authenticated', p.oid, 'EXECUTE')
+         AND position('_bn_mr_cmd_actor' in pg_get_functiondef(p.oid)) > 0
+         AND position('_bn_mr_cmd_begin' in pg_get_functiondef(p.oid)) > 0
+    ) THEN
+      v_bad := v_bad || format('FUNCTION %s: missing, not executable, or not governed', r.fn);
+    END IF;
+  END LOOP;
 
   IF array_length(v_bad, 1) > 0 THEN
     RAISE EXCEPTION 'UNSAFE LEGACY PRIVILEGES: %', array_to_string(v_bad, E'\n');
@@ -166,6 +185,11 @@ BEGIN
 
   RAISE NOTICE 'Medical Review dark-launch verification passed.';
 END $dark$;
+
+-- =====================================================================
+-- 7b. Communication adapter dark-launch postflight.
+-- =====================================================================
+\i supabase/verify/bn_medical_review_adapter_postflight.sql
 
 -- =====================================================================
 -- 8. Result marker — CI gates on exactly one of these lines.

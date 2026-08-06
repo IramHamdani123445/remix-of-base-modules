@@ -215,10 +215,42 @@ describe('Medical Review runner and CI workflow', () => {
     expect(runner).not.toMatch(/echo[^\n]*\$BN_TEST_DATABASE_URL/);
   });
 
-  it('is dispatch-only and bound to the protected test environment', () => {
+  /**
+   * The workflow was migrated from the dispatch-only hosted-target design to
+   * the certified clean-database pattern: a disposable `postgres:15` service
+   * container, never a hosted project. It therefore runs on push and pull
+   * request, and carries the live-project denylist instead of a protected
+   * GitHub environment.
+   */
+  it('builds a disposable clean database and never targets a hosted project', () => {
     expect(workflow).toContain('workflow_dispatch');
-    expect(workflow).not.toMatch(/^\s{2}push:/m);
-    expect(workflow).toContain('environment: medical-review-test');
-    expect(workflow).toContain('scripts/bn/run-medical-review-db-tests.sh');
+    expect(workflow).toContain('image: postgres:15');
+    expect(workflow).toContain('scripts/ci/bootstrap-supabase-test-db.sh');
+    expect(workflow).toContain('BN_TEST_LIVE_PROJECT_REF_DENYLIST');
+  });
+
+  it('gates on exact PASS markers and both dark-launch postflights', () => {
+    expect(workflow).toContain("grep -c 'BN_MR_GRANTS_RESULT: PASS'");
+    expect(workflow).toContain("grep -c 'BN_MR_HARNESS_RESULT: PASS'");
+    expect(workflow).toContain("grep -c 'BN_MR_ADAPTER_RESULT: PASS'");
+    expect(workflow).toContain("actions_enabled FROM public.app_modules WHERE name = 'bn_medical_review'");
+    expect(workflow).toContain('bn_medical_review_adapter_postflight.sql');
+    expect(workflow).toContain('fixture residue');
+  });
+
+  it('runs the expanded focused suites and the typecheck', () => {
+    for (const suite of [
+      'src/__tests__/bn/medical_reviews_backend.test.ts',
+      'src/__tests__/bn/medical_reviews_no_direct_mutation.test.ts',
+      'src/__tests__/bn/medical_reviews_db_certification.test.ts',
+      'src/__tests__/bn/medical_reviews_service_architecture.test.ts',
+      'src/__tests__/bn/servicing/medicalReviewContractParity.test.ts',
+      'src/__tests__/bn/servicing/medicalReviewInteractions.test.tsx',
+      'src/__tests__/bn/servicing/medicalReviewRouteRender.test.tsx',
+      'src/__tests__/bn/award360/medicalReviewWorkspace.test.ts',
+    ]) {
+      expect(workflow).toContain(suite);
+    }
+    expect(workflow).toContain('tsc --noEmit -p tsconfig.app.json');
   });
 });

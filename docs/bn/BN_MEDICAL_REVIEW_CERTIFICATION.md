@@ -12,6 +12,7 @@ Status: **CERTIFIED (dark-launched)** — the module remains
 | 3 | Seeded lifecycle harness | `supabase/tests/bn/medical_review_integration.sql` | `BN_MR_HARNESS_RESULT: PASS (68 assertions)` |
 | 4 | Dark-launch postflight | `app_modules.actions_enabled = false` for `bn_medical_review` | `f` |
 | 5 | Zero fixture residue | every `bn_medical_review*` / `bn_medical_board*` table is empty after rollback | 0 rows |
+| 5b | Communication adapter dark-launch | `supabase/verify/bn_medical_review_adapter_postflight.sql` | `BN_MR_ADAPTER_RESULT: PASS` |
 | 6 | Frontend/service proof | `src/__tests__/bn/medical_reviews_backend.test.ts`, `src/__tests__/bn/award360/**` | 1351 tests pass |
 | 7 | Typecheck | `bunx tsc --noEmit -p tsconfig.app.json` | clean |
 
@@ -31,15 +32,28 @@ function mutates `bn_award` or calls `bn_award_suspension_execute`.
 ### Legacy compatibility exception
 
 Two pre-existing tables are read directly by the Award 360 surfaces and cannot
-be RPC-only without breaking them:
+be RPC-only without breaking them. They are **read-only** for browser roles;
+every mutation runs through the governed commands
+`bn_medical_review_legacy_schedule_v1`,
+`bn_medical_review_legacy_record_outcome_v1` and
+`bn_medical_review_legacy_provision_v1`, which route through
+`_bn_mr_cmd_actor` / `_bn_mr_cmd_begin` / `_bn_mr_cmd_finish` exactly like the
+canonical commands.
 
 | Table | authenticated | anon | RLS |
 |-------|---------------|------|-----|
 | `bn_medical_provider_type` | `SELECT` | none | enabled, read policy |
-| `bn_medical_review_schedule` | `SELECT, INSERT, UPDATE` | none | enabled, read/insert/update policies |
+| `bn_medical_review_schedule` | `SELECT` | none | enabled, read policy |
 
-Neither table grants `DELETE` to a browser role. Section 6b of the verifier
-enforces this posture; section 1 and 6 exclude only these two tables.
+Section 6b of the verifier fails the run if either table exposes `INSERT`,
+`UPDATE` or `DELETE` to `authenticated`, if `anon` retains any privilege, or if
+any governed legacy command is missing, ungoverned, or not executable by
+`authenticated`. `bn_medical_review_schedule.row_version` supplies optimistic
+concurrency; a stale write raises `E_STALE_ROW_VERSION`.
+
+`src/__tests__/bn/medical_reviews_no_direct_mutation.test.ts` is the static
+counterpart: it fails if any browser-side service, page or hook issues
+`.insert/.update/.upsert/.delete` against a Medical Review table.
 
 ## Harness coverage (68 assertions)
 
@@ -60,7 +74,13 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres \
   scripts/ci/bootstrap-supabase-test-db.sh
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/verify/bn_medical_review_effective_grants.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/bn/medical_review_integration.sql
-bunx vitest run src/__tests__/bn/medical_reviews_backend.test.ts src/__tests__/bn/award360/
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/verify/bn_medical_review_adapter_postflight.sql
+bunx vitest run src/__tests__/bn/medical_reviews_backend.test.ts \
+  src/__tests__/bn/medical_reviews_no_direct_mutation.test.ts \
+  src/__tests__/bn/medical_reviews_db_certification.test.ts \
+  src/__tests__/bn/medical_reviews_service_architecture.test.ts \
+  src/__tests__/bn/servicing/medicalReview*.test.ts* \
+  src/__tests__/bn/award360/
 bunx tsc --noEmit -p tsconfig.app.json
 ```
 

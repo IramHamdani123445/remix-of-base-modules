@@ -12,14 +12,17 @@ import { describe, expect, it } from 'vitest';
 const MIGRATIONS_DIR = join(process.cwd(), 'supabase', 'migrations');
 
 /**
- * The legacy compatibility hardening migration is certified separately: the
- * Award 360 surfaces read `bn_medical_review_schedule` and
- * `bn_medical_provider_type` directly, so those two tables keep scoped
- * `authenticated` grants behind RLS instead of the RPC-only rule that governs
- * every canonical Medical Review object.
+ * The legacy compatibility migrations are certified separately: the Award 360
+ * surfaces read `bn_medical_review_schedule` and `bn_medical_provider_type`
+ * directly, so those two tables keep a scoped `SELECT` grant behind RLS
+ * instead of the RPC-only rule that governs every canonical Medical Review
+ * object. Every mutation of the legacy schedule now runs through the governed
+ * `bn_medical_review_legacy_*_v1` commands.
  */
-const LEGACY_HARDENING_PATTERN =
-  /ALTER TABLE public\.bn_medical_review_schedule ENABLE ROW LEVEL SECURITY/i;
+const LEGACY_PATTERNS = [
+  /ALTER TABLE public\.bn_medical_review_schedule ENABLE ROW LEVEL SECURITY/i,
+  /bn_medical_review_legacy_schedule_v1/i,
+];
 
 const allMedicalReviewMigrations = readdirSync(MIGRATIONS_DIR)
   .filter((f) => f.endsWith('.sql') && f >= '20260805')
@@ -27,9 +30,10 @@ const allMedicalReviewMigrations = readdirSync(MIGRATIONS_DIR)
     readFileSync(join(MIGRATIONS_DIR, f), 'utf8').includes('bn_medical_review'),
   );
 
-const legacyHardeningFiles = allMedicalReviewMigrations.filter((f) =>
-  LEGACY_HARDENING_PATTERN.test(readFileSync(join(MIGRATIONS_DIR, f), 'utf8')),
-);
+const legacyHardeningFiles = allMedicalReviewMigrations.filter((f) => {
+  const body = readFileSync(join(MIGRATIONS_DIR, f), 'utf8');
+  return LEGACY_PATTERNS.some((p) => p.test(body));
+});
 
 
 const migrationFiles = allMedicalReviewMigrations.filter(
@@ -37,6 +41,14 @@ const migrationFiles = allMedicalReviewMigrations.filter(
 );
 
 const sql = migrationFiles
+  .map((f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8'))
+  .join('\n');
+
+/** Only the governed-mutation closure migration (the later of the two). */
+const legacyClosureSql = legacyHardeningFiles
+  .filter((f) =>
+    readFileSync(join(MIGRATIONS_DIR, f), 'utf8').includes('bn_medical_review_legacy_schedule_v1'),
+  )
   .map((f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8'))
   .join('\n');
 
@@ -126,8 +138,8 @@ describe('BN Medical Reviews — migration set', () => {
 });
 
 describe('BN Medical Reviews — legacy compatibility hardening', () => {
-  it('is applied in exactly one dedicated migration', () => {
-    expect(legacyHardeningFiles).toHaveLength(1);
+  it('is applied in the RLS hardening plus the governed-mutation closure', () => {
+    expect(legacyHardeningFiles).toHaveLength(2);
   });
 
   it('removes anonymous access to both legacy tables', () => {
@@ -139,14 +151,42 @@ describe('BN Medical Reviews — legacy compatibility hardening', () => {
     expect(legacyHardeningSql).not.toMatch(/GRANT[^;]*TO\s+[^;]*\banon\b/i);
   });
 
-  it('keeps reference data read-only and never grants DELETE to browsers', () => {
+  it('leaves browsers read-only on both legacy tables', () => {
     expect(legacyHardeningSql).toMatch(
       /GRANT SELECT ON public\.bn_medical_provider_type TO authenticated/i,
     );
-    expect(legacyHardeningSql).toMatch(
-      /GRANT SELECT, INSERT, UPDATE ON public\.bn_medical_review_schedule TO authenticated/i,
+    // The governed-mutation closure withdraws every direct write on the
+    // schedule table and re-grants SELECT only.
+    expect(legacyClosureSql).toMatch(
+      /REVOKE INSERT, UPDATE, DELETE[\s\S]{0,200}bn_medical_review_schedule[\s\S]{0,160}authenticated/i,
     );
-    expect(legacyHardeningSql).not.toMatch(/GRANT[^;]*DELETE[^;]*TO\s+authenticated/i);
+    expect(legacyClosureSql).toMatch(
+      /GRANT SELECT ON public\.bn_medical_review_schedule TO authenticated/i,
+    );
+    // Final posture: the closure migration re-grants no direct write at all.
+    expect(legacyClosureSql).not.toMatch(
+      /GRANT[^;]*\b(INSERT|UPDATE|DELETE)\b[^;]*TO\s+(authenticated|anon)/i,
+    );
+  });
+
+  it('exposes the governed legacy commands to authenticated but not anon', () => {
+    for (const fn of [
+      'bn_medical_review_legacy_schedule_v1',
+      'bn_medical_review_legacy_record_outcome_v1',
+      'bn_medical_review_legacy_provision_v1',
+    ]) {
+      expect(legacyHardeningSql).toMatch(
+        new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${fn}[^;]*TO authenticated`, 'i'),
+      );
+      expect(legacyHardeningSql).toMatch(
+        new RegExp(`REVOKE ALL ON FUNCTION public\\.${fn}[^;]*FROM PUBLIC, anon`, 'i'),
+      );
+    }
+    // Every governed command must route through the command actor guard and
+    // the idempotency pipeline.
+    expect(legacyHardeningSql).toMatch(/_bn_mr_cmd_actor/);
+    expect(legacyHardeningSql).toMatch(/_bn_mr_cmd_begin/);
+    expect(legacyHardeningSql).toMatch(/_bn_mr_cmd_finish/);
   });
 
   it('places both legacy tables behind row level security with policies', () => {
