@@ -61,6 +61,8 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 }) => {
   const queryClient = useQueryClient();
   const [commandError, setCommandError] = React.useState<BnMeansCommandResult | null>(null);
+  // Only a genuinely successful command clears operator-entered information.
+  const [successToken, setSuccessToken] = React.useState(0);
 
   const detail = useQuery({
     queryKey: ['bn-means-detail', assessmentId],
@@ -73,6 +75,14 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   const readiness = useQuery({
     queryKey: ['bn-means-readiness', assessmentId],
     queryFn: () => meansQueryService.calculationReadiness(assessmentId),
+  });
+  const adjustments = useQuery({
+    queryKey: ['bn-means-adjustments', assessmentId],
+    queryFn: () => meansQueryService.adjustments(assessmentId),
+  });
+  const approval = useQuery({
+    queryKey: ['bn-means-approval-context', assessmentId],
+    queryFn: () => meansQueryService.approvalContext(assessmentId),
   });
 
   const run = useMutation({
@@ -89,9 +99,12 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         return;
       }
       setCommandError(null);
+      setSuccessToken((t) => t + 1);
       queryClient.invalidateQueries({ queryKey: ['bn-means-detail', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-actions', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-readiness', assessmentId] });
+      queryClient.invalidateQueries({ queryKey: ['bn-means-adjustments', assessmentId] });
+      queryClient.invalidateQueries({ queryKey: ['bn-means-approval-context', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
     },
   });
