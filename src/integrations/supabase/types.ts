@@ -10199,13 +10199,18 @@ export type Database = {
         Row: {
           accepted_at: string | null
           accepted_by: string | null
+          attempt_count: number
           award_id: string | null
           claim_id: string | null
+          closed_reason_code: string | null
+          completed_at: string | null
           correlation_id: string | null
           created_at: string
           created_by: string | null
+          failure_reason: string | null
           handoff_id: string
           handoff_type: string
+          linked_at: string | null
           person_id: number | null
           reason_code: string | null
           row_version: number
@@ -10221,13 +10226,18 @@ export type Database = {
         Insert: {
           accepted_at?: string | null
           accepted_by?: string | null
+          attempt_count?: number
           award_id?: string | null
           claim_id?: string | null
+          closed_reason_code?: string | null
+          completed_at?: string | null
           correlation_id?: string | null
           created_at?: string
           created_by?: string | null
+          failure_reason?: string | null
           handoff_id?: string
           handoff_type: string
+          linked_at?: string | null
           person_id?: number | null
           reason_code?: string | null
           row_version?: number
@@ -10243,13 +10253,18 @@ export type Database = {
         Update: {
           accepted_at?: string | null
           accepted_by?: string | null
+          attempt_count?: number
           award_id?: string | null
           claim_id?: string | null
+          closed_reason_code?: string | null
+          completed_at?: string | null
           correlation_id?: string | null
           created_at?: string
           created_by?: string | null
+          failure_reason?: string | null
           handoff_id?: string
           handoff_type?: string
+          linked_at?: string | null
           person_id?: number | null
           reason_code?: string | null
           row_version?: number
@@ -10263,6 +10278,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      bn_cross_module_handoff_event: {
+        Row: {
+          actor_module: string
+          actor_user_id: string | null
+          command_name: string
+          detail: Json
+          from_status: string | null
+          handoff_id: string
+          id: string
+          occurred_at: string
+          reason_code: string | null
+          to_status: string
+        }
+        Insert: {
+          actor_module: string
+          actor_user_id?: string | null
+          command_name: string
+          detail?: Json
+          from_status?: string | null
+          handoff_id: string
+          id?: string
+          occurred_at?: string
+          reason_code?: string | null
+          to_status: string
+        }
+        Update: {
+          actor_module?: string
+          actor_user_id?: string | null
+          command_name?: string
+          detail?: Json
+          from_status?: string | null
+          handoff_id?: string
+          id?: string
+          occurred_at?: string
+          reason_code?: string | null
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_cross_module_handoff_event_handoff_id_fkey"
+            columns: ["handoff_id"]
+            isOneToOne: false
+            referencedRelation: "bn_cross_module_handoff"
+            referencedColumns: ["handoff_id"]
+          },
+        ]
       }
       bn_data_field_registry: {
         Row: {
@@ -16652,6 +16714,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      bn_mortality_command_definition: {
+        Row: {
+          action_name: string
+          command_name: string
+          created_at: string
+          creates_entity: boolean
+          display_name: string
+          maker_source: string | null
+          requires_evidence: boolean
+          requires_open_actions_clear: boolean
+          requires_person_match: boolean
+          requires_referral: boolean
+          sort_order: number
+          valid_from_statuses: string[]
+        }
+        Insert: {
+          action_name: string
+          command_name: string
+          created_at?: string
+          creates_entity?: boolean
+          display_name: string
+          maker_source?: string | null
+          requires_evidence?: boolean
+          requires_open_actions_clear?: boolean
+          requires_person_match?: boolean
+          requires_referral?: boolean
+          sort_order?: number
+          valid_from_statuses?: string[]
+        }
+        Update: {
+          action_name?: string
+          command_name?: string
+          created_at?: string
+          creates_entity?: boolean
+          display_name?: string
+          maker_source?: string | null
+          requires_evidence?: boolean
+          requires_open_actions_clear?: boolean
+          requires_person_match?: boolean
+          requires_referral?: boolean
+          sort_order?: number
+          valid_from_statuses?: string[]
+        }
+        Relationships: []
       }
       bn_mortality_command_idempotency: {
         Row: {
@@ -104987,6 +105094,17 @@ export type Database = {
           severity: string
         }[]
       }
+      bn_cross_module_handoff_execute_v1: {
+        Args: {
+          p_actor_module: string
+          p_actor_user_id: string
+          p_command: string
+          p_handoff_id: string
+          p_payload?: Json
+          p_reason_code?: string
+        }
+        Returns: Json
+      }
       bn_formula_check_usage: {
         Args: { _template_id: string }
         Returns: {
@@ -105828,6 +105946,10 @@ export type Database = {
           p_search?: string
           p_status?: string
         }
+        Returns: Json
+      }
+      bn_mortality_available_actions_v1: {
+        Args: { p_actor_user_id: string; p_event_id: string }
         Returns: Json
       }
       bn_mortality_check_actor_permission: {
