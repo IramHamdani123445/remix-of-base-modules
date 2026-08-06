@@ -8,8 +8,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -92,8 +91,8 @@ describe('MT6 — per-fact verification', () => {
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
 
-    await userEvent.click(await screen.findByRole('tab', { name: 'Verification' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Verify' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Verification' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Verify' }));
 
     await waitFor(() =>
       expect(execute).toHaveBeenCalledWith(
@@ -116,7 +115,7 @@ describe('MT6 — per-fact verification', () => {
     calculationReadiness.mockResolvedValue({ status: 'OK', data: null });
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
-    await userEvent.click(await screen.findByRole('tab', { name: 'Verification' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Verification' }));
 
     expect(await screen.findByTestId('means-verification-disabled')).toHaveTextContent(
       'internal pilot',
@@ -148,7 +147,7 @@ describe('MT6 — deterministic calculation', () => {
     });
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
-    await userEvent.click(await screen.findByRole('tab', { name: 'Calculation' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Calculation' }));
 
     expect(await screen.findByTestId('means-readiness-blockers')).toHaveTextContent('INCOME i1');
     expect(screen.getByTestId('means-calculate')).toBeDisabled();
@@ -160,7 +159,7 @@ describe('MT6 — deterministic calculation', () => {
     calculationReadiness.mockResolvedValue({ status: 'FAILED', data: null, detail: 'connection reset' });
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
-    await userEvent.click(await screen.findByRole('tab', { name: 'Calculation' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Calculation' }));
 
     expect(await screen.findByTestId('means-readiness-unavailable')).toBeInTheDocument();
   });
@@ -190,7 +189,7 @@ describe('MT6 — deterministic calculation', () => {
     calculationReadiness.mockResolvedValue({ status: 'OK', data: null });
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
-    await userEvent.click(await screen.findByRole('tab', { name: 'Calculation' }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Calculation' }));
 
     const trace = await screen.findByTestId('means-calculation-trace');
     expect(trace).toHaveTextContent('abc123');
