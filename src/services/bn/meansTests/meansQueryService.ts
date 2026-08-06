@@ -59,6 +59,26 @@ export interface BnMeansAvailableAction {
   readonly row_version: number;
 }
 
+export interface BnMeansReadinessFactRef {
+  readonly fact_kind: string;
+  readonly fact_id: string;
+}
+
+/** Backend-owned calculation readiness. Never recomputed in React. */
+export interface BnMeansCalculationReadiness {
+  readonly assessment_id: string;
+  readonly assessment_version_id: string | null;
+  readonly status: string;
+  readonly ready_for_calculation: boolean;
+  readonly missing_verifications: readonly BnMeansReadinessFactRef[];
+  readonly rejected_facts: readonly BnMeansReadinessFactRef[];
+  readonly clarification_required: readonly BnMeansReadinessFactRef[];
+  readonly policy_configuration_issues: readonly Record<string, unknown>[];
+  readonly currency_issues: readonly Record<string, unknown>[];
+  readonly reason_codes: readonly string[];
+}
+
+
 async function actorId(): Promise<string | null> {
   const { data } = await supabase.auth.getUser();
   return data?.user?.id ?? null;
