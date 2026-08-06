@@ -19,13 +19,15 @@ import { Benefit360MortalityCard } from '@/components/bn/mortality/Benefit360Mor
 
 const baseIndicator = {
   eventId: 'e1',
-  mandatoryActionsOutstanding: 0,
-  handoffsOutstanding: 0,
-  handoffsFailed: 0,
-  evidenceOutstanding: 0,
+  openMandatoryActions: 0,
+  outstandingHandoffs: 0,
+  failedHandoffs: 0,
+  evidenceCount: 0,
+  impactCount: 0,
+  awaitingApprovalImpacts: 0,
+  activeHolds: 0,
   padExposureMinor: 0,
   currencyCode: 'XCD',
-  awardsAffected: 0,
 };
 
 function renderCard() {
@@ -39,35 +41,46 @@ function renderCard() {
 describe('BnMortalityWorklistIndicators', () => {
   it('shows an unknown state rather than "clear" when the read failed', () => {
     render(<BnMortalityWorklistIndicators indicator={undefined} isLoading={false} isError />);
-    expect(screen.getByTestId('mort-indicators-error')).toBeInTheDocument();
+    expect(screen.getByTestId('mort-signals-unavailable')).toBeInTheDocument();
   });
 
   it('renders a blocking chip when mandatory actions are outstanding', () => {
     render(
       <BnMortalityWorklistIndicators
-        indicator={{ ...baseIndicator, mandatoryActionsOutstanding: 2 }}
+        indicator={{ ...baseIndicator, openMandatoryActions: 2 }}
         isLoading={false}
         isError={false}
       />,
     );
-    expect(screen.getByTestId('mort-chip-mandatory')).toHaveTextContent('2');
+    expect(screen.getByText('2 actions')).toBeInTheDocument();
   });
 
   it('renders a failed-handoff chip distinctly from outstanding handoffs', () => {
     render(
       <BnMortalityWorklistIndicators
-        indicator={{ ...baseIndicator, handoffsFailed: 1, handoffsOutstanding: 3 }}
+        indicator={{ ...baseIndicator, failedHandoffs: 1, outstandingHandoffs: 3 }}
         isLoading={false}
         isError={false}
       />,
     );
-    expect(screen.getByTestId('mort-chip-handoff-failed')).toBeInTheDocument();
-    expect(screen.getByTestId('mort-chip-handoff-outstanding')).toHaveTextContent('3');
+    expect(screen.getByText('1 failed')).toBeInTheDocument();
+    expect(screen.getByText('3 handoffs')).toBeInTheDocument();
   });
 
-  it('renders nothing loud when every signal is clear', () => {
+  it('marks PAD exposure as indicative currency, not a debt figure', () => {
+    render(
+      <BnMortalityWorklistIndicators
+        indicator={{ ...baseIndicator, padExposureMinor: 125000 }}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+    expect(screen.getByText('XCD 1250.00')).toBeInTheDocument();
+  });
+
+  it('renders a clear state when every signal is clear', () => {
     render(<BnMortalityWorklistIndicators indicator={baseIndicator} isLoading={false} isError={false} />);
-    expect(screen.getByTestId('mort-indicators-clear')).toBeInTheDocument();
+    expect(screen.getByTestId('mort-signals-clear')).toBeInTheDocument();
   });
 });
 
