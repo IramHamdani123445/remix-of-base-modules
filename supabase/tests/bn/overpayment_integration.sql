@@ -58,7 +58,7 @@ BEGIN
   -- Harness runs with actions temporarily enabled inside the transaction;
   -- the module row is restored by ROLLBACK and re-asserted by CI postflight.
   SELECT actions_enabled INTO v_actions
-  FROM public.app_modules WHERE module_code = 'bn_overpayments';
+  FROM public.app_modules WHERE name = 'bn_overpayments';
   IF v_actions IS DISTINCT FROM false THEN
     RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL bn_overpayments must be dark-launched (actions_enabled=false)';
   END IF;
@@ -73,10 +73,10 @@ BEGIN
     IF v_err NOT LIKE '%E_ACTIONS_DISABLED%' THEN RAISE; END IF;
   END;
 
-  UPDATE public.app_modules SET actions_enabled = true WHERE module_code = 'bn_overpayments';
+  UPDATE public.app_modules SET actions_enabled = true WHERE name = 'bn_overpayments';
 
   -- ── Negative: permission denied ──────────────────────────────────
-  PERFORM public.bn_op_test_set_actor(v_nobody);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_nobody, 'role', 'authenticated')::text, true);
   BEGIN
     PERFORM public.bn_overpayment_create_candidate_v1(
       NULL, 'DUPLICATE_PAYMENT', NULL, NULL, 'XCD', 'HARNESS', 'HARNESS:NEG:PERM');
@@ -87,7 +87,7 @@ BEGIN
   END;
 
   -- ── Journey A: detection through confirmed liability ─────────────
-  PERFORM public.bn_op_test_set_actor(v_maker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_maker, 'role', 'authenticated')::text, true);
   v_case := (public.bn_overpayment_create_candidate_v1(
     NULL, 'DUPLICATE_PAYMENT', '2025-01-01', '2025-06-30', 'XCD', 'HARNESS',
     'HARNESS:A:CANDIDATE') ->> 'case_id')::uuid;
@@ -117,25 +117,25 @@ BEGIN
     IF v_err NOT LIKE '%E_SELF_APPROVAL%' THEN RAISE; END IF;
   END;
 
-  PERFORM public.bn_op_test_set_actor(v_checker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_verify_v1(v_case, v_version, 'HARNESS', 'HARNESS:A:VERIFY');
 
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_issue_notice_v1(v_case, v_version, 'LETTER', 'HARNESS:A:NOTICE');
 
-  PERFORM public.bn_op_test_set_actor(v_maker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_maker, 'role', 'authenticated')::text, true);
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_record_representation_v1(
     v_case, v_version, 'Claimant disputes period', 'PORTAL', 'HARNESS:A:REP');
 
-  PERFORM public.bn_op_test_set_actor(v_checker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_confirm_liability_v1(
     v_case, v_version, 'Liability confirmed by checker', 'HARNESS:A:CONFIRM');
 
   -- ── Journey B: recovery plan and receipts ────────────────────────
-  PERFORM public.bn_op_test_set_actor(v_maker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_maker, 'role', 'authenticated')::text, true);
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_propose_recovery_plan_v1(
     v_case, v_version, 1500.00, 100.00, 'MONTHLY', 'BENEFIT_DEDUCTION',
@@ -143,7 +143,7 @@ BEGIN
   SELECT id, row_version INTO v_plan, v_plan_version
   FROM public.bn_op_recovery_plan WHERE case_id = v_case ORDER BY created_at DESC LIMIT 1;
 
-  PERFORM public.bn_op_test_set_actor(v_checker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
   PERFORM public.bn_overpayment_approve_recovery_plan_v1(
     v_case, v_plan, v_plan_version, 'HARNESS:B:APPROVE');
 
@@ -151,7 +151,7 @@ BEGIN
   PERFORM public.bn_overpayment_activate_benefit_deduction_v1(
     v_case, v_plan, v_version, 100.00, 'XCD', 'HARNESS:B:ACTIVATE');
 
-  PERFORM public.bn_op_test_set_actor(v_maker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_maker, 'role', 'authenticated')::text, true);
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_record_receipt_v1(
     v_case, v_version, 300.00, 'XCD', 'CASH', 'HARNESS:B:RECEIPT');
@@ -171,7 +171,7 @@ BEGIN
   END IF;
 
   -- partial recovery then balance check: receipt 300 -> outstanding 1200
-  PERFORM public.bn_op_test_set_actor(v_maker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_maker, 'role', 'authenticated')::text, true);
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_record_receipt_v1(
     v_case, v_version, 300.00, 'XCD', 'CASH', 'HARNESS:E:RECEIPT2');
@@ -200,7 +200,7 @@ BEGIN
     IF v_err NOT LIKE '%E_%HOLD%' AND v_err NOT LIKE '%E_INVALID_STATE%' THEN RAISE; END IF;
   END;
 
-  PERFORM public.bn_op_test_set_actor(v_checker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
   PERFORM public.bn_overpayment_release_appeal_hold_v1(
     v_case, v_hold, v_hold_version, 'DISMISSED', 'HARNESS:F:RELEASE');
 
@@ -213,14 +213,14 @@ BEGIN
     v_case, v_suspension, v_suspension_version, 'HARNESS:F:RESUME');
 
   -- ── Journeys C/D: waiver and write-off of the residual balance ───
-  PERFORM public.bn_op_test_set_actor(v_maker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_maker, 'role', 'authenticated')::text, true);
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_request_waiver_v1(
     v_case, v_version, 200.00, false, 'HARDSHIP', 'Documented hardship', 'XCD', 'HARNESS:C:REQUEST');
   SELECT id, row_version INTO v_waiver, v_waiver_version
   FROM public.bn_op_waiver_request WHERE case_id = v_case ORDER BY created_at DESC LIMIT 1;
 
-  PERFORM public.bn_op_test_set_actor(v_checker);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
   PERFORM public.bn_overpayment_approve_waiver_v1(
     v_case, v_waiver, v_waiver_version, 'Approved by checker', 'HARNESS:C:APPROVE');
 

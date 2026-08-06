@@ -76,7 +76,7 @@ jobs:
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -Atc \
-            "select rollout_state || ':' || actions_enabled from public.app_modules where module_code = 'bn_overpayments'" \
+            "select rollout_state || ':' || actions_enabled from public.app_modules where name = 'bn_overpayments'" \
             | tee /tmp/op-dark.log
           grep -qx 'internal_pilot:false' /tmp/op-dark.log
 
