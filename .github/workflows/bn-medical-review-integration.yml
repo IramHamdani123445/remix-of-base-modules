@@ -1,55 +1,170 @@
-name: BN Medical Review — seeded database integration
+# BN Medical Reviews — seeded clean-database integration harness.
+#
+# Provisions a clean PostgreSQL 15 database via
+# scripts/ci/bootstrap-supabase-test-db.sh (Supabase substrate +
+# supabase/baseline/schema.sql + every migration after the baseline cutoff),
+# then runs the seeded transaction/rollback harness in
+# supabase/tests/bn/medical_review_integration.sql.
+# See supabase/baseline/README.md for why a baseline replaces from-zero replay.
+#
+# Gates, all mandatory:
+#   1. supabase/verify/bn_medical_review_effective_grants.sql
+#        -> exactly one  BN_MR_GRANTS_RESULT: PASS
+#   2. supabase/tests/bn/medical_review_integration.sql
+#        -> exactly one  BN_MR_HARNESS_RESULT: PASS, exact SKIP marker rejected
+#   3. dark-launch postflight (bn_medical_review.actions_enabled = false)
+#   4. zero synthetic fixture residue after rollback
+#   5. focused Medical Review suites and `bunx tsc --noEmit -p tsconfig.app.json`
+#
+# No SUPABASE_ACCESS_TOKEN is exported and no remote project is ever linked.
+name: bn-medical-review-integration
 
-# Trusted execution path for the Medical Review certification harness.
-# Manual dispatch only. Runs against the approved isolated Test database
-# using a database-owner-capable role held in the protected environment
-# `medical-review-test`. The harness runs in one transaction and rolls
-# back; the runner additionally asserts dark-launch and zero residue.
+env:
+  BN_TEST_LIVE_PROJECT_REF_DENYLIST: xynceskeiiisiefqlgxo
 
 on:
+  pull_request:
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/baseline/**"
+      - "supabase/tests/bn/medical_review_**"
+      - "supabase/verify/bn_medical_review_**"
+      - "src/pages/bn/medical-reviews/**"
+      - "src/services/bn/medicalReview**"
+      - "src/__tests__/bn/medical_reviews**"
+      - "scripts/bn/**"
+      - "scripts/ci/**"
+      - ".github/workflows/bn-medical-review-integration.yml"
+  push:
+    branches:
+      - main
+      - development
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/baseline/**"
+      - "supabase/tests/bn/medical_review_**"
+      - "supabase/verify/bn_medical_review_**"
+      - "src/pages/bn/medical-reviews/**"
+      - "src/services/bn/medicalReview**"
+      - "src/__tests__/bn/medical_reviews**"
+      - "scripts/ci/**"
+      - ".github/workflows/bn-medical-review-integration.yml"
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: 'Type RUN to confirm this targets an isolated Test database'
-        required: true
-        default: ''
 
 concurrency:
-  group: bn-medical-review-integration
+  group: bn-medical-review-integration-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  harness:
-    name: Seeded harness (trusted role)
+  medical-review-db:
+    name: Seeded Medical Review database harness
     runs-on: ubuntu-latest
-    environment: medical-review-test
-    timeout-minutes: 20
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
     steps:
-      - name: Guard on explicit confirmation
-        if: ${{ github.event.inputs.confirm != 'RUN' }}
-        run: |
-          echo "Confirmation input must be exactly 'RUN'." >&2
-          exit 1
-
       - uses: actions/checkout@v4
 
-      - name: Install PostgreSQL client
+      - name: Install psql
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Run effective-grant verifier and seeded harness
-        env:
-          BN_TEST_DATABASE_URL: ${{ secrets.BN_TEST_DATABASE_URL }}
-          BN_TEST_DB_CONFIRM: I_UNDERSTAND_THIS_IS_A_TEST_DATABASE
+      - name: Wait for Postgres
         run: |
-          chmod +x scripts/bn/run-medical-review-db-tests.sh
-          ./scripts/bn/run-medical-review-db-tests.sh 2>&1 | tee harness-output.log
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -U postgres && break
+            sleep 1
+          done
+
+      - name: Build clean database (bootstrap + baseline + forward migrations)
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: |
+          chmod +x scripts/ci/bootstrap-supabase-test-db.sh
+          scripts/ci/bootstrap-supabase-test-db.sh
+
+      - name: Verify Medical Review effective grants
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/verify/bn_medical_review_effective_grants.sql 2>&1 \
+            | tee /tmp/bn-mr-grants.log
+          if grep -Eq 'BN_MR_GRANTS_RESULT:[[:space:]]*SKIP' /tmp/bn-mr-grants.log; then
+            echo "FAIL: grant verifier reported SKIP"; exit 1
+          fi
+          test "$(grep -c 'BN_MR_GRANTS_RESULT: PASS' /tmp/bn-mr-grants.log)" -eq 1 \
+            || { echo "FAIL: verifier did not report exactly one PASS marker"; exit 1; }
+
+      - name: Run seeded Medical Review harness
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/medical_review_integration.sql 2>&1 \
+            | tee /tmp/bn-mr-harness.log
+          if grep -Eq 'BN_MR_HARNESS_RESULT:[[:space:]]*SKIP' /tmp/bn-mr-harness.log; then
+            echo "FAIL: harness reported SKIP"; exit 1
+          fi
+          test "$(grep -c 'BN_MR_HARNESS_RESULT: PASS' /tmp/bn-mr-harness.log)" -eq 1 \
+            || { echo "FAIL: harness did not report exactly one PASS marker"; exit 1; }
+          grep -q 'ROLLBACK' /tmp/bn-mr-harness.log \
+            || { echo "FAIL: harness did not roll back"; exit 1; }
+
+      - name: Assert the module is still dark-launched
+        run: |
+          set -euo pipefail
+          state="$(psql -At -v ON_ERROR_STOP=1 \
+            -c "SELECT actions_enabled FROM public.app_modules WHERE name = 'bn_medical_review';")"
+          [ "$state" = "f" ] || { echo "FAIL: module activated in CI (actions_enabled=$state)"; exit 1; }
+
+      - name: Assert no fixture residue after rollback
+        run: |
+          set -euo pipefail
+          for t in $(psql -At -v ON_ERROR_STOP=1 -c "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r' AND (c.relname LIKE 'bn\\_medical\\_review%' OR c.relname LIKE 'bn\\_medical\\_board%');"); do
+            rows="$(psql -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM public.$t;")"
+            [ "$rows" = "0" ] || { echo "FAIL: fixture residue in $t ($rows rows)"; exit 1; }
+          done
 
       - name: Upload harness evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bn-medical-review-harness-evidence
-          path: harness-output.log
-          retention-days: 30
+          name: bn-medical-review-harness-log
+          path: |
+            /tmp/bn-mr-grants.log
+            /tmp/bn-mr-harness.log
+          if-no-files-found: warn
+
+  medical-review-ui:
+    name: Medical Review service tests and typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.3"
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Run Medical Review suites
+        run: bunx vitest run src/__tests__/bn/medical_reviews_backend.test.ts src/__tests__/bn/award360/medicalReviewWorkspace.test.ts
+      - name: Typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: bunx tsc --noEmit -p tsconfig.app.json

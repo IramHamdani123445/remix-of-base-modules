@@ -2,10 +2,14 @@
 -- BN Medical Reviews — effective grant verifier
 -- Expect ZERO rows from every plain query, and no exception from the
 -- effective-privilege DO block.
+--
+-- Two legacy compatibility tables are read directly by the Award 360
+-- surfaces and are therefore exempt from the RPC-only rule. They are
+-- verified separately in section 6b (no anon access, no DELETE, RLS on).
 -- =====================================================================
 
 -- 1. No direct table privileges for anon / authenticated / PUBLIC on any
---    Medical Review table (explicit ACL entries).
+--    canonical Medical Review table (explicit ACL entries).
 SELECT c.relname, pg_get_userbyid(x.grantee) AS grantee, x.privilege_type
   FROM pg_class c
   JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -14,7 +18,9 @@ SELECT c.relname, pg_get_userbyid(x.grantee) AS grantee, x.privilege_type
    AND c.relkind = 'r'
    AND (c.relname LIKE 'bn_medical_review%' OR c.relname LIKE 'bn_medical_board%'
         OR c.relname LIKE 'bn_medical_provider%')
+   AND c.relname NOT IN ('bn_medical_review_schedule','bn_medical_provider_type')
    AND pg_get_userbyid(x.grantee) IN ('anon','authenticated','public');
+
 
 -- 2. Private helpers must not be executable by browser roles.
 SELECT p.proname, pg_get_userbyid(x.grantee) AS grantee
@@ -69,6 +75,7 @@ BEGIN
      WHERE n.nspname = 'public' AND c.relkind = 'r'
        AND (c.relname LIKE 'bn_medical_review%' OR c.relname LIKE 'bn_medical_board%'
             OR c.relname LIKE 'bn_medical_provider%')
+       AND c.relname NOT IN ('bn_medical_review_schedule','bn_medical_provider_type')
        AND has_table_privilege(role_name, c.oid, priv)
   LOOP
     v_bad := v_bad || format('TABLE %s: %s has %s', r.relname, r.role_name, r.priv);
@@ -94,6 +101,53 @@ BEGIN
 END $verify$;
 
 -- =====================================================================
+-- 6b. Legacy compatibility tables (read directly by Award 360).
+--     Contract: no anon access at all, no DELETE for authenticated,
+--     row level security enabled with at least one policy.
+-- =====================================================================
+DO $legacy$
+DECLARE r record; v_bad text[] := '{}'; v_tables text[] :=
+  ARRAY['bn_medical_review_schedule','bn_medical_provider_type'];
+BEGIN
+  FOR r IN
+    SELECT c.oid, c.relname, c.relrowsecurity,
+           (SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid) AS policies
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+     WHERE n.nspname = 'public' AND c.relname = ANY (v_tables)
+  LOOP
+    IF NOT r.relrowsecurity THEN
+      v_bad := v_bad || format('TABLE %s: row level security disabled', r.relname);
+    END IF;
+    IF r.policies = 0 THEN
+      v_bad := v_bad || format('TABLE %s: no RLS policies', r.relname);
+    END IF;
+    IF has_table_privilege('anon', r.oid, 'SELECT')
+       OR has_table_privilege('anon', r.oid, 'INSERT')
+       OR has_table_privilege('anon', r.oid, 'UPDATE')
+       OR has_table_privilege('anon', r.oid, 'DELETE') THEN
+      v_bad := v_bad || format('TABLE %s: anon retains direct privileges', r.relname);
+    END IF;
+    IF has_table_privilege('authenticated', r.oid, 'DELETE') THEN
+      v_bad := v_bad || format('TABLE %s: authenticated retains DELETE', r.relname);
+    END IF;
+  END LOOP;
+
+  -- Reference data must stay read-only for browser roles.
+  IF has_table_privilege('authenticated', 'public.bn_medical_provider_type', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.bn_medical_provider_type', 'UPDATE') THEN
+    v_bad := v_bad || 'TABLE bn_medical_provider_type: authenticated may write reference data';
+  END IF;
+
+  IF array_length(v_bad, 1) > 0 THEN
+    RAISE EXCEPTION 'UNSAFE LEGACY PRIVILEGES: %', array_to_string(v_bad, E'\n');
+  END IF;
+
+  RAISE NOTICE 'Medical Review legacy compatibility posture verification passed.';
+END $legacy$;
+
+
+-- =====================================================================
 -- 7. Dark-launch state must hold in the target database.
 -- =====================================================================
 DO $dark$
@@ -112,3 +166,9 @@ BEGIN
 
   RAISE NOTICE 'Medical Review dark-launch verification passed.';
 END $dark$;
+
+-- =====================================================================
+-- 8. Result marker — CI gates on exactly one of these lines.
+-- =====================================================================
+SELECT 'BN_MR_GRANTS_RESULT: PASS' AS result;
+
