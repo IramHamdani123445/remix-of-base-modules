@@ -389,15 +389,75 @@ CREATE TABLE IF NOT EXISTS public.bn_op_writeoff_request (
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_action_definition ADD CONSTRAINT bn_op_action_definition_pkey PRIMARY KEY (action_code); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_action_definition ADD CONSTRAINT bn_op_action_risk_chk CHECK ((risk_level = ANY (ARRAY['STANDARD'::text, 'ELEVATED'::text, 'HIGH'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
 DO $mig$ BEGIN ALTER TABLE public.bn_op_appeal_hold ADD CONSTRAINT bn_op_appeal_hold_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_appeal_hold ADD CONSTRAINT bn_op_appeal_hold_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_case ADD CONSTRAINT bn_op_case_case_reference_key UNIQUE (case_reference); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_case ADD CONSTRAINT bn_op_case_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_communication_intent ADD CONSTRAINT bn_op_communication_intent_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_deduction_instruction ADD CONSTRAINT bn_op_deduction_instruction_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_estate_referral ADD CONSTRAINT bn_op_estate_referral_idempotency_key_key UNIQUE (idempotency_key); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_estate_referral ADD CONSTRAINT bn_op_estate_referral_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_event ADD CONSTRAINT bn_op_event_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_evidence_link ADD CONSTRAINT bn_op_evidence_link_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_finance_posting_intent_idempotency_key_key UNIQUE (idempotency_key); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_finance_posting_intent_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_idempotency ADD CONSTRAINT bn_op_idempotency_idempotency_key_key UNIQUE (idempotency_key); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_idempotency ADD CONSTRAINT bn_op_idempotency_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_legal_referral ADD CONSTRAINT bn_op_legal_referral_idempotency_key_key UNIQUE (idempotency_key); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_legal_referral ADD CONSTRAINT bn_op_legal_referral_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_liability_version ADD CONSTRAINT bn_op_liability_version_case_id_version_no_key UNIQUE (case_id, version_no); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_liability_version ADD CONSTRAINT bn_op_liability_version_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_operational_exception ADD CONSTRAINT bn_op_operational_exception_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_receipt_allocation ADD CONSTRAINT bn_op_receipt_allocation_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_reconciliation ADD CONSTRAINT bn_op_reconciliation_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan ADD CONSTRAINT bn_op_recovery_plan_case_id_plan_no_key UNIQUE (case_id, plan_no); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan ADD CONSTRAINT bn_op_recovery_plan_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan_instalment ADD CONSTRAINT bn_op_recovery_plan_instalment_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan_instalment ADD CONSTRAINT bn_op_recovery_plan_instalment_plan_id_sequence_no_key UNIQUE (plan_id, sequence_no); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_suspension ADD CONSTRAINT bn_op_recovery_suspension_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_transaction ADD CONSTRAINT bn_op_recovery_transaction_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_representation ADD CONSTRAINT bn_op_representation_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_role_action ADD CONSTRAINT bn_op_role_action_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_role_action ADD CONSTRAINT bn_op_role_action_role_code_action_code_key UNIQUE (role_code, action_code); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_user_role ADD CONSTRAINT bn_op_user_role_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_user_role ADD CONSTRAINT bn_op_user_role_user_id_role_code_key UNIQUE (user_id, role_code); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_waiver_request ADD CONSTRAINT bn_op_waiver_request_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_writeoff_request ADD CONSTRAINT bn_op_writeoff_request_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_action_definition ADD CONSTRAINT bn_op_action_risk_chk CHECK ((risk_level = ANY (ARRAY['STANDARD'::text, 'ELEVATED'::text, 'HIGH'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_appeal_hold ADD CONSTRAINT bn_op_appeal_hold_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_case ADD CONSTRAINT bn_op_case_bn_award_id_fkey FOREIGN KEY (bn_award_id) REFERENCES bn_award(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
@@ -405,13 +465,13 @@ DO $mig$ BEGIN ALTER TABLE public.bn_op_case ADD CONSTRAINT bn_op_case_legacy_ov
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_case ADD CONSTRAINT bn_op_case_status_chk CHECK ((status = ANY (ARRAY['CANDIDATE'::text, 'CALCULATED'::text, 'VERIFIED'::text, 'NOTICE_ISSUED'::text, 'REPRESENTATION'::text, 'LIABILITY_CONFIRMED'::text, 'PLAN_PROPOSED'::text, 'PLAN_APPROVED'::text, 'IN_RECOVERY'::text, 'SUSPENDED'::text, 'ON_APPEAL_HOLD'::text, 'RECONCILED'::text, 'CLOSED'::text, 'CANCELLED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_communication_intent ADD CONSTRAINT bn_op_communication_intent_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_communication_intent ADD CONSTRAINT bn_op_comm_status_chk CHECK ((status = ANY (ARRAY['PENDING'::text, 'DISPATCHED'::text, 'FAILED'::text, 'SUPPRESSED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_communication_intent ADD CONSTRAINT bn_op_communication_intent_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_communication_intent ADD CONSTRAINT bn_op_comm_status_chk CHECK ((status = ANY (ARRAY['PENDING'::text, 'DISPATCHED'::text, 'FAILED'::text, 'SUPPRESSED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_deduction_instruction ADD CONSTRAINT bn_op_ded_amt_chk CHECK ((amount_per_cycle > (0)::numeric)); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_deduction_instruction ADD CONSTRAINT bn_op_deduction_instruction_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_deduction_instruction ADD CONSTRAINT bn_op_ded_status_chk CHECK ((status = ANY (ARRAY['PENDING'::text, 'ACTIVE'::text, 'SUSPENDED'::text, 'ENDED'::text, 'CANCELLED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_deduction_instruction ADD CONSTRAINT bn_op_deduction_instruction_bn_award_id_fkey FOREIGN KEY (bn_award_id) REFERENCES bn_award(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
@@ -419,69 +479,39 @@ DO $mig$ BEGIN ALTER TABLE public.bn_op_deduction_instruction ADD CONSTRAINT bn_
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_deduction_instruction ADD CONSTRAINT bn_op_deduction_instruction_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES bn_op_recovery_plan(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_deduction_instruction ADD CONSTRAINT bn_op_ded_amt_chk CHECK ((amount_per_cycle > (0)::numeric)); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_deduction_instruction ADD CONSTRAINT bn_op_ded_status_chk CHECK ((status = ANY (ARRAY['PENDING'::text, 'ACTIVE'::text, 'SUSPENDED'::text, 'ENDED'::text, 'CANCELLED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_estate_referral ADD CONSTRAINT bn_op_estate_referral_idempotency_key_key UNIQUE (idempotency_key); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_estate_referral ADD CONSTRAINT bn_op_estate_referral_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
 DO $mig$ BEGIN ALTER TABLE public.bn_op_estate_referral ADD CONSTRAINT bn_op_estate_referral_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_estate_referral ADD CONSTRAINT bn_op_estate_status_chk CHECK ((status = ANY (ARRAY['REFERRED'::text, 'ACCEPTED'::text, 'REJECTED'::text, 'CLOSED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_event ADD CONSTRAINT bn_op_event_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
 DO $mig$ BEGIN ALTER TABLE public.bn_op_event ADD CONSTRAINT bn_op_event_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_evidence_link ADD CONSTRAINT bn_op_evidence_link_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_evidence_link ADD CONSTRAINT bn_op_evidence_link_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_evidence_link ADD CONSTRAINT bn_op_evidence_link_liability_id_fkey FOREIGN KEY (liability_id) REFERENCES bn_op_liability_version(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_finance_posting_intent_idempotency_key_key UNIQUE (idempotency_key); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_fin_posted_chk CHECK (((status <> 'POSTED'::text) OR (posting_reference IS NOT NULL))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_finance_posting_intent_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_fin_status_chk CHECK ((status = ANY (ARRAY['PENDING'::text, 'POSTED'::text, 'FAILED'::text, 'CANCELLED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_finance_posting_intent_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_finance_posting_intent_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES bn_op_recovery_transaction(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_fin_posted_chk CHECK (((status <> 'POSTED'::text) OR (posting_reference IS NOT NULL))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_finance_posting_intent ADD CONSTRAINT bn_op_fin_status_chk CHECK ((status = ANY (ARRAY['PENDING'::text, 'POSTED'::text, 'FAILED'::text, 'CANCELLED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_idempotency ADD CONSTRAINT bn_op_idempotency_idempotency_key_key UNIQUE (idempotency_key); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_idempotency ADD CONSTRAINT bn_op_idempotency_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
 DO $mig$ BEGIN ALTER TABLE public.bn_op_idempotency ADD CONSTRAINT bn_op_idem_status_chk CHECK ((status = ANY (ARRAY['IN_PROGRESS'::text, 'COMPLETED'::text, 'FAILED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_legal_referral ADD CONSTRAINT bn_op_legal_referral_idempotency_key_key UNIQUE (idempotency_key); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_legal_referral ADD CONSTRAINT bn_op_legal_referral_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_legal_referral ADD CONSTRAINT bn_op_legal_referral_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_legal_referral ADD CONSTRAINT bn_op_legal_status_chk CHECK ((status = ANY (ARRAY['REFERRED'::text, 'ACCEPTED'::text, 'REJECTED'::text, 'CLOSED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_liability_version ADD CONSTRAINT bn_op_liability_version_case_id_version_no_key UNIQUE (case_id, version_no); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_liability_version ADD CONSTRAINT bn_op_liability_version_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_liability_version ADD CONSTRAINT bn_op_liability_version_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
 DO $mig$ BEGIN ALTER TABLE public.bn_op_liability_version ADD CONSTRAINT bn_op_liab_amt_chk CHECK ((gross_amount >= (0)::numeric)); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_liability_version ADD CONSTRAINT bn_op_liab_status_chk CHECK ((status = ANY (ARRAY['DRAFT'::text, 'ACTIVE'::text, 'SUPERSEDED'::text, 'VOID'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_operational_exception ADD CONSTRAINT bn_op_operational_exception_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_liability_version ADD CONSTRAINT bn_op_liability_version_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_operational_exception ADD CONSTRAINT bn_op_operational_exception_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_receipt_allocation ADD CONSTRAINT bn_op_receipt_allocation_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_receipt_allocation ADD CONSTRAINT bn_op_alloc_amt_chk CHECK ((amount > (0)::numeric)); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_receipt_allocation ADD CONSTRAINT bn_op_receipt_allocation_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
@@ -489,39 +519,23 @@ DO $mig$ BEGIN ALTER TABLE public.bn_op_receipt_allocation ADD CONSTRAINT bn_op_
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_receipt_allocation ADD CONSTRAINT bn_op_receipt_allocation_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES bn_op_recovery_transaction(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_receipt_allocation ADD CONSTRAINT bn_op_alloc_amt_chk CHECK ((amount > (0)::numeric)); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_reconciliation ADD CONSTRAINT bn_op_reconciliation_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_reconciliation ADD CONSTRAINT bn_op_reconciliation_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
 DO $mig$ BEGIN ALTER TABLE public.bn_op_reconciliation ADD CONSTRAINT bn_op_recon_status_chk CHECK ((status = ANY (ARRAY['PENDING'::text, 'MATCHED'::text, 'VARIANCE'::text, 'FAILED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan ADD CONSTRAINT bn_op_recovery_plan_case_id_plan_no_key UNIQUE (case_id, plan_no); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan ADD CONSTRAINT bn_op_recovery_plan_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan ADD CONSTRAINT bn_op_recovery_plan_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_reconciliation ADD CONSTRAINT bn_op_reconciliation_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan ADD CONSTRAINT bn_op_plan_amt_chk CHECK ((total_amount > (0)::numeric)); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan ADD CONSTRAINT bn_op_plan_status_chk CHECK ((status = ANY (ARRAY['PROPOSED'::text, 'APPROVED'::text, 'REJECTED'::text, 'REVISED'::text, 'ACTIVE'::text, 'COMPLETED'::text, 'BREACHED'::text, 'CANCELLED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan_instalment ADD CONSTRAINT bn_op_recovery_plan_instalment_plan_id_sequence_no_key UNIQUE (plan_id, sequence_no); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan ADD CONSTRAINT bn_op_recovery_plan_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan_instalment ADD CONSTRAINT bn_op_recovery_plan_instalment_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan_instalment ADD CONSTRAINT bn_op_inst_status_chk CHECK ((status = ANY (ARRAY['SCHEDULED'::text, 'DUE'::text, 'PAID'::text, 'PARTIAL'::text, 'MISSED'::text, 'CANCELLED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan_instalment ADD CONSTRAINT bn_op_recovery_plan_instalment_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan_instalment ADD CONSTRAINT bn_op_recovery_plan_instalment_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES bn_op_recovery_plan(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_plan_instalment ADD CONSTRAINT bn_op_inst_status_chk CHECK ((status = ANY (ARRAY['SCHEDULED'::text, 'DUE'::text, 'PAID'::text, 'PARTIAL'::text, 'MISSED'::text, 'CANCELLED'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_suspension ADD CONSTRAINT bn_op_recovery_suspension_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
 DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_suspension ADD CONSTRAINT bn_op_recovery_suspension_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_transaction ADD CONSTRAINT bn_op_recovery_transaction_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_transaction ADD CONSTRAINT bn_op_recovery_transaction_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
@@ -533,41 +547,27 @@ DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_transaction ADD CONSTRAINT bn_o
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_recovery_transaction ADD CONSTRAINT bn_op_txn_type_chk CHECK ((txn_type = ANY (ARRAY['LIABILITY'::text, 'RECEIPT'::text, 'DEDUCTION'::text, 'WAIVER'::text, 'WRITEOFF'::text, 'ADJUSTMENT'::text, 'REVERSAL'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_representation ADD CONSTRAINT bn_op_representation_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_representation ADD CONSTRAINT bn_op_rep_outcome_chk CHECK ((outcome = ANY (ARRAY['PENDING'::text, 'UPHELD'::text, 'PARTIALLY_UPHELD'::text, 'REJECTED'::text, 'WITHDRAWN'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_representation ADD CONSTRAINT bn_op_representation_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_representation ADD CONSTRAINT bn_op_rep_outcome_chk CHECK ((outcome = ANY (ARRAY['PENDING'::text, 'UPHELD'::text, 'PARTIALLY_UPHELD'::text, 'REJECTED'::text, 'WITHDRAWN'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_role_action ADD CONSTRAINT bn_op_role_action_role_code_action_code_key UNIQUE (role_code, action_code); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_role_action ADD CONSTRAINT bn_op_role_action_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
 DO $mig$ BEGIN ALTER TABLE public.bn_op_role_action ADD CONSTRAINT bn_op_role_action_action_code_fkey FOREIGN KEY (action_code) REFERENCES bn_op_action_definition(action_code) ON DELETE CASCADE; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_user_role ADD CONSTRAINT bn_op_user_role_user_id_role_code_key UNIQUE (user_id, role_code); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_user_role ADD CONSTRAINT bn_op_user_role_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_waiver_request ADD CONSTRAINT bn_op_waiver_request_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+DO $mig$ BEGIN ALTER TABLE public.bn_op_waiver_request ADD CONSTRAINT bn_op_waiver_amt_chk CHECK ((requested_amount > (0)::numeric)); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_waiver_request ADD CONSTRAINT bn_op_waiver_request_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_waiver_request ADD CONSTRAINT bn_op_waiver_request_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES bn_op_recovery_transaction(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
-DO $mig$ BEGIN ALTER TABLE public.bn_op_waiver_request ADD CONSTRAINT bn_op_waiver_amt_chk CHECK ((requested_amount > (0)::numeric)); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
 DO $mig$ BEGIN ALTER TABLE public.bn_op_waiver_request ADD CONSTRAINT bn_op_waiver_status_chk CHECK ((status = ANY (ARRAY['REQUESTED'::text, 'APPROVED'::text, 'REJECTED'::text, 'WITHDRAWN'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_writeoff_request ADD CONSTRAINT bn_op_writeoff_request_pkey PRIMARY KEY (id); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_writeoff_request ADD CONSTRAINT bn_op_writeoff_request_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
-
-DO $mig$ BEGIN ALTER TABLE public.bn_op_writeoff_request ADD CONSTRAINT bn_op_writeoff_request_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES bn_op_recovery_transaction(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_writeoff_request ADD CONSTRAINT bn_op_wo_amt_chk CHECK ((requested_amount > (0)::numeric)); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 DO $mig$ BEGIN ALTER TABLE public.bn_op_writeoff_request ADD CONSTRAINT bn_op_wo_status_chk CHECK ((status = ANY (ARRAY['REQUESTED'::text, 'APPROVED'::text, 'REJECTED'::text, 'WITHDRAWN'::text]))); EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_writeoff_request ADD CONSTRAINT bn_op_writeoff_request_case_id_fkey FOREIGN KEY (case_id) REFERENCES bn_op_case(id) ON DELETE RESTRICT; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
+
+DO $mig$ BEGIN ALTER TABLE public.bn_op_writeoff_request ADD CONSTRAINT bn_op_writeoff_request_transaction_id_fkey FOREIGN KEY (transaction_id) REFERENCES bn_op_recovery_transaction(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; WHEN duplicate_table THEN NULL; END $mig$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_bn_op_appeal_hold_active ON public.bn_op_appeal_hold USING btree (case_id) WHERE is_active;
 
