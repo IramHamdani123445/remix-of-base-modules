@@ -145,17 +145,30 @@ BEGIN
     (v_chair),(v_member),(v_recused),(v_outsider)
   ON CONFLICT (id) DO NOTHING;
 
-  INSERT INTO public.profiles(id, user_code, full_name)
-  VALUES (v_officer,'HX_OFFICER','Harness Benefits Officer'),
-         (v_preparer,'HX_PREPARER','Harness Decision Preparer'),
-         (v_approver,'HX_APPROVER','Harness Decision Approver'),
-         (v_provider_user,'HX_DOCTOR','Harness Assessing Doctor'),
-         (v_secretary,'HX_SECRETARY','Harness Board Secretary'),
-         (v_chair,'HX_CHAIR','Harness Board Chair'),
-         (v_member,'HX_MEMBER','Harness Board Member'),
-         (v_recused,'HX_RECUSED','Harness Recused Member'),
-         (v_outsider,'HX_OUTSIDER','Harness Unrelated Officer')
+  -- `profiles` carries a user_code generation trigger that requires a
+  -- last name, so every synthetic actor supplies first_name/last_name.
+  INSERT INTO public.profiles(id, user_code, full_name, first_name, last_name)
+  VALUES (v_officer,'HX_OFFICER','Harness Benefits Officer','Harness','Officer'),
+         (v_preparer,'HX_PREPARER','Harness Decision Preparer','Harness','Preparer'),
+         (v_approver,'HX_APPROVER','Harness Decision Approver','Harness','Approver'),
+         (v_provider_user,'HX_DOCTOR','Harness Assessing Doctor','Harness','Doctor'),
+         (v_secretary,'HX_SECRETARY','Harness Board Secretary','Harness','Secretary'),
+         (v_chair,'HX_CHAIR','Harness Board Chair','Harness','Chair'),
+         (v_member,'HX_MEMBER','Harness Board Member','Harness','Member'),
+         (v_recused,'HX_RECUSED','Harness Recused Member','Harness','Recused'),
+         (v_outsider,'HX_OUTSIDER','Harness Unrelated Officer','Harness','Outsider')
   ON CONFLICT (id) DO UPDATE SET user_code = excluded.user_code;
+
+
+  -- The `user_roles` validation trigger requires each role to already
+  -- exist and be active in `public.roles`, so the reference rows are
+  -- seeded FIRST. Everything here is transaction-scoped and rolled back.
+  INSERT INTO public.roles(role_name, description)
+  SELECT x, 'Harness role (transaction-scoped)'
+    FROM unnest(ARRAY['Clerk','LegalOfficer','Supervisor','FinanceOfficer',
+                      'FinanceManager','IP Registration Officer','Head-Cashier',
+                      'Customer Support','ReadOnly']) x
+   WHERE NOT EXISTS (SELECT 1 FROM public.roles r WHERE r.role_name = x);
 
   -- app_role enum values are the only values `user_roles` accepts; each
   -- harness persona is mapped to a distinct enum value so permissions
@@ -172,12 +185,6 @@ BEGIN
     (v_outsider,      'ReadOnly')
   ON CONFLICT DO NOTHING;
 
-  INSERT INTO public.roles(role_name, description)
-  SELECT x, 'Harness role (transaction-scoped)'
-    FROM unnest(ARRAY['Clerk','LegalOfficer','Supervisor','FinanceOfficer',
-                      'FinanceManager','IP Registration Officer','Head-Cashier',
-                      'Customer Support','ReadOnly']) x
-   WHERE NOT EXISTS (SELECT 1 FROM public.roles r WHERE r.role_name = x);
 
   -- Harness-scoped permission grants. Existing grants for these roles on
   -- this module are removed first so the harness proves its own matrix.
@@ -219,9 +226,10 @@ BEGIN
    WHERE COALESCE(ma.is_enabled, true);
 
   -- --- product / claim / award ---------------------------------------
-  INSERT INTO public.bn_product(id, product_code, product_name, status)
-  VALUES (v_product, 'HX_MR_PRODUCT', 'Harness Disability Product', 'ACTIVE')
+  INSERT INTO public.bn_product(id, benefit_code, benefit_name, category, status)
+  VALUES (v_product, 'HX_MR_PRODUCT', 'Harness Disability Product', 'LONG_TERM', 'ACTIVE')
   ON CONFLICT (id) DO NOTHING;
+
 
   INSERT INTO public.bn_product_version(id, product_id, version_number, effective_from, status)
   VALUES (v_version, v_product, 1, current_date - 365, 'ACTIVE')
@@ -252,39 +260,66 @@ BEGIN
   VALUES (
     v_policy, 'HX_MR_POLICY', 'Harness Medical Review Policy', v_product, v_version,
     'PERIODIC_REVIEW', 1, 'PUBLISHED', current_date - 200,
-    'SINGLE_ASSESSOR', 'ASSIGNED_BY_SOCIAL_SECURITY',
+    'EXTERNAL_APPROVED_PROVIDER', 'SOCIAL_SECURITY_ASSIGNS',
     'CONDITIONAL', true, 'BENEFITS_DECISION_OFFICER',
     'ASSESSING_DOCTOR', 'BENEFITS_DECISION_OFFICER',
     true, '["PREPARER","APPROVER"]'::jsonb,
     'SOCIAL_SECURITY', 'SOCIAL_SECURITY',
     ARRAY['ORTHOPAEDICS'], false, true,
-    'ON_REQUEST', ARRAY['MEDICAL_REPORT'],
+    'PERMITTED', ARRAY['MEDICAL_REPORT'],
     90, 21, 7, 21, 14, 30,
     'America/St_Kitts', true, 'REASONABLE_CAUSE_REVIEW', 'BENEFITS_DECISION_OFFICER',
     false)
   ON CONFLICT (id) DO NOTHING;
 
   -- --- board (review_mode MEETING) ------------------------------------
-  INSERT INTO public.bn_medical_board(id, board_code, board_name, board_status,
-                                      review_mode, default_quorum, timezone_code)
-  VALUES (v_board, 'HX_BOARD', 'Harness Medical Board', 'ACTIVE',
-          'MEETING', 2, 'America/St_Kitts')
+  INSERT INTO public.bn_medical_board(id, board_code, board_name, is_active,
+                                      review_mode, minimum_quorum, voting_rule,
+                                      determination_binding)
+  VALUES (v_board, 'HX_BOARD', 'Harness Medical Board', true,
+          'MEETING', 2, 'MAJORITY', true)
   ON CONFLICT (id) DO NOTHING;
 
-  INSERT INTO public.bn_medical_board_member(board_id, member_user_id, member_role, specialty, is_active)
-  VALUES (v_board, v_secretary, 'SECRETARY',   'ADMINISTRATION', true),
-         (v_board, v_chair,     'CHAIRPERSON', 'ORTHOPAEDICS',   true),
-         (v_board, v_member,    'MEMBER',      'ORTHOPAEDICS',   true),
-         (v_board, v_recused,   'MEMBER',      'ORTHOPAEDICS',   true)
+  PERFORM pg_temp.mr_put('MEMBER_SECRETARY', gen_random_uuid()::text);
+  PERFORM pg_temp.mr_put('MEMBER_CHAIR',     gen_random_uuid()::text);
+  PERFORM pg_temp.mr_put('MEMBER_MEMBER',    gen_random_uuid()::text);
+  PERFORM pg_temp.mr_put('MEMBER_RECUSED',   gen_random_uuid()::text);
+
+  -- Deterministic member ids: board-member RPCs take MEMBER row ids and the
+  -- authenticated harness roles cannot read the roster table directly.
+  INSERT INTO public.bn_medical_board_member(id, board_id, member_user_id, member_name,
+                                            member_role, specialty, is_active)
+  VALUES (pg_temp.mr_uid('MEMBER_SECRETARY'), v_board, v_secretary, 'Harness Board Secretary', 'SECRETARY', 'ADMINISTRATION', true),
+         (pg_temp.mr_uid('MEMBER_CHAIR'),     v_board, v_chair,     'Harness Board Chair',     'CHAIR',     'ORTHOPAEDICS',   true),
+         (pg_temp.mr_uid('MEMBER_MEMBER'),    v_board, v_member,    'Harness Board Member',    'MEMBER',    'ORTHOPAEDICS',   true),
+         (pg_temp.mr_uid('MEMBER_RECUSED'),   v_board, v_recused,   'Harness Recused Member',  'MEMBER',    'ORTHOPAEDICS',   true)
   ON CONFLICT DO NOTHING;
 
   -- --- providers -------------------------------------------------------
-  INSERT INTO public.bn_medical_provider(id, provider_code, provider_name, provider_type,
-                                         provider_status, portal_user_id, primary_specialty)
-  VALUES (v_prov_a, 'HX_PROV_A', 'Harness Assessing Doctor', 'INDEPENDENT_PRACTITIONER',
-          'ACTIVE', v_provider_user, 'ORTHOPAEDICS'),
-         (v_prov_b, 'HX_PROV_B', 'Harness Second Opinion Doctor', 'INDEPENDENT_PRACTITIONER',
-          'ACTIVE', NULL, 'ORTHOPAEDICS')
+  -- The journey policy is CONDITIONAL with binding board determination, so
+  -- the validator requires a configured board AND at least one active board
+  -- trigger rule. Both are synthetic and transaction-scoped.
+  UPDATE public.bn_medical_review_policy
+     SET board_id = v_board
+   WHERE id = v_policy;
+
+  INSERT INTO public.bn_medical_review_board_trigger_rule(
+    policy_id, rule_code, rule_name, evaluation_order, is_active,
+    required_specialties, required_quorum, determination_binding,
+    completion_offset_days)
+  VALUES (v_policy, 'PERMANENT_IMPAIRMENT', 'Harness board trigger', 10, true,
+          ARRAY['ORTHOPAEDICS'], 2, true, 30)
+  ON CONFLICT DO NOTHING;
+
+  INSERT INTO public.bn_medical_provider(id, provider_code, practitioner_name, classification,
+                                         provider_type, provider_status, verification_status,
+                                         portal_user_id, specialties, is_individual_practitioner)
+  VALUES (v_prov_a, 'HX_PROV_A', 'Harness Assessing Doctor', 'EXTERNAL',
+          'EXTERNAL_INDIVIDUAL_DOCTOR', 'ACTIVE', 'VERIFIED',
+          v_provider_user, ARRAY['ORTHOPAEDICS'], true),
+         (v_prov_b, 'HX_PROV_B', 'Harness Second Opinion Doctor', 'EXTERNAL',
+          'EXTERNAL_INDIVIDUAL_DOCTOR', 'ACTIVE', 'VERIFIED',
+          NULL, ARRAY['ORTHOPAEDICS'], true)
   ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO public.bn_medical_provider_approval(provider_id, bn_product_id, review_type, is_active)
@@ -317,41 +352,64 @@ END $$;
 -- TRUSTED CONTEXT — Phase C: policy validation (negative cases)
 -- Run against a throwaway policy so the journey policy stays valid.
 -- =====================================================================
-DO $$
-DECLARE v_neg jsonb; v_base jsonb;
+-- Clone helper: builds a throwaway policy from the journey policy with the
+-- supplied column overrides so negative validation runs against a real row
+-- (public._bn_mr_validate_policy takes a policy id, not a jsonb document).
+CREATE FUNCTION pg_temp.mr_neg_policy(p_overrides jsonb) RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+DECLARE v_id uuid := gen_random_uuid();
 BEGIN
-  v_base := jsonb_build_object(
-    'board_mode','MANDATORY', 'board_id', NULL,
-    'assessment_model','SINGLE_ASSESSOR',
-    'second_opinion_mode','ON_REQUEST',
-    'maker_checker_required', true,
-    'maker_checker_chain', '["PREPARER","APPROVER"]'::jsonb,
-    'required_quorum', 1);
+  INSERT INTO public.bn_medical_review_policy
+  SELECT (jsonb_populate_record(NULL::public.bn_medical_review_policy,
+            to_jsonb(pol)
+            || jsonb_build_object('id', v_id,
+                                  'policy_code', 'HX_NEG_' || left(v_id::text, 8))
+            || p_overrides)).*
+    FROM public.bn_medical_review_policy pol
+   WHERE pol.id = pg_temp.mr_uid('POLICY');
+  RETURN v_id;
+END $fn$;
 
+DO $$
+DECLARE v_neg jsonb; v_id uuid;
+BEGIN
+  -- Binding board determination without a configured board must be refused.
   BEGIN
-    PERFORM public._bn_mr_validate_policy(v_base);
+    v_id := pg_temp.mr_neg_policy(jsonb_build_object(
+              'board_determination_binding', true, 'board_id', NULL));
+    PERFORM public._bn_mr_validate_policy(v_id);
     PERFORM pg_temp.mr_ok('C', 'board_direct_without_board_rejected', false,
                           'expected rejection, none raised');
   EXCEPTION WHEN others THEN
-    PERFORM pg_temp.mr_ok('C', 'board_direct_without_board_rejected', true, SQLERRM);
+    PERFORM pg_temp.mr_ok('C', 'board_direct_without_board_rejected',
+      SQLERRM LIKE '%BINDING_BOARD_NOT_CONFIGURED%', SQLERRM);
   END;
 
+  -- Board trigger rules may never carry a quorum below one.
   BEGIN
-    PERFORM public._bn_mr_validate_policy(v_base || jsonb_build_object('required_quorum', 0));
+    v_id := pg_temp.mr_neg_policy('{}'::jsonb);
+    INSERT INTO public.bn_medical_review_board_trigger_rule(
+      policy_id, rule_code, rule_name, required_quorum)
+    VALUES (v_id, 'PERMANENT_IMPAIRMENT', 'Harness zero quorum', 0);
+    PERFORM public._bn_mr_validate_policy(v_id);
     PERFORM pg_temp.mr_ok('C', 'quorum_below_one_rejected', false, 'expected rejection');
   EXCEPTION WHEN others THEN
-    PERFORM pg_temp.mr_ok('C', 'quorum_below_one_rejected', true, SQLERRM);
+    PERFORM pg_temp.mr_ok('C', 'quorum_below_one_rejected',
+      SQLERRM LIKE '%QUORUM_BELOW_ONE%' OR SQLERRM LIKE '%required_quorum%', SQLERRM);
   END;
 
+  -- A second-opinion trigger rule contradicts a policy that forbids them.
   BEGIN
-    PERFORM public._bn_mr_validate_policy(v_base || jsonb_build_object(
-      'board_mode','NONE',
-      'second_opinion_mode','MANDATORY',
-      'assessment_model','SINGLE_ASSESSOR',
-      'concurrent_referrals_permitted', false));
+    v_id := pg_temp.mr_neg_policy(jsonb_build_object(
+              'second_opinion_mode', 'NOT_PERMITTED'));
+    INSERT INTO public.bn_medical_review_board_trigger_rule(
+      policy_id, rule_code, rule_name, required_quorum)
+    VALUES (v_id, 'SECOND_OPINION_RECEIVED', 'Harness second opinion', 2);
+    PERFORM public._bn_mr_validate_policy(v_id);
     PERFORM pg_temp.mr_ok('C', 'second_opinion_conflict_rejected', false, 'expected rejection');
   EXCEPTION WHEN others THEN
-    PERFORM pg_temp.mr_ok('C', 'second_opinion_conflict_rejected', true, SQLERRM);
+    PERFORM pg_temp.mr_ok('C', 'second_opinion_conflict_rejected',
+      SQLERRM LIKE '%SECOND_OPINION_DISABLED%', SQLERRM);
   END;
 
   -- Product timezone must come from configuration, never a hard-coded default.
@@ -466,16 +524,33 @@ BEGIN
          pg_temp.mr_uid('REFERRAL'), NULL, 'hx-issue-1', 'harness');
   PERFORM pg_temp.mr_ok('E', 'officer_issues_referral', (r ->> 'status') = 'OK', r::text);
 
-  -- Appointment responsibility is SOCIAL_SECURITY in this policy.
-  r := public.bn_medical_review_schedule_appointment_v1(
-         pg_temp.mr_uid('REFERRAL'), now() + interval '3 days', 'HARNESS CLINIC',
-         'hx-appt-1', 'harness');
-  PERFORM pg_temp.mr_put('APPOINTMENT', r ->> 'appointment_id');
-  PERFORM pg_temp.mr_ok('E', 'officer_schedules_appointment',
-                        (r ->> 'appointment_id') IS NOT NULL, r::text);
 END $$;
 
 RESET ROLE;
+
+-- ---------------------------------------------------------------------
+-- TRUSTED CONTEXT — scheduler maturation.
+-- Obligation maturation (NOT_DUE -> DUE -> IN_PROGRESS -> AWAITING_PROVIDER
+-- -> AWAITING_REPORT) is performed by the scheduler, not by any user RPC.
+-- The harness advances it explicitly so the downstream lifecycle transitions
+-- exercised below are reachable. Every step follows the canonical map.
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE v_id uuid := pg_temp.mr_uid('OBLIGATION'); v_from text; t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['DUE','IN_PROGRESS','AWAITING_PROVIDER','AWAITING_REPORT'] LOOP
+    SELECT status INTO v_from FROM public.bn_medical_review_obligation WHERE id = v_id;
+    IF NOT public._bn_mr_transition_allowed('OBLIGATION', v_from, t) THEN
+      RAISE EXCEPTION 'harness maturation blocked: % -> %', v_from, t;
+    END IF;
+    UPDATE public.bn_medical_review_obligation
+       SET status = t, row_version = row_version + 1, updated_at = now()
+     WHERE id = v_id;
+  END LOOP;
+
+  PERFORM pg_temp.mr_ok('E', 'obligation_matured_by_scheduler',
+    (SELECT status FROM public.bn_medical_review_obligation WHERE id = v_id) = 'AWAITING_REPORT');
+END $$;
 
 -- =====================================================================
 -- ACTOR CONTEXT — Unrelated officer: record scope must fail closed
@@ -525,7 +600,37 @@ BEGIN
   r := public.bn_medical_review_accept_referral_v1(
          pg_temp.mr_uid('REFERRAL'), NULL, 'hx-accept-1', 'harness');
   PERFORM pg_temp.mr_ok('G', 'provider_accepts_referral', (r ->> 'status') = 'OK', r::text);
+END $$;
 
+RESET ROLE;
+
+-- ---------------------------------------------------------------------
+-- Appointments may only be scheduled once the referral is ACCEPTED, and
+-- appointment responsibility is SOCIAL_SECURITY under this policy, so the
+-- benefits officer schedules it here.
+-- ---------------------------------------------------------------------
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', pg_temp.mr_claims('USER_OFFICER'), true);
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  r := public.bn_medical_review_schedule_appointment_v1(
+         pg_temp.mr_uid('REFERRAL'), now() + interval '3 days', 'HARNESS CLINIC',
+         'hx-appt-1', 'harness');
+  PERFORM pg_temp.mr_put('APPOINTMENT', r ->> 'appointment_id');
+  PERFORM pg_temp.mr_ok('E', 'officer_schedules_appointment',
+                        (r ->> 'appointment_id') IS NOT NULL, r::text);
+END $$;
+
+RESET ROLE;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', pg_temp.mr_claims('USER_PROVIDER'), true);
+
+DO $$
+DECLARE r jsonb; v_assessment uuid;
+BEGIN
   -- Scheduling belongs to Social Security under this policy.
   BEGIN
     PERFORM public.bn_medical_review_reschedule_appointment_v1(
@@ -604,7 +709,9 @@ BEGIN
 
   r := public.bn_medical_review_board_requirement_v1(pg_temp.mr_uid('OBLIGATION'));
   PERFORM pg_temp.mr_ok('H', 'board_requirement_derived_from_policy',
-    (r ->> 'status') = 'OK', r::text);
+    (r ->> 'board_required')::boolean
+      AND (r ->> 'evaluated_from') = 'POLICY_SNAPSHOT'
+      AND (r ->> 'reason') = 'TRIGGER_RULE_MATCHED', r::text);
 
   r := public.bn_medical_review_refer_to_board_v1(
          pg_temp.mr_uid('OBLIGATION'), pg_temp.mr_uid('ASSESSMENT'), 'hx-board-1', 'harness');
@@ -633,11 +740,15 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims', pg_temp.mr_claims('USER_SECRETARY'), true);
 
 DO $$
-DECLARE r jsonb;
+DECLARE r jsonb; v_members uuid[];
 BEGIN
+  -- The RPC expects board MEMBER row ids (not user ids).
+  v_members := ARRAY[pg_temp.mr_uid('MEMBER_CHAIR'),
+                     pg_temp.mr_uid('MEMBER_MEMBER'),
+                     pg_temp.mr_uid('MEMBER_RECUSED')];
+
   r := public.bn_medical_review_assign_board_members_v1(
-         pg_temp.mr_uid('BOARD_CASE'),
-         ARRAY[pg_temp.mr_uid('USER_CHAIR'), pg_temp.mr_uid('USER_MEMBER'), pg_temp.mr_uid('USER_RECUSED')],
+         pg_temp.mr_uid('BOARD_CASE'), v_members,
          NULL, 'hx-members-1', 'harness');
   PERFORM pg_temp.mr_ok('I', 'secretary_assigns_board_members', (r ->> 'status') = 'OK', r::text);
 
@@ -649,11 +760,11 @@ BEGIN
     (r ->> 'session_id') IS NOT NULL, r::text);
 
   PERFORM public.bn_medical_review_record_board_participation_v1(
-    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_CHAIR'), 'PRESENT', 'hx-part-chair', 'harness');
+    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_CHAIR'), 'PRESENT', 'hx-part-chair', 'harness');
   PERFORM public.bn_medical_review_record_board_participation_v1(
-    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_MEMBER'), 'PRESENT', 'hx-part-member', 'harness');
+    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_MEMBER'), 'PRESENT', 'hx-part-member', 'harness');
   PERFORM public.bn_medical_review_record_board_participation_v1(
-    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_RECUSED'), 'PRESENT', 'hx-part-recused', 'harness');
+    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_RECUSED'), 'PRESENT', 'hx-part-recused', 'harness');
   PERFORM pg_temp.mr_ok('I', 'secretary_records_participation', true);
 END $$;
 
@@ -669,7 +780,7 @@ DO $$
 DECLARE r jsonb;
 BEGIN
   r := public.bn_medical_review_declare_board_conflict_v1(
-         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_RECUSED'),
+         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_RECUSED'),
          'Treating relationship with the claimant.', 'hx-conflict-1', 'harness');
   PERFORM pg_temp.mr_ok('J', 'member_declares_conflict', (r ->> 'status') = 'OK', r::text);
 END $$;
@@ -683,7 +794,7 @@ DO $$
 DECLARE r jsonb;
 BEGIN
   r := public.bn_medical_review_record_recusal_v1(
-         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_RECUSED'), 'hx-recuse-1',
+         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_RECUSED'), 'hx-recuse-1',
          'Conflict declared and accepted.');
   PERFORM pg_temp.mr_ok('J', 'secretary_records_recusal', (r ->> 'status') = 'OK', r::text);
 END $$;
@@ -697,7 +808,7 @@ DO $$
 BEGIN
   BEGIN
     PERFORM public.bn_medical_review_record_board_vote_v1(
-      pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_RECUSED'), 'FOR',
+      pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_RECUSED'), 'FOR',
       'PERMANENT_INCAPACITY_CONFIRMED', 'harness', 'hx-vote-recused');
     PERFORM pg_temp.mr_ok('J', 'recused_member_cannot_vote', false, 'expected rejection');
   EXCEPTION WHEN others THEN
@@ -724,7 +835,7 @@ DO $$
 DECLARE r jsonb;
 BEGIN
   r := public.bn_medical_review_record_board_vote_v1(
-         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_MEMBER'), 'FOR',
+         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_MEMBER'), 'FOR',
          'PERMANENT_INCAPACITY_CONFIRMED', 'Consistent with the report.', 'hx-vote-member');
   PERFORM pg_temp.mr_ok('K', 'member_votes', (r ->> 'status') = 'OK', r::text);
 END $$;
@@ -738,7 +849,7 @@ DO $$
 DECLARE r jsonb;
 BEGIN
   r := public.bn_medical_review_record_board_vote_v1(
-         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_CHAIR'), 'FOR',
+         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_CHAIR'), 'FOR',
          'PERMANENT_INCAPACITY_CONFIRMED', 'Consistent with the report.', 'hx-vote-chair');
   PERFORM pg_temp.mr_ok('K', 'chair_votes', (r ->> 'status') = 'OK', r::text);
 
@@ -853,8 +964,8 @@ BEGIN
 
   PERFORM pg_temp.mr_ok('O', 'no_payment_impact_created',
     NOT EXISTS (SELECT 1 FROM public.bn_award_suspension_payment_impact i
-                 JOIN public.bn_award_suspension_event e ON e.id = i.suspension_event_id
-                WHERE e.bn_award_id = pg_temp.mr_uid('AWARD')));
+                 WHERE i.bn_award_id = pg_temp.mr_uid('AWARD')));
+
 
   SELECT * INTO v_det FROM public.bn_medical_board_determination
    WHERE board_case_id = pg_temp.mr_uid('BOARD_CASE') ORDER BY revision_no DESC LIMIT 1;
@@ -883,18 +994,19 @@ BEGIN
     NOT EXISTS (
       SELECT 1 FROM public.bn_medical_review_communication_intent c
        WHERE c.obligation_id = pg_temp.mr_uid('OBLIGATION')
-         AND (c.context_payload::text ILIKE '%clinical_narrative%'
-              OR c.context_payload::text ILIKE '%impairment_percentage%'
-              OR c.context_payload::text ILIKE '%PERMANENT_INCAPACITY%'
-              OR c.context_payload::text ILIKE '%123456789%')));
+         AND (c.context::text ILIKE '%clinical_narrative%'
+              OR c.context::text ILIKE '%impairment_percentage%'
+              OR c.context::text ILIKE '%PERMANENT_INCAPACITY%'
+              OR c.context::text ILIKE '%123456789%')));
 
   PERFORM pg_temp.mr_ok('O', 'comm_intents_recorded',
     EXISTS (SELECT 1 FROM public.bn_medical_review_communication_intent c
              WHERE c.obligation_id = pg_temp.mr_uid('OBLIGATION')));
 
   PERFORM pg_temp.mr_ok('O', 'audit_trail_written',
-    (SELECT count(*) FROM public.bn_medical_review_audit a
-      WHERE a.entity_id IN (pg_temp.mr_uid('OBLIGATION'), pg_temp.mr_uid('DECISION'))) > 0);
+    (SELECT count(*) FROM public.core_audit_log a
+      WHERE a.module_code = 'bn_medical_review'
+        AND a.entity_id IN (pg_temp.mr_get('OBLIGATION'), pg_temp.mr_get('DECISION'))) > 0);
 END $$;
 
 -- =====================================================================

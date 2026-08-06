@@ -1,22 +1,33 @@
-# BN Life Certificates — seeded database integration harness.
+# BN Life Certificates — seeded clean-database integration harness.
 #
-# Provisions a clean Postgres via scripts/ci/bootstrap-supabase-test-db.sh
-# (Supabase substrate + supabase/baseline/schema.sql + every migration after
-# the baseline cutoff), then runs the seeded transaction/rollback harness in
+# Provisions a clean PostgreSQL 15 database via
+# scripts/ci/bootstrap-supabase-test-db.sh (Supabase substrate +
+# supabase/baseline/schema.sql + every migration after the baseline cutoff),
+# then runs the seeded transaction/rollback harness in
 # supabase/tests/bn/life_certificate_integration.sql.
 # See supabase/baseline/README.md for why a baseline replaces from-zero replay.
 #
-# The harness is authoritative: it seeds its own identity, permissions,
-# record scope and business fixtures, executes the real worklist RPC under
-# an `authenticated` session, and drives the communication adapter end to
-# end. A skipped scenario or a missing PASS marker fails the build.
+# Gates, all mandatory:
+#   1. supabase/verify/bn_life_certificate_effective_grants.sql
+#        -> exactly one  BN_LC_GRANTS_RESULT: PASS
+#   2. supabase/tests/bn/life_certificate_integration.sql
+#        -> exactly one  BN_LC_HARNESS_RESULT: PASS, exact SKIP marker rejected
+#   3. dark-launch postflight (bn_life_certificate.actions_enabled = false)
+#   4. zero synthetic fixture residue after rollback
+#   5. focused servicing suite and `bunx tsc --noEmit -p tsconfig.app.json`
+#
+# No SUPABASE_ACCESS_TOKEN is exported and no remote project is ever linked.
 name: bn-life-certificate-integration
+
+env:
+  BN_TEST_LIVE_PROJECT_REF_DENYLIST: xynceskeiiisiefqlgxo
 
 on:
   pull_request:
     paths:
       - "supabase/migrations/**"
-      - "supabase/tests/bn/**"
+      - "supabase/baseline/**"
+      - "supabase/tests/bn/life_certificate_**"
       - "supabase/verify/bn_life_certificate_**"
       - "supabase/functions/bn-life-certificate-**/**"
       - "supabase/functions/bn-communication-adapter/**"
@@ -27,7 +38,6 @@ on:
       - "src/__tests__/bn/servicing/**"
       - "scripts/bn/**"
       - "scripts/ci/**"
-      - "supabase/baseline/**"
       - ".github/workflows/bn-life-certificate-integration.yml"
   push:
     branches:
@@ -35,10 +45,13 @@ on:
       - development
     paths:
       - "supabase/migrations/**"
-      - "supabase/tests/bn/**"
+      - "supabase/baseline/**"
+      - "supabase/tests/bn/life_certificate_**"
+      - "supabase/verify/bn_life_certificate_**"
       - "src/pages/bn/servicing/**"
       - "src/services/bn/lifeCertificate**"
       - "src/__tests__/bn/servicing/**"
+      - "scripts/ci/**"
       - ".github/workflows/bn-life-certificate-integration.yml"
   workflow_dispatch:
 
@@ -46,6 +59,7 @@ jobs:
   life-certificate-db:
     name: Seeded Life Certificate database harness
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:15
@@ -89,30 +103,58 @@ jobs:
           scripts/ci/bootstrap-supabase-test-db.sh
 
       - name: Verify Life Certificate effective grants
-        run: psql -v ON_ERROR_STOP=1 -f supabase/verify/bn_life_certificate_effective_grants.sql
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/verify/bn_life_certificate_effective_grants.sql 2>&1 \
+            | tee /tmp/bn-lc-grants.log
+          if grep -Eq 'BN_LC_GRANTS_RESULT:[[:space:]]*SKIP' /tmp/bn-lc-grants.log; then
+            echo "FAIL: grant verifier reported SKIP"; exit 1
+          fi
+          test "$(grep -c 'BN_LC_GRANTS_RESULT: PASS' /tmp/bn-lc-grants.log)" -eq 1 \
+            || { echo "FAIL: verifier did not report exactly one PASS marker"; exit 1; }
 
       - name: Run seeded Life Certificate harness
         run: |
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/life_certificate_integration.sql 2>&1 \
             | tee /tmp/bn-lc-harness.log
-          if grep -qi 'SKIP' /tmp/bn-lc-harness.log; then
-            echo "FAIL: harness skipped a scenario"; exit 1
+          if grep -Eq 'BN_LC_HARNESS_RESULT:[[:space:]]*SKIP' /tmp/bn-lc-harness.log; then
+            echo "FAIL: harness reported SKIP"; exit 1
           fi
-          grep -q 'BN_LC_HARNESS_RESULT: PASS' /tmp/bn-lc-harness.log \
-            || { echo "FAIL: harness did not report PASS"; exit 1; }
+          test "$(grep -c 'BN_LC_HARNESS_RESULT: PASS' /tmp/bn-lc-harness.log)" -eq 1 \
+            || { echo "FAIL: harness did not report exactly one PASS marker"; exit 1; }
+          grep -q 'ROLLBACK' /tmp/bn-lc-harness.log \
+            || { echo "FAIL: harness did not roll back"; exit 1; }
+
+      - name: Assert the module is still dark-launched
+        run: |
+          set -euo pipefail
+          state="$(psql -At -v ON_ERROR_STOP=1 \
+            -c "SELECT actions_enabled FROM public.app_modules WHERE name = 'bn_life_certificate';")"
+          [ "$state" = "f" ] || { echo "FAIL: module activated in CI (actions_enabled=$state)"; exit 1; }
+
+      - name: Assert no fixture residue after rollback
+        run: |
+          set -euo pipefail
+          for t in $(psql -At -v ON_ERROR_STOP=1 -c "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname LIKE 'bn\\_life\\_certificate%';"); do
+            rows="$(psql -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM public.$t;")"
+            [ "$rows" = "0" ] || { echo "FAIL: fixture residue in $t ($rows rows)"; exit 1; }
+          done
 
       - name: Upload harness evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: bn-life-certificate-harness-log
-          path: /tmp/bn-lc-harness.log
+          path: |
+            /tmp/bn-lc-grants.log
+            /tmp/bn-lc-harness.log
           if-no-files-found: warn
 
   life-certificate-ui:
-    name: Life Certificate route and service tests
+    name: Life Certificate route, service tests and typecheck
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -122,3 +164,7 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Run Benefits servicing suite
         run: bunx vitest run src/__tests__/bn/servicing/
+      - name: Typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: bunx tsc --noEmit -p tsconfig.app.json

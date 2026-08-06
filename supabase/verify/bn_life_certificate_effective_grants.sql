@@ -84,9 +84,50 @@ BEGIN
 END $verify$;
 
 -- 7. Every Life Certificate mutation command must carry the record-scope guard.
-SELECT p.proname
-  FROM pg_proc p
-  JOIN pg_namespace n ON n.oid = p.pronamespace
- WHERE n.nspname = 'public'
-   AND p.proname ~ '^bn_life_certificate_(verify|reject|request_resubmission|waive|defer|escalate_to_suspension|propose_reinstatement|receive)_v1$'
-   AND position('_bn_lc_require_record' in pg_get_functiondef(p.oid)) = 0;
+DO $scope$
+DECLARE
+  v_bad text[] := ARRAY[]::text[];
+  r     record;
+BEGIN
+  FOR r IN
+    SELECT p.proname
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+     WHERE n.nspname = 'public'
+       AND p.proname ~ '^bn_life_certificate_(verify|reject|request_resubmission|waive|defer|escalate_to_suspension|propose_reinstatement|receive)_v1$'
+       AND position('_bn_lc_require_record' in pg_get_functiondef(p.oid)) = 0
+  LOOP
+    v_bad := v_bad || format('FUNCTION %s is missing the record-scope guard', r.proname);
+  END LOOP;
+
+  IF array_length(v_bad, 1) > 0 THEN
+    RAISE EXCEPTION 'MISSING RECORD-SCOPE GUARD: %', array_to_string(v_bad, E'\n');
+  END IF;
+
+  RAISE NOTICE 'Record-scope guard verification passed.';
+END $scope$;
+
+-- 8. Dark-launch state must hold in the target database.
+DO $dark$
+DECLARE v_enabled boolean;
+BEGIN
+  SELECT actions_enabled INTO v_enabled
+    FROM public.app_modules WHERE name = 'bn_life_certificate';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'bn_life_certificate module is not registered in app_modules';
+  END IF;
+
+  IF COALESCE(v_enabled, false) THEN
+    RAISE EXCEPTION 'bn_life_certificate actions_enabled is TRUE — module must stay dark-launched';
+  END IF;
+
+  RAISE NOTICE 'Life Certificate dark-launch verification passed.';
+END $dark$;
+
+-- 9. Single authoritative result marker for CI.
+DO $marker$
+BEGIN
+  RAISE NOTICE 'BN_LC_GRANTS_RESULT: PASS';
+END $marker$;
+
