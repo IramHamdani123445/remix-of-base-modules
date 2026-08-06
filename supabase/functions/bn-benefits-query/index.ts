@@ -644,6 +644,245 @@ async function getCommunications(admin: any, params: any, page: { limit: number;
   return { data: dto, totalCount: typeof count === 'number' ? count : null };
 }
 
+/**
+ * BN-MORT-M3 — Canonical evidence register (`bn_mortality_evidence`).
+ *
+ * Distinct from BN_MORTALITY_GET_EVIDENCE_LINKS, which lists officially
+ * generated documents. This handler exposes the operational evidence
+ * register: type, DMS reference, receipt date, status, and provenance.
+ */
+async function getEvidenceRegister(admin: any, params: any, page: { limit: number; offset: number }) {
+  const eventId = requireEventId(params);
+  const { data, error, count } = await admin
+    .from('bn_mortality_evidence')
+    .select('id,event_id,evidence_type,dms_document_id,dms_reference,received_at,status,notes,correlation_id,created_at,created_by', { count: 'exact' })
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false })
+    .range(page.offset, page.offset + page.limit - 1);
+  if (error) throw new QueryError('FAILED', 'GET_EVIDENCE_FAILED', error.message);
+  const dto = (data ?? []).map((r: any) => ({
+    id: r.id,
+    eventId: r.event_id,
+    evidenceType: r.evidence_type,
+    dmsDocumentId: r.dms_document_id ?? null,
+    dmsReference: r.dms_reference ?? null,
+    receivedAt: r.received_at ?? null,
+    status: r.status,
+    notes: r.notes ?? null,
+    correlationId: r.correlation_id ?? null,
+    createdAt: r.created_at,
+    createdBy: r.created_by ?? null,
+  }));
+  return { data: dto, totalCount: typeof count === 'number' ? count : null };
+}
+
+/** BN-MORT-M3 — Required follow-on actions (closure gate). */
+async function getRequiredActions(admin: any, params: any, page: { limit: number; offset: number }) {
+  const eventId = requireEventId(params);
+  const { data, error, count } = await admin
+    .from('bn_mortality_required_action')
+    .select('id,event_id,action_code,is_mandatory,status,handoff_id,resolved_at,resolved_by,created_at', { count: 'exact' })
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true })
+    .range(page.offset, page.offset + page.limit - 1);
+  if (error) throw new QueryError('FAILED', 'GET_REQUIRED_ACTIONS_FAILED', error.message);
+  const dto = (data ?? []).map((r: any) => ({
+    id: r.id,
+    eventId: r.event_id,
+    actionCode: r.action_code,
+    isMandatory: r.is_mandatory === true,
+    status: r.status,
+    handoffId: r.handoff_id ?? null,
+    resolvedAt: r.resolved_at ?? null,
+    resolvedBy: r.resolved_by ?? null,
+    createdAt: r.created_at,
+    blocksClosure: r.is_mandatory === true && r.status === 'OPEN',
+  }));
+  return { data: dto, totalCount: typeof count === 'number' ? count : null };
+}
+
+/** BN-MORT-M5 — Governed cross-module handoffs raised by this event. */
+async function getHandoffs(admin: any, params: any, page: { limit: number; offset: number }) {
+  const eventId = requireEventId(params);
+  const { data, error, count } = await admin
+    .from('bn_cross_module_handoff')
+    .select(
+      'handoff_id,source_module,source_record_id,target_module,handoff_type,reason_code,status,' +
+        'award_id,claim_id,target_record_id,target_reference,correlation_id,created_at,created_by,accepted_at,accepted_by,updated_at,row_version',
+      { count: 'exact' },
+    )
+    .eq('source_module', 'bn_mortality')
+    .eq('source_record_id', eventId)
+    .order('created_at', { ascending: false })
+    .range(page.offset, page.offset + page.limit - 1);
+  if (error) throw new QueryError('FAILED', 'GET_HANDOFFS_FAILED', error.message);
+  const dto = (data ?? []).map((r: any) => ({
+    handoffId: r.handoff_id,
+    sourceModule: r.source_module,
+    sourceRecordId: r.source_record_id,
+    targetModule: r.target_module,
+    handoffType: r.handoff_type,
+    reasonCode: r.reason_code ?? null,
+    status: r.status,
+    awardId: r.award_id ?? null,
+    claimId: r.claim_id ?? null,
+    targetRecordId: r.target_record_id ?? null,
+    targetReference: r.target_reference ?? null,
+    correlationId: r.correlation_id ?? null,
+    createdAt: r.created_at,
+    createdBy: r.created_by ?? null,
+    acceptedAt: r.accepted_at ?? null,
+    acceptedBy: r.accepted_by ?? null,
+    updatedAt: r.updated_at,
+    rowVersion: r.row_version,
+    isOutstanding: ['PENDING', 'RAISED', 'ACCEPTED'].includes(String(r.status)),
+  }));
+  return { data: dto, totalCount: typeof count === 'number' ? count : null };
+}
+
+const PENDING_HANDOFF_STATUSES = ['PENDING', 'RAISED', 'ACCEPTED'];
+
+/**
+ * BN-MORT-M3 — Worklist operational indicators for a page of events.
+ *
+ * The dashboard renders one row per event; this handler returns the
+ * per-event operational signals (open mandatory actions, outstanding
+ * handoffs, PAD exposure, active holds, evidence count) in a single
+ * round trip so the worklist never issues N queries.
+ */
+async function getWorklistIndicators(admin: any, params: any) {
+  const raw = params?.eventIds;
+  if (!Array.isArray(raw) || raw.length === 0) throw invalid('eventIds must be a non-empty array', 'eventIds');
+  if (raw.length > 100) throw invalid('eventIds accepts at most 100 ids', 'eventIds');
+  const eventIds = raw.map((v: any) => String(v));
+  for (const id of eventIds) {
+    if (!UUID_RE.test(id)) throw invalid('eventIds must contain UUIDs only', 'eventIds');
+  }
+
+  const base: Record<string, any> = {};
+  for (const id of eventIds) {
+    base[id] = {
+      eventId: id,
+      openMandatoryActions: 0,
+      outstandingHandoffs: 0,
+      failedHandoffs: 0,
+      evidenceCount: 0,
+      impactCount: 0,
+      awaitingApprovalImpacts: 0,
+      activeHolds: 0,
+      padExposureMinor: 0,
+      currencyCode: null as string | null,
+    };
+  }
+
+  const [actions, handoffs, evidence, impacts] = await Promise.all([
+    admin.from('bn_mortality_required_action').select('event_id,is_mandatory,status').in('event_id', eventIds),
+    admin.from('bn_cross_module_handoff').select('source_record_id,status')
+      .eq('source_module', 'bn_mortality').in('source_record_id', eventIds),
+    admin.from('bn_mortality_evidence').select('event_id,status').in('event_id', eventIds),
+    admin.from('bn_mortality_award_impact')
+      .select('event_id,approval_state,hold_status,estimated_pad_minor,payment_after_death_minor,currency_code')
+      .in('event_id', eventIds),
+  ]);
+
+  for (const r of [actions, handoffs, evidence, impacts]) {
+    if (r.error) throw new QueryError('FAILED', 'GET_WORKLIST_INDICATORS_FAILED', r.error.message);
+  }
+
+  for (const a of (actions.data ?? []) as any[]) {
+    const t = base[a.event_id];
+    if (t && a.is_mandatory === true && a.status === 'OPEN') t.openMandatoryActions += 1;
+  }
+  for (const h of (handoffs.data ?? []) as any[]) {
+    const t = base[h.source_record_id];
+    if (!t) continue;
+    if (PENDING_HANDOFF_STATUSES.includes(String(h.status))) t.outstandingHandoffs += 1;
+    if (String(h.status) === 'FAILED') t.failedHandoffs += 1;
+  }
+  for (const e of (evidence.data ?? []) as any[]) {
+    const t = base[e.event_id];
+    if (t && ['ATTACHED', 'RECEIVED'].includes(String(e.status))) t.evidenceCount += 1;
+  }
+  for (const i of (impacts.data ?? []) as any[]) {
+    const t = base[i.event_id];
+    if (!t) continue;
+    t.impactCount += 1;
+    if (['PENDING', 'AWAITING_APPROVAL', 'SUBMITTED'].includes(String(i.approval_state))) t.awaitingApprovalImpacts += 1;
+    if (['APPLIED', 'ACTIVE', 'HELD'].includes(String(i.hold_status))) t.activeHolds += 1;
+    t.padExposureMinor += Number(i.estimated_pad_minor ?? i.payment_after_death_minor ?? 0) || 0;
+    if (!t.currencyCode && i.currency_code) t.currencyCode = i.currency_code;
+  }
+
+  const dto = eventIds.map((id) => base[id]);
+  return { data: dto, totalCount: dto.length };
+}
+
+/**
+ * BN-MORT-M4 — Benefit 360 integration.
+ *
+ * Returns the mortality posture for a single award: the governing event,
+ * the recorded impact, and the payment-after-death exposure. Award 360
+ * renders this read-only; it never mutates mortality state.
+ */
+async function getAwardMortalitySnapshot(admin: any, params: any) {
+  const awardId = params?.awardId;
+  if (!awardId || !UUID_RE.test(String(awardId))) throw invalid('awardId must be UUID', 'awardId');
+
+  const { data: impacts, error } = await admin
+    .from('bn_mortality_award_impact')
+    .select('id,event_id,award_reference,action,impact_status,approval_state,hold_status,termination_status,' +
+      'estimated_pad_minor,payment_after_death_minor,currency_code,overpayment_reference,last_valid_payment_date,updated_at')
+    .eq('bn_award_id', awardId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw new QueryError('FAILED', 'GET_AWARD_MORTALITY_FAILED', error.message);
+
+  const impact = (impacts ?? [])[0] ?? null;
+  if (!impact) {
+    return { data: { awardId, hasMortalityEvent: false, event: null, impact: null }, totalCount: 0 };
+  }
+
+  const { data: ev, error: evErr } = await admin
+    .from('bn_mortality_event')
+    .select('id,event_reference,status,death_date,deceased_full_name,reported_at,confirmed_at')
+    .eq('id', impact.event_id)
+    .maybeSingle();
+  if (evErr) throw new QueryError('FAILED', 'GET_AWARD_MORTALITY_FAILED', evErr.message);
+
+  return {
+    data: {
+      awardId,
+      hasMortalityEvent: true,
+      event: ev
+        ? {
+            id: ev.id,
+            eventReference: ev.event_reference,
+            status: ev.status,
+            deathDate: ev.death_date,
+            deceasedFullName: ev.deceased_full_name,
+            reportedAt: ev.reported_at,
+            confirmedAt: ev.confirmed_at,
+            route: `/bn/mortality/${ev.id}`,
+          }
+        : null,
+      impact: {
+        id: impact.id,
+        action: impact.action,
+        impactStatus: impact.impact_status,
+        approvalState: impact.approval_state,
+        holdStatus: impact.hold_status,
+        terminationStatus: impact.termination_status,
+        estimatedPadMinor: impact.estimated_pad_minor ?? impact.payment_after_death_minor ?? 0,
+        currencyCode: impact.currency_code ?? 'XCD',
+        overpaymentReference: impact.overpayment_reference ?? null,
+        lastValidPaymentDate: impact.last_valid_payment_date ?? null,
+        updatedAt: impact.updated_at,
+      },
+    },
+    totalCount: 1,
+  };
+}
+
 async function searchPersonMatches(admin: any, params: any, page: { limit: number; offset: number }) {
   if (params?.nationalId != null) {
     const n = String(params.nationalId);
