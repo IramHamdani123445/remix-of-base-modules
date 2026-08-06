@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS public.bn_op_recovery_suspension (
 CREATE TABLE IF NOT EXISTS public.bn_op_recovery_transaction (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   case_id uuid NOT NULL,
-  txn_no bigint NOT NULL,
+  txn_no bigint NOT NULL GENERATED ALWAYS AS IDENTITY,
   txn_type text NOT NULL,
   currency character(3) NOT NULL DEFAULT 'XCD'::bpchar,
   signed_amount numeric(18,2) NOT NULL,
