@@ -13655,6 +13655,7 @@ export type Database = {
           reassessment_due: string | null
           result: string | null
           row_version: number
+          source_entry_point: string | null
           status: string
           submitted_at: string | null
           superseded_by_assessment_id: string | null
@@ -13693,6 +13694,7 @@ export type Database = {
           reassessment_due?: string | null
           result?: string | null
           row_version?: number
+          source_entry_point?: string | null
           status?: string
           submitted_at?: string | null
           superseded_by_assessment_id?: string | null
@@ -13731,6 +13733,7 @@ export type Database = {
           reassessment_due?: string | null
           result?: string | null
           row_version?: number
+          source_entry_point?: string | null
           status?: string
           submitted_at?: string | null
           superseded_by_assessment_id?: string | null
@@ -105474,6 +105477,7 @@ export type Database = {
         Args: { p_command_name: string }
         Returns: string
       }
+      _bn_means_mask_ssn: { Args: { p_ssn: string }; Returns: string }
       _bn_means_mt7_execute: {
         Args: {
           p_actor: string
@@ -105503,6 +105507,10 @@ export type Database = {
           p_correlation: string
         }
         Returns: string
+      }
+      _bn_means_resolve_policy: {
+        Args: { p_date: string; p_programme: string }
+        Returns: Json
       }
       _bn_means_round: {
         Args: { p_amount: number; p_method: string; p_scale: number }
@@ -107086,6 +107094,30 @@ export type Database = {
           p_payload_hash: string
           p_reason_code: string
         }
+        Returns: Json
+      }
+      bn_means_initiation_check_v1: {
+        Args: { p_actor_user_id: string; p_context: Json }
+        Returns: Json
+      }
+      bn_means_person_context_v1: {
+        Args: { p_actor_user_id: string; p_person_id: number }
+        Returns: Json
+      }
+      bn_means_person_search_v1: {
+        Args: { p_actor_user_id: string; p_limit?: number; p_term: string }
+        Returns: Json
+      }
+      bn_means_policy_resolution_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_benefit_programme: string
+          p_effective_date: string
+        }
+        Returns: Json
+      }
+      bn_means_programmes_v1: {
+        Args: { p_actor_user_id: string; p_effective_date?: string }
         Returns: Json
       }
       bn_means_queues_v1: {
