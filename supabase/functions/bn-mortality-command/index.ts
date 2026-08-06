@@ -257,7 +257,12 @@ Deno.serve(async (req) => {
   }
 
   // --- 9. Transactional execution ---------------------------------------
-  const { data: rpcData, error: rpcErr } = await admin.rpc('bn_mortality_execute_command', {
+  // v2 is the governed entry point: it re-enforces the dark-launch/permission
+  // gate, replay protection, maker-checker + self-approval prohibition inside
+  // the database transaction, and owns evidence persistence, governed
+  // cross-module handoffs and the closure gate. The unguarded v1 function is
+  // no longer executable by browser roles.
+  const { data: rpcData, error: rpcErr } = await admin.rpc('bn_mortality_execute_command_v2', {
     p_command_name: envelope.commandName,
     p_entity_id: envelope.entityId,
     p_actor_user_id: actorUserId,
@@ -268,6 +273,7 @@ Deno.serve(async (req) => {
     p_justification: envelope.justification ?? null,
     p_payload: envelope.payload ?? {},
     p_payload_hash: hash,
+    p_idempotency_key: envelope.idempotencyKey,
   });
 
   if (rpcErr) {
