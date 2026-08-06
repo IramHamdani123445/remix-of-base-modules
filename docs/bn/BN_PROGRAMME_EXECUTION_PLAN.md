@@ -77,7 +77,6 @@ conclusion `success`. `classification = COMPLETE_AND_CERTIFIED`,
 `activation = DARK_LAUNCHED`, `external_uat = DEFERRED`,
 `finance_legal_operations_readiness = PENDING`.
 
-## Wave 5 — Overpayments and Recovery  ✅ certification complete
 
 Canonical route `/bn/overpayments`. Matrix:
 `docs/bn/BN_OVERPAYMENT_IMPLEMENTATION_MATRIX.md`.
