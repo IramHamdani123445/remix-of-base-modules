@@ -523,6 +523,45 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           />
         </TabsContent>
 
+        <TabsContent value="adjustments">
+          <BnMeansAdjustmentsPanel
+            adjustments={adjustmentRows}
+            loadFailure={adjustmentsUnavailable}
+            currency={currency}
+            calculationId={
+              approvalContext?.calculation_id ??
+              (latestCalculation?.calculation_id ? String(latestCalculation.calculation_id) : null)
+            }
+            calculationHash={
+              approvalContext?.calculation_hash ??
+              (latestCalculation?.calculation_hash ? String(latestCalculation.calculation_hash) : null)
+            }
+            assessmentVersionId={approvalContext?.assessment_version_id ?? null}
+            rowVersion={rowVersion}
+            requestAction={actionFor('BN_MEANS_REQUEST_ADJUSTMENT')}
+            decideAction={actionFor('BN_MEANS_APPROVE_ADJUSTMENT')}
+            busy={run.isPending}
+            successToken={successToken}
+            onRequest={(payload) => run.mutate({ command: 'BN_MEANS_REQUEST_ADJUSTMENT', payload })}
+            onDecide={(payload) => run.mutate({ command: 'BN_MEANS_APPROVE_ADJUSTMENT', payload })}
+          />
+        </TabsContent>
+
+        <TabsContent value="approval">
+          <BnMeansApprovalPanel
+            context={approvalContext}
+            loadFailure={approvalUnavailable}
+            approveAction={actionFor('BN_MEANS_APPROVE')}
+            rejectAction={actionFor('BN_MEANS_REJECT')}
+            busy={run.isPending}
+            successToken={successToken}
+            onApprove={(payload) => run.mutate({ command: 'BN_MEANS_APPROVE', payload })}
+            onReject={(payload) => run.mutate({ command: 'BN_MEANS_REJECT', payload })}
+          />
+        </TabsContent>
+
+
+
         <TabsContent value="timeline">
 
           <Card>
