@@ -335,6 +335,15 @@ function DashboardContent({ ctx }: { ctx: BnModuleAccessContext }) {
   const rows = listQuery.data?.data ?? [];
   const totalCount = listQuery.data?.page?.totalCount ?? null;
 
+  // BN-MORT-M3 — operational signals for the visible page only.
+  const visibleIds = useMemo(() => rows.map((r) => r.id), [rows]);
+  const indicatorQuery = useMortalityWorklistIndicators(visibleIds);
+  const indicatorsById = useMemo(() => {
+    const m = new Map<string, MortalityWorklistIndicator>();
+    (indicatorQuery.data?.data ?? []).forEach((i) => m.set(i.eventId, i));
+    return m;
+  }, [indicatorQuery.data]);
+
   const correlationId = (listQuery.data as any)?.envelope?.correlationId
     ?? (listQuery.error as any)?.correlationId
     ?? null;
