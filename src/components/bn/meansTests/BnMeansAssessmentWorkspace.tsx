@@ -157,6 +157,33 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           : `Readiness could not be evaluated (${readiness.data.detail ?? readiness.data.code ?? 'unknown error'}).`
         : null;
 
+  // MT7 — adjustments and independent approval, all backend-owned.
+  const adjustmentRows =
+    adjustments.data?.status === 'OK'
+      ? ((adjustments.data.data ?? []) as readonly BnMeansAdjustmentRow[])
+      : [];
+  const adjustmentsUnavailable = adjustments.isError
+    ? 'Adjustments could not be loaded.'
+    : adjustments.data && adjustments.data.status !== 'OK'
+      ? adjustments.data.status === 'DENIED'
+        ? 'You do not have permission to view adjustments for this assessment.'
+        : `Adjustments could not be loaded (${adjustments.data.detail ?? adjustments.data.code ?? 'unknown error'}).`
+      : null;
+  const approvalContext =
+    approval.data?.status === 'OK'
+      ? ((approval.data.data ?? null) as BnMeansApprovalContext | null)
+      : null;
+  const approvalUnavailable = approval.isError
+    ? 'Approval context could not be loaded.'
+    : approval.data && approval.data.status !== 'OK'
+      ? approval.data.status === 'DENIED'
+        ? 'You do not have permission to view the approval context.'
+        : `Approval context could not be loaded (${approval.data.detail ?? approval.data.code ?? 'unknown error'}).`
+      : null;
+  const openAdjustmentCount = adjustmentRows.filter(
+    (a) => a.status === 'REQUESTED' || a.status === 'APPROVED_PENDING_APPLICATION',
+  ).length;
+
 
   const ActionButton: React.FC<{ command: BnMeansCommandName; label: string; payload?: Record<string, unknown> }> = ({
     command,
