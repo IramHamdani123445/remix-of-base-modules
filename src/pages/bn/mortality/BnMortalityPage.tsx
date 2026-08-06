@@ -613,6 +613,7 @@ function DashboardContent({ ctx }: { ctx: BnModuleAccessContext }) {
                     <TableHead>SLA due</TableHead>
                     <TableHead>Age</TableHead>
                     <TableHead>Updated</TableHead>
+                    <TableHead>Signals</TableHead>
                     <TableHead className="text-right">Open</TableHead>
                   </TableRow>
                 </TableHeader>
