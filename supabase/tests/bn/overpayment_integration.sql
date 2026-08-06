@@ -51,6 +51,9 @@ ON CONFLICT DO NOTHING;
 INSERT INTO public.bn_op_user_role (user_id, role_code, is_synthetic)
 VALUES
   ('00000000-0000-0000-0000-0000000000a1', 'BN_OP_SYNTH_MAKER',   true),
+  -- the maker also holds checker capability: self-approval must still be
+  -- blocked by the maker-checker guard, not by a missing permission.
+  ('00000000-0000-0000-0000-0000000000a1', 'BN_OP_SYNTH_CHECKER', true),
   ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_CHECKER', true),
   ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_FINANCE', true),
   ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_AUDITOR', true)
