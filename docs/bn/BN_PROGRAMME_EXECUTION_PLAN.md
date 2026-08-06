@@ -52,14 +52,30 @@ Canonical route `/bn/life-certificates`.
 `external_uat = DEFERRED`. Canonical routes `/bn/medical-reviews`,
 `/bn/medical-reviews/board`, `/bn/medical-reviews/legacy-scheduler`.
 
-## Wave 4 — Mortality and Survivors Processing
+## Wave 4 — Mortality (in progress; Survivors out of scope for this programme)
 
-Shared death-event spine; certify together.
+Death-event spine. Survivors is integrated **only** through the governed
+handoff boundary — no Survivors implementation in this programme.
 
-1. Command catalogue + policy area for mortality events.
-2. RPC boundary for survivor entitlement determination.
-3. Grant verifier + harness covering: death registered → award suspended →
-   survivor entitlement created.
+1. ✅ 26-command catalogue reconciled against real backend execution.
+2. ✅ Governed entry point `bn_mortality_execute_command_v2`: dark-launch +
+   permission gate, idempotent replay, maker-checker with self-approval
+   prohibition, DMS evidence, governed handoffs, closure gate. v1 revoked
+   from browser roles.
+3. ✅ Shared `bn_cross_module_handoff` register (Overpayments, Survivors,
+   Funeral Grant, Legal).
+4. ⏳ Operational UI closure + Benefit 360 card.
+5. ⏳ Grant verifier + seeded harness covering: death registered →
+   provisional hold → verified → impact approved → award terminated →
+   payment-after-death → Overpayment handoff → closure gate → rollback.
+
+## Wave 5 — Overpayments and Recovery  ✅ certification complete
+
+Independent GitHub certification: `bn-overpayment-integration.yml`
+run `31116272752`, commit `3a8b893139f5101022e0924617fbd73548e72e54`,
+conclusion `success`. `classification = COMPLETE_AND_CERTIFIED`,
+`activation = DARK_LAUNCHED`, `external_uat = DEFERRED`,
+`finance_legal_operations_readiness = PENDING`.
 
 ## Wave 5 — Overpayments and Recovery  ✅ certification complete
 
