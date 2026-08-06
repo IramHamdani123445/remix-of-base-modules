@@ -84,36 +84,52 @@ expect_fail "production-like project ref" "apparent production target" -- \
   BN_SUSP_EXPECTED_DATABASE=skn_uat BN_SUSP_TEST_PROJECT_REF="release01"
 
 # =====================================================================
-# 2. Disposable PostgreSQL cluster
+# 2. Disposable PostgreSQL server
+#
+# Either an external disposable server (BN_SUSP_TEST_ADMIN_URL — used by CI
+# with a postgres:15 service container) or a locally started throwaway
+# cluster. Never a shared or persistent database.
 # =====================================================================
-PGBIN="${BN_SUSP_TEST_PGBIN:-}"
-if [ -z "$PGBIN" ]; then
-  for c in /usr/lib/postgresql/15/bin /usr/lib/postgresql/*/bin /usr/bin /bin; do
-    [ -x "$c/initdb" ] && PGBIN="$c" && break
-  done
-fi
-if [ -z "$PGBIN" ] || [ ! -x "$PGBIN/initdb" ]; then
-  echo "SKIP — no local PostgreSQL binaries; database cases not run" >&2
-  echo "passed=$pass failed=$fail (database cases skipped)"
-  exit 1
-fi
-export PATH="$PGBIN:$PATH"
-echo "using PostgreSQL: $("$PGBIN/initdb" --version)"
-
 PGDIR="$(mktemp -d)"
-PGSOCK="$PGDIR/sock"; mkdir -p "$PGSOCK"
-cleanup() { "$PGBIN/pg_ctl" -D "$PGDIR/data" -m immediate stop >/dev/null 2>&1; rm -rf "$PGDIR"; }
-trap cleanup EXIT
+ADMIN_URL="${BN_SUSP_TEST_ADMIN_URL:-}"
 
-"$PGBIN/initdb" -D "$PGDIR/data" -U postgres -A trust > "$PGDIR/initdb.log" 2>&1 \
-  || { echo "FAIL — initdb"; tail -20 "$PGDIR/initdb.log"; exit 1; }
-"$PGBIN/pg_ctl" -D "$PGDIR/data" -o "-k $PGSOCK -h '' -c fsync=off" -l "$PGDIR/pg.log" -w start >/dev/null 2>&1 \
-  || { echo "FAIL — pg_ctl start"; tail -30 "$PGDIR/pg.log"; exit 1; }
+if [ -n "$ADMIN_URL" ]; then
+  BASE="${ADMIN_URL%/*}"
+  url_for() { echo "$BASE/$1"; }
+  cleanup() { rm -rf "$PGDIR"; }
+  trap cleanup EXIT
+  echo "using external disposable PostgreSQL: $(psql "$ADMIN_URL" -X -At -c 'SHOW server_version')"
+else
+  PGBIN="${BN_SUSP_TEST_PGBIN:-}"
+  if [ -z "$PGBIN" ]; then
+    for c in /usr/lib/postgresql/15/bin /usr/lib/postgresql/*/bin /usr/bin /bin; do
+      [ -x "$c/initdb" ] && PGBIN="$c" && break
+    done
+  fi
+  if [ -z "$PGBIN" ] || [ ! -x "$PGBIN/initdb" ]; then
+    echo "SKIP — no local PostgreSQL binaries; database cases not run" >&2
+    echo "passed=$pass failed=$fail (database cases skipped)"
+    exit 1
+  fi
+  export PATH="$PGBIN:$PATH"
+  echo "using PostgreSQL: $("$PGBIN/initdb" --version)"
 
-# Trust auth, unix socket, no password anywhere.
-url_for() { echo "postgresql://postgres@/$1?host=$PGSOCK"; }
+  PGSOCK="$PGDIR/sock"; mkdir -p "$PGSOCK"
+  cleanup() { "$PGBIN/pg_ctl" -D "$PGDIR/data" -m immediate stop >/dev/null 2>&1; rm -rf "$PGDIR"; }
+  trap cleanup EXIT
+
+  "$PGBIN/initdb" -D "$PGDIR/data" -U postgres -A trust > "$PGDIR/initdb.log" 2>&1 \
+    || { echo "FAIL — initdb"; tail -20 "$PGDIR/initdb.log"; exit 1; }
+  "$PGBIN/pg_ctl" -D "$PGDIR/data" -o "-k $PGSOCK -h '' -c fsync=off" -l "$PGDIR/pg.log" -w start >/dev/null 2>&1 \
+    || { echo "FAIL — pg_ctl start"; tail -30 "$PGDIR/pg.log"; exit 1; }
+
+  # Trust auth over a unix socket: no password exists anywhere in this run.
+  url_for() { echo "postgresql://postgres@/$1?host=$PGSOCK"; }
+fi
+
 psql_q()  { psql "$(url_for "$1")" -X -At -v ON_ERROR_STOP=1 -c "$2"; }
 adm()     { psql "$(url_for postgres)" -X -q -v ON_ERROR_STOP=1 -c "$1"; }
+
 
 echo "==> building the template database (baseline + forward migrations)"
 adm "CREATE DATABASE skn_uat_tmpl"
