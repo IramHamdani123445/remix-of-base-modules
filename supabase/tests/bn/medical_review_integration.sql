@@ -280,6 +280,11 @@ BEGIN
           'MEETING', 2, 'MAJORITY', true)
   ON CONFLICT (id) DO NOTHING;
 
+  PERFORM pg_temp.mr_put('MEMBER_SECRETARY', gen_random_uuid()::text);
+  PERFORM pg_temp.mr_put('MEMBER_CHAIR',     gen_random_uuid()::text);
+  PERFORM pg_temp.mr_put('MEMBER_MEMBER',    gen_random_uuid()::text);
+  PERFORM pg_temp.mr_put('MEMBER_RECUSED',   gen_random_uuid()::text);
+
   -- Deterministic member ids: board-member RPCs take MEMBER row ids and the
   -- authenticated harness roles cannot read the roster table directly.
   INSERT INTO public.bn_medical_board_member(id, board_id, member_user_id, member_name,
