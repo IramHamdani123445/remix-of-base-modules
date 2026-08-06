@@ -13849,15 +13849,21 @@ export type Database = {
           calculation_version: string
           correlation_id: string | null
           currency_code: string
+          effective_date: string | null
+          engine_version: string
           excess_amount: number | null
           household_size: number
           input_hash: string
           input_snapshot: Json
           policy_version_id: string | null
+          reassessment_due: string | null
           result: string | null
           result_hash: string | null
           rounding_method: string
+          rounding_scale: number
           threshold_amount: number | null
+          valid_from: string | null
+          valid_until: string | null
           warnings: Json
         }
         Insert: {
@@ -13872,15 +13878,21 @@ export type Database = {
           calculation_version?: string
           correlation_id?: string | null
           currency_code: string
+          effective_date?: string | null
+          engine_version?: string
           excess_amount?: number | null
           household_size?: number
           input_hash: string
           input_snapshot: Json
           policy_version_id?: string | null
+          reassessment_due?: string | null
           result?: string | null
           result_hash?: string | null
           rounding_method: string
+          rounding_scale?: number
           threshold_amount?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
           warnings?: Json
         }
         Update: {
@@ -13895,15 +13907,21 @@ export type Database = {
           calculation_version?: string
           correlation_id?: string | null
           currency_code?: string
+          effective_date?: string | null
+          engine_version?: string
           excess_amount?: number | null
           household_size?: number
           input_hash?: string
           input_snapshot?: Json
           policy_version_id?: string | null
+          reassessment_due?: string | null
           result?: string | null
           result_hash?: string | null
           rounding_method?: string
+          rounding_scale?: number
           threshold_amount?: number | null
+          valid_from?: string | null
+          valid_until?: string | null
           warnings?: Json
         }
         Relationships: [
@@ -14332,6 +14350,7 @@ export type Database = {
           notes: string | null
           received_at: string | null
           status: string
+          verification_status: string
         }
         Insert: {
           assessment_id: string
@@ -14347,6 +14366,7 @@ export type Database = {
           notes?: string | null
           received_at?: string | null
           status?: string
+          verification_status?: string
         }
         Update: {
           assessment_id?: string
@@ -14362,6 +14382,7 @@ export type Database = {
           notes?: string | null
           received_at?: string | null
           status?: string
+          verification_status?: string
         }
         Relationships: [
           {
@@ -14856,6 +14877,7 @@ export type Database = {
       bn_means_verification: {
         Row: {
           assessment_id: string
+          assessment_version_id: string | null
           correlation_id: string | null
           evidence_checked: boolean
           evidence_id: string | null
@@ -14870,6 +14892,7 @@ export type Database = {
         }
         Insert: {
           assessment_id: string
+          assessment_version_id?: string | null
           correlation_id?: string | null
           evidence_checked?: boolean
           evidence_id?: string | null
@@ -14884,6 +14907,7 @@ export type Database = {
         }
         Update: {
           assessment_id?: string
+          assessment_version_id?: string | null
           correlation_id?: string | null
           evidence_checked?: boolean
           evidence_id?: string | null
@@ -14903,6 +14927,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_means_assessment"
             referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_verification_assessment_version_id_fkey"
+            columns: ["assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment_version"
+            referencedColumns: ["assessment_version_id"]
           },
           {
             foreignKeyName: "bn_means_verification_evidence_id_fkey"
@@ -105309,6 +105340,11 @@ export type Database = {
         Args: { p_command_name: string }
         Returns: string
       }
+      _bn_means_readiness: { Args: { p_assessment_id: string }; Returns: Json }
+      _bn_means_round: {
+        Args: { p_amount: number; p_method: string; p_scale: number }
+        Returns: number
+      }
       _bn_mortality_action_for_command: {
         Args: { p_command_name: string }
         Returns: string
@@ -106847,6 +106883,14 @@ export type Database = {
           p_award_id?: string
           p_person_id?: number
         }
+        Returns: Json
+      }
+      bn_means_calculation_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_calculation_trace_v1: {
+        Args: { p_actor_user_id: string; p_calculation_id: string }
         Returns: Json
       }
       bn_means_check_actor_permission: {

@@ -18,15 +18,28 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, ArrowLeft, Loader2, ShieldAlert } from 'lucide-react';
-import { meansQueryService, type BnMeansAvailableAction } from '@/services/bn/meansTests/meansQueryService';
+import {
+  meansQueryService,
+  type BnMeansAvailableAction,
+  type BnMeansCalculationReadiness,
+} from '@/services/bn/meansTests/meansQueryService';
 import { meansCommandService, type BnMeansCommandResult } from '@/services/bn/meansTests/meansCommandService';
 import type { BnMeansCommandName } from '@/types/bn/meansTests/meansCommands';
 import { formatWithCurrency } from '@/utils/formatCurrency';
+import {
+  BnMeansVerificationPanel,
+  buildFactGroups,
+  type BnMeansVerificationRecord,
+} from '@/components/bn/meansTests/BnMeansVerificationPanel';
+import { BnMeansCalculationPanel } from '@/components/bn/meansTests/BnMeansCalculationPanel';
+
 
 const REASON_LABEL: Record<string, string> = {
   ACTIONS_DISABLED: 'Actions are disabled while the module is in internal pilot',
   PERMISSION_DENIED: 'You do not hold the required permission',
   INVALID_STATE: 'Not available in the current status',
+  NOT_READY_FOR_CALCULATION: 'Outstanding verification blockers prevent calculation',
+
   MISSING_REQUIRED_INFORMATION: 'Required information is missing',
   MISSING_EVIDENCE: 'Required evidence has not been attached',
   STALE_ROW_VERSION: 'The record changed — reload before continuing',
@@ -63,6 +76,10 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     queryKey: ['bn-means-actions', assessmentId],
     queryFn: () => meansQueryService.availableActions(assessmentId),
   });
+  const readiness = useQuery({
+    queryKey: ['bn-means-readiness', assessmentId],
+    queryFn: () => meansQueryService.calculationReadiness(assessmentId),
+  });
 
   const run = useMutation({
     mutationFn: (input: { command: BnMeansCommandName; payload?: Record<string, unknown> }) =>
@@ -80,9 +97,12 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
       setCommandError(null);
       queryClient.invalidateQueries({ queryKey: ['bn-means-detail', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-actions', assessmentId] });
+      queryClient.invalidateQueries({ queryKey: ['bn-means-readiness', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
     },
   });
+
+
 
   if (detail.isLoading) {
     return <Skeleton className="h-64 w-full" />;
@@ -109,6 +129,27 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   const currency = String(assessment.currency_code ?? 'XCD');
   const availableActions = (actions.data?.data ?? []) as readonly BnMeansAvailableAction[];
   const actionFor = (command: string) => availableActions.find((a) => a.command === command);
+
+  // MT6 — verification and calculation state, all backend-owned.
+  const verifyAction = actionFor('BN_MEANS_VERIFY_INFORMATION');
+  const calculateAction = actionFor('BN_MEANS_CALCULATE');
+  const factGroups = buildFactGroups(data as Record<string, unknown>, currency);
+  const verifications = asRows(data.verifications) as unknown as readonly BnMeansVerificationRecord[];
+  const calculations = asRows(data.calculations);
+  const latestCalculation = (calculations[0] ?? null) as Record<string, unknown> | null;
+  const readinessData =
+    readiness.data?.status === 'OK'
+      ? ((readiness.data.data ?? null) as BnMeansCalculationReadiness | null)
+      : null;
+  const readinessUnavailable =
+    readiness.isError
+      ? 'Readiness could not be loaded. Treat it as unknown, not as ready.'
+      : readiness.data && readiness.data.status !== 'OK'
+        ? readiness.data.status === 'DENIED'
+          ? 'You do not have permission to evaluate calculation readiness.'
+          : `Readiness could not be evaluated (${readiness.data.detail ?? readiness.data.code ?? 'unknown error'}).`
+        : null;
+
 
   const ActionButton: React.FC<{ command: BnMeansCommandName; label: string; payload?: Record<string, unknown> }> = ({
     command,
@@ -178,7 +219,10 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           <TabsTrigger value="deductions">Deductions</TabsTrigger>
           <TabsTrigger value="evidence">Evidence</TabsTrigger>
           <TabsTrigger value="review">Review &amp; submit</TabsTrigger>
+          <TabsTrigger value="verification">Verification</TabsTrigger>
+          <TabsTrigger value="calculation">Calculation</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="context">
@@ -390,7 +434,53 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           </Card>
         </TabsContent>
 
+        <TabsContent value="verification">
+          <BnMeansVerificationPanel
+            groups={factGroups}
+            verifications={verifications}
+            canVerify={Boolean(verifyAction?.allowed) && !run.isPending}
+            disabledReason={
+              verifyAction?.allowed
+                ? null
+                : REASON_LABEL[verifyAction?.reason ?? ''] ?? verifyAction?.reason ?? 'not currently available'
+            }
+            busy={run.isPending}
+            onVerify={(input) =>
+              run.mutate({
+                command: 'BN_MEANS_VERIFY_INFORMATION',
+                payload: {
+                  fact_kind: input.factKind,
+                  fact_id: input.factId,
+                  outcome: input.outcome,
+                  reason_code: input.reasonCode ?? null,
+                  notes: input.note ?? null,
+                },
+              })
+            }
+          />
+        </TabsContent>
+
+        <TabsContent value="calculation">
+          <BnMeansCalculationPanel
+            readiness={readinessData}
+            readinessUnavailable={readinessUnavailable}
+            calculation={latestCalculation}
+            currency={currency}
+            canCalculate={Boolean(calculateAction?.allowed) && !run.isPending}
+            calculateReason={
+              calculateAction?.allowed
+                ? null
+                : REASON_LABEL[calculateAction?.reason ?? ''] ??
+                  calculateAction?.reason ??
+                  'Calculation is not currently available'
+            }
+            busy={run.isPending}
+            onCalculate={() => run.mutate({ command: 'BN_MEANS_CALCULATE' })}
+          />
+        </TabsContent>
+
         <TabsContent value="timeline">
+
           <Card>
             <CardHeader>
               <CardTitle>Audit timeline</CardTitle>

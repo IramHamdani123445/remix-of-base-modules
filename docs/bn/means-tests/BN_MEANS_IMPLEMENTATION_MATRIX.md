@@ -60,8 +60,8 @@ Legend for *Implementation*: `DONE` = database command + typed service shipped;
 | Claim deduction | `BN_MEANS_ADD_DEDUCTION` | — | DONE | insert `bn_means_deduction_fact` (`CLAIMED`) | `write` | editable | unchanged | bumped | yes | no | `FACT_RECORDED` | — | — | Deductions section | `meansIntakeContract` | — |
 | Attach evidence | `BN_MEANS_ATTACH_EVIDENCE` | `BN_MT_ATTACH_EVIDENCE` | DONE | insert `bn_means_evidence` (DMS ref only) | `write` | pre-approval | unchanged | bumped | yes | no | `EVIDENCE_ATTACHED` | — | DMS | Evidence section | `meansIntakeContract` | — |
 | Submit | `BN_MEANS_SUBMIT` | — | DONE | freeze `bn_means_assessment_version`, status → `SUBMITTED` | `write` | `DRAFT`/`INFORMATION_PENDING` | `SUBMITTED` | bumped | yes | records maker | `SUBMITTED` | `MEANS_ASSESSMENT_SUBMITTED` intent | Comm Hub façade | Submission step | `meansIntakeContract` | — |
-| Verify facts | `BN_MEANS_VERIFY_INFORMATION` | — | PENDING | insert `bn_means_verification` | `verify` | `SUBMITTED`/`VERIFICATION_PENDING` | `VERIFICATION_PENDING`/`CALCULATED` | bumped | yes | no | `VERIFICATION_*` | — | — | Verification panel | — | MT6 |
-| Calculate | `BN_MEANS_CALCULATE` | `BN_MT_ASSESS` | PENDING | insert `bn_means_calculation` + lines | `decide` | verified | `CALCULATED` | bumped | yes | no | `CALCULATED` | — | — | Calculation trace | — | MT6 |
+| Verify facts | `BN_MEANS_VERIFY_INFORMATION` | — | DELIVERED (MT6) | insert `bn_means_verification` | `verify` | `SUBMITTED`/`VERIFICATION_PENDING` | `VERIFICATION_PENDING`/`CALCULATED` | bumped | yes | no | `VERIFICATION_*` | — | — | Verification panel | — | MT6 |
+| Calculate | `BN_MEANS_CALCULATE` | `BN_MT_ASSESS` | DELIVERED (MT6) | insert `bn_means_calculation` + lines | `decide` | verified | `CALCULATED` | bumped | yes | no | `CALCULATED` | — | — | Calculation trace | — | MT6 |
 | Request adjustment | `BN_MEANS_REQUEST_ADJUSTMENT` | — | PENDING | insert `bn_means_adjustment` | `adjust_request` | `CALCULATED`/`REVIEW_PENDING` | `REVIEW_PENDING` | bumped | yes | records maker | `ADJUSTMENT_REQUESTED` | — | — | Adjustment dialog | — | MT7 |
 | Approve adjustment | `BN_MEANS_APPROVE_ADJUSTMENT` | — | PENDING | update `bn_means_adjustment` | `adjust_approve` | `REVIEW_PENDING` | `CALCULATED` | bumped | yes | **required**, self-approval denied | `ADJUSTMENT_APPROVED` | — | — | Approval dialog | — | MT7 |
 | Approve assessment | `BN_MEANS_APPROVE` | `BN_MT_PASS` | PENDING | insert `bn_means_approval` | `approve` | `CALCULATED`/`APPROVAL_PENDING` | `APPROVED` | bumped | yes | **required**, self-approval denied | `APPROVED` | decision notice | Comm Hub façade | Approval dialog | — | MT7 |
@@ -98,3 +98,40 @@ Legend for *Implementation*: `DONE` = database command + typed service shipped;
 - No Risk/Fraud case creation — only governed handoffs.
 - No document bytes, credentials or unrestricted storage paths in Means-Test tables.
 - No direct browser mutation of `bn_means_*` tables.
+
+
+## MT6 delivery record (verification and deterministic calculation)
+
+**Classification:** `IMPLEMENTATION_IN_PROGRESS`, `development_access = ENABLED`
+(`rollout_state = internal_pilot`, module actions enabled for development actors only).
+
+### Verification
+- `BN_MEANS_VERIFY_INFORMATION` applies to an individual fact of the frozen
+  submitted version (`HOUSEHOLD`, `INCOME`, `ASSET`, `DEDUCTION`, `EVIDENCE`).
+- Outcomes: `VERIFIED`, `REJECTED`, `CLARIFICATION_REQUIRED`, `NOT_APPLICABLE`,
+  each carrying reason code, note, actor and timestamp.
+- Declared values are never mutated by verification.
+
+### Deterministic calculation
+- `_bn_means_round` performs policy-driven decimal rounding
+  (`HALF_UP`, `HALF_EVEN`, `DOWN`, …); no floating-point arithmetic.
+- `_bn_means_readiness` is the single source of readiness truth:
+  missing verifications, rejected facts, outstanding clarifications,
+  policy configuration issues and currency mismatches.
+- `BN_MEANS_CALCULATE` is refused unless readiness passes; it writes an
+  immutable `bn_means_calculation` with `bn_means_calculation_line`
+  explanation lines and a deterministic `input_hash`.
+- `bn_means_available_actions_v1` mirrors the guard and returns
+  `NOT_READY_FOR_CALCULATION` rather than allowing a doomed action.
+
+### Surfaces
+- `BnMeansVerificationPanel` — per-fact verification workspace.
+- `BnMeansCalculationPanel` — backend readiness verdict, blockers, and the
+  immutable calculation trace. React never recomputes readiness.
+- Benefit 360 remains read-only: calculation status, provisional result,
+  calculation date and pending-approval indicator only — no household,
+  income, asset, deduction or verification-note detail.
+
+### Evidence
+`src/__tests__/bn/means-tests/meansMt6Surfaces.test.tsx` plus the MT4/MT5
+suite — 40/40 passing.
