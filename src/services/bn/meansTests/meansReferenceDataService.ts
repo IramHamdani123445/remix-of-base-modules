@@ -43,6 +43,8 @@ export interface BnMeansReferenceFilters {
   policyVersionId?: string;
   effectiveDate?: string;
   lifecycleState?: string;
+  /** Epic 1 — restrict a list to one initiation entry context. */
+  entryContext?: string;
   /** Actions held by the current user; options may be permission-scoped. */
   grants?: readonly string[];
   /** Default true — inactive options are only returned when explicitly asked for. */
@@ -54,6 +56,8 @@ interface CanonicalOption extends BnMeansOption {
   programmes?: readonly string[];
   /** Restrict the option to holders of a module action. */
   requiresAction?: string;
+  /** Restrict the option to specific initiation entry contexts. */
+  entryContexts?: readonly string[];
   /** Restrict the option to specific lifecycle states. */
   lifecycleStates?: readonly string[];
   validFrom?: string;
