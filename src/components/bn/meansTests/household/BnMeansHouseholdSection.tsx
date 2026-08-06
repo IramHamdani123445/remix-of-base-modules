@@ -87,7 +87,7 @@ export const BnMeansHouseholdSection: React.FC<BnMeansHouseholdSectionProps> = (
         payload: input.payload,
       }),
     onSuccess: (result, input) => {
-      if (result.status === 'OK') {
+      if (result.status !== 'FAILED') {
         setCommandError(null);
         setDialogOpen(false);
         setRemoveTarget(null);
@@ -100,8 +100,8 @@ export const BnMeansHouseholdSection: React.FC<BnMeansHouseholdSectionProps> = (
         if (input.command === 'BN_MEANS_MARK_HOUSEHOLD_COMPLETE') onSectionComplete?.();
         return;
       }
-      const code = result.code ?? 'UNKNOWN';
-      const message = result.detail ?? householdReasonLabel(code);
+      const code = result.errorCode ?? 'UNKNOWN';
+      const message = result.errorDetail ?? householdReasonLabel(code);
       setCommandError({ code, message });
       if (!dialogOpen) toast.error(message);
     },
@@ -363,7 +363,7 @@ export const BnMeansHouseholdSection: React.FC<BnMeansHouseholdSectionProps> = (
               ? (candidatesQuery.data.data ?? []).length === 0
                 ? 'EMPTY'
                 : 'SUCCESS'
-              : toLoadState(candidatesQuery.data?.status)
+              : (toLoadState(candidatesQuery.data?.status) as 'DENIED' | 'FAILED')
         }
         candidatesReason={candidatesQuery.data?.detail ?? null}
         busy={mutation.isPending}
