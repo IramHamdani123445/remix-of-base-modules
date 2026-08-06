@@ -680,6 +680,13 @@ function DashboardContent({ ctx }: { ctx: BnModuleAccessContext }) {
                         </TableCell>
                         <TableCell className="text-xs">{daysAgo(r.reported_at)}</TableCell>
                         <TableCell className="text-xs">{daysAgo(r.updated_at)}</TableCell>
+                        <TableCell className="text-xs">
+                          <BnMortalityWorklistIndicators
+                            indicator={indicatorsById.get(r.id)}
+                            isLoading={indicatorQuery.isLoading}
+                            isError={indicatorQuery.isError}
+                          />
+                        </TableCell>
                         <TableCell className="text-right" onClick={stop}>
                           <Button
                             size="sm"
