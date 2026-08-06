@@ -955,8 +955,9 @@ BEGIN
              WHERE c.obligation_id = pg_temp.mr_uid('OBLIGATION')));
 
   PERFORM pg_temp.mr_ok('O', 'audit_trail_written',
-    (SELECT count(*) FROM public.bn_medical_review_audit a
-      WHERE a.entity_id IN (pg_temp.mr_uid('OBLIGATION'), pg_temp.mr_uid('DECISION'))) > 0);
+    (SELECT count(*) FROM public.core_audit_log a
+      WHERE a.module_code = 'bn_medical_review'
+        AND a.entity_id IN (pg_temp.mr_uid('OBLIGATION'), pg_temp.mr_uid('DECISION'))) > 0);
 END $$;
 
 -- =====================================================================
