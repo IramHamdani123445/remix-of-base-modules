@@ -23,8 +23,11 @@ import {
   useMortalityDashboard,
   useMortalityEventList,
   useMortalityAssignableUsers,
+  useMortalityWorklistIndicators,
   type MortalityListFilters,
 } from '@/hooks/bn/mortality/useMortalityQueries';
+import type { MortalityWorklistIndicator } from '@/types/bn/mortality/mortalityDtos';
+import { BnMortalityWorklistIndicators } from './components/BnMortalityWorklistIndicators';
 import {
   MORTALITY_SOURCE_LABELS,
   MORTALITY_STATUS_LABELS,
