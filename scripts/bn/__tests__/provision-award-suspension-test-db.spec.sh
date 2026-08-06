@@ -14,16 +14,21 @@
 set -uo pipefail
 
 # PostgreSQL refuses to run as root. When invoked as root (sandboxes,
-# containers) re-exec the whole suite as an unprivileged local user.
+# containers) re-exec the whole suite unprivileged. CI runners are already
+# unprivileged and skip this block entirely.
 if [ "$(id -u)" = "0" ]; then
-  PGUSER_NAME="${BN_SUSP_TEST_OS_USER:-pgtest}"
-  id -u "$PGUSER_NAME" >/dev/null 2>&1 || useradd -m "$PGUSER_NAME" >/dev/null 2>&1 || true
-  if id -u "$PGUSER_NAME" >/dev/null 2>&1; then
-    exec su "$PGUSER_NAME" -c "BN_SUSP_TEST_PGBIN='${BN_SUSP_TEST_PGBIN:-}' bash '$(cd "$(dirname "$0")" && pwd)/$(basename "$0")'"
+  SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+  WORK="$(mktemp -d)"; chmod 777 "$WORK"
+  UID_UNPRIV="${BN_SUSP_TEST_UID:-65534}"
+  if command -v setpriv >/dev/null 2>&1; then
+    exec setpriv --reuid="$UID_UNPRIV" --regid="$UID_UNPRIV" --clear-groups \
+      env HOME="$WORK" TMPDIR="$WORK" BN_SUSP_TEST_PGBIN="${BN_SUSP_TEST_PGBIN:-}" \
+      bash "$SELF"
   fi
-  echo "SKIP — running as root and no unprivileged user could be created" >&2
+  echo "SKIP — running as root and privileges could not be dropped" >&2
   exit 1
 fi
+
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SCRIPT="$ROOT/scripts/bn/provision-award-suspension-test-db.sh"
