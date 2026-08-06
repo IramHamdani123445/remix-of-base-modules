@@ -1,0 +1,131 @@
+name: BN Mortality Integration (PG15)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'src/services/bn/mortality/**'
+      - 'src/types/bn/mortality/**'
+      - 'src/pages/bn/mortality/**'
+      - 'scripts/ci/**'
+      - 'docs/bn/mortality/**'
+      - 'docs/bn/BN_MASTER_COMPLETION_REGISTER.*'
+      - '.github/workflows/bn-mortality-integration.yml'
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'src/services/bn/mortality/**'
+      - 'src/types/bn/mortality/**'
+      - 'scripts/ci/**'
+      - '.github/workflows/bn-mortality-integration.yml'
+  workflow_dispatch:
+
+jobs:
+  mortality-certification:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap disposable Supabase-shaped database
+        run: bash scripts/ci/bootstrap-supabase-test-db.sh
+
+      - name: Environment marker guard (never certify against production)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select upper(environment_kind) from public.platform_environment_marker where id = true" \
+            | tee /tmp/mort-env.log
+          grep -qx 'CI' /tmp/mort-env.log
+
+      - name: Effective-grant verifier (M6)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/verify/bn_mortality_effective_grants.sql 2>&1 | tee /tmp/mort-grants.log
+          test "$(grep -c 'BN_MORT_GRANTS_RESULT: PASS' /tmp/mort-grants.log)" -eq 1
+          ! grep -q 'BN_MORT_GRANTS_RESULT: FAIL' /tmp/mort-grants.log
+          ! grep -q 'BN_MORT_GRANTS_RESULT: SKIP' /tmp/mort-grants.log
+
+      - name: Lifecycle integration harness (M7/M8)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/mortality_integration.sql 2>&1 | tee /tmp/mort-harness.log
+          test "$(grep -c 'BN_MORT_HARNESS_RESULT: PASS' /tmp/mort-harness.log)" -eq 1
+          test "$(grep -c 'BN_MORT_POSTFLIGHT_RESULT: PASS' /tmp/mort-harness.log)" -eq 1
+          ! grep -q 'BN_MORT_HARNESS_RESULT: FAIL' /tmp/mort-harness.log
+          ! grep -q 'BN_MORT_HARNESS_RESULT: SKIP' /tmp/mort-harness.log
+          ! grep -q 'BN_MORT_POSTFLIGHT_RESULT: FAIL' /tmp/mort-harness.log
+
+      - name: Dark-launch postflight (rollout state and actions)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select rollout_state || ':' || actions_enabled from public.app_modules where name = 'bn_mortality'" \
+            | tee /tmp/mort-dark.log
+          grep -qx 'internal_pilot:false' /tmp/mort-dark.log
+
+      - name: Fixture residue gate (M8)
+        run: |
+          set -euo pipefail
+          # Every bn_mortality_* table must be empty after the harness rolls
+          # back. bn_mortality_command_definition is migration-seeded reference
+          # data and is asserted separately below.
+          psql -v ON_ERROR_STOP=1 -Atc "
+            select coalesce(sum(n), 0) from (
+              select (xpath('/row/c/text()',
+                query_to_xml(format('select count(*) as c from %I.%I', schemaname, tablename),
+                false, true, '')))[1]::text::bigint as n
+              from pg_tables
+              where schemaname = 'public'
+                and (tablename like 'bn\_mortality\_%' or tablename like 'bn\_cross\_module\_handoff%')
+                and tablename <> 'bn_mortality_command_definition'
+            ) t" | tee /tmp/mort-residue.log
+          grep -qx '0' /tmp/mort-residue.log
+
+      - name: Command catalogue seeded by migration (M1)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select count(*) from public.bn_mortality_command_definition" | tee /tmp/mort-catalogue.log
+          grep -qx '26' /tmp/mort-catalogue.log
+
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      - name: Mortality boundary + governance tests
+        run: bunx vitest run src/__tests__/bn/mortality
+
+      - name: Typecheck
+        run: bunx tsc --noEmit -p tsconfig.app.json
+
+      - name: Upload certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bn-mortality-certification-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            /tmp/mort-env.log
+            /tmp/mort-grants.log
+            /tmp/mort-harness.log
+            /tmp/mort-dark.log
+            /tmp/mort-residue.log
+            /tmp/mort-catalogue.log
