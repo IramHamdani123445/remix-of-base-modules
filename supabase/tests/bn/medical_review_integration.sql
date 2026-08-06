@@ -280,12 +280,14 @@ BEGIN
           'MEETING', 2, 'MAJORITY', true)
   ON CONFLICT (id) DO NOTHING;
 
-  INSERT INTO public.bn_medical_board_member(board_id, member_user_id, member_name,
+  -- Deterministic member ids: board-member RPCs take MEMBER row ids and the
+  -- authenticated harness roles cannot read the roster table directly.
+  INSERT INTO public.bn_medical_board_member(id, board_id, member_user_id, member_name,
                                             member_role, specialty, is_active)
-  VALUES (v_board, v_secretary, 'Harness Board Secretary', 'SECRETARY', 'ADMINISTRATION', true),
-         (v_board, v_chair,     'Harness Board Chair',     'CHAIR',     'ORTHOPAEDICS',   true),
-         (v_board, v_member,    'Harness Board Member',    'MEMBER',    'ORTHOPAEDICS',   true),
-         (v_board, v_recused,   'Harness Recused Member',  'MEMBER',    'ORTHOPAEDICS',   true)
+  VALUES (pg_temp.mr_uid('MEMBER_SECRETARY'), v_board, v_secretary, 'Harness Board Secretary', 'SECRETARY', 'ADMINISTRATION', true),
+         (pg_temp.mr_uid('MEMBER_CHAIR'),     v_board, v_chair,     'Harness Board Chair',     'CHAIR',     'ORTHOPAEDICS',   true),
+         (pg_temp.mr_uid('MEMBER_MEMBER'),    v_board, v_member,    'Harness Board Member',    'MEMBER',    'ORTHOPAEDICS',   true),
+         (pg_temp.mr_uid('MEMBER_RECUSED'),   v_board, v_recused,   'Harness Recused Member',  'MEMBER',    'ORTHOPAEDICS',   true)
   ON CONFLICT DO NOTHING;
 
   -- --- providers -------------------------------------------------------
@@ -686,14 +688,10 @@ SELECT set_config('request.jwt.claims', pg_temp.mr_claims('USER_SECRETARY'), tru
 DO $$
 DECLARE r jsonb; v_members uuid[];
 BEGIN
-  -- The RPC expects board MEMBER row ids (not user ids), so they are
-  -- resolved from the synthetic board roster.
-  SELECT array_agg(id) INTO v_members
-    FROM public.bn_medical_board_member
-   WHERE board_id = pg_temp.mr_uid('BOARD')
-     AND member_user_id IN (pg_temp.mr_uid('USER_CHAIR'),
-                            pg_temp.mr_uid('USER_MEMBER'),
-                            pg_temp.mr_uid('USER_RECUSED'));
+  -- The RPC expects board MEMBER row ids (not user ids).
+  v_members := ARRAY[pg_temp.mr_uid('MEMBER_CHAIR'),
+                     pg_temp.mr_uid('MEMBER_MEMBER'),
+                     pg_temp.mr_uid('MEMBER_RECUSED')];
 
   r := public.bn_medical_review_assign_board_members_v1(
          pg_temp.mr_uid('BOARD_CASE'), v_members,
