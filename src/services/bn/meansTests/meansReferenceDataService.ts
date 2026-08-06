@@ -78,11 +78,15 @@ const o = (
  */
 const CANONICAL: Partial<Record<BnMeansReferenceSet, readonly CanonicalOption[]>> = {
   ASSESSMENT_REASON: [
+    o('INITIAL_ASSESSMENT', 'Initial assessment', 'First means test recorded for this person and programme.'),
     o('NEW_CLAIM', 'New claim', 'First assessment supporting a benefit claim.'),
-    o('ANNUAL_REVIEW', 'Annual review', 'Scheduled periodic reassessment.'),
+    o('ANNUAL_REVIEW', 'Scheduled review', 'Scheduled periodic reassessment.'),
+    o('AWARD_REVIEW', 'Award review', 'Review of the means behind an award in payment.'),
     o('CHANGE_OF_CIRCUMSTANCE', 'Change of circumstance', 'Household or financial change reported.'),
-    o('APPEAL_DIRECTION', 'Appeal direction', 'Reassessment directed by an appeal outcome.'),
-    o('DATA_CORRECTION', 'Data correction', 'Correction of previously recorded facts.'),
+    o('APPEAL_DIRECTION', 'Appeal outcome', 'Reassessment directed by an appeal outcome.'),
+    o('DATA_CORRECTION', 'Correction', 'Correction of previously recorded facts.'),
+    o('COMPLIANCE_REVIEW', 'Compliance review', 'Review prompted by compliance or data-match intelligence.'),
+    o('POLICY_DIRECTED_REVIEW', 'Policy-directed review', 'Review directed by a policy or uprating instruction.'),
   ],
   CURRENCY: [
     o('XCD', 'East Caribbean Dollar (XCD)'),
