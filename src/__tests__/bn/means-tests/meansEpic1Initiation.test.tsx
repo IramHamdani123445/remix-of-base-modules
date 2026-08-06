@@ -264,7 +264,7 @@ describe('MEANS-TEST EPIC 1 · guided initiation wizard', () => {
       />,
     );
     fireEvent.click(await screen.findByTestId('means-step-PERSON'));
-    fireEvent.change(screen.getByLabelText(/person to be assessed/i), { target: { value: 'Joseph' } });
+    fireEvent.change(screen.getAllByLabelText(/person to be assessed/i)[0], { target: { value: 'Joseph' } });
     fireEvent.click(screen.getByRole('button', { name: /search person to be assessed/i }));
     const hit = await screen.findByText('Marcia Joseph');
     expect(screen.getByText(/\*\*\*456/)).toBeInTheDocument();
