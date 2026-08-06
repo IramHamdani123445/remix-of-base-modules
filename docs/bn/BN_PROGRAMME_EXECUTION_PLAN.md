@@ -61,28 +61,20 @@ Shared death-event spine; certify together.
 3. Grant verifier + harness covering: death registered → award suspended →
    survivor entitlement created.
 
-## Wave 5 — Overpayments and Recovery  🔄 in progress
+## Wave 5 — Overpayments and Recovery  ✅ certification complete
 
-Canonical route `/bn/overpayments`. Audit and matrix:
+Canonical route `/bn/overpayments`. Matrix:
 `docs/bn/BN_OVERPAYMENT_IMPLEMENTATION_MATRIX.md`.
 
-Done:
-- B0 programme-register correction (three status axes, canonical routes).
-- B1 foundation audit and 29-command implementation matrix.
-- B2 financial reversal invariant corrected to Model A (signed contra events)
-  with golden tests; the previous formula double counted reversals.
-
-Outstanding:
-1. Governance foundation (policy area, granular permissions, `bn_overpayments`
-   module row at `actions_enabled = false`, `rollout_state = internal_pilot`).
-2. Secured `bn_overpayment_*_v1` command boundary, including the four added
-   commands (place/release appeal hold, suspend/resume recovery).
-3. Finance posting-intent outbox and Legal/estate referral boundaries.
-4. Query RPC boundary, UI wiring, retirement of `setOverpaymentRecoveryPlan`.
-5. `supabase/verify/bn_overpayment_effective_grants.sql` (`BN_OP_GRANTS_RESULT`),
-   `supabase/tests/bn/overpayment_integration.sql` (`BN_OP_HARNESS_RESULT`,
-   Journeys A–G + negative matrix), zero-residue gate, and
-   `.github/workflows/bn-overpayment-integration.yml`.
+`BN_OP_GRANT_RESULT=PASS` · `BN_OP_HARNESS_RESULT=PASS` (one marker, no SKIP) ·
+dark-launch postflight `internal_pilot:false` · fixture residue 0 · 63/63 vitest.
+B3–B15 all closed: governed domain model, 29-command catalogue, secured
+versioned command boundary, granular permissions, grant verifier, finance
+posting-intent outbox, appeal/mortality/legal boundaries, communication safety,
+query boundary and UI conversion (`setOverpaymentRecoveryPlan` retired),
+seeded harness, zero-residue gate and the PG15 GitHub workflow.
+`classification = COMPLETE_AND_CERTIFIED`, `activation = DARK_LAUNCHED`,
+`external_uat = DEFERRED`.
 
 ## Wave 6 — Appeals
 

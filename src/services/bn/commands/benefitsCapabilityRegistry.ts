@@ -169,6 +169,10 @@ export const BN_GAP_COMMAND_CAPABILITY: Readonly<Record<string, BnGapCapability>
   BN_OVP_REVERSE_TRANSACTION:        'bn_overpayments:admin',
   BN_OVP_RECONCILE:                  'bn_overpayments:decide',
   BN_OVP_REOPEN:                     'bn_overpayments:admin',
+  BN_OVP_PLACE_APPEAL_HOLD:          'bn_overpayments:decide',
+  BN_OVP_RELEASE_APPEAL_HOLD:        'bn_overpayments:decide',
+  BN_OVP_SUSPEND_RECOVERY:           'bn_overpayments:decide',
+  BN_OVP_RESUME_RECOVERY:            'bn_overpayments:decide',
 
   // Means Tests — legacy 11 (kept)
   BN_MT_START:                     'bn_means_tests:write',

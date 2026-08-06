@@ -1,0 +1,91 @@
+name: BN Overpayment Integration (PG15)
+
+on:
+  push:
+    paths:
+      - 'supabase/**'
+      - 'src/services/bn/overpayments/**'
+      - 'src/types/bn/overpayments/**'
+      - '.github/workflows/bn-overpayment-integration.yml'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  overpayment-certification:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap disposable Supabase-shaped database
+        run: bash scripts/ci/bootstrap-supabase-test-db.sh
+
+      - name: Environment marker guard (never certify against production)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select coalesce(upper(environment), 'UNMARKED') from public.platform_environment_marker order by created_at desc limit 1" \
+            | tee /tmp/op-env.log
+          if grep -Eq 'PRODUCTION|LIVE' /tmp/op-env.log; then
+            echo "refusing to certify against a production-marked database" >&2
+            exit 1
+          fi
+
+      - name: Effective-grant verifier (B7)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/verify/bn_overpayment_effective_grants.sql 2>&1 | tee /tmp/op-grants.log
+          grep -q 'BN_OP_GRANT_RESULT=PASS' /tmp/op-grants.log
+
+      - name: Lifecycle integration harness (B12/B13)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/overpayment_integration.sql 2>&1 | tee /tmp/op-harness.log
+          test "$(grep -c 'BN_OP_HARNESS_RESULT=PASS' /tmp/op-harness.log)" -eq 1
+          ! grep -q 'BN_OP_HARNESS_RESULT=FAIL' /tmp/op-harness.log
+          ! grep -q 'SKIP' /tmp/op-harness.log
+
+      - name: Dark-launch postflight (rollout state and actions)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select rollout_state || ':' || actions_enabled from public.app_modules where module_code = 'bn_overpayments'" \
+            | tee /tmp/op-dark.log
+          grep -qx 'internal_pilot:false' /tmp/op-dark.log
+
+      - name: Fixture residue gate (B13)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -Atc "
+            select coalesce(sum(n), 0) from (
+              select (xpath('/row/c/text()',
+                query_to_xml(format('select count(*) as c from %I.%I', schemaname, tablename),
+                false, true, '')))[1]::text::bigint as n
+              from pg_tables where schemaname = 'public' and tablename like 'bn\_op\_%'
+            ) t" | tee /tmp/op-residue.log
+          grep -qx '0' /tmp/op-residue.log
+
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      - name: Overpayment boundary + invariant tests
+        run: bunx vitest run src/__tests__/bn/gap-modules/overpayments
+
+      - name: Typecheck
+        run: bunx tsc --noEmit -p tsconfig.app.json

@@ -1,10 +1,15 @@
 /**
- * Screen 25: Overpayment Recovery
+ * BN Overpayment Recovery — governed worklist (Phase B11).
  *
- * Real-data wiring against bn_overpayment + bn_award + ip_master.
- * Role visibility: Claims Officer, Finance Officer, Supervisor, Admin
+ * ALL reads go through `overpaymentQueryService` (secured query RPCs) and ALL
+ * mutations go through `overpaymentCommandService` (secured versioned command
+ * RPCs). This screen performs NO direct Supabase table access.
+ *
+ * The module is registered as `internal_pilot` with actions disabled, so
+ * command attempts are expected to fail with `E_ACTIONS_DISABLED`. The UI
+ * surfaces that state honestly rather than pretending the action succeeded.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,125 +19,154 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
-import { Search, CheckCircle2, Filter, TrendingDown, Banknote, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Search, TrendingDown, Banknote, Loader2, ShieldAlert, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
-import {
-  fetchAwards,
-  fetchClaimantsBySsns,
-  fetchOverpayments,
-  setOverpaymentRecoveryPlan,
-  type BnAwardRow,
-  type BnOverpaymentRow,
-} from '@/services/bn/awardServicingService';
-
 import { formatNumber } from '@/lib/culture/culture';
 import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
-const statusConfig: Record<string, { label: string; color: string }> = {
-  OPEN: { label: 'Open', color: 'bg-amber-500/10 text-amber-700 border-amber-300' },
-  DETECTED: { label: 'Detected', color: 'bg-amber-500/10 text-amber-700 border-amber-300' },
-  CONFIRMED: { label: 'Confirmed', color: 'bg-blue-500/10 text-blue-700 border-blue-300' },
-  RECOVERY_PLAN: { label: 'Plan Set', color: 'bg-blue-500/10 text-blue-700 border-blue-300' },
-  RECOVERING: { label: 'Recovering', color: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
-  RECOVERED: { label: 'Recovered', color: 'bg-emerald-600/10 text-emerald-700 border-emerald-400' },
-  WRITTEN_OFF: { label: 'Written Off', color: 'bg-muted text-muted-foreground border-muted' },
-  DISPUTED: { label: 'Disputed', color: 'bg-destructive/10 text-destructive border-destructive/30' },
+import {
+  overpaymentQueryService,
+  type BnOverpaymentWorklistRow,
+  type BnOverpaymentAvailableAction,
+} from '@/services/bn/overpayments/overpaymentQueryService';
+import {
+  overpaymentCommandService,
+  overpaymentIdempotencyKey,
+  BnOverpaymentCommandError,
+} from '@/services/bn/overpayments/overpaymentCommandService';
+
+const STATUS_STYLES: Record<string, string> = {
+  CANDIDATE: 'bg-muted text-muted-foreground border-muted',
+  CALCULATED: 'bg-amber-500/10 text-amber-700 border-amber-300',
+  VERIFIED: 'bg-blue-500/10 text-blue-700 border-blue-300',
+  NOTICE_ISSUED: 'bg-blue-500/10 text-blue-700 border-blue-300',
+  REPRESENTATION: 'bg-amber-500/10 text-amber-700 border-amber-300',
+  LIABILITY_CONFIRMED: 'bg-indigo-500/10 text-indigo-700 border-indigo-300',
+  PLAN_PROPOSED: 'bg-indigo-500/10 text-indigo-700 border-indigo-300',
+  PLAN_APPROVED: 'bg-emerald-500/10 text-emerald-700 border-emerald-300',
+  IN_RECOVERY: 'bg-emerald-500/10 text-emerald-700 border-emerald-300',
+  SUSPENDED: 'bg-destructive/10 text-destructive border-destructive/30',
+  ON_APPEAL_HOLD: 'bg-destructive/10 text-destructive border-destructive/30',
+  RECONCILED: 'bg-emerald-600/10 text-emerald-700 border-emerald-400',
+  CLOSED: 'bg-muted text-muted-foreground border-muted',
+  CANCELLED: 'bg-muted text-muted-foreground border-muted',
 };
 
-interface EnrichedOP extends BnOverpaymentRow {
-  awardNumber: string | null;
-  ssn: string;
-  benefitCode: string | null;
-  claimantName: string;
-}
+const STATUS_FILTERS = [
+  'CANDIDATE', 'CALCULATED', 'VERIFIED', 'NOTICE_ISSUED', 'REPRESENTATION',
+  'LIABILITY_CONFIRMED', 'PLAN_PROPOSED', 'PLAN_APPROVED', 'IN_RECOVERY',
+  'SUSPENDED', 'ON_APPEAL_HOLD', 'RECONCILED', 'CLOSED',
+];
 
-const fmt = (n: number) => `$${formatNumber((n ?? 0), 2)}`;
+const money = (n: number | null | undefined, currency = 'XCD') =>
+  `${currency} ${formatNumber(n ?? 0, 2)}`;
+
+const ERROR_HINTS: Record<string, string> = {
+  E_ACTIONS_DISABLED: 'Overpayment actions are disabled for this environment (internal pilot). No change was made.',
+  E_PERMISSION_DENIED: 'You do not hold the granular Overpayment permission required for this action.',
+  E_STALE_ROW_VERSION: 'This case changed since it was loaded. Refresh and try again.',
+  E_SELF_APPROVAL: 'Maker–checker: the same officer cannot approve their own submission.',
+  E_INVALID_STATE: 'The case is not in a state that allows this action.',
+  E_IDEMPOTENCY_PAYLOAD_MISMATCH: 'The same idempotency key was reused with different data.',
+};
 
 const OverpaymentRecovery: React.FC = () => {
-  const { isAuthReady, isAuthenticated, profile, hasAnyRole } = useSupabaseAuth();
-  const canAct = hasAnyRole(['admin', 'supervisor', 'claims_officer', 'finance_officer', 'BN_FINANCE_OFFICER', 'BN_MANAGER', 'BN_DIRECTOR']);
-
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [rows, setRows] = useState<EnrichedOP[]>([]);
+  const [rows, setRows] = useState<BnOverpaymentWorklistRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<EnrichedOP | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [selected, setSelected] = useState<BnOverpaymentWorklistRow | null>(null);
+  const [actions, setActions] = useState<BnOverpaymentAvailableAction[]>([]);
   const [planOpen, setPlanOpen] = useState(false);
-  const [recoveryMethod, setRecoveryMethod] = useState<string>('DEDUCTION');
-  const [monthlyAmount, setMonthlyAmount] = useState('');
+  const [instalment, setInstalment] = useState('');
   const [planNotes, setPlanNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [commandError, setCommandError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const [ops, awards] = await Promise.all([fetchOverpayments(), fetchAwards()]);
-      const awardMap = new Map(awards.map((a) => [a.id, a] as const));
-      const ssns = ops.map((o) => awardMap.get(o.bn_award_id)?.ssn).filter(Boolean) as string[];
-      const claimants = await fetchClaimantsBySsns(ssns);
-      const enriched: EnrichedOP[] = ops.map((o) => {
-        const a = awardMap.get(o.bn_award_id) as BnAwardRow | undefined;
-        const ssn = a?.ssn ?? '';
-        return {
-          ...o,
-          awardNumber: a?.award_number ?? null,
-          ssn,
-          benefitCode: a?.benefit_code ?? null,
-          claimantName: claimants[ssn]?.full_name ?? ssn,
-        };
+      const data = await overpaymentQueryService.worklist({
+        status: statusFilter === 'all' ? null : statusFilter,
+        search: search.trim() || null,
+        limit: 100,
       });
-      setRows(enriched);
+      setRows(Array.isArray(data) ? data : []);
     } catch (e) {
-      console.error(e);
-      toast.error('Unable to load overpayments');
+      setRows([]);
+      setLoadError(e instanceof Error ? e.message : 'Failed to load overpayment worklist');
     } finally {
       setLoading(false);
     }
+  }, [statusFilter, search]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const totals = useMemo(() => ({
+    outstanding: rows.reduce((s, r) => s + (r.outstanding_amount ?? 0), 0),
+    recovered: rows.reduce((s, r) => s + (r.recovered_amount ?? 0), 0),
+    inRecovery: rows.filter((r) => r.status === 'IN_RECOVERY').length,
+    held: rows.filter((r) => r.status === 'ON_APPEAL_HOLD' || r.status === 'SUSPENDED').length,
+  }), [rows]);
+
+  const openCase = async (row: BnOverpaymentWorklistRow) => {
+    setSelected(row);
+    setCommandError(null);
+    setActions([]);
+    try {
+      const list = await overpaymentQueryService.availableActions(row.case_id);
+      setActions(Array.isArray(list) ? list : []);
+    } catch {
+      setActions([]);
+    }
   };
 
-  useEffect(() => {
-    if (isAuthReady && isAuthenticated) void load();
-  }, [isAuthReady, isAuthenticated]);
+  const can = (action: string) => actions.some((a) => a.action === action && a.allowed);
 
-  const filtered = useMemo(
-    () =>
-      rows.filter((r) => {
-        const matchSearch = !search || r.claimantName.toLowerCase().includes(search.toLowerCase()) || r.ssn.includes(search) || r.id.toLowerCase().includes(search.toLowerCase());
-        const matchStatus = statusFilter === 'all' || r.recovery_status === statusFilter;
-        return matchSearch && matchStatus;
-      }),
-    [rows, search, statusFilter]
-  );
+  const handleCommandError = (e: unknown) => {
+    if (e instanceof BnOverpaymentCommandError) {
+      const hint = ERROR_HINTS[e.code] ?? e.message;
+      setCommandError(`${e.code}: ${hint}`);
+      toast.error(hint);
+      return;
+    }
+    const msg = e instanceof Error ? e.message : 'Command failed';
+    setCommandError(msg);
+    toast.error(msg);
+  };
 
-  const totals = useMemo(
-    () => ({
-      totalOwed: rows.reduce((s, r) => s + (r.original_amount ?? 0), 0),
-      totalRecovered: rows.reduce((s, r) => s + (r.recovered_amount ?? 0), 0),
-      activeRecoveries: rows.filter((r) => r.recovery_status === 'RECOVERING').length,
-      disputed: rows.filter((r) => r.recovery_status === 'DISPUTED').length,
-    }),
-    [rows]
-  );
-
-  const doSavePlan = async () => {
+  const submitPlan = async () => {
     if (!selected) return;
+    const amount = parseFloat(instalment);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setCommandError('E_AMOUNT_INVALID: enter a positive instalment amount.');
+      return;
+    }
     setSubmitting(true);
+    setCommandError(null);
     try {
-      await setOverpaymentRecoveryPlan(
-        selected.id,
-        recoveryMethod,
-        monthlyAmount ? parseFloat(monthlyAmount) : null,
-        planNotes || null,
-        profile?.user_code ?? null
-      );
-      toast.success('Recovery plan saved');
+      await overpaymentCommandService.proposeRecoveryPlan({
+        caseId: selected.case_id,
+        rowVersion: selected.row_version,
+        totalAmount: selected.outstanding_amount ?? 0,
+        instalmentAmount: amount,
+        currency: selected.currency,
+        idempotencyKey: overpaymentIdempotencyKey(
+          'BN_OVP_PROPOSE_RECOVERY_PLAN',
+          selected.case_id,
+          `${selected.row_version}:${amount}:${planNotes}`,
+        ),
+      });
+      toast.success('Recovery plan proposed');
       setPlanOpen(false);
-      setMonthlyAmount(''); setPlanNotes(''); setRecoveryMethod('DEDUCTION');
+      setInstalment('');
+      setPlanNotes('');
       await load();
     } catch (e) {
-      console.error(e);
-      toast.error('Save failed');
+      handleCommandError(e);
     } finally {
       setSubmitting(false);
     }
@@ -140,145 +174,202 @@ const OverpaymentRecovery: React.FC = () => {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="t-page-title flex items-center gap-2"><TrendingDown className="h-6 w-6" />Overpayment Recovery</h1>
-          <p className="text-sm text-muted-foreground mt-1">Detect, track, and recover benefit overpayments</p>
+          <h1 className="t-page-title flex items-center gap-2">
+            <TrendingDown className="h-6 w-6" />Overpayment Recovery
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Governed detection, liability, recovery and reconciliation of benefit overpayments
+          </p>
         </div>
-        <ReferToLegalButton module="benefits" reasonCode="BENEFIT_OVERPAYMENT" matter="BENEFIT_OVERPAYMENT" />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
+          </Button>
+          <ReferToLegalButton module="benefits" reasonCode="BENEFIT_OVERPAYMENT" matter="BENEFIT_OVERPAYMENT" />
+        </div>
       </div>
 
+      <Alert>
+        <ShieldAlert className="h-4 w-4" />
+        <AlertTitle>Internal pilot — actions disabled</AlertTitle>
+        <AlertDescription>
+          Overpayment commands run through the secured server boundary. While the module is in
+          internal pilot, command attempts are rejected with <code>E_ACTIONS_DISABLED</code> and no
+          state changes are recorded.
+        </AlertDescription>
+      </Alert>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total Owed</p><p className="text-2xl font-bold text-destructive">{fmt(totals.totalOwed)}</p></CardContent></Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total Recovered</p>
-            <p className="text-2xl font-bold text-emerald-600">{fmt(totals.totalRecovered)}</p>
-            <Progress value={totals.totalOwed > 0 ? (totals.totalRecovered / totals.totalOwed) * 100 : 0} className="mt-2 h-1.5" />
-          </CardContent>
-        </Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Active Recoveries</p><p className="text-2xl font-bold">{totals.activeRecoveries}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Disputed</p><p className="text-2xl font-bold text-amber-600">{totals.disputed}</p></CardContent></Card>
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card><CardContent className="p-4">
+          <p className="text-xs text-muted-foreground">Outstanding</p>
+          <p className="text-2xl font-semibold">{money(totals.outstanding)}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <p className="text-xs text-muted-foreground">Recovered</p>
+          <p className="text-2xl font-semibold">{money(totals.recovered)}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <p className="text-xs text-muted-foreground">In recovery</p>
+          <p className="text-2xl font-semibold">{totals.inRecovery}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <p className="text-xs text-muted-foreground">Held / suspended</p>
+          <p className="text-2xl font-semibold">{totals.held}</p>
+        </CardContent></Card>
       </div>
 
       <Card>
-        <CardContent className="p-4 flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search by name, SSN, or case ID..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <CardContent className="p-4 space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                className="pl-8"
+                placeholder="Search by case reference or claimant"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search overpayment cases"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="sm:w-56" aria-label="Filter by status">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                {STATUS_FILTERS.map((s) => <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px]"><Filter className="h-4 w-4 mr-1" /><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {Object.entries(statusConfig).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Case</TableHead>
-                <TableHead>SSN</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Benefit</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead className="text-right">Owed</TableHead>
-                <TableHead className="text-right">Recovered</TableHead>
-                <TableHead>Method</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={10} className="text-center py-8"><Loader2 className="h-4 w-4 animate-spin inline mr-2" />Loading…</TableCell></TableRow>
-              ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No overpayments on record</TableCell></TableRow>
-              ) : (
-                filtered.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-mono text-xs">{r.id.slice(0, 8)}</TableCell>
-                    <TableCell className="font-mono">{r.ssn}</TableCell>
-                    <TableCell className="font-medium">{r.claimantName}</TableCell>
-                    <TableCell className="text-sm">{r.benefitCode ?? '—'}</TableCell>
-                    <TableCell className="text-sm max-w-[200px] truncate">{r.reason_code ?? r.remarks ?? '—'}</TableCell>
-                    <TableCell className="text-right font-mono text-destructive">{fmt(r.original_amount)}</TableCell>
-                    <TableCell className="text-right font-mono text-emerald-600">{fmt(r.recovered_amount ?? 0)}</TableCell>
-                    <TableCell className="text-sm">{r.recovery_method?.replace('_', ' ') ?? '—'}</TableCell>
-                    <TableCell><Badge variant="outline" className={statusConfig[r.recovery_status]?.color ?? ''}>{statusConfig[r.recovery_status]?.label ?? r.recovery_status}</Badge></TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        {canAct && ['OPEN', 'DETECTED', 'CONFIRMED'].includes(r.recovery_status) && (
-                          <Button size="sm" variant="outline" onClick={() => { setSelected(r); setPlanOpen(true); }}>
-                            <Banknote className="h-3 w-3 mr-1" />Set Plan
-                          </Button>
-                        )}
-                        {r.ssn && (
-                          <ReferToLegalButton
-                            module="benefits"
-                            reasonCode="BENEFIT_OVERPAYMENT"
-                            matter="BENEFIT_OVERPAYMENT"
-                            label="Legal"
-                            variant="ghost"
-                          />
-                        )}
-                      </div>
+          {loadError && (
+            <Alert variant="destructive">
+              <AlertTitle>Worklist unavailable</AlertTitle>
+              <AlertDescription>{loadError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Case</TableHead>
+                  <TableHead>Claimant</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Gross</TableHead>
+                  <TableHead className="text-right">Outstanding</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading && (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin inline" />
+                  </TableCell></TableRow>
+                )}
+                {!loading && rows.length === 0 && (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    No overpayment cases match the current filters.
+                  </TableCell></TableRow>
+                )}
+                {!loading && rows.map((r) => (
+                  <TableRow key={r.case_id}>
+                    <TableCell className="font-mono text-xs">{r.case_reference}</TableCell>
+                    <TableCell>{r.claimant_display ?? '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={STATUS_STYLES[r.status] ?? ''}>
+                        {r.status.replace(/_/g, ' ')}
+                      </Badge>
                     </TableCell>
-
+                    <TableCell className="text-right">{money(r.gross_amount, r.currency)}</TableCell>
+                    <TableCell className="text-right">{money(r.outstanding_amount, r.currency)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="outline" onClick={() => void openCase(r)}>Open</Button>
+                    </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
+
+      <Dialog open={!!selected} onOpenChange={(o) => { if (!o) { setSelected(null); setCommandError(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Banknote className="h-5 w-5" />{selected?.case_reference}
+            </DialogTitle>
+            <DialogDescription>
+              Available actions are resolved server side from case state and your granular permissions.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selected && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div><span className="text-muted-foreground">Status</span><div>{selected.status.replace(/_/g, ' ')}</div></div>
+                <div><span className="text-muted-foreground">Outstanding</span><div>{money(selected.outstanding_amount, selected.currency)}</div></div>
+              </div>
+
+              {commandError && (
+                <Alert variant="destructive">
+                  <AlertDescription className="text-xs">{commandError}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  disabled={!can('propose_recovery_plan')}
+                  onClick={() => { setPlanOpen(true); setCommandError(null); }}
+                >
+                  Propose recovery plan
+                </Button>
+              </div>
+              {actions.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  No actions are currently available for this case.
+                </p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={planOpen} onOpenChange={setPlanOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Set Recovery Plan</DialogTitle>
-            <DialogDescription>Configure the repayment method for {selected?.claimantName} — {fmt(selected?.original_amount ?? 0)}</DialogDescription>
+            <DialogTitle>Propose recovery plan</DialogTitle>
+            <DialogDescription>
+              Submitted through <code>bn_overpayment_propose_recovery_plan_v1</code> with an
+              idempotency key and the current row version.
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label>Recovery Method</Label>
-              <Select value={recoveryMethod} onValueChange={setRecoveryMethod}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DEDUCTION">Deduction from Award</SelectItem>
-                  <SelectItem value="INSTALLMENT">Installment Plan</SelectItem>
-                  <SelectItem value="LUMP_SUM">Lump Sum Repayment</SelectItem>
-                  <SelectItem value="WRITE_OFF">Write Off (requires approval)</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="op-instalment">Instalment amount</Label>
+              <Input
+                id="op-instalment"
+                inputMode="decimal"
+                value={instalment}
+                onChange={(e) => setInstalment(e.target.value)}
+              />
             </div>
-            {['DEDUCTION', 'INSTALLMENT'].includes(recoveryMethod) && (
-              <div className="space-y-2">
-                <Label>Monthly Amount ($)</Label>
-                <Input type="number" min="0" step="0.01" value={monthlyAmount} onChange={(e) => setMonthlyAmount(e.target.value)} />
-                {monthlyAmount && selected && (
-                  <p className="text-xs text-muted-foreground">
-                    Estimated recovery: {Math.ceil((selected.original_amount ?? 0) / parseFloat(monthlyAmount || '1'))} months
-                  </p>
-                )}
-              </div>
+            <div>
+              <Label htmlFor="op-notes">Notes</Label>
+              <Textarea id="op-notes" value={planNotes} onChange={(e) => setPlanNotes(e.target.value)} />
+            </div>
+            {commandError && (
+              <Alert variant="destructive"><AlertDescription className="text-xs">{commandError}</AlertDescription></Alert>
             )}
-            <div className="space-y-2">
-              <Label>Notes</Label>
-              <Textarea value={planNotes} onChange={(e) => setPlanNotes(e.target.value)} placeholder="Justification or special instructions..." />
-            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPlanOpen(false)} disabled={submitting}>Cancel</Button>
-            <Button onClick={doSavePlan} disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-1" />}
-              Save Plan
+            <Button variant="outline" onClick={() => setPlanOpen(false)}>Cancel</Button>
+            <Button onClick={() => void submitPlan()} disabled={submitting}>
+              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Submit
             </Button>
           </DialogFooter>
         </DialogContent>

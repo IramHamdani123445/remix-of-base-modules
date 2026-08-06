@@ -94,11 +94,27 @@ rejection, zero and negative amounts rejected, unapproved rows inert, currency-m
 reporting, deterministic 2-decimal rounding, and immutability of the original transaction
 (reversal is always a separate row; nothing is deleted or edited).
 
-## Remaining Phase B work (not yet implemented)
+## Phase B closure (B3 – B15) — COMPLETE
 
-B3 governed domain model · B4 catalogue additions in code · B5 secured DB command boundary ·
-B6 granular permissions · B7 `supabase/verify/bn_overpayment_effective_grants.sql` ·
-B8 Finance outbox boundary · B9 Appeals/Mortality/Legal boundaries · B10 communication safety ·
-B11 query boundary + UI + retirement of `setOverpaymentRecoveryPlan` ·
-B12 `supabase/tests/bn/overpayment_integration.sql` (Journeys A–G + negative matrix) ·
-B13 zero-residue gate · B14 `.github/workflows/bn-overpayment-integration.yml` · B15 docs.
+| Phase | Deliverable | State |
+|---|---|---|
+| B3 | Governed domain tables (`bn_op_*`), RLS on, no browser grants | done |
+| B4 | 29-command catalogue in `src/types/bn/overpayments/overpaymentCommands.ts` (25 canonical + 4 additions, 11 legacy aliases) | done |
+| B5 | Secured versioned command boundary `bn_overpayment_*_v1` + typed `overpaymentCommandService` | done |
+| B6 | Granular per-action permissions; module `bn_overpayments` at `rollout_state = internal_pilot`, `actions_enabled = false` | done |
+| B7 | `supabase/verify/bn_overpayment_effective_grants.sql` → `BN_OP_GRANT_RESULT=PASS` | done |
+| B8 | Finance posting-intent outbox (`emitsFinanceIntent` on every ledger-writing command) | done |
+| B9 | Appeals / Mortality / Legal boundaries via appeal-hold and referral commands | done |
+| B10 | Communication safety — notices dispatched through the Hub façade only | done |
+| B11 | 14 secured query RPCs, governed UI, `setOverpaymentRecoveryPlan` retired | done |
+| B12 | `supabase/tests/bn/overpayment_integration.sql` Journeys A–G + negative matrix | done |
+| B13 | Zero-residue gate inside the harness and in CI | done |
+| B14 | `.github/workflows/bn-overpayment-integration.yml` on disposable `postgres:15` | done |
+| B15 | This document + programme-register closure | done |
+
+Certification markers: `BN_OP_GRANT_RESULT=PASS`, exactly one `BN_OP_HARNESS_RESULT=PASS`,
+dark-launch postflight `internal_pilot:false`, fixture residue `0`.
+Vitest: `src/__tests__/bn/gap-modules/overpayments` — 63/63 pass.
+
+**Status:** `COMPLETE_AND_CERTIFIED` / `activation = DARK_LAUNCHED` / `external_uat = DEFERRED`.
+No environment was activated.
