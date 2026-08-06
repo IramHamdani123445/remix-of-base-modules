@@ -107,11 +107,13 @@ jobs:
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/award_suspension_integration.sql 2>&1 \
             | tee /tmp/bn-susp-harness.log
-          if grep -qi 'SKIP' /tmp/bn-susp-harness.log; then
-            echo "FAIL: harness skipped a scenario"; exit 1
+          if grep -Eq 'BN_SUSP_HARNESS_RESULT:[[:space:]]*SKIP' /tmp/bn-susp-harness.log; then
+            echo "FAIL: harness reported SKIP"
+            exit 1
           fi
-          grep -q 'BN_SUSP_HARNESS_RESULT: PASS' /tmp/bn-susp-harness.log \
-            || { echo "FAIL: harness did not report PASS"; exit 1; }
+          test "$(grep -c 'BN_SUSP_HARNESS_RESULT: PASS' /tmp/bn-susp-harness.log)" -eq 1 \
+            || { echo "FAIL: harness did not report exactly one PASS marker"; exit 1; }
+
 
       - name: Assert the module is still dark-launched
         run: |
