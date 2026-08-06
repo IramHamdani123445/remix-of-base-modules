@@ -36,6 +36,7 @@ import {
 } from '@/services/bn/meansTests/meansQueryService';
 import { meansCommandService, type BnMeansCommandResult } from '@/services/bn/meansTests/meansCommandService';
 import { BnMeansAssessmentWorkspace } from '@/components/bn/meansTests/BnMeansAssessmentWorkspace';
+import { BnMeansInitiationWizard } from '@/components/bn/meansTests/initiation/BnMeansInitiationWizard';
 import { BN_MEANS_QUEUES, type BnMeansQueueCode } from '@/types/bn/meansTests/meansAdjustments';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
 import {
@@ -67,6 +68,7 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
   const queryClient = useQueryClient();
   const [selected, setSelected] = React.useState<string | null>(null);
   const [tab, setTab] = React.useState('overview');
+  const [wizardOpen, setWizardOpen] = React.useState(false);
 
   if (selected) {
     return (
@@ -98,12 +100,20 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
           </div>
         </div>
         {ctx.can('write') && ctx.actionsEnabled && (
-          <CreateAssessmentDialog
-            onCreated={(assessmentId) => {
-              queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
-              setSelected(assessmentId);
-            }}
-          />
+          <>
+            <Button onClick={() => setWizardOpen(true)} data-testid="means-start-assessment">
+              <Plus className="mr-2 h-4 w-4" /> Start assessment
+            </Button>
+            <BnMeansInitiationWizard
+              open={wizardOpen}
+              onOpenChange={setWizardOpen}
+              prefill={{ originSurface: 'MEANS_LANDING' }}
+              onCreated={(assessmentId) => {
+                queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
+                setSelected(assessmentId);
+              }}
+            />
+          </>
         )}
       </header>
 
@@ -360,94 +370,6 @@ const BnMeansQueuesSection: React.FC<{ onOpen: (assessmentId: string) => void }>
     </Card>
   );
 };
-
-const CreateAssessmentDialog: React.FC<{
-  onCreated: (assessmentId: string) => void;
-}> = ({ onCreated }) => {
-  const [open, setOpen] = React.useState(false);
-  const [pending, setPending] = React.useState(false);
-  const [error, setError] = React.useState<BnMeansCommandResult | null>(null);
-  const [form, setForm] = React.useState({
-    person_id: '',
-    claim_id: '',
-    benefit_programme: '',
-    assessment_reason: '',
-    effective_from: '',
-    currency_code: 'XCD',
-    policy_version_id: '',
-  });
-
-  const set = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, [key]: event.target.value }));
-
-  async function submit() {
-    setPending(true);
-    const payload: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(form)) {
-      if (value.trim()) payload[key] = value.trim();
-    }
-    const result = await meansCommandService.execute({
-      command: 'BN_MEANS_CREATE_ASSESSMENT',
-      payload,
-    });
-    setPending(false);
-    if (result.status === 'FAILED') {
-      setError(result);
-      return;
-    }
-    setError(null);
-    setOpen(false);
-    if (result.assessmentId) onCreated(result.assessmentId);
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" /> New assessment
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create means-test assessment</DialogTitle>
-          <DialogDescription>
-            A person or claim, programme, reason, effective date and currency are required.
-          </DialogDescription>
-        </DialogHeader>
-        {error && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>{humaniseMeansCode(error.errorCode)}</AlertTitle>
-            <AlertDescription>{error.errorDetail}</AlertDescription>
-          </Alert>
-        )}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field id="person_id" label="Person ID" value={form.person_id} onChange={set('person_id')} />
-          <Field id="claim_id" label="Claim ID" value={form.claim_id} onChange={set('claim_id')} />
-          <Field id="benefit_programme" label="Benefit programme" value={form.benefit_programme} onChange={set('benefit_programme')} />
-          <Field id="assessment_reason" label="Assessment reason" value={form.assessment_reason} onChange={set('assessment_reason')} />
-          <Field id="effective_from" label="Effective from" type="date" value={form.effective_from} onChange={set('effective_from')} />
-          <Field id="currency_code" label="Currency" value={form.currency_code} onChange={set('currency_code')} />
-          <Field id="policy_version_id" label="Policy version" value={form.policy_version_id} onChange={set('policy_version_id')} />
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={pending}>Create</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-const Field: React.FC<{
-  id: string; label: string; value: string; type?: string;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-}> = ({ id, label, value, type = 'text', onChange }) => (
-  <div className="space-y-1">
-    <Label htmlFor={id}>{label}</Label>
-    <Input id={id} type={type} value={value} onChange={onChange} />
-  </div>
-);
 
 export default function BnMeansTestsPage() {
   return (
