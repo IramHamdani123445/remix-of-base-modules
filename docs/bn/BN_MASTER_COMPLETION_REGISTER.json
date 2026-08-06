@@ -319,21 +319,27 @@
     {
       "id": "mortality",
       "name": "Mortality",
-      "classification": "PARTIAL_IMPLEMENTATION",
+      "classification": "IMPLEMENTATION_IN_PROGRESS",
       "routes": [
         "/bn/mortality"
       ],
-      "mutation_boundary": "mixed",
+      "mutation_boundary": "rpc_only",
       "database_tests": false,
       "blockers": [
-        "catalogue generated but boundary and harness absent"
+        "operational UI tabs and Benefit 360 card outstanding",
+        "grant verifier, seeded harness and PG15 workflow outstanding"
       ],
       "dependencies": [
         "award_suspension",
         "survivors_processing"
       ],
-      "next_slice": "command boundary and grant verifier",
-      "external_uat": "DEFERRED"
+      "next_slice": "mortality UI closure + clean-PostgreSQL certification",
+      "external_uat": "DEFERRED",
+      "commands_catalogued": 26,
+      "commands_implemented": 26,
+      "governed_entry_point": "bn_mortality_execute_command_v2",
+      "handoff_register": "bn_cross_module_handoff",
+      "activation": "DARK_LAUNCHED"
     },
     {
       "id": "appeals",
