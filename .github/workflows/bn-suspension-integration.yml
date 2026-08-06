@@ -138,7 +138,46 @@ jobs:
           path: /tmp/bn-susp-harness.log
           if-no-files-found: warn
 
+  suspension-provisioner:
+    # Persistent-UAT provisioning is verified on its OWN disposable database
+    # server, never inside the clean-database lifecycle harness job, so no
+    # persistent fixture is ever seeded into the lifecycle harness lifecycle.
+    name: Test-environment provisioner guard suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5433 -U postgres && break
+            sleep 1
+          done
+      - name: Run provisioner guard suite
+        env:
+          BN_SUSP_TEST_ADMIN_URL: postgres://postgres:postgres@localhost:5433/postgres
+        run: bash scripts/bn/__tests__/provision-award-suspension-test-db.spec.sh
+
   suspension-static:
+
     name: Award Suspension static, unit and guard tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
