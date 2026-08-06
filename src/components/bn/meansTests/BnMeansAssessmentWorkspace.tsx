@@ -128,6 +128,27 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   const availableActions = (actions.data?.data ?? []) as readonly BnMeansAvailableAction[];
   const actionFor = (command: string) => availableActions.find((a) => a.command === command);
 
+  // MT6 — verification and calculation state, all backend-owned.
+  const verifyAction = actionFor('BN_MEANS_VERIFY_INFORMATION');
+  const calculateAction = actionFor('BN_MEANS_CALCULATE');
+  const factGroups = buildFactGroups(data as Record<string, unknown>, currency);
+  const verifications = asRows(data.verifications) as unknown as readonly BnMeansVerificationRecord[];
+  const calculations = asRows(data.calculations);
+  const latestCalculation = (calculations[0] ?? null) as Record<string, unknown> | null;
+  const readinessData =
+    readiness.data?.status === 'OK'
+      ? ((readiness.data.data ?? null) as BnMeansCalculationReadiness | null)
+      : null;
+  const readinessUnavailable =
+    readiness.isError
+      ? 'Readiness could not be loaded. Treat it as unknown, not as ready.'
+      : readiness.data && readiness.data.status !== 'OK'
+        ? readiness.data.status === 'DENIED'
+          ? 'You do not have permission to evaluate calculation readiness.'
+          : `Readiness could not be evaluated (${readiness.data.detail ?? readiness.data.code ?? 'unknown error'}).`
+        : null;
+
+
   const ActionButton: React.FC<{ command: BnMeansCommandName; label: string; payload?: Record<string, unknown> }> = ({
     command,
     label,
