@@ -13,6 +13,9 @@ import type { BnGapCapability } from '@/services/bn/commands/benefitsCapabilityR
 export type BnMeansCommandName =
   | 'BN_MEANS_CREATE_ASSESSMENT'
   | 'BN_MEANS_ADD_HOUSEHOLD_MEMBER'
+  | 'BN_MEANS_UPDATE_HOUSEHOLD_MEMBER'
+  | 'BN_MEANS_REMOVE_HOUSEHOLD_MEMBER'
+  | 'BN_MEANS_CORRECT_CONTEXT'
   | 'BN_MEANS_ADD_INCOME'
   | 'BN_MEANS_ADD_ASSET'
   | 'BN_MEANS_ADD_DEDUCTION'
