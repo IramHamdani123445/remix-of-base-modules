@@ -20,31 +20,51 @@ No environment was activated while compiling this register. Every BN module row 
 | `BLOCKED_BY_INFRASTRUCTURE` | Work is gated by environment/CI/secret availability. |
 | `RETIRED_OR_REDIRECT_ONLY` | Superseded surface, kept only as redirect/deprecated shim. |
 
-**Rule applied:** no module is marked `COMPLETE_AND_CERTIFIED` without runtime evidence.
-Award Suspension is the only module with a full clean-database runtime chain green, and it
-is still policy-gated (dark launch), so it is recorded as
-`SOURCE_COMPLETE_RUNTIME_PENDING` at the *activation* level with CI certification **PASS**.
+### Status is recorded on three independent axes
+
+A technically certified module is **not** downgraded because it is dark-launched.
+Every module therefore carries three separate values, and no undocumented status
+value (such as the retired `CERTIFIED_DARK_LAUNCHED`) may be used:
+
+| Axis | Allowed values |
+|---|---|
+| `classification` | the legend above (source + runtime certification state) |
+| `activation` | `DARK_LAUNCHED`, `INTERNAL_PILOT`, `TEST_ACTIVE`, `LIVE` |
+| `external_uat` | `DEFERRED`, `IN_PROGRESS`, `COMPLETE` |
+
+**Rule applied:** no module is marked `COMPLETE_AND_CERTIFIED` without reproducible
+runtime evidence (clean-database harness + grant verifier passing in CI). Technically
+certified modules are recorded as:
+
+```
+classification = COMPLETE_AND_CERTIFIED
+activation     = DARK_LAUNCHED
+external_uat   = DEFERRED
+```
+
+`CERTIFIED_DARK_LAUNCHED` is **retired** and must not reappear.
+
 
 ## Summary
 
-| # | Module | Classification | Activation | Runtime evidence |
-|---|---|---|---|---|
-| 1 | Core Claims | PARTIAL_IMPLEMENTATION | n/a (always-on surfaces) | none |
-| 2 | Eligibility & Calculation | PARTIAL_IMPLEMENTATION | n/a | unit only |
-| 3 | Determination & Approval | PARTIAL_IMPLEMENTATION | n/a | unit only |
-| 4 | Awards | PARTIAL_IMPLEMENTATION | n/a | unit only |
-| 5 | Payments | PARTIAL_IMPLEMENTATION | n/a | unit only |
-| 6 | Configuration | PARTIAL_IMPLEMENTATION | n/a | unit only |
-| 7 | Award Suspension | SOURCE_COMPLETE_RUNTIME_PENDING | dark launch (`false`) | **CI chain PASS**; Test-provisioning tooling ready (29/29 guards), durable Test target still required |
-| 8 | Life Certificates | SOURCE_COMPLETE_RUNTIME_PENDING | dark launch (`false`) | workflow present, unverified this change set |
-| 9 | Medical Reviews | CERTIFIED_DARK_LAUNCHED | dark launch (`false`) | **grants + harness + adapter postflight PASS**; architecture boundary closed (RPC-only legacy mutations); 207/207 focused suites |
-| 10 | Overpayments | PARTIAL_IMPLEMENTATION | n/a | none |
-| 11 | Mortality | PARTIAL_IMPLEMENTATION | n/a | none |
-| 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | none |
-| 13 | Survivors Processing | PARTIAL_IMPLEMENTATION | n/a | none |
-| 14 | Means Tests | PARTIAL_IMPLEMENTATION | n/a | none |
-| 15 | Risk Management | CONTRACT_ONLY | n/a | none |
-| 16 | Uprating | CONTRACT_ONLY | n/a | none |
+| # | Module | Classification | Activation | External UAT | Runtime evidence |
+|---|---|---|---|---|---|
+| 1 | Core Claims | PARTIAL_IMPLEMENTATION | n/a (always-on surfaces) | n/a | none |
+| 2 | Eligibility & Calculation | PARTIAL_IMPLEMENTATION | n/a | n/a | unit only |
+| 3 | Determination & Approval | PARTIAL_IMPLEMENTATION | n/a | n/a | unit only |
+| 4 | Awards | PARTIAL_IMPLEMENTATION | n/a | n/a | unit only |
+| 5 | Payments | PARTIAL_IMPLEMENTATION | n/a | n/a | unit only |
+| 6 | Configuration | PARTIAL_IMPLEMENTATION | n/a | n/a | unit only |
+| 7 | Award Suspension | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | **CI chain PASS**; Test-provisioning tooling ready (29/29 guards), durable Test target still required |
+| 8 | Life Certificates | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | `BN_LC_GRANTS_RESULT: PASS`, `BN_LC_HARNESS_RESULT: PASS` on the regenerated PG15 baseline |
+| 9 | Medical Reviews | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | **grants + harness + adapter postflight PASS**; architecture boundary closed (RPC-only legacy mutations); 207/207 focused suites |
+| 10 | Overpayments | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
+| 11 | Mortality | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
+| 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
+| 13 | Survivors Processing | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
+| 14 | Means Tests | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
+| 15 | Risk Management | CONTRACT_ONLY | n/a | n/a | none |
+| 16 | Uprating | CONTRACT_ONLY | n/a | n/a | none |
 
 ---
 
@@ -131,8 +151,8 @@ is still policy-gated (dark launch), so it is recorded as
 
 ## 7. Award Suspension  ← certified in this change set
 
-- **Status:** SOURCE_COMPLETE_RUNTIME_PENDING (CI certification **PASS**, activation deliberately withheld)
-- **Routes:** `/bn/servicing/award-suspension` (console + proposal/decision surfaces)
+- **Status:** COMPLETE_AND_CERTIFIED · activation `DARK_LAUNCHED` · external UAT `DEFERRED`
+- **Routes (canonical, per `AppRoutes.tsx`):** `/bn/award-suspension` (console + proposal/decision surfaces). `/bn/servicing/award-suspension` is a legacy redirect only.
 - **Menu:** exactly one entry under Benefit Servicing, gated on `bn_award_suspension:view`
 - **Feature/module flags:** `app_modules.bn_award_suspension.actions_enabled = false` (asserted by CI postflight)
 - **Commands catalogued:** 10 operator commands (`propose`, `approve`, `reject`, `withdraw`, `execute` × suspension/reinstatement)
@@ -154,8 +174,9 @@ is still policy-gated (dark launch), so it is recorded as
 
 ## 8. Life Certificates
 
-- **Status:** SOURCE_COMPLETE_RUNTIME_PENDING
-- **Routes:** `/bn/servicing/life-certificates`
+- **Status:** COMPLETE_AND_CERTIFIED · activation `DARK_LAUNCHED` · external UAT `DEFERRED`
+- **Routes (canonical):** `/bn/life-certificates` (legacy `/bn/servicing/life-certificates`, `/nbenefit/long-term/life-certificates` are redirects only)
+- **Latest CI evidence:** `BN_LC_GRANTS_RESULT: PASS`, `BN_LC_HARNESS_RESULT: PASS` — recorded on main; Life Certificates are no longer "unverified"
 - **Flags:** `bn_life_certificate.actions_enabled = false`
 - **Commands:** 14 RPCs (issue, submit, verify, fail, escalate, link-to-suspension)
 - **Boundaries:** RPC-only mutations; read views for the register
@@ -168,8 +189,8 @@ is still policy-gated (dark launch), so it is recorded as
 
 ## 9. Medical Reviews
 
-- **Status:** CERTIFIED_DARK_LAUNCHED
-- **Routes:** `/bn/servicing/medical-reviews` (Centre, Board Workspace, Provider Referral Workspace)
+- **Status:** COMPLETE_AND_CERTIFIED · activation `DARK_LAUNCHED` · external UAT `DEFERRED`
+- **Routes (canonical):** `/bn/medical-reviews`, `/bn/medical-reviews/board`, `/bn/medical-reviews/legacy-scheduler` (legacy `/bn/servicing/...` are redirects only)
 - **Flags:** `bn_medical_review.actions_enabled = false`; `bn_communication_adapter_source.BN_MEDICAL_REVIEW.is_enabled = false`
 - **Commands:** 50+ commands and ~20 query RPCs, mapped by `backendContract.ts`, plus the governed legacy trio
   `bn_medical_review_legacy_{schedule,record_outcome,provision}_v1`
@@ -190,9 +211,15 @@ is still policy-gated (dark launch), so it is recorded as
 
 ## 10. Overpayments
 
-- **Status:** PARTIAL_IMPLEMENTATION
+- **Status:** PARTIAL_IMPLEMENTATION · activation `n/a` · external UAT `DEFERRED`
+- **Routes (canonical):** `/bn/overpayments` (component file still lives at `src/pages/bn/servicing/OverpaymentRecovery.tsx`)
 - **Surface:** `src/pages/bn/servicing/OverpaymentRecovery.tsx`
-- **Gaps:** no command catalogue, no policy area, no harness, no grant verifier
+- **Financial invariant:** corrected 2026-08-06 — reversals now use Model A (signed contra
+  events on the original transaction's category). The previous formula excluded the original
+  *and* added the reversal, double counting it (400 liability + fully reversed 300 receipt
+  produced 700 instead of 400). See `docs/bn/BN_OVERPAYMENT_IMPLEMENTATION_MATRIX.md`.
+- **Gaps:** 25 commands catalogued, 0 implemented as secured database commands; no policy
+  area, no harness, no grant verifier, `setOverpaymentRecoveryPlan` still mutates directly
 - **Dependencies:** Payments, Finance, Legal recovery
 - **Next slice:** governance foundation + backend boundary (mirror the suspension pattern)
 
