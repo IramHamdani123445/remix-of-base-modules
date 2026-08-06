@@ -14539,16 +14539,23 @@ export type Database = {
           created_by: string | null
           declared_person: Json
           dependency_basis: string | null
+          dependency_decision: string
           evidence_status: string
           fact_source: string
           is_dependant: boolean
+          is_self: boolean
           member_from: string
           member_id: string
+          member_notes: string | null
           member_to: string | null
+          member_version: number
           person_id: number | null
           relationship_code: string
+          residence_inclusion_reason: string | null
           shares_residence: boolean
           superseded_by_fact_id: string | null
+          updated_at: string
+          updated_by: string | null
           verification_status: string
           voided_at: string | null
           voided_by: string | null
@@ -14559,16 +14566,23 @@ export type Database = {
           created_by?: string | null
           declared_person?: Json
           dependency_basis?: string | null
+          dependency_decision?: string
           evidence_status?: string
           fact_source?: string
           is_dependant?: boolean
+          is_self?: boolean
           member_from: string
           member_id?: string
+          member_notes?: string | null
           member_to?: string | null
+          member_version?: number
           person_id?: number | null
           relationship_code: string
+          residence_inclusion_reason?: string | null
           shares_residence?: boolean
           superseded_by_fact_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
           verification_status?: string
           voided_at?: string | null
           voided_by?: string | null
@@ -14579,16 +14593,23 @@ export type Database = {
           created_by?: string | null
           declared_person?: Json
           dependency_basis?: string | null
+          dependency_decision?: string
           evidence_status?: string
           fact_source?: string
           is_dependant?: boolean
+          is_self?: boolean
           member_from?: string
           member_id?: string
+          member_notes?: string | null
           member_to?: string | null
+          member_version?: number
           person_id?: number | null
           relationship_code?: string
+          residence_inclusion_reason?: string | null
           shares_residence?: boolean
           superseded_by_fact_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
           verification_status?: string
           voided_at?: string | null
           voided_by?: string | null
@@ -105430,6 +105451,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _bn_means_household_code_valid: {
+        Args: { p_set: string; p_value: string }
+        Returns: boolean
+      }
+      _bn_means_household_label: {
+        Args: { p_set: string; p_value: string }
+        Returns: string
+      }
+      _bn_means_household_member_json: {
+        Args: {
+          p_member: Database["public"]["Tables"]["bn_means_household_member"]["Row"]
+        }
+        Returns: Json
+      }
+      _bn_means_household_reference: { Args: never; Returns: Json }
+      _bn_means_household_rules: {
+        Args: { p_policy_version_id: string }
+        Returns: Json
+      }
+      _bn_means_household_validate: {
+        Args: {
+          p_assessment_id: string
+          p_exclude_member_id?: string
+          p_payload: Json
+        }
+        Returns: Json
+      }
       _bn_means_is_editable: { Args: { p_status: string }; Returns: boolean }
       _bn_means_latest_calculation: {
         Args: { p_assessment_id: string }
@@ -107094,6 +107142,22 @@ export type Database = {
           p_payload_hash: string
           p_reason_code: string
         }
+        Returns: Json
+      }
+      bn_means_household_candidates_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_household_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_household_reference_v1: {
+        Args: { p_actor_user_id: string }
+        Returns: Json
+      }
+      bn_means_household_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
       bn_means_initiation_check_v1: {

@@ -13,6 +13,9 @@ import type { BnGapCapability } from '@/services/bn/commands/benefitsCapabilityR
 export type BnMeansCommandName =
   | 'BN_MEANS_CREATE_ASSESSMENT'
   | 'BN_MEANS_ADD_HOUSEHOLD_MEMBER'
+  | 'BN_MEANS_UPDATE_HOUSEHOLD_MEMBER'
+  | 'BN_MEANS_REMOVE_HOUSEHOLD_MEMBER'
+  | 'BN_MEANS_CORRECT_CONTEXT'
   | 'BN_MEANS_ADD_INCOME'
   | 'BN_MEANS_ADD_ASSET'
   | 'BN_MEANS_ADD_DEDUCTION'
@@ -67,6 +70,9 @@ export const BN_MEANS_COMMANDS: readonly BnMeansCommandSpec[] = [
   // Authoring
   S('BN_MEANS_CREATE_ASSESSMENT',       'bn_means_tests:write'),
   S('BN_MEANS_ADD_HOUSEHOLD_MEMBER',    'bn_means_tests:write'),
+  S('BN_MEANS_UPDATE_HOUSEHOLD_MEMBER', 'bn_means_tests:write'),
+  S('BN_MEANS_REMOVE_HOUSEHOLD_MEMBER', 'bn_means_tests:write'),
+  S('BN_MEANS_CORRECT_CONTEXT',         'bn_means_tests:write', { requiresJustification: true }),
   S('BN_MEANS_ADD_INCOME',              'bn_means_tests:write'),
   S('BN_MEANS_ADD_ASSET',               'bn_means_tests:write'),
   S('BN_MEANS_ADD_DEDUCTION',           'bn_means_tests:write'),

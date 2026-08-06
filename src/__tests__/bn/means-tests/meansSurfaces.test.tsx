@@ -75,7 +75,7 @@ describe('MT4 — assessment workspace', () => {
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
 
-    expect(await screen.findByText('MT-2026-0001')).toBeInTheDocument();
+    expect(await screen.findByText(/MT-2026-0001/)).toBeInTheDocument();
     expect(screen.getByText('Version 3')).toBeInTheDocument();
     await waitFor(() => expect(availableActions).toHaveBeenCalledWith('a1'));
   });

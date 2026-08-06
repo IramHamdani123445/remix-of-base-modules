@@ -24,6 +24,10 @@ export type BnMeansReferenceSet =
   | 'CURRENCY'
   | 'RELATIONSHIP_TYPE'
   | 'DEPENDENCY_BASIS'
+  | 'DEPENDENCY_DECISION'
+  | 'HOUSEHOLD_FACT_SOURCE'
+  | 'RESIDENCE_INCLUSION_REASON'
+  | 'CONTEXT_CORRECTION_REASON'
   | 'INCOME_CATEGORY'
   | 'INCOME_FREQUENCY'
   | 'INCOME_BASIS'
@@ -94,20 +98,52 @@ const CANONICAL: Partial<Record<BnMeansReferenceSet, readonly CanonicalOption[]>
     o('XCD', 'East Caribbean Dollar (XCD)'),
     o('USD', 'United States Dollar (USD)'),
   ],
+  // EPIC 2 — mirrors the canonical backend list
+  // (`public._bn_means_household_reference()`); the backend rejects any
+  // relationship code that is not in that list.
   RELATIONSHIP_TYPE: [
+    o('SELF', 'Self (assessed person)'),
     o('SPOUSE', 'Spouse'),
     o('PARTNER', 'Partner'),
     o('CHILD', 'Child'),
+    o('STEPCHILD', 'Stepchild'),
     o('PARENT', 'Parent'),
     o('SIBLING', 'Sibling'),
-    o('OTHER_DEPENDANT', 'Other dependant'),
-    o('NON_DEPENDANT', 'Non-dependant household member'),
+    o('OTHER_RELATIVE', 'Other relative'),
+    o('NON_RELATIVE', 'Non-relative household member'),
+  ],
+  DEPENDENCY_DECISION: [
+    o('DEPENDANT', 'Dependant'),
+    o('NOT_DEPENDANT', 'Not dependant'),
+    o('UNDETERMINED', 'Undetermined'),
   ],
   DEPENDENCY_BASIS: [
-    o('FINANCIAL', 'Financially dependent'),
-    o('EDUCATION', 'In full-time education'),
-    o('DISABILITY', 'Dependent through disability'),
-    o('NOT_DEPENDENT', 'Not dependent'),
+    o('AGE', 'Age'),
+    o('DISABILITY', 'Disability'),
+    o('EDUCATION', 'Full-time education'),
+    o('FINANCIAL', 'Financial dependence'),
+    o('LEGAL_RESPONSIBILITY', 'Legal responsibility'),
+    o('OTHER_BASIS', 'Other configured basis'),
+  ],
+  HOUSEHOLD_FACT_SOURCE: [
+    o('PERSON_RECORD', 'Person record'),
+    o('CLAIM_DECLARATION', 'Claim declaration'),
+    o('DEPENDANT_RECORD', 'Existing dependant record'),
+    o('APPLICANT_DECLARATION', 'Applicant declaration'),
+    o('OFFICER_CONFIRMED', 'Officer-confirmed'),
+    o('EXTERNAL_EVIDENCE', 'External evidence'),
+  ],
+  RESIDENCE_INCLUSION_REASON: [
+    o('TEMPORARY_ABSENCE', 'Temporary absence from the residence'),
+    o('INSTITUTIONAL_CARE', 'In institutional or residential care'),
+    o('EDUCATION_AWAY', 'Living away in full-time education'),
+    o('MAINTAINED_ELSEWHERE', 'Maintained by the household elsewhere'),
+    o('POLICY_INCLUSION', 'Included by a policy rule'),
+  ],
+  CONTEXT_CORRECTION_REASON: [
+    o('WRONG_EFFECTIVE_DATE', 'Effective date recorded incorrectly'),
+    o('WRONG_ASSESSMENT_REASON', 'Assessment reason recorded incorrectly'),
+    o('ADMINISTRATIVE_CORRECTION', 'Administrative correction'),
   ],
   INCOME_CATEGORY: [
     o('EMPLOYMENT', 'Employment earnings'),
