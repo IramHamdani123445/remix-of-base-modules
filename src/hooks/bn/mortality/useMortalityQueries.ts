@@ -212,3 +212,57 @@ export function useMortalityAssignableUsers() {
 }
 
 
+
+/** BN-MORT-M3 — Canonical evidence register for an event. */
+export function useMortalityEvidenceRegister(eventId: string | null) {
+  return useBenefitsQuery<{ eventId: string }, readonly MortalityEvidenceRegisterEntry[]>({
+    queryCode: 'BN_MORTALITY_GET_EVIDENCE',
+    moduleCode: MODULE,
+    params: { eventId: eventId ?? '' },
+    enabled: !!eventId,
+  });
+}
+
+/** BN-MORT-M3 — Required follow-on actions gating closure. */
+export function useMortalityRequiredActions(eventId: string | null) {
+  return useBenefitsQuery<{ eventId: string }, readonly MortalityRequiredActionEntry[]>({
+    queryCode: 'BN_MORTALITY_GET_REQUIRED_ACTIONS',
+    moduleCode: MODULE,
+    params: { eventId: eventId ?? '' },
+    enabled: !!eventId,
+  });
+}
+
+/** BN-MORT-M5 — Cross-module handoffs raised by an event. */
+export function useMortalityHandoffs(eventId: string | null) {
+  return useBenefitsQuery<{ eventId: string }, readonly MortalityHandoffEntry[]>({
+    queryCode: 'BN_MORTALITY_GET_HANDOFFS',
+    moduleCode: MODULE,
+    params: { eventId: eventId ?? '' },
+    enabled: !!eventId,
+  });
+}
+
+/**
+ * BN-MORT-M3 — Operational indicators for the visible worklist page.
+ * Disabled when the page is empty so no request is issued.
+ */
+export function useMortalityWorklistIndicators(eventIds: readonly string[]) {
+  const ids = [...eventIds];
+  return useBenefitsQuery<{ eventIds: string[] }, readonly MortalityWorklistIndicator[]>({
+    queryCode: 'BN_MORTALITY_GET_WORKLIST_INDICATORS',
+    moduleCode: MODULE,
+    params: { eventIds: ids },
+    enabled: ids.length > 0,
+  });
+}
+
+/** BN-MORT-M4 — Award 360 mortality posture. */
+export function useMortalityAwardSnapshot(awardId: string | null) {
+  return useBenefitsQuery<{ awardId: string }, MortalityAwardSnapshotDto>({
+    queryCode: 'BN_MORTALITY_GET_AWARD_SNAPSHOT',
+    moduleCode: MODULE,
+    params: { awardId: awardId ?? '' },
+    enabled: !!awardId,
+  });
+}
