@@ -2,7 +2,7 @@
 -- BN Overpayments — seeded lifecycle integration harness (Phases B12/B13)
 --
 -- Runs inside a single transaction and ALWAYS rolls back. Emits exactly one
---   BN_OP_HARNESS_RESULT=PASS
+--   BN_OP_HARNESS_RESULT: PASS
 -- marker on success; raises otherwise. No SKIP paths.
 --
 -- Journeys
@@ -24,12 +24,12 @@ BEGIN;
 DO $$
 DECLARE v_env text;
 BEGIN
-  SELECT environment INTO v_env
+  SELECT environment_kind INTO v_env
   FROM public.platform_environment_marker
-  ORDER BY created_at DESC LIMIT 1;
+  WHERE id = true;
 
-  IF v_env IS NOT NULL AND upper(v_env) IN ('PRODUCTION', 'LIVE') THEN
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL refusing to run against % database', v_env;
+  IF upper(COALESCE(v_env, 'UNMARKED')) <> 'CI' THEN
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL refusing to run against % database', COALESCE(v_env, 'UNMARKED');
   END IF;
 END
 $$;
@@ -43,7 +43,6 @@ DECLARE
   v_version   integer;
   v_out       numeric;
   v_err       text;
-  v_residue   bigint;
   v_actions   boolean;
 BEGIN
   -- Harness runs with actions temporarily enabled inside the transaction;
@@ -51,14 +50,14 @@ BEGIN
   SELECT actions_enabled INTO v_actions
   FROM public.app_modules WHERE module_code = 'bn_overpayments';
   IF v_actions IS DISTINCT FROM false THEN
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL bn_overpayments must be dark-launched (actions_enabled=false)';
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL bn_overpayments must be dark-launched (actions_enabled=false)';
   END IF;
 
   -- ── Negative: actions disabled ───────────────────────────────────
   BEGIN
     PERFORM public.bn_overpayment_create_candidate_v1(
       NULL, 'DUPLICATE_PAYMENT', NULL, NULL, 'XCD', 'HARNESS', 'HARNESS:NEG:DISABLED');
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL expected E_ACTIONS_DISABLED';
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL expected E_ACTIONS_DISABLED';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
     IF v_err NOT LIKE '%E_ACTIONS_DISABLED%' THEN RAISE; END IF;
@@ -71,7 +70,7 @@ BEGIN
   BEGIN
     PERFORM public.bn_overpayment_create_candidate_v1(
       NULL, 'DUPLICATE_PAYMENT', NULL, NULL, 'XCD', 'HARNESS', 'HARNESS:NEG:PERM');
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL expected E_PERMISSION_DENIED';
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL expected E_PERMISSION_DENIED';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
     IF v_err NOT LIKE '%E_PERMISSION_DENIED%' THEN RAISE; END IF;
@@ -89,7 +88,7 @@ BEGIN
   BEGIN
     PERFORM public.bn_overpayment_calculate_liability_v1(
       v_case, v_version - 1, 1500.00, 'XCD', 'MANUAL', '{}'::jsonb, 'HARNESS:NEG:STALE');
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL expected E_STALE_ROW_VERSION';
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL expected E_STALE_ROW_VERSION';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
     IF v_err NOT LIKE '%E_STALE_ROW_VERSION%' THEN RAISE; END IF;
@@ -102,7 +101,7 @@ BEGIN
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   BEGIN
     PERFORM public.bn_overpayment_verify_v1(v_case, v_version, 'HARNESS', 'HARNESS:NEG:SELF');
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL expected E_SELF_APPROVAL';
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL expected E_SELF_APPROVAL';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
     IF v_err NOT LIKE '%E_SELF_APPROVAL%' THEN RAISE; END IF;
@@ -150,12 +149,12 @@ BEGIN
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_reverse_transaction_v1(
     v_case, v_version,
-    (SELECT id FROM public.bn_op_transaction WHERE case_id = v_case AND txn_type = 'RECEIPT' ORDER BY created_at DESC LIMIT 1),
-    'HARNESS_CORRECTION', 'HARNESS:E:REVERSE');
+     (SELECT id FROM public.bn_op_recovery_transaction WHERE case_id = v_case AND txn_type = 'RECEIPT' ORDER BY posted_at DESC LIMIT 1),
+     300.00, 'XCD', 'HARNESS_CORRECTION', 'HARNESS:E:REVERSE');
 
   SELECT outstanding_amount INTO v_out FROM public.bn_op_case WHERE id = v_case;
   IF round(v_out, 2) <> 1500.00 THEN
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL reversal invariant broken: outstanding % (expected 1500.00)', v_out;
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL reversal invariant broken: outstanding % (expected 1500.00)', v_out;
   END IF;
 
   -- partial recovery then balance check: receipt 300 -> outstanding 1200
@@ -166,7 +165,7 @@ BEGIN
 
   SELECT outstanding_amount INTO v_out FROM public.bn_op_case WHERE id = v_case;
   IF round(v_out, 2) <> 1200.00 THEN
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL balance broken: outstanding % (expected 1200.00)', v_out;
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL balance broken: outstanding % (expected 1200.00)', v_out;
   END IF;
   RAISE NOTICE 'Model A signed contra invariant verified (expected 1200.00, got %)', round(v_out, 2);
 
@@ -180,10 +179,10 @@ BEGIN
     SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
     PERFORM public.bn_overpayment_record_receipt_v1(
       v_case, v_version, 50.00, 'XCD', 'CASH', 'HARNESS:NEG:HOLD');
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL expected E_INVALID_STATE during appeal hold';
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL expected E_APPEAL_HOLD during appeal hold';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
-    IF v_err NOT LIKE '%E_INVALID_STATE%' THEN RAISE; END IF;
+    IF v_err NOT LIKE '%E_APPEAL_HOLD%' THEN RAISE; END IF;
   END;
 
   PERFORM public.bn_op_test_set_actor(v_checker);
@@ -225,7 +224,7 @@ BEGIN
     SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
     PERFORM public.bn_overpayment_record_receipt_v1(
       v_case, v_version, 10.00, 'XCD', 'CASH', 'HARNESS:NEG:CLOSED');
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL expected E_INVALID_STATE on closed case';
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL expected E_INVALID_STATE on closed case';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
     IF v_err NOT LIKE '%E_INVALID_STATE%' THEN RAISE; END IF;
@@ -235,21 +234,13 @@ BEGIN
   PERFORM public.bn_overpayment_reopen_v1(v_case, v_version, 'HARNESS_REVIEW', 'HARNESS:G:REOPEN');
 
   -- ── Audit completeness ───────────────────────────────────────────
-  IF (SELECT count(*) FROM public.bn_op_audit_event WHERE case_id = v_case) < 20 THEN
-    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT=FAIL audit trail incomplete';
+  IF (SELECT count(*) FROM public.bn_op_event WHERE case_id = v_case) < 20 THEN
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL audit trail incomplete';
   END IF;
 
-  -- ── Zero-residue precheck (B13) ──────────────────────────────────
-  DELETE FROM public.bn_op_audit_event WHERE case_id = v_case;
-  DELETE FROM public.bn_op_transaction  WHERE case_id = v_case;
-  DELETE FROM public.bn_op_case         WHERE id = v_case;
-
-  SELECT count(*) INTO v_residue FROM public.bn_op_case WHERE case_reference LIKE 'HARNESS%';
-  IF v_residue <> 0 THEN
-    RAISE EXCEPTION 'BN_OP_RESIDUE_FAIL: % harness rows remain', v_residue;
-  END IF;
-
-  RAISE NOTICE 'BN_OP_HARNESS_RESULT=PASS';
+  -- No cleanup is performed here. The enclosing ROLLBACK is the only cleanup
+  -- mechanism, and CI independently proves every bn_op_* table has zero rows.
+  RAISE NOTICE 'BN_OP_HARNESS_RESULT: PASS';
 END
 $$;
 
