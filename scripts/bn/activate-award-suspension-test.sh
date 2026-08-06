@@ -49,6 +49,16 @@ status() {
   psql "$BN_SUSP_DB_URL" -v ON_ERROR_STOP=1 -c \
     "SELECT name, is_enabled, actions_enabled, rollout_state, show_in_menu
        FROM public.app_modules WHERE name = 'bn_award_suspension';"
+  # Posture is DERIVED, never stored: the shared app_modules.rollout_state
+  # constraint only permits hidden | internal_pilot | public, so module
+  # specific labels (READ_ONLY / TEST_ACTIVE) must not be written to it.
+  local enabled
+  enabled="$(q "SELECT actions_enabled FROM public.app_modules WHERE name = 'bn_award_suspension';")"
+  if [ "$enabled" = "t" ]; then
+    echo "effective_posture=TEST_ACTIVE"
+  else
+    echo "effective_posture=READ_ONLY"
+  fi
 }
 
 require() {
@@ -193,7 +203,7 @@ case "$MODE" in
     updated="$(q "BEGIN;
       WITH upd AS (
         UPDATE public.app_modules
-           SET actions_enabled = true, is_enabled = true, rollout_state = 'TEST_ACTIVE'
+           SET actions_enabled = true, is_enabled = true, rollout_state = 'internal_pilot'
          WHERE name = 'bn_award_suspension'
         RETURNING 1
       ) SELECT count(*) FROM upd;
@@ -202,7 +212,7 @@ case "$MODE" in
       echo "Refusing: expected exactly one updated module row, got '${updated}'." >&2
       exit 7
     fi
-    echo "Award Suspension actions ENABLED (Test, rollout_state=TEST_ACTIVE)."
+    echo "Award Suspension actions ENABLED (Test, rollout_state=internal_pilot, effective_posture=TEST_ACTIVE)."
     status
     ;;
   disable)
@@ -210,7 +220,7 @@ case "$MODE" in
     updated="$(q "BEGIN;
       WITH upd AS (
         UPDATE public.app_modules
-           SET actions_enabled = false, rollout_state = 'READ_ONLY'
+           SET actions_enabled = false, rollout_state = 'internal_pilot'
          WHERE name = 'bn_award_suspension'
         RETURNING 1
       ) SELECT count(*) FROM upd;
@@ -219,7 +229,7 @@ case "$MODE" in
       echo "Refusing: expected exactly one updated module row, got '${updated}'." >&2
       exit 7
     fi
-    echo "Award Suspension actions DISABLED (rollback complete, rollout_state=READ_ONLY)."
+    echo "Award Suspension actions DISABLED (rollback complete, rollout_state=internal_pilot, effective_posture=READ_ONLY)."
     status
     ;;
   status)
