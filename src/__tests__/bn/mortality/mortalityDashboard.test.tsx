@@ -40,7 +40,9 @@ vi.mock('@/hooks/bn/mortality/useMortalityQueries', () => ({
   useMortalityDashboard: () => mockDashboard(),
   useMortalityEventList: (...args: any[]) => mockList(...args),
   useMortalityAssignableUsers: () => mockAssignable(),
+  useMortalityWorklistIndicators: () => ({ data: {}, isLoading: false, isError: false, error: null }),
 }));
+
 
 const authState = { user: { id: 'user-alice-uuid-1111-1111-1111-111111111111' } as any };
 vi.mock('@/contexts/SupabaseAuthContext', () => ({
