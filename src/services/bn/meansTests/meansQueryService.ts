@@ -6,6 +6,17 @@
  * successful result: callers receive an explicit status.
  */
 import { supabase } from '@/integrations/supabase/client';
+import type {
+  BnMeansAdjustmentRow,
+  BnMeansApprovalContext,
+  BnMeansQueueCode,
+} from '@/types/bn/meansTests/meansAdjustments';
+
+export type {
+  BnMeansAdjustmentRow,
+  BnMeansApprovalContext,
+  BnMeansQueueCode,
+} from '@/types/bn/meansTests/meansAdjustments';
 
 export type BnMeansQueryStatus = 'OK' | 'DENIED' | 'NOT_FOUND' | 'INVALID' | 'FAILED';
 
