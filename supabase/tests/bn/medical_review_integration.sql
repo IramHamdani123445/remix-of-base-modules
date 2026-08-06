@@ -226,9 +226,10 @@ BEGIN
    WHERE COALESCE(ma.is_enabled, true);
 
   -- --- product / claim / award ---------------------------------------
-  INSERT INTO public.bn_product(id, product_code, product_name, status)
-  VALUES (v_product, 'HX_MR_PRODUCT', 'Harness Disability Product', 'ACTIVE')
+  INSERT INTO public.bn_product(id, benefit_code, benefit_name, category, status)
+  VALUES (v_product, 'HX_MR_PRODUCT', 'Harness Disability Product', 'LONG_TERM', 'ACTIVE')
   ON CONFLICT (id) DO NOTHING;
+
 
   INSERT INTO public.bn_product_version(id, product_id, version_number, effective_from, status)
   VALUES (v_version, v_product, 1, current_date - 365, 'ACTIVE')
