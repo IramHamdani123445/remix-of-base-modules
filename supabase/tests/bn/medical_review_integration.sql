@@ -352,41 +352,64 @@ END $$;
 -- TRUSTED CONTEXT — Phase C: policy validation (negative cases)
 -- Run against a throwaway policy so the journey policy stays valid.
 -- =====================================================================
-DO $$
-DECLARE v_neg jsonb; v_base jsonb;
+-- Clone helper: builds a throwaway policy from the journey policy with the
+-- supplied column overrides so negative validation runs against a real row
+-- (public._bn_mr_validate_policy takes a policy id, not a jsonb document).
+CREATE FUNCTION pg_temp.mr_neg_policy(p_overrides jsonb) RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER AS $fn$
+DECLARE v_id uuid := gen_random_uuid();
 BEGIN
-  v_base := jsonb_build_object(
-    'board_mode','MANDATORY', 'board_id', NULL,
-    'assessment_model','SINGLE_ASSESSOR',
-    'second_opinion_mode','ON_REQUEST',
-    'maker_checker_required', true,
-    'maker_checker_chain', '["PREPARER","APPROVER"]'::jsonb,
-    'required_quorum', 1);
+  INSERT INTO public.bn_medical_review_policy
+  SELECT (jsonb_populate_record(NULL::public.bn_medical_review_policy,
+            to_jsonb(pol)
+            || jsonb_build_object('id', v_id,
+                                  'policy_code', 'HX_NEG_' || left(v_id::text, 8))
+            || p_overrides)).*
+    FROM public.bn_medical_review_policy pol
+   WHERE pol.id = pg_temp.mr_uid('POLICY');
+  RETURN v_id;
+END $fn$;
 
+DO $$
+DECLARE v_neg jsonb; v_id uuid;
+BEGIN
+  -- Binding board determination without a configured board must be refused.
   BEGIN
-    PERFORM public._bn_mr_validate_policy(v_base);
+    v_id := pg_temp.mr_neg_policy(jsonb_build_object(
+              'board_determination_binding', true, 'board_id', NULL));
+    PERFORM public._bn_mr_validate_policy(v_id);
     PERFORM pg_temp.mr_ok('C', 'board_direct_without_board_rejected', false,
                           'expected rejection, none raised');
   EXCEPTION WHEN others THEN
-    PERFORM pg_temp.mr_ok('C', 'board_direct_without_board_rejected', true, SQLERRM);
+    PERFORM pg_temp.mr_ok('C', 'board_direct_without_board_rejected',
+      SQLERRM LIKE '%BINDING_BOARD_NOT_CONFIGURED%', SQLERRM);
   END;
 
+  -- Board trigger rules may never carry a quorum below one.
   BEGIN
-    PERFORM public._bn_mr_validate_policy(v_base || jsonb_build_object('required_quorum', 0));
+    v_id := pg_temp.mr_neg_policy('{}'::jsonb);
+    INSERT INTO public.bn_medical_review_board_trigger_rule(
+      policy_id, rule_code, rule_name, required_quorum)
+    VALUES (v_id, 'PERMANENT_IMPAIRMENT', 'Harness zero quorum', 0);
+    PERFORM public._bn_mr_validate_policy(v_id);
     PERFORM pg_temp.mr_ok('C', 'quorum_below_one_rejected', false, 'expected rejection');
   EXCEPTION WHEN others THEN
-    PERFORM pg_temp.mr_ok('C', 'quorum_below_one_rejected', true, SQLERRM);
+    PERFORM pg_temp.mr_ok('C', 'quorum_below_one_rejected',
+      SQLERRM LIKE '%QUORUM_BELOW_ONE%' OR SQLERRM LIKE '%required_quorum%', SQLERRM);
   END;
 
+  -- A second-opinion trigger rule contradicts a policy that forbids them.
   BEGIN
-    PERFORM public._bn_mr_validate_policy(v_base || jsonb_build_object(
-      'board_mode','NONE',
-      'second_opinion_mode','MANDATORY',
-      'assessment_model','SINGLE_ASSESSOR',
-      'concurrent_referrals_permitted', false));
+    v_id := pg_temp.mr_neg_policy(jsonb_build_object(
+              'second_opinion_mode', 'NOT_PERMITTED'));
+    INSERT INTO public.bn_medical_review_board_trigger_rule(
+      policy_id, rule_code, rule_name, required_quorum)
+    VALUES (v_id, 'SECOND_OPINION_RECEIVED', 'Harness second opinion', 2);
+    PERFORM public._bn_mr_validate_policy(v_id);
     PERFORM pg_temp.mr_ok('C', 'second_opinion_conflict_rejected', false, 'expected rejection');
   EXCEPTION WHEN others THEN
-    PERFORM pg_temp.mr_ok('C', 'second_opinion_conflict_rejected', true, SQLERRM);
+    PERFORM pg_temp.mr_ok('C', 'second_opinion_conflict_rejected',
+      SQLERRM LIKE '%SECOND_OPINION_DISABLED%', SQLERRM);
   END;
 
   -- Product timezone must come from configuration, never a hard-coded default.
