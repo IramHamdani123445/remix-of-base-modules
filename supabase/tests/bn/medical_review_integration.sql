@@ -289,6 +289,21 @@ BEGIN
   ON CONFLICT DO NOTHING;
 
   -- --- providers -------------------------------------------------------
+  -- The journey policy is CONDITIONAL with binding board determination, so
+  -- the validator requires a configured board AND at least one active board
+  -- trigger rule. Both are synthetic and transaction-scoped.
+  UPDATE public.bn_medical_review_policy
+     SET board_id = v_board
+   WHERE id = v_policy;
+
+  INSERT INTO public.bn_medical_review_board_trigger_rule(
+    policy_id, rule_code, rule_name, evaluation_order, is_active,
+    required_specialties, required_quorum, determination_binding,
+    completion_offset_days)
+  VALUES (v_policy, 'PERMANENT_IMPAIRMENT', 'Harness board trigger', 10, true,
+          ARRAY['ORTHOPAEDICS'], 2, true, 30)
+  ON CONFLICT DO NOTHING;
+
   INSERT INTO public.bn_medical_provider(id, provider_code, practitioner_name, classification,
                                          provider_type, provider_status, verification_status,
                                          portal_user_id, specialties, is_individual_practitioner)
