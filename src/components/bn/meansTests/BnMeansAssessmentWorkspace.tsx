@@ -34,6 +34,10 @@ import {
 import { BnMeansCalculationPanel } from '@/components/bn/meansTests/BnMeansCalculationPanel';
 import { BnMeansAdjustmentsPanel } from '@/components/bn/meansTests/BnMeansAdjustmentsPanel';
 import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApprovalPanel';
+import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMeansHouseholdSection';
+import BnMeansContextPanel from '@/components/bn/meansTests/context/BnMeansContextPanel';
+import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTests/BnMeansStageJourney';
+import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
 import {
   BN_MEANS_REASON_LABEL,
   meansStatusLabel,
@@ -84,6 +88,12 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     queryKey: ['bn-means-approval-context', assessmentId],
     queryFn: () => meansQueryService.approvalContext(assessmentId),
   });
+  // EPIC 2 — household readiness drives the journey strip; never recomputed here.
+  const householdReadiness = useQuery({
+    queryKey: ['bn-means-household-readiness', assessmentId],
+    queryFn: () => meansQueryService.householdReadiness(assessmentId),
+  });
+  const [activeTab, setActiveTab] = React.useState('context');
 
   const run = useMutation({
     mutationFn: (input: { command: BnMeansCommandName; payload?: Record<string, unknown> }) =>
@@ -106,6 +116,8 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
       queryClient.invalidateQueries({ queryKey: ['bn-means-adjustments', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-approval-context', assessmentId] });
       queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['bn-means-household', assessmentId] });
+      queryClient.invalidateQueries({ queryKey: ['bn-means-household-readiness', assessmentId] });
     },
   });
 
@@ -185,6 +197,46 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   ).length;
 
 
+  // EPIC 2 — officer-readable context. Raw identifiers are never the headline.
+  const personLabel =
+    String(assessment.person_name ?? '') ||
+    (assessment.person_id ? `Person ${assessment.person_id}` : 'Person not identified');
+  const claimLabel = assessment.claim_reference
+    ? `Claim ${assessment.claim_reference}`
+    : assessment.claim_id
+      ? `Claim ${assessment.claim_id}`
+      : null;
+  const awardLabel = assessment.award_reference
+    ? `Award ${assessment.award_reference}`
+    : assessment.award_id
+      ? `Award ${assessment.award_id}`
+      : null;
+  const policyLabel =
+    String(assessment.policy_version_label ?? '') ||
+    (assessment.policy_version_id ? 'Attached policy version' : 'No policy version attached');
+
+  const householdReady =
+    householdReadiness.data?.status === 'OK' ? householdReadiness.data.data : null;
+  const status = String(assessment.status ?? '');
+  const intakeDone = status !== 'DRAFT';
+  const stages: readonly BnMeansStage[] = [
+    { key: 'context', label: 'Confirm context', state: 'COMPLETE', hint: 'Person, claim and period' },
+    {
+      key: 'household',
+      label: 'Household composition',
+      state: householdReady?.section_complete
+        ? 'COMPLETE'
+        : (householdReady?.blockers.length ?? 0) > 0
+          ? 'BLOCKED'
+          : 'CURRENT',
+      hint: householdReady ? `${householdReady.household_size} in household` : 'Who lived in the household',
+    },
+    { key: 'income', label: 'Income', state: intakeDone ? 'COMPLETE' : 'PENDING', hint: 'Declared income' },
+    { key: 'assets', label: 'Assets', state: intakeDone ? 'COMPLETE' : 'PENDING' },
+    { key: 'evidence', label: 'Evidence', state: intakeDone ? 'COMPLETE' : 'PENDING' },
+    { key: 'review', label: 'Review & submit', state: intakeDone ? 'COMPLETE' : 'PENDING' },
+  ];
+
   const ActionButton: React.FC<{ command: BnMeansCommandName; label: string; payload?: Record<string, unknown> }> = ({
     command,
     label,
@@ -221,9 +273,16 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
             <ArrowLeft className="mr-2 h-4 w-4" /> Work queue
           </Button>
           <div>
-            <h2 className="text-xl font-semibold">{String(assessment.assessment_reference ?? '')}</h2>
+            <h2 className="text-xl font-semibold">{personLabel}</h2>
             <p className="text-sm text-muted-foreground">
-              {String(assessment.benefit_programme ?? '')} · {String(assessment.assessment_reason ?? '')}
+              {String(assessment.assessment_reference ?? '')} ·{' '}
+              {humaniseMeansCode(String(assessment.benefit_programme ?? ''))} ·{' '}
+              {humaniseMeansCode(String(assessment.assessment_reason ?? ''))}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {String(assessment.effective_from ?? '—')} → {String(assessment.effective_to ?? 'open-ended')}
+              {claimLabel ? ` · ${claimLabel}` : ''}
+              {awardLabel ? ` · ${awardLabel}` : ''}
             </p>
           </div>
         </div>
@@ -251,7 +310,9 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         </Alert>
       )}
 
-      <Tabs defaultValue="context">
+      <BnMeansStageJourney stages={stages} onSelect={setActiveTab} />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap">
           <TabsTrigger value="context">Context</TabsTrigger>
           <TabsTrigger value="household">Household</TabsTrigger>
@@ -270,57 +331,37 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         </TabsList>
 
         <TabsContent value="context">
-          <Card>
-            <CardHeader>
-              <CardTitle>Assessment context</CardTitle>
-              <CardDescription>Frozen at submission; corrections use a controlled successor version.</CardDescription>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-2">
-              {[
-                ['Person', assessment.person_id],
-                ['Claim', assessment.claim_id],
-                ['Award', assessment.award_id],
-                ['Effective from', assessment.effective_from],
-                ['Effective to', assessment.effective_to],
-                ['Policy version', assessment.policy_version_id],
-                ['Currency', assessment.currency_code],
-                ['Reassessment due', assessment.reassessment_due],
-              ].map(([label, value]) => (
-                <div key={String(label)}>
-                  <p className="text-xs uppercase text-muted-foreground">{String(label)}</p>
-                  <p className="text-sm">{value === null || value === undefined ? '—' : String(value)}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          <BnMeansContextPanel
+            assessment={assessment}
+            personLabel={personLabel}
+            claimLabel={claimLabel}
+            awardLabel={awardLabel}
+            policyLabel={policyLabel}
+            canCorrect={Boolean(actionFor('BN_MEANS_CORRECT_CONTEXT')?.allowed)}
+            correctionReason={
+              actionFor('BN_MEANS_CORRECT_CONTEXT')?.reason
+                ? REASON_LABEL[actionFor('BN_MEANS_CORRECT_CONTEXT')!.reason as string] ??
+                  actionFor('BN_MEANS_CORRECT_CONTEXT')!.reason
+                : null
+            }
+            busy={run.isPending}
+            onCorrect={(payload) => run.mutate({ command: 'BN_MEANS_CORRECT_CONTEXT', payload })}
+          />
         </TabsContent>
 
         <TabsContent value="household">
-          <FactSection
-            title="Household members"
-            description="Dependency is never inferred from relationship alone."
-            rows={asRows(data.household)}
-            columns={[
-              ['relationship_code', 'Relationship'],
-              ['member_from', 'From'],
-              ['member_to', 'To'],
-              ['is_dependant', 'Dependant'],
-              ['verification_status', 'Verification'],
-              ['evidence_status', 'Evidence'],
-            ]}
-            form={
-              <InlineFactForm
-                fields={[
-                  { name: 'relationship_code', label: 'Relationship code', required: true },
-                  { name: 'member_from', label: 'Member from', type: 'date', required: true },
-                  { name: 'member_to', label: 'Member to', type: 'date' },
-                ]}
-                submitLabel="Add household member"
-                disabled={!actionFor('BN_MEANS_ADD_HOUSEHOLD_MEMBER')?.allowed || run.isPending}
-                reason={actionFor('BN_MEANS_ADD_HOUSEHOLD_MEMBER')?.reason ?? null}
-                onSubmit={(payload) => run.mutate({ command: 'BN_MEANS_ADD_HOUSEHOLD_MEMBER', payload })}
-              />
+          <BnMeansHouseholdSection
+            assessmentId={assessmentId}
+            assessmentFrom={String(assessment.effective_from ?? '')}
+            assessmentTo={assessment.effective_to ? String(assessment.effective_to) : null}
+            assessedPersonId={
+              assessment.person_id === null || assessment.person_id === undefined
+                ? null
+                : Number(assessment.person_id)
             }
+            editable={Boolean(actionFor('BN_MEANS_ADD_HOUSEHOLD_MEMBER')?.allowed)}
+            availableActions={availableActions.filter((a) => a.allowed).map((a) => a.command)}
+            onSectionComplete={() => setActiveTab('income')}
           />
         </TabsContent>
 
