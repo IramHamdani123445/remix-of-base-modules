@@ -2587,6 +2587,11 @@ const QUERY_REGISTRY: Record<string, QueryDescriptor> = {
   BN_MORTALITY_PREVIEW_REGISTRATION_IMPACT: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:read', 'bn_mortality:write'], sensitiveFields: [], maxPageSize: 100, handler: (admin, params) => previewRegistrationImpact(admin, params) },
   BN_MORTALITY_GET_ACTION_AVAILABILITY: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: [], maxPageSize: 1, handler: async () => ({ data: null, totalCount: 0 }) },
   BN_MORTALITY_GET_ASSIGNABLE_USERS: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: [], maxPageSize: 500, handler: (admin) => getAssignableUsers(admin) },
+  BN_MORTALITY_GET_EVIDENCE: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:read'], sensitiveFields: ['dmsReference', 'notes'], maxPageSize: 100, handler: getEvidenceRegister },
+  BN_MORTALITY_GET_REQUIRED_ACTIONS: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: [], maxPageSize: 100, handler: getRequiredActions },
+  BN_MORTALITY_GET_HANDOFFS: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: [], maxPageSize: 100, handler: getHandoffs },
+  BN_MORTALITY_GET_WORKLIST_INDICATORS: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: ['padExposureMinor'], maxPageSize: 100, handler: (admin, params) => getWorklistIndicators(admin, params) },
+  BN_MORTALITY_GET_AWARD_SNAPSHOT: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: [], maxPageSize: 1, handler: (admin, params) => getAwardMortalitySnapshot(admin, params) },
 
   // BN-AP-00 — Appeals & Disputes
   BN_APPEAL_GET_MY_APPEALS: { moduleCode: 'bn_appeals', anyOfCapabilities: ['bn_appeals:claimant_submit', 'bn_appeals:view'], sensitiveFields: [], maxPageSize: 100, handler: getMyAppeals },
