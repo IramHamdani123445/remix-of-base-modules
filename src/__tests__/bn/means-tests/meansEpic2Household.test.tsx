@@ -7,8 +7,7 @@
  */
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const household = vi.fn();
@@ -184,7 +183,7 @@ describe('EPIC 2 — household section', () => {
 
     const complete = await screen.findByTestId('means-household-mark-complete');
     await waitFor(() => expect(complete).toBeEnabled());
-    await userEvent.click(complete);
+    fireEvent.click(complete);
     await waitFor(() =>
       expect(execute).toHaveBeenCalledWith(
         expect.objectContaining({ command: 'BN_MEANS_MARK_HOUSEHOLD_COMPLETE', assessmentId: 'a1' }),
