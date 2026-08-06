@@ -711,11 +711,11 @@ BEGIN
     (r ->> 'session_id') IS NOT NULL, r::text);
 
   PERFORM public.bn_medical_review_record_board_participation_v1(
-    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_CHAIR'), 'PRESENT', 'hx-part-chair', 'harness');
+    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_CHAIR'), 'PRESENT', 'hx-part-chair', 'harness');
   PERFORM public.bn_medical_review_record_board_participation_v1(
-    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_MEMBER'), 'PRESENT', 'hx-part-member', 'harness');
+    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_MEMBER'), 'PRESENT', 'hx-part-member', 'harness');
   PERFORM public.bn_medical_review_record_board_participation_v1(
-    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_RECUSED'), 'PRESENT', 'hx-part-recused', 'harness');
+    pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_RECUSED'), 'PRESENT', 'hx-part-recused', 'harness');
   PERFORM pg_temp.mr_ok('I', 'secretary_records_participation', true);
 END $$;
 
@@ -731,7 +731,7 @@ DO $$
 DECLARE r jsonb;
 BEGIN
   r := public.bn_medical_review_declare_board_conflict_v1(
-         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_RECUSED'),
+         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_RECUSED'),
          'Treating relationship with the claimant.', 'hx-conflict-1', 'harness');
   PERFORM pg_temp.mr_ok('J', 'member_declares_conflict', (r ->> 'status') = 'OK', r::text);
 END $$;
@@ -745,7 +745,7 @@ DO $$
 DECLARE r jsonb;
 BEGIN
   r := public.bn_medical_review_record_recusal_v1(
-         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_RECUSED'), 'hx-recuse-1',
+         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_RECUSED'), 'hx-recuse-1',
          'Conflict declared and accepted.');
   PERFORM pg_temp.mr_ok('J', 'secretary_records_recusal', (r ->> 'status') = 'OK', r::text);
 END $$;
@@ -759,7 +759,7 @@ DO $$
 BEGIN
   BEGIN
     PERFORM public.bn_medical_review_record_board_vote_v1(
-      pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_RECUSED'), 'FOR',
+      pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_RECUSED'), 'FOR',
       'PERMANENT_INCAPACITY_CONFIRMED', 'harness', 'hx-vote-recused');
     PERFORM pg_temp.mr_ok('J', 'recused_member_cannot_vote', false, 'expected rejection');
   EXCEPTION WHEN others THEN
@@ -786,7 +786,7 @@ DO $$
 DECLARE r jsonb;
 BEGIN
   r := public.bn_medical_review_record_board_vote_v1(
-         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_MEMBER'), 'FOR',
+         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_MEMBER'), 'FOR',
          'PERMANENT_INCAPACITY_CONFIRMED', 'Consistent with the report.', 'hx-vote-member');
   PERFORM pg_temp.mr_ok('K', 'member_votes', (r ->> 'status') = 'OK', r::text);
 END $$;
@@ -800,7 +800,7 @@ DO $$
 DECLARE r jsonb;
 BEGIN
   r := public.bn_medical_review_record_board_vote_v1(
-         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('USER_CHAIR'), 'FOR',
+         pg_temp.mr_uid('SESSION'), pg_temp.mr_uid('MEMBER_CHAIR'), 'FOR',
          'PERMANENT_INCAPACITY_CONFIRMED', 'Consistent with the report.', 'hx-vote-chair');
   PERFORM pg_temp.mr_ok('K', 'chair_votes', (r ->> 'status') = 'OK', r::text);
 
