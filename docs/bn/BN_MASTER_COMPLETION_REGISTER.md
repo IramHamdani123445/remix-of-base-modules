@@ -211,8 +211,10 @@ external_uat   = DEFERRED
 
 ## 10. Overpayments
 
-- **Status:** IMPLEMENTATION_COMPLETE_PENDING_CI · activation `DARK_LAUNCHED` (`internal_pilot`,
-  actions disabled) · external UAT `DEFERRED`
+- **Status:** COMPLETE_AND_CERTIFIED · activation `DARK_LAUNCHED` (`internal_pilot`,
+  actions disabled) · external UAT `DEFERRED` · finance/legal operations readiness `PENDING`
+- **Independent certification:** GitHub Actions `bn-overpayment-integration.yml`,
+  run `31116272752`, commit `3a8b893139f5101022e0924617fbd73548e72e54`, conclusion `success`
 - **Routes (canonical):** `/bn/overpayments` (component file at `src/pages/bn/servicing/OverpaymentRecovery.tsx`)
 - **Surface:** `src/pages/bn/servicing/OverpaymentRecovery.tsx` — RPC-only, no direct table access
 - **Forward-only migration:** `supabase/migrations/20260806150000_bn_overpayment_recovery_domain.sql`
