@@ -227,6 +227,48 @@ export const meansQueryService = {
     return envelope<BnMeansApprovalContext>(data);
   },
 
+  /** EPIC 2 — household composition for one assessment. */
+  async household(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansHouseholdDetail>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_household_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansHouseholdDetail>(data);
+  },
+
+  /** EPIC 2 — backend-owned household readiness. Never recomputed in React. */
+  async householdReadiness(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansHouseholdReadiness>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_household_readiness_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansHouseholdReadiness>(data);
+  },
+
+  /** EPIC 2 — known household / dependant candidates for this claimant. */
+  async householdCandidates(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<readonly BnMeansHouseholdCandidate[]>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_household_candidates_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<readonly BnMeansHouseholdCandidate[]>(data);
+  },
+
   /** MT7 — secured work queues. Never derived from direct table reads. */
   async queue(
     queueCode: BnMeansQueueCode,
