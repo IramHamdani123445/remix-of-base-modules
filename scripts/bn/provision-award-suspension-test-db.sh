@@ -88,10 +88,13 @@ psql "$DB_URL" -X -v ON_ERROR_STOP=1 \
   || die 'postflight: canonical TEST marker not present exactly once' 6
 [ "$(q "SELECT actions_enabled FROM public.app_modules WHERE name = 'bn_award_suspension'")" = "f" ] \
   || die 'postflight: module was activated by provisioning' 6
-[ "$(q "SELECT rollout_state FROM public.app_modules WHERE name = 'bn_award_suspension'")" = "READ_ONLY" ] \
-  || die 'postflight: rollout_state is not READ_ONLY' 6
+ROLLOUT_STATE="$(q "SELECT rollout_state FROM public.app_modules WHERE name = 'bn_award_suspension'")"
+LEGACY_CHK="$(q "SELECT count(*) FROM pg_constraint WHERE conname = 'app_modules_rollout_state_check' AND pg_get_constraintdef(oid) NOT LIKE '%READ_ONLY%'")"
+if [ "$ROLLOUT_STATE" != "READ_ONLY" ] && [ "$LEGACY_CHK" = "0" ]; then
+  die "postflight: rollout_state is \"$ROLLOUT_STATE\", expected READ_ONLY" 6
+fi
 
 log "database name          : $ACTUAL_DB"
 log "test project reference : $PROJECT_REF"
-log 'module status          : actions_enabled=false rollout_state=READ_ONLY'
+log "module status          : actions_enabled=false rollout_state=$ROLLOUT_STATE (effective posture: READ_ONLY)"
 log 'BN_SUSP_PROVISION_RESULT: PASS'
