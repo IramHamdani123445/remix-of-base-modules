@@ -146,4 +146,6 @@ jobs:
       - name: Run activation-script guard tests
         run: bash scripts/bn/__tests__/activate-award-suspension-test.spec.sh
       - name: Typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
         run: bunx tsc --noEmit -p tsconfig.app.json
