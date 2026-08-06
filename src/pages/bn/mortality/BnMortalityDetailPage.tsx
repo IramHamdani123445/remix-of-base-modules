@@ -27,9 +27,14 @@ import {
   useMortalityAwardImpacts,
   useMortalityEventHistory,
   useMortalityEvidence,
+  useMortalityEvidenceRegister,
   useMortalityCommunications,
   useMortalityReferrals,
 } from '@/hooks/bn/mortality/useMortalityQueries';
+import {
+  BnMortalityRequiredActionsPanel,
+  BnMortalityHandoffsPanel,
+} from './components/BnMortalityFollowOnPanels';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
