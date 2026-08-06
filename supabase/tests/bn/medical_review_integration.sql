@@ -915,8 +915,8 @@ BEGIN
 
   PERFORM pg_temp.mr_ok('O', 'no_payment_impact_created',
     NOT EXISTS (SELECT 1 FROM public.bn_award_suspension_payment_impact i
-                 JOIN public.bn_award_suspension_event e ON e.id = i.suspension_event_id
-                WHERE e.bn_award_id = pg_temp.mr_uid('AWARD')));
+                 WHERE i.bn_award_id = pg_temp.mr_uid('AWARD')));
+
 
   SELECT * INTO v_det FROM public.bn_medical_board_determination
    WHERE board_case_id = pg_temp.mr_uid('BOARD_CASE') ORDER BY revision_no DESC LIMIT 1;
