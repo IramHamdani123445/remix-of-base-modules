@@ -102,6 +102,8 @@ export const Benefit360MeansTestCard: React.FC<{ awardId: string | null }> = ({ 
           <Badge variant="outline">{String(summary.status ?? '')}</Badge>
           {summary.missing_information === true && <Badge variant="secondary">Missing information</Badge>}
           {summary.pending_verification === true && <Badge variant="secondary">Pending verification</Badge>}
+          {summary.pending_approval === true && <Badge variant="secondary">Pending approval</Badge>}
+
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
