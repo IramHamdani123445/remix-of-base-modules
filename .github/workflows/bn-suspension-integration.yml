@@ -146,4 +146,4 @@ jobs:
       - name: Run activation-script guard tests
         run: bash scripts/bn/__tests__/activate-award-suspension-test.spec.sh
       - name: Typecheck
-        run: bunx tsgo --noEmit
+        run: bunx tsc --noEmit -p tsconfig.app.json
