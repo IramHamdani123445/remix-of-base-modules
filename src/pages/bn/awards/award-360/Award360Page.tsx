@@ -18,6 +18,7 @@ import { Award360TabNavigation } from './Award360TabNavigation';
 import { useAward360Header, useAward360Overview, useAward360Summary } from './useAward360Queries';
 import { AWARD_360_TABS, type Award360TabKey } from './viewModels';
 import { computeAwardAlerts, computeAwardAlertsFromSummary, dedupeAlerts } from './Award360Alerts';
+import { Benefit360MortalityCard } from '@/components/bn/mortality/Benefit360MortalityCard';
 import { TabErrorState } from './components';
 
 import { AwardOverviewTab } from './tabs/AwardOverviewTab';
@@ -323,13 +324,17 @@ export default function Award360Page() {
 
       <div>
         {activeTab === 'overview' && tabAccess.overview.visible && (
-          <AwardOverviewTab
-            header={header}
-            alerts={alerts}
-            onOpenTab={(t) => setTab(t)}
-            recentActivity={(activityQ.data ?? []).slice(0, 20)}
-            warnings={[...(overview?.warnings ?? []), ...(summaryQ.data?.warnings ?? [])]}
-          />
+          <div className="space-y-4">
+            <AwardOverviewTab
+              header={header}
+              alerts={alerts}
+              onOpenTab={(t) => setTab(t)}
+              recentActivity={(activityQ.data ?? []).slice(0, 20)}
+              warnings={[...(overview?.warnings ?? []), ...(summaryQ.data?.warnings ?? [])]}
+            />
+            {/* BN-MORT-M4 — read-only mortality posture for this award. */}
+            <Benefit360MortalityCard awardId={id ?? null} />
+          </div>
         )}
         {activeTab === 'pensioner' && tabAccess.pensioner.visible && (
           <AwardPensionerTab

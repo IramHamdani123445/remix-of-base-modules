@@ -67,4 +67,29 @@ export const mortalityQueryService = {
       buildQueryEnvelope('BN_MORTALITY_GET_COMMUNICATIONS', MODULE, { eventId }),
     );
   },
+  async getEvidenceRegister(eventId: string) {
+    return getBenefitsQueryClient().execute(
+      buildQueryEnvelope('BN_MORTALITY_GET_EVIDENCE', MODULE, { eventId }),
+    );
+  },
+  async getRequiredActions(eventId: string) {
+    return getBenefitsQueryClient().execute(
+      buildQueryEnvelope('BN_MORTALITY_GET_REQUIRED_ACTIONS', MODULE, { eventId }),
+    );
+  },
+  async getHandoffs(eventId: string) {
+    return getBenefitsQueryClient().execute(
+      buildQueryEnvelope('BN_MORTALITY_GET_HANDOFFS', MODULE, { eventId }),
+    );
+  },
+  async getWorklistIndicators(eventIds: readonly string[]) {
+    return getBenefitsQueryClient().execute(
+      buildQueryEnvelope('BN_MORTALITY_GET_WORKLIST_INDICATORS', MODULE, { eventIds: [...eventIds] }),
+    );
+  },
+  async getAwardSnapshot(awardId: string) {
+    return getBenefitsQueryClient().execute(
+      buildQueryEnvelope('BN_MORTALITY_GET_AWARD_SNAPSHOT', MODULE, { awardId }),
+    );
+  },
 };

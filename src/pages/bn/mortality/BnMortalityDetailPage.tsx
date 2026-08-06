@@ -27,9 +27,14 @@ import {
   useMortalityAwardImpacts,
   useMortalityEventHistory,
   useMortalityEvidence,
+  useMortalityEvidenceRegister,
   useMortalityCommunications,
   useMortalityReferrals,
 } from '@/hooks/bn/mortality/useMortalityQueries';
+import {
+  BnMortalityRequiredActionsPanel,
+  BnMortalityHandoffsPanel,
+} from './components/BnMortalityFollowOnPanels';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -265,32 +270,96 @@ function PaymentsAndPad({ eventId }: { eventId: string }) {
 }
 
 function EvidenceTab({ eventId }: { eventId: string }) {
-  const q = useMortalityEvidence(eventId);
-  if (q.isLoading) return <Skeleton className="h-40" />;
-  if (q.isError) return <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription>{q.error?.message}</AlertDescription></Alert>;
-  const rows = q.data?.data ?? [];
-  if (rows.length === 0) return <div className="p-6 text-center text-sm text-muted-foreground">No evidence attached.</div>;
+  const register = useMortalityEvidenceRegister(eventId);
+  const docs = useMortalityEvidence(eventId);
   return (
-    <ul className="divide-y rounded-md border">
-      {rows.map((f) => (
-        <li key={f.id} className="flex items-center justify-between p-3">
-          <div className="flex items-center gap-3">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <div className="text-sm">{f.title ?? f.id}</div>
-              <div className="text-xs text-muted-foreground">
-                {f.documentType ?? '—'} · {f.generatedAt ? new Date(f.generatedAt).toLocaleDateString() : '—'}
-              </div>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Evidence register</CardTitle></CardHeader>
+        <CardContent className="p-0">
+          {register.isLoading ? (
+            <Skeleton className="h-32" />
+          ) : register.isError ? (
+            <div className="p-4">
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Evidence could not be loaded.</AlertTitle>
+                <AlertDescription className="flex items-center justify-between gap-2">
+                  <span>Evidence completeness is unknown until this loads.</span>
+                  <Button size="sm" variant="outline" onClick={() => register.refetch()}>Retry</Button>
+                </AlertDescription>
+              </Alert>
             </div>
-          </div>
-          <Badge variant="outline">{f.status ?? 'UNVERIFIED'}</Badge>
-        </li>
-      ))}
-    </ul>
+          ) : (register.data?.data ?? []).length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">
+              No evidence recorded on this event.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>DMS reference</TableHead>
+                  <TableHead>Received</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Recorded</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(register.data?.data ?? []).map((r) => (
+                  <TableRow key={r.id} data-testid={`mort-evidence-${r.id}`}>
+                    <TableCell className="text-xs">{r.evidenceType}</TableCell>
+                    <TableCell className="text-xs font-mono">{r.dmsReference ?? r.dmsDocumentId ?? '—'}</TableCell>
+                    <TableCell className="text-xs">{r.receivedAt ? new Date(r.receivedAt).toLocaleDateString() : '—'}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-[10px]">{r.status}</Badge></TableCell>
+                    <TableCell className="text-xs">{new Date(r.createdAt).toLocaleDateString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Generated documents</CardTitle></CardHeader>
+        <CardContent className="p-0">
+          {docs.isLoading ? (
+            <Skeleton className="h-24" />
+          ) : docs.isError ? (
+            <div className="p-4">
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{docs.error?.message ?? 'Documents could not be loaded.'}</AlertDescription>
+              </Alert>
+            </div>
+          ) : (docs.data?.data ?? []).length === 0 ? (
+            <div className="p-6 text-center text-sm text-muted-foreground">No documents generated.</div>
+          ) : (
+            <ul className="divide-y">
+              {(docs.data?.data ?? []).map((f) => (
+                <li key={f.id} className="flex items-center justify-between p-3">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="text-sm">{f.title ?? f.id}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {f.documentType ?? '—'} · {f.generatedAt ? new Date(f.generatedAt).toLocaleDateString() : '—'}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant="outline">{f.status ?? 'UNVERIFIED'}</Badge>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
-function SurvivorFuneralLegalTab({ eventId }: { eventId: string }) {
+function ReferralTable({ eventId }: { eventId: string }) {
   const q = useMortalityReferrals(eventId);
   if (q.isLoading) return <Skeleton className="h-40" />;
   if (q.isError) return <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription>{q.error?.message}</AlertDescription></Alert>;
@@ -321,6 +390,24 @@ function SurvivorFuneralLegalTab({ eventId }: { eventId: string }) {
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+/**
+ * Survivor / Funeral / Legal — the downstream lifecycle view.
+ * Required actions gate closure; handoffs are the governed cross-module
+ * triggers; referrals are the legacy per-event records.
+ */
+function SurvivorFuneralLegalTab({ eventId }: { eventId: string }) {
+  return (
+    <div className="space-y-4">
+      <BnMortalityRequiredActionsPanel eventId={eventId} />
+      <BnMortalityHandoffsPanel eventId={eventId} />
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Referrals</CardTitle></CardHeader>
+        <CardContent className="p-0"><ReferralTable eventId={eventId} /></CardContent>
+      </Card>
+    </div>
   );
 }
 

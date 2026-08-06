@@ -59,7 +59,7 @@ external_uat   = DEFERRED
 | 8 | Life Certificates | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | `BN_LC_GRANTS_RESULT: PASS`, `BN_LC_HARNESS_RESULT: PASS` on the regenerated PG15 baseline |
 | 9 | Medical Reviews | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | **grants + harness + adapter postflight PASS**; architecture boundary closed (RPC-only legacy mutations); 207/207 focused suites |
 | 10 | Overpayments | COMPLETE_AND_CERTIFIED | dark launch (`internal_pilot`, actions `false`) | DEFERRED | **independent CI green** — `bn-overpayment-integration.yml` run `31116272752` on `3a8b893139f5101022e0924617fbd73548e72e54`; finance/legal operations readiness `PENDING` |
-| 11 | Mortality | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
+| 11 | Mortality | COMPLETE_AND_CERTIFIED | PASS | PASS | dark-launched (`actions_enabled=false`) |
 | 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 13 | Survivors Processing | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 14 | Means Tests | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
@@ -258,12 +258,19 @@ external_uat   = DEFERRED
   `LEGAL_ESTATE_REFERRAL` → `legal`
 - **Closure gate:** `BN_MORTALITY_CLOSE_EVENT` rejects with `E_OUTSTANDING_REQUIRED_ACTIONS`;
   `BN_MORTALITY_COMPLETE_FOLLOWON` rejects with `E_NO_FOLLOWON_RAISED`
-- **Tests:** 44/44 focused mortality suites (incl. the no-direct-mutation architecture gate and the
-  new `mortalityGovernanceClosure.test.ts`); `tsc --noEmit -p tsconfig.app.json` clean
+- **Tests:** 55/55 focused mortality suites (incl. the no-direct-mutation architecture gate,
+  `mortalityGovernanceClosure.test.ts`, and `BnMortalitySignals.test.tsx`);
+  `tsc --noEmit -p tsconfig.app.json` clean
 - **Dark launch:** `bn_mortality` remains `actions_enabled = false`, `rollout_state = internal_pilot`
-- **Remaining to certify:** operational UI tabs (evidence / payments-after-death / handoffs /
-  action-availability reasons), Benefit 360 card, `supabase/verify/bn_mortality_effective_grants.sql`,
-  `supabase/tests/bn/mortality_integration.sql`, and `.github/workflows/bn-mortality-integration.yml`
+- **Operational UI (M3):** worklist signal chips (`BnMortalityWorklistIndicators`), evidence register
+  tab, required-actions closure gate panel and cross-module handoff panel
+  (`BnMortalityFollowOnPanels`), all fail-loud on read failure
+- **Benefit 360 (M4):** `Benefit360MortalityCard` on the Award 360 overview — read-only posture,
+  explicit DENIED / read-failure states, PAD shown as indicative exposure only
+- **Certification assets:** `supabase/verify/bn_mortality_effective_grants.sql`,
+  `supabase/tests/bn/mortality_integration.sql`,
+  `.github/workflows/bn-mortality-integration.yml`,
+  `docs/bn/mortality/BN_MORTALITY_IMPLEMENTATION_MATRIX.md`
 - **Dependencies:** Award Suspension (death-triggered suspension), Survivors, Overpayments, Legal, DMS
 
 ## 12. Appeals

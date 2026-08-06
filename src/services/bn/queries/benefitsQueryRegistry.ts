@@ -118,6 +118,41 @@ export const BN_BENEFITS_QUERY_REGISTRY: Readonly<
     sensitiveFields: [],
     maxPageSize: 500,
   },
+  BN_MORTALITY_GET_EVIDENCE: {
+    queryCode: 'BN_MORTALITY_GET_EVIDENCE',
+    moduleCode: 'bn_mortality',
+    anyOfCapabilities: ['bn_mortality:read'],
+    sensitiveFields: ['dmsReference', 'notes'],
+    maxPageSize: 100,
+  },
+  BN_MORTALITY_GET_REQUIRED_ACTIONS: {
+    queryCode: 'BN_MORTALITY_GET_REQUIRED_ACTIONS',
+    moduleCode: 'bn_mortality',
+    anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'],
+    sensitiveFields: [],
+    maxPageSize: 100,
+  },
+  BN_MORTALITY_GET_HANDOFFS: {
+    queryCode: 'BN_MORTALITY_GET_HANDOFFS',
+    moduleCode: 'bn_mortality',
+    anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'],
+    sensitiveFields: [],
+    maxPageSize: 100,
+  },
+  BN_MORTALITY_GET_WORKLIST_INDICATORS: {
+    queryCode: 'BN_MORTALITY_GET_WORKLIST_INDICATORS',
+    moduleCode: 'bn_mortality',
+    anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'],
+    sensitiveFields: [],
+    maxPageSize: 100,
+  },
+  BN_MORTALITY_GET_AWARD_SNAPSHOT: {
+    queryCode: 'BN_MORTALITY_GET_AWARD_SNAPSHOT',
+    moduleCode: 'bn_mortality',
+    anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'],
+    sensitiveFields: [],
+    maxPageSize: 1,
+  },
 
 
 
