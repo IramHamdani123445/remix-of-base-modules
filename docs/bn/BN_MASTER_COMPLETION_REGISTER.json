@@ -113,6 +113,17 @@
       "database_test_file": "supabase/tests/bn/award_suspension_integration.sql",
       "grant_verifier": "supabase/verify/bn_award_suspension_effective_grants.sql",
       "ci_workflow": ".github/workflows/bn-suspension-integration.yml",
+      "test_environment_provisioning": {
+        "status": "TOOLING_READY_DURABLE_TARGET_REQUIRED",
+        "provisioner": "scripts/bn/provision-award-suspension-test-db.sh",
+        "seed": "supabase/test-support/award_suspension_test_environment_seed.sql",
+        "guard_suite": "scripts/bn/__tests__/provision-award-suspension-test-db.spec.sh",
+        "guard_suite_cases_passing": 29,
+        "ci_job": "Test-environment provisioner guard suite",
+        "rollout_state_stored": "internal_pilot",
+        "derived_posture": "READ_ONLY"
+      },
+
       "latest_ci_evidence": {
         "grants": "BN_SUSP_GRANTS_RESULT: PASS",
         "harness": "BN_SUSP_HARNESS_RESULT: PASS",
