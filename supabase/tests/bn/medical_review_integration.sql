@@ -273,26 +273,31 @@ BEGIN
   ON CONFLICT (id) DO NOTHING;
 
   -- --- board (review_mode MEETING) ------------------------------------
-  INSERT INTO public.bn_medical_board(id, board_code, board_name, board_status,
-                                      review_mode, default_quorum, timezone_code)
-  VALUES (v_board, 'HX_BOARD', 'Harness Medical Board', 'ACTIVE',
-          'MEETING', 2, 'America/St_Kitts')
+  INSERT INTO public.bn_medical_board(id, board_code, board_name, is_active,
+                                      review_mode, minimum_quorum, voting_rule,
+                                      determination_binding)
+  VALUES (v_board, 'HX_BOARD', 'Harness Medical Board', true,
+          'MEETING', 2, 'MAJORITY', true)
   ON CONFLICT (id) DO NOTHING;
 
-  INSERT INTO public.bn_medical_board_member(board_id, member_user_id, member_role, specialty, is_active)
-  VALUES (v_board, v_secretary, 'SECRETARY',   'ADMINISTRATION', true),
-         (v_board, v_chair,     'CHAIRPERSON', 'ORTHOPAEDICS',   true),
-         (v_board, v_member,    'MEMBER',      'ORTHOPAEDICS',   true),
-         (v_board, v_recused,   'MEMBER',      'ORTHOPAEDICS',   true)
+  INSERT INTO public.bn_medical_board_member(board_id, member_user_id, member_name,
+                                            member_role, specialty, is_active)
+  VALUES (v_board, v_secretary, 'Harness Board Secretary', 'SECRETARY', 'ADMINISTRATION', true),
+         (v_board, v_chair,     'Harness Board Chair',     'CHAIR',     'ORTHOPAEDICS',   true),
+         (v_board, v_member,    'Harness Board Member',    'MEMBER',    'ORTHOPAEDICS',   true),
+         (v_board, v_recused,   'Harness Recused Member',  'MEMBER',    'ORTHOPAEDICS',   true)
   ON CONFLICT DO NOTHING;
 
   -- --- providers -------------------------------------------------------
-  INSERT INTO public.bn_medical_provider(id, provider_code, provider_name, provider_type,
-                                         provider_status, portal_user_id, primary_specialty)
-  VALUES (v_prov_a, 'HX_PROV_A', 'Harness Assessing Doctor', 'INDEPENDENT_PRACTITIONER',
-          'ACTIVE', v_provider_user, 'ORTHOPAEDICS'),
-         (v_prov_b, 'HX_PROV_B', 'Harness Second Opinion Doctor', 'INDEPENDENT_PRACTITIONER',
-          'ACTIVE', NULL, 'ORTHOPAEDICS')
+  INSERT INTO public.bn_medical_provider(id, provider_code, practitioner_name, classification,
+                                         provider_type, provider_status, verification_status,
+                                         portal_user_id, specialties, is_individual_practitioner)
+  VALUES (v_prov_a, 'HX_PROV_A', 'Harness Assessing Doctor', 'EXTERNAL',
+          'EXTERNAL_INDIVIDUAL_DOCTOR', 'ACTIVE', 'VERIFIED',
+          v_provider_user, ARRAY['ORTHOPAEDICS'], true),
+         (v_prov_b, 'HX_PROV_B', 'Harness Second Opinion Doctor', 'EXTERNAL',
+          'EXTERNAL_INDIVIDUAL_DOCTOR', 'ACTIVE', 'VERIFIED',
+          NULL, ARRAY['ORTHOPAEDICS'], true)
   ON CONFLICT (id) DO NOTHING;
 
   INSERT INTO public.bn_medical_provider_approval(provider_id, bn_product_id, review_type, is_active)
