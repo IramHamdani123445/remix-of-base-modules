@@ -334,6 +334,9 @@ export default function Award360Page() {
             />
             {/* BN-MORT-M4 — read-only mortality posture for this award. */}
             <Benefit360MortalityCard awardId={id ?? null} />
+            {/* BN-MEANS-MT5 — read-only means-test posture for this award. */}
+            <Benefit360MeansTestCard awardId={id ?? null} />
+
           </div>
         )}
         {activeTab === 'pensioner' && tabAccess.pensioner.visible && (
