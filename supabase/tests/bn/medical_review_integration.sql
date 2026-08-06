@@ -160,6 +160,16 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET user_code = excluded.user_code;
 
 
+  -- The `user_roles` validation trigger requires each role to already
+  -- exist and be active in `public.roles`, so the reference rows are
+  -- seeded FIRST. Everything here is transaction-scoped and rolled back.
+  INSERT INTO public.roles(role_name, description)
+  SELECT x, 'Harness role (transaction-scoped)'
+    FROM unnest(ARRAY['Clerk','LegalOfficer','Supervisor','FinanceOfficer',
+                      'FinanceManager','IP Registration Officer','Head-Cashier',
+                      'Customer Support','ReadOnly']) x
+   WHERE NOT EXISTS (SELECT 1 FROM public.roles r WHERE r.role_name = x);
+
   -- app_role enum values are the only values `user_roles` accepts; each
   -- harness persona is mapped to a distinct enum value so permissions
   -- can be granted independently.
@@ -175,12 +185,6 @@ BEGIN
     (v_outsider,      'ReadOnly')
   ON CONFLICT DO NOTHING;
 
-  INSERT INTO public.roles(role_name, description)
-  SELECT x, 'Harness role (transaction-scoped)'
-    FROM unnest(ARRAY['Clerk','LegalOfficer','Supervisor','FinanceOfficer',
-                      'FinanceManager','IP Registration Officer','Head-Cashier',
-                      'Customer Support','ReadOnly']) x
-   WHERE NOT EXISTS (SELECT 1 FROM public.roles r WHERE r.role_name = x);
 
   -- Harness-scoped permission grants. Existing grants for these roles on
   -- this module are removed first so the harness proves its own matrix.
