@@ -190,6 +190,9 @@ export const BN_GAP_COMMAND_CAPABILITY: Readonly<Record<string, BnGapCapability>
   // Means-Test Assessment — canonical 18-command lifecycle (Slice 1)
   BN_MEANS_CREATE_ASSESSMENT:              'bn_means_tests:write',
   BN_MEANS_ADD_HOUSEHOLD_MEMBER:           'bn_means_tests:write',
+  BN_MEANS_UPDATE_HOUSEHOLD_MEMBER:        'bn_means_tests:write',
+  BN_MEANS_REMOVE_HOUSEHOLD_MEMBER:        'bn_means_tests:write',
+  BN_MEANS_CORRECT_CONTEXT:                'bn_means_tests:write',
   BN_MEANS_ADD_INCOME:                     'bn_means_tests:write',
   BN_MEANS_ADD_ASSET:                      'bn_means_tests:write',
   BN_MEANS_ADD_DEDUCTION:                  'bn_means_tests:write',
