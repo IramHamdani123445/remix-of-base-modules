@@ -98,7 +98,7 @@ PGSOCK="$PGDIR/sock"; mkdir -p "$PGSOCK"
 cleanup() { "$PGBIN/pg_ctl" -D "$PGDIR/data" -m immediate stop >/dev/null 2>&1; rm -rf "$PGDIR"; }
 trap cleanup EXIT
 
-"$PGBIN/initdb" -D "$PGDIR/data" -U postgres -A trust >/dev/null 2>&1 \
+"$PGBIN/initdb" -D "$PGDIR/data" -U postgres -A trust > "$PGDIR/initdb.log" 2>&1 \
   || { echo "FAIL — initdb"; exit 1; }
 "$PGBIN/pg_ctl" -D "$PGDIR/data" -o "-k $PGSOCK -h '' -c fsync=off" -l "$PGDIR/pg.log" -w start >/dev/null 2>&1 \
   || { echo "FAIL — pg_ctl start"; tail -30 "$PGDIR/pg.log"; exit 1; }
