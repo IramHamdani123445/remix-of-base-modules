@@ -34,6 +34,28 @@ BEGIN
 END
 $$;
 
+-- Synthetic authorisation fixture ------------------------------------
+-- Seeded inside the transaction so ROLLBACK removes it; CI proves zero
+-- residue afterwards. Never seeded by a migration.
+INSERT INTO public.bn_op_role_action (role_code, action_code, is_synthetic)
+SELECT r.role_code, a.action_code, true
+FROM (VALUES
+  ('BN_OP_SYNTH_MAKER',   ARRAY['view','view_financial_detail','create_candidate','calculate_liability','issue_notice','record_representation','propose_recovery_plan','record_receipt','allocate_receipt','request_waiver','request_writeoff']),
+  ('BN_OP_SYNTH_CHECKER', ARRAY['view','view_financial_detail','verify','confirm_liability','approve_recovery_plan','activate_deduction','approve_waiver','approve_writeoff','reverse_transaction','place_appeal_hold','release_appeal_hold','suspend_recovery','resume_recovery','refer_legal','refer_estate','close','reopen']),
+  ('BN_OP_SYNTH_FINANCE', ARRAY['view','view_financial_detail','reconcile']),
+  ('BN_OP_SYNTH_AUDITOR', ARRAY['view','view_financial_detail','audit'])
+) AS r(role_code, actions)
+CROSS JOIN LATERAL unnest(r.actions) AS a(action_code)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.bn_op_user_role (user_id, role_code, is_synthetic)
+VALUES
+  ('00000000-0000-0000-0000-0000000000a1', 'BN_OP_SYNTH_MAKER',   true),
+  ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_CHECKER', true),
+  ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_FINANCE', true),
+  ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_AUDITOR', true)
+ON CONFLICT DO NOTHING;
+
 DO $$
 DECLARE
   v_case      uuid;
@@ -64,6 +86,8 @@ BEGIN
   END IF;
 
   -- ── Negative: actions disabled ───────────────────────────────────
+  -- Authenticated maker: proves the gate is the module switch, not auth.
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_maker, 'role', 'authenticated')::text, true);
   BEGIN
     PERFORM public.bn_overpayment_create_candidate_v1(
       NULL, 'DUPLICATE_PAYMENT', NULL, NULL, 'XCD', 'HARNESS', 'HARNESS:NEG:DISABLED');
