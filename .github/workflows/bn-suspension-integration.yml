@@ -107,11 +107,13 @@ jobs:
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/award_suspension_integration.sql 2>&1 \
             | tee /tmp/bn-susp-harness.log
-          if grep -qi 'SKIP' /tmp/bn-susp-harness.log; then
-            echo "FAIL: harness skipped a scenario"; exit 1
+          if grep -Eq 'BN_SUSP_HARNESS_RESULT:[[:space:]]*SKIP' /tmp/bn-susp-harness.log; then
+            echo "FAIL: harness reported SKIP"
+            exit 1
           fi
-          grep -q 'BN_SUSP_HARNESS_RESULT: PASS' /tmp/bn-susp-harness.log \
-            || { echo "FAIL: harness did not report PASS"; exit 1; }
+          test "$(grep -c 'BN_SUSP_HARNESS_RESULT: PASS' /tmp/bn-susp-harness.log)" -eq 1 \
+            || { echo "FAIL: harness did not report exactly one PASS marker"; exit 1; }
+
 
       - name: Assert the module is still dark-launched
         run: |
@@ -119,6 +121,14 @@ jobs:
           state="$(psql -At -v ON_ERROR_STOP=1 \
             -c "SELECT actions_enabled FROM public.app_modules WHERE name = 'bn_award_suspension';")"
           [ "$state" = "f" ] || { echo "FAIL: module activated in CI (actions_enabled=$state)"; exit 1; }
+
+      - name: Assert no fixture residue after rollback
+        run: |
+          set -euo pipefail
+          for t in $(psql -At -v ON_ERROR_STOP=1 -c "SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind = 'r' AND (c.relname LIKE 'bn\\_award\\_suspension%' OR c.relname LIKE 'bn\\_award\\_reinstatement%' OR c.relname LIKE 'bn\\_susp\\_%');"); do
+            rows="$(psql -At -v ON_ERROR_STOP=1 -c "SELECT count(*) FROM public.$t;")"
+            [ "$rows" = "0" ] || { echo "FAIL: fixture residue in $t ($rows rows)"; exit 1; }
+          done
 
       - name: Upload harness evidence
         if: always()
@@ -144,4 +154,6 @@ jobs:
       - name: Run activation-script guard tests
         run: bash scripts/bn/__tests__/activate-award-suspension-test.spec.sh
       - name: Typecheck
-        run: bunx tsgo --noEmit
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: bunx tsc --noEmit -p tsconfig.app.json
