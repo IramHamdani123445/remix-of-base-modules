@@ -83,14 +83,28 @@ jobs:
       - name: Fixture residue gate (B13)
         run: |
           set -euo pipefail
+          # Every case-bearing bn_op_* table must be empty after the harness
+          # rolls back. bn_op_action_definition is migration-seeded reference
+          # data, not fixture residue, so it is asserted separately below.
           psql -v ON_ERROR_STOP=1 -Atc "
             select coalesce(sum(n), 0) from (
               select (xpath('/row/c/text()',
                 query_to_xml(format('select count(*) as c from %I.%I', schemaname, tablename),
                 false, true, '')))[1]::text::bigint as n
-              from pg_tables where schemaname = 'public' and tablename like 'bn\_op\_%'
+              from pg_tables
+              where schemaname = 'public'
+                and tablename like 'bn\_op\_%'
+                and tablename <> 'bn_op_action_definition'
             ) t" | tee /tmp/op-residue.log
           grep -qx '0' /tmp/op-residue.log
+
+      - name: Action catalogue seeded by migration (B3)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select count(*) from public.bn_op_action_definition" | tee /tmp/op-catalogue.log
+          grep -qx '29' /tmp/op-catalogue.log
+
 
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
