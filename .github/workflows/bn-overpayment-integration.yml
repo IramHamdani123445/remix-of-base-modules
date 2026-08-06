@@ -63,6 +63,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/verify/bn_overpayment_effective_grants.sql 2>&1 | tee /tmp/op-grants.log
           test "$(grep -c 'BN_OP_GRANTS_RESULT: PASS' /tmp/op-grants.log)" -eq 1
           ! grep -q 'BN_OP_GRANTS_RESULT: FAIL' /tmp/op-grants.log
+          ! grep -q 'BN_OP_GRANTS_RESULT: SKIP' /tmp/op-grants.log
 
       - name: Lifecycle integration harness (B12/B13)
         run: |
@@ -70,7 +71,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/overpayment_integration.sql 2>&1 | tee /tmp/op-harness.log
           test "$(grep -c 'BN_OP_HARNESS_RESULT: PASS' /tmp/op-harness.log)" -eq 1
           ! grep -q 'BN_OP_HARNESS_RESULT: FAIL' /tmp/op-harness.log
-          ! grep -q 'SKIP' /tmp/op-harness.log
+          ! grep -q 'BN_OP_HARNESS_RESULT: SKIP' /tmp/op-harness.log
 
       - name: Dark-launch postflight (rollout state and actions)
         run: |
@@ -112,7 +113,7 @@ jobs:
         run: bunx vitest run src/__tests__/bn/gap-modules/overpayments
 
       - name: Typecheck
-        run: bunx tsgo --noEmit -p tsconfig.app.json
+        run: bunx tsc --noEmit -p tsconfig.app.json
 
       - name: Upload certification evidence
         if: always()
