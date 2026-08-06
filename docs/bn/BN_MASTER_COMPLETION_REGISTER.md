@@ -35,7 +35,7 @@ is still policy-gated (dark launch), so it is recorded as
 | 4 | Awards | PARTIAL_IMPLEMENTATION | n/a | unit only |
 | 5 | Payments | PARTIAL_IMPLEMENTATION | n/a | unit only |
 | 6 | Configuration | PARTIAL_IMPLEMENTATION | n/a | unit only |
-| 7 | Award Suspension | SOURCE_COMPLETE_RUNTIME_PENDING | dark launch (`false`) | **CI chain PASS** |
+| 7 | Award Suspension | SOURCE_COMPLETE_RUNTIME_PENDING | dark launch (`false`) | **CI chain PASS**; Test-provisioning tooling ready (29/29 guards), durable Test target still required |
 | 8 | Life Certificates | SOURCE_COMPLETE_RUNTIME_PENDING | dark launch (`false`) | workflow present, unverified this change set |
 | 9 | Medical Reviews | BLOCKED_BY_INFRASTRUCTURE | dark launch (`false`) | certification package only |
 | 10 | Overpayments | PARTIAL_IMPLEMENTATION | n/a | none |

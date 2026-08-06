@@ -89,12 +89,14 @@ psql "$DB_URL" -X -v ON_ERROR_STOP=1 \
 [ "$(q "SELECT actions_enabled FROM public.app_modules WHERE name = 'bn_award_suspension'")" = "f" ] \
   || die 'postflight: module was activated by provisioning' 6
 ROLLOUT_STATE="$(q "SELECT rollout_state FROM public.app_modules WHERE name = 'bn_award_suspension'")"
-LEGACY_CHK="$(q "SELECT count(*) FROM pg_constraint WHERE conname = 'app_modules_rollout_state_check' AND pg_get_constraintdef(oid) NOT LIKE '%READ_ONLY%'")"
-if [ "$ROLLOUT_STATE" != "READ_ONLY" ] && [ "$LEGACY_CHK" = "0" ]; then
-  die "postflight: rollout_state is \"$ROLLOUT_STATE\", expected READ_ONLY" 6
-fi
+# rollout_state must stay inside the shared enterprise constraint
+# (hidden | internal_pilot | public). READ_ONLY / TEST_ACTIVE are DERIVED
+# posture labels and are never stored.
+[ "$ROLLOUT_STATE" = "internal_pilot" ] \
+  || die "postflight: rollout_state is \"$ROLLOUT_STATE\", expected internal_pilot" 6
 
 log "database name          : $ACTUAL_DB"
 log "test project reference : $PROJECT_REF"
-log "module status          : actions_enabled=false rollout_state=$ROLLOUT_STATE (effective posture: READ_ONLY)"
+log "module status          : actions_enabled=false rollout_state=internal_pilot effective_posture=READ_ONLY"
 log 'BN_SUSP_PROVISION_RESULT: PASS'
+
