@@ -359,7 +359,7 @@ function EvidenceTab({ eventId }: { eventId: string }) {
   );
 }
 
-function SurvivorFuneralLegalTab({ eventId }: { eventId: string }) {
+function ReferralTable({ eventId }: { eventId: string }) {
   const q = useMortalityReferrals(eventId);
   if (q.isLoading) return <Skeleton className="h-40" />;
   if (q.isError) return <Alert variant="destructive"><AlertTriangle className="h-4 w-4" /><AlertDescription>{q.error?.message}</AlertDescription></Alert>;
@@ -390,6 +390,24 @@ function SurvivorFuneralLegalTab({ eventId }: { eventId: string }) {
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+/**
+ * Survivor / Funeral / Legal — the downstream lifecycle view.
+ * Required actions gate closure; handoffs are the governed cross-module
+ * triggers; referrals are the legacy per-event records.
+ */
+function SurvivorFuneralLegalTab({ eventId }: { eventId: string }) {
+  return (
+    <div className="space-y-4">
+      <BnMortalityRequiredActionsPanel eventId={eventId} />
+      <BnMortalityHandoffsPanel eventId={eventId} />
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Referrals</CardTitle></CardHeader>
+        <CardContent className="p-0"><ReferralTable eventId={eventId} /></CardContent>
+      </Card>
+    </div>
   );
 }
 
