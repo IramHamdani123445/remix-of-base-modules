@@ -237,6 +237,15 @@ SELECT gen_random_uuid(),
         AND s.schedule_period = (date_trunc('month', CURRENT_DATE) + make_interval(months => g.n))::date);
 
 -- =====================================================================
+-- 4b. Dark-launch posture normalisation (tightening only, never activation)
+-- =====================================================================
+UPDATE public.app_modules
+   SET rollout_state = 'READ_ONLY'
+ WHERE name = 'bn_award_suspension'
+   AND actions_enabled = false
+   AND rollout_state IS DISTINCT FROM 'READ_ONLY';
+
+-- =====================================================================
 -- 5. Postflight assertions
 -- =====================================================================
 DO $post$
