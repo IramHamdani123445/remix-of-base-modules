@@ -18,10 +18,21 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, ArrowLeft, Loader2, ShieldAlert } from 'lucide-react';
-import { meansQueryService, type BnMeansAvailableAction } from '@/services/bn/meansTests/meansQueryService';
+import {
+  meansQueryService,
+  type BnMeansAvailableAction,
+  type BnMeansCalculationReadiness,
+} from '@/services/bn/meansTests/meansQueryService';
 import { meansCommandService, type BnMeansCommandResult } from '@/services/bn/meansTests/meansCommandService';
 import type { BnMeansCommandName } from '@/types/bn/meansTests/meansCommands';
 import { formatWithCurrency } from '@/utils/formatCurrency';
+import {
+  BnMeansVerificationPanel,
+  buildFactGroups,
+  type BnMeansVerificationRecord,
+} from '@/components/bn/meansTests/BnMeansVerificationPanel';
+import { BnMeansCalculationPanel } from '@/components/bn/meansTests/BnMeansCalculationPanel';
+
 
 const REASON_LABEL: Record<string, string> = {
   ACTIONS_DISABLED: 'Actions are disabled while the module is in internal pilot',
