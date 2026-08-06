@@ -227,9 +227,16 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">{String(assessment.status ?? '')}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" data-testid="means-status-badge">
+            {meansStatusLabel(String(assessment.status ?? ''), Boolean(latestCalculation))}
+          </Badge>
           <Badge variant="outline">Version {rowVersion}</Badge>
+          {openAdjustmentCount > 0 && (
+            <Badge variant="outline" data-testid="means-open-adjustments-badge">
+              {openAdjustmentCount} open adjustment{openAdjustmentCount === 1 ? '' : 's'}
+            </Badge>
+          )}
         </div>
       </div>
 
