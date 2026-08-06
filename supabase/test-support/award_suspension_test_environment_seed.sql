@@ -37,6 +37,10 @@
 
 BEGIN;
 
+-- Expose the requested project reference to the PL/pgSQL guard blocks
+-- (psql variables are not interpolated inside dollar-quoted bodies).
+SELECT set_config('bn_provision.project_ref', :env_project_ref, true);
+
 -- Deterministic synthetic identifiers (UAT namespace: a7/b7/c7/d7/e7/f7).
 \set u_officer    '''a7a7a7a7-0000-4000-8000-000000000001'''
 \set u_supervisor '''a7a7a7a7-0000-4000-8000-000000000002'''
