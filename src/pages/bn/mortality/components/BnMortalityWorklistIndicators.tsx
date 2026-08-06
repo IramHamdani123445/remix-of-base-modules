@@ -107,9 +107,12 @@ export const BnMortalityWorklistIndicators: React.FC<Props> = ({ indicator, isLo
         {chips.map((c) => (
           <Tooltip key={c.key}>
             <TooltipTrigger asChild>
-              <Badge variant={c.variant} className="text-[10px] font-normal" data-signal={c.key}>
-                {c.label}
-              </Badge>
+              {/* span wrapper: Badge is not a forwardRef component. */}
+              <span>
+                <Badge variant={c.variant} className="text-[10px] font-normal" data-signal={c.key}>
+                  {c.label}
+                </Badge>
+              </span>
             </TooltipTrigger>
             <TooltipContent>{c.hint}</TooltipContent>
           </Tooltip>
