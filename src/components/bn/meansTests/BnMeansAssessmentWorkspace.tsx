@@ -262,7 +262,10 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           <TabsTrigger value="review">Review &amp; submit</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
           <TabsTrigger value="calculation">Calculation</TabsTrigger>
+          <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
+          <TabsTrigger value="approval">Approval</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
+
 
         </TabsList>
 
