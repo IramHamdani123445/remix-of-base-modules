@@ -57,6 +57,10 @@ export interface BnModuleAccessContext {
   hasWrite: boolean;
   hasDecide: boolean;
   hasAdmin: boolean;
+  /** Every module action granted to the caller (Admin resolves to all). */
+  grants: readonly string[];
+  /** Capability probe for module-specific actions (verify, approve, config…). */
+  can: (action: string) => boolean;
   /** When true the page must render as read-only (no mutation controls). */
   readOnly: boolean;
   reason: string;
