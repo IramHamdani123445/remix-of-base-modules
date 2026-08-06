@@ -17059,6 +17059,1397 @@ export type Database = {
           },
         ]
       }
+      bn_op_action_definition: {
+        Row: {
+          action_code: string
+          created_at: string
+          display_name: string
+          is_financial: boolean
+          risk_level: string
+        }
+        Insert: {
+          action_code: string
+          created_at?: string
+          display_name: string
+          is_financial?: boolean
+          risk_level?: string
+        }
+        Update: {
+          action_code?: string
+          created_at?: string
+          display_name?: string
+          is_financial?: boolean
+          risk_level?: string
+        }
+        Relationships: []
+      }
+      bn_op_appeal_hold: {
+        Row: {
+          appeal_reference: string | null
+          case_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          placed_at: string
+          placed_by: string
+          reason: string
+          release_outcome: string | null
+          released_at: string | null
+          released_by: string | null
+          row_version: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          appeal_reference?: string | null
+          case_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          placed_at?: string
+          placed_by: string
+          reason: string
+          release_outcome?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          row_version?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          appeal_reference?: string | null
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          placed_at?: string
+          placed_by?: string
+          reason?: string
+          release_outcome?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          row_version?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_appeal_hold_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_case: {
+        Row: {
+          bn_award_id: string | null
+          bn_claim_id: string | null
+          case_reference: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          detection_source: string
+          gross_liability: number
+          id: string
+          legacy_overpayment_id: string | null
+          outstanding_amount: number
+          period_from: string | null
+          period_to: string | null
+          person_reference: string | null
+          reason_code: string | null
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          bn_award_id?: string | null
+          bn_claim_id?: string | null
+          case_reference: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          detection_source?: string
+          gross_liability?: number
+          id?: string
+          legacy_overpayment_id?: string | null
+          outstanding_amount?: number
+          period_from?: string | null
+          period_to?: string | null
+          person_reference?: string | null
+          reason_code?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          bn_award_id?: string | null
+          bn_claim_id?: string | null
+          case_reference?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          detection_source?: string
+          gross_liability?: number
+          id?: string
+          legacy_overpayment_id?: string | null
+          outstanding_amount?: number
+          period_from?: string | null
+          period_to?: string | null
+          person_reference?: string | null
+          reason_code?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_case_bn_award_id_fkey"
+            columns: ["bn_award_id"]
+            isOneToOne: false
+            referencedRelation: "bn_award"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_case_legacy_overpayment_id_fkey"
+            columns: ["legacy_overpayment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_overpayment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_communication_intent: {
+        Row: {
+          case_id: string
+          channel_hint: string | null
+          context: Json
+          created_at: string
+          created_by: string
+          dispatch_reference: string | null
+          event_code: string
+          id: string
+          last_error: string | null
+          recipient_ref: string | null
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          case_id: string
+          channel_hint?: string | null
+          context?: Json
+          created_at?: string
+          created_by: string
+          dispatch_reference?: string | null
+          event_code: string
+          id?: string
+          last_error?: string | null
+          recipient_ref?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          channel_hint?: string | null
+          context?: Json
+          created_at?: string
+          created_by?: string
+          dispatch_reference?: string | null
+          event_code?: string
+          id?: string
+          last_error?: string | null
+          recipient_ref?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_communication_intent_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_deduction_instruction: {
+        Row: {
+          amount_per_cycle: number
+          bn_award_id: string | null
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          effective_from: string
+          effective_to: string | null
+          id: string
+          plan_id: string | null
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount_per_cycle: number
+          bn_award_id?: string | null
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          plan_id?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount_per_cycle?: number
+          bn_award_id?: string | null
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          plan_id?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_deduction_instruction_bn_award_id_fkey"
+            columns: ["bn_award_id"]
+            isOneToOne: false
+            referencedRelation: "bn_award"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_deduction_instruction_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_deduction_instruction_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_recovery_plan"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_estate_referral: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          deceased_reference: string | null
+          external_case_ref: string | null
+          id: string
+          idempotency_key: string
+          referral_reference: string | null
+          referred_amount: number
+          referred_at: string
+          referred_by: string
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          deceased_reference?: string | null
+          external_case_ref?: string | null
+          id?: string
+          idempotency_key: string
+          referral_reference?: string | null
+          referred_amount: number
+          referred_at?: string
+          referred_by: string
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          deceased_reference?: string | null
+          external_case_ref?: string | null
+          id?: string
+          idempotency_key?: string
+          referral_reference?: string | null
+          referred_amount?: number
+          referred_at?: string
+          referred_by?: string
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_estate_referral_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_event: {
+        Row: {
+          actor_code: string
+          case_id: string
+          command_code: string | null
+          detail: Json
+          event_code: string
+          from_status: string | null
+          id: string
+          occurred_at: string
+          to_status: string | null
+        }
+        Insert: {
+          actor_code: string
+          case_id: string
+          command_code?: string | null
+          detail?: Json
+          event_code: string
+          from_status?: string | null
+          id?: string
+          occurred_at?: string
+          to_status?: string | null
+        }
+        Update: {
+          actor_code?: string
+          case_id?: string
+          command_code?: string | null
+          detail?: Json
+          event_code?: string
+          from_status?: string | null
+          id?: string
+          occurred_at?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_event_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_evidence_link: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string
+          evidence_kind: string
+          evidence_ref: string
+          id: string
+          is_confidential: boolean
+          liability_id: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by: string
+          evidence_kind: string
+          evidence_ref: string
+          id?: string
+          is_confidential?: boolean
+          liability_id?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          evidence_kind?: string
+          evidence_ref?: string
+          id?: string
+          is_confidential?: boolean
+          liability_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_evidence_link_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_evidence_link_liability_id_fkey"
+            columns: ["liability_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_liability_version"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_finance_posting_intent: {
+        Row: {
+          attempt_count: number
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          id: string
+          idempotency_key: string
+          intent_type: string
+          last_error: string | null
+          posted_at: string | null
+          posting_reference: string | null
+          row_version: number
+          signed_amount: number
+          source_command: string
+          status: string
+          transaction_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          attempt_count?: number
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          id?: string
+          idempotency_key: string
+          intent_type: string
+          last_error?: string | null
+          posted_at?: string | null
+          posting_reference?: string | null
+          row_version?: number
+          signed_amount: number
+          source_command: string
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          attempt_count?: number
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          id?: string
+          idempotency_key?: string
+          intent_type?: string
+          last_error?: string | null
+          posted_at?: string | null
+          posting_reference?: string | null
+          row_version?: number
+          signed_amount?: number
+          source_command?: string
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_finance_posting_intent_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_finance_posting_intent_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_recovery_transaction"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_idempotency: {
+        Row: {
+          actor_code: string
+          case_id: string | null
+          command_code: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          idempotency_key: string
+          payload_hash: string
+          result: Json | null
+          status: string
+        }
+        Insert: {
+          actor_code: string
+          case_id?: string | null
+          command_code: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          payload_hash: string
+          result?: Json | null
+          status?: string
+        }
+        Update: {
+          actor_code?: string
+          case_id?: string | null
+          command_code?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          payload_hash?: string
+          result?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
+      bn_op_legal_referral: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          external_case_ref: string | null
+          id: string
+          idempotency_key: string
+          referral_reference: string | null
+          referred_amount: number
+          referred_at: string
+          referred_by: string
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          external_case_ref?: string | null
+          id?: string
+          idempotency_key: string
+          referral_reference?: string | null
+          referred_amount: number
+          referred_at?: string
+          referred_by: string
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          external_case_ref?: string | null
+          id?: string
+          idempotency_key?: string
+          referral_reference?: string | null
+          referred_amount?: number
+          referred_at?: string
+          referred_by?: string
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_legal_referral_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_liability_version: {
+        Row: {
+          basis: Json
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          gross_amount: number
+          id: string
+          method_code: string
+          row_version: number
+          status: string
+          superseded_by: string | null
+          version_no: number
+        }
+        Insert: {
+          basis?: Json
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          gross_amount: number
+          id?: string
+          method_code?: string
+          row_version?: number
+          status?: string
+          superseded_by?: string | null
+          version_no: number
+        }
+        Update: {
+          basis?: Json
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          gross_amount?: number
+          id?: string
+          method_code?: string
+          row_version?: number
+          status?: string
+          superseded_by?: string | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_liability_version_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_operational_exception: {
+        Row: {
+          actor_code: string | null
+          case_id: string | null
+          command_code: string | null
+          detail: Json
+          error_code: string
+          id: string
+          message: string
+          occurred_at: string
+        }
+        Insert: {
+          actor_code?: string | null
+          case_id?: string | null
+          command_code?: string | null
+          detail?: Json
+          error_code: string
+          id?: string
+          message: string
+          occurred_at?: string
+        }
+        Update: {
+          actor_code?: string | null
+          case_id?: string | null
+          command_code?: string | null
+          detail?: Json
+          error_code?: string
+          id?: string
+          message?: string
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_operational_exception_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_receipt_allocation: {
+        Row: {
+          allocated_at: string
+          allocated_by: string
+          amount: number
+          case_id: string
+          currency: string
+          id: string
+          instalment_id: string | null
+          transaction_id: string
+        }
+        Insert: {
+          allocated_at?: string
+          allocated_by: string
+          amount: number
+          case_id: string
+          currency?: string
+          id?: string
+          instalment_id?: string | null
+          transaction_id: string
+        }
+        Update: {
+          allocated_at?: string
+          allocated_by?: string
+          amount?: number
+          case_id?: string
+          currency?: string
+          id?: string
+          instalment_id?: string | null
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_receipt_allocation_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_receipt_allocation_instalment_id_fkey"
+            columns: ["instalment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_recovery_plan_instalment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_receipt_allocation_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_recovery_transaction"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_reconciliation: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          finance_balance: number | null
+          id: string
+          module_balance: number
+          note: string | null
+          reconciled_at: string | null
+          reconciled_by: string | null
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+          variance: number | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          finance_balance?: number | null
+          id?: string
+          module_balance: number
+          note?: string | null
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variance?: number | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          finance_balance?: number | null
+          id?: string
+          module_balance?: number
+          note?: string | null
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          row_version?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          variance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_reconciliation_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_recovery_plan: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          frequency_code: string
+          id: string
+          instalment_amount: number | null
+          method_code: string
+          plan_no: number
+          proposed_by: string
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_reason: string | null
+          row_version: number
+          start_date: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          frequency_code?: string
+          id?: string
+          instalment_amount?: number | null
+          method_code?: string
+          plan_no: number
+          proposed_by: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          row_version?: number
+          start_date?: string | null
+          status?: string
+          total_amount: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          frequency_code?: string
+          id?: string
+          instalment_amount?: number | null
+          method_code?: string
+          plan_no?: number
+          proposed_by?: string
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_reason?: string | null
+          row_version?: number
+          start_date?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_recovery_plan_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_recovery_plan_instalment: {
+        Row: {
+          amount: number
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          due_date: string
+          id: string
+          plan_id: string
+          row_version: number
+          sequence_no: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          amount: number
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          due_date: string
+          id?: string
+          plan_id: string
+          row_version?: number
+          sequence_no: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          amount?: number
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          due_date?: string
+          id?: string
+          plan_id?: string
+          row_version?: number
+          sequence_no?: number
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_recovery_plan_instalment_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_recovery_plan_instalment_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_recovery_plan"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_recovery_suspension: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string
+          id: string
+          is_active: boolean
+          reason: string | null
+          reason_code: string
+          resumed_at: string | null
+          resumed_by: string | null
+          row_version: number
+          suspended_at: string
+          suspended_by: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          is_active?: boolean
+          reason?: string | null
+          reason_code: string
+          resumed_at?: string | null
+          resumed_by?: string | null
+          row_version?: number
+          suspended_at?: string
+          suspended_by: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          is_active?: boolean
+          reason?: string | null
+          reason_code?: string
+          resumed_at?: string | null
+          resumed_by?: string | null
+          row_version?: number
+          suspended_at?: string
+          suspended_by?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_recovery_suspension_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_recovery_transaction: {
+        Row: {
+          case_id: string
+          currency: string
+          effective_date: string
+          id: string
+          is_reversal: boolean
+          posted_at: string
+          posted_by: string
+          reverses_transaction_id: string | null
+          signed_amount: number
+          source_command: string
+          source_reference: string | null
+          txn_no: number
+          txn_type: string
+        }
+        Insert: {
+          case_id: string
+          currency?: string
+          effective_date?: string
+          id?: string
+          is_reversal?: boolean
+          posted_at?: string
+          posted_by: string
+          reverses_transaction_id?: string | null
+          signed_amount: number
+          source_command: string
+          source_reference?: string | null
+          txn_no?: never
+          txn_type: string
+        }
+        Update: {
+          case_id?: string
+          currency?: string
+          effective_date?: string
+          id?: string
+          is_reversal?: boolean
+          posted_at?: string
+          posted_by?: string
+          reverses_transaction_id?: string | null
+          signed_amount?: number
+          source_command?: string
+          source_reference?: string | null
+          txn_no?: never
+          txn_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_recovery_transaction_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_recovery_transaction_reverses_transaction_id_fkey"
+            columns: ["reverses_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_recovery_transaction"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_representation: {
+        Row: {
+          case_id: string
+          channel: string
+          created_at: string
+          created_by: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          outcome: string
+          received_on: string
+          row_version: number
+          summary: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          case_id: string
+          channel?: string
+          created_at?: string
+          created_by: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          outcome?: string
+          received_on?: string
+          row_version?: number
+          summary: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          channel?: string
+          created_at?: string
+          created_by?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          outcome?: string
+          received_on?: string
+          row_version?: number
+          summary?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_representation_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_role_action: {
+        Row: {
+          action_code: string
+          created_at: string
+          id: string
+          is_synthetic: boolean
+          role_code: string
+        }
+        Insert: {
+          action_code: string
+          created_at?: string
+          id?: string
+          is_synthetic?: boolean
+          role_code: string
+        }
+        Update: {
+          action_code?: string
+          created_at?: string
+          id?: string
+          is_synthetic?: boolean
+          role_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_role_action_action_code_fkey"
+            columns: ["action_code"]
+            isOneToOne: false
+            referencedRelation: "bn_op_action_definition"
+            referencedColumns: ["action_code"]
+          },
+        ]
+      }
+      bn_op_user_role: {
+        Row: {
+          created_at: string
+          id: string
+          is_synthetic: boolean
+          role_code: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_synthetic?: boolean
+          role_code: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_synthetic?: boolean
+          role_code?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      bn_op_waiver_request: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          ground_code: string
+          id: string
+          is_full: boolean
+          justification: string | null
+          requested_amount: number
+          requested_at: string
+          requested_by: string
+          row_version: number
+          status: string
+          transaction_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          ground_code: string
+          id?: string
+          is_full?: boolean
+          justification?: string | null
+          requested_amount: number
+          requested_at?: string
+          requested_by: string
+          row_version?: number
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          ground_code?: string
+          id?: string
+          is_full?: boolean
+          justification?: string | null
+          requested_amount?: number
+          requested_at?: string
+          requested_by?: string
+          row_version?: number
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_waiver_request_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_waiver_request_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_recovery_transaction"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_op_writeoff_request: {
+        Row: {
+          case_id: string
+          created_at: string
+          created_by: string
+          currency: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          ground_code: string
+          id: string
+          is_full: boolean
+          justification: string | null
+          requested_amount: number
+          requested_at: string
+          requested_by: string
+          row_version: number
+          status: string
+          transaction_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          ground_code: string
+          id?: string
+          is_full?: boolean
+          justification?: string | null
+          requested_amount: number
+          requested_at?: string
+          requested_by: string
+          row_version?: number
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          ground_code?: string
+          id?: string
+          is_full?: boolean
+          justification?: string | null
+          requested_amount?: number
+          requested_at?: string
+          requested_by?: string
+          row_version?: number
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_op_writeoff_request_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_case"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_op_writeoff_request_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "bn_op_recovery_transaction"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bn_overpayment: {
         Row: {
           bn_award_id: string
@@ -102380,6 +103771,135 @@ export type Database = {
         Returns: boolean
       }
       _bn_mr_validate_policy: { Args: { p_policy: string }; Returns: undefined }
+      _bn_op_actor: { Args: never; Returns: string }
+      _bn_op_actor_uid: { Args: never; Returns: string }
+      _bn_op_assert_actions_enabled: { Args: never; Returns: undefined }
+      _bn_op_assert_amount: { Args: { p_amount: number }; Returns: undefined }
+      _bn_op_assert_currency: {
+        Args: {
+          p_case: Database["public"]["Tables"]["bn_op_case"]["Row"]
+          p_currency: string
+        }
+        Returns: undefined
+      }
+      _bn_op_assert_no_hold: { Args: { p_case_id: string }; Returns: undefined }
+      _bn_op_assert_not_suspended: {
+        Args: { p_case_id: string }
+        Returns: undefined
+      }
+      _bn_op_assert_open: {
+        Args: { p_case: Database["public"]["Tables"]["bn_op_case"]["Row"] }
+        Returns: undefined
+      }
+      _bn_op_assert_state: {
+        Args: { p_actual: string; p_allowed: string[] }
+        Returns: undefined
+      }
+      _bn_op_check_version: {
+        Args: { p_actual: number; p_expected: number }
+        Returns: undefined
+      }
+      _bn_op_comm_intent: {
+        Args: { p_case_id: string; p_context?: Json; p_event_code: string }
+        Returns: string
+      }
+      _bn_op_deny_self_approval: {
+        Args: { p_checker: string; p_maker: string }
+        Returns: undefined
+      }
+      _bn_op_event: {
+        Args: {
+          p_case_id: string
+          p_command: string
+          p_detail?: Json
+          p_event: string
+          p_from: string
+          p_to: string
+        }
+        Returns: undefined
+      }
+      _bn_op_finance_intent: {
+        Args: {
+          p_case_id: string
+          p_command: string
+          p_currency: string
+          p_key: string
+          p_signed_amount: number
+          p_txn_id: string
+          p_type: string
+        }
+        Returns: string
+      }
+      _bn_op_idem_begin: {
+        Args: {
+          p_case_id: string
+          p_command: string
+          p_key: string
+          p_payload: Json
+        }
+        Returns: Json
+      }
+      _bn_op_idem_finish: {
+        Args: { p_key: string; p_result: Json }
+        Returns: Json
+      }
+      _bn_op_ok: {
+        Args: { p_case_id: string; p_command: string; p_data?: Json }
+        Returns: Json
+      }
+      _bn_op_outstanding: { Args: { p_case_id: string }; Returns: number }
+      _bn_op_post_txn: {
+        Args: {
+          p_case_id: string
+          p_command: string
+          p_reference?: string
+          p_reverses?: string
+          p_signed: number
+          p_type: string
+        }
+        Returns: string
+      }
+      _bn_op_require_case: {
+        Args: { p_case_id: string }
+        Returns: {
+          bn_award_id: string | null
+          bn_claim_id: string | null
+          case_reference: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          detection_source: string
+          gross_liability: number
+          id: string
+          legacy_overpayment_id: string | null
+          outstanding_amount: number
+          period_from: string | null
+          period_to: string | null
+          person_reference: string | null
+          reason_code: string | null
+          row_version: number
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bn_op_case"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _bn_op_require_permission: {
+        Args: { p_action: string }
+        Returns: undefined
+      }
+      _bn_op_require_view: { Args: never; Returns: undefined }
+      _bn_op_touch_case: {
+        Args: { p_case_id: string; p_status?: string }
+        Returns: undefined
+      }
       _bn_reinst_decide: {
         Args: {
           p_correlation: string
@@ -104169,6 +105689,382 @@ export type Database = {
       bn_normalise_lifecycle: {
         Args: { p_raw: string }
         Returns: Database["public"]["Enums"]["bn_lifecycle_state"]
+      }
+      bn_overpayment_activate_benefit_deduction_v1: {
+        Args: {
+          p_amount_per_cycle: number
+          p_case_id: string
+          p_currency: string
+          p_idempotency_key: string
+          p_plan_id: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_allocate_receipt_v1: {
+        Args: {
+          p_amount: number
+          p_case_id: string
+          p_currency: string
+          p_idempotency_key: string
+          p_instalment_id: string
+          p_transaction_id: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_appeal_holds_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_approve_recovery_plan_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_plan_id: string
+          p_plan_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_approve_waiver_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_note: string
+          p_row_version: number
+          p_waiver_id: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_approve_writeoff_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_note: string
+          p_row_version: number
+          p_writeoff_id: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_audit_history_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_available_actions_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_balance_v1: { Args: { p_case_id: string }; Returns: Json }
+      bn_overpayment_calculate_liability_v1: {
+        Args: {
+          p_basis: Json
+          p_case_id: string
+          p_currency: string
+          p_gross_amount: number
+          p_idempotency_key: string
+          p_method_code: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_case_detail_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_close_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_reason: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_communication_dispatch_svc_v1: {
+        Args: {
+          p_dispatch_reference: string
+          p_error: string
+          p_intent_id: string
+          p_success: boolean
+        }
+        Returns: Json
+      }
+      bn_overpayment_confirm_liability_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_note: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_create_candidate_v1: {
+        Args: {
+          p_award_id: string
+          p_currency: string
+          p_detection_source: string
+          p_idempotency_key: string
+          p_period_from: string
+          p_period_to: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_finance_post_intent_svc_v1: {
+        Args: {
+          p_error: string
+          p_intent_id: string
+          p_posting_reference: string
+          p_success: boolean
+        }
+        Returns: Json
+      }
+      bn_overpayment_issue_notice_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_recipient_ref: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_liability_versions_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_place_appeal_hold_v1: {
+        Args: {
+          p_appeal_reference: string
+          p_case_id: string
+          p_idempotency_key: string
+          p_reason: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_propose_recovery_plan_v1: {
+        Args: {
+          p_case_id: string
+          p_currency: string
+          p_frequency_code: string
+          p_idempotency_key: string
+          p_instalment_amount: number
+          p_method_code: string
+          p_row_version: number
+          p_start_date: string
+          p_total_amount: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_reconcile_v1: {
+        Args: {
+          p_case_id: string
+          p_currency: string
+          p_finance_balance: number
+          p_idempotency_key: string
+          p_note: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_reconciliations_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_record_receipt_v1: {
+        Args: {
+          p_amount: number
+          p_case_id: string
+          p_currency: string
+          p_idempotency_key: string
+          p_row_version: number
+          p_source_reference: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_record_representation_v1: {
+        Args: {
+          p_case_id: string
+          p_channel: string
+          p_idempotency_key: string
+          p_row_version: number
+          p_summary: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_recovery_plans_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_refer_estate_v1: {
+        Args: {
+          p_amount: number
+          p_case_id: string
+          p_currency: string
+          p_deceased_reference: string
+          p_idempotency_key: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_refer_legal_v1: {
+        Args: {
+          p_amount: number
+          p_case_id: string
+          p_currency: string
+          p_external_case_ref: string
+          p_idempotency_key: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_referrals_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_reject_recovery_plan_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_plan_id: string
+          p_plan_row_version: number
+          p_reason: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_reject_waiver_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_note: string
+          p_row_version: number
+          p_waiver_id: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_reject_writeoff_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_note: string
+          p_row_version: number
+          p_writeoff_id: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_release_appeal_hold_v1: {
+        Args: {
+          p_appeal_outcome: string
+          p_case_id: string
+          p_hold_id: string
+          p_idempotency_key: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_reopen_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_reason: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_request_waiver_v1: {
+        Args: {
+          p_amount: number
+          p_case_id: string
+          p_currency: string
+          p_ground_code: string
+          p_idempotency_key: string
+          p_is_full: boolean
+          p_justification: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_request_writeoff_v1: {
+        Args: {
+          p_amount: number
+          p_case_id: string
+          p_currency: string
+          p_ground_code: string
+          p_idempotency_key: string
+          p_is_full: boolean
+          p_justification: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_resume_recovery_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_row_version: number
+          p_suspension_id: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_reverse_transaction_v1: {
+        Args: {
+          p_amount: number
+          p_case_id: string
+          p_currency: string
+          p_idempotency_key: string
+          p_reason: string
+          p_transaction_id: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_revise_recovery_plan_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_instalment_amount: number
+          p_plan_id: string
+          p_plan_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_suspend_recovery_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_reason: string
+          p_reason_code: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_timeline_v1: { Args: { p_case_id: string }; Returns: Json }
+      bn_overpayment_transactions_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_verify_v1: {
+        Args: {
+          p_case_id: string
+          p_idempotency_key: string
+          p_note: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      bn_overpayment_waiver_requests_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
+      }
+      bn_overpayment_worklist_v1: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
+      bn_overpayment_writeoff_requests_v1: {
+        Args: { p_case_id: string }
+        Returns: Json
       }
       bn_product_can_activate: {
         Args: { _product_id: string }

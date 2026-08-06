@@ -265,25 +265,15 @@ export async function fetchOverpayments(): Promise<BnOverpaymentRow[]> {
   return (data ?? []) as BnOverpaymentRow[];
 }
 
-export async function setOverpaymentRecoveryPlan(
-  id: string,
-  method: string,
-  monthlyAmount: number | null,
-  notes: string | null,
-  userCode: string | null
-): Promise<void> {
-  const next: Record<string, unknown> = {
-    recovery_method: method,
-    recovery_status: method === 'WRITE_OFF' ? 'WRITTEN_OFF' : 'RECOVERING',
-    remarks: notes,
-    modified_by: userCode,
-  };
-  if (monthlyAmount != null) {
-    next.remarks = `${notes ?? ''}${notes ? '\n' : ''}Monthly amount: ${monthlyAmount.toFixed(2)}`;
-  }
-  const { error } = await db.from('bn_overpayment').update(next).eq('id', id);
-  if (error) throw error;
-}
+// RETIRED (Phase B5): `setOverpaymentRecoveryPlan` performed a direct browser
+// UPDATE on `bn_overpayment`. Overpayment state changes now flow exclusively
+// through the secured versioned command boundary in
+// `@/services/bn/overpayments/overpaymentCommandService`
+// (`bn_overpayment_propose_recovery_plan_v1`,
+//  `bn_overpayment_approve_recovery_plan_v1`,
+//  `bn_overpayment_activate_benefit_deduction_v1`,
+//  `bn_overpayment_approve_writeoff_v1`, ...).
+// Do not reintroduce direct `bn_overpayment` writes here.
 
 // ---------- Beneficiaries (survivors) ----------
 export async function fetchBeneficiariesByAward(awardId: string): Promise<BnAwardBeneficiaryRow[]> {
