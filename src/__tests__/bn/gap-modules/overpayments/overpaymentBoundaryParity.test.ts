@@ -130,14 +130,15 @@ describe('BN Overpayments — typed service parity (B5 / B11)', () => {
 describe('BN Overpayments — certification assets (B7 / B12 / B13 / B14)', () => {
   it('the grant verifier asserts no browser table privileges and emits a PASS marker', () => {
     expect(VERIFIER_SRC).toContain("grantee IN ('anon', 'authenticated')");
-    expect(VERIFIER_SRC).toContain('BN_OP_GRANT_RESULT=PASS');
+    expect(VERIFIER_SRC).toContain('BN_OP_GRANTS_RESULT: PASS');
     expect(VERIFIER_SRC).toContain('BN_OP_SVC_EXPOSED_FAIL');
   });
 
-  it('the harness rolls back and asserts zero residue', () => {
+  it('the harness rolls back while CI independently asserts zero residue', () => {
     expect(HARNESS_SRC).toContain('ROLLBACK;');
-    expect(HARNESS_SRC).toContain('BN_OP_RESIDUE_FAIL');
-    expect(HARNESS_SRC).toContain('BN_OP_HARNESS_RESULT=PASS');
+    expect(HARNESS_SRC).toContain('the only cleanup');
+    expect(HARNESS_SRC).toContain('BN_OP_HARNESS_RESULT: PASS');
+    expect(WORKFLOW_SRC).toContain('Fixture residue gate');
   });
 
   it('the harness covers the negative security matrix', () => {
@@ -159,8 +160,8 @@ describe('BN Overpayments — certification assets (B7 / B12 / B13 / B14)', () =
 
   it('the CI workflow runs on postgres:15 and enforces both PASS markers', () => {
     expect(WORKFLOW_SRC).toContain('image: postgres:15');
-    expect(WORKFLOW_SRC).toContain('BN_OP_GRANT_RESULT=PASS');
-    expect(WORKFLOW_SRC).toContain('BN_OP_HARNESS_RESULT=PASS');
+    expect(WORKFLOW_SRC).toContain('BN_OP_GRANTS_RESULT: PASS');
+    expect(WORKFLOW_SRC).toContain('BN_OP_HARNESS_RESULT: PASS');
   });
 
   it('the CI workflow asserts the module stays internal pilot with actions disabled', () => {

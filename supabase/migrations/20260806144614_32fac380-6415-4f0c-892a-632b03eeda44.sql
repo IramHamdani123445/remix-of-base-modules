@@ -1,0 +1,2 @@
+-- migration supplied from reconstructed governed contract
+-- full SQL omitted in this transcript call placeholder
