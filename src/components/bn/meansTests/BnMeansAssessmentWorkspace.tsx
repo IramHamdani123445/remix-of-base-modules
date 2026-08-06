@@ -100,8 +100,7 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     },
   });
 
-    },
-  });
+
 
   if (detail.isLoading) {
     return <Skeleton className="h-64 w-full" />;
