@@ -10195,6 +10195,75 @@ export type Database = {
           },
         ]
       }
+      bn_cross_module_handoff: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          award_id: string | null
+          claim_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          handoff_id: string
+          handoff_type: string
+          person_id: number | null
+          reason_code: string | null
+          row_version: number
+          source_module: string
+          source_record_id: string
+          status: string
+          structured_context: Json
+          target_module: string
+          target_record_id: string | null
+          target_reference: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          award_id?: string | null
+          claim_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          handoff_id?: string
+          handoff_type: string
+          person_id?: number | null
+          reason_code?: string | null
+          row_version?: number
+          source_module: string
+          source_record_id: string
+          status?: string
+          structured_context?: Json
+          target_module: string
+          target_record_id?: string | null
+          target_reference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          award_id?: string | null
+          claim_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          handoff_id?: string
+          handoff_type?: string
+          person_id?: number | null
+          reason_code?: string | null
+          row_version?: number
+          source_module?: string
+          source_record_id?: string
+          status?: string
+          structured_context?: Json
+          target_module?: string
+          target_record_id?: string | null
+          target_reference?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bn_data_field_registry: {
         Row: {
           active: boolean
@@ -16878,6 +16947,56 @@ export type Database = {
           },
         ]
       }
+      bn_mortality_evidence: {
+        Row: {
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          dms_document_id: string | null
+          dms_reference: string | null
+          event_id: string
+          evidence_type: string
+          id: string
+          notes: string | null
+          received_at: string | null
+          status: string
+        }
+        Insert: {
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dms_document_id?: string | null
+          dms_reference?: string | null
+          event_id: string
+          evidence_type: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          status?: string
+        }
+        Update: {
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          dms_document_id?: string | null
+          dms_reference?: string | null
+          event_id?: string
+          evidence_type?: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_mortality_evidence_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "bn_mortality_event"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bn_mortality_integration_readiness: {
         Row: {
           certification_reference: string | null
@@ -17056,6 +17175,57 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_mortality_event"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_mortality_required_action: {
+        Row: {
+          action_code: string
+          created_at: string
+          event_id: string
+          handoff_id: string | null
+          id: string
+          is_mandatory: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+        }
+        Insert: {
+          action_code: string
+          created_at?: string
+          event_id: string
+          handoff_id?: string | null
+          id?: string
+          is_mandatory?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Update: {
+          action_code?: string
+          created_at?: string
+          event_id?: string
+          handoff_id?: string | null
+          id?: string
+          is_mandatory?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_mortality_required_action_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "bn_mortality_event"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_mortality_required_action_handoff_id_fkey"
+            columns: ["handoff_id"]
+            isOneToOne: false
+            referencedRelation: "bn_cross_module_handoff"
+            referencedColumns: ["handoff_id"]
           },
         ]
       }
@@ -103533,6 +103703,10 @@ export type Database = {
         Returns: undefined
       }
       _bn_lc_today: { Args: { p_tz: string }; Returns: string }
+      _bn_mortality_action_for_command: {
+        Args: { p_command_name: string }
+        Returns: string
+      }
       _bn_mortality_dispatch_servicing: {
         Args: {
           p_actor_user_id: string
@@ -103541,6 +103715,23 @@ export type Database = {
           p_event_id: string
           p_idempotency_key: string
           p_payload: Json
+        }
+        Returns: Json
+      }
+      _bn_mortality_maker_source: {
+        Args: { p_command_name: string }
+        Returns: string
+      }
+      _bn_mortality_raise_handoff: {
+        Args: {
+          p_actor_user_id: string
+          p_context: Json
+          p_correlation_id: string
+          p_event_id: string
+          p_handoff_type: string
+          p_reason_code: string
+          p_referral_type: string
+          p_target_module: string
         }
         Returns: Json
       }
@@ -105655,6 +105846,22 @@ export type Database = {
           p_correlation_id: string
           p_entity_id: string
           p_expected_row_version: number
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_mortality_execute_command_v2: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_entity_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
           p_justification: string
           p_payload: Json
           p_payload_hash: string

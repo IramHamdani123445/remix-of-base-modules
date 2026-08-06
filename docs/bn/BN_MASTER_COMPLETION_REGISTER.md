@@ -58,7 +58,7 @@ external_uat   = DEFERRED
 | 7 | Award Suspension | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | **CI chain PASS**; Test-provisioning tooling ready (29/29 guards), durable Test target still required |
 | 8 | Life Certificates | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | `BN_LC_GRANTS_RESULT: PASS`, `BN_LC_HARNESS_RESULT: PASS` on the regenerated PG15 baseline |
 | 9 | Medical Reviews | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | **grants + harness + adapter postflight PASS**; architecture boundary closed (RPC-only legacy mutations); 207/207 focused suites |
-| 10 | Overpayments | IMPLEMENTATION_COMPLETE_PENDING_CI | dark_launch_ready | DEFERRED | awaiting GitHub run of `bn-overpayment-integration.yml` |
+| 10 | Overpayments | COMPLETE_AND_CERTIFIED | dark launch (`internal_pilot`, actions `false`) | DEFERRED | **independent CI green** — `bn-overpayment-integration.yml` run `31116272752` on `3a8b893139f5101022e0924617fbd73548e72e54`; finance/legal operations readiness `PENDING` |
 | 11 | Mortality | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 13 | Survivors Processing | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
@@ -211,8 +211,10 @@ external_uat   = DEFERRED
 
 ## 10. Overpayments
 
-- **Status:** IMPLEMENTATION_COMPLETE_PENDING_CI · activation `DARK_LAUNCHED` (`internal_pilot`,
-  actions disabled) · external UAT `DEFERRED`
+- **Status:** COMPLETE_AND_CERTIFIED · activation `DARK_LAUNCHED` (`internal_pilot`,
+  actions disabled) · external UAT `DEFERRED` · finance/legal operations readiness `PENDING`
+- **Independent certification:** GitHub Actions `bn-overpayment-integration.yml`,
+  run `31116272752`, commit `3a8b893139f5101022e0924617fbd73548e72e54`, conclusion `success`
 - **Routes (canonical):** `/bn/overpayments` (component file at `src/pages/bn/servicing/OverpaymentRecovery.tsx`)
 - **Surface:** `src/pages/bn/servicing/OverpaymentRecovery.tsx` — RPC-only, no direct table access
 - **Forward-only migration:** `supabase/migrations/20260806150000_bn_overpayment_recovery_domain.sql`
@@ -230,17 +232,39 @@ external_uat   = DEFERRED
   `environment_kind = CI` marker guard, exact-marker gating, evidence upload
 - **Local proof:** the entire workflow sequence was replayed on a clean PostgreSQL 15.17 instance
   from the baseline forward and returned `ALL CI STEPS GREEN ON POSTGRES 15`
-- **Remaining to certify:** an independent GitHub Actions run on managed `main`. Flip to
-  `COMPLETE_AND_CERTIFIED` / `DARK_LAUNCHED` / `DEFERRED` only when that run is green.
+- **Certification closed:** 2026-08-06 on independent GitHub run `31116272752` (success).
+  Remaining non-technical work is finance/legal operational readiness (`PENDING`); no
+  Test/Production/Live activation has been performed.
 - **Dependencies:** Payments, Finance, Legal recovery
 
 ## 11. Mortality
 
-- **Status:** PARTIAL_IMPLEMENTATION
-- **Surface:** `src/pages/bn/mortality/*`, `scripts/bn/generate-mortality-command-catalog.ts`
-- **Gaps:** catalogue generated but boundary/harness absent
-- **Dependencies:** Award Suspension (death-triggered suspension), Survivors
-- **Next slice:** command boundary + effective-grant verifier
+- **Status:** IMPLEMENTATION_IN_PROGRESS (backend governance closed; certification outstanding)
+- **Surface:** `src/pages/bn/mortality/*`, `supabase/functions/bn-mortality-command`,
+  `scripts/bn/generate-mortality-command-catalog.ts`
+- **Catalogue:** 26 authoritative commands; **all 26 reconciled against real backend execution**
+  (audit 2026-08-06 — the 11 legacy `implemented: false` blockers were verified as either already
+  orchestrated (`_bn_mortality_dispatch_servicing` → `bn_awards_apply_servicing_event`) or closed by
+  this slice)
+- **Governed entry point:** `bn_mortality_execute_command_v2` (SECURITY DEFINER). Enforces in-transaction:
+  dark-launch + granular permission gate (`bn_mortality_check_actor_permission`), idempotent replay with
+  payload-hash mismatch rejection, maker-checker with self-approval prohibition, DMS evidence
+  persistence, governed cross-module handoffs and the closure gate. The unguarded v1 function is
+  revoked from `anon`/`authenticated` and callable only by `service_role`.
+- **New tables:** `bn_cross_module_handoff` (shared governed handoff register with the canonical
+  column contract), `bn_mortality_evidence`, `bn_mortality_required_action`
+- **Handoffs raised (never direct target mutation):** `POTENTIAL_OVERPAYMENT` → `bn_overpayments`,
+  `POTENTIAL_SURVIVOR_ASSESSMENT` → `bn_survivors`, `FUNERAL_GRANT_INTAKE` → `bn_claims`,
+  `LEGAL_ESTATE_REFERRAL` → `legal`
+- **Closure gate:** `BN_MORTALITY_CLOSE_EVENT` rejects with `E_OUTSTANDING_REQUIRED_ACTIONS`;
+  `BN_MORTALITY_COMPLETE_FOLLOWON` rejects with `E_NO_FOLLOWON_RAISED`
+- **Tests:** 44/44 focused mortality suites (incl. the no-direct-mutation architecture gate and the
+  new `mortalityGovernanceClosure.test.ts`); `tsc --noEmit -p tsconfig.app.json` clean
+- **Dark launch:** `bn_mortality` remains `actions_enabled = false`, `rollout_state = internal_pilot`
+- **Remaining to certify:** operational UI tabs (evidence / payments-after-death / handoffs /
+  action-availability reasons), Benefit 360 card, `supabase/verify/bn_mortality_effective_grants.sql`,
+  `supabase/tests/bn/mortality_integration.sql`, and `.github/workflows/bn-mortality-integration.yml`
+- **Dependencies:** Award Suspension (death-triggered suspension), Survivors, Overpayments, Legal, DMS
 
 ## 12. Appeals
 
