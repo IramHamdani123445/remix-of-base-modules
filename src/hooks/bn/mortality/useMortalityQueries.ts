@@ -12,11 +12,16 @@ import type {
   BnMortalityEventListItemDto,
   BnMortalityEventSummaryDto,
   BnMortalityPersonMatchDto,
+  MortalityAwardSnapshotDto,
   MortalityCommunicationEntry,
   MortalityEvidenceLink,
+  MortalityEvidenceRegisterEntry,
+  MortalityHandoffEntry,
   MortalityHistoryEntry,
   MortalityReferralEntry,
   MortalityRegistrationImpactPreviewDto,
+  MortalityRequiredActionEntry,
+  MortalityWorklistIndicator,
 } from '@/types/bn/mortality/mortalityDtos';
 import type { MortalityActionAvailabilityResponse } from '@/types/bn/mortality/mortalityActionAvailability';
 
