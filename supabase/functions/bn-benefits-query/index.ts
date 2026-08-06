@@ -2590,7 +2590,7 @@ const QUERY_REGISTRY: Record<string, QueryDescriptor> = {
   BN_MORTALITY_GET_EVIDENCE: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:read'], sensitiveFields: ['dmsReference', 'notes'], maxPageSize: 100, handler: getEvidenceRegister },
   BN_MORTALITY_GET_REQUIRED_ACTIONS: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: [], maxPageSize: 100, handler: getRequiredActions },
   BN_MORTALITY_GET_HANDOFFS: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: [], maxPageSize: 100, handler: getHandoffs },
-  BN_MORTALITY_GET_WORKLIST_INDICATORS: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: ['padExposureMinor'], maxPageSize: 100, handler: (admin, params) => getWorklistIndicators(admin, params) },
+  BN_MORTALITY_GET_WORKLIST_INDICATORS: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: [], maxPageSize: 100, handler: (admin, params) => getWorklistIndicators(admin, params) },
   BN_MORTALITY_GET_AWARD_SNAPSHOT: { moduleCode: 'bn_mortality', anyOfCapabilities: ['bn_mortality:view', 'bn_mortality:read'], sensitiveFields: [], maxPageSize: 1, handler: (admin, params) => getAwardMortalitySnapshot(admin, params) },
 
   // BN-AP-00 — Appeals & Disputes
