@@ -37,27 +37,20 @@ gate; activation is a separate, operator-initiated decision.
 **Exit criterion met.** Remaining work is operator-side: stamp a Test
 environment marker, then run `scripts/bn/activate-award-suspension-test.sh`.
 
-## Wave 2 — Life Certificates
+## Wave 2 — Life Certificates  ✅ certification complete
 
-Goal: reproduce the certification chain on the regenerated PG15 baseline.
+`BN_LC_GRANTS_RESULT: PASS` · `BN_LC_HARNESS_RESULT: PASS` on the regenerated
+PG15 baseline. `classification = COMPLETE_AND_CERTIFIED`,
+`activation = DARK_LAUNCHED`, `external_uat = DEFERRED`.
+Canonical route `/bn/life-certificates`.
 
-1. Rerun `.github/workflows/bn-life-certificate-integration.yml`.
-2. Confirm the grant verifier and harness pass markers.
-3. Add the dark-launch postflight and fixture-residue steps if absent.
-4. Align the typecheck command with the standing rule.
+## Wave 3 — Medical Reviews  ✅ certification complete
 
-Exit: green workflow, `bn_life_certificate.actions_enabled = false` asserted.
-
-## Wave 3 — Medical Reviews
-
-Goal: unblock trusted execution and certify.
-
-1. Run the certification workflow in an environment holding the required
-   database credentials (sandbox cannot).
-2. Confirm contract parity tests, harness PASS, and grant verifier PASS.
-3. Record evidence in the register.
-
-Exit: green workflow with dark launch intact.
+`BN_MR_GRANTS_RESULT: PASS` · `BN_MR_HARNESS_RESULT: PASS` ·
+`BN_MR_ADAPTER_RESULT: PASS`; legacy-table mutation boundary closed (RPC-only).
+`classification = COMPLETE_AND_CERTIFIED`, `activation = DARK_LAUNCHED`,
+`external_uat = DEFERRED`. Canonical routes `/bn/medical-reviews`,
+`/bn/medical-reviews/board`, `/bn/medical-reviews/legacy-scheduler`.
 
 ## Wave 4 — Mortality and Survivors Processing
 
@@ -68,11 +61,28 @@ Shared death-event spine; certify together.
 3. Grant verifier + harness covering: death registered → award suspended →
    survivor entitlement created.
 
-## Wave 5 — Overpayments and Recovery
+## Wave 5 — Overpayments and Recovery  🔄 in progress
 
-1. Governance foundation (policy area, permissions, module row).
-2. Command boundary for raise → schedule → recover → write-off.
-3. Harness with finance and legal hand-off assertions.
+Canonical route `/bn/overpayments`. Audit and matrix:
+`docs/bn/BN_OVERPAYMENT_IMPLEMENTATION_MATRIX.md`.
+
+Done:
+- B0 programme-register correction (three status axes, canonical routes).
+- B1 foundation audit and 29-command implementation matrix.
+- B2 financial reversal invariant corrected to Model A (signed contra events)
+  with golden tests; the previous formula double counted reversals.
+
+Outstanding:
+1. Governance foundation (policy area, granular permissions, `bn_overpayments`
+   module row at `actions_enabled = false`, `rollout_state = internal_pilot`).
+2. Secured `bn_overpayment_*_v1` command boundary, including the four added
+   commands (place/release appeal hold, suspend/resume recovery).
+3. Finance posting-intent outbox and Legal/estate referral boundaries.
+4. Query RPC boundary, UI wiring, retirement of `setOverpaymentRecoveryPlan`.
+5. `supabase/verify/bn_overpayment_effective_grants.sql` (`BN_OP_GRANTS_RESULT`),
+   `supabase/tests/bn/overpayment_integration.sql` (`BN_OP_HARNESS_RESULT`,
+   Journeys A–G + negative matrix), zero-residue gate, and
+   `.github/workflows/bn-overpayment-integration.yml`.
 
 ## Wave 6 — Appeals
 

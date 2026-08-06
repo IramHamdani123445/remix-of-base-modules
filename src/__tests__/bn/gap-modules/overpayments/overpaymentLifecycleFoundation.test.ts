@@ -203,7 +203,7 @@ describe('Outstanding balance calculator', () => {
     expect(b.recovered).toBe(0);
   });
 
-  it('nets out a reversed receipt via reversedByTxnId', () => {
+  it('nets out a reversed receipt via the legacy reversedByTxnId alias', () => {
     const b = computeOverpaymentBalance({
       confirmedLiability: 400,
       transactions: [
@@ -213,12 +213,12 @@ describe('Outstanding balance calculator', () => {
     });
     expect(b.recovered).toBe(0);
     expect(b.reversed).toBe(300);
-    // 400 - 0 - 0 - 0 + 300 = 700 raw → clamped for outstanding? Actually
-    // reversal restores liability but a receipt was excluded, so:
-    // raw = 400 - 0 - 0 - 0 + 300 = 700. That means the reversed amount
-    // is now owed again — correct behaviour.
-    expect(b.outstanding).toBe(700);
+    // MODEL A: the receipt stays in `recovered` and the reversal is an equal
+    // and opposite contra event on that same category. The reversed amount is
+    // owed again exactly once — 400, never 700 (double count).
+    expect(b.outstanding).toBe(400);
   });
+
 
   it('clamps negative outstanding and flags over-allocation', () => {
     const b = computeOverpaymentBalance({

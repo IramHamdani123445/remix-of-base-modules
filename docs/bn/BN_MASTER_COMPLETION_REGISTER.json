@@ -18,7 +18,13 @@
       "id": "core_claims",
       "name": "Core Claims",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/claims", "/bn/claims/:id", "/bn/intake", "/bn/queue", "/bn/workbench"],
+      "routes": [
+        "/bn/claims",
+        "/bn/claims/:id",
+        "/bn/intake",
+        "/bn/queue",
+        "/bn/workbench"
+      ],
       "module_flag": "bn_servicing",
       "actions_enabled": false,
       "commands_catalogued": 5,
@@ -27,78 +33,125 @@
       "database_tests": false,
       "ci_workflow": null,
       "latest_ci_evidence": null,
-      "blockers": ["mutation boundary not closed", "no clean-database harness"],
-      "dependencies": ["configuration", "eligibility_calculation"],
-      "next_slice": "claim command catalogue and RPC boundary"
+      "blockers": [
+        "mutation boundary not closed",
+        "no clean-database harness"
+      ],
+      "dependencies": [
+        "configuration",
+        "eligibility_calculation"
+      ],
+      "next_slice": "claim command catalogue and RPC boundary",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "eligibility_calculation",
       "name": "Eligibility and Calculation",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/engine", "/bn/config/calculation"],
+      "routes": [
+        "/bn/engine",
+        "/bn/config/calculation"
+      ],
       "module_flag": null,
       "actions_enabled": null,
       "mutation_boundary": "service_layer",
       "database_tests": false,
       "ci_workflow": null,
       "latest_ci_evidence": null,
-      "blockers": ["no formula-resolution harness"],
-      "dependencies": ["configuration"],
-      "next_slice": "SQL harness for formula resolution and calc traces"
+      "blockers": [
+        "no formula-resolution harness"
+      ],
+      "dependencies": [
+        "configuration"
+      ],
+      "next_slice": "SQL harness for formula resolution and calc traces",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "determination_approval",
       "name": "Determination and Approval",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/approval"],
+      "routes": [
+        "/bn/approval"
+      ],
       "mutation_boundary": "workflow_governed",
       "database_tests": false,
       "ci_workflow": null,
-      "blockers": ["policy-area coverage incomplete", "no runtime certification"],
-      "dependencies": ["core_claims"],
-      "next_slice": "extend bn_policy_area coverage and add harness"
+      "blockers": [
+        "policy-area coverage incomplete",
+        "no runtime certification"
+      ],
+      "dependencies": [
+        "core_claims"
+      ],
+      "next_slice": "extend bn_policy_area coverage and add harness",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "awards",
       "name": "Awards",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/awards"],
+      "routes": [
+        "/bn/awards"
+      ],
       "mutation_boundary": "mixed",
       "database_tests": false,
       "ci_workflow": null,
-      "blockers": ["Award 360 action matrix incomplete"],
-      "dependencies": ["determination_approval"],
-      "next_slice": "close Award 360 action matrix gaps"
+      "blockers": [
+        "Award 360 action matrix incomplete"
+      ],
+      "dependencies": [
+        "determination_approval"
+      ],
+      "next_slice": "close Award 360 action matrix gaps",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "payments",
       "name": "Payments",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/payables", "/bn/schedule", "/bn/issue", "/bn/postissue"],
+      "routes": [
+        "/bn/payables",
+        "/bn/schedule",
+        "/bn/issue",
+        "/bn/postissue"
+      ],
       "mutation_boundary": "mixed",
       "database_tests": false,
       "ci_workflow": null,
-      "blockers": ["no payment issue harness"],
-      "dependencies": ["awards"],
-      "next_slice": "payment issue harness on clean database"
+      "blockers": [
+        "no payment issue harness"
+      ],
+      "dependencies": [
+        "awards"
+      ],
+      "next_slice": "payment issue harness on clean database",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "configuration",
       "name": "Configuration",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/config"],
+      "routes": [
+        "/bn/config"
+      ],
       "mutation_boundary": "settings_contract",
       "database_tests": false,
       "ci_workflow": null,
-      "blockers": ["reference-data seeding must track new domains"],
+      "blockers": [
+        "reference-data seeding must track new domains"
+      ],
       "dependencies": [],
-      "next_slice": "extend 20260805170000_ci_reference_data_reseed.sql as domains land"
+      "next_slice": "extend 20260805170000_ci_reference_data_reseed.sql as domains land",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "award_suspension",
       "name": "Award Suspension",
-      "classification": "SOURCE_COMPLETE_RUNTIME_PENDING",
-      "routes": ["/bn/servicing/award-suspension"],
+      "classification": "COMPLETE_AND_CERTIFIED",
+      "routes": [
+        "/bn/award-suspension"
+      ],
       "module_flag": "bn_award_suspension",
       "actions_enabled": false,
       "commands_catalogued": 10,
@@ -106,8 +159,15 @@
       "query_boundary": "authenticated SELECT only",
       "mutation_boundary": "rpc_only",
       "permissions": [
-        "view", "propose", "approve", "withdraw", "execute",
-        "resume_propose", "resume_approve", "resume_execute", "view_payment_impact"
+        "view",
+        "propose",
+        "approve",
+        "withdraw",
+        "execute",
+        "resume_propose",
+        "resume_approve",
+        "resume_execute",
+        "view_payment_impact"
       ],
       "database_tests": true,
       "database_test_file": "supabase/tests/bn/award_suspension_integration.sql",
@@ -123,7 +183,6 @@
         "rollout_state_stored": "internal_pilot",
         "derived_posture": "READ_ONLY"
       },
-
       "latest_ci_evidence": {
         "grants": "BN_SUSP_GRANTS_RESULT: PASS",
         "harness": "BN_SUSP_HARNESS_RESULT: PASS",
@@ -136,15 +195,28 @@
         "typecheck": "tsc --noEmit -p tsconfig.app.json"
       },
       "controlled_test_evidence": null,
-      "blockers": ["operator must stamp a Test environment marker before activation"],
-      "dependencies": ["awards", "payments", "communication_hub"],
-      "next_slice": "controlled Test activation and UAT journeys"
+      "blockers": [
+        "operator must stamp a Test environment marker before activation"
+      ],
+      "dependencies": [
+        "awards",
+        "payments",
+        "communication_hub"
+      ],
+      "next_slice": "controlled Test activation and UAT journeys",
+      "activation": "DARK_LAUNCHED",
+      "external_uat": "DEFERRED",
+      "legacy_routes": [
+        "/bn/servicing/award-suspension"
+      ]
     },
     {
       "id": "life_certificates",
       "name": "Life Certificates",
-      "classification": "SOURCE_COMPLETE_RUNTIME_PENDING",
-      "routes": ["/bn/servicing/life-certificates"],
+      "classification": "COMPLETE_AND_CERTIFIED",
+      "routes": [
+        "/bn/life-certificates"
+      ],
       "module_flag": "bn_life_certificate",
       "actions_enabled": false,
       "commands_catalogued": 14,
@@ -153,16 +225,32 @@
       "database_tests": true,
       "grant_verifier": "supabase/verify/bn_life_certificate_effective_grants.sql",
       "ci_workflow": ".github/workflows/bn-life-certificate-integration.yml",
-      "latest_ci_evidence": null,
-      "blockers": ["not re-executed against the regenerated PG15 baseline"],
-      "dependencies": ["award_suspension"],
-      "next_slice": "rerun workflow on the new baseline"
+      "latest_ci_evidence": {
+        "grants_marker": "BN_LC_GRANTS_RESULT: PASS",
+        "harness_marker": "BN_LC_HARNESS_RESULT: PASS",
+        "baseline": "regenerated PG15 baseline"
+      },
+      "blockers": [],
+      "dependencies": [
+        "award_suspension"
+      ],
+      "next_slice": "runtime activation requires a durable non-production Test target",
+      "activation": "DARK_LAUNCHED",
+      "external_uat": "DEFERRED",
+      "legacy_routes": [
+        "/bn/servicing/life-certificates",
+        "/nbenefit/long-term/life-certificates"
+      ]
     },
     {
       "id": "medical_reviews",
       "name": "Medical Reviews",
-      "classification": "CERTIFIED_DARK_LAUNCHED",
-      "routes": ["/bn/servicing/medical-reviews"],
+      "classification": "COMPLETE_AND_CERTIFIED",
+      "routes": [
+        "/bn/medical-reviews",
+        "/bn/medical-reviews/board",
+        "/bn/medical-reviews/legacy-scheduler"
+      ],
       "module_flag": "bn_medical_review",
       "actions_enabled": false,
       "communication_adapter_enabled": false,
@@ -182,83 +270,156 @@
         "focused_suites": "207/207"
       },
       "blockers": [],
-      "dependencies": ["award_suspension"],
-      "next_slice": "runtime activation requires a durable non-production Test target"
+      "dependencies": [
+        "award_suspension"
+      ],
+      "next_slice": "runtime activation requires a durable non-production Test target",
+      "activation": "DARK_LAUNCHED",
+      "external_uat": "DEFERRED",
+      "legacy_routes": [
+        "/bn/servicing/medical-reviews"
+      ]
     },
     {
       "id": "overpayments",
       "name": "Overpayments",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/servicing/overpayment-recovery"],
+      "routes": [
+        "/bn/overpayments"
+      ],
       "mutation_boundary": "mixed",
       "database_tests": false,
-      "blockers": ["no command catalogue", "no policy area", "no harness"],
-      "dependencies": ["payments", "legal"],
-      "next_slice": "governance foundation and backend boundary"
+      "blockers": [
+        "no secured database command boundary",
+        "no policy area",
+        "no harness",
+        "no grant verifier",
+        "setOverpaymentRecoveryPlan still mutates bn_overpayment directly from the browser"
+      ],
+      "dependencies": [
+        "payments",
+        "legal"
+      ],
+      "next_slice": "governance foundation and backend boundary",
+      "activation": "n/a",
+      "external_uat": "DEFERRED",
+      "legacy_routes": [
+        "/bn/servicing/overpayment-recovery"
+      ],
+      "commands_catalogued": 25,
+      "commands_implemented": 0,
+      "implementation_matrix": "docs/bn/BN_OVERPAYMENT_IMPLEMENTATION_MATRIX.md",
+      "financial_invariant": "MODEL_A_SIGNED_CONTRA_REVERSAL (corrected 2026-08-06; previous formula double counted reversals)"
     },
     {
       "id": "mortality",
       "name": "Mortality",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/mortality"],
+      "routes": [
+        "/bn/mortality"
+      ],
       "mutation_boundary": "mixed",
       "database_tests": false,
-      "blockers": ["catalogue generated but boundary and harness absent"],
-      "dependencies": ["award_suspension", "survivors_processing"],
-      "next_slice": "command boundary and grant verifier"
+      "blockers": [
+        "catalogue generated but boundary and harness absent"
+      ],
+      "dependencies": [
+        "award_suspension",
+        "survivors_processing"
+      ],
+      "next_slice": "command boundary and grant verifier",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "appeals",
       "name": "Appeals",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/appeals"],
+      "routes": [
+        "/bn/appeals"
+      ],
       "mutation_boundary": "mixed",
       "database_tests": false,
-      "blockers": ["lifecycle not modelled as governed commands"],
-      "dependencies": ["determination_approval"],
-      "next_slice": "appeal lifecycle state machine and RPC boundary"
+      "blockers": [
+        "lifecycle not modelled as governed commands"
+      ],
+      "dependencies": [
+        "determination_approval"
+      ],
+      "next_slice": "appeal lifecycle state machine and RPC boundary",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "survivors_processing",
       "name": "Survivors Processing",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/servicing/survivors"],
+      "routes": [
+        "/bn/servicing/survivors"
+      ],
       "mutation_boundary": "mixed",
       "database_tests": false,
-      "blockers": ["entitlement rules partially modelled"],
-      "dependencies": ["mortality", "awards"],
-      "next_slice": "survivor entitlement rules and boundary"
+      "blockers": [
+        "entitlement rules partially modelled"
+      ],
+      "dependencies": [
+        "mortality",
+        "awards"
+      ],
+      "next_slice": "survivor entitlement rules and boundary",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "means_tests",
       "name": "Means Tests",
       "classification": "PARTIAL_IMPLEMENTATION",
-      "routes": ["/bn/means-tests"],
+      "routes": [
+        "/bn/means-tests"
+      ],
       "mutation_boundary": "mixed",
       "database_tests": false,
-      "blockers": ["assessment lifecycle ungoverned"],
-      "dependencies": ["eligibility_calculation"],
-      "next_slice": "assessment command catalogue"
+      "blockers": [
+        "assessment lifecycle ungoverned"
+      ],
+      "dependencies": [
+        "eligibility_calculation"
+      ],
+      "next_slice": "assessment command catalogue",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "risk_management",
       "name": "Risk Management",
       "classification": "CONTRACT_ONLY",
-      "routes": ["/bn/risk"],
+      "routes": [
+        "/bn/risk"
+      ],
       "database_tests": false,
-      "blockers": ["scoring rules not implemented"],
-      "dependencies": ["core_claims", "payments"],
-      "next_slice": "risk rule contract and read-only scoring surface"
+      "blockers": [
+        "scoring rules not implemented"
+      ],
+      "dependencies": [
+        "core_claims",
+        "payments"
+      ],
+      "next_slice": "risk rule contract and read-only scoring surface",
+      "external_uat": "DEFERRED"
     },
     {
       "id": "uprating",
       "name": "Uprating",
       "classification": "CONTRACT_ONLY",
-      "routes": ["/bn/uprating"],
+      "routes": [
+        "/bn/uprating"
+      ],
       "database_tests": false,
-      "blockers": ["no uprating run engine"],
-      "dependencies": ["eligibility_calculation", "payments"],
-      "next_slice": "uprating run model and dry-run simulation"
+      "blockers": [
+        "no uprating run engine"
+      ],
+      "dependencies": [
+        "eligibility_calculation",
+        "payments"
+      ],
+      "next_slice": "uprating run model and dry-run simulation",
+      "external_uat": "DEFERRED"
     }
   ],
   "retired_surfaces": [
@@ -266,7 +427,38 @@
       "surface": "src/components/sidebar/menuItems/benefitsMenuItems.ts",
       "classification": "RETIRED_OR_REDIRECT_ONLY"
     },
-    { "surface": "/benefits/* namespace", "classification": "RETIRED_OR_REDIRECT_ONLY" },
-    { "surface": "src/services/bn/_legacy", "classification": "RETIRED_OR_REDIRECT_ONLY" }
+    {
+      "surface": "/benefits/* namespace",
+      "classification": "RETIRED_OR_REDIRECT_ONLY"
+    },
+    {
+      "surface": "src/services/bn/_legacy",
+      "classification": "RETIRED_OR_REDIRECT_ONLY"
+    }
+  ],
+  "status_axes": {
+    "classification": [
+      "COMPLETE_AND_CERTIFIED",
+      "SOURCE_COMPLETE_RUNTIME_PENDING",
+      "PARTIAL_IMPLEMENTATION",
+      "CONTRACT_ONLY",
+      "BLOCKED_BY_POLICY",
+      "BLOCKED_BY_INFRASTRUCTURE",
+      "RETIRED_OR_REDIRECT_ONLY"
+    ],
+    "activation": [
+      "DARK_LAUNCHED",
+      "INTERNAL_PILOT",
+      "TEST_ACTIVE",
+      "LIVE"
+    ],
+    "external_uat": [
+      "DEFERRED",
+      "IN_PROGRESS",
+      "COMPLETE"
+    ]
+  },
+  "retired_classifications": [
+    "CERTIFIED_DARK_LAUNCHED"
   ]
 }
