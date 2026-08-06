@@ -178,7 +178,7 @@ export const BnMeansAdjustmentsPanel: React.FC<BnMeansAdjustmentsPanelProps> = (
                   >
                     {BN_MEANS_ADJUSTMENT_TARGET_KINDS.map((k) => (
                       <option key={k} value={k}>
-                        {k.replaceAll('_', ' ').toLowerCase()}
+                        {k.replace(/_/g, ' ').toLowerCase()}
                       </option>
                     ))}
                   </select>
