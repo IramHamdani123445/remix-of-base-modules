@@ -217,15 +217,16 @@ BEGIN
   SELECT id, row_version INTO v_hold, v_hold_version
   FROM public.bn_op_appeal_hold WHERE case_id = v_case AND is_active;
 
-  -- Negative: recovery action while on appeal hold
+  -- Negative: enforcement action while on appeal hold.
+  -- Voluntary receipts stay permitted; enforcement is what the hold blocks.
   BEGIN
     SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
-    PERFORM public.bn_overpayment_record_receipt_v1(
-      v_case, v_version, 50.00, 'XCD', 'CASH', 'HARNESS:NEG:HOLD');
+    PERFORM public.bn_overpayment_activate_benefit_deduction_v1(
+      v_case, v_plan, v_version, 100.00, 'XCD', 'HARNESS:NEG:HOLD');
     RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL expected hold rejection during appeal hold';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
-    IF v_err NOT LIKE '%E_%HOLD%' AND v_err NOT LIKE '%E_INVALID_STATE%' THEN RAISE; END IF;
+    IF v_err NOT LIKE '%E_APPEAL_HOLD%' THEN RAISE; END IF;
   END;
 
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
