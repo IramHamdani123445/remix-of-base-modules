@@ -60,14 +60,6 @@ export interface BnMortalityCanonicalCommand {
   readonly dataRequires?: readonly BnMortalityDataRequirement[];
 }
 
-const B_2B_2A = 'BN-MORT-2B.2A acceptance pending: server orchestration, DB-driven integration tests and query DTO certification.';
-const B_2B_1_6 = 'BN-MORT-2B.1 §6 — No canonical Overpayment boundary invocation; handler accepts client-supplied overpayment id.';
-const B_2B_1_7 = 'BN-MORT-2B.1 §7 — DMS/core_generated_document link boundary not yet wired; evidence persists only in metadata_json.';
-const B_2B_1_8_S = 'BN-MORT-2B.1 §8 — Survivor intake workflow-backed referral not yet created.';
-const B_2B_1_8_F = 'BN-MORT-2B.1 §8 — Funeral grant intake workflow-backed referral not yet created.';
-const B_2B_1_8_L = 'BN-MORT-2B.1 §8 — lg_case_intake workflow-backed referral not yet created.';
-const B_2B_1_9_COMPLETE = 'BN-MORT-2B.1 §9 — Impact/referral completion gate not enforced.';
-const B_2B_1_9_CLOSE = 'BN-MORT-2B.1 §9 — Closure gate (impacts applied, PAD linked, referrals resolved, no active holds) not enforced.';
 
 export const MORTALITY_COMMAND_CATALOG: readonly BnMortalityCanonicalCommand[] = [
   { command: 'BN_MORTALITY_DRAFT_SAVE', capability: 'bn_mortality:write', implemented: true, requiresMakerChecker: false, requiresJustification: false, transactional: false, validFrom: ['DRAFT'] },
