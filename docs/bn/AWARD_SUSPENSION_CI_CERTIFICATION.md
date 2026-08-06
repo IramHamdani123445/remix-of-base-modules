@@ -20,7 +20,8 @@ Gates, all mandatory and all failing the build:
 | Effective grants | `supabase/verify/bn_award_suspension_effective_grants.sql` |
 | Lifecycle harness | `supabase/tests/bn/award_suspension_integration.sql` → `BN_SUSP_HARNESS_RESULT: PASS` |
 | Dark-launch assertion | `actions_enabled = false` after the harness |
-| Static/unit/guard tests + typecheck | `test:bn-suspension-static`, `scripts/bn/__tests__/activate-award-suspension-test.spec.sh`, `tsgo --noEmit` |
+| Fixture residue | every suspension table returns 0 rows after the rolled-back harness |
+| Static/unit/guard tests + typecheck | `test:bn-suspension-static`, `scripts/bn/__tests__/activate-award-suspension-test.spec.sh`, `bunx tsc --noEmit -p tsconfig.app.json` (`NODE_OPTIONS=--max-old-space-size=8192`) |
 
 The harness drives journeys A (propose → approve → execute), B
 (reinstatement) and C (reject → withdraw) exclusively through the public
@@ -78,3 +79,23 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/postgres \
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/verify/bn_award_suspension_effective_grants.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/bn/award_suspension_integration.sql
 ```
+
+## Result
+
+**AWARD SUSPENSION CI CERTIFICATION: PASS**
+
+Reproduced on a disposable clean database (bootstrap → baseline → forward
+migrations):
+
+- `BN_SUSP_GRANTS_RESULT: PASS`
+- `BN_SUSP_HARNESS_RESULT: PASS` — exactly one marker, no `SKIP`, transaction rolled back
+- dark-launch postflight `actions_enabled = f`
+- fixture residue: 0 rows in every suspension table
+- static tests 12/12, activation guard tests 17/17, typecheck clean
+
+The harness wrapper now matches the exact result marker (`grep -Eq
+'BN_SUSP_HARNESS_RESULT:[[:space:]]*SKIP'`) instead of any occurrence of the
+word SKIP, and requires exactly one PASS marker.
+
+No environment was activated. See `BN_MASTER_COMPLETION_REGISTER.md` and
+`BN_PROGRAMME_EXECUTION_PLAN.md` for the programme-wide position.
