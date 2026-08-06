@@ -432,7 +432,53 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           </Card>
         </TabsContent>
 
+        <TabsContent value="verification">
+          <BnMeansVerificationPanel
+            groups={factGroups}
+            verifications={verifications}
+            canVerify={Boolean(verifyAction?.allowed) && !run.isPending}
+            disabledReason={
+              verifyAction?.allowed
+                ? null
+                : REASON_LABEL[verifyAction?.reason ?? ''] ?? verifyAction?.reason ?? 'not currently available'
+            }
+            busy={run.isPending}
+            onVerify={(input) =>
+              run.mutate({
+                command: 'BN_MEANS_VERIFY_INFORMATION',
+                payload: {
+                  fact_kind: input.factKind,
+                  fact_id: input.factId,
+                  outcome: input.outcome,
+                  reason_code: input.reasonCode ?? null,
+                  notes: input.note ?? null,
+                },
+              })
+            }
+          />
+        </TabsContent>
+
+        <TabsContent value="calculation">
+          <BnMeansCalculationPanel
+            readiness={readinessData}
+            readinessUnavailable={readinessUnavailable}
+            calculation={latestCalculation}
+            currency={currency}
+            canCalculate={Boolean(calculateAction?.allowed) && !run.isPending}
+            calculateReason={
+              calculateAction?.allowed
+                ? null
+                : REASON_LABEL[calculateAction?.reason ?? ''] ??
+                  calculateAction?.reason ??
+                  'Calculation is not currently available'
+            }
+            busy={run.isPending}
+            onCalculate={() => run.mutate({ command: 'BN_MEANS_CALCULATE' })}
+          />
+        </TabsContent>
+
         <TabsContent value="timeline">
+
           <Card>
             <CardHeader>
               <CardTitle>Audit timeline</CardTitle>
