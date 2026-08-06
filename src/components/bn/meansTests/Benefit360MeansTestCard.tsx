@@ -106,7 +106,7 @@ export const Benefit360MeansTestCard: React.FC<{ awardId: string | null }> = ({ 
           ))}
         </dl>
         <Button asChild size="sm" variant="ghost">
-          <Link to="/benefits/means-tests">Open means-test workspace</Link>
+          <Link to="/bn/means-tests">Open means-test workspace</Link>
         </Button>
       </CardContent>
     </Card>
