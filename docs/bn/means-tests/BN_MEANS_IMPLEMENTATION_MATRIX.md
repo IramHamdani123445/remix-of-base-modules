@@ -197,7 +197,50 @@ suites — 54/54 passing.
 | Epic | Scope | Status |
 | --- | --- | --- |
 | Epic 0 | Module entry, left navigation, admin permissions, landing experience, shared UX controls, field contract, reference-data boundary | **COMPLETE** |
-| Epic 1 | Assessment initiation (person / claim / award selection and creation redesign) | NOT_STARTED |
+| Epic 1 | Assessment initiation (guided wizard, governed person search, policy resolution, single backend initiation check) | **COMPLETE** |
+| Epic 2 | Intake workspace redesign and household composition (context confirmation, household section, backend-owned readiness, duplicate detection) | **COMPLETE** |
+
+### Epic 2 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Journey delivered** — created draft assessment → confirm assessment
+context → establish household composition → resolve household validation
+issues → mark household section complete → prepare for Income.
+
+**Workspace** — the header now leads with the assessed person, assessment
+reference, programme, reason and period rather than raw identifiers, and a
+stage journey strip (`BnMeansStageJourney`) orients the officer. The Context
+tab is a confirmation panel (`BnMeansContextPanel`) with a controlled
+correction path guarded by `BN_MEANS_CORRECT_CONTEXT`; person, claim and award
+links are never editable there.
+
+**Household section** — `BnMeansHouseholdSection` plus
+`BnMeansHouseholdMemberDialog` replace the previous code-typing inline form.
+The officer chooses between a known person (candidate shortlist and governed
+person search, identifiers always masked) and a declared member; a declared
+member never receives a fabricated person identifier. Relationship, dependency
+decision, dependency basis, residence-inclusion reason and information source
+all come from the governed reference boundary. Dependency is an explicit
+tri-state decision and is never inferred from the relationship.
+
+**Backend-owned readiness** — completeness, blockers and warnings come from
+`bn_means_household_readiness_v1`; React never computes section completeness.
+"Mark household complete" is enabled only when the backend reports the section
+complete and the action is present in `bn_means_available_actions_v1`.
+Duplicate and overlapping membership detection is performed in the database.
+
+**Commands added** — `BN_MEANS_UPDATE_HOUSEHOLD_MEMBER`,
+`BN_MEANS_REMOVE_HOUSEHOLD_MEMBER` and `BN_MEANS_CORRECT_CONTEXT`, taking the
+canonical catalogue to 21 commands, each mapped to a `bn_means_tests`
+capability.
+
+**Evidence** — `src/__tests__/bn/means-tests/meansEpic2Household.test.tsx`
+(10 cases) plus the Epic 0/1 and MT4–MT7 suites: 110/110 passing.
+
 
 ### Epic 0 — completion record
 
