@@ -684,11 +684,19 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claims', pg_temp.mr_claims('USER_SECRETARY'), true);
 
 DO $$
-DECLARE r jsonb;
+DECLARE r jsonb; v_members uuid[];
 BEGIN
+  -- The RPC expects board MEMBER row ids (not user ids), so they are
+  -- resolved from the synthetic board roster.
+  SELECT array_agg(id) INTO v_members
+    FROM public.bn_medical_board_member
+   WHERE board_id = pg_temp.mr_uid('BOARD')
+     AND member_user_id IN (pg_temp.mr_uid('USER_CHAIR'),
+                            pg_temp.mr_uid('USER_MEMBER'),
+                            pg_temp.mr_uid('USER_RECUSED'));
+
   r := public.bn_medical_review_assign_board_members_v1(
-         pg_temp.mr_uid('BOARD_CASE'),
-         ARRAY[pg_temp.mr_uid('USER_CHAIR'), pg_temp.mr_uid('USER_MEMBER'), pg_temp.mr_uid('USER_RECUSED')],
+         pg_temp.mr_uid('BOARD_CASE'), v_members,
          NULL, 'hx-members-1', 'harness');
   PERFORM pg_temp.mr_ok('I', 'secretary_assigns_board_members', (r ->> 'status') = 'OK', r::text);
 
