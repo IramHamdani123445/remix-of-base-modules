@@ -19,8 +19,14 @@ set -uo pipefail
 if [ "$(id -u)" = "0" ]; then
   SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
   WORK="$(mktemp -d)"; chmod 777 "$WORK"
-  UID_UNPRIV="${BN_SUSP_TEST_UID:-65534}"
-  if command -v setpriv >/dev/null 2>&1; then
+  UID_UNPRIV="${BN_SUSP_TEST_UID:-4242}"
+  # initdb resolves the effective uid, so the account must exist in passwd.
+  if ! getent passwd "$UID_UNPRIV" >/dev/null 2>&1; then
+    getent group "$UID_UNPRIV" >/dev/null 2>&1 \
+      || echo "bnsusptest:x:${UID_UNPRIV}:" >> /etc/group
+    echo "bnsusptest:x:${UID_UNPRIV}:${UID_UNPRIV}::${WORK}:/bin/bash" >> /etc/passwd
+  fi
+  if command -v setpriv >/dev/null 2>&1 && getent passwd "$UID_UNPRIV" >/dev/null 2>&1; then
     exec setpriv --reuid="$UID_UNPRIV" --regid="$UID_UNPRIV" --clear-groups \
       env HOME="$WORK" TMPDIR="$WORK" BN_SUSP_TEST_PGBIN="${BN_SUSP_TEST_PGBIN:-}" \
       bash "$SELF"
@@ -28,6 +34,7 @@ if [ "$(id -u)" = "0" ]; then
   echo "SKIP — running as root and privileges could not be dropped" >&2
   exit 1
 fi
+
 
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
