@@ -80,9 +80,17 @@ export const Benefit360MeansTestCard: React.FC<{ awardId: string | null }> = ({ 
       `${String(summary.effective_from ?? '—')} → ${summary.effective_to ? String(summary.effective_to) : 'open'}`,
     ],
     ['Result', summary.result ? String(summary.result) : 'Not yet determined'],
+    ['Verification', String(summary.verification_status ?? '—')],
+    ['Calculation', String(summary.calculation_status ?? 'NOT_CALCULATED')],
+    [
+      'Provisional result',
+      summary.provisional_result ? String(summary.provisional_result) : 'Not yet calculated',
+    ],
+    ['Calculated on', summary.calculated_at ? String(summary.calculated_at) : '—'],
     ['Valid until', summary.valid_until ? String(summary.valid_until) : '—'],
     ['Reassessment due', summary.reassessment_due ? String(summary.reassessment_due) : '—'],
   ];
+
 
   return (
     <Card data-testid="award360-means-card">
