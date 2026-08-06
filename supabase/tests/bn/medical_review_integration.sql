@@ -494,13 +494,6 @@ BEGIN
          pg_temp.mr_uid('REFERRAL'), NULL, 'hx-issue-1', 'harness');
   PERFORM pg_temp.mr_ok('E', 'officer_issues_referral', (r ->> 'status') = 'OK', r::text);
 
-  -- Appointment responsibility is SOCIAL_SECURITY in this policy.
-  r := public.bn_medical_review_schedule_appointment_v1(
-         pg_temp.mr_uid('REFERRAL'), now() + interval '3 days', 'HARNESS CLINIC',
-         'hx-appt-1', 'harness');
-  PERFORM pg_temp.mr_put('APPOINTMENT', r ->> 'appointment_id');
-  PERFORM pg_temp.mr_ok('E', 'officer_schedules_appointment',
-                        (r ->> 'appointment_id') IS NOT NULL, r::text);
 END $$;
 
 RESET ROLE;
@@ -553,7 +546,37 @@ BEGIN
   r := public.bn_medical_review_accept_referral_v1(
          pg_temp.mr_uid('REFERRAL'), NULL, 'hx-accept-1', 'harness');
   PERFORM pg_temp.mr_ok('G', 'provider_accepts_referral', (r ->> 'status') = 'OK', r::text);
+END $$;
 
+RESET ROLE;
+
+-- ---------------------------------------------------------------------
+-- Appointments may only be scheduled once the referral is ACCEPTED, and
+-- appointment responsibility is SOCIAL_SECURITY under this policy, so the
+-- benefits officer schedules it here.
+-- ---------------------------------------------------------------------
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', pg_temp.mr_claims('USER_OFFICER'), true);
+
+DO $$
+DECLARE r jsonb;
+BEGIN
+  r := public.bn_medical_review_schedule_appointment_v1(
+         pg_temp.mr_uid('REFERRAL'), now() + interval '3 days', 'HARNESS CLINIC',
+         'hx-appt-1', 'harness');
+  PERFORM pg_temp.mr_put('APPOINTMENT', r ->> 'appointment_id');
+  PERFORM pg_temp.mr_ok('E', 'officer_schedules_appointment',
+                        (r ->> 'appointment_id') IS NOT NULL, r::text);
+END $$;
+
+RESET ROLE;
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', pg_temp.mr_claims('USER_PROVIDER'), true);
+
+DO $$
+DECLARE r jsonb; v_assessment uuid;
+BEGIN
   -- Scheduling belongs to Social Security under this policy.
   BEGIN
     PERFORM public.bn_medical_review_reschedule_appointment_v1(
