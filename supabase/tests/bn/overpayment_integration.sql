@@ -68,6 +68,7 @@ DECLARE
   v_nobody    uuid := '00000000-0000-0000-0000-0000000000a9';
   v_version   integer;
   v_out       numeric;
+  v_txn_count bigint;
   v_err       text;
   v_actions   boolean;
   v_plan      uuid;
@@ -183,6 +184,21 @@ BEGIN
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
   PERFORM public.bn_overpayment_record_receipt_v1(
     v_case, v_version, 300.00, 'XCD', 'CASH', 'HARNESS:B:RECEIPT');
+
+  -- ── Idempotency: exact replay must not double-post ───────────────
+  SELECT count(*) INTO v_txn_count FROM public.bn_op_recovery_transaction WHERE case_id = v_case;
+  SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
+  PERFORM public.bn_overpayment_record_receipt_v1(
+    v_case, v_version, 300.00, 'XCD', 'CASH', 'HARNESS:B:RECEIPT');
+  IF (SELECT count(*) FROM public.bn_op_recovery_transaction WHERE case_id = v_case) <> v_txn_count THEN
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL idempotent replay double-posted a transaction';
+  END IF;
+
+  -- ── Finance outbox: every ledger movement raises exactly one intent ─
+  IF (SELECT count(*) FROM public.bn_op_finance_posting_intent WHERE case_id = v_case)
+     <> (SELECT count(*) FROM public.bn_op_recovery_transaction WHERE case_id = v_case) THEN
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL finance intent / transaction parity broken';
+  END IF;
 
   -- ── Journey E: Model A signed contra invariant ───────────────────
   -- confirmed 1500, receipt 300, full reversal 300  ->  outstanding 1500
