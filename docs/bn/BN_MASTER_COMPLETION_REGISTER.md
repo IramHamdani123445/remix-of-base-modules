@@ -62,7 +62,7 @@ external_uat   = DEFERRED
 | 11 | Mortality | COMPLETE_AND_CERTIFIED | PASS | PASS | dark-launched (`actions_enabled=false`) |
 | 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 13 | Survivors Processing | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
-| 14 | Means Tests | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
+| 14 | Means Tests | IMPLEMENTATION_IN_PROGRESS (intake slice PASS) | DARK_LAUNCHED | DEFERRED | MT0–MT5 |
 | 15 | Risk Management | CONTRACT_ONLY | n/a | n/a | none |
 | 16 | Uprating | CONTRACT_ONLY | n/a | n/a | none |
 
