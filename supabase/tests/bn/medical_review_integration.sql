@@ -945,10 +945,10 @@ BEGIN
     NOT EXISTS (
       SELECT 1 FROM public.bn_medical_review_communication_intent c
        WHERE c.obligation_id = pg_temp.mr_uid('OBLIGATION')
-         AND (c.context_payload::text ILIKE '%clinical_narrative%'
-              OR c.context_payload::text ILIKE '%impairment_percentage%'
-              OR c.context_payload::text ILIKE '%PERMANENT_INCAPACITY%'
-              OR c.context_payload::text ILIKE '%123456789%')));
+         AND (c.context::text ILIKE '%clinical_narrative%'
+              OR c.context::text ILIKE '%impairment_percentage%'
+              OR c.context::text ILIKE '%PERMANENT_INCAPACITY%'
+              OR c.context::text ILIKE '%123456789%')));
 
   PERFORM pg_temp.mr_ok('O', 'comm_intents_recorded',
     EXISTS (SELECT 1 FROM public.bn_medical_review_communication_intent c
