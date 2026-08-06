@@ -121,7 +121,39 @@ export const meansQueryService = {
     return envelope<readonly BnMeansAvailableAction[]>(data);
   },
 
+  /**
+   * MT6 — canonical calculation readiness. Readiness rules live in the
+   * governed backend only; the UI renders whatever the backend reports.
+   */
+  async calculationReadiness(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansCalculationReadiness>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_calculation_readiness_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansCalculationReadiness>(data);
+  },
+
+  /** MT6 — immutable calculation with its explanation lines. */
+  async calculationTrace(
+    calculationId: string,
+  ): Promise<BnMeansQueryResult<Record<string, unknown>>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_calculation_trace_v1', {
+      p_actor_user_id: uid,
+      p_calculation_id: calculationId,
+    });
+    if (error) return failed(error.message);
+    return envelope<Record<string, unknown>>(data);
+  },
+
   async benefit360Summary(params: {
+
     awardId?: string | null;
     personId?: number | null;
   }): Promise<BnMeansQueryResult<Record<string, unknown> | null>> {
