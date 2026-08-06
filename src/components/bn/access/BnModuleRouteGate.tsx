@@ -214,6 +214,8 @@ export const BnModuleRouteGate: React.FC<Props> = ({
     hasWrite: hasAction("write"),
     hasDecide: hasAction("decide"),
     hasAdmin: hasAction("admin"),
+    grants: Array.from(grants),
+    can: hasAction,
     readOnly: !moduleRow.actions_enabled,
     reason:
       moduleRow.actions_enabled
