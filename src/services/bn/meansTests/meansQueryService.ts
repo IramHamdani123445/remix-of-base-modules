@@ -11,12 +11,23 @@ import type {
   BnMeansApprovalContext,
   BnMeansQueueCode,
 } from '@/types/bn/meansTests/meansAdjustments';
+import type {
+  BnMeansHouseholdCandidate,
+  BnMeansHouseholdDetail,
+  BnMeansHouseholdReadiness,
+} from '@/types/bn/meansTests/meansHousehold';
 
 export type {
   BnMeansAdjustmentRow,
   BnMeansApprovalContext,
   BnMeansQueueCode,
 } from '@/types/bn/meansTests/meansAdjustments';
+export type {
+  BnMeansHouseholdCandidate,
+  BnMeansHouseholdDetail,
+  BnMeansHouseholdMember,
+  BnMeansHouseholdReadiness,
+} from '@/types/bn/meansTests/meansHousehold';
 
 export type BnMeansQueryStatus = 'OK' | 'DENIED' | 'NOT_FOUND' | 'INVALID' | 'FAILED';
 
