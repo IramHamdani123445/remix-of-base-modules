@@ -241,3 +241,98 @@ export interface MortalityRegistrationImpactPreviewDto {
   }>;
   readonly generatedAt: string;
 }
+
+/** BN-MORT-M3 — Canonical evidence register entry (`bn_mortality_evidence`). */
+export interface MortalityEvidenceRegisterEntry {
+  readonly id: string;
+  readonly eventId: string;
+  readonly evidenceType: string;
+  readonly dmsDocumentId: string | null;
+  readonly dmsReference: string | null;
+  readonly receivedAt: string | null;
+  readonly status: 'REQUESTED' | 'ATTACHED' | 'RECEIVED' | 'REJECTED' | string;
+  readonly notes: string | null;
+  readonly correlationId: string | null;
+  readonly createdAt: string;
+  readonly createdBy: string | null;
+}
+
+/** BN-MORT-M3 — Required follow-on action gating closure. */
+export interface MortalityRequiredActionEntry {
+  readonly id: string;
+  readonly eventId: string;
+  readonly actionCode: string;
+  readonly isMandatory: boolean;
+  readonly status: 'OPEN' | 'SATISFIED' | 'WAIVED' | 'CANCELLED' | string;
+  readonly handoffId: string | null;
+  readonly resolvedAt: string | null;
+  readonly resolvedBy: string | null;
+  readonly createdAt: string;
+  readonly blocksClosure: boolean;
+}
+
+/** BN-MORT-M5 — Governed cross-module handoff raised from a mortality event. */
+export interface MortalityHandoffEntry {
+  readonly handoffId: string;
+  readonly sourceModule: string;
+  readonly sourceRecordId: string;
+  readonly targetModule: string;
+  readonly handoffType: string;
+  readonly reasonCode: string | null;
+  readonly status: string;
+  readonly awardId: string | null;
+  readonly claimId: string | null;
+  readonly targetRecordId: string | null;
+  readonly targetReference: string | null;
+  readonly correlationId: string | null;
+  readonly createdAt: string;
+  readonly createdBy: string | null;
+  readonly acceptedAt: string | null;
+  readonly acceptedBy: string | null;
+  readonly updatedAt: string;
+  readonly rowVersion: number;
+  readonly isOutstanding: boolean;
+}
+
+/** BN-MORT-M3 — Per-event operational indicators for the worklist. */
+export interface MortalityWorklistIndicator {
+  readonly eventId: string;
+  readonly openMandatoryActions: number;
+  readonly outstandingHandoffs: number;
+  readonly failedHandoffs: number;
+  readonly evidenceCount: number;
+  readonly impactCount: number;
+  readonly awaitingApprovalImpacts: number;
+  readonly activeHolds: number;
+  readonly padExposureMinor: number;
+  readonly currencyCode: string | null;
+}
+
+/** BN-MORT-M4 — Mortality posture for a single award, rendered in Award 360. */
+export interface MortalityAwardSnapshotDto {
+  readonly awardId: string;
+  readonly hasMortalityEvent: boolean;
+  readonly event: {
+    readonly id: string;
+    readonly eventReference: string | null;
+    readonly status: string;
+    readonly deathDate: string | null;
+    readonly deceasedFullName: string | null;
+    readonly reportedAt: string | null;
+    readonly confirmedAt: string | null;
+    readonly route: string;
+  } | null;
+  readonly impact: {
+    readonly id: string;
+    readonly action: string | null;
+    readonly impactStatus: string | null;
+    readonly approvalState: string | null;
+    readonly holdStatus: string | null;
+    readonly terminationStatus: string | null;
+    readonly estimatedPadMinor: number;
+    readonly currencyCode: string;
+    readonly overpaymentReference: string | null;
+    readonly lastValidPaymentDate: string | null;
+    readonly updatedAt: string | null;
+  } | null;
+}
