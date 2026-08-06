@@ -323,13 +323,17 @@ export default function Award360Page() {
 
       <div>
         {activeTab === 'overview' && tabAccess.overview.visible && (
-          <AwardOverviewTab
-            header={header}
-            alerts={alerts}
-            onOpenTab={(t) => setTab(t)}
-            recentActivity={(activityQ.data ?? []).slice(0, 20)}
-            warnings={[...(overview?.warnings ?? []), ...(summaryQ.data?.warnings ?? [])]}
-          />
+          <div className="space-y-4">
+            <AwardOverviewTab
+              header={header}
+              alerts={alerts}
+              onOpenTab={(t) => setTab(t)}
+              recentActivity={(activityQ.data ?? []).slice(0, 20)}
+              warnings={[...(overview?.warnings ?? []), ...(summaryQ.data?.warnings ?? [])]}
+            />
+            {/* BN-MORT-M4 — read-only mortality posture for this award. */}
+            <Benefit360MortalityCard awardId={id ?? null} />
+          </div>
         )}
         {activeTab === 'pensioner' && tabAccess.pensioner.visible && (
           <AwardPensionerTab
