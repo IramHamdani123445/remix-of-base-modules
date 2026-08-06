@@ -37,7 +37,13 @@ import {
   type ScheduledPaymentSnapshot,
 } from '@/services/bn/mortality/mortalityImpactAnalyzer';
 
-const CANONICAL_COMMANDS: readonly BnMortalityCommandName[] = [
+/**
+ * Slice-1 legacy subset. These 15 commands were the original mortality
+ * catalogue; BN-MORT-2A extended the authoritative catalogue to 26
+ * (see docs/bn/mortality/MORTALITY_COMMAND_TRANSITION_MATRIX.md).
+ * They must all still be registered — but they are a subset, not the total.
+ */
+const SLICE1_COMMANDS: readonly BnMortalityCommandName[] = [
   'BN_MORTALITY_REGISTER_REPORT',
   'BN_MORTALITY_ATTACH_EVIDENCE',
   'BN_MORTALITY_SUBMIT_FOR_VERIFICATION',
@@ -56,10 +62,21 @@ const CANONICAL_COMMANDS: readonly BnMortalityCommandName[] = [
 ];
 
 describe('BN Mortality — command catalogue', () => {
-  it('registers all 15 canonical commands', () => {
-    const names = BN_MORTALITY_COMMANDS.map((c) => c.command).sort();
-    expect(names).toEqual([...CANONICAL_COMMANDS].sort());
+  it('registers the authoritative 26-command catalogue', () => {
+    expect(BN_MORTALITY_COMMANDS).toHaveLength(MORTALITY_COMMAND_COUNT);
+    expect(MORTALITY_COMMAND_COUNT).toBe(26);
+    expect(BN_MORTALITY_COMMANDS.map((c) => c.command).sort()).toEqual(
+      MORTALITY_COMMAND_CATALOG.map((c) => c.command).sort(),
+    );
   });
+
+  it('still registers every slice-1 canonical command', () => {
+    const names = new Set(BN_MORTALITY_COMMANDS.map((c) => c.command));
+    for (const c of SLICE1_COMMANDS) {
+      expect(names.has(c), `slice-1 command ${c} is missing`).toBe(true);
+    }
+  });
+
 
   it('maps every command to a capability in the registry', () => {
     for (const c of BN_MORTALITY_COMMANDS) {
