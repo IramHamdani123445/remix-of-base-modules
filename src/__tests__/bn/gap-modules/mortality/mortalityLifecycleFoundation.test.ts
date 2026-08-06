@@ -19,6 +19,10 @@ import {
   type BnMortalityCommandName,
 } from '@/types/bn/mortality/mortalityCommands';
 import {
+  MORTALITY_COMMAND_CATALOG,
+  MORTALITY_COMMAND_COUNT,
+} from '@/types/bn/mortality/mortalityCommandCatalog';
+import {
   BN_MORTALITY_TERMINAL_STATES,
   BN_MORTALITY_TRANSITIONS,
   canMortalityTransition,
