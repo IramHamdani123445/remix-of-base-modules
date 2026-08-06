@@ -505,6 +505,30 @@ END $$;
 
 RESET ROLE;
 
+-- ---------------------------------------------------------------------
+-- TRUSTED CONTEXT — scheduler maturation.
+-- Obligation maturation (NOT_DUE -> DUE -> IN_PROGRESS -> AWAITING_PROVIDER
+-- -> AWAITING_REPORT) is performed by the scheduler, not by any user RPC.
+-- The harness advances it explicitly so the downstream lifecycle transitions
+-- exercised below are reachable. Every step follows the canonical map.
+-- ---------------------------------------------------------------------
+DO $$
+DECLARE v_id uuid := pg_temp.mr_uid('OBLIGATION'); v_from text; t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['DUE','IN_PROGRESS','AWAITING_PROVIDER','AWAITING_REPORT'] LOOP
+    SELECT status INTO v_from FROM public.bn_medical_review_obligation WHERE id = v_id;
+    IF NOT public._bn_mr_transition_allowed('OBLIGATION', v_from, t) THEN
+      RAISE EXCEPTION 'harness maturation blocked: % -> %', v_from, t;
+    END IF;
+    UPDATE public.bn_medical_review_obligation
+       SET status = t, row_version = row_version + 1, updated_at = now()
+     WHERE id = v_id;
+  END LOOP;
+
+  PERFORM pg_temp.mr_ok('E', 'obligation_matured_by_scheduler',
+    (SELECT status FROM public.bn_medical_review_obligation WHERE id = v_id) = 'AWAITING_REPORT');
+END $$;
+
 -- =====================================================================
 -- ACTOR CONTEXT — Unrelated officer: record scope must fail closed
 -- =====================================================================
@@ -662,7 +686,9 @@ BEGIN
 
   r := public.bn_medical_review_board_requirement_v1(pg_temp.mr_uid('OBLIGATION'));
   PERFORM pg_temp.mr_ok('H', 'board_requirement_derived_from_policy',
-    (r ->> 'status') = 'OK', r::text);
+    (r ->> 'board_required')::boolean
+      AND (r ->> 'evaluated_from') = 'POLICY_SNAPSHOT'
+      AND (r ->> 'reason') = 'TRIGGER_RULE_MATCHED', r::text);
 
   r := public.bn_medical_review_refer_to_board_v1(
          pg_temp.mr_uid('OBLIGATION'), pg_temp.mr_uid('ASSESSMENT'), 'hx-board-1', 'harness');
