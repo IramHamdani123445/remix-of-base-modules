@@ -145,17 +145,20 @@ BEGIN
     (v_chair),(v_member),(v_recused),(v_outsider)
   ON CONFLICT (id) DO NOTHING;
 
-  INSERT INTO public.profiles(id, user_code, full_name)
-  VALUES (v_officer,'HX_OFFICER','Harness Benefits Officer'),
-         (v_preparer,'HX_PREPARER','Harness Decision Preparer'),
-         (v_approver,'HX_APPROVER','Harness Decision Approver'),
-         (v_provider_user,'HX_DOCTOR','Harness Assessing Doctor'),
-         (v_secretary,'HX_SECRETARY','Harness Board Secretary'),
-         (v_chair,'HX_CHAIR','Harness Board Chair'),
-         (v_member,'HX_MEMBER','Harness Board Member'),
-         (v_recused,'HX_RECUSED','Harness Recused Member'),
-         (v_outsider,'HX_OUTSIDER','Harness Unrelated Officer')
+  -- `profiles` carries a user_code generation trigger that requires a
+  -- last name, so every synthetic actor supplies first_name/last_name.
+  INSERT INTO public.profiles(id, user_code, full_name, first_name, last_name)
+  VALUES (v_officer,'HX_OFFICER','Harness Benefits Officer','Harness','Officer'),
+         (v_preparer,'HX_PREPARER','Harness Decision Preparer','Harness','Preparer'),
+         (v_approver,'HX_APPROVER','Harness Decision Approver','Harness','Approver'),
+         (v_provider_user,'HX_DOCTOR','Harness Assessing Doctor','Harness','Doctor'),
+         (v_secretary,'HX_SECRETARY','Harness Board Secretary','Harness','Secretary'),
+         (v_chair,'HX_CHAIR','Harness Board Chair','Harness','Chair'),
+         (v_member,'HX_MEMBER','Harness Board Member','Harness','Member'),
+         (v_recused,'HX_RECUSED','Harness Recused Member','Harness','Recused'),
+         (v_outsider,'HX_OUTSIDER','Harness Unrelated Officer','Harness','Outsider')
   ON CONFLICT (id) DO UPDATE SET user_code = excluded.user_code;
+
 
   -- app_role enum values are the only values `user_roles` accepts; each
   -- harness persona is mapped to a distinct enum value so permissions
