@@ -59,10 +59,10 @@ external_uat   = DEFERRED
 | 8 | Life Certificates | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | `BN_LC_GRANTS_RESULT: PASS`, `BN_LC_HARNESS_RESULT: PASS` on the regenerated PG15 baseline |
 | 9 | Medical Reviews | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | **grants + harness + adapter postflight PASS**; architecture boundary closed (RPC-only legacy mutations); 207/207 focused suites |
 | 10 | Overpayments | COMPLETE_AND_CERTIFIED | dark launch (`internal_pilot`, actions `false`) | DEFERRED | **independent CI green** — `bn-overpayment-integration.yml` run `31116272752` on `3a8b893139f5101022e0924617fbd73548e72e54`; finance/legal operations readiness `PENDING` |
-| 11 | Mortality | COMPLETE_AND_CERTIFIED | PASS | PASS | dark-launched (`actions_enabled=false`) |
+| 11 | Mortality | COMPLETE_AND_CERTIFIED | PASS | PASS (grants verifier repaired — v2 command + internal helpers revoked from `anon`/`authenticated`) | dark-launched (`actions_enabled=false`) |
 | 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 13 | Survivors Processing | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
-| 14 | Means Tests | IMPLEMENTATION_IN_PROGRESS (intake slice PASS) | DARK_LAUNCHED | DEFERRED | MT0–MT5 |
+| 14 | Means Tests | IMPLEMENTATION_IN_PROGRESS (intake + verification + calculation PASS) | DEVELOPMENT_ACCESS_ENABLED (`internal_pilot`) | DEFERRED | MT0–MT6 |
 | 15 | Risk Management | CONTRACT_ONLY | n/a | n/a | none |
 | 16 | Uprating | CONTRACT_ONLY | n/a | n/a | none |
 
