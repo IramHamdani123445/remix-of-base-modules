@@ -161,20 +161,29 @@
     {
       "id": "medical_reviews",
       "name": "Medical Reviews",
-      "classification": "BLOCKED_BY_INFRASTRUCTURE",
+      "classification": "CERTIFIED_DARK_LAUNCHED",
       "routes": ["/bn/servicing/medical-reviews"],
       "module_flag": "bn_medical_review",
       "actions_enabled": false,
-      "commands_catalogued": 70,
-      "commands_implemented": 70,
+      "communication_adapter_enabled": false,
+      "commands_catalogued": 73,
+      "commands_implemented": 73,
       "mutation_boundary": "rpc_only",
+      "legacy_tables_browser_writable": false,
       "database_tests": true,
       "grant_verifier": "supabase/verify/bn_medical_review_effective_grants.sql",
+      "adapter_postflight": "supabase/verify/bn_medical_review_adapter_postflight.sql",
+      "architecture_gate": "src/__tests__/bn/medical_reviews_no_direct_mutation.test.ts",
       "ci_workflow": ".github/workflows/bn-medical-review-integration.yml",
-      "latest_ci_evidence": null,
-      "blockers": ["no trusted execution path in sandbox (no GitHub connection, no DB secrets)"],
+      "latest_ci_evidence": {
+        "grants_marker": "BN_MR_GRANTS_RESULT: PASS",
+        "harness_marker": "BN_MR_HARNESS_RESULT: PASS",
+        "adapter_marker": "BN_MR_ADAPTER_RESULT: PASS",
+        "focused_suites": "207/207"
+      },
+      "blockers": [],
       "dependencies": ["award_suspension"],
-      "next_slice": "execute certification workflow on the PG15 baseline"
+      "next_slice": "runtime activation requires a durable non-production Test target"
     },
     {
       "id": "overpayments",

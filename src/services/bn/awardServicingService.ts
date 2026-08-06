@@ -98,6 +98,8 @@ export interface BnMedicalReviewRow {
   status: string;
   remarks: string | null;
   entered_at: string;
+  /** Optimistic-concurrency token required by the governed legacy commands. */
+  row_version: number;
 }
 
 export interface BnAwardSuspensionEventRow {
@@ -242,45 +244,16 @@ export async function fetchMedicalReviews(): Promise<BnMedicalReviewRow[]> {
   return (data ?? []) as BnMedicalReviewRow[];
 }
 
-export async function scheduleMedicalReview(
-  id: string,
-  scheduledDate: string,
-  doctor: string | null,
-  userCode: string | null
-): Promise<void> {
-  const { error } = await db
-    .from('bn_medical_review_schedule')
-    .update({
-      scheduled_date: scheduledDate,
-      examining_provider: doctor,
-      status: 'SCHEDULED',
-      modified_by: userCode,
-    })
-    .eq('id', id);
-  if (error) throw error;
-}
-
-export async function recordMedicalReviewOutcome(
-  id: string,
-  outcome: string,
-  notes: string | null,
-  nextReviewDate: string | null,
-  userCode: string | null
-): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10);
-  const { error } = await db
-    .from('bn_medical_review_schedule')
-    .update({
-      outcome,
-      remarks: notes,
-      completed_date: today,
-      next_review_date: nextReviewDate,
-      status: outcome === 'REFER_BOARD' ? 'REFERRED_BOARD' : 'COMPLETED',
-      modified_by: userCode,
-    })
-    .eq('id', id);
-  if (error) throw error;
-}
+// Medical Review mutations were retired from the browser boundary.
+// `scheduleMedicalReview` and `recordMedicalReviewOutcome` used to UPDATE
+// `bn_medical_review_schedule` directly. `authenticated` no longer holds
+// INSERT/UPDATE/DELETE on that table; every state change now runs through the
+// versioned server commands exposed by
+// `@/services/bn/medicalReviewLegacyScheduleCommands`
+// (`bn_medical_review_legacy_schedule_v1`,
+//  `bn_medical_review_legacy_record_outcome_v1`,
+//  `bn_medical_review_legacy_provision_v1`).
+// Do not reintroduce direct `bn_medical_review_schedule` writes here.
 
 // ---------- Overpayments ----------
 export async function fetchOverpayments(): Promise<BnOverpaymentRow[]> {

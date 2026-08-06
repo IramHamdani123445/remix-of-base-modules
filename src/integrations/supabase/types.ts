@@ -16037,6 +16037,7 @@ export type Database = {
           outcome: string | null
           remarks: string | null
           review_type: string | null
+          row_version: number
           scheduled_date: string
           status: string
         }
@@ -16053,6 +16054,7 @@ export type Database = {
           outcome?: string | null
           remarks?: string | null
           review_type?: string | null
+          row_version?: number
           scheduled_date: string
           status?: string
         }
@@ -16069,6 +16071,7 @@ export type Database = {
           outcome?: string | null
           remarks?: string | null
           review_type?: string | null
+          row_version?: number
           scheduled_date?: string
           status?: string
         }
@@ -103695,6 +103698,39 @@ export type Database = {
           p_idempotency_key: string
           p_reason?: string
           p_referral_id: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_legacy_provision_v1: {
+        Args: {
+          p_award_id: string
+          p_idempotency_key: string
+          p_reason?: string
+          p_review_type: string
+          p_scheduled_date: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_legacy_record_outcome_v1: {
+        Args: {
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_next_review_date: string
+          p_notes: string
+          p_outcome: string
+          p_reason?: string
+          p_schedule_id: string
+        }
+        Returns: Json
+      }
+      bn_medical_review_legacy_schedule_v1: {
+        Args: {
+          p_examining_provider: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_reason?: string
+          p_schedule_id: string
+          p_scheduled_date: string
         }
         Returns: Json
       }

@@ -7,6 +7,7 @@
  * Idempotent: returns existing award if one already exists for the claim.
  */
 import { supabase as db } from '@/integrations/supabase/client';
+import { medicalReviewLegacyScheduleCommands } from '@/services/bn/medicalReviewLegacyScheduleCommands';
 
 export interface AwardCreationResult {
   created: boolean;
@@ -185,13 +186,17 @@ export async function createAwardOnApproval(
   const mrPolicy = (pv?.medical_review_policy ?? {}) as any;
   if (mrPolicy?.required) {
     const months = Number(mrPolicy.frequency_months ?? 12);
-    await db.from('bn_medical_review_schedule').insert({
-      bn_award_id: inserted.id,
-      scheduled_date: addMonths(startDate, months),
-      review_type: mrPolicy.review_type || 'PERIODIC',
-      status: 'PENDING',
-      entered_by: performedBy,
-    } as any).then(() => undefined, () => undefined);
+    // Governed boundary: the browser holds no INSERT privilege on
+    // `bn_medical_review_schedule`. Provisioning runs through the versioned
+    // Medical Review command.
+    await medicalReviewLegacyScheduleCommands
+      .provision({
+        awardId: inserted.id,
+        scheduledDate: addMonths(startDate, months),
+        reviewType: mrPolicy.review_type || 'PERIODIC',
+        reason: 'Award creation medical review provisioning',
+      })
+      .then(() => undefined, () => undefined);
   }
 
   // Audit event on claim

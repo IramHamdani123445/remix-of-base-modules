@@ -21,11 +21,11 @@ import {
   fetchAwards,
   fetchClaimantsBySsns,
   fetchMedicalReviews,
-  recordMedicalReviewOutcome,
-  scheduleMedicalReview,
   type BnAwardRow,
   type BnMedicalReviewRow,
 } from '@/services/bn/awardServicingService';
+import { medicalReviewLegacyScheduleCommands } from '@/services/bn/medicalReviewLegacyScheduleCommands';
+import { describeMedicalReviewFailure, MedicalReviewError } from '@/features/bn/medical-reviews/model/errors';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   SCHEDULED: { label: 'Scheduled', color: 'bg-blue-500/10 text-blue-700 border-blue-300' },
@@ -112,19 +112,28 @@ const MedicalReviewScheduler: React.FC = () => {
     [rows]
   );
 
+  const commandMessage = (e: unknown, fallback: string) =>
+    e instanceof MedicalReviewError ? describeMedicalReviewFailure(e) : fallback;
+
   const doSchedule = async () => {
     if (!selected) return;
     if (!scheduleDate) { toast.error('Pick an appointment date'); return; }
     setSubmitting(true);
     try {
-      await scheduleMedicalReview(selected.id, scheduleDate, scheduleDr || null, profile?.user_code ?? null);
-      toast.success('Review scheduled');
+      const res = await medicalReviewLegacyScheduleCommands.schedule({
+        scheduleId: selected.id,
+        scheduledDate: scheduleDate,
+        examiningProvider: scheduleDr || null,
+        expectedRowVersion: selected.row_version ?? 1,
+        reason: 'Legacy periodic review scheduling',
+      });
+      toast.success(res.replayed ? 'Review already scheduled' : 'Review scheduled');
       setScheduleOpen(false);
       setScheduleDate(''); setScheduleDr('');
       await load();
     } catch (e) {
       console.error(e);
-      toast.error('Schedule failed');
+      toast.error(commandMessage(e, 'Schedule failed'));
     } finally {
       setSubmitting(false);
     }
@@ -134,14 +143,21 @@ const MedicalReviewScheduler: React.FC = () => {
     if (!selected) return;
     setSubmitting(true);
     try {
-      await recordMedicalReviewOutcome(selected.id, outcomeResult, outcomeNotes || null, nextReview || null, profile?.user_code ?? null);
-      toast.success('Outcome recorded');
+      const res = await medicalReviewLegacyScheduleCommands.recordOutcome({
+        scheduleId: selected.id,
+        outcome: outcomeResult as 'CONTINUE' | 'UPGRADE' | 'DOWNGRADE' | 'CEASE' | 'REFER_BOARD',
+        notes: outcomeNotes || null,
+        nextReviewDate: nextReview || null,
+        expectedRowVersion: selected.row_version ?? 1,
+        reason: 'Legacy periodic review outcome',
+      });
+      toast.success(res.replayed ? 'Outcome already recorded' : 'Outcome recorded');
       setOutcomeOpen(false);
       setOutcomeNotes(''); setNextReview(''); setOutcomeResult('CONTINUE');
       await load();
     } catch (e) {
       console.error(e);
-      toast.error('Save failed');
+      toast.error(commandMessage(e, 'Save failed'));
     } finally {
       setSubmitting(false);
     }

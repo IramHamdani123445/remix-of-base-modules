@@ -37,7 +37,7 @@ is still policy-gated (dark launch), so it is recorded as
 | 6 | Configuration | PARTIAL_IMPLEMENTATION | n/a | unit only |
 | 7 | Award Suspension | SOURCE_COMPLETE_RUNTIME_PENDING | dark launch (`false`) | **CI chain PASS**; Test-provisioning tooling ready (29/29 guards), durable Test target still required |
 | 8 | Life Certificates | SOURCE_COMPLETE_RUNTIME_PENDING | dark launch (`false`) | workflow present, unverified this change set |
-| 9 | Medical Reviews | BLOCKED_BY_INFRASTRUCTURE | dark launch (`false`) | certification package only |
+| 9 | Medical Reviews | CERTIFIED_DARK_LAUNCHED | dark launch (`false`) | **grants + harness + adapter postflight PASS**; architecture boundary closed (RPC-only legacy mutations); 207/207 focused suites |
 | 10 | Overpayments | PARTIAL_IMPLEMENTATION | n/a | none |
 | 11 | Mortality | PARTIAL_IMPLEMENTATION | n/a | none |
 | 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | none |
@@ -168,17 +168,25 @@ is still policy-gated (dark launch), so it is recorded as
 
 ## 9. Medical Reviews
 
-- **Status:** BLOCKED_BY_INFRASTRUCTURE
+- **Status:** CERTIFIED_DARK_LAUNCHED
 - **Routes:** `/bn/servicing/medical-reviews` (Centre, Board Workspace, Provider Referral Workspace)
-- **Flags:** `bn_medical_review.actions_enabled = false`
-- **Commands:** 50+ commands and ~20 query RPCs, mapped by `backendContract.ts`
-- **Boundaries:** strict typed adapters; contract parity enforced by tests
+- **Flags:** `bn_medical_review.actions_enabled = false`; `bn_communication_adapter_source.BN_MEDICAL_REVIEW.is_enabled = false`
+- **Commands:** 50+ commands and ~20 query RPCs, mapped by `backendContract.ts`, plus the governed legacy trio
+  `bn_medical_review_legacy_{schedule,record_outcome,provision}_v1`
+- **Boundaries:** RPC-only. No browser role holds INSERT/UPDATE/DELETE on any Medical Review table, including the two
+  legacy Award 360 tables (`bn_medical_review_schedule`, `bn_medical_provider_type`), which are now SELECT-only behind RLS.
+  `src/services/bn/awardServicingService.ts`, `MedicalReviewScheduler.tsx` and `awardCreationService.ts` issue no direct writes.
+- **Concurrency:** `bn_medical_review_schedule.row_version` drives optimistic concurrency (`E_STALE_ROW_VERSION`).
 - **Permissions:** module action catalogue under `bn_medical_review`
-- **Audit:** confidential-evidence reveal auditing implemented
-- **Tests:** 219 servicing tests pass; DB harness `supabase/tests/bn/medical_review_integration.sql`
-- **CI:** `.github/workflows/bn-medical-review-integration.yml` present; execution blocked (no GitHub connection / DB secrets in sandbox)
-- **Blockers:** trusted execution path for the DB certification
-- **Next slice:** Wave 3 — run the certification workflow on the PG15 baseline
+- **Audit:** confidential-evidence reveal auditing implemented; every legacy command writes `_bn_mr_audit`
+- **Tests:** 207/207 focused certification suites, including the static
+  `src/__tests__/bn/medical_reviews_no_direct_mutation.test.ts` architecture gate
+- **Certification markers:** `BN_MR_GRANTS_RESULT: PASS`, `BN_MR_HARNESS_RESULT: PASS` (68 assertions),
+  `BN_MR_ADAPTER_RESULT: PASS`, module dark-launch `f`, zero fixture residue
+- **CI:** `.github/workflows/bn-medical-review-integration.yml` — disposable `postgres:15`, exact-marker gating,
+  both dark-launch postflights, expanded focused suites and `tsc --noEmit`
+- **Blockers:** none for certification; runtime activation still requires a durable Test target
+- **Next slice:** Wave 4 — Overpayment Recovery governance foundation and backend boundary
 
 ## 10. Overpayments
 
