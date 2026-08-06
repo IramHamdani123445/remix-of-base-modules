@@ -340,8 +340,8 @@ SELECT name, is_enabled, routes_enabled, actions_enabled, rollout_state
   FROM public.app_modules WHERE name = 'bn_award_suspension';
 
 \echo '--- UAT actors ---'
-SELECT p.user_code, p.email, ur.role
+SELECT p.id AS actor_id, p.email, p.user_code, ur.role
   FROM public.profiles p
   JOIN public.user_roles ur ON ur.user_id = p.id
- WHERE p.user_code IN ('UATCLM','UATSUP','UATMGR','UATAUD')
- ORDER BY p.user_code;
+ WHERE p.email LIKE 'bn-uat-%@test.local'
+ ORDER BY ur.role;
