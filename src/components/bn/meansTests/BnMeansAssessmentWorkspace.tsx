@@ -32,23 +32,17 @@ import {
   type BnMeansVerificationRecord,
 } from '@/components/bn/meansTests/BnMeansVerificationPanel';
 import { BnMeansCalculationPanel } from '@/components/bn/meansTests/BnMeansCalculationPanel';
+import { BnMeansAdjustmentsPanel } from '@/components/bn/meansTests/BnMeansAdjustmentsPanel';
+import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApprovalPanel';
+import {
+  BN_MEANS_REASON_LABEL,
+  meansStatusLabel,
+  type BnMeansAdjustmentRow,
+  type BnMeansApprovalContext,
+} from '@/types/bn/meansTests/meansAdjustments';
 
-
-const REASON_LABEL: Record<string, string> = {
-  ACTIONS_DISABLED: 'Actions are disabled while the module is in internal pilot',
-  PERMISSION_DENIED: 'You do not hold the required permission',
-  INVALID_STATE: 'Not available in the current status',
-  NOT_READY_FOR_CALCULATION: 'Outstanding verification blockers prevent calculation',
-
-  MISSING_REQUIRED_INFORMATION: 'Required information is missing',
-  MISSING_EVIDENCE: 'Required evidence has not been attached',
-  STALE_ROW_VERSION: 'The record changed — reload before continuing',
-  MAKER_CHECKER_REQUIRED: 'A separate officer must have performed the preceding step',
-  SELF_APPROVAL_DENIED: 'You cannot approve your own submission',
-  POLICY_NOT_EFFECTIVE: 'The selected policy version is not effective',
-  CURRENCY_MISMATCH: 'Currency does not match the assessment',
-  ALREADY_SUBMITTED: 'The assessment has already been submitted',
-};
+/** Canonical denial wording. Reasons always originate from the backend. */
+const REASON_LABEL: Record<string, string> = BN_MEANS_REASON_LABEL;
 
 export interface BnMeansAssessmentWorkspaceProps {
   assessmentId: string;
