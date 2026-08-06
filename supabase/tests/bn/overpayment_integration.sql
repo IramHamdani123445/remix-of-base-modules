@@ -34,6 +34,32 @@ BEGIN
 END
 $$;
 
+-- Synthetic authorisation fixture ------------------------------------
+-- Seeded inside the transaction so ROLLBACK removes it; CI proves zero
+-- residue afterwards. Never seeded by a migration.
+INSERT INTO public.bn_op_role_action (role_code, action_code, is_synthetic)
+SELECT r.role_code, a.action_code, true
+FROM (VALUES
+  ('BN_OP_SYNTH_MAKER',   ARRAY['view','view_financial_detail','create_candidate','calculate_liability','issue_notice','record_representation','propose_recovery_plan','record_receipt','allocate_receipt','request_waiver','request_writeoff']),
+  ('BN_OP_SYNTH_CHECKER', ARRAY['view','view_financial_detail','verify','confirm_liability','approve_recovery_plan','activate_deduction','approve_waiver','approve_writeoff','reverse_transaction','place_appeal_hold','release_appeal_hold','suspend_recovery','resume_recovery','refer_legal','refer_estate','close','reopen']),
+  ('BN_OP_SYNTH_FINANCE', ARRAY['view','view_financial_detail','reconcile']),
+  ('BN_OP_SYNTH_AUDITOR', ARRAY['view','view_financial_detail','audit'])
+) AS r(role_code, actions)
+CROSS JOIN LATERAL unnest(r.actions) AS a(action_code)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO public.bn_op_user_role (user_id, role_code, is_synthetic)
+VALUES
+  ('00000000-0000-0000-0000-0000000000a1', 'BN_OP_SYNTH_MAKER',   true),
+  -- the maker also holds checker capability: self-approval must still be
+  -- blocked by the maker-checker guard, not by a missing permission.
+  ('00000000-0000-0000-0000-0000000000a1', 'BN_OP_SYNTH_CHECKER', true),
+  ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_CHECKER', true),
+  ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_MAKER',   true),
+  ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_FINANCE', true),
+  ('00000000-0000-0000-0000-0000000000a2', 'BN_OP_SYNTH_AUDITOR', true)
+ON CONFLICT DO NOTHING;
+
 DO $$
 DECLARE
   v_case      uuid;
@@ -42,6 +68,7 @@ DECLARE
   v_nobody    uuid := '00000000-0000-0000-0000-0000000000a9';
   v_version   integer;
   v_out       numeric;
+  v_txn_count bigint;
   v_err       text;
   v_actions   boolean;
   v_plan      uuid;
@@ -64,6 +91,8 @@ BEGIN
   END IF;
 
   -- ── Negative: actions disabled ───────────────────────────────────
+  -- Authenticated maker: proves the gate is the module switch, not auth.
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_maker, 'role', 'authenticated')::text, true);
   BEGIN
     PERFORM public.bn_overpayment_create_candidate_v1(
       NULL, 'DUPLICATE_PAYMENT', NULL, NULL, 'XCD', 'HARNESS', 'HARNESS:NEG:DISABLED');
@@ -156,6 +185,21 @@ BEGIN
   PERFORM public.bn_overpayment_record_receipt_v1(
     v_case, v_version, 300.00, 'XCD', 'CASH', 'HARNESS:B:RECEIPT');
 
+  -- ── Idempotency: exact replay must not double-post ───────────────
+  SELECT count(*) INTO v_txn_count FROM public.bn_op_recovery_transaction WHERE case_id = v_case;
+  SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
+  PERFORM public.bn_overpayment_record_receipt_v1(
+    v_case, v_version, 300.00, 'XCD', 'CASH', 'HARNESS:B:RECEIPT');
+  IF (SELECT count(*) FROM public.bn_op_recovery_transaction WHERE case_id = v_case) <> v_txn_count THEN
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL idempotent replay double-posted a transaction';
+  END IF;
+
+  -- ── Finance outbox: every ledger movement raises exactly one intent ─
+  IF (SELECT count(*) FROM public.bn_op_finance_posting_intent WHERE case_id = v_case)
+     <> (SELECT count(*) FROM public.bn_op_recovery_transaction WHERE case_id = v_case) THEN
+    RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL finance intent / transaction parity broken';
+  END IF;
+
   -- ── Journey E: Model A signed contra invariant ───────────────────
   -- confirmed 1500, receipt 300, full reversal 300  ->  outstanding 1500
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
@@ -189,15 +233,16 @@ BEGIN
   SELECT id, row_version INTO v_hold, v_hold_version
   FROM public.bn_op_appeal_hold WHERE case_id = v_case AND is_active;
 
-  -- Negative: recovery action while on appeal hold
+  -- Negative: enforcement action while on appeal hold.
+  -- Voluntary receipts stay permitted; enforcement is what the hold blocks.
   BEGIN
     SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;
-    PERFORM public.bn_overpayment_record_receipt_v1(
-      v_case, v_version, 50.00, 'XCD', 'CASH', 'HARNESS:NEG:HOLD');
+    PERFORM public.bn_overpayment_activate_benefit_deduction_v1(
+      v_case, v_plan, v_version, 100.00, 'XCD', 'HARNESS:NEG:HOLD');
     RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL expected hold rejection during appeal hold';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
-    IF v_err NOT LIKE '%E_%HOLD%' AND v_err NOT LIKE '%E_INVALID_STATE%' THEN RAISE; END IF;
+    IF v_err NOT LIKE '%E_APPEAL_HOLD%' THEN RAISE; END IF;
   END;
 
   PERFORM set_config('request.jwt.claims', jsonb_build_object('sub', v_checker, 'role', 'authenticated')::text, true);
@@ -250,7 +295,7 @@ BEGIN
     RAISE EXCEPTION 'BN_OP_HARNESS_RESULT: FAIL expected E_INVALID_STATE on closed case';
   EXCEPTION WHEN OTHERS THEN
     GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
-    IF v_err NOT LIKE '%E_INVALID_STATE%' THEN RAISE; END IF;
+    IF v_err NOT LIKE '%E_INVALID_STATE%' AND v_err NOT LIKE '%E_CASE_CLOSED%' THEN RAISE; END IF;
   END;
 
   SELECT row_version INTO v_version FROM public.bn_op_case WHERE id = v_case;

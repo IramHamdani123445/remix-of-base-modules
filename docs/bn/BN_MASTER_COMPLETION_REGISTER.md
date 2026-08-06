@@ -58,7 +58,7 @@ external_uat   = DEFERRED
 | 7 | Award Suspension | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | **CI chain PASS**; Test-provisioning tooling ready (29/29 guards), durable Test target still required |
 | 8 | Life Certificates | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | `BN_LC_GRANTS_RESULT: PASS`, `BN_LC_HARNESS_RESULT: PASS` on the regenerated PG15 baseline |
 | 9 | Medical Reviews | COMPLETE_AND_CERTIFIED | dark launch (`false`) | DEFERRED | **grants + harness + adapter postflight PASS**; architecture boundary closed (RPC-only legacy mutations); 207/207 focused suites |
-| 10 | Overpayments | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
+| 10 | Overpayments | IMPLEMENTATION_COMPLETE_PENDING_CI | dark_launch_ready | DEFERRED | awaiting GitHub run of `bn-overpayment-integration.yml` |
 | 11 | Mortality | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 12 | Appeals | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
 | 13 | Survivors Processing | PARTIAL_IMPLEMENTATION | n/a | n/a | none |
@@ -211,17 +211,28 @@ external_uat   = DEFERRED
 
 ## 10. Overpayments
 
-- **Status:** PARTIAL_IMPLEMENTATION · activation `n/a` · external UAT `DEFERRED`
-- **Routes (canonical):** `/bn/overpayments` (component file still lives at `src/pages/bn/servicing/OverpaymentRecovery.tsx`)
-- **Surface:** `src/pages/bn/servicing/OverpaymentRecovery.tsx`
-- **Financial invariant:** corrected 2026-08-06 — reversals now use Model A (signed contra
-  events on the original transaction's category). The previous formula excluded the original
-  *and* added the reversal, double counting it (400 liability + fully reversed 300 receipt
-  produced 700 instead of 400). See `docs/bn/BN_OVERPAYMENT_IMPLEMENTATION_MATRIX.md`.
-- **Gaps:** 25 commands catalogued, 0 implemented as secured database commands; no policy
-  area, no harness, no grant verifier, `setOverpaymentRecoveryPlan` still mutates directly
+- **Status:** IMPLEMENTATION_COMPLETE_PENDING_CI · activation `DARK_LAUNCHED` (`internal_pilot`,
+  actions disabled) · external UAT `DEFERRED`
+- **Routes (canonical):** `/bn/overpayments` (component file at `src/pages/bn/servicing/OverpaymentRecovery.tsx`)
+- **Surface:** `src/pages/bn/servicing/OverpaymentRecovery.tsx` — RPC-only, no direct table access
+- **Forward-only migration:** `supabase/migrations/20260806150000_bn_overpayment_recovery_domain.sql`
+  (24 `bn_op_*` tables, RLS on every table, 29 command RPCs + 14 query RPCs, service adapters
+  revoked from browser roles, 29-row action catalogue seeded)
+- **Financial invariant:** Model A signed contra events; harness asserts the 1200.00 golden balance
+- **Certification markers:** `BN_OP_GRANTS_RESULT: PASS`, `BN_OP_HARNESS_RESULT: PASS`,
+  dark-launch `internal_pilot:false`, zero fixture residue (catalogue excluded), catalogue count 29
+- **Harness journeys:** full lifecycle, maker-checker rejection, reversal contra invariant,
+  idempotent replay (no double post), finance-intent/transaction parity, appeal-hold enforcement
+  rejection, closed-case rejection, and the negative security matrix
+  (`E_ACTIONS_DISABLED`, `E_PERMISSION_DENIED`, `E_STALE_ROW_VERSION`, `E_SELF_APPROVAL`,
+  `E_INVALID_STATE`)
+- **CI:** `.github/workflows/bn-overpayment-integration.yml` — disposable `postgres:15`,
+  `environment_kind = CI` marker guard, exact-marker gating, evidence upload
+- **Local proof:** the entire workflow sequence was replayed on a clean PostgreSQL 15.17 instance
+  from the baseline forward and returned `ALL CI STEPS GREEN ON POSTGRES 15`
+- **Remaining to certify:** an independent GitHub Actions run on managed `main`. Flip to
+  `COMPLETE_AND_CERTIFIED` / `DARK_LAUNCHED` / `DEFERRED` only when that run is green.
 - **Dependencies:** Payments, Finance, Legal recovery
-- **Next slice:** governance foundation + backend boundary (mirror the suspension pattern)
 
 ## 11. Mortality
 
