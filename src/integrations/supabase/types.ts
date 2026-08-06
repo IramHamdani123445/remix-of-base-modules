@@ -107032,6 +107032,14 @@ export type Database = {
         Args: { p_claim_id: string }
         Returns: number
       }
+      bn_means_adjustments_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_approval_context_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
       bn_means_assessment_detail_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
@@ -107077,6 +107085,15 @@ export type Database = {
           p_payload: Json
           p_payload_hash: string
           p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_means_queues_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_limit?: number
+          p_offset?: number
+          p_queue_code: string
         }
         Returns: Json
       }
