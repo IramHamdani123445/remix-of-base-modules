@@ -585,145 +585,145 @@ CREATE INDEX IF NOT EXISTS idx_bn_op_txn_reverses ON public.bn_op_recovery_trans
 
 ALTER TABLE public.bn_op_action_definition ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_action_definition_read ON public.bn_op_action_definition; CREATE POLICY bn_op_action_definition_read ON public.bn_op_action_definition AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_action_definition_read ON public.bn_op_action_definition; CREATE POLICY bn_op_action_definition_read ON public.bn_op_action_definition AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_action_definition_service ON public.bn_op_action_definition; CREATE POLICY bn_op_action_definition_service ON public.bn_op_action_definition AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_appeal_hold ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_appeal_hold_read ON public.bn_op_appeal_hold; CREATE POLICY bn_op_appeal_hold_read ON public.bn_op_appeal_hold AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_appeal_hold_read ON public.bn_op_appeal_hold; CREATE POLICY bn_op_appeal_hold_read ON public.bn_op_appeal_hold AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_appeal_hold_service ON public.bn_op_appeal_hold; CREATE POLICY bn_op_appeal_hold_service ON public.bn_op_appeal_hold AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_case ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_case_read ON public.bn_op_case; CREATE POLICY bn_op_case_read ON public.bn_op_case AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_case_read ON public.bn_op_case; CREATE POLICY bn_op_case_read ON public.bn_op_case AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_case_service ON public.bn_op_case; CREATE POLICY bn_op_case_service ON public.bn_op_case AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_communication_intent ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_communication_intent_read ON public.bn_op_communication_intent; CREATE POLICY bn_op_communication_intent_read ON public.bn_op_communication_intent AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_communication_intent_read ON public.bn_op_communication_intent; CREATE POLICY bn_op_communication_intent_read ON public.bn_op_communication_intent AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_communication_intent_service ON public.bn_op_communication_intent; CREATE POLICY bn_op_communication_intent_service ON public.bn_op_communication_intent AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_deduction_instruction ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_deduction_instruction_read ON public.bn_op_deduction_instruction; CREATE POLICY bn_op_deduction_instruction_read ON public.bn_op_deduction_instruction AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_deduction_instruction_read ON public.bn_op_deduction_instruction; CREATE POLICY bn_op_deduction_instruction_read ON public.bn_op_deduction_instruction AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_deduction_instruction_service ON public.bn_op_deduction_instruction; CREATE POLICY bn_op_deduction_instruction_service ON public.bn_op_deduction_instruction AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_estate_referral ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_estate_referral_read ON public.bn_op_estate_referral; CREATE POLICY bn_op_estate_referral_read ON public.bn_op_estate_referral AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_estate_referral_read ON public.bn_op_estate_referral; CREATE POLICY bn_op_estate_referral_read ON public.bn_op_estate_referral AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_estate_referral_service ON public.bn_op_estate_referral; CREATE POLICY bn_op_estate_referral_service ON public.bn_op_estate_referral AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_event ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_event_read ON public.bn_op_event; CREATE POLICY bn_op_event_read ON public.bn_op_event AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_event_read ON public.bn_op_event; CREATE POLICY bn_op_event_read ON public.bn_op_event AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_event_service ON public.bn_op_event; CREATE POLICY bn_op_event_service ON public.bn_op_event AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_evidence_link ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_evidence_link_read ON public.bn_op_evidence_link; CREATE POLICY bn_op_evidence_link_read ON public.bn_op_evidence_link AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_evidence_link_read ON public.bn_op_evidence_link; CREATE POLICY bn_op_evidence_link_read ON public.bn_op_evidence_link AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_evidence_link_service ON public.bn_op_evidence_link; CREATE POLICY bn_op_evidence_link_service ON public.bn_op_evidence_link AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_finance_posting_intent ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_finance_posting_intent_read ON public.bn_op_finance_posting_intent; CREATE POLICY bn_op_finance_posting_intent_read ON public.bn_op_finance_posting_intent AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_finance_posting_intent_read ON public.bn_op_finance_posting_intent; CREATE POLICY bn_op_finance_posting_intent_read ON public.bn_op_finance_posting_intent AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_finance_posting_intent_service ON public.bn_op_finance_posting_intent; CREATE POLICY bn_op_finance_posting_intent_service ON public.bn_op_finance_posting_intent AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_idempotency ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_idempotency_read ON public.bn_op_idempotency; CREATE POLICY bn_op_idempotency_read ON public.bn_op_idempotency AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_idempotency_read ON public.bn_op_idempotency; CREATE POLICY bn_op_idempotency_read ON public.bn_op_idempotency AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_idempotency_service ON public.bn_op_idempotency; CREATE POLICY bn_op_idempotency_service ON public.bn_op_idempotency AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_legal_referral ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_legal_referral_read ON public.bn_op_legal_referral; CREATE POLICY bn_op_legal_referral_read ON public.bn_op_legal_referral AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_legal_referral_read ON public.bn_op_legal_referral; CREATE POLICY bn_op_legal_referral_read ON public.bn_op_legal_referral AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_legal_referral_service ON public.bn_op_legal_referral; CREATE POLICY bn_op_legal_referral_service ON public.bn_op_legal_referral AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_liability_version ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_liability_version_read ON public.bn_op_liability_version; CREATE POLICY bn_op_liability_version_read ON public.bn_op_liability_version AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_liability_version_read ON public.bn_op_liability_version; CREATE POLICY bn_op_liability_version_read ON public.bn_op_liability_version AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_liability_version_service ON public.bn_op_liability_version; CREATE POLICY bn_op_liability_version_service ON public.bn_op_liability_version AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_operational_exception ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_operational_exception_read ON public.bn_op_operational_exception; CREATE POLICY bn_op_operational_exception_read ON public.bn_op_operational_exception AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_operational_exception_read ON public.bn_op_operational_exception; CREATE POLICY bn_op_operational_exception_read ON public.bn_op_operational_exception AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_operational_exception_service ON public.bn_op_operational_exception; CREATE POLICY bn_op_operational_exception_service ON public.bn_op_operational_exception AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_receipt_allocation ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_receipt_allocation_read ON public.bn_op_receipt_allocation; CREATE POLICY bn_op_receipt_allocation_read ON public.bn_op_receipt_allocation AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_receipt_allocation_read ON public.bn_op_receipt_allocation; CREATE POLICY bn_op_receipt_allocation_read ON public.bn_op_receipt_allocation AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_receipt_allocation_service ON public.bn_op_receipt_allocation; CREATE POLICY bn_op_receipt_allocation_service ON public.bn_op_receipt_allocation AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_reconciliation ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_reconciliation_read ON public.bn_op_reconciliation; CREATE POLICY bn_op_reconciliation_read ON public.bn_op_reconciliation AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_reconciliation_read ON public.bn_op_reconciliation; CREATE POLICY bn_op_reconciliation_read ON public.bn_op_reconciliation AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_reconciliation_service ON public.bn_op_reconciliation; CREATE POLICY bn_op_reconciliation_service ON public.bn_op_reconciliation AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_recovery_plan ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_recovery_plan_read ON public.bn_op_recovery_plan; CREATE POLICY bn_op_recovery_plan_read ON public.bn_op_recovery_plan AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_recovery_plan_read ON public.bn_op_recovery_plan; CREATE POLICY bn_op_recovery_plan_read ON public.bn_op_recovery_plan AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_recovery_plan_service ON public.bn_op_recovery_plan; CREATE POLICY bn_op_recovery_plan_service ON public.bn_op_recovery_plan AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_recovery_plan_instalment ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_recovery_plan_instalment_read ON public.bn_op_recovery_plan_instalment; CREATE POLICY bn_op_recovery_plan_instalment_read ON public.bn_op_recovery_plan_instalment AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_recovery_plan_instalment_read ON public.bn_op_recovery_plan_instalment; CREATE POLICY bn_op_recovery_plan_instalment_read ON public.bn_op_recovery_plan_instalment AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_recovery_plan_instalment_service ON public.bn_op_recovery_plan_instalment; CREATE POLICY bn_op_recovery_plan_instalment_service ON public.bn_op_recovery_plan_instalment AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_recovery_suspension ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_recovery_suspension_read ON public.bn_op_recovery_suspension; CREATE POLICY bn_op_recovery_suspension_read ON public.bn_op_recovery_suspension AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_recovery_suspension_read ON public.bn_op_recovery_suspension; CREATE POLICY bn_op_recovery_suspension_read ON public.bn_op_recovery_suspension AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_recovery_suspension_service ON public.bn_op_recovery_suspension; CREATE POLICY bn_op_recovery_suspension_service ON public.bn_op_recovery_suspension AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_recovery_transaction ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_recovery_transaction_read ON public.bn_op_recovery_transaction; CREATE POLICY bn_op_recovery_transaction_read ON public.bn_op_recovery_transaction AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_recovery_transaction_read ON public.bn_op_recovery_transaction; CREATE POLICY bn_op_recovery_transaction_read ON public.bn_op_recovery_transaction AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_recovery_transaction_service ON public.bn_op_recovery_transaction; CREATE POLICY bn_op_recovery_transaction_service ON public.bn_op_recovery_transaction AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_representation ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_representation_read ON public.bn_op_representation; CREATE POLICY bn_op_representation_read ON public.bn_op_representation AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_representation_read ON public.bn_op_representation; CREATE POLICY bn_op_representation_read ON public.bn_op_representation AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_representation_service ON public.bn_op_representation; CREATE POLICY bn_op_representation_service ON public.bn_op_representation AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_role_action ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_role_action_read ON public.bn_op_role_action; CREATE POLICY bn_op_role_action_read ON public.bn_op_role_action AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_role_action_read ON public.bn_op_role_action; CREATE POLICY bn_op_role_action_read ON public.bn_op_role_action AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_role_action_service ON public.bn_op_role_action; CREATE POLICY bn_op_role_action_service ON public.bn_op_role_action AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_user_role ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_user_role_read ON public.bn_op_user_role; CREATE POLICY bn_op_user_role_read ON public.bn_op_user_role AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_user_role_read ON public.bn_op_user_role; CREATE POLICY bn_op_user_role_read ON public.bn_op_user_role AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_user_role_service ON public.bn_op_user_role; CREATE POLICY bn_op_user_role_service ON public.bn_op_user_role AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_waiver_request ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_waiver_request_read ON public.bn_op_waiver_request; CREATE POLICY bn_op_waiver_request_read ON public.bn_op_waiver_request AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_waiver_request_read ON public.bn_op_waiver_request; CREATE POLICY bn_op_waiver_request_read ON public.bn_op_waiver_request AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_waiver_request_service ON public.bn_op_waiver_request; CREATE POLICY bn_op_waiver_request_service ON public.bn_op_waiver_request AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 ALTER TABLE public.bn_op_writeoff_request ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS bn_op_writeoff_request_read ON public.bn_op_writeoff_request; CREATE POLICY bn_op_writeoff_request_read ON public.bn_op_writeoff_request AS PERMISSIVE FOR SELECT TO authenticated USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS bn_op_writeoff_request_read ON public.bn_op_writeoff_request; CREATE POLICY bn_op_writeoff_request_read ON public.bn_op_writeoff_request AS PERMISSIVE FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS bn_op_writeoff_request_service ON public.bn_op_writeoff_request; CREATE POLICY bn_op_writeoff_request_service ON public.bn_op_writeoff_request AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
 
