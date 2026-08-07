@@ -266,6 +266,23 @@ export const meansQueryService = {
     return envelope<BnMeansCalculationReadiness>(data);
   },
 
+  /**
+   * EPIC 9 — the whole calculation surface in one governed read: backend
+   * readiness, the current calculation, its explanation and its history.
+   */
+  async calculationWorkspace(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansCalculationWorkspace>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_calculation_workspace_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansCalculationWorkspace>(data);
+  },
+
   /** MT6 — immutable calculation with its explanation lines. */
   async calculationTrace(
     calculationId: string,
@@ -279,6 +296,7 @@ export const meansQueryService = {
     if (error) return failed(error.message);
     return envelope<Record<string, unknown>>(data);
   },
+
 
   async benefit360Summary(params: {
 
