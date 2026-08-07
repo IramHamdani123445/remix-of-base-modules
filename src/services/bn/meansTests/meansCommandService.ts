@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { BnMeansCommandName } from '@/types/bn/meansTests/meansCommands';
 import { BN_MEANS_VERIFICATION_COMMANDS } from '@/types/bn/meansTests/meansVerification';
 import { BN_MEANS_ACTIVATION_COMMANDS } from '@/types/bn/meansTests/meansActivation';
+import { BN_MEANS_LIFECYCLE_COMMANDS } from '@/types/bn/meansTests/meansLifecycle';
 
 export interface BnMeansCommandRequest {
   readonly command: BnMeansCommandName;
