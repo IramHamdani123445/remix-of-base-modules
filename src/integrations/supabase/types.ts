@@ -106429,6 +106429,19 @@ export type Database = {
         Args: { p_command_name: string }
         Returns: string
       }
+      _bn_means_activation_execute: {
+        Args: {
+          p_actor: string
+          p_actor_code: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation: string
+          p_justification: string
+          p_payload: Json
+          p_reason_code: string
+        }
+        Returns: Json
+      }
       _bn_means_activation_readiness: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
@@ -108406,6 +108419,22 @@ export type Database = {
       bn_materialize_external_tasks: {
         Args: { p_claim_id: string }
         Returns: number
+      }
+      bn_means_activation_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
       }
       bn_means_activation_readiness_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
