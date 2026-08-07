@@ -110,7 +110,18 @@ export type BnMeansCommandErrorCode =
   | 'NO_PUBLICATION'
   | 'RETRY_NOT_AVAILABLE'
   | 'ELIGIBILITY_BOUNDARY_UNAVAILABLE'
+  // EPIC 12 — reassessment and change of circumstances.
+  | 'NO_OPEN_SCHEDULE'
+  | 'SUCCESSOR_EXISTS'
+  | 'SUCCESSOR_REQUIRED'
+  | 'SUCCESSOR_NOT_ACTIVE'
+  | 'NOT_A_SUCCESSOR'
+  | 'NOTHING_TO_CONFIRM'
+  | 'INVALID_SECTION'
+  | 'INVALID_MATERIALITY'
+  | 'JUSTIFICATION_REQUIRED'
   | 'UNKNOWN';
+
 
 
 export interface BnMeansCommandResult {
