@@ -32,8 +32,7 @@ import {
 } from '@/components/bn/meansTests/BnMeansVerificationPanel';
 import { BnMeansVerificationSection } from '@/components/bn/meansTests/verification/BnMeansVerificationSection';
 import BnMeansCalculationSection from '@/components/bn/meansTests/calculation/BnMeansCalculationSection';
-import { BnMeansAdjustmentsPanel } from '@/components/bn/meansTests/BnMeansAdjustmentsPanel';
-import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApprovalPanel';
+import { BnMeansDecisionSection } from '@/components/bn/meansTests/decision/BnMeansDecisionSection';
 import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMeansHouseholdSection';
 import BnMeansIncomeSection from '@/components/bn/meansTests/income/BnMeansIncomeSection';
 import BnMeansAssetSection from '@/components/bn/meansTests/assets/BnMeansAssetSection';
@@ -445,8 +444,7 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           <TabsTrigger value="review">Review &amp; submit</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
           <TabsTrigger value="calculation">Calculation</TabsTrigger>
-          <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
-          <TabsTrigger value="approval">Approval</TabsTrigger>
+          <TabsTrigger value="decision">Decision</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
 
 
@@ -568,44 +566,10 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         </TabsContent>
 
 
-        <TabsContent value="adjustments">
-          <BnMeansAdjustmentsPanel
-            adjustments={adjustmentRows}
-            loadFailure={adjustmentsUnavailable}
-            currency={currency}
-            calculationId={
-              approvalContext?.calculation_id ??
-              (latestCalculation?.calculation_id ? String(latestCalculation.calculation_id) : null)
-            }
-            calculationHash={
-              approvalContext?.calculation_hash ??
-              (latestCalculation?.calculation_hash ? String(latestCalculation.calculation_hash) : null)
-            }
-            assessmentVersionId={approvalContext?.assessment_version_id ?? null}
-            rowVersion={rowVersion}
-            requestAction={actionFor('BN_MEANS_REQUEST_ADJUSTMENT')}
-            decideAction={actionFor('BN_MEANS_APPROVE_ADJUSTMENT')}
-            busy={run.isPending}
-            successToken={successToken}
-            onRequest={(payload) => run.mutate({ command: 'BN_MEANS_REQUEST_ADJUSTMENT', payload })}
-            onDecide={(payload) => run.mutate({ command: 'BN_MEANS_APPROVE_ADJUSTMENT', payload })}
-          />
+        {/* EPIC 10 — adjustments and independent approval are one surface. */}
+        <TabsContent value="decision">
+          <BnMeansDecisionSection assessmentId={assessmentId} />
         </TabsContent>
-
-        <TabsContent value="approval">
-          <BnMeansApprovalPanel
-            context={approvalContext}
-            loadFailure={approvalUnavailable}
-            approveAction={actionFor('BN_MEANS_APPROVE')}
-            rejectAction={actionFor('BN_MEANS_REJECT')}
-            busy={run.isPending}
-            successToken={successToken}
-            onApprove={(payload) => run.mutate({ command: 'BN_MEANS_APPROVE', payload })}
-            onReject={(payload) => run.mutate({ command: 'BN_MEANS_REJECT', payload })}
-          />
-        </TabsContent>
-
-
 
         <TabsContent value="timeline">
 
