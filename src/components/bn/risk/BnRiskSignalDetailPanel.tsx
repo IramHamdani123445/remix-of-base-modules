@@ -18,22 +18,27 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatAuditDateTime, formatDisplayDate } from '@/lib/dateFormat';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
+import { riskAssessmentService } from '@/services/bn/risk/riskAssessmentService';
 import { BnRiskTriageDialog } from './BnRiskTriageDialog';
 import { BnRiskLinkSignalsDialog } from './BnRiskLinkSignalsDialog';
 import { BnRiskDismissDialog } from './BnRiskDismissDialog';
+import { BnRiskCreateAssessmentDialog } from './BnRiskCreateAssessmentDialog';
 
 interface Props {
   signalId: string | null;
   onOpenChange: (open: boolean) => void;
   actionsEnabled: boolean;
+  /** Deep link into the assessment workspace on the same Risk route. */
+  onOpenAssessment?: (assessmentId: string) => void;
 }
 
 export const BnRiskSignalDetailPanel: React.FC<Props> = ({
-  signalId, onOpenChange, actionsEnabled,
+  signalId, onOpenChange, actionsEnabled, onOpenAssessment,
 }) => {
   const [triageOpen, setTriageOpen] = React.useState(false);
   const [linkOpen, setLinkOpen] = React.useState(false);
   const [dismissOpen, setDismissOpen] = React.useState(false);
+  const [createOpen, setCreateOpen] = React.useState(false);
 
   const detail = useQuery({
     queryKey: ['bn-risk-signal-detail', signalId],
@@ -55,8 +60,25 @@ export const BnRiskSignalDetailPanel: React.FC<Props> = ({
     enabled: !!signalId,
   });
 
+  /** Assessments already built from this signal — Epic 1 navigation. */
+  const assessmentLinks = useQuery({
+    queryKey: ['bn-risk-signal-assessment-links', signalId],
+    queryFn: async () => {
+      const result = await riskAssessmentService.signalAssessmentLinks(signalId as string);
+      if (result.status !== 'OK' || !result.data) throw new Error(result.code ?? result.status);
+      return result.data.rows;
+    },
+    enabled: !!signalId,
+  });
+
   const d = detail.data;
   const rowVersion = d?.summary.row_version ?? 0;
+  const canStartAssessment =
+    actionsEnabled
+    && !!onOpenAssessment
+    && (d?.summary.status === 'CONFIRMED' || d?.summary.status === 'TRIAGED'
+      || d?.summary.status === 'UNDER_REVIEW' || d?.summary.status === 'LINKED');
+
 
   return (
     <Sheet open={!!signalId} onOpenChange={onOpenChange}>
@@ -112,12 +134,52 @@ export const BnRiskSignalDetailPanel: React.FC<Props> = ({
                     {a.label}
                   </Button>
                 ))}
-                {(actions.data?.actions?.length ?? 0) === 0 && (
+                {canStartAssessment && (
+                  <Button size="sm" variant="secondary" onClick={() => setCreateOpen(true)}>
+                    Start risk assessment
+                  </Button>
+                )}
+                {(actions.data?.actions?.length ?? 0) === 0 && !canStartAssessment && (
                   <p className="text-sm text-muted-foreground">
                     No actions are available to you for this signal.
                   </p>
                 )}
               </div>
+
+              {(assessmentLinks.data?.length ?? 0) > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Risk assessments</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {(assessmentLinks.data ?? []).map((a) => (
+                      <div key={a.assessment_id} className="flex items-center justify-between gap-2">
+                        <span>
+                          <span className="font-medium">{a.assessment_reference}</span>
+                          <span className="block text-muted-foreground">
+                            {a.role_code === 'PRIMARY' ? 'Primary signal' : 'Related signal'}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <Badge variant="secondary">{a.status_label}</Badge>
+                          {onOpenAssessment && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                onOpenChange(false);
+                                onOpenAssessment(a.assessment_id);
+                              }}
+                            >
+                              Open
+                            </Button>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader><CardTitle className="text-base">What was observed</CardTitle></CardHeader>
@@ -273,6 +335,19 @@ export const BnRiskSignalDetailPanel: React.FC<Props> = ({
               signalReference={d.summary.signal_reference}
               rowVersion={rowVersion}
               onCompleted={() => { detail.refetch(); actions.refetch(); }}
+            />
+            <BnRiskCreateAssessmentDialog
+              open={createOpen}
+              onOpenChange={setCreateOpen}
+              signalId={d.summary.signal_id}
+              signalReference={d.summary.signal_reference}
+              defaultSummary={d.summary.summary}
+              onCreated={(assessmentId) => {
+                assessmentLinks.refetch();
+                detail.refetch();
+                onOpenChange(false);
+                onOpenAssessment?.(assessmentId);
+              }}
             />
           </>
         )}
