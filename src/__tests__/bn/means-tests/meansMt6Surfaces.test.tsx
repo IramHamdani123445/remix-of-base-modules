@@ -27,6 +27,7 @@ vi.mock('@/services/bn/meansTests/meansQueryService', () => ({
     availableActions: (...a: unknown[]) => availableActions(...a),
     calculationReadiness: (...a: unknown[]) => calculationReadiness(...a),
     calculationTrace: vi.fn(),
+    calculationWorkspace: (...a: unknown[]) => calculationWorkspace(...a),
     benefit360Summary: (...a: unknown[]) => benefit360Summary(...a),
     adjustments: vi.fn(async () => ({ status: 'OK', data: [] })),
     approvalContext: vi.fn(async () => ({ status: 'OK', data: null })),
