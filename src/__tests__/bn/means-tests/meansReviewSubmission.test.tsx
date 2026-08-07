@@ -8,8 +8,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -193,7 +192,7 @@ describe('EPIC 7 — review surface', () => {
     expect(await screen.findByTestId('means-review-blocked')).toBeInTheDocument();
     expect(screen.getByTestId('means-review-blocker-EVIDENCE')).toBeInTheDocument();
     expect(screen.getByTestId('means-submit-button')).toBeDisabled();
-    await userEvent.click(screen.getByRole('button', { name: /Resolve in Evidence/ }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Resolve in Evidence/ }); });
     expect(onNavigate).toHaveBeenCalledWith('evidence');
     expect(execute).not.toHaveBeenCalled();
   });
@@ -206,13 +205,13 @@ describe('EPIC 7 — review surface', () => {
     const button = await screen.findByTestId('means-submit-button');
     expect(button).toBeDisabled();
 
-    await userEvent.click(screen.getByLabelText('Officer review'));
+    await act(async () => { fireEvent.click(screen.getByLabelText('Officer review'); });
     expect(screen.getByTestId('means-submit-button')).toBeDisabled();
 
-    await userEvent.click(screen.getByLabelText('I have reviewed this assessment'));
+    await act(async () => { fireEvent.click(screen.getByLabelText('I have reviewed this assessment'); });
     await waitFor(() => expect(screen.getByTestId('means-submit-button')).toBeEnabled());
 
-    await userEvent.click(screen.getByTestId('means-submit-button'));
+    await act(async () => { fireEvent.click(screen.getByTestId('means-submit-button'); });
     await waitFor(() =>
       expect(execute).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -231,9 +230,9 @@ describe('EPIC 7 — review surface', () => {
     execute.mockResolvedValue({ status: 'FAILED', errorCode: 'STALE_ROW_VERSION', errorDetail: 'expected=7 actual=9' });
     wrap(<BnMeansReviewSection assessmentId="a1" onNavigateSection={() => {}} />);
 
-    await userEvent.click(await screen.findByLabelText('Officer review'));
-    await userEvent.click(screen.getByLabelText('I have reviewed this assessment'));
-    await userEvent.click(screen.getByTestId('means-submit-button'));
+    await act(async () => { fireEvent.click(await screen.findByLabelText('Officer review'); });
+    await act(async () => { fireEvent.click(screen.getByLabelText('I have reviewed this assessment'); });
+    await act(async () => { fireEvent.click(screen.getByTestId('means-submit-button'); });
 
     expect(await screen.findByTestId('means-review-command-error')).toBeInTheDocument();
     expect(screen.queryByTestId('means-review-submitted')).not.toBeInTheDocument();
