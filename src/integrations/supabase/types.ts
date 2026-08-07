@@ -24222,9 +24222,247 @@ export type Database = {
           },
         ]
       }
+      bn_risk_assessment: {
+        Row: {
+          assessment_id: string
+          assessment_reference: string
+          assigned_owner_user_id: string | null
+          assigned_team_code: string | null
+          award_id: string | null
+          award_reference: string | null
+          claim_id: string | null
+          claim_reference: string | null
+          context_snapshot: Json
+          correlation_id: string | null
+          created_at: string
+          information_complete_at: string | null
+          information_gathering_complete: boolean
+          means_assessment_id: string | null
+          means_assessment_reference: string | null
+          opened_at: string
+          opened_by_user_id: string | null
+          payment_id: string | null
+          person_id: number | null
+          person_ssn: string | null
+          primary_category_code: string
+          primary_signal_id: string | null
+          review_entered_at: string | null
+          row_version: number
+          status: string
+          summary: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_id?: string
+          assessment_reference: string
+          assigned_owner_user_id?: string | null
+          assigned_team_code?: string | null
+          award_id?: string | null
+          award_reference?: string | null
+          claim_id?: string | null
+          claim_reference?: string | null
+          context_snapshot?: Json
+          correlation_id?: string | null
+          created_at?: string
+          information_complete_at?: string | null
+          information_gathering_complete?: boolean
+          means_assessment_id?: string | null
+          means_assessment_reference?: string | null
+          opened_at?: string
+          opened_by_user_id?: string | null
+          payment_id?: string | null
+          person_id?: number | null
+          person_ssn?: string | null
+          primary_category_code: string
+          primary_signal_id?: string | null
+          review_entered_at?: string | null
+          row_version?: number
+          status?: string
+          summary: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          assessment_reference?: string
+          assigned_owner_user_id?: string | null
+          assigned_team_code?: string | null
+          award_id?: string | null
+          award_reference?: string | null
+          claim_id?: string | null
+          claim_reference?: string | null
+          context_snapshot?: Json
+          correlation_id?: string | null
+          created_at?: string
+          information_complete_at?: string | null
+          information_gathering_complete?: boolean
+          means_assessment_id?: string | null
+          means_assessment_reference?: string | null
+          opened_at?: string
+          opened_by_user_id?: string | null
+          payment_id?: string | null
+          person_id?: number | null
+          person_ssn?: string | null
+          primary_category_code?: string
+          primary_signal_id?: string | null
+          review_entered_at?: string | null
+          row_version?: number
+          status?: string
+          summary?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_assessment_primary_signal_id_fkey"
+            columns: ["primary_signal_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_signal"
+            referencedColumns: ["signal_id"]
+          },
+        ]
+      }
+      bn_risk_assessment_event: {
+        Row: {
+          actor_source: string
+          actor_user_code: string | null
+          actor_user_id: string | null
+          assessment_id: string
+          command_name: string | null
+          correlation_id: string | null
+          created_at: string
+          detail: Json
+          entity_version: number | null
+          event_code: string
+          event_id: string
+          from_status: string | null
+          justification: string | null
+          reason_code: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor_source?: string
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          assessment_id: string
+          command_name?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          detail?: Json
+          entity_version?: number | null
+          event_code: string
+          event_id?: string
+          from_status?: string | null
+          justification?: string | null
+          reason_code?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor_source?: string
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          assessment_id?: string
+          command_name?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          detail?: Json
+          entity_version?: number | null
+          event_code?: string
+          event_id?: string
+          from_status?: string | null
+          justification?: string | null
+          reason_code?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_assessment_event_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_risk_assessment_note: {
+        Row: {
+          assessment_id: string
+          body: string
+          created_at: string
+          created_by_user_id: string | null
+          note_id: string
+          note_kind: string
+        }
+        Insert: {
+          assessment_id: string
+          body: string
+          created_at?: string
+          created_by_user_id?: string | null
+          note_id?: string
+          note_kind?: string
+        }
+        Update: {
+          assessment_id?: string
+          body?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          note_id?: string
+          note_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_assessment_note_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_risk_assessment_signal: {
+        Row: {
+          added_by_user_id: string | null
+          assessment_id: string
+          assessment_signal_id: string
+          created_at: string
+          role_code: string
+          signal_id: string
+        }
+        Insert: {
+          added_by_user_id?: string | null
+          assessment_id: string
+          assessment_signal_id?: string
+          created_at?: string
+          role_code?: string
+          signal_id: string
+        }
+        Update: {
+          added_by_user_id?: string | null
+          assessment_id?: string
+          assessment_signal_id?: string
+          created_at?: string
+          role_code?: string
+          signal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_assessment_signal_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_assessment_signal_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_signal"
+            referencedColumns: ["signal_id"]
+          },
+        ]
+      }
       bn_risk_command_idempotency: {
         Row: {
           actor_user_id: string | null
+          assessment_id: string | null
           command_name: string
           completed_at: string | null
           created_at: string
@@ -24237,6 +24475,7 @@ export type Database = {
         }
         Insert: {
           actor_user_id?: string | null
+          assessment_id?: string | null
           command_name: string
           completed_at?: string | null
           created_at?: string
@@ -24249,6 +24488,7 @@ export type Database = {
         }
         Update: {
           actor_user_id?: string | null
+          assessment_id?: string | null
           command_name?: string
           completed_at?: string | null
           created_at?: string
@@ -24260,6 +24500,428 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      bn_risk_evidence_link: {
+        Row: {
+          assessment_id: string
+          created_at: string
+          created_by_user_id: string | null
+          document_id: string
+          document_reference: string | null
+          document_source: string | null
+          document_title: string | null
+          document_type_code: string | null
+          evidence_link_id: string
+          factor_id: string | null
+          received_on: string | null
+          scope_code: string
+          signal_id: string | null
+          status: string
+          unlink_reason: string | null
+          unlinked_at: string | null
+          updated_at: string
+          usability_code: string
+          usability_reason: string | null
+          usability_recorded_at: string | null
+          usability_recorded_by_user_id: string | null
+        }
+        Insert: {
+          assessment_id: string
+          created_at?: string
+          created_by_user_id?: string | null
+          document_id: string
+          document_reference?: string | null
+          document_source?: string | null
+          document_title?: string | null
+          document_type_code?: string | null
+          evidence_link_id?: string
+          factor_id?: string | null
+          received_on?: string | null
+          scope_code?: string
+          signal_id?: string | null
+          status?: string
+          unlink_reason?: string | null
+          unlinked_at?: string | null
+          updated_at?: string
+          usability_code?: string
+          usability_reason?: string | null
+          usability_recorded_at?: string | null
+          usability_recorded_by_user_id?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          document_id?: string
+          document_reference?: string | null
+          document_source?: string | null
+          document_title?: string | null
+          document_type_code?: string | null
+          evidence_link_id?: string
+          factor_id?: string | null
+          received_on?: string | null
+          scope_code?: string
+          signal_id?: string | null
+          status?: string
+          unlink_reason?: string | null
+          unlinked_at?: string | null
+          updated_at?: string
+          usability_code?: string
+          usability_reason?: string | null
+          usability_recorded_at?: string | null
+          usability_recorded_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_evidence_link_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_evidence_link_factor_id_fkey"
+            columns: ["factor_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_factor"
+            referencedColumns: ["factor_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_evidence_link_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_signal"
+            referencedColumns: ["signal_id"]
+          },
+        ]
+      }
+      bn_risk_factor: {
+        Row: {
+          assessment_id: string
+          category_code: string | null
+          correction_reason: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          dedupe_key: string | null
+          direction_code: string
+          evidence_requirement_code: string
+          factor_id: string
+          factor_reference: string
+          factor_type_code: string
+          factor_version: number
+          materiality_code: string | null
+          notes: string | null
+          observed_on: string | null
+          provenance_code: string
+          provenance_reference: string | null
+          reason: string | null
+          signal_id: string | null
+          status: string
+          subject_kind: string | null
+          subject_reference: string | null
+          superseded_by_factor_id: string | null
+          supersedes_factor_id: string | null
+          updated_at: string
+          value_boolean: boolean | null
+          value_code: string | null
+          value_context: Json
+          value_date: string | null
+          value_kind: string
+          value_numeric: number | null
+          value_text: string | null
+          void_justification: string | null
+          void_reason_code: string | null
+          voided_at: string | null
+          voided_by_user_id: string | null
+        }
+        Insert: {
+          assessment_id: string
+          category_code?: string | null
+          correction_reason?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          dedupe_key?: string | null
+          direction_code: string
+          evidence_requirement_code?: string
+          factor_id?: string
+          factor_reference: string
+          factor_type_code: string
+          factor_version?: number
+          materiality_code?: string | null
+          notes?: string | null
+          observed_on?: string | null
+          provenance_code: string
+          provenance_reference?: string | null
+          reason?: string | null
+          signal_id?: string | null
+          status?: string
+          subject_kind?: string | null
+          subject_reference?: string | null
+          superseded_by_factor_id?: string | null
+          supersedes_factor_id?: string | null
+          updated_at?: string
+          value_boolean?: boolean | null
+          value_code?: string | null
+          value_context?: Json
+          value_date?: string | null
+          value_kind: string
+          value_numeric?: number | null
+          value_text?: string | null
+          void_justification?: string | null
+          void_reason_code?: string | null
+          voided_at?: string | null
+          voided_by_user_id?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          category_code?: string | null
+          correction_reason?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          dedupe_key?: string | null
+          direction_code?: string
+          evidence_requirement_code?: string
+          factor_id?: string
+          factor_reference?: string
+          factor_type_code?: string
+          factor_version?: number
+          materiality_code?: string | null
+          notes?: string | null
+          observed_on?: string | null
+          provenance_code?: string
+          provenance_reference?: string | null
+          reason?: string | null
+          signal_id?: string | null
+          status?: string
+          subject_kind?: string | null
+          subject_reference?: string | null
+          superseded_by_factor_id?: string | null
+          supersedes_factor_id?: string | null
+          updated_at?: string
+          value_boolean?: boolean | null
+          value_code?: string | null
+          value_context?: Json
+          value_date?: string | null
+          value_kind?: string
+          value_numeric?: number | null
+          value_text?: string | null
+          void_justification?: string | null
+          void_reason_code?: string | null
+          voided_at?: string | null
+          voided_by_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_factor_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_factor_factor_type_code_fkey"
+            columns: ["factor_type_code"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_factor_type"
+            referencedColumns: ["factor_type_code"]
+          },
+          {
+            foreignKeyName: "bn_risk_factor_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_signal"
+            referencedColumns: ["signal_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_factor_superseded_by_factor_id_fkey"
+            columns: ["superseded_by_factor_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_factor"
+            referencedColumns: ["factor_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_factor_supersedes_factor_id_fkey"
+            columns: ["supersedes_factor_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_factor"
+            referencedColumns: ["factor_id"]
+          },
+        ]
+      }
+      bn_risk_factor_type: {
+        Row: {
+          applicable_category_codes: string[]
+          applicable_source_modules: string[]
+          created_at: string
+          default_direction_code: string
+          description: string | null
+          evidence_requirement_code: string
+          factor_type_code: string
+          is_active: boolean
+          label: string
+          requires_reason: boolean
+          sort_order: number
+          updated_at: string
+          value_domain: string | null
+          value_kind: string
+        }
+        Insert: {
+          applicable_category_codes?: string[]
+          applicable_source_modules?: string[]
+          created_at?: string
+          default_direction_code?: string
+          description?: string | null
+          evidence_requirement_code?: string
+          factor_type_code: string
+          is_active?: boolean
+          label: string
+          requires_reason?: boolean
+          sort_order?: number
+          updated_at?: string
+          value_domain?: string | null
+          value_kind?: string
+        }
+        Update: {
+          applicable_category_codes?: string[]
+          applicable_source_modules?: string[]
+          created_at?: string
+          default_direction_code?: string
+          description?: string | null
+          evidence_requirement_code?: string
+          factor_type_code?: string
+          is_active?: boolean
+          label?: string
+          requires_reason?: boolean
+          sort_order?: number
+          updated_at?: string
+          value_domain?: string | null
+          value_kind?: string
+        }
+        Relationships: []
+      }
+      bn_risk_information_request: {
+        Row: {
+          assessment_id: string
+          channel_code: string | null
+          closure_reason: string | null
+          communication_detail: string | null
+          communication_request_id: string | null
+          communication_status: string
+          correlation_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          due_on: string | null
+          factor_id: string | null
+          is_blocking: boolean
+          reason: string | null
+          recipient_kind: string
+          recipient_name: string | null
+          recipient_person_id: number | null
+          recipient_reference: string | null
+          request_id: string
+          request_reference: string
+          request_type_code: string
+          required_information: string
+          resolved_at: string | null
+          resolved_by_user_id: string | null
+          response_outcome_code: string | null
+          response_received_at: string | null
+          response_summary: string | null
+          row_version: number
+          signal_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          channel_code?: string | null
+          closure_reason?: string | null
+          communication_detail?: string | null
+          communication_request_id?: string | null
+          communication_status?: string
+          correlation_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          due_on?: string | null
+          factor_id?: string | null
+          is_blocking?: boolean
+          reason?: string | null
+          recipient_kind?: string
+          recipient_name?: string | null
+          recipient_person_id?: number | null
+          recipient_reference?: string | null
+          request_id?: string
+          request_reference: string
+          request_type_code: string
+          required_information: string
+          resolved_at?: string | null
+          resolved_by_user_id?: string | null
+          response_outcome_code?: string | null
+          response_received_at?: string | null
+          response_summary?: string | null
+          row_version?: number
+          signal_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          channel_code?: string | null
+          closure_reason?: string | null
+          communication_detail?: string | null
+          communication_request_id?: string | null
+          communication_status?: string
+          correlation_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          due_on?: string | null
+          factor_id?: string | null
+          is_blocking?: boolean
+          reason?: string | null
+          recipient_kind?: string
+          recipient_name?: string | null
+          recipient_person_id?: number | null
+          recipient_reference?: string | null
+          request_id?: string
+          request_reference?: string
+          request_type_code?: string
+          required_information?: string
+          resolved_at?: string | null
+          resolved_by_user_id?: string | null
+          response_outcome_code?: string | null
+          response_received_at?: string | null
+          response_summary?: string | null
+          row_version?: number
+          signal_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_information_request_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_information_request_factor_id_fkey"
+            columns: ["factor_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_factor"
+            referencedColumns: ["factor_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_information_request_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_signal"
+            referencedColumns: ["signal_id"]
+          },
+        ]
       }
       bn_risk_reference_value: {
         Row: {
@@ -107834,6 +108496,30 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_risk_actor_name: { Args: { p_actor: string }; Returns: string }
+      _bn_risk_assessment_can_transition: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
+      }
+      _bn_risk_assessment_event: {
+        Args: {
+          p_actor: string
+          p_actor_code: string
+          p_actor_source: string
+          p_assessment: string
+          p_code: string
+          p_command: string
+          p_correlation: string
+          p_detail: Json
+          p_from: string
+          p_justification: string
+          p_reason: string
+          p_to: string
+          p_version: number
+        }
+        Returns: undefined
+      }
+      _bn_risk_dedupe_hash: { Args: { p_input: string }; Returns: string }
       _bn_risk_event: {
         Args: {
           p_actor: string
@@ -107853,7 +108539,11 @@ export type Database = {
         Returns: undefined
       }
       _bn_risk_mask_ssn: { Args: { p_ssn: string }; Returns: string }
+      _bn_risk_next_assessment_reference: { Args: never; Returns: string }
+      _bn_risk_next_factor_reference: { Args: never; Returns: string }
       _bn_risk_next_reference: { Args: never; Returns: string }
+      _bn_risk_next_request_reference: { Args: never; Returns: string }
+      _bn_risk_person_display_name: { Args: { p_ssn: string }; Returns: string }
       _bn_risk_require: {
         Args: { p_action: string; p_actor: string; p_mutation: boolean }
         Returns: undefined
@@ -110469,6 +111159,47 @@ export type Database = {
         }
         Returns: string
       }
+      bn_risk_assessment_actions_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_assessment_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_risk_assessment_creation_readiness_v1: {
+        Args: { p_actor_user_id: string; p_signal_id: string }
+        Returns: Json
+      }
+      bn_risk_assessment_detail_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_assessment_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters: Json
+          p_page: number
+          p_page_size: number
+        }
+        Returns: Json
+      }
+      bn_risk_assessment_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
       bn_risk_available_actions_v1: {
         Args: { p_actor_user_id: string; p_signal_id: string }
         Returns: Json
@@ -110478,6 +111209,15 @@ export type Database = {
           p_action_name: string
           p_actor_user_id: string
           p_is_mutation: boolean
+        }
+        Returns: Json
+      }
+      bn_risk_evidence_search_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_limit: number
+          p_search: string
         }
         Returns: Json
       }
@@ -110495,6 +111235,10 @@ export type Database = {
           p_reason_code: string
           p_signal_id: string
         }
+        Returns: Json
+      }
+      bn_risk_factor_catalogue_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
       bn_risk_person_safe_summary_v1: {
@@ -110516,6 +111260,10 @@ export type Database = {
           p_search?: string
           p_signal_id: string
         }
+        Returns: Json
+      }
+      bn_risk_signal_assessment_links_v1: {
+        Args: { p_actor_user_id: string; p_signal_id: string }
         Returns: Json
       }
       bn_risk_signal_detail_v1: {
