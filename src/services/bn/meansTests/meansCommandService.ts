@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { BnMeansCommandName } from '@/types/bn/meansTests/meansCommands';
 import { BN_MEANS_VERIFICATION_COMMANDS } from '@/types/bn/meansTests/meansVerification';
 import { BN_MEANS_ACTIVATION_COMMANDS } from '@/types/bn/meansTests/meansActivation';
+import { BN_MEANS_LIFECYCLE_COMMANDS } from '@/types/bn/meansTests/meansLifecycle';
 
 export interface BnMeansCommandRequest {
   readonly command: BnMeansCommandName;
@@ -109,7 +110,18 @@ export type BnMeansCommandErrorCode =
   | 'NO_PUBLICATION'
   | 'RETRY_NOT_AVAILABLE'
   | 'ELIGIBILITY_BOUNDARY_UNAVAILABLE'
+  // EPIC 12 — reassessment and change of circumstances.
+  | 'NO_OPEN_SCHEDULE'
+  | 'SUCCESSOR_EXISTS'
+  | 'SUCCESSOR_REQUIRED'
+  | 'SUCCESSOR_NOT_ACTIVE'
+  | 'NOT_A_SUCCESSOR'
+  | 'NOTHING_TO_CONFIRM'
+  | 'INVALID_SECTION'
+  | 'INVALID_MATERIALITY'
+  | 'JUSTIFICATION_REQUIRED'
   | 'UNKNOWN';
+
 
 
 export interface BnMeansCommandResult {
@@ -152,6 +164,9 @@ const KNOWN_ERROR_CODES = new Set<string>([
   'VERIFICATION_NO_LONGER_VALID', 'POLICY_RETIRED', 'FACT_PUBLICATION_NOT_READY',
   'APPROVED_CALCULATION_MISSING', 'VALIDITY_DATES_MISSING', 'NO_PUBLICATION',
   'RETRY_NOT_AVAILABLE', 'ELIGIBILITY_BOUNDARY_UNAVAILABLE',
+  'NO_OPEN_SCHEDULE', 'SUCCESSOR_EXISTS', 'SUCCESSOR_REQUIRED', 'SUCCESSOR_NOT_ACTIVE',
+  'NOT_A_SUCCESSOR', 'NOTHING_TO_CONFIRM', 'INVALID_SECTION', 'INVALID_MATERIALITY',
+  'JUSTIFICATION_REQUIRED',
 ]);
 
 
@@ -236,6 +251,14 @@ const VERIFICATION_COMMANDS = new Set<string>(BN_MEANS_VERIFICATION_COMMANDS);
  */
 const ACTIVATION_COMMANDS = new Set<string>(BN_MEANS_ACTIVATION_COMMANDS);
 
+/**
+ * EPIC 12 — reassessment, change of circumstance, successor creation,
+ * carried-forward confirmation, supersession and closure are served by the
+ * lifecycle boundary, which owns validity windows, materiality handling and
+ * the controlled prefill rules.
+ */
+const LIFECYCLE_COMMANDS = new Set<string>(BN_MEANS_LIFECYCLE_COMMANDS);
+
 export const meansCommandService = {
   canonicalisePayload,
   computePayloadHash,
@@ -273,9 +296,11 @@ export const meansCommandService = {
         ? 'bn_means_verification_command_v1'
         : ACTIVATION_COMMANDS.has(request.command)
           ? 'bn_means_activation_command_v1'
-          : request.command === 'BN_MEANS_SUBMIT'
-            ? 'bn_means_submission_command_v1'
-            : 'bn_means_execute_command_v1';
+          : LIFECYCLE_COMMANDS.has(request.command)
+            ? 'bn_means_lifecycle_command_v1'
+            : request.command === 'BN_MEANS_SUBMIT'
+              ? 'bn_means_submission_command_v1'
+              : 'bn_means_execute_command_v1';
 
     const { data, error } = await supabase.rpc(rpcName as never, {
       p_command_name: request.command,

@@ -72,6 +72,10 @@ export type BnMeansCommandName =
   | 'BN_MEANS_REFRESH_ELIGIBILITY_RESULT'
   | 'BN_MEANS_SCHEDULE_REASSESSMENT'
   | 'BN_MEANS_RECORD_CHANGE_OF_CIRCUMSTANCE'
+  // EPIC 12 — governed reassessment lifecycle and controlled prefill.
+  | 'BN_MEANS_CANCEL_REASSESSMENT'
+  | 'BN_MEANS_CREATE_SUCCESSOR'
+  | 'BN_MEANS_CONFIRM_CARRIED_FORWARD'
   | 'BN_MEANS_SUPERSEDE'
   | 'BN_MEANS_CLOSE';
 
@@ -174,10 +178,15 @@ export const BN_MEANS_COMMANDS: readonly BnMeansCommandSpec[] = [
   S('BN_MEANS_RETRY_FACT_PUBLICATION',  'bn_means_tests:approve', { publishesFacts: true }),
   S('BN_MEANS_RETRY_ELIGIBILITY_REQUEST','bn_means_tests:approve'),
   S('BN_MEANS_REFRESH_ELIGIBILITY_RESULT','bn_means_tests:write'),
-  S('BN_MEANS_SCHEDULE_REASSESSMENT',   'bn_means_tests:reassess'),
-  S('BN_MEANS_RECORD_CHANGE_OF_CIRCUMSTANCE', 'bn_means_tests:write', { requiresJustification: true }),
-  S('BN_MEANS_SUPERSEDE',               'bn_means_tests:approve', { publishesFacts: true, requiresJustification: true }),
-  S('BN_MEANS_CLOSE',                   'bn_means_tests:approve', { requiresJustification: true }),
+  S('BN_MEANS_SCHEDULE_REASSESSMENT',   'bn_means_tests:reassess', { implemented: true }),
+  S('BN_MEANS_RECORD_CHANGE_OF_CIRCUMSTANCE', 'bn_means_tests:reassess', { implemented: true, requiresJustification: true }),
+  // EPIC 12 supporting operations — cancellation, successor creation and
+  // confirmation of carried-forward information (no silent reuse).
+  S('BN_MEANS_CANCEL_REASSESSMENT',     'bn_means_tests:reassess', { implemented: true, requiresJustification: true }),
+  S('BN_MEANS_CREATE_SUCCESSOR',        'bn_means_tests:reassess', { implemented: true }),
+  S('BN_MEANS_CONFIRM_CARRIED_FORWARD', 'bn_means_tests:write',    { implemented: true }),
+  S('BN_MEANS_SUPERSEDE',               'bn_means_tests:approve', { implemented: true, publishesFacts: true, requiresJustification: true }),
+  S('BN_MEANS_CLOSE',                   'bn_means_tests:approve', { implemented: true, requiresJustification: true }),
 ] as const;
 
 const _lookup: Readonly<Record<BnMeansCommandName, BnMeansCommandSpec>> =
