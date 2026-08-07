@@ -29,7 +29,7 @@ import { formatWithCurrency } from '@/utils/formatCurrency';
 import {
   buildFactGroups,
   type BnMeansVerificationRecord,
-} from '@/components/bn/meansTests/BnMeansVerificationPanel';
+} from '@/components/bn/meansTests/verification/meansFactGroups';
 import { BnMeansVerificationSection } from '@/components/bn/meansTests/verification/BnMeansVerificationSection';
 import BnMeansCalculationSection from '@/components/bn/meansTests/calculation/BnMeansCalculationSection';
 import { BnMeansDecisionSection } from '@/components/bn/meansTests/decision/BnMeansDecisionSection';
