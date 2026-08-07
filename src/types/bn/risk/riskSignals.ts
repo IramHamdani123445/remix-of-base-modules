@@ -37,7 +37,23 @@ export type BnRiskReferenceDomain =
   | 'TRIAGE_CLASSIFICATION'
   | 'TRIAGE_ROUTE'
   | 'DISMISSAL_REASON'
-  | 'LINK_TYPE';
+  | 'LINK_TYPE'
+  // Epic 1 — assessment, factor, evidence and information-request domains.
+  | 'ASSESSMENT_STATUS'
+  | 'SIGNAL_ROLE'
+  | 'FACTOR_DIRECTION'
+  | 'FACTOR_MATERIALITY'
+  | 'FACTOR_PROVENANCE'
+  | 'FACTOR_STATUS'
+  | 'FACTOR_VOID_REASON'
+  | 'EVIDENCE_REQUIREMENT'
+  | 'EVIDENCE_SCOPE'
+  | 'EVIDENCE_USABILITY'
+  | 'REQUEST_TYPE'
+  | 'REQUEST_CHANNEL'
+  | 'REQUEST_RECIPIENT_KIND'
+  | 'REQUEST_STATUS'
+  | 'RESPONSE_OUTCOME';
 
 export interface BnRiskReferenceItem {
   readonly code: string;
@@ -184,10 +200,18 @@ export interface BnRiskPersonOption {
 
 /**
  * Privacy-safe Benefit 360 projection. Deliberately carries no category,
- * rule, evidence or narrative detail — only whether a review is live.
+ * rule, evidence or narrative detail — only whether a review is live, the
+ * stage it has reached and the reference an authorised officer can quote.
  */
 export interface BnRiskPersonSafeSummary {
   readonly person_id: number;
-  readonly review_state: 'NO_ACTIVE_REVIEW' | 'REVIEW_IN_PROGRESS' | 'ACTION_REQUIRED';
+  readonly review_state:
+    | 'NO_ACTIVE_REVIEW'
+    | 'REVIEW_IN_PROGRESS'
+    | 'AWAITING_INFORMATION'
+    | 'ACTION_REQUIRED';
   readonly review_state_label: string;
+  readonly stage_label?: string | null;
+  readonly assessment_id?: string | null;
+  readonly assessment_reference?: string | null;
 }
