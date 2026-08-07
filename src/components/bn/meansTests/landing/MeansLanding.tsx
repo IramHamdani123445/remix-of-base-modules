@@ -100,8 +100,7 @@ export const MEANS_WORK_AREAS: readonly MeansWorkAreaDefinition[] = [
     code: 'VERIFICATION_QUEUE',
     label: 'Verification queue',
     description: 'Submitted assessments awaiting independent fact verification.',
-    implemented: false,
-    unavailableReason: 'A dedicated verification queue read has not been delivered yet.',
+    implemented: true,
     requiredAction: 'verify',
   },
   {

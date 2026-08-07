@@ -10,6 +10,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import type { BnMeansCommandName } from '@/types/bn/meansTests/meansCommands';
+import { BN_MEANS_VERIFICATION_COMMANDS } from '@/types/bn/meansTests/meansVerification';
 
 export interface BnMeansCommandRequest {
   readonly command: BnMeansCommandName;
@@ -65,6 +66,12 @@ export type BnMeansCommandErrorCode =
   | 'INVALID_VALUE'
   | 'VERSION_CONFLICT'
   | 'FORBIDDEN'
+  // EPIC 8 — verification and clarification.
+  | 'SELF_VERIFICATION_DENIED'
+  | 'WORK_NOT_OWNED'
+  | 'FROZEN_VERSION_MISSING'
+  | 'FROZEN_VERSION_TAMPERED'
+  | 'REASON_CODE_REQUIRED'
   | 'UNKNOWN';
 
 export interface BnMeansCommandResult {
@@ -93,6 +100,8 @@ const KNOWN_ERROR_CODES = new Set<string>([
   'DEDUCTION_VALIDATION_FAILED', 'DEDUCTION_FACT_NOT_FOUND',
   'DUPLICATE_EVIDENCE_LINK', 'INVALID_VALUE', 'VERSION_CONFLICT', 'FORBIDDEN',
   'MISSING_REQUIRED_DECLARATION',
+  'SELF_VERIFICATION_DENIED', 'WORK_NOT_OWNED', 'FROZEN_VERSION_MISSING',
+  'FROZEN_VERSION_TAMPERED', 'REASON_CODE_REQUIRED',
 ]);
 
 /** Deterministic key ordering so replays produce an identical hash. */
@@ -161,6 +170,13 @@ const EVIDENCE_COMMANDS = new Set<string>([
   'BN_MEANS_REOPEN_EVIDENCE',
 ]);
 
+/**
+ * EPIC 8 — commands served by the governed verification boundary. Every one
+ * of them works against the frozen submitted version and never edits a
+ * declared value.
+ */
+const VERIFICATION_COMMANDS = new Set<string>(BN_MEANS_VERIFICATION_COMMANDS);
+
 export const meansCommandService = {
   canonicalisePayload,
   computePayloadHash,
@@ -189,11 +205,16 @@ export const meansCommandService = {
     // EPIC 7 — submission keeps the authoritative `BN_MEANS_SUBMIT` command
     // name and is served by its own governed boundary, which re-runs
     // submission readiness, freezes the version and creates verification work.
+    // EPIC 8 — verification, clarification and verification completion are
+    // served by the verification boundary, which enforces the frozen-version
+    // rule and the independence rule (the submitter cannot verify).
     const rpcName = EVIDENCE_COMMANDS.has(request.command)
       ? 'bn_means_evidence_command_v1'
-      : request.command === 'BN_MEANS_SUBMIT'
-        ? 'bn_means_submission_command_v1'
-        : 'bn_means_execute_command_v1';
+      : VERIFICATION_COMMANDS.has(request.command)
+        ? 'bn_means_verification_command_v1'
+        : request.command === 'BN_MEANS_SUBMIT'
+          ? 'bn_means_submission_command_v1'
+          : 'bn_means_execute_command_v1';
 
     const { data, error } = await supabase.rpc(rpcName as never, {
       p_command_name: request.command,

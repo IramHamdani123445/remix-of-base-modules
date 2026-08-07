@@ -42,6 +42,7 @@ import {
   MeansTechnicalDetails,
   MeansWorkAreaCard,
 } from '@/components/bn/meansTests/landing/MeansLanding';
+import { BnMeansVerificationQueue } from '@/components/bn/meansTests/verification/BnMeansVerificationQueue';
 
 const STATUS_FILTERS = [
   'DRAFT', 'INFORMATION_PENDING', 'SUBMITTED', 'VERIFICATION_PENDING', 'CALCULATED',
@@ -127,7 +128,9 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="team">Team work queue</TabsTrigger>
+          <TabsTrigger value="verification">Verification queue</TabsTrigger>
           <TabsTrigger value="approval">Approval queue</TabsTrigger>
+
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-4">
@@ -141,7 +144,15 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
                   key={area.code}
                   area={area}
                   permitted={area.requiredAction ? ctx.can(area.requiredAction) : true}
-                  onOpen={() => setTab(area.code === 'APPROVAL_QUEUE' ? 'approval' : 'team')}
+                  onOpen={() =>
+                    setTab(
+                      area.code === 'APPROVAL_QUEUE'
+                        ? 'approval'
+                        : area.code === 'VERIFICATION_QUEUE'
+                          ? 'verification'
+                          : 'team',
+                    )
+                  }
                 />
               ))}
             </div>
@@ -153,6 +164,12 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
         <TabsContent value="team" className="pt-4">
           <MeansTeamQueue onOpen={setSelected} />
         </TabsContent>
+
+        {/* EPIC 8 — verification work is a distinct governed queue. */}
+        <TabsContent value="verification" className="pt-4">
+          <BnMeansVerificationQueue onOpen={setSelected} />
+        </TabsContent>
+
 
         <TabsContent value="approval" className="pt-4">
           <BnMeansQueuesSection onOpen={setSelected} />

@@ -17,6 +17,7 @@ const availableActions = vi.fn();
 const calculationReadiness = vi.fn();
 const benefit360Summary = vi.fn();
 const execute = vi.fn();
+const verificationWorkspace = vi.fn();
 
 vi.mock('@/services/bn/meansTests/meansQueryService', () => ({
   meansQueryService: {
@@ -29,6 +30,10 @@ vi.mock('@/services/bn/meansTests/meansQueryService', () => ({
     adjustments: vi.fn(async () => ({ status: 'OK', data: [] })),
     approvalContext: vi.fn(async () => ({ status: 'OK', data: null })),
     queue: vi.fn(async () => ({ status: 'OK', data: [] })),
+    verificationWorkspace: (...a: unknown[]) => verificationWorkspace(...a),
+    verificationQueue: vi.fn(async () => ({ status: 'OK', data: [] })),
+    verificationReadiness: vi.fn(async () => ({ status: 'OK', data: null })),
+    verificationReference: vi.fn(async () => ({ status: 'OK', data: null })),
   },
 }));
 vi.mock('@/services/bn/meansTests/meansCommandService', () => ({
@@ -85,53 +90,130 @@ const SUBMITTED = {
 };
 
 beforeEach(() => {
-  [detail, availableActions, calculationReadiness, benefit360Summary, execute].forEach((m) => m.mockReset());
+  [detail, availableActions, calculationReadiness, benefit360Summary, execute, verificationWorkspace]
+    .forEach((m) => m.mockReset());
 });
 
-describe('MT6 — per-fact verification', () => {
-  it('records a verification outcome for one fact through the governed command', async () => {
+describe('EPIC 8 — per-fact verification surface', () => {
+  const FROZEN_WORKSPACE = {
+    assessment: {
+      assessment_id: 'a1',
+      assessment_reference: 'MT-2026-0002',
+      benefit_programme: 'SB',
+      assessment_reason: 'NEW_CLAIM',
+      status: 'VERIFICATION_PENDING',
+      currency_code: 'XCD',
+      effective_from: '2026-01-01',
+      effective_to: null,
+      row_version: 5,
+    },
+    frozen_version: {
+      assessment_version_id: 'v1',
+      version_no: 1,
+      frozen_at: '2026-08-08T09:00:00Z',
+      frozen_by: 'officer',
+      snapshot_hash: 'abc',
+      snapshot_hash_valid: true,
+    },
+    actor: { can_verify: true, is_submitter: false, denied_reason: null },
+    facts: [
+      {
+        work_id: 'w1',
+        fact_kind: 'INCOME',
+        fact_ref_id: 'i1',
+        fact_summary: 'Employment income — Acme Ltd',
+        priority: 'NORMAL',
+        status: 'IN_PROGRESS',
+        outcome: null,
+        outcome_reason_code: null,
+        outcome_note: null,
+        decided_at: null,
+        decided_by: null,
+        claimed_by: 'me',
+        claimed_at: '2026-08-08T10:00:00Z',
+        claimed_by_me: true,
+        review_round: 1,
+        declared: { category_code: 'EMPLOYMENT', declared_amount: 1200, declared_frequency: 'MONTHLY' },
+        evidence: [],
+        clarification: null,
+        allowed_actions: ['BN_MEANS_RECORD_VERIFICATION_DECISION'],
+        decision_history: [],
+      },
+    ],
+    readiness: {
+      assessment_id: 'a1', assessment_version_id: 'v1', version_no: 1,
+      frozen_at: '2026-08-08T09:00:00Z', snapshot_hash_valid: true, status: 'VERIFICATION_PENDING',
+      verification_complete: false, verification_marked_complete: false, verification_outcome: null,
+      section_status: 'IN_PROGRESS', total_work: 1, pending_work: 0, in_progress_work: 1,
+      clarification_pending_work: 0, completed_work: 0, cancelled_work: 0, verified_facts: 0,
+      rejected_facts: 0, not_applicable_facts: 0, open_clarification_requests: 0,
+      warnings: [], blockers: [], reason_codes: [],
+    },
+    reference: {
+      outcomes: [{ code: 'VERIFIED', label: 'Verified' }],
+      reject_reasons: [], clarification_reasons: [], not_applicable_reasons: [],
+      reopen_reasons: [], recipient_kinds: [], response_kinds: [], fact_kinds: [],
+    },
+  };
+
+  it('records a verification decision against the frozen version through the governed command', async () => {
     detail.mockResolvedValue({ status: 'OK', data: SUBMITTED });
-    availableActions.mockResolvedValue({
-      status: 'OK',
-      data: [{ command: 'BN_MEANS_VERIFY_INFORMATION', allowed: true, reason: null, row_version: 5 }],
-    });
+    availableActions.mockResolvedValue({ status: 'OK', data: [] });
     calculationReadiness.mockResolvedValue({ status: 'OK', data: null });
-    execute.mockResolvedValue({ status: 'OK' });
+    verificationWorkspace.mockResolvedValue({ status: 'OK', data: FROZEN_WORKSPACE });
+    execute.mockResolvedValue({ status: 'EXECUTED' });
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
 
     await openTab('Verification');
-    fireEvent.click(await screen.findByRole('button', { name: 'Verify' }));
+    fireEvent.click(await screen.findByTestId('means-open-decision-w1'));
+    fireEvent.click(await screen.findByTestId('means-verification-decision-submit'));
 
     await waitFor(() =>
       expect(execute).toHaveBeenCalledWith(
         expect.objectContaining({
-          command: 'BN_MEANS_VERIFY_INFORMATION',
+          command: 'BN_MEANS_RECORD_VERIFICATION_DECISION',
           assessmentId: 'a1',
-          expectedRowVersion: 5,
-          payload: expect.objectContaining({ fact_kind: 'INCOME', fact_id: 'i1', outcome: 'VERIFIED' }),
+          payload: expect.objectContaining({ work_id: 'w1', outcome: 'VERIFIED' }),
         }),
       ),
     );
   });
 
-  it('disables verification when the canonical query refuses it', async () => {
+  it('states the surface as unavailable rather than empty when the governed read fails', async () => {
     detail.mockResolvedValue({ status: 'OK', data: SUBMITTED });
-    availableActions.mockResolvedValue({
-      status: 'OK',
-      data: [{ command: 'BN_MEANS_VERIFY_INFORMATION', allowed: false, reason: 'ACTIONS_DISABLED', row_version: 5 }],
-    });
+    availableActions.mockResolvedValue({ status: 'OK', data: [] });
     calculationReadiness.mockResolvedValue({ status: 'OK', data: null });
+    verificationWorkspace.mockResolvedValue({ status: 'FAILED', data: null, detail: 'connection reset' });
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
     await openTab('Verification');
 
-    expect(await screen.findByTestId('means-verification-disabled')).toHaveTextContent(
-      'internal pilot',
-    );
-    expect(screen.getByRole('button', { name: 'Verify' })).toBeDisabled();
+    expect(await screen.findByTestId('means-verification-failed')).toBeInTheDocument();
+  });
+
+  it('keeps the submitter out of verification', async () => {
+    detail.mockResolvedValue({ status: 'OK', data: SUBMITTED });
+    availableActions.mockResolvedValue({ status: 'OK', data: [] });
+    calculationReadiness.mockResolvedValue({ status: 'OK', data: null });
+    verificationWorkspace.mockResolvedValue({
+      status: 'OK',
+      data: {
+        ...FROZEN_WORKSPACE,
+        actor: { can_verify: false, is_submitter: true, denied_reason: null },
+        facts: [{ ...FROZEN_WORKSPACE.facts[0], allowed_actions: [] }],
+      },
+    });
+
+    wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
+    await openTab('Verification');
+
+    expect(await screen.findByTestId('means-verification-readonly')).toBeInTheDocument();
+    expect(screen.queryByTestId('means-open-decision-w1')).toBeNull();
+    expect(screen.getByTestId('means-complete-verification')).toBeDisabled();
   });
 });
+
 
 describe('MT6 — deterministic calculation', () => {
   it('renders backend readiness blockers and keeps Calculate disabled', async () => {

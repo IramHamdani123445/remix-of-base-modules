@@ -43,6 +43,25 @@ import type {
   BnMeansEvidenceReadiness,
   BnMeansEvidenceReference,
 } from '@/types/bn/meansTests/meansEvidence';
+import type {
+  BnMeansVerificationQueueRow,
+  BnMeansVerificationQueueScope,
+  BnMeansVerificationReadiness,
+  BnMeansVerificationReference,
+  BnMeansVerificationWorkspace,
+} from '@/types/bn/meansTests/meansVerification';
+
+export type {
+  BnMeansVerificationCommand,
+  BnMeansVerificationFactCard,
+  BnMeansVerificationOutcomeCode,
+  BnMeansVerificationQueueRow,
+  BnMeansVerificationQueueScope,
+  BnMeansVerificationReadiness,
+  BnMeansVerificationReference,
+  BnMeansVerificationWorkspace,
+  BnMeansVerificationWorkStatus,
+} from '@/types/bn/meansTests/meansVerification';
 
 export type {
   BnMeansDeclarationDefinition,
@@ -581,6 +600,67 @@ export const meansQueryService = {
     });
     if (error) return failed(error.message);
     return envelope<BnMeansReviewSummary>(data);
+  },
+
+  /** EPIC 8 — policy-governed verification lists (outcomes, reasons, responses). */
+  async verificationReference(): Promise<BnMeansQueryResult<BnMeansVerificationReference>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_verification_reference_v1', {
+      p_actor_user_id: uid,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansVerificationReference>(data);
+  },
+
+  /**
+   * EPIC 8 — the verification workspace for one assessment: frozen version
+   * header, per-fact cards with supporting evidence, clarification state and
+   * the backend-decided allowed actions. React never derives availability.
+   */
+  async verificationWorkspace(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansVerificationWorkspace>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_verification_workspace_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansVerificationWorkspace>(data);
+  },
+
+  /** EPIC 8 — authoritative verification readiness. Never recomputed in React. */
+  async verificationReadiness(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansVerificationReadiness>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_verification_readiness_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansVerificationReadiness>(data);
+  },
+
+  /** EPIC 8 — verification queue. Scope and counts are decided server-side. */
+  async verificationQueue(
+    filters: { scope?: BnMeansVerificationQueueScope; benefit_programme?: string; search?: string } = {},
+    limit = 50,
+    offset = 0,
+  ): Promise<BnMeansQueryResult<readonly BnMeansVerificationQueueRow[]>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_verification_queue_v1', {
+      p_actor_user_id: uid,
+      p_filters: filters as never,
+      p_limit: limit,
+      p_offset: offset,
+    });
+    if (error) return failed(error.message);
+    return envelope<readonly BnMeansVerificationQueueRow[]>(data);
   },
 
   /** MT7 — secured work queues. Never derived from direct table reads. */

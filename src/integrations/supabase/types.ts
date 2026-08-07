@@ -15026,6 +15026,7 @@ export type Database = {
           due_date: string | null
           information_required: string | null
           is_blocking: boolean
+          origin_stage: string
           reason_code: string | null
           recipient_kind: string | null
           recipient_label: string | null
@@ -15044,6 +15045,7 @@ export type Database = {
           subject_ref_id: string | null
           updated_at: string
           updated_by: string | null
+          work_id: string | null
         }
         Insert: {
           assessment_id: string
@@ -15056,6 +15058,7 @@ export type Database = {
           due_date?: string | null
           information_required?: string | null
           is_blocking?: boolean
+          origin_stage?: string
           reason_code?: string | null
           recipient_kind?: string | null
           recipient_label?: string | null
@@ -15074,6 +15077,7 @@ export type Database = {
           subject_ref_id?: string | null
           updated_at?: string
           updated_by?: string | null
+          work_id?: string | null
         }
         Update: {
           assessment_id?: string
@@ -15086,6 +15090,7 @@ export type Database = {
           due_date?: string | null
           information_required?: string | null
           is_blocking?: boolean
+          origin_stage?: string
           reason_code?: string | null
           recipient_kind?: string | null
           recipient_label?: string | null
@@ -15104,6 +15109,7 @@ export type Database = {
           subject_ref_id?: string | null
           updated_at?: string
           updated_by?: string | null
+          work_id?: string | null
         }
         Relationships: [
           {
@@ -15710,9 +15716,11 @@ export type Database = {
           notes: string | null
           outcome: string
           reason_code: string | null
+          review_round: number
           verification_id: string
           verified_at: string
           verified_by: string | null
+          work_id: string | null
         }
         Insert: {
           assessment_id: string
@@ -15725,9 +15733,11 @@ export type Database = {
           notes?: string | null
           outcome: string
           reason_code?: string | null
+          review_round?: number
           verification_id?: string
           verified_at?: string
           verified_by?: string | null
+          work_id?: string | null
         }
         Update: {
           assessment_id?: string
@@ -15740,9 +15750,11 @@ export type Database = {
           notes?: string | null
           outcome?: string
           reason_code?: string | null
+          review_round?: number
           verification_id?: string
           verified_at?: string
           verified_by?: string | null
+          work_id?: string | null
         }
         Relationships: [
           {
@@ -15774,16 +15786,30 @@ export type Database = {
           assessment_version_id: string
           assigned_team: string | null
           assigned_user_id: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          clarification_request_id: string | null
           correlation_id: string | null
           created_at: string
           created_by: string | null
+          decided_at: string | null
+          decided_by: string | null
           evidence_refs: Json
           fact_kind: string
           fact_ref_id: string | null
           fact_summary: string | null
+          outcome: string | null
+          outcome_note: string | null
+          outcome_reason_code: string | null
           priority: string
+          reopen_reason_code: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          review_round: number
+          sequence_no: number | null
           status: string
           updated_at: string
+          updated_by: string | null
           work_id: string
         }
         Insert: {
@@ -15791,16 +15817,30 @@ export type Database = {
           assessment_version_id: string
           assigned_team?: string | null
           assigned_user_id?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          clarification_request_id?: string | null
           correlation_id?: string | null
           created_at?: string
           created_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
           evidence_refs?: Json
           fact_kind: string
           fact_ref_id?: string | null
           fact_summary?: string | null
+          outcome?: string | null
+          outcome_note?: string | null
+          outcome_reason_code?: string | null
           priority?: string
+          reopen_reason_code?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          review_round?: number
+          sequence_no?: number | null
           status?: string
           updated_at?: string
+          updated_by?: string | null
           work_id?: string
         }
         Update: {
@@ -15808,16 +15848,30 @@ export type Database = {
           assessment_version_id?: string
           assigned_team?: string | null
           assigned_user_id?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          clarification_request_id?: string | null
           correlation_id?: string | null
           created_at?: string
           created_by?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
           evidence_refs?: Json
           fact_kind?: string
           fact_ref_id?: string | null
           fact_summary?: string | null
+          outcome?: string | null
+          outcome_note?: string | null
+          outcome_reason_code?: string | null
           priority?: string
+          reopen_reason_code?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          review_round?: number
+          sequence_no?: number | null
           status?: string
           updated_at?: string
+          updated_by?: string | null
           work_id?: string
         }
         Relationships: [
@@ -15834,6 +15888,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_means_assessment_version"
             referencedColumns: ["assessment_version_id"]
+          },
+          {
+            foreignKeyName: "bn_means_verification_work_clarification_fk"
+            columns: ["clarification_request_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_information_request"
+            referencedColumns: ["request_id"]
           },
         ]
       }
@@ -106542,6 +106603,56 @@ export type Database = {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
+      _bn_means_verification_clarification: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
+      _bn_means_verification_declared: {
+        Args: { p_fact: string; p_kind: string; p_snapshot: Json }
+        Returns: Json
+      }
+      _bn_means_verification_evidence: {
+        Args: { p_assessment_id: string; p_fact: string; p_kind: string }
+        Returns: Json
+      }
+      _bn_means_verification_execute: {
+        Args: {
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_justification: string
+          p_payload: Json
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      _bn_means_verification_id_key: {
+        Args: { p_kind: string }
+        Returns: string
+      }
+      _bn_means_verification_option: {
+        Args: { p_code: string; p_set: string }
+        Returns: Json
+      }
+      _bn_means_verification_readiness: {
+        Args: { p_assessment_id: string }
+        Returns: Json
+      }
+      _bn_means_verification_reference: { Args: never; Returns: Json }
+      _bn_means_verification_snapshot_key: {
+        Args: { p_kind: string }
+        Returns: string
+      }
+      _bn_means_verification_work_actions: {
+        Args: {
+          p_actor: string
+          p_can_verify: boolean
+          p_independent: boolean
+          p_work: Database["public"]["Tables"]["bn_means_verification_work"]["Row"]
+        }
+        Returns: Json
+      }
       _bn_mortality_action_for_command: {
         Args: { p_command_name: string }
         Returns: string
@@ -108277,6 +108388,43 @@ export type Database = {
         Returns: Json
       }
       bn_means_submission_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_verification_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_means_verification_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+      bn_means_verification_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_verification_reference_v1: {
+        Args: { p_actor_user_id: string }
+        Returns: Json
+      }
+      bn_means_verification_workspace_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
