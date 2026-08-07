@@ -31,7 +31,7 @@ import {
   type BnMeansVerificationRecord,
 } from '@/components/bn/meansTests/BnMeansVerificationPanel';
 import { BnMeansVerificationSection } from '@/components/bn/meansTests/verification/BnMeansVerificationSection';
-import { BnMeansCalculationPanel } from '@/components/bn/meansTests/BnMeansCalculationPanel';
+import BnMeansCalculationSection from '@/components/bn/meansTests/calculation/BnMeansCalculationSection';
 import { BnMeansAdjustmentsPanel } from '@/components/bn/meansTests/BnMeansAdjustmentsPanel';
 import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApprovalPanel';
 import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMeansHouseholdSection';
