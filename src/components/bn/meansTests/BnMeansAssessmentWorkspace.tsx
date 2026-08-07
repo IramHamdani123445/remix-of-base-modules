@@ -553,24 +553,20 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         </TabsContent>
 
 
+        {/*
+          EPIC 9 — the operational calculation and explanation surface. It
+          reads the governed calculation workspace directly, so the earlier
+          MT6 technical panel is no longer rendered here.
+        */}
         <TabsContent value="calculation">
-          <BnMeansCalculationPanel
-            readiness={readinessData}
-            readinessUnavailable={readinessUnavailable}
-            calculation={latestCalculation}
+          <BnMeansCalculationSection
+            assessmentId={assessmentId}
             currency={currency}
-            canCalculate={Boolean(calculateAction?.allowed) && !run.isPending}
-            calculateReason={
-              calculateAction?.allowed
-                ? null
-                : REASON_LABEL[calculateAction?.reason ?? ''] ??
-                  calculateAction?.reason ??
-                  'Calculation is not currently available'
-            }
-            busy={run.isPending}
-            onCalculate={() => run.mutate({ command: 'BN_MEANS_CALCULATE' })}
+            rowVersion={rowVersion}
+            calculateAction={calculateAction}
           />
         </TabsContent>
+
 
         <TabsContent value="adjustments">
           <BnMeansAdjustmentsPanel
