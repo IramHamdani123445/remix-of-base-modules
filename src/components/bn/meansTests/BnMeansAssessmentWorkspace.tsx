@@ -163,7 +163,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     queryKey: ['bn-means-submission-readiness', assessmentId],
     queryFn: () => meansQueryService.submissionReadiness(assessmentId),
   });
-  const [activeTab, setActiveTab] = React.useState('context');
+  const [activeTab, setActiveTab] = React.useState(() => meansSectionToTab(initialSection));
+  // A new deep link (different assessment or section) re-targets the workspace.
+  React.useEffect(() => {
+    setActiveTab(meansSectionToTab(initialSection));
+  }, [assessmentId, initialSection]);
 
   const run = useMutation({
     mutationFn: (input: { command: BnMeansCommandName; payload?: Record<string, unknown> }) =>
