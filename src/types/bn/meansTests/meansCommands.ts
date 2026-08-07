@@ -33,6 +33,12 @@ export type BnMeansCommandName =
   | 'BN_MEANS_WITHDRAW_NO_ASSETS'
   | 'BN_MEANS_MARK_ASSETS_COMPLETE'
   | 'BN_MEANS_ADD_DEDUCTION'
+  // EPIC 5 — governed supporting operations for deductions and disregards.
+  | 'BN_MEANS_CORRECT_DEDUCTION'
+  | 'BN_MEANS_VOID_DEDUCTION'
+  | 'BN_MEANS_DECLARE_NO_DEDUCTIONS'
+  | 'BN_MEANS_WITHDRAW_NO_DEDUCTIONS'
+  | 'BN_MEANS_MARK_DEDUCTIONS_COMPLETE'
   | 'BN_MEANS_ATTACH_EVIDENCE'
   | 'BN_MEANS_SUBMIT'
   | 'BN_MEANS_VERIFY_INFORMATION'
@@ -103,7 +109,13 @@ export const BN_MEANS_COMMANDS: readonly BnMeansCommandSpec[] = [
   S('BN_MEANS_DECLARE_NO_ASSETS',       'bn_means_tests:write', { implemented: true }),
   S('BN_MEANS_WITHDRAW_NO_ASSETS',      'bn_means_tests:write', { implemented: true }),
   S('BN_MEANS_MARK_ASSETS_COMPLETE',    'bn_means_tests:write', { implemented: true }),
-  S('BN_MEANS_ADD_DEDUCTION',           'bn_means_tests:write'),
+  S('BN_MEANS_ADD_DEDUCTION',           'bn_means_tests:write', { implemented: true }),
+  // EPIC 5 supporting operations — versioned claims and section state.
+  S('BN_MEANS_CORRECT_DEDUCTION',       'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_VOID_DEDUCTION',          'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_DECLARE_NO_DEDUCTIONS',   'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_WITHDRAW_NO_DEDUCTIONS',  'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_MARK_DEDUCTIONS_COMPLETE','bn_means_tests:write', { implemented: true }),
   S('BN_MEANS_ATTACH_EVIDENCE',         'bn_means_tests:write'),
 
   // Submission & verification

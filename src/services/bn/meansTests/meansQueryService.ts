@@ -28,6 +28,11 @@ import type {
   BnMeansAssetReadiness,
   BnMeansAssetReference,
 } from '@/types/bn/meansTests/meansAssets';
+import type {
+  BnMeansDeductionDetail,
+  BnMeansDeductionReadiness,
+  BnMeansDeductionReference,
+} from '@/types/bn/meansTests/meansDeductions';
 
 export type {
   BnMeansAdjustmentRow,
@@ -54,6 +59,13 @@ export type {
   BnMeansAssetReadiness,
   BnMeansAssetReference,
 } from '@/types/bn/meansTests/meansAssets';
+export type {
+  BnMeansDeductionClaim,
+  BnMeansDeductionDetail,
+  BnMeansDeductionReadiness,
+  BnMeansDeductionReference,
+  BnMeansDisregardCandidate,
+} from '@/types/bn/meansTests/meansDeductions';
 
 
 export type BnMeansQueryStatus = 'OK' | 'DENIED' | 'NOT_FOUND' | 'INVALID' | 'FAILED';
@@ -412,6 +424,44 @@ export const meansQueryService = {
     if (error) return failed(error.message);
     return envelope<BnMeansAssetReference>(data);
   },
+
+  /** EPIC 5 — claims, governed targets, disregard candidates and none declarations. */
+  async deductions(assessmentId: string): Promise<BnMeansQueryResult<BnMeansDeductionDetail>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_deductions_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansDeductionDetail>(data);
+  },
+
+  /** EPIC 5 — backend-owned deduction readiness. Never recomputed in React. */
+  async deductionReadiness(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansDeductionReadiness>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_deduction_readiness_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansDeductionReadiness>(data);
+  },
+
+  /** EPIC 5 — policy-governed deduction lists (categories, reasons, sources). */
+  async deductionReference(): Promise<BnMeansQueryResult<BnMeansDeductionReference>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_deduction_reference_v1', {
+      p_actor_user_id: uid,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansDeductionReference>(data);
+  },
+
 
   /** MT7 — secured work queues. Never derived from direct table reads. */
   async queue(

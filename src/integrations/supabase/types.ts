@@ -14305,18 +14305,31 @@ export type Database = {
           assessment_id: string
           category_code: string
           claim_basis: string | null
-          claimed_amount: number
+          claim_kind: string
+          claim_reason_code: string | null
+          claimed_amount: number | null
+          claimed_percentage: number | null
           created_at: string
           created_by: string | null
           currency_code: string
-          declared_frequency: string
+          declared_frequency: string | null
           deduction_fact_id: string
           effective_from: string
           effective_to: string | null
+          evidence_requirement: string
           evidence_status: string
+          fact_source: string
+          fact_version: number
           member_id: string | null
-          normalised_annual_amount: number
+          normalised_annual_amount: number | null
+          officer_notes: string | null
           superseded_by_fact_id: string | null
+          supersedes_fact_id: string | null
+          target_kind: string
+          target_ref_id: string | null
+          treatment_status: string
+          updated_at: string
+          updated_by: string | null
           verification_status: string
           voided_at: string | null
           voided_by: string | null
@@ -14326,18 +14339,31 @@ export type Database = {
           assessment_id: string
           category_code: string
           claim_basis?: string | null
-          claimed_amount: number
+          claim_kind?: string
+          claim_reason_code?: string | null
+          claimed_amount?: number | null
+          claimed_percentage?: number | null
           created_at?: string
           created_by?: string | null
           currency_code: string
-          declared_frequency?: string
+          declared_frequency?: string | null
           deduction_fact_id?: string
           effective_from: string
           effective_to?: string | null
+          evidence_requirement?: string
           evidence_status?: string
+          fact_source?: string
+          fact_version?: number
           member_id?: string | null
-          normalised_annual_amount: number
+          normalised_annual_amount?: number | null
+          officer_notes?: string | null
           superseded_by_fact_id?: string | null
+          supersedes_fact_id?: string | null
+          target_kind?: string
+          target_ref_id?: string | null
+          treatment_status?: string
+          updated_at?: string
+          updated_by?: string | null
           verification_status?: string
           voided_at?: string | null
           voided_by?: string | null
@@ -14347,18 +14373,31 @@ export type Database = {
           assessment_id?: string
           category_code?: string
           claim_basis?: string | null
-          claimed_amount?: number
+          claim_kind?: string
+          claim_reason_code?: string | null
+          claimed_amount?: number | null
+          claimed_percentage?: number | null
           created_at?: string
           created_by?: string | null
           currency_code?: string
-          declared_frequency?: string
+          declared_frequency?: string | null
           deduction_fact_id?: string
           effective_from?: string
           effective_to?: string | null
+          evidence_requirement?: string
           evidence_status?: string
+          fact_source?: string
+          fact_version?: number
           member_id?: string | null
-          normalised_annual_amount?: number
+          normalised_annual_amount?: number | null
+          officer_notes?: string | null
           superseded_by_fact_id?: string | null
+          supersedes_fact_id?: string | null
+          target_kind?: string
+          target_ref_id?: string | null
+          treatment_status?: string
+          updated_at?: string
+          updated_by?: string | null
           verification_status?: string
           voided_at?: string | null
           voided_by?: string | null
@@ -14671,6 +14710,8 @@ export type Database = {
           currency_code: string
           declared_amount: number
           declared_frequency: string
+          disregard_candidate: boolean
+          disregard_reason_code: string | null
           effective_from: string
           effective_to: string | null
           employer_regno: string | null
@@ -14703,6 +14744,8 @@ export type Database = {
           currency_code: string
           declared_amount: number
           declared_frequency: string
+          disregard_candidate?: boolean
+          disregard_reason_code?: string | null
           effective_from: string
           effective_to?: string | null
           employer_regno?: string | null
@@ -14735,6 +14778,8 @@ export type Database = {
           currency_code?: string
           declared_amount?: number
           declared_frequency?: string
+          disregard_candidate?: boolean
+          disregard_reason_code?: string | null
           effective_from?: string
           effective_to?: string | null
           employer_regno?: string | null
@@ -14890,6 +14935,69 @@ export type Database = {
           },
           {
             foreignKeyName: "bn_means_no_asset_declaration_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_household_member"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
+      bn_means_no_deduction_declaration: {
+        Row: {
+          assessment_id: string
+          confirmation_note: string | null
+          created_at: string
+          declaration_id: string
+          declaration_scope: string
+          declaration_source: string
+          declared_at: string
+          declared_by: string | null
+          member_id: string | null
+          reason_code: string | null
+          updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          assessment_id: string
+          confirmation_note?: string | null
+          created_at?: string
+          declaration_id?: string
+          declaration_scope?: string
+          declaration_source?: string
+          declared_at?: string
+          declared_by?: string | null
+          member_id?: string | null
+          reason_code?: string | null
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          confirmation_note?: string | null
+          created_at?: string
+          declaration_id?: string
+          declaration_scope?: string
+          declaration_source?: string
+          declared_at?: string
+          declared_by?: string | null
+          member_id?: string | null
+          reason_code?: string | null
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_no_deduction_declaration_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_no_deduction_declaration_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "bn_means_household_member"
@@ -15053,6 +15161,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency_code: string
+          deduction_rules: Json
           effective_from: string
           effective_to: string | null
           household_rules: Json
@@ -15075,6 +15184,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency_code: string
+          deduction_rules?: Json
           effective_from: string
           effective_to?: string | null
           household_rules?: Json
@@ -15097,6 +15207,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency_code?: string
+          deduction_rules?: Json
           effective_from?: string
           effective_to?: string | null
           household_rules?: Json
@@ -105708,6 +105819,61 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: boolean
       }
+      _bn_means_deduction_execute: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_from_status: string
+          p_justification: string
+          p_payload: Json
+          p_reason_code: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      _bn_means_deduction_fact_json: {
+        Args: {
+          p_f: Database["public"]["Tables"]["bn_means_deduction_fact"]["Row"]
+        }
+        Returns: Json
+      }
+      _bn_means_deduction_label: {
+        Args: { p_set: string; p_value: string }
+        Returns: string
+      }
+      _bn_means_deduction_option: {
+        Args: { p_set: string; p_value: string }
+        Returns: Json
+      }
+      _bn_means_deduction_readiness: {
+        Args: { p_assessment_id: string }
+        Returns: Json
+      }
+      _bn_means_deduction_reference: { Args: never; Returns: Json }
+      _bn_means_deduction_rules: {
+        Args: { p_policy_version_id: string }
+        Returns: Json
+      }
+      _bn_means_deduction_target_json: {
+        Args: {
+          p_assessment_id: string
+          p_member_id: string
+          p_target_kind: string
+          p_target_ref_id: string
+        }
+        Returns: Json
+      }
+      _bn_means_deduction_validate: {
+        Args: { p_assessment_id: string; p_existing: string; p_payload: Json }
+        Returns: Json
+      }
+      _bn_means_disregard_candidates: {
+        Args: { p_assessment_id: string }
+        Returns: Json
+      }
       _bn_means_event: {
         Args: {
           p_actor_user_code: string
@@ -107459,6 +107625,18 @@ export type Database = {
           p_actor_user_id: string
           p_is_mutation: boolean
         }
+        Returns: Json
+      }
+      bn_means_deduction_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_deduction_reference_v1: {
+        Args: { p_actor_user_id: string }
+        Returns: Json
+      }
+      bn_means_deductions_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
       bn_means_employer_search_v1: {
