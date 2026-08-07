@@ -108436,6 +108436,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_means_activation_context_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
       bn_means_activation_readiness_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
