@@ -17,6 +17,14 @@ export type BnMeansCommandName =
   | 'BN_MEANS_REMOVE_HOUSEHOLD_MEMBER'
   | 'BN_MEANS_CORRECT_CONTEXT'
   | 'BN_MEANS_ADD_INCOME'
+  // EPIC 3 — governed supporting operations for the canonical income function.
+  // `BN_MEANS_ADD_INCOME` remains the business command; these maintain drafts.
+  | 'BN_MEANS_CORRECT_INCOME'
+  | 'BN_MEANS_VOID_INCOME'
+  | 'BN_MEANS_DECLARE_NO_INCOME'
+  | 'BN_MEANS_WITHDRAW_NO_INCOME'
+  | 'BN_MEANS_MARK_HOUSEHOLD_COMPLETE'
+  | 'BN_MEANS_MARK_INCOME_COMPLETE'
   | 'BN_MEANS_ADD_ASSET'
   | 'BN_MEANS_ADD_DEDUCTION'
   | 'BN_MEANS_ATTACH_EVIDENCE'
