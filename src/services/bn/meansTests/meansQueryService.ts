@@ -826,6 +826,44 @@ export const meansQueryService = {
     if (error) return failed(error.message);
     return envelope<readonly BnMeansDecisionQueueRow[]>(data);
   },
+
+  /**
+   * EPIC 12 — the whole post-activation lifecycle surface in one governed
+   * read: validity window, reassessment schedules, change-of-circumstance
+   * register, predecessor/successor chain, carried-forward confirmation
+   * state, lifecycle history, reference catalogue and available actions.
+   */
+  async lifecycleContext(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansLifecycleContext>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_lifecycle_context_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansLifecycleContext>(data);
+  },
+
+  /** EPIC 12 — backend-bucketed reassessment work queue. */
+  async reassessmentQueue(
+    filters: BnMeansReassessmentQueueFilters = {},
+    limit = 50,
+    offset = 0,
+  ): Promise<BnMeansQueryResult<BnMeansReassessmentQueue>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_reassessment_queue_v1', {
+      p_actor_user_id: uid,
+      p_filters: filters as never,
+      p_limit: limit,
+      p_offset: offset,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansReassessmentQueue>(data);
+  },
 };
+
 
 
