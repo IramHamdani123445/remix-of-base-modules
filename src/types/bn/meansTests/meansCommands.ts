@@ -52,6 +52,14 @@ export type BnMeansCommandName =
   | 'BN_MEANS_REOPEN_EVIDENCE'
   | 'BN_MEANS_SUBMIT'
   | 'BN_MEANS_VERIFY_INFORMATION'
+  // EPIC 8 — verification and clarification against the frozen version.
+  | 'BN_MEANS_CLAIM_VERIFICATION_WORK'
+  | 'BN_MEANS_RELEASE_VERIFICATION_WORK'
+  | 'BN_MEANS_RECORD_VERIFICATION_DECISION'
+  | 'BN_MEANS_RECORD_CLARIFICATION_RESPONSE'
+  | 'BN_MEANS_CANCEL_CLARIFICATION'
+  | 'BN_MEANS_REOPEN_VERIFICATION_FACT'
+  | 'BN_MEANS_COMPLETE_VERIFICATION'
   | 'BN_MEANS_CALCULATE'
   | 'BN_MEANS_REQUEST_ADJUSTMENT'
   | 'BN_MEANS_APPROVE_ADJUSTMENT'
@@ -139,6 +147,14 @@ export const BN_MEANS_COMMANDS: readonly BnMeansCommandSpec[] = [
   // Submission & verification
   S('BN_MEANS_SUBMIT',                  'bn_means_tests:write',   { emitsCommunication: true }),
   S('BN_MEANS_VERIFY_INFORMATION',      'bn_means_tests:verify'),
+  // EPIC 8 supporting operations — verification work, decisions, clarification.
+  S('BN_MEANS_CLAIM_VERIFICATION_WORK',       'bn_means_tests:verify', { implemented: true }),
+  S('BN_MEANS_RELEASE_VERIFICATION_WORK',     'bn_means_tests:verify', { implemented: true }),
+  S('BN_MEANS_RECORD_VERIFICATION_DECISION',  'bn_means_tests:verify', { implemented: true, forbidsSelfApproval: true }),
+  S('BN_MEANS_RECORD_CLARIFICATION_RESPONSE', 'bn_means_tests:verify', { implemented: true }),
+  S('BN_MEANS_CANCEL_CLARIFICATION',          'bn_means_tests:verify', { implemented: true, requiresJustification: true }),
+  S('BN_MEANS_REOPEN_VERIFICATION_FACT',      'bn_means_tests:verify', { implemented: true, requiresJustification: true }),
+  S('BN_MEANS_COMPLETE_VERIFICATION',         'bn_means_tests:verify', { implemented: true, forbidsSelfApproval: true }),
 
   // Calculation & adjustment
   S('BN_MEANS_CALCULATE',               'bn_means_tests:decide'),

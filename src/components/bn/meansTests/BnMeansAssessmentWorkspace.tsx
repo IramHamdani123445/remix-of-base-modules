@@ -27,10 +27,10 @@ import { meansCommandService, type BnMeansCommandResult } from '@/services/bn/me
 import type { BnMeansCommandName } from '@/types/bn/meansTests/meansCommands';
 import { formatWithCurrency } from '@/utils/formatCurrency';
 import {
-  BnMeansVerificationPanel,
   buildFactGroups,
   type BnMeansVerificationRecord,
 } from '@/components/bn/meansTests/BnMeansVerificationPanel';
+import { BnMeansVerificationSection } from '@/components/bn/meansTests/verification/BnMeansVerificationSection';
 import { BnMeansCalculationPanel } from '@/components/bn/meansTests/BnMeansCalculationPanel';
 import { BnMeansAdjustmentsPanel } from '@/components/bn/meansTests/BnMeansAdjustmentsPanel';
 import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApprovalPanel';
@@ -540,31 +540,18 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           />
         </TabsContent>
 
+        {/*
+          EPIC 8 — the operational verification and clarification surface.
+          It works only against the frozen submitted version, so it replaces
+          the earlier MT6 technical panel entirely.
+        */}
         <TabsContent value="verification">
-          <BnMeansVerificationPanel
-            groups={factGroups}
-            verifications={verifications}
-            canVerify={Boolean(verifyAction?.allowed) && !run.isPending}
-            disabledReason={
-              verifyAction?.allowed
-                ? null
-                : REASON_LABEL[verifyAction?.reason ?? ''] ?? verifyAction?.reason ?? 'not currently available'
-            }
-            busy={run.isPending}
-            onVerify={(input) =>
-              run.mutate({
-                command: 'BN_MEANS_VERIFY_INFORMATION',
-                payload: {
-                  fact_kind: input.factKind,
-                  fact_id: input.factId,
-                  outcome: input.outcome,
-                  reason_code: input.reasonCode ?? null,
-                  notes: input.note ?? null,
-                },
-              })
-            }
+          <BnMeansVerificationSection
+            assessmentId={assessmentId}
+            assessmentStatus={String(assessment.status ?? '')}
           />
         </TabsContent>
+
 
         <TabsContent value="calculation">
           <BnMeansCalculationPanel
