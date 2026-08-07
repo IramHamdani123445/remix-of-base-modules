@@ -18,22 +18,27 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatAuditDateTime, formatDisplayDate } from '@/lib/dateFormat';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
+import { riskAssessmentService } from '@/services/bn/risk/riskAssessmentService';
 import { BnRiskTriageDialog } from './BnRiskTriageDialog';
 import { BnRiskLinkSignalsDialog } from './BnRiskLinkSignalsDialog';
 import { BnRiskDismissDialog } from './BnRiskDismissDialog';
+import { BnRiskCreateAssessmentDialog } from './BnRiskCreateAssessmentDialog';
 
 interface Props {
   signalId: string | null;
   onOpenChange: (open: boolean) => void;
   actionsEnabled: boolean;
+  /** Deep link into the assessment workspace on the same Risk route. */
+  onOpenAssessment?: (assessmentId: string) => void;
 }
 
 export const BnRiskSignalDetailPanel: React.FC<Props> = ({
-  signalId, onOpenChange, actionsEnabled,
+  signalId, onOpenChange, actionsEnabled, onOpenAssessment,
 }) => {
   const [triageOpen, setTriageOpen] = React.useState(false);
   const [linkOpen, setLinkOpen] = React.useState(false);
   const [dismissOpen, setDismissOpen] = React.useState(false);
+  const [createOpen, setCreateOpen] = React.useState(false);
 
   const detail = useQuery({
     queryKey: ['bn-risk-signal-detail', signalId],
