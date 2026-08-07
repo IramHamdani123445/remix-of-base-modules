@@ -203,6 +203,50 @@ suites — 54/54 passing.
 | Epic 4 | Asset assessment (owner-linked asset declaration, policy-version-controlled categories, category-driven capture, ownership and valuation context, possible-disregard flagging, explicit no-asset declarations, backend-owned asset readiness) | **COMPLETE** |
 | Epic 5 | Deductions and disregards (separate DEDUCTION_CLAIM and DISREGARD_CANDIDATE concepts, governed target selection, policy-controlled categories, claimed amount/period/provenance, Epic 4 disregard signal review, evidence requirement identification, explicit none-claimed confirmation, backend-owned deduction readiness) | **COMPLETE** |
 | Epic 6 | Evidence and information requests (policy-derived requirement checklist by subject, search and link of existing claim documents through the governed document boundary, external references, usability checks, information requests with response tracking and closure, backend-owned evidence readiness and completion invalidation) | **COMPLETE** |
+| Epic 7 | Review and submission (backend-owned submission readiness, business-readable section summaries with return-to-section routing, policy-configured declarations captured with statement text and version, atomic submission that revalidates, freezes the version with an immutable hashed snapshot, records maker and timestamp, creates verification work and moves to SUBMITTED) | **COMPLETE** |
+
+### Epic 7 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Journey delivered** — Evidence complete → review the whole assessment in
+business language → resolve any outstanding issue in its owning section →
+confirm the policy-configured declarations → submit once → version frozen →
+verification work created → assessment moves to `SUBMITTED`.
+
+**One readiness boundary** — `bn_means_submission_readiness_v1` is the only
+authority on whether submission is permitted. The Review surface never
+recomputes readiness, and `bn_means_submission_command_v1` re-runs exactly
+the same rules inside the submitting transaction, so a readiness read that
+fails or is denied can never present as "ready to submit".
+
+**Review, not re-entry** — `bn_means_review_summary_v1` returns aggregated,
+business-readable summaries for Context, Household, Income, Assets,
+Deductions and Evidence. Amounts are labelled as declared or claimed, never
+as assessable or allowed. Raw identifiers stay in Technical details.
+
+**Declarations are policy assets** — declarations come from
+`bn_means_declaration_definition`, and each confirmation is stored in
+`bn_means_submission_declaration` with the statement text and statement
+version that the officer actually saw.
+
+**Atomic submission** — one transaction revalidates readiness, confirms the
+required declarations, freezes the version with an immutable snapshot and
+SHA-256 fingerprint, records maker and timestamp, creates verification work
+per household member, income fact, asset and deduction claim, logs the
+lifecycle events, and transitions the assessment. Idempotency replays return
+the original result; a stale expected version rejects the submission rather
+than freezing a version the officer did not review.
+
+**Boundary respected** — submission does not calculate the means test and
+does not approve the assessment. Calculation remains Epic 9 and approval
+remains later still. Any acknowledgement is issued by the Communication Hub
+from the backend boundary.
+
+
 
 ### Epic 6 — completion record
 
