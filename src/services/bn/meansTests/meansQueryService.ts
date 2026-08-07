@@ -23,6 +23,11 @@ import type {
   BnMeansIncomeReadiness,
   BnMeansIncomeReference,
 } from '@/types/bn/meansTests/meansIncome';
+import type {
+  BnMeansAssetDetail,
+  BnMeansAssetReadiness,
+  BnMeansAssetReference,
+} from '@/types/bn/meansTests/meansAssets';
 
 export type {
   BnMeansAdjustmentRow,
@@ -43,6 +48,12 @@ export type {
   BnMeansIncomeReadiness,
   BnMeansIncomeReference,
 } from '@/types/bn/meansTests/meansIncome';
+export type {
+  BnMeansAssetDetail,
+  BnMeansAssetFact,
+  BnMeansAssetReadiness,
+  BnMeansAssetReference,
+} from '@/types/bn/meansTests/meansAssets';
 
 
 export type BnMeansQueryStatus = 'OK' | 'DENIED' | 'NOT_FOUND' | 'INVALID' | 'FAILED';
