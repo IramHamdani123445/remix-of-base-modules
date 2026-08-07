@@ -16,6 +16,13 @@ import type {
   BnMeansHouseholdDetail,
   BnMeansHouseholdReadiness,
 } from '@/types/bn/meansTests/meansHousehold';
+import type {
+  BnMeansEmployerRecord,
+  BnMeansIncomeContext,
+  BnMeansIncomeDetail,
+  BnMeansIncomeReadiness,
+  BnMeansIncomeReference,
+} from '@/types/bn/meansTests/meansIncome';
 
 export type {
   BnMeansAdjustmentRow,
@@ -28,6 +35,15 @@ export type {
   BnMeansHouseholdMember,
   BnMeansHouseholdReadiness,
 } from '@/types/bn/meansTests/meansHousehold';
+export type {
+  BnMeansEmployerRecord,
+  BnMeansIncomeContext,
+  BnMeansIncomeDetail,
+  BnMeansIncomeFact,
+  BnMeansIncomeReadiness,
+  BnMeansIncomeReference,
+} from '@/types/bn/meansTests/meansIncome';
+
 
 export type BnMeansQueryStatus = 'OK' | 'DENIED' | 'NOT_FOUND' | 'INVALID' | 'FAILED';
 
