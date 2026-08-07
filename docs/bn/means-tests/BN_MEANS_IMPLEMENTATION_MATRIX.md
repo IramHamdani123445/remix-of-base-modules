@@ -206,8 +206,52 @@ suites — 54/54 passing.
 | Epic 7 | Review and submission (backend-owned submission readiness, business-readable section summaries with return-to-section routing, policy-configured declarations captured with statement text and version, atomic submission that revalidates, freezes the version with an immutable hashed snapshot, records maker and timestamp, creates verification work and moves to SUBMITTED) | **COMPLETE** |
 | Epic 8 | Verification and clarification (verification queue with governed scopes, frozen-version workspace with per-fact cards and supporting evidence, claim/release of verification work, Verify / Reject / Request clarification / Not applicable decisions with policy reason lists, clarification requests and responses that add information without rewriting history, re-review rounds, reopen with justification, independence rule preventing the submitter from verifying, snapshot integrity check, backend-owned verification readiness and completion) | **COMPLETE** |
 | Epic 9 | Calculation and explanation (single deterministic backend engine, backend-owned calculation readiness reconciled with Epic 8 verification, business-readable explanation of every included, excluded, disregarded and disallowed amount, immutable superseding calculations with history, staleness detection against the live verification revision, result presented as CALCULATED — PENDING INDEPENDENT APPROVAL) | **COMPLETE** |
+| Epic 10 | Adjustments and independent approval (governed adjustment targets and reason catalogue, structured justification and linked-evidence citation, immutable Epic 9-aware recalculation on approval, backend-owned approval readiness, maker-checker independence enforced by the backend and explained in the UI, one unified Decision surface replacing the separate adjustment and approval tabs, five governed decision queues, approval recorded as an outcome that activates nothing) | **COMPLETE** |
+
+### Epic 10 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Journey delivered** — Calculated assessment → officer requests a governed
+correction against a backend calculation line → an independent officer
+approves or rejects it → approval triggers the backend recalculation, which
+supersedes rather than edits → an independent officer records the final
+decision → the outcome is stated as approved but not yet active.
+
+**Rules enforced**
+
+- Nothing is decided in the browser. Approval readiness, independence,
+  staleness and arithmetic are all read from
+  `bn_means_decision_context_v1` / `_bn_means_approval_readiness`.
+- Adjustment targets come from the backend calculation lines and the
+  governed target catalogue; reasons come from
+  `bn_means_adjustment_reference_v1`. There is no free-text target,
+  reason code or evidence identifier.
+- Evidence is selected from documents already linked and marked usable.
+- A refusal keeps everything the officer entered and explains the reason
+  in business language, offering a reload where the record moved on.
+- Superseded calculations stay visible with the effect of each adjustment.
+- Approval records an outcome only; no benefit, award or payment is
+  activated by Epic 10.
+
+**Boundaries** — `BN_MEANS_REQUEST_ADJUSTMENT`, `BN_MEANS_APPROVE_ADJUSTMENT`,
+`BN_MEANS_APPROVE` and `BN_MEANS_REJECT` via `bn_means_execute_command_v1`
+(commands); `bn_means_decision_context_v1`,
+`bn_means_adjustment_reference_v1` and `bn_means_queues_v1` (reads).
+
+**Surfaces** — `BnMeansDecisionSection` (single Decision tab),
+`BnMeansRequestAdjustmentDialog`, `BnMeansAdjustmentDecisionDialog`,
+`BnMeansFinalDecisionDialog`, `BnMeansDecisionQueue`. The legacy
+`BnMeansAdjustmentsPanel` and `BnMeansApprovalPanel` were retired.
+
+**Tests** — `src/__tests__/bn/means-tests/meansDecisionEpic10.test.tsx`
+(27 cases); full Means-Test suite 265/265 passing.
 
 ### Epic 9 — completion record
+
 
 Classification: `IMPLEMENTATION_IN_PROGRESS` ·
 `development_access = ENABLED` ·
