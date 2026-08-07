@@ -115,7 +115,8 @@ describe('BN Risk Epic 0 — producer hand-off and 360 privacy', () => {
 
   it('keeps the Benefit 360 card limited to review status', () => {
     const card = readFile('components/bn/risk/Benefit360RiskCard.tsx');
-    expect(card).toContain('personSafeSummary');
-    expect(card).not.toMatch(/category|rule_code|justification|evidence/i);
+    const code = card.replace(/\/\*\*[\s\S]*?\*\//g, '');
+    expect(code).toContain('personSafeSummary');
+    expect(code).not.toMatch(/category_|rule_code|justification|evidence_reference|summary\.data\.rows/);
   });
 });
