@@ -17,6 +17,14 @@ export type BnMeansCommandName =
   | 'BN_MEANS_REMOVE_HOUSEHOLD_MEMBER'
   | 'BN_MEANS_CORRECT_CONTEXT'
   | 'BN_MEANS_ADD_INCOME'
+  // EPIC 3 — governed supporting operations for the canonical income function.
+  // `BN_MEANS_ADD_INCOME` remains the business command; these maintain drafts.
+  | 'BN_MEANS_CORRECT_INCOME'
+  | 'BN_MEANS_VOID_INCOME'
+  | 'BN_MEANS_DECLARE_NO_INCOME'
+  | 'BN_MEANS_WITHDRAW_NO_INCOME'
+  | 'BN_MEANS_MARK_HOUSEHOLD_COMPLETE'
+  | 'BN_MEANS_MARK_INCOME_COMPLETE'
   | 'BN_MEANS_ADD_ASSET'
   | 'BN_MEANS_ADD_DEDUCTION'
   | 'BN_MEANS_ATTACH_EVIDENCE'
@@ -73,7 +81,15 @@ export const BN_MEANS_COMMANDS: readonly BnMeansCommandSpec[] = [
   S('BN_MEANS_UPDATE_HOUSEHOLD_MEMBER', 'bn_means_tests:write'),
   S('BN_MEANS_REMOVE_HOUSEHOLD_MEMBER', 'bn_means_tests:write'),
   S('BN_MEANS_CORRECT_CONTEXT',         'bn_means_tests:write', { requiresJustification: true }),
-  S('BN_MEANS_ADD_INCOME',              'bn_means_tests:write'),
+  S('BN_MEANS_ADD_INCOME',              'bn_means_tests:write', { implemented: true }),
+  // EPIC 3 supporting operations — versioned fact replacement and section state.
+  S('BN_MEANS_CORRECT_INCOME',          'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_VOID_INCOME',             'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_DECLARE_NO_INCOME',       'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_WITHDRAW_NO_INCOME',      'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_MARK_HOUSEHOLD_COMPLETE', 'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_MARK_INCOME_COMPLETE',    'bn_means_tests:write', { implemented: true }),
+
   S('BN_MEANS_ADD_ASSET',               'bn_means_tests:write'),
   S('BN_MEANS_ADD_DEDUCTION',           'bn_means_tests:write'),
   S('BN_MEANS_ATTACH_EVIDENCE',         'bn_means_tests:write'),

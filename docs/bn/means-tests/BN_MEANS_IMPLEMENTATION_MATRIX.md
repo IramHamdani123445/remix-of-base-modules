@@ -199,6 +199,59 @@ suites — 54/54 passing.
 | Epic 0 | Module entry, left navigation, admin permissions, landing experience, shared UX controls, field contract, reference-data boundary | **COMPLETE** |
 | Epic 1 | Assessment initiation (guided wizard, governed person search, policy resolution, single backend initiation check) | **COMPLETE** |
 | Epic 2 | Intake workspace redesign and household composition (context confirmation, household section, backend-owned readiness, duplicate detection) | **COMPLETE** |
+| Epic 3 | Income assessment (member-linked income capture, governed categories and frequencies, backend annualisation, employer/contribution reference, explicit no-income declarations, backend-owned income readiness) | **COMPLETE** |
+
+### Epic 3 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Journey delivered** — completed household → select household member →
+select income category → identify income source → capture amount and
+frequency → derive annualised value → validate dates and context → resolve
+duplicates and conflicts → mark Income section complete.
+
+**Income section** — `BnMeansIncomeSection`, `BnMeansIncomeDialog` and
+`BnMeansNoIncomeDialog` replace the raw fact form. Income is always linked to
+a household member of *this* assessment (household-level income only where
+policy allows it). Category, frequency, basis and information source come from
+`bn_means_income_reference_v1`; nothing is typed as a code. Form behaviour is
+category-driven: employer lookup for employment, source name for pension and
+other categories, gross/net choice only where policy offers one, and one-off
+frequency only where the category permits it.
+
+**Annualisation is backend-owned** — the UI posts declared amount, frequency
+and basis only; `_bn_means_annualise` derives `normalised_annual_amount` and
+the annualisation method. React never multiplies an amount.
+
+**Reference integration** — `bn_means_employer_search_v1` (over `er_master`)
+and `bn_means_income_context_v1` (contribution wages from `ip_wages`, benefit
+sources reported as `NOT_IMPLEMENTED`) supply comparison context. Reference
+data is offered as a starting point and never silently overwrites a
+declaration; internal identifiers stay masked.
+
+**No income is explicit** — `bn_means_no_income_declaration` records a
+per-member declaration with reason and provenance. A member with no record is
+reported as *missing a declaration*, never as zero income.
+
+**Backend-owned readiness** — `bn_means_income_readiness_v1` returns
+completeness, blockers and warnings (duplicates, overlaps, missing
+declarations). "Mark income complete" is enabled only when the backend reports
+the section complete; a failed or denied readiness read renders *Unavailable*,
+never *Complete*.
+
+**Supporting operations added** — `BN_MEANS_CORRECT_INCOME` (versioned
+replacement), `BN_MEANS_VOID_INCOME`, `BN_MEANS_DECLARE_NO_INCOME`,
+`BN_MEANS_WITHDRAW_NO_INCOME`, `BN_MEANS_MARK_HOUSEHOLD_COMPLETE` and
+`BN_MEANS_MARK_INCOME_COMPLETE`. The canonical business catalogue remains 21
+commands; the catalogue now registers 27 entries in total.
+
+**Evidence** — `src/__tests__/bn/means-tests/meansEpic3Income.test.tsx`
+(43 cases). Means-Test suites: 176/176 passing.
+
+
 
 ### Epic 2 — completion record
 

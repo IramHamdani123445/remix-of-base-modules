@@ -35,6 +35,7 @@ import { BnMeansCalculationPanel } from '@/components/bn/meansTests/BnMeansCalcu
 import { BnMeansAdjustmentsPanel } from '@/components/bn/meansTests/BnMeansAdjustmentsPanel';
 import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApprovalPanel';
 import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMeansHouseholdSection';
+import BnMeansIncomeSection from '@/components/bn/meansTests/income/BnMeansIncomeSection';
 import BnMeansContextPanel from '@/components/bn/meansTests/context/BnMeansContextPanel';
 import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTests/BnMeansStageJourney';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
@@ -92,6 +93,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   const householdReadiness = useQuery({
     queryKey: ['bn-means-household-readiness', assessmentId],
     queryFn: () => meansQueryService.householdReadiness(assessmentId),
+  });
+  // EPIC 3 — income readiness drives the journey strip; never recomputed here.
+  const incomeReadiness = useQuery({
+    queryKey: ['bn-means-income-readiness', assessmentId],
+    queryFn: () => meansQueryService.incomeReadiness(assessmentId),
   });
   const [activeTab, setActiveTab] = React.useState('context');
 
@@ -217,25 +223,43 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 
   const householdReady =
     householdReadiness.data?.status === 'OK' ? householdReadiness.data.data : null;
-  const status = String(assessment.status ?? '');
-  const intakeDone = status !== 'DRAFT';
+  const incomeReady =
+    incomeReadiness.data?.status === 'OK' ? incomeReadiness.data.data : null;
+  const householdComplete = Boolean(householdReady?.section_complete);
   const stages: readonly BnMeansStage[] = [
     { key: 'context', label: 'Confirm context', state: 'COMPLETE', hint: 'Person, claim and period' },
     {
       key: 'household',
       label: 'Household composition',
-      state: householdReady?.section_complete
+      state: householdComplete
         ? 'COMPLETE'
         : (householdReady?.blockers.length ?? 0) > 0
           ? 'BLOCKED'
           : 'CURRENT',
       hint: householdReady ? `${householdReady.household_size} in household` : 'Who lived in the household',
     },
-    { key: 'income', label: 'Income', state: intakeDone ? 'COMPLETE' : 'PENDING', hint: 'Declared income' },
-    { key: 'assets', label: 'Assets', state: intakeDone ? 'COMPLETE' : 'PENDING' },
-    { key: 'evidence', label: 'Evidence', state: intakeDone ? 'COMPLETE' : 'PENDING' },
-    { key: 'review', label: 'Review & submit', state: intakeDone ? 'COMPLETE' : 'PENDING' },
+    {
+      key: 'income',
+      label: 'Income',
+      state: incomeReady?.section_marked_complete
+        ? 'COMPLETE'
+        : !householdComplete
+          ? 'PENDING'
+          : (incomeReady?.blockers.length ?? 0) > 0
+            ? 'BLOCKED'
+            : 'CURRENT',
+      hint: incomeReady
+        ? `${incomeReady.current_income_count} income record${
+            incomeReady.current_income_count === 1 ? '' : 's'
+          }`
+        : 'Declared income',
+    },
+    { key: 'assets', label: 'Assets', state: 'PENDING', hint: 'Not implemented yet' },
+    { key: 'deductions', label: 'Deductions', state: 'PENDING', hint: 'Not implemented yet' },
+    { key: 'evidence', label: 'Evidence', state: 'PENDING', hint: 'Not implemented yet' },
+    { key: 'review', label: 'Review & submit', state: 'PENDING', hint: 'Not implemented yet' },
   ];
+
 
   const ActionButton: React.FC<{ command: BnMeansCommandName; label: string; payload?: Record<string, unknown> }> = ({
     command,
@@ -366,35 +390,16 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         </TabsContent>
 
         <TabsContent value="income">
-          <FactSection
-            title="Income facts"
-            description="Declared amount and frequency are retained; the annualised value is derived server-side."
-            rows={asRows(data.income)}
-            columns={[
-              ['category_code', 'Category'],
-              ['declared_amount', 'Declared'],
-              ['declared_frequency', 'Frequency'],
-              ['normalised_annual_amount', 'Annualised'],
-              ['verification_status', 'Verification'],
-              ['evidence_status', 'Evidence'],
-            ]}
-            currency={currency}
-            form={
-              <InlineFactForm
-                fields={[
-                  { name: 'category_code', label: 'Income category', required: true },
-                  { name: 'declared_amount', label: 'Declared amount', type: 'number', required: true },
-                  { name: 'declared_frequency', label: 'Frequency (e.g. MONTHLY)', required: true },
-                  { name: 'effective_from', label: 'Effective from', type: 'date', required: true },
-                ]}
-                submitLabel="Add income"
-                disabled={!actionFor('BN_MEANS_ADD_INCOME')?.allowed || run.isPending}
-                reason={actionFor('BN_MEANS_ADD_INCOME')?.reason ?? null}
-                onSubmit={(payload) => run.mutate({ command: 'BN_MEANS_ADD_INCOME', payload })}
-              />
-            }
+          <BnMeansIncomeSection
+            assessmentId={assessmentId}
+            assessmentFrom={String(assessment.effective_from ?? '')}
+            assessmentTo={assessment.effective_to ? String(assessment.effective_to) : null}
+            editable={Boolean(actionFor('BN_MEANS_ADD_INCOME')?.allowed)}
+            availableActions={availableActions.filter((a) => a.allowed).map((a) => a.command)}
+            onSectionComplete={() => setActiveTab('assets')}
           />
         </TabsContent>
+
 
         <TabsContent value="assets">
           <FactSection

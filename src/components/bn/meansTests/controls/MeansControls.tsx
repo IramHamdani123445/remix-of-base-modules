@@ -377,6 +377,7 @@ export const MeansMoneyInput: React.FC<MeansMoneyInputProps> = ({
         <span className="sr-only">{`Amount in ${currency}`}</span>
         <Input
           id={id}
+          data-testid={id}
           inputMode="decimal"
           value={value}
           readOnly={readOnly}
