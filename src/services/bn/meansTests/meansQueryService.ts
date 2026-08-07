@@ -51,6 +51,25 @@ import type {
   BnMeansVerificationWorkspace,
 } from '@/types/bn/meansTests/meansVerification';
 import type { BnMeansCalculationWorkspace } from '@/types/bn/meansTests/meansCalculation';
+import type {
+  BnMeansAdjustmentReference,
+  BnMeansDecisionContext,
+  BnMeansDecisionQueueCode,
+  BnMeansDecisionQueueFilters,
+  BnMeansDecisionQueueRow,
+} from '@/types/bn/meansTests/meansDecision';
+
+export type {
+  BnMeansAdjustmentReference,
+  BnMeansAdjustmentQueueRow,
+  BnMeansApprovalReadiness,
+  BnMeansAssessmentQueueRow,
+  BnMeansDecisionAdjustment,
+  BnMeansDecisionContext,
+  BnMeansDecisionQueueCode,
+  BnMeansDecisionQueueFilters,
+  BnMeansDecisionQueueRow,
+} from '@/types/bn/meansTests/meansDecision';
 
 export type {
   BnMeansCalculationGroup,
@@ -702,11 +721,64 @@ export const meansQueryService = {
     const { data, error } = await supabase.rpc('bn_means_queues_v1', {
       p_actor_user_id: uid,
       p_queue_code: queueCode,
+      p_filters: {} as never,
       p_limit: limit,
       p_offset: offset,
     });
     if (error) return failed(error.message);
     return envelope<readonly Record<string, unknown>[]>(data);
+  },
+
+  /**
+   * EPIC 10 — the whole post-calculation decision pack in one governed
+   * read: journey, approval readiness, current and superseded calculation,
+   * adjustment register, decision history and the reason catalogue.
+   */
+  async decisionContext(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansDecisionContext>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_decision_context_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansDecisionContext>(data);
+  },
+
+  /** EPIC 10 — governed adjustment targets and reason catalogue. */
+  async adjustmentReference(
+    assessmentId?: string | null,
+  ): Promise<BnMeansQueryResult<BnMeansAdjustmentReference>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_adjustment_reference_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId ?? null,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansAdjustmentReference>(data);
+  },
+
+  /** EPIC 10 — the five governed decision queues with backend filtering. */
+  async decisionQueues(
+    queueCode: BnMeansDecisionQueueCode,
+    filters: BnMeansDecisionQueueFilters = {},
+    limit = 50,
+    offset = 0,
+  ): Promise<BnMeansQueryResult<readonly BnMeansDecisionQueueRow[]>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_queues_v1', {
+      p_actor_user_id: uid,
+      p_queue_code: queueCode,
+      p_filters: filters as never,
+      p_limit: limit,
+      p_offset: offset,
+    });
+    if (error) return failed(error.message);
+    return envelope<readonly BnMeansDecisionQueueRow[]>(data);
   },
 };
 

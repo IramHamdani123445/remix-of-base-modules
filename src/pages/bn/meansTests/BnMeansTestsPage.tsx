@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BnMeansDecisionQueue } from '@/components/bn/meansTests/decision/BnMeansDecisionQueue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, ClipboardList, Plus, ShieldAlert } from 'lucide-react';
 import {
@@ -129,7 +130,7 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="team">Team work queue</TabsTrigger>
           <TabsTrigger value="verification">Verification queue</TabsTrigger>
-          <TabsTrigger value="approval">Approval queue</TabsTrigger>
+          <TabsTrigger value="approval">Decision queues</TabsTrigger>
 
         </TabsList>
 
@@ -171,8 +172,9 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
         </TabsContent>
 
 
+        {/* EPIC 10 — adjustment and approval work in one governed surface. */}
         <TabsContent value="approval" className="pt-4">
-          <BnMeansQueuesSection onOpen={setSelected} />
+          <BnMeansDecisionQueue onOpenAssessment={setSelected} />
         </TabsContent>
       </Tabs>
     </div>
@@ -307,82 +309,6 @@ const MeansTeamQueue: React.FC<{ onOpen: (assessmentId: string) => void }> = ({ 
  * `bn_means_queues_v1` query — no direct table read, no client-side
  * derivation of who should act next.
  */
-const BnMeansQueuesSection: React.FC<{ onOpen: (assessmentId: string) => void }> = ({ onOpen }) => {
-  const [active, setActive] = React.useState<BnMeansQueueCode>('ASSESSMENTS_AWAITING_APPROVAL');
-  const q = useQuery({
-    queryKey: ['bn-means-queue', 'mt7', active],
-    queryFn: () => meansQueryService.queue(active),
-  });
-  const rows = (q.data?.status === 'OK' ? q.data.data ?? [] : []) as readonly Record<string, unknown>[];
-  const definition = BN_MEANS_QUEUES.find((x) => x.code === active)!;
-
-  return (
-    <Card data-testid="means-mt7-queues">
-      <CardHeader>
-        <CardTitle>Adjustment and approval queues</CardTitle>
-        <CardDescription>{definition.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {BN_MEANS_QUEUES.map((qd) => (
-            <Button
-              key={qd.code}
-              size="sm"
-              variant={qd.code === active ? 'default' : 'outline'}
-              onClick={() => setActive(qd.code)}
-              data-testid={`means-queue-tab-${qd.code}`}
-            >
-              {qd.label}
-            </Button>
-          ))}
-        </div>
-
-        {q.isLoading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : q.isError || (q.data && q.data.status !== 'OK') ? (
-          <Alert variant="destructive" data-testid="means-queue-unavailable">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>This queue could not be loaded</AlertTitle>
-            <AlertDescription>
-              {q.data && q.data.status === 'DENIED'
-                ? 'You do not hold permission for this queue.'
-                : (q.data?.detail ?? q.data?.code ?? 'Unknown error')}
-            </AlertDescription>
-          </Alert>
-        ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nothing is waiting in this queue.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Reference</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Waiting on</TableHead>
-                <TableHead>Since</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => (
-                <TableRow key={String(row.queue_item_id ?? row.assessment_id)}>
-                  <TableCell className="font-medium">{String(row.assessment_reference ?? '—')}</TableCell>
-                  <TableCell><Badge variant="outline">{humaniseMeansCode(String(row.status ?? ''))}</Badge></TableCell>
-                  <TableCell className="text-xs">{humaniseMeansCode(String(row.waiting_on ?? definition.label))}</TableCell>
-                  <TableCell className="text-xs">{String(row.waiting_since ?? row.updated_at ?? '—')}</TableCell>
-                  <TableCell className="text-right">
-                    <Button size="sm" variant="ghost" onClick={() => onOpen(String(row.assessment_id))}>
-                      Open
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
 
 export default function BnMeansTestsPage() {
   return (
