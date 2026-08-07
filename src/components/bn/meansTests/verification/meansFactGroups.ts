@@ -33,27 +33,6 @@ export interface BnMeansVerificationRecord {
   readonly verified_at?: unknown;
 }
 
-export interface BnMeansVerificationPanelProps {
-  readonly groups: readonly { readonly title: string; readonly rows: readonly BnMeansVerificationRow[] }[];
-  readonly verifications: readonly BnMeansVerificationRecord[];
-  readonly canVerify: boolean;
-  readonly disabledReason: string | null;
-  readonly busy: boolean;
-  readonly onVerify: (input: {
-    factKind: string;
-    factId: string;
-    outcome: BnMeansVerificationOutcome;
-    reasonCode?: string;
-    note?: string;
-  }) => void;
-}
-
-const OUTCOME_ACTIONS: readonly { outcome: BnMeansVerificationOutcome; label: string; needsReason: boolean }[] = [
-  { outcome: 'VERIFIED', label: 'Verify', needsReason: false },
-  { outcome: 'REJECTED', label: 'Reject', needsReason: true },
-  { outcome: 'CLARIFICATION_REQUIRED', label: 'Request clarification', needsReason: true },
-  { outcome: 'NOT_APPLICABLE', label: 'Mark not applicable', needsReason: false },
-];
 
 export function buildFactGroups(
   data: Record<string, unknown>,
