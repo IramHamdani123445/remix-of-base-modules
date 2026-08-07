@@ -50,6 +50,16 @@ import type {
   BnMeansVerificationReference,
   BnMeansVerificationWorkspace,
 } from '@/types/bn/meansTests/meansVerification';
+import type { BnMeansCalculationWorkspace } from '@/types/bn/meansTests/meansCalculation';
+
+export type {
+  BnMeansCalculationGroup,
+  BnMeansCalculationHistoryRow,
+  BnMeansCalculationLine,
+  BnMeansCalculationReadinessV9,
+  BnMeansCalculationRecord,
+  BnMeansCalculationWorkspace,
+} from '@/types/bn/meansTests/meansCalculation';
 
 export type {
   BnMeansVerificationCommand,
