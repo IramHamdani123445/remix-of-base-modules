@@ -109,6 +109,10 @@ export const Benefit360MeansTestCard: React.FC<Benefit360MeansTestCardProps> = (
     ['Calculated on', summary.calculated_at ? String(summary.calculated_at) : '—'],
     ['Valid until', summary.valid_until ? String(summary.valid_until) : '—'],
     ['Reassessment due', summary.reassessment_due ? String(summary.reassessment_due) : '—'],
+    // EPIC 11 — activation posture only. No household finances here.
+    ['Fact publication', String(summary.fact_publication_status ?? 'NOT_PUBLISHED')],
+    ['Eligibility rerun', String(summary.eligibility_status ?? 'NOT_REQUESTED')],
+    ['Determination', summary.determination_status ? String(summary.determination_status) : 'Not returned'],
   ];
 
 
@@ -132,6 +136,16 @@ export const Benefit360MeansTestCard: React.FC<Benefit360MeansTestCardProps> = (
           {summary.approved_not_active === true && (
             <Badge variant="secondary" data-testid="award360-means-approved-not-active">
               Approved — not yet active
+            </Badge>
+          )}
+          {summary.award_review_required === true && (
+            <Badge variant="secondary" data-testid="award360-means-award-review">
+              Award review raised
+            </Badge>
+          )}
+          {summary.eligibility_status === 'FAILED' && (
+            <Badge variant="destructive" data-testid="award360-means-eligibility-failed">
+              Eligibility rerun failed
             </Badge>
           )}
           {summary.rejected === true && (

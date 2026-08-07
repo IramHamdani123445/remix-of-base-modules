@@ -33,6 +33,7 @@ import {
 import { BnMeansVerificationSection } from '@/components/bn/meansTests/verification/BnMeansVerificationSection';
 import BnMeansCalculationSection from '@/components/bn/meansTests/calculation/BnMeansCalculationSection';
 import { BnMeansDecisionSection } from '@/components/bn/meansTests/decision/BnMeansDecisionSection';
+import BnMeansActivationSection from '@/components/bn/meansTests/activation/BnMeansActivationSection';
 import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMeansHouseholdSection';
 import BnMeansIncomeSection from '@/components/bn/meansTests/income/BnMeansIncomeSection';
 import BnMeansAssetSection from '@/components/bn/meansTests/assets/BnMeansAssetSection';
@@ -445,6 +446,7 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           <TabsTrigger value="verification">Verification</TabsTrigger>
           <TabsTrigger value="calculation">Calculation</TabsTrigger>
           <TabsTrigger value="decision">Decision</TabsTrigger>
+          <TabsTrigger value="activation">Activation</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
 
 
@@ -569,6 +571,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         {/* EPIC 10 — adjustments and independent approval are one surface. */}
         <TabsContent value="decision">
           <BnMeansDecisionSection assessmentId={assessmentId} />
+        </TabsContent>
+
+        {/* EPIC 11 — activation, fact publication and eligibility rerun. */}
+        <TabsContent value="activation">
+          <BnMeansActivationSection assessmentId={assessmentId} />
         </TabsContent>
 
         <TabsContent value="timeline">
