@@ -36,6 +36,7 @@ import { BnMeansAdjustmentsPanel } from '@/components/bn/meansTests/BnMeansAdjus
 import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApprovalPanel';
 import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMeansHouseholdSection';
 import BnMeansIncomeSection from '@/components/bn/meansTests/income/BnMeansIncomeSection';
+import BnMeansAssetSection from '@/components/bn/meansTests/assets/BnMeansAssetSection';
 import BnMeansContextPanel from '@/components/bn/meansTests/context/BnMeansContextPanel';
 import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTests/BnMeansStageJourney';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
@@ -254,7 +255,22 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           }`
         : 'Declared income',
     },
-    { key: 'assets', label: 'Assets', state: 'PENDING', hint: 'Not implemented yet' },
+    {
+      key: 'assets',
+      label: 'Assets',
+      state: assetReady?.section_marked_complete
+        ? 'COMPLETE'
+        : !incomeReady?.section_marked_complete
+          ? 'PENDING'
+          : (assetReady?.blockers.length ?? 0) > 0
+            ? 'BLOCKED'
+            : 'CURRENT',
+      hint: assetReady
+        ? `${assetReady.current_asset_count} asset record${
+            assetReady.current_asset_count === 1 ? '' : 's'
+          }`
+        : 'Declared assets',
+    },
     { key: 'deductions', label: 'Deductions', state: 'PENDING', hint: 'Not implemented yet' },
     { key: 'evidence', label: 'Evidence', state: 'PENDING', hint: 'Not implemented yet' },
     { key: 'review', label: 'Review & submit', state: 'PENDING', hint: 'Not implemented yet' },
@@ -402,33 +418,16 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 
 
         <TabsContent value="assets">
-          <FactSection
-            title="Asset facts"
-            description="Disregards are decided at calculation, not at intake."
-            rows={asRows(data.assets)}
-            columns={[
-              ['category_code', 'Category'],
-              ['valuation_amount', 'Valuation'],
-              ['ownership_share', 'Share'],
-              ['valuation_date', 'Valued on'],
-              ['verification_status', 'Verification'],
-            ]}
-            currency={currency}
-            form={
-              <InlineFactForm
-                fields={[
-                  { name: 'category_code', label: 'Asset category', required: true },
-                  { name: 'valuation_amount', label: 'Valuation', type: 'number', required: true },
-                  { name: 'valuation_date', label: 'Valuation date', type: 'date', required: true },
-                ]}
-                submitLabel="Add asset"
-                disabled={!actionFor('BN_MEANS_ADD_ASSET')?.allowed || run.isPending}
-                reason={actionFor('BN_MEANS_ADD_ASSET')?.reason ?? null}
-                onSubmit={(payload) => run.mutate({ command: 'BN_MEANS_ADD_ASSET', payload })}
-              />
-            }
+          <BnMeansAssetSection
+            assessmentId={assessmentId}
+            assessmentFrom={String(assessment.effective_from ?? '')}
+            assessmentTo={assessment.effective_to ? String(assessment.effective_to) : null}
+            editable={Boolean(actionFor('BN_MEANS_ADD_ASSET')?.allowed)}
+            availableActions={availableActions.filter((a) => a.allowed).map((a) => a.command)}
+            onSectionComplete={() => setActiveTab('deductions')}
           />
         </TabsContent>
+
 
         <TabsContent value="deductions">
           <FactSection
