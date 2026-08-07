@@ -90,7 +90,8 @@ const SUBMITTED = {
 };
 
 beforeEach(() => {
-  [detail, availableActions, calculationReadiness, benefit360Summary, execute].forEach((m) => m.mockReset());
+  [detail, availableActions, calculationReadiness, benefit360Summary, execute, verificationWorkspace]
+    .forEach((m) => m.mockReset());
 });
 
 describe('EPIC 8 — per-fact verification surface', () => {
