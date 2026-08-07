@@ -366,35 +366,16 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         </TabsContent>
 
         <TabsContent value="income">
-          <FactSection
-            title="Income facts"
-            description="Declared amount and frequency are retained; the annualised value is derived server-side."
-            rows={asRows(data.income)}
-            columns={[
-              ['category_code', 'Category'],
-              ['declared_amount', 'Declared'],
-              ['declared_frequency', 'Frequency'],
-              ['normalised_annual_amount', 'Annualised'],
-              ['verification_status', 'Verification'],
-              ['evidence_status', 'Evidence'],
-            ]}
-            currency={currency}
-            form={
-              <InlineFactForm
-                fields={[
-                  { name: 'category_code', label: 'Income category', required: true },
-                  { name: 'declared_amount', label: 'Declared amount', type: 'number', required: true },
-                  { name: 'declared_frequency', label: 'Frequency (e.g. MONTHLY)', required: true },
-                  { name: 'effective_from', label: 'Effective from', type: 'date', required: true },
-                ]}
-                submitLabel="Add income"
-                disabled={!actionFor('BN_MEANS_ADD_INCOME')?.allowed || run.isPending}
-                reason={actionFor('BN_MEANS_ADD_INCOME')?.reason ?? null}
-                onSubmit={(payload) => run.mutate({ command: 'BN_MEANS_ADD_INCOME', payload })}
-              />
-            }
+          <BnMeansIncomeSection
+            assessmentId={assessmentId}
+            assessmentFrom={String(assessment.effective_from ?? '')}
+            assessmentTo={assessment.effective_to ? String(assessment.effective_to) : null}
+            editable={Boolean(actionFor('BN_MEANS_ADD_INCOME')?.allowed)}
+            availableActions={availableActions.filter((a) => a.allowed).map((a) => a.command)}
+            onSectionComplete={() => setActiveTab('assets')}
           />
         </TabsContent>
+
 
         <TabsContent value="assets">
           <FactSection
