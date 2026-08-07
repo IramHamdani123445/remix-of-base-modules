@@ -72,7 +72,11 @@ export type BnMeansCommandErrorCode =
   | 'FROZEN_VERSION_MISSING'
   | 'FROZEN_VERSION_TAMPERED'
   | 'REASON_CODE_REQUIRED'
+  // EPIC 9 — calculation and explanation.
+  | 'NOT_READY_FOR_CALCULATION'
+  | 'POLICY_PARAMETER_MISSING'
   | 'UNKNOWN';
+
 
 export interface BnMeansCommandResult {
   readonly status: BnMeansCommandStatus;
