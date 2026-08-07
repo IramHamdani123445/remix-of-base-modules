@@ -65,7 +65,7 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
           <div>
             <h1 className="text-2xl font-semibold">Fraud, Error &amp; Risk</h1>
             <p className="text-sm text-muted-foreground">
-              Signal intake, triage and linking for benefit risk observations.
+              Signal intake, triage and governed risk assessments.
             </p>
           </div>
           {ctx.rolloutState === 'internal_pilot' && (
@@ -106,21 +106,44 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
         ))}
       </div>
 
-      <BnRiskSignalQueue onOpenSignal={setOpenSignalId} />
+      <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'signals') setOpenAssessmentId(null); }}>
+        <TabsList>
+          <TabsTrigger value="signals">Signals</TabsTrigger>
+          <TabsTrigger value="assessments">Assessments</TabsTrigger>
+        </TabsList>
 
-      <Alert>
-        <AlertTitle>What happens after triage</AlertTitle>
-        <AlertDescription>
-          Confirmed signals wait here until full risk assessments, controls and referrals
-          are released in a later stage. No signal can affect a benefit on its own.
-        </AlertDescription>
-      </Alert>
+        <TabsContent value="signals" className="space-y-6">
+          <BnRiskSignalQueue onOpenSignal={setOpenSignalId} />
+
+          <Alert>
+            <AlertTitle>What happens after triage</AlertTitle>
+            <AlertDescription>
+              A confirmed signal can be taken forward into a risk assessment, where facts
+              and evidence are gathered. Scoring, recommendations and controls are released
+              in a later stage — no signal or assessment can affect a benefit on its own.
+            </AlertDescription>
+          </Alert>
+        </TabsContent>
+
+        <TabsContent value="assessments" className="space-y-6">
+          {openAssessmentId
+            ? (
+              <BnRiskAssessmentWorkspace
+                assessmentId={openAssessmentId}
+                onBack={() => setOpenAssessmentId(null)}
+              />
+            )
+            : <BnRiskAssessmentQueue onOpenAssessment={setOpenAssessmentId} />}
+        </TabsContent>
+      </Tabs>
 
       <BnRiskSignalDetailPanel
         signalId={openSignalId}
         onOpenChange={(open) => !open && setOpenSignalId(null)}
         actionsEnabled={ctx.actionsEnabled}
+        onOpenAssessment={openAssessment}
       />
+
 
       <BnRiskManualSignalDialog
         open={manualOpen}
