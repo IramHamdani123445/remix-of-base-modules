@@ -1,20 +1,133 @@
-import React from "react";
+/**
+ * BN Risk / Fraud — operational surface (EPIC 0).
+ *
+ * Replaces the read-only placeholder. Access is gated by
+ * `BnModuleRouteGate`; mutation controls are only offered when the module
+ * permits actions and the governed action query allows them.
+ */
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   BnModuleRouteGate,
   type BnModuleAccessContext,
-} from "@/components/bn/access/BnModuleRouteGate";
-import { BnModuleReadOnlyPilotNotice } from "@/components/bn/access/BnModuleReadOnlyPilotNotice";
+} from '@/components/bn/access/BnModuleRouteGate';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ShieldAlert } from 'lucide-react';
+import { BnRiskSignalQueue } from '@/components/bn/risk/BnRiskSignalQueue';
+import { BnRiskSignalDetailPanel } from '@/components/bn/risk/BnRiskSignalDetailPanel';
+import { BnRiskManualSignalDialog } from '@/components/bn/risk/BnRiskManualSignalDialog';
+import { riskQueryService } from '@/services/bn/risk/riskQueryService';
+
+const OVERVIEW_TILES: readonly { code: string; label: string }[] = [
+  { code: 'NEW', label: 'Awaiting triage' },
+  { code: 'TRIAGED', label: 'Triaged' },
+  { code: 'LINKED', label: 'Linked' },
+  { code: 'UNDER_REVIEW', label: 'Under review' },
+  { code: 'DISMISSED', label: 'Dismissed' },
+];
+
+const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
+  const [openSignalId, setOpenSignalId] = React.useState<string | null>(null);
+  const [manualOpen, setManualOpen] = React.useState(false);
+  const [confirmation, setConfirmation] = React.useState<string | null>(null);
+
+  const counts = useQuery({
+    queryKey: ['bn-risk-signal-queue', 'counts'],
+    queryFn: async () => {
+      const result = await riskQueryService.signalQueue({}, 1, 1);
+      if (result.status !== 'OK' || !result.data) throw new Error(result.code ?? result.status);
+      return result.data.status_counts;
+    },
+  });
+
+  const canWrite = ctx.actionsEnabled && ctx.can('write');
+
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <ShieldAlert className="h-6 w-6 text-primary" />
+          <div>
+            <h1 className="text-2xl font-semibold">Fraud, Error &amp; Risk</h1>
+            <p className="text-sm text-muted-foreground">
+              Signal intake, triage and linking for benefit risk observations.
+            </p>
+          </div>
+          {ctx.rolloutState === 'internal_pilot' && (
+            <Badge variant="secondary">Internal pilot</Badge>
+          )}
+        </div>
+        {canWrite && (
+          <Button onClick={() => setManualOpen(true)}>Register manual signal</Button>
+        )}
+      </div>
+
+      {!ctx.actionsEnabled && (
+        <Alert>
+          <AlertTitle>Read-only</AlertTitle>
+          <AlertDescription>
+            Risk actions are currently disabled. You can review signals but not change them.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {confirmation && (
+        <Alert><AlertDescription>{confirmation}</AlertDescription></Alert>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {OVERVIEW_TILES.map((tile) => (
+          <Card key={tile.code}>
+            <CardHeader className="pb-2">
+              <CardDescription>{tile.label}</CardDescription>
+              <CardTitle className="text-2xl">
+                {counts.data?.[tile.code] ?? (counts.isLoading ? '—' : 0)}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0 text-xs text-muted-foreground">
+              {tile.code === 'NEW' ? 'Requires an officer decision' : 'In the risk pipeline'}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <BnRiskSignalQueue onOpenSignal={setOpenSignalId} />
+
+      <Alert>
+        <AlertTitle>What happens after triage</AlertTitle>
+        <AlertDescription>
+          Confirmed signals wait here until full risk assessments, controls and referrals
+          are released in a later stage. No signal can affect a benefit on its own.
+        </AlertDescription>
+      </Alert>
+
+      <BnRiskSignalDetailPanel
+        signalId={openSignalId}
+        onOpenChange={(open) => !open && setOpenSignalId(null)}
+        actionsEnabled={ctx.actionsEnabled}
+      />
+
+      <BnRiskManualSignalDialog
+        open={manualOpen}
+        onOpenChange={setManualOpen}
+        canRecordRestrictedNote={ctx.can('restricted_notes')}
+        onCompleted={(reference) =>
+          setConfirmation(
+            reference ? `Signal ${reference} was registered.` : 'The signal was registered.',
+          )
+        }
+      />
+    </div>
+  );
+};
 
 export default function BnRiskManagementPage() {
   return (
     <BnModuleRouteGate moduleCode="bn_risk_management" requiredAction="view">
-      {(ctx: BnModuleAccessContext) => (
-        <BnModuleReadOnlyPilotNotice
-          ctx={ctx}
-          title="Risk Management"
-          summary="Enrich claims and awards with deterministic risk signals and category scoring for downstream decisioning."
-        />
-      )}
+      {(ctx: BnModuleAccessContext) => <RiskWorkspace ctx={ctx} />}
     </BnModuleRouteGate>
   );
 }

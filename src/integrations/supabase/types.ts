@@ -24222,6 +24222,373 @@ export type Database = {
           },
         ]
       }
+      bn_risk_command_idempotency: {
+        Row: {
+          actor_user_id: string | null
+          command_name: string
+          completed_at: string | null
+          created_at: string
+          entity_version: number | null
+          idempotency_key: string
+          payload_hash: string
+          result_json: Json
+          signal_id: string | null
+          status: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          command_name: string
+          completed_at?: string | null
+          created_at?: string
+          entity_version?: number | null
+          idempotency_key: string
+          payload_hash?: string
+          result_json?: Json
+          signal_id?: string | null
+          status?: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          command_name?: string
+          completed_at?: string | null
+          created_at?: string
+          entity_version?: number | null
+          idempotency_key?: string
+          payload_hash?: string
+          result_json?: Json
+          signal_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      bn_risk_reference_value: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          domain: string
+          is_active: boolean
+          label: string
+          nature: string | null
+          reference_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          domain: string
+          is_active?: boolean
+          label: string
+          nature?: string | null
+          reference_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          domain?: string
+          is_active?: boolean
+          label?: string
+          nature?: string | null
+          reference_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bn_risk_signal: {
+        Row: {
+          award_id: string | null
+          category_code: string
+          claim_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by_source: string
+          created_by_user_id: string | null
+          dedupe_key: string
+          detected_at: string
+          dismissal_justification: string | null
+          dismissal_reason_code: string | null
+          dismissed_at: string | null
+          dismissed_by_user_id: string | null
+          evidence_reference: string | null
+          facts: Json
+          means_assessment_id: string | null
+          observation: string | null
+          observed_on: string | null
+          payment_id: string | null
+          person_id: number | null
+          person_ssn: string | null
+          priority_code: string | null
+          row_version: number
+          rule_code: string | null
+          severity_code: string | null
+          signal_id: string
+          signal_reference: string
+          source_event_code: string | null
+          source_module: string
+          source_record_id: string | null
+          source_reference: string | null
+          source_version: string | null
+          status: string
+          summary: string
+          triage_classification_code: string | null
+          triage_notes: string | null
+          triage_owner_user_id: string | null
+          triage_priority_code: string | null
+          triage_route_code: string | null
+          triaged_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          award_id?: string | null
+          category_code: string
+          claim_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by_source?: string
+          created_by_user_id?: string | null
+          dedupe_key: string
+          detected_at?: string
+          dismissal_justification?: string | null
+          dismissal_reason_code?: string | null
+          dismissed_at?: string | null
+          dismissed_by_user_id?: string | null
+          evidence_reference?: string | null
+          facts?: Json
+          means_assessment_id?: string | null
+          observation?: string | null
+          observed_on?: string | null
+          payment_id?: string | null
+          person_id?: number | null
+          person_ssn?: string | null
+          priority_code?: string | null
+          row_version?: number
+          rule_code?: string | null
+          severity_code?: string | null
+          signal_id?: string
+          signal_reference: string
+          source_event_code?: string | null
+          source_module: string
+          source_record_id?: string | null
+          source_reference?: string | null
+          source_version?: string | null
+          status?: string
+          summary: string
+          triage_classification_code?: string | null
+          triage_notes?: string | null
+          triage_owner_user_id?: string | null
+          triage_priority_code?: string | null
+          triage_route_code?: string | null
+          triaged_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          award_id?: string | null
+          category_code?: string
+          claim_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by_source?: string
+          created_by_user_id?: string | null
+          dedupe_key?: string
+          detected_at?: string
+          dismissal_justification?: string | null
+          dismissal_reason_code?: string | null
+          dismissed_at?: string | null
+          dismissed_by_user_id?: string | null
+          evidence_reference?: string | null
+          facts?: Json
+          means_assessment_id?: string | null
+          observation?: string | null
+          observed_on?: string | null
+          payment_id?: string | null
+          person_id?: number | null
+          person_ssn?: string | null
+          priority_code?: string | null
+          row_version?: number
+          rule_code?: string | null
+          severity_code?: string | null
+          signal_id?: string
+          signal_reference?: string
+          source_event_code?: string | null
+          source_module?: string
+          source_record_id?: string | null
+          source_reference?: string | null
+          source_version?: string | null
+          status?: string
+          summary?: string
+          triage_classification_code?: string | null
+          triage_notes?: string | null
+          triage_owner_user_id?: string | null
+          triage_priority_code?: string | null
+          triage_route_code?: string | null
+          triaged_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bn_risk_signal_event: {
+        Row: {
+          actor_source: string | null
+          actor_user_code: string | null
+          actor_user_id: string | null
+          command_name: string | null
+          correlation_id: string | null
+          created_at: string
+          detail: Json
+          event_code: string
+          event_id: string
+          from_status: string | null
+          justification: string | null
+          reason_code: string | null
+          row_version: number | null
+          signal_id: string | null
+          to_status: string | null
+        }
+        Insert: {
+          actor_source?: string | null
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          command_name?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          detail?: Json
+          event_code: string
+          event_id?: string
+          from_status?: string | null
+          justification?: string | null
+          reason_code?: string | null
+          row_version?: number | null
+          signal_id?: string | null
+          to_status?: string | null
+        }
+        Update: {
+          actor_source?: string | null
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          command_name?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          detail?: Json
+          event_code?: string
+          event_id?: string
+          from_status?: string | null
+          justification?: string | null
+          reason_code?: string | null
+          row_version?: number | null
+          signal_id?: string | null
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_signal_event_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_signal"
+            referencedColumns: ["signal_id"]
+          },
+        ]
+      }
+      bn_risk_signal_link: {
+        Row: {
+          correlation_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          link_id: string
+          link_reason: string | null
+          link_type_code: string
+          pair_high: string
+          pair_low: string
+          related_signal_id: string
+          signal_id: string
+          updated_at: string
+        }
+        Insert: {
+          correlation_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          link_id?: string
+          link_reason?: string | null
+          link_type_code?: string
+          pair_high: string
+          pair_low: string
+          related_signal_id: string
+          signal_id: string
+          updated_at?: string
+        }
+        Update: {
+          correlation_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          link_id?: string
+          link_reason?: string | null
+          link_type_code?: string
+          pair_high?: string
+          pair_low?: string
+          related_signal_id?: string
+          signal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_signal_link_related_signal_id_fkey"
+            columns: ["related_signal_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_signal"
+            referencedColumns: ["signal_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_signal_link_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_signal"
+            referencedColumns: ["signal_id"]
+          },
+        ]
+      }
+      bn_risk_signal_note: {
+        Row: {
+          body: string
+          created_at: string
+          created_by_user_id: string | null
+          note_id: string
+          note_kind: string
+          signal_id: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by_user_id?: string | null
+          note_id?: string
+          note_kind?: string
+          signal_id: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by_user_id?: string | null
+          note_id?: string
+          note_kind?: string
+          signal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_signal_note_signal_id_fkey"
+            columns: ["signal_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_signal"
+            referencedColumns: ["signal_id"]
+          },
+        ]
+      }
       bn_role_bundle: {
         Row: {
           code: string
@@ -107467,6 +107834,38 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_risk_event: {
+        Args: {
+          p_actor: string
+          p_actor_code: string
+          p_actor_source: string
+          p_code: string
+          p_command: string
+          p_correlation: string
+          p_detail: Json
+          p_from: string
+          p_justification: string
+          p_reason: string
+          p_row_version: number
+          p_signal: string
+          p_to: string
+        }
+        Returns: undefined
+      }
+      _bn_risk_mask_ssn: { Args: { p_ssn: string }; Returns: string }
+      _bn_risk_next_reference: { Args: never; Returns: string }
+      _bn_risk_require: {
+        Args: { p_action: string; p_actor: string; p_mutation: boolean }
+        Returns: undefined
+      }
+      _bn_risk_signal_can_transition: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
+      }
+      _bn_risk_signal_summary_row: {
+        Args: { s: Database["public"]["Tables"]["bn_risk_signal"]["Row"] }
+        Returns: Json
+      }
       _bn_susp_actor: { Args: never; Returns: string }
       _bn_susp_arrears: {
         Args: { p_award_id: string; p_from: string; p_to: string }
@@ -110069,6 +110468,68 @@ export type Database = {
           p_user_code: string
         }
         Returns: string
+      }
+      bn_risk_available_actions_v1: {
+        Args: { p_actor_user_id: string; p_signal_id: string }
+        Returns: Json
+      }
+      bn_risk_check_actor_permission: {
+        Args: {
+          p_action_name: string
+          p_actor_user_id: string
+          p_is_mutation: boolean
+        }
+        Returns: Json
+      }
+      bn_risk_execute_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+          p_signal_id: string
+        }
+        Returns: Json
+      }
+      bn_risk_person_safe_summary_v1: {
+        Args: { p_actor_user_id: string; p_person_id: number }
+        Returns: Json
+      }
+      bn_risk_person_search_v1: {
+        Args: { p_actor_user_id: string; p_limit?: number; p_search: string }
+        Returns: Json
+      }
+      bn_risk_reference_data_v1: {
+        Args: { p_actor_user_id: string }
+        Returns: Json
+      }
+      bn_risk_related_signal_search_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_limit?: number
+          p_search?: string
+          p_signal_id: string
+        }
+        Returns: Json
+      }
+      bn_risk_signal_detail_v1: {
+        Args: { p_actor_user_id: string; p_signal_id: string }
+        Returns: Json
+      }
+      bn_risk_signal_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_page?: number
+          p_page_size?: number
+        }
+        Returns: Json
       }
       bn_run_select: {
         Args: { p_sql: string }
