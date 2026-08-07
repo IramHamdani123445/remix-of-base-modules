@@ -264,7 +264,7 @@ behaviour was changed; the only workspace edits replace the assets placeholder
 and give the assets stage a backend-derived state.
 
 **Evidence** — `src/__tests__/bn/means-tests/meansAssets.test.ts` (30 cases).
-Means-Test suites: 213/213 passing.
+Means-Test suites: 183/183 passing.
 
 
 ### Epic 3 — completion record
