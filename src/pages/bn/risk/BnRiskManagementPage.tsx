@@ -1,9 +1,10 @@
 /**
- * BN Risk / Fraud — operational surface (EPIC 0).
+ * BN Risk / Fraud — operational surface (EPIC 0 signals, EPIC 1 assessments).
  *
- * Replaces the read-only placeholder. Access is gated by
- * `BnModuleRouteGate`; mutation controls are only offered when the module
- * permits actions and the governed action query allows them.
+ * Access is gated by `BnModuleRouteGate`; mutation controls are only offered
+ * when the module permits actions and the governed action query allows them.
+ * The assessment workspace is a deep link on this single governed route — no
+ * new route is registered.
  */
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -15,10 +16,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShieldAlert } from 'lucide-react';
 import { BnRiskSignalQueue } from '@/components/bn/risk/BnRiskSignalQueue';
 import { BnRiskSignalDetailPanel } from '@/components/bn/risk/BnRiskSignalDetailPanel';
 import { BnRiskManualSignalDialog } from '@/components/bn/risk/BnRiskManualSignalDialog';
+import { BnRiskAssessmentQueue } from '@/components/bn/risk/BnRiskAssessmentQueue';
+import { BnRiskAssessmentWorkspace } from '@/components/bn/risk/BnRiskAssessmentWorkspace';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
 
 const OVERVIEW_TILES: readonly { code: string; label: string }[] = [
@@ -33,6 +37,8 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const [openSignalId, setOpenSignalId] = React.useState<string | null>(null);
   const [manualOpen, setManualOpen] = React.useState(false);
   const [confirmation, setConfirmation] = React.useState<string | null>(null);
+  const [tab, setTab] = React.useState('signals');
+  const [openAssessmentId, setOpenAssessmentId] = React.useState<string | null>(null);
 
   const counts = useQuery({
     queryKey: ['bn-risk-signal-queue', 'counts'],
@@ -44,6 +50,12 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   });
 
   const canWrite = ctx.actionsEnabled && ctx.can('write');
+
+  const openAssessment = React.useCallback((assessmentId: string) => {
+    setOpenAssessmentId(assessmentId);
+    setTab('assessments');
+  }, []);
+
 
   return (
     <div className="space-y-6 p-6">
