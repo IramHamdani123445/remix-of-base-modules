@@ -36,19 +36,30 @@ export const Benefit360RiskCard: React.FC<Props> = ({ personId }) => {
         <ShieldAlert className="h-4 w-4 text-muted-foreground" />
         <CardTitle className="text-base">Risk review</CardTitle>
       </CardHeader>
-      <CardContent className="text-sm">
+      <CardContent className="space-y-1 text-sm">
         {summary.isLoading && <Skeleton className="h-5 w-40" />}
         {!summary.isLoading && !summary.data && (
           <span className="text-muted-foreground">Not available to you.</span>
         )}
         {summary.data && (
-          <Badge
-            variant={summary.data.review_state === 'NO_ACTIVE_REVIEW' ? 'secondary' : 'destructive'}
-          >
-            {summary.data.review_state_label}
-          </Badge>
+          <>
+            <Badge
+              variant={summary.data.review_state === 'NO_ACTIVE_REVIEW' ? 'secondary' : 'destructive'}
+            >
+              {summary.data.review_state_label}
+            </Badge>
+            {summary.data.stage_label && (
+              <p className="text-muted-foreground">{summary.data.stage_label}</p>
+            )}
+            {summary.data.assessment_reference && (
+              <p className="text-xs text-muted-foreground">
+                Reference {summary.data.assessment_reference}
+              </p>
+            )}
+          </>
         )}
       </CardContent>
+
     </Card>
   );
 };
