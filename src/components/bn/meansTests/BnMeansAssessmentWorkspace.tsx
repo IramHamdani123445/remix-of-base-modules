@@ -34,6 +34,7 @@ import { BnMeansVerificationSection } from '@/components/bn/meansTests/verificat
 import BnMeansCalculationSection from '@/components/bn/meansTests/calculation/BnMeansCalculationSection';
 import { BnMeansDecisionSection } from '@/components/bn/meansTests/decision/BnMeansDecisionSection';
 import BnMeansActivationSection from '@/components/bn/meansTests/activation/BnMeansActivationSection';
+import BnMeansLifecycleSection from '@/components/bn/meansTests/lifecycle/BnMeansLifecycleSection';
 import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMeansHouseholdSection';
 import BnMeansIncomeSection from '@/components/bn/meansTests/income/BnMeansIncomeSection';
 import BnMeansAssetSection from '@/components/bn/meansTests/assets/BnMeansAssetSection';
@@ -447,6 +448,7 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           <TabsTrigger value="calculation">Calculation</TabsTrigger>
           <TabsTrigger value="decision">Decision</TabsTrigger>
           <TabsTrigger value="activation">Activation</TabsTrigger>
+          <TabsTrigger value="lifecycle">Lifecycle</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
 
 
@@ -577,6 +579,13 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         <TabsContent value="activation">
           <BnMeansActivationSection assessmentId={assessmentId} />
         </TabsContent>
+
+        {/* EPIC 12 — reassessment and change of circumstances. */}
+        <TabsContent value="lifecycle">
+          <BnMeansLifecycleSection assessmentId={assessmentId} />
+        </TabsContent>
+
+
 
         <TabsContent value="timeline">
 

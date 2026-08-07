@@ -15584,8 +15584,10 @@ export type Database = {
           policy_code: string
           policy_id: string
           policy_name: string
+          row_version: number
           status: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           authority_reference?: string | null
@@ -15595,8 +15597,10 @@ export type Database = {
           policy_code: string
           policy_id?: string
           policy_name: string
+          row_version?: number
           status?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           authority_reference?: string | null
@@ -15606,8 +15610,43 @@ export type Database = {
           policy_code?: string
           policy_id?: string
           policy_name?: string
+          row_version?: number
           status?: string
           updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      bn_means_policy_audit: {
+        Row: {
+          actor_user_id: string | null
+          audit_id: string
+          command_name: string
+          created_at: string
+          payload: Json
+          policy_id: string | null
+          policy_version_id: string | null
+          result: Json
+        }
+        Insert: {
+          actor_user_id?: string | null
+          audit_id?: string
+          command_name: string
+          created_at?: string
+          payload?: Json
+          policy_id?: string | null
+          policy_version_id?: string | null
+          result?: Json
+        }
+        Update: {
+          actor_user_id?: string | null
+          audit_id?: string
+          command_name?: string
+          created_at?: string
+          payload?: Json
+          policy_id?: string | null
+          policy_version_id?: string | null
+          result?: Json
         }
         Relationships: []
       }
@@ -15658,6 +15697,30 @@ export type Database = {
           },
         ]
       }
+      bn_means_policy_idempotency: {
+        Row: {
+          command_name: string
+          created_at: string
+          idempotency_key: string
+          payload_hash: string
+          result_json: Json
+        }
+        Insert: {
+          command_name: string
+          created_at?: string
+          idempotency_key: string
+          payload_hash?: string
+          result_json?: Json
+        }
+        Update: {
+          command_name?: string
+          created_at?: string
+          idempotency_key?: string
+          payload_hash?: string
+          result_json?: Json
+        }
+        Relationships: []
+      }
       bn_means_policy_version: {
         Row: {
           asset_rules: Json
@@ -15677,9 +15740,15 @@ export type Database = {
           required_evidence: Json
           rounding_method: string
           rounding_scale: number
+          row_version: number
           status: string
+          superseded_by: string | null
           threshold_parameters: Json
           updated_at: string
+          updated_by: string | null
+          validated_at: string | null
+          validation_report: Json
+          validation_state: string
           validity_months: number | null
           version_label: string
         }
@@ -15701,9 +15770,15 @@ export type Database = {
           required_evidence?: Json
           rounding_method?: string
           rounding_scale?: number
+          row_version?: number
           status?: string
+          superseded_by?: string | null
           threshold_parameters?: Json
           updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validation_report?: Json
+          validation_state?: string
           validity_months?: number | null
           version_label: string
         }
@@ -15725,9 +15800,15 @@ export type Database = {
           required_evidence?: Json
           rounding_method?: string
           rounding_scale?: number
+          row_version?: number
           status?: string
+          superseded_by?: string | null
           threshold_parameters?: Json
           updated_at?: string
+          updated_by?: string | null
+          validated_at?: string | null
+          validation_report?: Json
+          validation_state?: string
           validity_months?: number | null
           version_label?: string
         }
@@ -106894,6 +106975,10 @@ export type Database = {
         }[]
       }
       _bn_means_person_label: { Args: { p_user_id: string }; Returns: string }
+      _bn_means_policy_validate: {
+        Args: { p_policy_version_id: string }
+        Returns: Json
+      }
       _bn_means_readiness: { Args: { p_assessment_id: string }; Returns: Json }
       _bn_means_recalculate: {
         Args: {
@@ -108728,12 +108813,37 @@ export type Database = {
         Args: { p_actor_user_id: string; p_limit?: number; p_term: string }
         Returns: Json
       }
+      bn_means_policy_admin_detail_v1: {
+        Args: { p_actor_user_id: string; p_policy_id: string }
+        Returns: Json
+      }
+      bn_means_policy_admin_list_v1: {
+        Args: { p_actor_user_id: string; p_filters?: Json }
+        Returns: Json
+      }
+      bn_means_policy_command_v1: {
+        Args: {
+          p_actor_user_id?: string
+          p_command_name: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_payload?: Json
+          p_payload_hash?: string
+          p_policy_id?: string
+          p_policy_version_id?: string
+        }
+        Returns: Json
+      }
       bn_means_policy_resolution_v1: {
         Args: {
           p_actor_user_id: string
           p_benefit_programme: string
           p_effective_date: string
         }
+        Returns: Json
+      }
+      bn_means_policy_validation_v1: {
+        Args: { p_actor_user_id: string; p_policy_version_id: string }
         Returns: Json
       }
       bn_means_programmes_v1: {

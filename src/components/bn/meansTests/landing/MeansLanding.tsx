@@ -28,8 +28,8 @@ export const MEANS_PROCESS_JOURNEY: readonly {
   { code: 'VERIFICATION', label: 'Verification', status: 'DELIVERED' },
   { code: 'CALCULATION', label: 'Calculation', status: 'DELIVERED' },
   { code: 'APPROVAL', label: 'Approval', status: 'DELIVERED' },
-  { code: 'ACTIVATION', label: 'Activation', status: 'NOT_IMPLEMENTED' },
-  { code: 'REASSESSMENT', label: 'Reassessment', status: 'NOT_IMPLEMENTED' },
+  { code: 'ACTIVATION', label: 'Activation', status: 'DELIVERED' },
+  { code: 'REASSESSMENT', label: 'Reassessment', status: 'DELIVERED' },
 ];
 
 const STATUS_TEXT: Record<string, string> = {
@@ -114,16 +114,14 @@ export const MEANS_WORK_AREAS: readonly MeansWorkAreaDefinition[] = [
     code: 'REASSESSMENT_QUEUE',
     label: 'Reassessment queue',
     description: 'Active assessments due for review or affected by a reported change.',
-    implemented: false,
-    unavailableReason: 'Reassessment is not implemented yet.',
+    implemented: true,
     requiredAction: 'reassess',
   },
   {
     code: 'CONFIGURATION',
     label: 'Configuration',
-    description: 'Means-Test policy, thresholds and reference data.',
-    implemented: false,
-    unavailableReason: 'Means-Test configuration screens are not implemented yet.',
+    description: 'Means-Test policy, thresholds, evidence requirements and activation.',
+    implemented: true,
     requiredAction: 'config',
   },
 ];
