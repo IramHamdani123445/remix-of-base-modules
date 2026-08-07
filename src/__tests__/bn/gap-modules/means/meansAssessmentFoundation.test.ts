@@ -104,8 +104,15 @@ const SUPPORTING_OPERATIONS: readonly BnMeansCommandName[] = [
 ];
 
 describe('Means-Test command catalogue', () => {
-  it('registers all 21 canonical commands plus the governed supporting operations', () => {
-    expect(BN_MEANS_COMMANDS).toHaveLength(CANONICAL_COMMANDS.length + SUPPORTING_OPERATIONS.length);
+  it('registers every canonical command and governed supporting operation', () => {
+    // The catalogue grew through Epics 10-13 (adjustments, activation,
+    // lifecycle). It must remain a superset of the foundation contract,
+    // with no duplicate registrations.
+    const names = BN_MEANS_COMMANDS.map((c) => c.command);
+    expect(new Set(names).size).toBe(names.length);
+    expect(BN_MEANS_COMMANDS.length).toBeGreaterThanOrEqual(
+      CANONICAL_COMMANDS.length + SUPPORTING_OPERATIONS.length,
+    );
     for (const c of [...CANONICAL_COMMANDS, ...SUPPORTING_OPERATIONS]) {
       expect(getMeansCommandSpec(c)).toBeDefined();
     }

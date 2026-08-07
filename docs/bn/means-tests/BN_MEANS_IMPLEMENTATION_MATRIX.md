@@ -672,3 +672,27 @@ Means-Test suite totals 81 passing tests.
 - "My assessments", verification queue and reassessment queue backend reads.
 - Activation and reassessment stages of the journey.
 - Means-Test configuration screens for holders of `config`.
+
+## Epic status register (final)
+
+| Epic | Scope | Status |
+| --- | --- | --- |
+| Epic 0 | Foundation, navigation, field/reference contracts | COMPLETE |
+| Epic 1 | Initiation and policy resolution | COMPLETE |
+| Epic 2 | Assessment workspace | COMPLETE |
+| Epic 3 | Household and income intake | COMPLETE |
+| Epic 4 | Assets | COMPLETE |
+| Epic 5 | Deductions and disregards | COMPLETE |
+| Epic 6 | Evidence and information requests | COMPLETE |
+| Epic 7 | Review, declaration and submission (version freeze) | COMPLETE |
+| Epic 8 | Per-fact verification and clarification | COMPLETE |
+| Epic 9 | Deterministic calculation and explanation | COMPLETE |
+| Epic 10 | Adjustments and independent approval | COMPLETE |
+| Epic 11 | Activation and Eligibility integration | COMPLETE |
+| Epic 12 | Reassessment and change of circumstances | COMPLETE |
+| Epic 13 | Operational queues and reporting | COMPLETE |
+| Epic 14 | End-to-end completion and certification | COMPLETE |
+
+Epic 14 evidence: `docs/bn/means-tests/BN_MEANS_EPIC_14_COMPLETION_RECORD.md`.
+The earlier "known gaps" noted under Epic 0 are all closed; the module is
+functionally complete and technically certified for controlled UAT.

@@ -3,7 +3,7 @@
  *
  * Process journey, work-area cards and the "How Means Tests work" panel.
  * Nothing here fabricates a count: a work area either has a delivered
- * backend read or it states, in plain words, that it is not implemented yet.
+ * backend read or it states, in plain words, that it is not available yet.
  */
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,7 +35,7 @@ export const MEANS_PROCESS_JOURNEY: readonly {
 const STATUS_TEXT: Record<string, string> = {
   DELIVERED: 'Available',
   IN_PROGRESS: 'In build',
-  NOT_IMPLEMENTED: 'Not implemented yet',
+  NOT_IMPLEMENTED: 'Not available',
 };
 
 export const MeansProcessJourney: React.FC = () => (
@@ -44,7 +44,7 @@ export const MeansProcessJourney: React.FC = () => (
       <CardTitle>The Means-Test journey</CardTitle>
       <CardDescription>
         Each stage below is a step an officer completes. Stages marked
-        “Not implemented yet” are still being built and offer no actions.
+        “In build” are still being delivered and offer no actions.
       </CardDescription>
     </CardHeader>
     <CardContent>
@@ -84,9 +84,8 @@ export const MEANS_WORK_AREAS: readonly MeansWorkAreaDefinition[] = [
   {
     code: 'MY_ASSESSMENTS',
     label: 'My assessments',
-    description: 'Assessments assigned to you personally.',
-    implemented: false,
-    unavailableReason: 'A per-officer assignment read has not been delivered yet.',
+    description: 'Assessments assigned to you personally, in Operations → My work.',
+    implemented: true,
     requiredAction: 'view',
   },
   {
@@ -143,7 +142,7 @@ export const MeansWorkAreaCard: React.FC<{
           <CardTitle className="text-base">{area.label}</CardTitle>
           {unavailable ? (
             <Badge variant="secondary" className="shrink-0">
-              {permitted ? 'Not implemented yet' : 'No access'}
+              {permitted ? 'Not available yet' : 'No access'}
             </Badge>
           ) : (
             <Badge variant="outline" className="shrink-0">Available</Badge>

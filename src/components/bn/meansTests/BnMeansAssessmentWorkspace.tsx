@@ -29,7 +29,7 @@ import { formatWithCurrency } from '@/utils/formatCurrency';
 import {
   buildFactGroups,
   type BnMeansVerificationRecord,
-} from '@/components/bn/meansTests/BnMeansVerificationPanel';
+} from '@/components/bn/meansTests/verification/meansFactGroups';
 import { BnMeansVerificationSection } from '@/components/bn/meansTests/verification/BnMeansVerificationSection';
 import BnMeansCalculationSection from '@/components/bn/meansTests/calculation/BnMeansCalculationSection';
 import { BnMeansDecisionSection } from '@/components/bn/meansTests/decision/BnMeansDecisionSection';
@@ -57,9 +57,47 @@ const REASON_LABEL: Record<string, string> = BN_MEANS_REASON_LABEL;
 export interface BnMeansAssessmentWorkspaceProps {
   assessmentId: string;
   onBack: () => void;
+  /**
+   * EPIC 14 — deep link from an operational queue. The backend decides the
+   * section (`deep_link_section`); React only translates it to a tab.
+   */
+  initialSection?: string | null;
 }
 
 type Row = Record<string, unknown>;
+
+/** Backend section codes → workspace tab values. Unknown codes fall back. */
+export const MEANS_WORKSPACE_SECTIONS = [
+  'context', 'household', 'income', 'assets', 'deductions', 'evidence',
+  'review', 'verification', 'calculation', 'decision', 'activation',
+  'lifecycle', 'timeline',
+] as const;
+
+export function meansSectionToTab(section: string | null | undefined): string {
+  if (!section) return 'context';
+  const normalised = String(section).trim().toLowerCase();
+  const direct = MEANS_WORKSPACE_SECTIONS.find((tab) => tab === normalised);
+  if (direct) return direct;
+  const aliases: Record<string, string> = {
+    information_request: 'evidence',
+    information: 'evidence',
+    clarification: 'evidence',
+    documents: 'evidence',
+    submission: 'review',
+    review_and_submit: 'review',
+    verify: 'verification',
+    calculate: 'calculation',
+    adjustment: 'decision',
+    adjustments: 'decision',
+    approval: 'decision',
+    decision_queue: 'decision',
+    integration: 'activation',
+    eligibility: 'activation',
+    reassessment: 'lifecycle',
+    change_of_circumstance: 'lifecycle',
+  };
+  return aliases[normalised] ?? 'context';
+}
 
 function asRows(value: unknown): Row[] {
   return Array.isArray(value) ? (value as Row[]) : [];
@@ -68,6 +106,7 @@ function asRows(value: unknown): Row[] {
 export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProps> = ({
   assessmentId,
   onBack,
+  initialSection = null,
 }) => {
   const queryClient = useQueryClient();
   const [commandError, setCommandError] = React.useState<BnMeansCommandResult | null>(null);
@@ -124,7 +163,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     queryKey: ['bn-means-submission-readiness', assessmentId],
     queryFn: () => meansQueryService.submissionReadiness(assessmentId),
   });
-  const [activeTab, setActiveTab] = React.useState('context');
+  const [activeTab, setActiveTab] = React.useState(() => meansSectionToTab(initialSection));
+  // A new deep link (different assessment or section) re-targets the workspace.
+  React.useEffect(() => {
+    setActiveTab(meansSectionToTab(initialSection));
+  }, [assessmentId, initialSection]);
 
   const run = useMutation({
     mutationFn: (input: { command: BnMeansCommandName; payload?: Record<string, unknown> }) =>
