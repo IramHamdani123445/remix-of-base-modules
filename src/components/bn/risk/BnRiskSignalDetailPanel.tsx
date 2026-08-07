@@ -336,6 +336,19 @@ export const BnRiskSignalDetailPanel: React.FC<Props> = ({
               rowVersion={rowVersion}
               onCompleted={() => { detail.refetch(); actions.refetch(); }}
             />
+            <BnRiskCreateAssessmentDialog
+              open={createOpen}
+              onOpenChange={setCreateOpen}
+              signalId={d.summary.signal_id}
+              signalReference={d.summary.signal_reference}
+              defaultSummary={d.summary.summary}
+              onCreated={(assessmentId) => {
+                assessmentLinks.refetch();
+                detail.refetch();
+                onOpenChange(false);
+                onOpenAssessment?.(assessmentId);
+              }}
+            />
           </>
         )}
       </SheetContent>
