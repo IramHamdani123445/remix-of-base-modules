@@ -134,12 +134,52 @@ export const BnRiskSignalDetailPanel: React.FC<Props> = ({
                     {a.label}
                   </Button>
                 ))}
-                {(actions.data?.actions?.length ?? 0) === 0 && (
+                {canStartAssessment && (
+                  <Button size="sm" variant="secondary" onClick={() => setCreateOpen(true)}>
+                    Start risk assessment
+                  </Button>
+                )}
+                {(actions.data?.actions?.length ?? 0) === 0 && !canStartAssessment && (
                   <p className="text-sm text-muted-foreground">
                     No actions are available to you for this signal.
                   </p>
                 )}
               </div>
+
+              {(assessmentLinks.data?.length ?? 0) > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Risk assessments</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm">
+                    {(assessmentLinks.data ?? []).map((a) => (
+                      <div key={a.assessment_id} className="flex items-center justify-between gap-2">
+                        <span>
+                          <span className="font-medium">{a.assessment_reference}</span>
+                          <span className="block text-muted-foreground">
+                            {a.role_code === 'PRIMARY' ? 'Primary signal' : 'Related signal'}
+                          </span>
+                        </span>
+                        <span className="flex items-center gap-2">
+                          <Badge variant="secondary">{a.status_label}</Badge>
+                          {onOpenAssessment && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                onOpenChange(false);
+                                onOpenAssessment(a.assessment_id);
+                              }}
+                            >
+                              Open
+                            </Button>
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader><CardTitle className="text-base">What was observed</CardTitle></CardHeader>
