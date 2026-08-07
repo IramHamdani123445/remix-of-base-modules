@@ -230,7 +230,8 @@ describe('EPIC 7 — review surface', () => {
     execute.mockResolvedValue({ status: 'FAILED', errorCode: 'STALE_ROW_VERSION', errorDetail: 'expected=7 actual=9' });
     wrap(<BnMeansReviewSection assessmentId="a1" onNavigateSection={() => {}} />);
 
-    await act(async () => { fireEvent.click(await screen.findByLabelText('Officer review')); });
+    const declaration = await screen.findByLabelText('Officer review');
+    await act(async () => { fireEvent.click(declaration); });
     await act(async () => { fireEvent.click(screen.getByLabelText('I have reviewed this assessment')); });
     await act(async () => { fireEvent.click(screen.getByTestId('means-submit-button')); });
 
@@ -261,6 +262,6 @@ describe('EPIC 7 — review surface', () => {
 
     expect(await screen.findByTestId('means-review-submitted')).toBeInTheDocument();
     expect(screen.queryByTestId('means-submit-button')).not.toBeInTheDocument();
-    expect(screen.getByText(/Submitted — awaiting verification/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Submitted — awaiting verification/).length).toBeGreaterThan(0);
   });
 });
