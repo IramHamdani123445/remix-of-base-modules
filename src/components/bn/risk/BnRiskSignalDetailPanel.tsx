@@ -238,7 +238,7 @@ export const BnRiskSignalDetailPanel: React.FC<Props> = ({
                 <CardContent className="space-y-2 text-sm">
                   {d.history.map((h, index) => (
                     <div key={`${h.event_code}-${index}`} className="border-l-2 pl-3">
-                      <p className="font-medium">{h.event_code.replaceAll('_', ' ').toLowerCase()}</p>
+                      <p className="font-medium">{h.event_code.replace(/_/g, ' ').toLowerCase()}</p>
                       <p className="text-muted-foreground">
                         {formatAuditDateTime(h.created_at)}
                         {h.to_status ? ` — ${h.to_status}` : ''}
