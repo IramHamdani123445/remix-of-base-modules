@@ -14626,6 +14626,7 @@ export type Database = {
       }
       bn_means_income_fact: {
         Row: {
+          annualisation_method: string
           assessment_id: string
           basis: string
           category_code: string
@@ -14636,18 +14637,28 @@ export type Database = {
           declared_frequency: string
           effective_from: string
           effective_to: string | null
+          employer_regno: string | null
+          employer_snapshot: Json
           evidence_status: string
           fact_source: string
+          fact_version: number
           income_fact_id: string
+          income_notes: string | null
           income_source: string | null
           member_id: string | null
           normalised_annual_amount: number
+          occurrence_date: string | null
+          source_name: string | null
           superseded_by_fact_id: string | null
+          supersedes_fact_id: string | null
+          updated_at: string
+          updated_by: string | null
           verification_status: string
           voided_at: string | null
           voided_by: string | null
         }
         Insert: {
+          annualisation_method?: string
           assessment_id: string
           basis?: string
           category_code: string
@@ -14658,18 +14669,28 @@ export type Database = {
           declared_frequency: string
           effective_from: string
           effective_to?: string | null
+          employer_regno?: string | null
+          employer_snapshot?: Json
           evidence_status?: string
           fact_source?: string
+          fact_version?: number
           income_fact_id?: string
+          income_notes?: string | null
           income_source?: string | null
           member_id?: string | null
           normalised_annual_amount: number
+          occurrence_date?: string | null
+          source_name?: string | null
           superseded_by_fact_id?: string | null
+          supersedes_fact_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
           verification_status?: string
           voided_at?: string | null
           voided_by?: string | null
         }
         Update: {
+          annualisation_method?: string
           assessment_id?: string
           basis?: string
           category_code?: string
@@ -14680,13 +14701,22 @@ export type Database = {
           declared_frequency?: string
           effective_from?: string
           effective_to?: string | null
+          employer_regno?: string | null
+          employer_snapshot?: Json
           evidence_status?: string
           fact_source?: string
+          fact_version?: number
           income_fact_id?: string
+          income_notes?: string | null
           income_source?: string | null
           member_id?: string | null
           normalised_annual_amount?: number
+          occurrence_date?: string | null
+          source_name?: string | null
           superseded_by_fact_id?: string | null
+          supersedes_fact_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
           verification_status?: string
           voided_at?: string | null
           voided_by?: string | null
@@ -14762,6 +14792,72 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_means_assessment"
             referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_no_income_declaration: {
+        Row: {
+          assessment_id: string
+          confirmation_note: string | null
+          created_at: string
+          declaration_id: string
+          declaration_source: string
+          declared_at: string
+          declared_by: string | null
+          effective_from: string
+          effective_to: string | null
+          member_id: string
+          reason_code: string | null
+          updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          assessment_id: string
+          confirmation_note?: string | null
+          created_at?: string
+          declaration_id?: string
+          declaration_source?: string
+          declared_at?: string
+          declared_by?: string | null
+          effective_from: string
+          effective_to?: string | null
+          member_id: string
+          reason_code?: string | null
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          confirmation_note?: string | null
+          created_at?: string
+          declaration_id?: string
+          declaration_source?: string
+          declared_at?: string
+          declared_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          member_id?: string
+          reason_code?: string | null
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_no_income_declaration_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_no_income_declaration_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_household_member"
+            referencedColumns: ["member_id"]
           },
         ]
       }
@@ -14857,6 +14953,7 @@ export type Database = {
           effective_from: string
           effective_to: string | null
           household_rules: Json
+          income_rules: Json
           policy_id: string
           policy_version_id: string
           reassessment_months: number | null
@@ -14877,6 +14974,7 @@ export type Database = {
           effective_from: string
           effective_to?: string | null
           household_rules?: Json
+          income_rules?: Json
           policy_id: string
           policy_version_id?: string
           reassessment_months?: number | null
@@ -14897,6 +14995,7 @@ export type Database = {
           effective_from?: string
           effective_to?: string | null
           household_rules?: Json
+          income_rules?: Json
           policy_id?: string
           policy_version_id?: string
           reassessment_months?: number | null
@@ -14964,6 +15063,50 @@ export type Database = {
           {
             foreignKeyName: "bn_means_reassessment_schedule_successor_assessment_id_fkey"
             columns: ["successor_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_section_completion: {
+        Row: {
+          assessment_id: string
+          completed_at: string
+          completed_by: string | null
+          completion_id: string
+          created_at: string
+          reopened_at: string | null
+          reopened_by: string | null
+          section_code: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          completed_at?: string
+          completed_by?: string | null
+          completion_id?: string
+          created_at?: string
+          reopened_at?: string | null
+          reopened_by?: string | null
+          section_code: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          completed_at?: string
+          completed_by?: string | null
+          completion_id?: string
+          created_at?: string
+          reopened_at?: string | null
+          reopened_by?: string | null
+          section_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_section_completion_assessment_id_fkey"
+            columns: ["assessment_id"]
             isOneToOne: false
             referencedRelation: "bn_means_assessment"
             referencedColumns: ["assessment_id"]
@@ -105478,6 +105621,33 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_means_income_fact_json: {
+        Args: {
+          p_f: Database["public"]["Tables"]["bn_means_income_fact"]["Row"]
+        }
+        Returns: Json
+      }
+      _bn_means_income_label: {
+        Args: { p_set: string; p_value: string }
+        Returns: string
+      }
+      _bn_means_income_option: {
+        Args: { p_set: string; p_value: string }
+        Returns: Json
+      }
+      _bn_means_income_reference: { Args: never; Returns: Json }
+      _bn_means_income_rules: {
+        Args: { p_policy_version_id: string }
+        Returns: Json
+      }
+      _bn_means_income_validate: {
+        Args: {
+          p_assessment_id: string
+          p_exclude_fact_id?: string
+          p_payload: Json
+        }
+        Returns: Json
+      }
       _bn_means_is_editable: { Args: { p_status: string }; Returns: boolean }
       _bn_means_latest_calculation: {
         Args: { p_assessment_id: string }
@@ -107128,6 +107298,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_means_employer_search_v1: {
+        Args: { p_actor_user_id: string; p_limit?: number; p_term: string }
+        Returns: Json
+      }
       bn_means_execute_command_v1: {
         Args: {
           p_actor_user_code: string
@@ -107157,6 +107331,26 @@ export type Database = {
         Returns: Json
       }
       bn_means_household_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_income_context_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_member_id: string
+        }
+        Returns: Json
+      }
+      bn_means_income_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_income_reference_v1: {
+        Args: { p_actor_user_id: string }
+        Returns: Json
+      }
+      bn_means_income_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
