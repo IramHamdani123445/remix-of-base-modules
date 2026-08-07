@@ -251,6 +251,14 @@ const VERIFICATION_COMMANDS = new Set<string>(BN_MEANS_VERIFICATION_COMMANDS);
  */
 const ACTIVATION_COMMANDS = new Set<string>(BN_MEANS_ACTIVATION_COMMANDS);
 
+/**
+ * EPIC 12 — reassessment, change of circumstance, successor creation,
+ * carried-forward confirmation, supersession and closure are served by the
+ * lifecycle boundary, which owns validity windows, materiality handling and
+ * the controlled prefill rules.
+ */
+const LIFECYCLE_COMMANDS = new Set<string>(BN_MEANS_LIFECYCLE_COMMANDS);
+
 export const meansCommandService = {
   canonicalisePayload,
   computePayloadHash,
