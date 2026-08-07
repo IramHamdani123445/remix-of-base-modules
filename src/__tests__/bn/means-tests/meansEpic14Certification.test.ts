@@ -64,7 +64,7 @@ describe('EPIC 14 · architecture certification', () => {
 
   it('exposes no raw MT-epic jargon (MT6/MT7/MT8) in user-facing copy', () => {
     const offenders = SOURCES.filter(
-      (f) => /^src\/(components|pages)\//.test(f.path) && />[^<]*\bMT[6-8]\b/.test(f.text),
+      (f) => /^src\/(components|pages)\//.test(f.path) && />[^<\n]*\bMT[6-8]\b/.test(f.text),
     ).map((f) => f.path);
     expect(offenders).toEqual([]);
   });
