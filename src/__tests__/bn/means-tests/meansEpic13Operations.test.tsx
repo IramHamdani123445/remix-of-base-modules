@@ -7,8 +7,7 @@
  */
 import React from 'react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const rpc = vi.fn();
@@ -189,7 +188,7 @@ describe('Epic 13 — work queue surface', () => {
     const onOpen = vi.fn();
     wrap(<BnMeansWorkQueue queueCode="MY_WORK" onOpen={onOpen} />);
     expect(await screen.findByText('Verify declared facts')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Open' })); });
     expect(onOpen).toHaveBeenCalledWith('a-1', 'verification');
   });
 
@@ -224,7 +223,8 @@ describe('Epic 13 — work queue surface', () => {
       });
     });
     wrap(<BnMeansWorkQueue queueCode="MY_WORK" onOpen={() => {}} canAssign actionsEnabled />);
-    await userEvent.click(await screen.findByTestId('means-ops-assign-a-1'));
+    const claim = await screen.findByTestId('means-ops-assign-a-1');
+    await act(async () => { fireEvent.click(claim); });
     await waitFor(() => expect(screen.getByTestId('means-ops-assign-error')).toBeInTheDocument());
   });
 
