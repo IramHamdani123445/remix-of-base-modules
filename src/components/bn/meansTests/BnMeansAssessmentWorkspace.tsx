@@ -100,6 +100,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     queryKey: ['bn-means-income-readiness', assessmentId],
     queryFn: () => meansQueryService.incomeReadiness(assessmentId),
   });
+  // EPIC 4 — asset readiness drives the journey strip; never recomputed here.
+  const assetReadiness = useQuery({
+    queryKey: ['bn-means-asset-readiness', assessmentId],
+    queryFn: () => meansQueryService.assetReadiness(assessmentId),
+  });
   const [activeTab, setActiveTab] = React.useState('context');
 
   const run = useMutation({
@@ -226,6 +231,8 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     householdReadiness.data?.status === 'OK' ? householdReadiness.data.data : null;
   const incomeReady =
     incomeReadiness.data?.status === 'OK' ? incomeReadiness.data.data : null;
+  const assetReady =
+    assetReadiness.data?.status === 'OK' ? assetReadiness.data.data : null;
   const householdComplete = Boolean(householdReady?.section_complete);
   const stages: readonly BnMeansStage[] = [
     { key: 'context', label: 'Confirm context', state: 'COMPLETE', hint: 'Person, claim and period' },
