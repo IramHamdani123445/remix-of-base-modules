@@ -13687,8 +13687,12 @@ export type Database = {
           assigned_to: string | null
           award_id: string | null
           benefit_programme: string
+          carried_forward_confirmed_at: string | null
           checker_user_id: string | null
           claim_id: string | null
+          closed_at: string | null
+          closure_justification: string | null
+          closure_reason_code: string | null
           correlation_id: string | null
           created_at: string
           created_by: string | null
@@ -13709,6 +13713,7 @@ export type Database = {
           source_entry_point: string | null
           status: string
           submitted_at: string | null
+          superseded_at: string | null
           superseded_by_assessment_id: string | null
           supersedes_assessment_id: string | null
           updated_at: string
@@ -13726,8 +13731,12 @@ export type Database = {
           assigned_to?: string | null
           award_id?: string | null
           benefit_programme: string
+          carried_forward_confirmed_at?: string | null
           checker_user_id?: string | null
           claim_id?: string | null
+          closed_at?: string | null
+          closure_justification?: string | null
+          closure_reason_code?: string | null
           correlation_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -13748,6 +13757,7 @@ export type Database = {
           source_entry_point?: string | null
           status?: string
           submitted_at?: string | null
+          superseded_at?: string | null
           superseded_by_assessment_id?: string | null
           supersedes_assessment_id?: string | null
           updated_at?: string
@@ -13765,8 +13775,12 @@ export type Database = {
           assigned_to?: string | null
           award_id?: string | null
           benefit_programme?: string
+          carried_forward_confirmed_at?: string | null
           checker_user_id?: string | null
           claim_id?: string | null
+          closed_at?: string | null
+          closure_justification?: string | null
+          closure_reason_code?: string | null
           correlation_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -13787,6 +13801,7 @@ export type Database = {
           source_entry_point?: string | null
           status?: string
           submitted_at?: string | null
+          superseded_at?: string | null
           superseded_by_assessment_id?: string | null
           supersedes_assessment_id?: string | null
           updated_at?: string
@@ -14247,6 +14262,7 @@ export type Database = {
       bn_means_circumstance_event: {
         Row: {
           assessment_id: string
+          category_code: string | null
           change_type: string
           circumstance_id: string
           correlation_id: string | null
@@ -14256,11 +14272,17 @@ export type Database = {
           effective_date: string | null
           handoff_id: string | null
           justification: string | null
+          materiality: string
+          outcome: string
+          reason_code: string | null
+          reported_channel: string | null
           reported_on: string
+          schedule_id: string | null
           successor_assessment_id: string | null
         }
         Insert: {
           assessment_id: string
+          category_code?: string | null
           change_type: string
           circumstance_id?: string
           correlation_id?: string | null
@@ -14270,11 +14292,17 @@ export type Database = {
           effective_date?: string | null
           handoff_id?: string | null
           justification?: string | null
+          materiality?: string
+          outcome?: string
+          reason_code?: string | null
+          reported_channel?: string | null
           reported_on?: string
+          schedule_id?: string | null
           successor_assessment_id?: string | null
         }
         Update: {
           assessment_id?: string
+          category_code?: string | null
           change_type?: string
           circumstance_id?: string
           correlation_id?: string | null
@@ -14284,7 +14312,12 @@ export type Database = {
           effective_date?: string | null
           handoff_id?: string | null
           justification?: string | null
+          materiality?: string
+          outcome?: string
+          reason_code?: string | null
+          reported_channel?: string | null
           reported_on?: string
+          schedule_id?: string | null
           successor_assessment_id?: string | null
         }
         Relationships: [
@@ -15711,34 +15744,52 @@ export type Database = {
       bn_means_reassessment_schedule: {
         Row: {
           assessment_id: string
+          cancelled_at: string | null
+          cancelled_by: string | null
+          circumstance_id: string | null
           completed_at: string | null
+          completed_by: string | null
           created_at: string
           created_by: string | null
           due_date: string
+          justification: string | null
           reason_code: string | null
           schedule_id: string
+          source: string
           status: string
           successor_assessment_id: string | null
         }
         Insert: {
           assessment_id: string
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          circumstance_id?: string | null
           completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string | null
           due_date: string
+          justification?: string | null
           reason_code?: string | null
           schedule_id?: string
+          source?: string
           status?: string
           successor_assessment_id?: string | null
         }
         Update: {
           assessment_id?: string
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          circumstance_id?: string | null
           completed_at?: string | null
+          completed_by?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string
+          justification?: string | null
           reason_code?: string | null
           schedule_id?: string
+          source?: string
           status?: string
           successor_assessment_id?: string | null
         }
@@ -106523,6 +106574,17 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: boolean
       }
+      _bn_means_create_successor: {
+        Args: {
+          p_actor: string
+          p_actor_code: string
+          p_correlation: string
+          p_effective_from: string
+          p_predecessor: string
+          p_reason: string
+        }
+        Returns: string
+      }
       _bn_means_declaration_requirements: {
         Args: { p_assessment_id: string }
         Returns: Json
@@ -106772,6 +106834,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _bn_means_lifecycle_execute: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      _bn_means_lifecycle_readiness: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      _bn_means_lifecycle_reference: { Args: never; Returns: Json }
       _bn_means_maker_source: {
         Args: { p_command_name: string }
         Returns: string
@@ -108617,6 +108700,26 @@ export type Database = {
         Args: { p_actor_user_id: string; p_context: Json }
         Returns: Json
       }
+      bn_means_lifecycle_command_v1: {
+        Args: {
+          p_actor_user_code?: string
+          p_actor_user_id?: string
+          p_assessment_id?: string
+          p_command_name: string
+          p_correlation_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_justification?: string
+          p_payload?: Json
+          p_payload_hash?: string
+          p_reason_code?: string
+        }
+        Returns: Json
+      }
+      bn_means_lifecycle_context_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
       bn_means_person_context_v1: {
         Args: { p_actor_user_id: string; p_person_id: number }
         Returns: Json
@@ -108657,6 +108760,15 @@ export type Database = {
             }
             Returns: Json
           }
+      bn_means_reassessment_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
       bn_means_review_summary_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
