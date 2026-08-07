@@ -14299,6 +14299,68 @@ export type Database = {
           },
         ]
       }
+      bn_means_declaration_definition: {
+        Row: {
+          active: boolean
+          actor_type: string
+          created_at: string
+          declaration_code: string
+          declaration_id: string
+          description: string | null
+          display_order: number
+          effective_from: string
+          effective_to: string | null
+          label: string
+          policy_version_id: string | null
+          required: boolean
+          statement_text: string
+          statement_version: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          actor_type?: string
+          created_at?: string
+          declaration_code: string
+          declaration_id?: string
+          description?: string | null
+          display_order?: number
+          effective_from?: string
+          effective_to?: string | null
+          label: string
+          policy_version_id?: string | null
+          required?: boolean
+          statement_text: string
+          statement_version?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          actor_type?: string
+          created_at?: string
+          declaration_code?: string
+          declaration_id?: string
+          description?: string | null
+          display_order?: number
+          effective_from?: string
+          effective_to?: string | null
+          label?: string
+          policy_version_id?: string | null
+          required?: boolean
+          statement_text?: string
+          statement_version?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_declaration_definition_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+        ]
+      }
       bn_means_deduction_fact: {
         Row: {
           approval_status: string
@@ -15570,6 +15632,72 @@ export type Database = {
           },
         ]
       }
+      bn_means_submission_declaration: {
+        Row: {
+          actor_type: string
+          assessment_id: string
+          assessment_version_id: string | null
+          confirmed: boolean
+          confirmed_at: string
+          confirmed_by: string | null
+          correlation_id: string | null
+          created_at: string
+          declaration_code: string
+          label: string
+          required: boolean
+          statement_text: string
+          statement_version: string
+          submission_declaration_id: string
+        }
+        Insert: {
+          actor_type?: string
+          assessment_id: string
+          assessment_version_id?: string | null
+          confirmed?: boolean
+          confirmed_at?: string
+          confirmed_by?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          declaration_code: string
+          label: string
+          required?: boolean
+          statement_text: string
+          statement_version: string
+          submission_declaration_id?: string
+        }
+        Update: {
+          actor_type?: string
+          assessment_id?: string
+          assessment_version_id?: string | null
+          confirmed?: boolean
+          confirmed_at?: string
+          confirmed_by?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          declaration_code?: string
+          label?: string
+          required?: boolean
+          statement_text?: string
+          statement_version?: string
+          submission_declaration_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_submission_declaration_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_submission_declaration_assessment_version_id_fkey"
+            columns: ["assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment_version"
+            referencedColumns: ["assessment_version_id"]
+          },
+        ]
+      }
       bn_means_verification: {
         Row: {
           assessment_id: string
@@ -15637,6 +15765,75 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_means_evidence"
             referencedColumns: ["evidence_id"]
+          },
+        ]
+      }
+      bn_means_verification_work: {
+        Row: {
+          assessment_id: string
+          assessment_version_id: string
+          assigned_team: string | null
+          assigned_user_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          evidence_refs: Json
+          fact_kind: string
+          fact_ref_id: string | null
+          fact_summary: string | null
+          priority: string
+          status: string
+          updated_at: string
+          work_id: string
+        }
+        Insert: {
+          assessment_id: string
+          assessment_version_id: string
+          assigned_team?: string | null
+          assigned_user_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          evidence_refs?: Json
+          fact_kind: string
+          fact_ref_id?: string | null
+          fact_summary?: string | null
+          priority?: string
+          status?: string
+          updated_at?: string
+          work_id?: string
+        }
+        Update: {
+          assessment_id?: string
+          assessment_version_id?: string
+          assigned_team?: string | null
+          assigned_user_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          evidence_refs?: Json
+          fact_kind?: string
+          fact_ref_id?: string | null
+          fact_summary?: string | null
+          priority?: string
+          status?: string
+          updated_at?: string
+          work_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_verification_work_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_verification_work_assessment_version_id_fkey"
+            columns: ["assessment_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment_version"
+            referencedColumns: ["assessment_version_id"]
           },
         ]
       }
@@ -106060,6 +106257,10 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: boolean
       }
+      _bn_means_declaration_requirements: {
+        Args: { p_assessment_id: string }
+        Returns: Json
+      }
       _bn_means_deduction_execute: {
         Args: {
           p_actor_user_code: string
@@ -106336,6 +106537,10 @@ export type Database = {
       _bn_means_round: {
         Args: { p_amount: number; p_method: string; p_scale: number }
         Returns: number
+      }
+      _bn_means_submission_readiness: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
       }
       _bn_mortality_action_for_command: {
         Args: { p_command_name: string }
@@ -108049,6 +108254,30 @@ export type Database = {
           p_offset?: number
           p_queue_code: string
         }
+        Returns: Json
+      }
+      bn_means_review_summary_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_submission_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_means_submission_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
       bn_means_work_queue_v1: {

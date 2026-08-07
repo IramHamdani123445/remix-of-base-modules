@@ -34,11 +34,22 @@ import type {
   BnMeansDeductionReference,
 } from '@/types/bn/meansTests/meansDeductions';
 import type {
+  BnMeansReviewSummary,
+  BnMeansSubmissionReadiness,
+} from '@/types/bn/meansTests/meansSubmission';
+import type {
   BnMeansDocumentCandidate,
   BnMeansEvidenceDetail,
   BnMeansEvidenceReadiness,
   BnMeansEvidenceReference,
 } from '@/types/bn/meansTests/meansEvidence';
+
+export type {
+  BnMeansDeclarationDefinition,
+  BnMeansReviewSummary,
+  BnMeansSubmissionIssue,
+  BnMeansSubmissionReadiness,
+} from '@/types/bn/meansTests/meansSubmission';
 
 export type {
   BnMeansDocumentCandidate,
@@ -539,6 +550,38 @@ export const meansQueryService = {
   },
 
 
+
+  /**
+   * EPIC 7 — the single authoritative submission-readiness boundary.
+   * React never recomputes final readiness; the same rules are re-run by
+   * the governed submission command before anything is frozen.
+   */
+  async submissionReadiness(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansSubmissionReadiness>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_submission_readiness_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansSubmissionReadiness>(data);
+  },
+
+  /** EPIC 7 — backend-owned review aggregation for the Review surface. */
+  async reviewSummary(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansReviewSummary>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_review_summary_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansReviewSummary>(data);
+  },
 
   /** MT7 — secured work queues. Never derived from direct table reads. */
   async queue(
