@@ -60,8 +60,25 @@ export const BnRiskSignalDetailPanel: React.FC<Props> = ({
     enabled: !!signalId,
   });
 
+  /** Assessments already built from this signal — Epic 1 navigation. */
+  const assessmentLinks = useQuery({
+    queryKey: ['bn-risk-signal-assessment-links', signalId],
+    queryFn: async () => {
+      const result = await riskAssessmentService.signalAssessmentLinks(signalId as string);
+      if (result.status !== 'OK' || !result.data) throw new Error(result.code ?? result.status);
+      return result.data.rows;
+    },
+    enabled: !!signalId,
+  });
+
   const d = detail.data;
   const rowVersion = d?.summary.row_version ?? 0;
+  const canStartAssessment =
+    actionsEnabled
+    && !!onOpenAssessment
+    && (d?.summary.status === 'CONFIRMED' || d?.summary.status === 'TRIAGED'
+      || d?.summary.status === 'UNDER_REVIEW' || d?.summary.status === 'LINKED');
+
 
   return (
     <Sheet open={!!signalId} onOpenChange={onOpenChange}>
