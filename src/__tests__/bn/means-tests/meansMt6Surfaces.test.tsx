@@ -215,78 +215,127 @@ describe('EPIC 8 — per-fact verification surface', () => {
 });
 
 
-describe('MT6 — deterministic calculation', () => {
-  it('renders backend readiness blockers and keeps Calculate disabled', async () => {
+describe('EPIC 9 — calculation and explanation surface', () => {
+  it('renders backend blockers and keeps Calculate disabled', async () => {
     detail.mockResolvedValue({ status: 'OK', data: SUBMITTED });
     availableActions.mockResolvedValue({
       status: 'OK',
       data: [{ command: 'BN_MEANS_CALCULATE', allowed: false, reason: 'NOT_READY_FOR_CALCULATION', row_version: 5 }],
     });
-    calculationReadiness.mockResolvedValue({
+    calculationReadiness.mockResolvedValue({ status: 'OK', data: null });
+    calculationWorkspace.mockResolvedValue({
       status: 'OK',
       data: {
         assessment_id: 'a1',
-        status: 'VERIFICATION_PENDING',
-        ready_for_calculation: false,
-        missing_verifications: [{ fact_kind: 'INCOME', fact_id: 'i1' }],
-        rejected_facts: [],
-        clarification_required: [],
-        policy_configuration_issues: [],
-        currency_issues: [],
-        reason_codes: ['MISSING_VERIFICATION'],
+        readiness: {
+          ready_for_calculation: false,
+          blockers: [
+            { code: 'OUTSTANDING_VERIFICATION', message: '1 fact(s) still awaiting a verification decision.' },
+          ],
+          currency_issues: [],
+          has_calculation: false,
+          calculation_current: false,
+        },
+        calculation: null,
+        calculation_current: false,
+        lines: [],
+        history: [],
       },
     });
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
     await openTab('Calculation');
 
-    expect(await screen.findByTestId('means-readiness-blockers')).toHaveTextContent('INCOME i1');
+    expect(await screen.findByTestId('means-calculation-blockers')).toHaveTextContent(
+      'awaiting a verification decision',
+    );
     expect(screen.getByTestId('means-calculate')).toBeDisabled();
   });
 
-  it('states readiness as unknown when the readiness read fails', async () => {
+  it('states the calculation as unavailable when the read fails', async () => {
     detail.mockResolvedValue({ status: 'OK', data: SUBMITTED });
     availableActions.mockResolvedValue({ status: 'OK', data: [] });
-    calculationReadiness.mockResolvedValue({ status: 'FAILED', data: null, detail: 'connection reset' });
+    calculationReadiness.mockResolvedValue({ status: 'OK', data: null });
+    calculationWorkspace.mockResolvedValue({ status: 'FAILED', data: null, detail: 'connection reset' });
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
     await openTab('Calculation');
 
-    expect(await screen.findByTestId('means-readiness-unavailable')).toBeInTheDocument();
+    expect(await screen.findByTestId('means-calculation-unavailable')).toBeInTheDocument();
   });
 
-  it('shows the immutable calculation trace when one exists', async () => {
-    detail.mockResolvedValue({
+  it('shows the business explanation, staleness and history for a calculation', async () => {
+    detail.mockResolvedValue({ status: 'OK', data: SUBMITTED });
+    availableActions.mockResolvedValue({
+      status: 'OK',
+      data: [{ command: 'BN_MEANS_CALCULATE', allowed: true, reason: null, row_version: 5 }],
+    });
+    calculationReadiness.mockResolvedValue({ status: 'OK', data: null });
+    calculationWorkspace.mockResolvedValue({
       status: 'OK',
       data: {
-        ...SUBMITTED,
-        calculations: [
+        assessment_id: 'a1',
+        readiness: {
+          ready_for_calculation: true,
+          blockers: [],
+          currency_issues: [],
+          has_calculation: true,
+          calculation_current: false,
+        },
+        calculation: {
+          calculation_id: 'c1',
+          sequence_no: 2,
+          result: 'PASS',
+          currency_code: 'XCD',
+          gross_income: 14400,
+          income_disregard_total: 1200,
+          approved_deductions: 0,
+          assessable_income: 13200,
+          threshold_amount: 20000,
+          excess_amount: 0,
+          shortfall_amount: 6800,
+          assessable_assets: 0,
+          asset_threshold_amount: null,
+          household_size: 1,
+          warnings: [],
+          input_hash: 'abc123',
+          engine_version: 'bn-means-engine-1.1.0',
+          calculated_at: '2026-02-01T10:00:00Z',
+        },
+        calculation_current: false,
+        lines: [
           {
-            calculation_id: 'c1',
-            result: 'PASS',
-            assessed_means_amount: 14400,
-            threshold_amount: 20000,
-            calculated_at: '2026-02-01T10:00:00Z',
-            policy_version_id: 'p1',
-            input_hash: 'abc123',
-            lines: [
-              { line_id: 'l1', sequence_no: 1, line_type: 'INCOME_TOTAL', rule_code: 'R1', amount: 14400, explanation: 'Annualised verified income' },
-            ],
+            line_id: 'l1',
+            line_no: 2001,
+            group_code: 'INCOME',
+            display_order: 201,
+            business_label: 'Employment wages',
+            treatment_code: 'INCLUDED',
+            claimed_amount: 1200,
+            disregard_amount: 0,
+            applied_amount: 14400,
+            explanation: 'Counted in full at its annual value.',
           },
+        ],
+        history: [
+          { calculation_id: 'c1', sequence_no: 2, result: 'PASS', calculated_at: '2026-02-01T10:00:00Z', is_current: true },
+          { calculation_id: 'c0', sequence_no: 1, result: 'FAIL', calculated_at: '2026-01-20T10:00:00Z', is_current: false },
         ],
       },
     });
-    availableActions.mockResolvedValue({ status: 'OK', data: [] });
-    calculationReadiness.mockResolvedValue({ status: 'OK', data: null });
 
     wrap(<BnMeansAssessmentWorkspace assessmentId="a1" onBack={() => {}} />);
     await openTab('Calculation');
 
-    const trace = await screen.findByTestId('means-calculation-trace');
-    expect(trace).toHaveTextContent('abc123');
-    expect(trace).toHaveTextContent('INCOME_TOTAL');
+    const explanation = await screen.findByTestId('means-calculation-explanation');
+    expect(explanation).toHaveTextContent('Employment wages');
+    expect(explanation).toHaveTextContent('Counted in full');
+    expect(screen.getByTestId('means-calculation-stale')).toHaveTextContent('Recalculate before approval');
+    expect(screen.getByTestId('means-calculation-history')).toHaveTextContent('Superseded');
+    expect(screen.getByTestId('means-calculation-summary')).toHaveTextContent('Assessed means');
   });
 });
+
 
 describe('MT6 — Benefit 360 privacy is preserved', () => {
   it('shows calculation posture without any household finance detail', async () => {
