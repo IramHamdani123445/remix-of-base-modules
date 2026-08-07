@@ -56,6 +56,11 @@ import type {
   BnMeansActivationReadiness,
 } from '@/types/bn/meansTests/meansActivation';
 import type {
+  BnMeansLifecycleContext,
+  BnMeansReassessmentQueue,
+  BnMeansReassessmentQueueFilters,
+} from '@/types/bn/meansTests/meansLifecycle';
+import type {
   BnMeansAdjustmentReference,
   BnMeansDecisionContext,
   BnMeansDecisionQueueCode,
