@@ -204,6 +204,38 @@ suites — 54/54 passing.
 | Epic 5 | Deductions and disregards (separate DEDUCTION_CLAIM and DISREGARD_CANDIDATE concepts, governed target selection, policy-controlled categories, claimed amount/period/provenance, Epic 4 disregard signal review, evidence requirement identification, explicit none-claimed confirmation, backend-owned deduction readiness) | **COMPLETE** |
 | Epic 6 | Evidence and information requests (policy-derived requirement checklist by subject, search and link of existing claim documents through the governed document boundary, external references, usability checks, information requests with response tracking and closure, backend-owned evidence readiness and completion invalidation) | **COMPLETE** |
 | Epic 7 | Review and submission (backend-owned submission readiness, business-readable section summaries with return-to-section routing, policy-configured declarations captured with statement text and version, atomic submission that revalidates, freezes the version with an immutable hashed snapshot, records maker and timestamp, creates verification work and moves to SUBMITTED) | **COMPLETE** |
+| Epic 8 | Verification and clarification (verification queue with governed scopes, frozen-version workspace with per-fact cards and supporting evidence, claim/release of verification work, Verify / Reject / Request clarification / Not applicable decisions with policy reason lists, clarification requests and responses that add information without rewriting history, re-review rounds, reopen with justification, independence rule preventing the submitter from verifying, snapshot integrity check, backend-owned verification readiness and completion) | **COMPLETE** |
+
+### Epic 8 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Journey delivered** — Submitted frozen assessment → verification queue →
+verifier opens the frozen version → reviews each fact with its evidence →
+Verify / Reject / Request clarification / Not applicable → clarification
+response where needed → affected fact returns for re-review → all work
+resolved → backend confirms verification complete → assessment is ready for
+Epic 9 Calculation.
+
+**Rules enforced**
+
+- Verification never edits the submitted declaration; only decisions,
+  clarification requests and responses are written.
+- Every decision is taken against the frozen submitted version, and the
+  snapshot hash is re-checked before verification may be completed.
+- Clarification adds information and evidence; it never rewrites history and
+  always creates a new review round.
+- The submitter cannot verify their own assessment.
+- Calculation does not run in Epic 8.
+
+**Boundaries** — `bn_means_verification_command_v1` (commands),
+`bn_means_verification_workspace_v1`, `bn_means_verification_queue_v1`,
+`bn_means_verification_readiness_v1` and
+`bn_means_verification_reference_v1` (reads). The browser derives no
+availability, reason list or readiness of its own.
 
 ### Epic 7 — completion record
 
