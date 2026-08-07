@@ -11,6 +11,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { BnMeansCommandName } from '@/types/bn/meansTests/meansCommands';
 import { BN_MEANS_VERIFICATION_COMMANDS } from '@/types/bn/meansTests/meansVerification';
+import { BN_MEANS_ACTIVATION_COMMANDS } from '@/types/bn/meansTests/meansActivation';
 
 export interface BnMeansCommandRequest {
   readonly command: BnMeansCommandName;
@@ -94,6 +95,20 @@ export type BnMeansCommandErrorCode =
   | 'TARGET_KIND_INVALID'
   | 'CURRENCY_REQUIRED'
   | 'DECISION_INVALID'
+  // EPIC 11 — activation and eligibility integration.
+  | 'ALREADY_ACTIVE'
+  | 'APPEAL_IN_PROGRESS'
+  | 'ASSESSMENT_NOT_APPROVED'
+  | 'APPROVED_CALCULATION_STALE'
+  | 'APPROVAL_CALCULATION_MISMATCH'
+  | 'VERIFICATION_NO_LONGER_VALID'
+  | 'POLICY_RETIRED'
+  | 'FACT_PUBLICATION_NOT_READY'
+  | 'APPROVED_CALCULATION_MISSING'
+  | 'VALIDITY_DATES_MISSING'
+  | 'NO_PUBLICATION'
+  | 'RETRY_NOT_AVAILABLE'
+  | 'ELIGIBILITY_BOUNDARY_UNAVAILABLE'
   | 'UNKNOWN';
 
 
@@ -132,6 +147,11 @@ const KNOWN_ERROR_CODES = new Set<string>([
   'VERIFICATION_INCOMPLETE', 'VERSION_OWNERSHIP_MISMATCH', 'POLICY_VERSION_CHANGE_DENIED',
   'POLICY_NO_LONGER_EFFECTIVE', 'APPROVAL_ALREADY_RECORDED', 'REJECTION_ALREADY_RECORDED',
   'TARGET_KIND_INVALID', 'CURRENCY_REQUIRED', 'DECISION_INVALID',
+  'ALREADY_ACTIVE', 'APPEAL_IN_PROGRESS', 'ASSESSMENT_NOT_APPROVED',
+  'APPROVED_CALCULATION_STALE', 'APPROVAL_CALCULATION_MISMATCH',
+  'VERIFICATION_NO_LONGER_VALID', 'POLICY_RETIRED', 'FACT_PUBLICATION_NOT_READY',
+  'APPROVED_CALCULATION_MISSING', 'VALIDITY_DATES_MISSING', 'NO_PUBLICATION',
+  'RETRY_NOT_AVAILABLE', 'ELIGIBILITY_BOUNDARY_UNAVAILABLE',
 ]);
 
 
@@ -208,6 +228,14 @@ const EVIDENCE_COMMANDS = new Set<string>([
  */
 const VERIFICATION_COMMANDS = new Set<string>(BN_MEANS_VERIFICATION_COMMANDS);
 
+/**
+ * EPIC 11 — activation, fact publication and eligibility integration are
+ * served by the activation boundary, which re-runs activation readiness
+ * transactionally, publishes the canonical `means.*` bundle and raises the
+ * governed eligibility / award-review hand-offs.
+ */
+const ACTIVATION_COMMANDS = new Set<string>(BN_MEANS_ACTIVATION_COMMANDS);
+
 export const meansCommandService = {
   canonicalisePayload,
   computePayloadHash,
@@ -243,9 +271,11 @@ export const meansCommandService = {
       ? 'bn_means_evidence_command_v1'
       : VERIFICATION_COMMANDS.has(request.command)
         ? 'bn_means_verification_command_v1'
-        : request.command === 'BN_MEANS_SUBMIT'
-          ? 'bn_means_submission_command_v1'
-          : 'bn_means_execute_command_v1';
+        : ACTIVATION_COMMANDS.has(request.command)
+          ? 'bn_means_activation_command_v1'
+          : request.command === 'BN_MEANS_SUBMIT'
+            ? 'bn_means_submission_command_v1'
+            : 'bn_means_execute_command_v1';
 
     const { data, error } = await supabase.rpc(rpcName as never, {
       p_command_name: request.command,

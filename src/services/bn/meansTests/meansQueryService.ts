@@ -52,6 +52,10 @@ import type {
 } from '@/types/bn/meansTests/meansVerification';
 import type { BnMeansCalculationWorkspace } from '@/types/bn/meansTests/meansCalculation';
 import type {
+  BnMeansActivationContext,
+  BnMeansActivationReadiness,
+} from '@/types/bn/meansTests/meansActivation';
+import type {
   BnMeansAdjustmentReference,
   BnMeansDecisionContext,
   BnMeansDecisionQueueCode,
@@ -70,6 +74,16 @@ export type {
   BnMeansDecisionQueueFilters,
   BnMeansDecisionQueueRow,
 } from '@/types/bn/meansTests/meansDecision';
+
+export type {
+  BnMeansActivationContext,
+  BnMeansActivationEligibility,
+  BnMeansActivationFactBundle,
+  BnMeansActivationPublication,
+  BnMeansActivationReadiness,
+  BnMeansEligibilityStatus,
+  BnMeansFactPublicationStatus,
+} from '@/types/bn/meansTests/meansActivation';
 
 export type {
   BnMeansCalculationGroup,
@@ -745,6 +759,38 @@ export const meansQueryService = {
     });
     if (error) return failed(error.message);
     return envelope<BnMeansDecisionContext>(data);
+  },
+
+  /**
+   * EPIC 11 — the whole activation surface in one governed read: approval,
+   * approved calculation, backend readiness, the canonical fact preview,
+   * publication state, eligibility posture, award review and history.
+   */
+  async activationContext(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansActivationContext>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_activation_context_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansActivationContext>(data);
+  },
+
+  /** EPIC 11 — backend-owned activation readiness. Never recomputed in React. */
+  async activationReadiness(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansActivationReadiness>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_activation_readiness_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansActivationReadiness>(data);
   },
 
   /** EPIC 10 — governed adjustment targets and reason catalogue. */

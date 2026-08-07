@@ -66,6 +66,10 @@ export type BnMeansCommandName =
   | 'BN_MEANS_APPROVE'
   | 'BN_MEANS_REJECT'
   | 'BN_MEANS_ACTIVATE'
+  // EPIC 11 — governed activation retries and eligibility refresh.
+  | 'BN_MEANS_RETRY_FACT_PUBLICATION'
+  | 'BN_MEANS_RETRY_ELIGIBILITY_REQUEST'
+  | 'BN_MEANS_REFRESH_ELIGIBILITY_RESULT'
   | 'BN_MEANS_SCHEDULE_REASSESSMENT'
   | 'BN_MEANS_RECORD_CHANGE_OF_CIRCUMSTANCE'
   | 'BN_MEANS_SUPERSEDE'
@@ -166,7 +170,10 @@ export const BN_MEANS_COMMANDS: readonly BnMeansCommandSpec[] = [
   S('BN_MEANS_REJECT',                  'bn_means_tests:approve', { requiresMakerChecker: true, forbidsSelfApproval: true, requiresJustification: true, emitsCommunication: true }),
 
   // Activation & lifecycle
-  S('BN_MEANS_ACTIVATE',                'bn_means_tests:approve', { publishesFacts: true }),
+  S('BN_MEANS_ACTIVATE',                'bn_means_tests:approve', { publishesFacts: true, emitsCommunication: true }),
+  S('BN_MEANS_RETRY_FACT_PUBLICATION',  'bn_means_tests:approve', { publishesFacts: true }),
+  S('BN_MEANS_RETRY_ELIGIBILITY_REQUEST','bn_means_tests:approve'),
+  S('BN_MEANS_REFRESH_ELIGIBILITY_RESULT','bn_means_tests:write'),
   S('BN_MEANS_SCHEDULE_REASSESSMENT',   'bn_means_tests:reassess'),
   S('BN_MEANS_RECORD_CHANGE_OF_CIRCUMSTANCE', 'bn_means_tests:write', { requiresJustification: true }),
   S('BN_MEANS_SUPERSEDE',               'bn_means_tests:approve', { publishesFacts: true, requiresJustification: true }),
