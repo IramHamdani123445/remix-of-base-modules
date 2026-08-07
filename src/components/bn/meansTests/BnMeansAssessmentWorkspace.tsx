@@ -106,6 +106,7 @@ function asRows(value: unknown): Row[] {
 export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProps> = ({
   assessmentId,
   onBack,
+  initialSection = null,
 }) => {
   const queryClient = useQueryClient();
   const [commandError, setCommandError] = React.useState<BnMeansCommandResult | null>(null);
