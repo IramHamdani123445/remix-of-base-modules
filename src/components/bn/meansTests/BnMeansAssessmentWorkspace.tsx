@@ -35,6 +35,7 @@ import { BnMeansCalculationPanel } from '@/components/bn/meansTests/BnMeansCalcu
 import { BnMeansAdjustmentsPanel } from '@/components/bn/meansTests/BnMeansAdjustmentsPanel';
 import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApprovalPanel';
 import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMeansHouseholdSection';
+import BnMeansIncomeSection from '@/components/bn/meansTests/income/BnMeansIncomeSection';
 import BnMeansContextPanel from '@/components/bn/meansTests/context/BnMeansContextPanel';
 import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTests/BnMeansStageJourney';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
@@ -92,6 +93,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   const householdReadiness = useQuery({
     queryKey: ['bn-means-household-readiness', assessmentId],
     queryFn: () => meansQueryService.householdReadiness(assessmentId),
+  });
+  // EPIC 3 — income readiness drives the journey strip; never recomputed here.
+  const incomeReadiness = useQuery({
+    queryKey: ['bn-means-income-readiness', assessmentId],
+    queryFn: () => meansQueryService.incomeReadiness(assessmentId),
   });
   const [activeTab, setActiveTab] = React.useState('context');
 
