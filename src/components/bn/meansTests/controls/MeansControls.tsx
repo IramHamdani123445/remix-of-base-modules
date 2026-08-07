@@ -67,7 +67,7 @@ export const MeansStateNotice: React.FC<{
     EMPTY: 'No results',
     DENIED: 'Access denied',
     FAILED: 'Could not be loaded',
-    NOT_IMPLEMENTED: 'Not implemented yet',
+    NOT_IMPLEMENTED: 'Not available',
   };
   const destructive = state === 'FAILED' || state === 'DENIED';
   return (
