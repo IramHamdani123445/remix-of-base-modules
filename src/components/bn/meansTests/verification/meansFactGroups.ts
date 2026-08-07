@@ -5,8 +5,9 @@
  * No business decision is taken here: outcomes, availability and readiness
  * all remain backend-owned. Extracted when the legacy MT6 verification and
  * calculation panels were retired in favour of the Epic 8/9 sections.
-import { formatWithCurrency } from '@/utils/formatCurrency';
  */
+import { formatWithCurrency } from '@/utils/formatCurrency';
+
 
 export type BnMeansVerificationOutcome =
   | 'VERIFIED'
