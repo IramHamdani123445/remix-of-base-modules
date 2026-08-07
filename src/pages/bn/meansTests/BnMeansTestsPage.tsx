@@ -46,6 +46,7 @@ import {
 import { BnMeansVerificationQueue } from '@/components/bn/meansTests/verification/BnMeansVerificationQueue';
 import { BnMeansReassessmentQueuePanel } from '@/components/bn/meansTests/lifecycle/BnMeansReassessmentQueue';
 import { BnMeansPolicyConfiguration } from '@/components/bn/meansTests/configuration/BnMeansPolicyConfiguration';
+import BnMeansOperationsWorkspace from '@/components/bn/meansTests/operations/BnMeansOperationsWorkspace';
 
 const STATUS_FILTERS = [
   'DRAFT', 'INFORMATION_PENDING', 'SUBMITTED', 'VERIFICATION_PENDING', 'CALCULATED',
@@ -131,6 +132,7 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="operations">Operations</TabsTrigger>
           <TabsTrigger value="team">Team work queue</TabsTrigger>
           <TabsTrigger value="verification">Verification queue</TabsTrigger>
           <TabsTrigger value="approval">Decision queues</TabsTrigger>
@@ -168,6 +170,15 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
           </section>
 
           <MeansHowItWorksPanel />
+        </TabsContent>
+
+        {/* EPIC 13 — operational queues, search and reporting. */}
+        <TabsContent value="operations" className="pt-4">
+          <BnMeansOperationsWorkspace
+            onOpen={(assessmentId) => setSelected(assessmentId)}
+            canAssign={ctx.can('write')}
+            actionsEnabled={ctx.actionsEnabled}
+          />
         </TabsContent>
 
         <TabsContent value="team" className="pt-4">
