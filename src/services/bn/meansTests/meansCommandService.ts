@@ -296,9 +296,11 @@ export const meansCommandService = {
         ? 'bn_means_verification_command_v1'
         : ACTIVATION_COMMANDS.has(request.command)
           ? 'bn_means_activation_command_v1'
-          : request.command === 'BN_MEANS_SUBMIT'
-            ? 'bn_means_submission_command_v1'
-            : 'bn_means_execute_command_v1';
+          : LIFECYCLE_COMMANDS.has(request.command)
+            ? 'bn_means_lifecycle_command_v1'
+            : request.command === 'BN_MEANS_SUBMIT'
+              ? 'bn_means_submission_command_v1'
+              : 'bn_means_execute_command_v1';
 
     const { data, error } = await supabase.rpc(rpcName as never, {
       p_command_name: request.command,
