@@ -20,8 +20,8 @@ import {
 } from '@/types/bn/meansTests/meansStateMachine';
 
 describe('MT0 — authoritative Means-Test contract', () => {
-  it('registers the canonical 21-command catalogue plus 16 governed supporting operations', () => {
-    expect(BN_MEANS_COMMANDS).toHaveLength(37);
+  it('registers the canonical 21-command catalogue plus 23 governed supporting operations', () => {
+    expect(BN_MEANS_COMMANDS).toHaveLength(44);
   });
 
 

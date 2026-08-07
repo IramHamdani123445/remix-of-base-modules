@@ -38,6 +38,7 @@ import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMean
 import BnMeansIncomeSection from '@/components/bn/meansTests/income/BnMeansIncomeSection';
 import BnMeansAssetSection from '@/components/bn/meansTests/assets/BnMeansAssetSection';
 import BnMeansDeductionsSection from '@/components/bn/meansTests/deductions/BnMeansDeductionsSection';
+import BnMeansEvidenceSection from '@/components/bn/meansTests/evidence/BnMeansEvidenceSection';
 import BnMeansContextPanel from '@/components/bn/meansTests/context/BnMeansContextPanel';
 import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTests/BnMeansStageJourney';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
@@ -110,6 +111,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   const deductionReadiness = useQuery({
     queryKey: ['bn-means-deduction-readiness', assessmentId],
     queryFn: () => meansQueryService.deductionReadiness(assessmentId),
+  });
+  // EPIC 6 — evidence readiness drives the journey strip; never recomputed here.
+  const evidenceReadiness = useQuery({
+    queryKey: ['bn-means-evidence-readiness', assessmentId],
+    queryFn: () => meansQueryService.evidenceReadiness(assessmentId),
   });
   const [activeTab, setActiveTab] = React.useState('context');
 
@@ -241,6 +247,8 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     assetReadiness.data?.status === 'OK' ? assetReadiness.data.data : null;
   const deductionReady =
     deductionReadiness.data?.status === 'OK' ? deductionReadiness.data.data : null;
+  const evidenceReady =
+    evidenceReadiness.data?.status === 'OK' ? evidenceReadiness.data.data : null;
   const householdComplete = Boolean(householdReady?.section_complete);
   const stages: readonly BnMeansStage[] = [
     { key: 'context', label: 'Confirm context', state: 'COMPLETE', hint: 'Person, claim and period' },
@@ -300,7 +308,22 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         ? `${deductionReady.claim_count} claim${deductionReady.claim_count === 1 ? '' : 's'}`
         : 'Deductions and disregards claimed',
     },
-    { key: 'evidence', label: 'Evidence', state: 'PENDING', hint: 'Not implemented yet' },
+    {
+      key: 'evidence',
+      label: 'Evidence',
+      state: evidenceReady?.section_complete
+        ? 'COMPLETE'
+        : !deductionReady?.section_marked_complete
+          ? 'PENDING'
+          : (evidenceReady?.blockers.length ?? 0) > 0 || evidenceReady?.completion_invalidated
+            ? 'BLOCKED'
+            : 'CURRENT',
+      hint: evidenceReady
+        ? `${evidenceReady.mandatory_outstanding} outstanding, ${evidenceReady.open_information_requests} open request${
+            evidenceReady.open_information_requests === 1 ? '' : 's'
+          }`
+        : 'Required evidence and information requests',
+    },
     { key: 'review', label: 'Review & submit', state: 'PENDING', hint: 'Not implemented yet' },
   ];
 
@@ -469,32 +492,14 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         </TabsContent>
 
         <TabsContent value="evidence">
-          <FactSection
-            title="Evidence"
-            description="Governed document references only — no document content is stored here."
-            rows={asRows(data.evidence)}
-            columns={[
-              ['evidence_type', 'Type'],
-              ['dms_document_id', 'Document'],
-              ['dms_reference', 'Reference'],
-              ['status', 'Status'],
-              ['fact_kind', 'Linked fact'],
-            ]}
-            form={
-              <InlineFactForm
-                fields={[
-                  { name: 'evidence_type', label: 'Evidence type', required: true },
-                  { name: 'dms_document_id', label: 'Document ID' },
-                  { name: 'dms_reference', label: 'Document reference' },
-                ]}
-                submitLabel="Attach evidence"
-                disabled={!actionFor('BN_MEANS_ATTACH_EVIDENCE')?.allowed || run.isPending}
-                reason={actionFor('BN_MEANS_ATTACH_EVIDENCE')?.reason ?? null}
-                onSubmit={(payload) => run.mutate({ command: 'BN_MEANS_ATTACH_EVIDENCE', payload })}
-              />
-            }
+          <BnMeansEvidenceSection
+            assessmentId={assessmentId}
+            editable={Boolean(actionFor('BN_MEANS_ATTACH_EVIDENCE')?.allowed)}
+            availableActions={availableActions.filter((a) => a.allowed).map((a) => a.command)}
+            onSectionComplete={() => setActiveTab('review')}
           />
         </TabsContent>
+
 
         <TabsContent value="review">
           <Card>

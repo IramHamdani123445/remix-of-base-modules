@@ -14544,6 +14544,132 @@ export type Database = {
           },
         ]
       }
+      bn_means_evidence_link: {
+        Row: {
+          assessment_id: string
+          correlation_id: string | null
+          created_at: string
+          created_by: string | null
+          document_date: string | null
+          document_ref: string
+          document_source: string
+          document_title: string | null
+          document_type_code: string | null
+          evidence_id: string | null
+          evidence_source: string | null
+          evidence_type: string
+          expiry_date: string | null
+          information_request_id: string | null
+          link_id: string
+          link_status: string
+          linked_at: string
+          linked_by: string | null
+          officer_notes: string | null
+          period_from: string | null
+          period_to: string | null
+          requirement_code: string
+          subject_kind: string
+          subject_ref_id: string | null
+          unlink_reason_code: string | null
+          unlinked_at: string | null
+          unlinked_by: string | null
+          updated_at: string
+          updated_by: string | null
+          usability_checked_at: string | null
+          usability_checked_by: string | null
+          usability_note: string | null
+          usability_reason_code: string | null
+          usability_status: string
+        }
+        Insert: {
+          assessment_id: string
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_date?: string | null
+          document_ref: string
+          document_source: string
+          document_title?: string | null
+          document_type_code?: string | null
+          evidence_id?: string | null
+          evidence_source?: string | null
+          evidence_type?: string
+          expiry_date?: string | null
+          information_request_id?: string | null
+          link_id?: string
+          link_status?: string
+          linked_at?: string
+          linked_by?: string | null
+          officer_notes?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          requirement_code: string
+          subject_kind: string
+          subject_ref_id?: string | null
+          unlink_reason_code?: string | null
+          unlinked_at?: string | null
+          unlinked_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          usability_checked_at?: string | null
+          usability_checked_by?: string | null
+          usability_note?: string | null
+          usability_reason_code?: string | null
+          usability_status?: string
+        }
+        Update: {
+          assessment_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          document_date?: string | null
+          document_ref?: string
+          document_source?: string
+          document_title?: string | null
+          document_type_code?: string | null
+          evidence_id?: string | null
+          evidence_source?: string | null
+          evidence_type?: string
+          expiry_date?: string | null
+          information_request_id?: string | null
+          link_id?: string
+          link_status?: string
+          linked_at?: string
+          linked_by?: string | null
+          officer_notes?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          requirement_code?: string
+          subject_kind?: string
+          subject_ref_id?: string | null
+          unlink_reason_code?: string | null
+          unlinked_at?: string | null
+          unlinked_by?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          usability_checked_at?: string | null
+          usability_checked_by?: string | null
+          usability_note?: string | null
+          usability_reason_code?: string | null
+          usability_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_evidence_link_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_evidence_link_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_evidence"
+            referencedColumns: ["evidence_id"]
+          },
+        ]
+      }
       bn_means_fact_publication: {
         Row: {
           assessment_id: string
@@ -14829,42 +14955,93 @@ export type Database = {
       bn_means_information_request: {
         Row: {
           assessment_id: string
+          close_reason_code: string | null
+          closed_at: string | null
+          closed_by: string | null
           correlation_id: string | null
+          created_at: string
           details: string | null
           due_date: string | null
+          information_required: string | null
+          is_blocking: boolean
+          reason_code: string | null
+          recipient_kind: string | null
+          recipient_label: string | null
           request_code: string
           request_id: string
+          request_reference: string | null
+          request_type: string
           requested_at: string
           requested_by: string | null
+          requirement_code: string | null
           responded_at: string | null
           responded_by: string | null
+          response_summary: string | null
           status: string
+          subject_kind: string | null
+          subject_ref_id: string | null
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           assessment_id: string
+          close_reason_code?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           correlation_id?: string | null
+          created_at?: string
           details?: string | null
           due_date?: string | null
+          information_required?: string | null
+          is_blocking?: boolean
+          reason_code?: string | null
+          recipient_kind?: string | null
+          recipient_label?: string | null
           request_code: string
           request_id?: string
+          request_reference?: string | null
+          request_type?: string
           requested_at?: string
           requested_by?: string | null
+          requirement_code?: string | null
           responded_at?: string | null
           responded_by?: string | null
+          response_summary?: string | null
           status?: string
+          subject_kind?: string | null
+          subject_ref_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           assessment_id?: string
+          close_reason_code?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
           correlation_id?: string | null
+          created_at?: string
           details?: string | null
           due_date?: string | null
+          information_required?: string | null
+          is_blocking?: boolean
+          reason_code?: string | null
+          recipient_kind?: string | null
+          recipient_label?: string | null
           request_code?: string
           request_id?: string
+          request_reference?: string | null
+          request_type?: string
           requested_at?: string
           requested_by?: string | null
+          requirement_code?: string | null
           responded_at?: string | null
           responded_by?: string | null
+          response_summary?: string | null
           status?: string
+          subject_kind?: string | null
+          subject_ref_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -14873,6 +15050,70 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_means_assessment"
             referencedColumns: ["assessment_id"]
+          },
+        ]
+      }
+      bn_means_information_response: {
+        Row: {
+          assessment_id: string
+          correlation_id: string | null
+          created_at: string
+          evidence_link_id: string | null
+          note: string | null
+          recorded_at: string
+          recorded_by: string | null
+          request_id: string
+          response_id: string
+          response_kind: string
+          updated_at: string
+        }
+        Insert: {
+          assessment_id: string
+          correlation_id?: string | null
+          created_at?: string
+          evidence_link_id?: string | null
+          note?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          request_id: string
+          response_id?: string
+          response_kind: string
+          updated_at?: string
+        }
+        Update: {
+          assessment_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          evidence_link_id?: string | null
+          note?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          request_id?: string
+          response_id?: string
+          response_kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_information_response_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_information_response_evidence_link_id_fkey"
+            columns: ["evidence_link_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_evidence_link"
+            referencedColumns: ["link_id"]
+          },
+          {
+            foreignKeyName: "bn_means_information_response_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_information_request"
+            referencedColumns: ["request_id"]
           },
         ]
       }
@@ -105891,6 +106132,42 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bn_means_evidence_execute: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_from_status: string
+          p_justification: string
+          p_payload: Json
+          p_reason_code: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      _bn_means_evidence_label: {
+        Args: { p_set: string; p_value: string }
+        Returns: string
+      }
+      _bn_means_evidence_option: {
+        Args: { p_set: string; p_value: string }
+        Returns: Json
+      }
+      _bn_means_evidence_readiness: {
+        Args: { p_assessment_id: string }
+        Returns: Json
+      }
+      _bn_means_evidence_reference: { Args: never; Returns: Json }
+      _bn_means_evidence_requirements: {
+        Args: { p_assessment_id: string }
+        Returns: Json
+      }
+      _bn_means_evidence_rules: {
+        Args: { p_policy_version_id: string }
+        Returns: Json
+      }
       _bn_means_frozen_version: {
         Args: { p_assessment_id: string }
         Returns: {
@@ -106040,6 +106317,15 @@ export type Database = {
           p_adjustment_id: string
           p_assessment_id: string
           p_correlation: string
+        }
+        Returns: string
+      }
+      _bn_means_requirement_id: {
+        Args: {
+          p_assessment_id: string
+          p_code: string
+          p_subject_kind: string
+          p_subject_ref: string
         }
         Returns: string
       }
@@ -107639,8 +107925,45 @@ export type Database = {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
+      bn_means_document_search_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_limit?: number
+          p_term?: string
+        }
+        Returns: Json
+      }
       bn_means_employer_search_v1: {
         Args: { p_actor_user_id: string; p_limit?: number; p_term: string }
+        Returns: Json
+      }
+      bn_means_evidence_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_means_evidence_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_evidence_reference_v1: {
+        Args: { p_actor_user_id: string }
+        Returns: Json
+      }
+      bn_means_evidence_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
       bn_means_execute_command_v1: {

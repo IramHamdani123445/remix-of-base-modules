@@ -33,6 +33,23 @@ import type {
   BnMeansDeductionReadiness,
   BnMeansDeductionReference,
 } from '@/types/bn/meansTests/meansDeductions';
+import type {
+  BnMeansDocumentCandidate,
+  BnMeansEvidenceDetail,
+  BnMeansEvidenceReadiness,
+  BnMeansEvidenceReference,
+} from '@/types/bn/meansTests/meansEvidence';
+
+export type {
+  BnMeansDocumentCandidate,
+  BnMeansEvidenceDetail,
+  BnMeansEvidenceLink,
+  BnMeansEvidenceReadiness,
+  BnMeansEvidenceReference,
+  BnMeansEvidenceRequirement,
+  BnMeansInformationRequest,
+  BnMeansInformationResponse,
+} from '@/types/bn/meansTests/meansEvidence';
 
 export type {
   BnMeansAdjustmentRow,
@@ -461,6 +478,66 @@ export const meansQueryService = {
     if (error) return failed(error.message);
     return envelope<BnMeansDeductionReference>(data);
   },
+
+  /** EPIC 6 — requirements, linked documents, information requests and responses. */
+  async evidence(assessmentId: string): Promise<BnMeansQueryResult<BnMeansEvidenceDetail>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_evidence_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansEvidenceDetail>(data);
+  },
+
+  /** EPIC 6 — backend-owned evidence readiness. Never recomputed in React. */
+  async evidenceReadiness(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansEvidenceReadiness>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_evidence_readiness_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansEvidenceReadiness>(data);
+  },
+
+  /** EPIC 6 — policy-governed evidence lists (types, sources, usability, requests). */
+  async evidenceReference(): Promise<BnMeansQueryResult<BnMeansEvidenceReference>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_evidence_reference_v1', {
+      p_actor_user_id: uid,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansEvidenceReference>(data);
+  },
+
+  /**
+   * EPIC 6 — governed search over documents that already exist for this
+   * assessment's claim. No new document store; file locations are never
+   * returned to the browser.
+   */
+  async documentSearch(
+    assessmentId: string,
+    term: string,
+    limit = 25,
+  ): Promise<BnMeansQueryResult<readonly BnMeansDocumentCandidate[]>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_document_search_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+      p_term: term,
+      p_limit: limit,
+    });
+    if (error) return failed(error.message);
+    return envelope<readonly BnMeansDocumentCandidate[]>(data);
+  },
+
 
 
   /** MT7 — secured work queues. Never derived from direct table reads. */
