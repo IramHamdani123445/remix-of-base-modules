@@ -37,6 +37,7 @@ import { BnMeansApprovalPanel } from '@/components/bn/meansTests/BnMeansApproval
 import BnMeansHouseholdSection from '@/components/bn/meansTests/household/BnMeansHouseholdSection';
 import BnMeansIncomeSection from '@/components/bn/meansTests/income/BnMeansIncomeSection';
 import BnMeansAssetSection from '@/components/bn/meansTests/assets/BnMeansAssetSection';
+import BnMeansDeductionsSection from '@/components/bn/meansTests/deductions/BnMeansDeductionsSection';
 import BnMeansContextPanel from '@/components/bn/meansTests/context/BnMeansContextPanel';
 import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTests/BnMeansStageJourney';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
@@ -104,6 +105,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   const assetReadiness = useQuery({
     queryKey: ['bn-means-asset-readiness', assessmentId],
     queryFn: () => meansQueryService.assetReadiness(assessmentId),
+  });
+  // EPIC 5 — deduction readiness drives the journey strip; never recomputed here.
+  const deductionReadiness = useQuery({
+    queryKey: ['bn-means-deduction-readiness', assessmentId],
+    queryFn: () => meansQueryService.deductionReadiness(assessmentId),
   });
   const [activeTab, setActiveTab] = React.useState('context');
 
@@ -233,6 +239,8 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     incomeReadiness.data?.status === 'OK' ? incomeReadiness.data.data : null;
   const assetReady =
     assetReadiness.data?.status === 'OK' ? assetReadiness.data.data : null;
+  const deductionReady =
+    deductionReadiness.data?.status === 'OK' ? deductionReadiness.data.data : null;
   const householdComplete = Boolean(householdReady?.section_complete);
   const stages: readonly BnMeansStage[] = [
     { key: 'context', label: 'Confirm context', state: 'COMPLETE', hint: 'Person, claim and period' },
@@ -278,7 +286,20 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           }`
         : 'Declared assets',
     },
-    { key: 'deductions', label: 'Deductions', state: 'PENDING', hint: 'Not implemented yet' },
+    {
+      key: 'deductions',
+      label: 'Deductions',
+      state: deductionReady?.section_marked_complete
+        ? 'COMPLETE'
+        : !assetReady?.section_marked_complete
+          ? 'PENDING'
+          : (deductionReady?.blockers.length ?? 0) > 0
+            ? 'BLOCKED'
+            : 'CURRENT',
+      hint: deductionReady
+        ? `${deductionReady.claim_count} claim${deductionReady.claim_count === 1 ? '' : 's'}`
+        : 'Deductions and disregards claimed',
+    },
     { key: 'evidence', label: 'Evidence', state: 'PENDING', hint: 'Not implemented yet' },
     { key: 'review', label: 'Review & submit', state: 'PENDING', hint: 'Not implemented yet' },
   ];
@@ -437,31 +458,13 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 
 
         <TabsContent value="deductions">
-          <FactSection
-            title="Deductions and disregards claimed"
-            description="A claimed deduction is not applied until it is approved."
-            rows={asRows(data.deductions)}
-            columns={[
-              ['category_code', 'Category'],
-              ['claimed_amount', 'Claimed'],
-              ['normalised_annual_amount', 'Annualised'],
-              ['approval_status', 'Approval'],
-              ['verification_status', 'Verification'],
-            ]}
-            currency={currency}
-            form={
-              <InlineFactForm
-                fields={[
-                  { name: 'category_code', label: 'Deduction category', required: true },
-                  { name: 'claimed_amount', label: 'Claimed amount', type: 'number', required: true },
-                  { name: 'effective_from', label: 'Effective from', type: 'date', required: true },
-                ]}
-                submitLabel="Claim deduction"
-                disabled={!actionFor('BN_MEANS_ADD_DEDUCTION')?.allowed || run.isPending}
-                reason={actionFor('BN_MEANS_ADD_DEDUCTION')?.reason ?? null}
-                onSubmit={(payload) => run.mutate({ command: 'BN_MEANS_ADD_DEDUCTION', payload })}
-              />
-            }
+          <BnMeansDeductionsSection
+            assessmentId={assessmentId}
+            assessmentFrom={String(assessment.effective_from ?? '')}
+            assessmentTo={assessment.effective_to ? String(assessment.effective_to) : null}
+            editable={Boolean(actionFor('BN_MEANS_ADD_DEDUCTION')?.allowed)}
+            availableActions={availableActions.filter((a) => a.allowed).map((a) => a.command)}
+            onSectionComplete={() => setActiveTab('evidence')}
           />
         </TabsContent>
 

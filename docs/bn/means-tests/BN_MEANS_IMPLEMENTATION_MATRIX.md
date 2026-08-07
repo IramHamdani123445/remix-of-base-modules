@@ -201,6 +201,52 @@ suites — 54/54 passing.
 | Epic 2 | Intake workspace redesign and household composition (context confirmation, household section, backend-owned readiness, duplicate detection) | **COMPLETE** |
 | Epic 3 | Income assessment (member-linked income capture, governed categories and frequencies, backend annualisation, employer/contribution reference, explicit no-income declarations, backend-owned income readiness) | **COMPLETE** |
 | Epic 4 | Asset assessment (owner-linked asset declaration, policy-version-controlled categories, category-driven capture, ownership and valuation context, possible-disregard flagging, explicit no-asset declarations, backend-owned asset readiness) | **COMPLETE** |
+| Epic 5 | Deductions and disregards (separate DEDUCTION_CLAIM and DISREGARD_CANDIDATE concepts, governed target selection, policy-controlled categories, claimed amount/period/provenance, Epic 4 disregard signal review, evidence requirement identification, explicit none-claimed confirmation, backend-owned deduction readiness) | **COMPLETE** |
+
+### Epic 5 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Journey delivered** — Assets complete → review potential deductions and
+disregards → select applicable subject → choose policy category → capture
+claimed basis and amount where relevant → capture period and provenance →
+identify evidence requirement → resolve duplicates and conflicts → confirm
+explicitly that nothing is claimed where appropriate → mark Deductions and
+Disregards complete.
+
+**Claimed, never allowed** — the section records what is claimed, against
+which subject, for what reason and for what period. It does not decide how
+much is allowed and does not decide the means-test outcome. Allowance remains
+a calculation-stage decision (Epic 9).
+
+**Separate concepts** — `DEDUCTION_CLAIM` and `DISREGARD_CANDIDATE` are
+distinct in the domain contract (`meansDeductions.ts`), in the capture dialog
+and in the register, and categories are filtered by claim kind.
+
+**Governed targets** — every claim carries a target: `HOUSEHOLD_MEMBER`,
+`INCOME_FACT`, `ASSET_FACT` or `ASSESSMENT`, restricted to the target types
+the policy category permits. Assessment-level claims are only available when
+policy allows them.
+
+**Signal reuse** — possible disregards flagged while recording income and
+assets (Epic 3 and Epic 4) surface here for officer decision and can be
+converted into a recorded disregard candidate in one step.
+
+**Readiness is backend-owned** — `bn_means_deduction_readiness_v1` returns
+`NOT_STARTED`, `IN_PROGRESS`, `COMPLETE`, `BLOCKED` or `UNAVAILABLE` along
+with blockers, warnings, the gross claimed total and evidence counts. The
+section is gated behind Asset completion and "Mark deductions complete" is
+enabled only when the backend permits it.
+
+**Surfaces** — `BnMeansDeductionsSection`, `BnMeansDeductionDialog` and
+`BnMeansNoDeductionsDialog`, wired into `BnMeansAssessmentWorkspace` stage
+journey and tabs. Commands: `BN_MEANS_ADD_DEDUCTION`,
+`BN_MEANS_CORRECT_DEDUCTION`, `BN_MEANS_VOID_DEDUCTION`,
+`BN_MEANS_DECLARE_NO_DEDUCTIONS`, `BN_MEANS_WITHDRAW_NO_DEDUCTIONS`,
+`BN_MEANS_MARK_DEDUCTIONS_COMPLETE`.
 
 ### Epic 4 — completion record
 
