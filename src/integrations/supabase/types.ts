@@ -14861,47 +14861,83 @@ export type Database = {
       bn_means_fact_publication: {
         Row: {
           assessment_id: string
+          assessment_version_id: string | null
+          award_review_handoff_id: string | null
           bundle_hash: string
           calculation_id: string | null
           correlation_id: string | null
           created_at: string
           created_by: string | null
+          determination_status: string | null
+          eligibility_completed_at: string | null
           eligibility_request_id: string | null
+          eligibility_requested_at: string | null
           eligibility_result_reference: string | null
+          eligibility_status: string
           fact_bundle: Json
+          failure_code: string | null
+          failure_detail: string | null
           publication_id: string
+          publication_reference: string | null
+          publication_version: number
           published_at: string | null
+          published_by: string | null
           refusal_reason: string | null
+          retry_count: number
           status: string
         }
         Insert: {
           assessment_id: string
+          assessment_version_id?: string | null
+          award_review_handoff_id?: string | null
           bundle_hash: string
           calculation_id?: string | null
           correlation_id?: string | null
           created_at?: string
           created_by?: string | null
+          determination_status?: string | null
+          eligibility_completed_at?: string | null
           eligibility_request_id?: string | null
+          eligibility_requested_at?: string | null
           eligibility_result_reference?: string | null
+          eligibility_status?: string
           fact_bundle: Json
+          failure_code?: string | null
+          failure_detail?: string | null
           publication_id?: string
+          publication_reference?: string | null
+          publication_version?: number
           published_at?: string | null
+          published_by?: string | null
           refusal_reason?: string | null
+          retry_count?: number
           status?: string
         }
         Update: {
           assessment_id?: string
+          assessment_version_id?: string | null
+          award_review_handoff_id?: string | null
           bundle_hash?: string
           calculation_id?: string | null
           correlation_id?: string | null
           created_at?: string
           created_by?: string | null
+          determination_status?: string | null
+          eligibility_completed_at?: string | null
           eligibility_request_id?: string | null
+          eligibility_requested_at?: string | null
           eligibility_result_reference?: string | null
+          eligibility_status?: string
           fact_bundle?: Json
+          failure_code?: string | null
+          failure_detail?: string | null
           publication_id?: string
+          publication_reference?: string | null
+          publication_version?: number
           published_at?: string | null
+          published_by?: string | null
           refusal_reason?: string | null
+          retry_count?: number
           status?: string
         }
         Relationships: [
@@ -106393,6 +106429,23 @@ export type Database = {
         Args: { p_command_name: string }
         Returns: string
       }
+      _bn_means_activation_execute: {
+        Args: {
+          p_actor: string
+          p_actor_code: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation: string
+          p_justification: string
+          p_payload: Json
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      _bn_means_activation_readiness: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
       _bn_means_adjustment_reference: {
         Args: { p_policy_version_id?: string; p_programme?: string }
         Returns: Json
@@ -106580,6 +106633,10 @@ export type Database = {
       }
       _bn_means_evidence_rules: {
         Args: { p_policy_version_id: string }
+        Returns: Json
+      }
+      _bn_means_fact_bundle: {
+        Args: { p_assessment_id: string }
         Returns: Json
       }
       _bn_means_frozen_version: {
@@ -108362,6 +108419,30 @@ export type Database = {
       bn_materialize_external_tasks: {
         Args: { p_claim_id: string }
         Returns: number
+      }
+      bn_means_activation_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_means_activation_context_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_activation_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
       }
       bn_means_adjustment_reference_v1: {
         Args: { p_actor_user_id: string; p_assessment_id?: string }
