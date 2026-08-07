@@ -23,6 +23,11 @@ import type {
   BnMeansIncomeReadiness,
   BnMeansIncomeReference,
 } from '@/types/bn/meansTests/meansIncome';
+import type {
+  BnMeansAssetDetail,
+  BnMeansAssetReadiness,
+  BnMeansAssetReference,
+} from '@/types/bn/meansTests/meansAssets';
 
 export type {
   BnMeansAdjustmentRow,
@@ -43,6 +48,12 @@ export type {
   BnMeansIncomeReadiness,
   BnMeansIncomeReference,
 } from '@/types/bn/meansTests/meansIncome';
+export type {
+  BnMeansAssetDetail,
+  BnMeansAssetFact,
+  BnMeansAssetReadiness,
+  BnMeansAssetReference,
+} from '@/types/bn/meansTests/meansAssets';
 
 
 export type BnMeansQueryStatus = 'OK' | 'DENIED' | 'NOT_FOUND' | 'INVALID' | 'FAILED';
@@ -363,6 +374,43 @@ export const meansQueryService = {
     });
     if (error) return failed(error.message);
     return envelope<readonly BnMeansEmployerRecord[]>(data);
+  },
+
+  /** EPIC 4 — asset records, household owner refs and no-asset declarations. */
+  async assets(assessmentId: string): Promise<BnMeansQueryResult<BnMeansAssetDetail>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_assets_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansAssetDetail>(data);
+  },
+
+  /** EPIC 4 — backend-owned asset readiness. Never recomputed in React. */
+  async assetReadiness(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansAssetReadiness>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_asset_readiness_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansAssetReadiness>(data);
+  },
+
+  /** EPIC 4 — policy-governed asset lists (categories, ownership, basis, disregards). */
+  async assetReference(): Promise<BnMeansQueryResult<BnMeansAssetReference>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_asset_reference_v1', {
+      p_actor_user_id: uid,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansAssetReference>(data);
   },
 
   /** MT7 — secured work queues. Never derived from direct table reads. */

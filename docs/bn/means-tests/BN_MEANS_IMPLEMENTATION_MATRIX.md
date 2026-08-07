@@ -200,6 +200,72 @@ suites — 54/54 passing.
 | Epic 1 | Assessment initiation (guided wizard, governed person search, policy resolution, single backend initiation check) | **COMPLETE** |
 | Epic 2 | Intake workspace redesign and household composition (context confirmation, household section, backend-owned readiness, duplicate detection) | **COMPLETE** |
 | Epic 3 | Income assessment (member-linked income capture, governed categories and frequencies, backend annualisation, employer/contribution reference, explicit no-income declarations, backend-owned income readiness) | **COMPLETE** |
+| Epic 4 | Asset assessment (owner-linked asset declaration, policy-version-controlled categories, category-driven capture, ownership and valuation context, possible-disregard flagging, explicit no-asset declarations, backend-owned asset readiness) | **COMPLETE** |
+
+### Epic 4 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Journey delivered** — completed Income → select household owner → select
+asset category → capture ownership → capture valuation → record source and
+effective context → flag potential disregard where applicable → resolve
+duplicate or conflicting assets → declare no assets where applicable → mark
+Assets complete.
+
+**Assets section** — `BnMeansAssetSection`, `BnMeansAssetDialog` and
+`BnMeansNoAssetsDialog` replace the raw fact form, reusing the visual and
+interaction pattern established for Household and Income. Every asset carries
+an ownership context: the owner is selected from the assessment household
+(household-level assets only where policy allows it), with ownership type and
+share recorded explicitly.
+
+**Category is policy-governed** — `bn_means_asset_reference_v1` serves
+categories, ownership types, valuation bases, information sources, disregard
+reasons and no-asset reasons from the effective policy version
+(`bn_means_policy_version.asset_rules`). Nothing is typed as a code. Form
+behaviour is category-driven: institution and account reference for cash and
+bank balances, address for property, registration for vehicles, business name
+for business interests, and a free description where the category requires one.
+The valuation basis is a choice only where the category offers one; otherwise
+it is fixed by policy and shown read-only.
+
+**Derived values are backend-owned** — the UI posts valuation amount,
+currency, ownership share and basis only. The attributable value stored on the
+record is derived by the assessment engine; the dialog shows a labelled
+preview and never posts it.
+
+**Disregards are flagged, never decided** — the officer may flag an asset as a
+possible disregard with a governed reason. Whether a disregard applies is
+decided by policy at calculation, and no disregard decision or disregarded
+amount is ever posted from the browser.
+
+**No assets is explicit** — `bn_means_no_asset_declaration` records a
+per-member declaration with reason, period and provenance. A member with no
+record is reported as *missing a declaration*, never as zero assets.
+
+**Backend-owned readiness** — `bn_means_asset_readiness_v1` returns
+completeness, blockers and warnings (duplicates, conflicts with a no-assets
+declaration, periods outside household membership, missing declarations) and
+blocks asset completion until the Income section is complete. "Mark assets
+complete" is enabled only when the backend reports the section complete; a
+failed or denied readiness read renders *Unavailable*, never *Complete*.
+
+**Supporting operations added** — `BN_MEANS_CORRECT_ASSET` (versioned
+replacement), `BN_MEANS_VOID_ASSET`, `BN_MEANS_DECLARE_NO_ASSETS`,
+`BN_MEANS_WITHDRAW_NO_ASSETS` and `BN_MEANS_MARK_ASSETS_COMPLETE`. The
+canonical business catalogue remains 21 commands; the catalogue now registers
+32 entries in total.
+
+**Epics 0–3 preserved** — no household, income, initiation or foundation
+behaviour was changed; the only workspace edits replace the assets placeholder
+and give the assets stage a backend-derived state.
+
+**Evidence** — `src/__tests__/bn/means-tests/meansAssets.test.ts` (30 cases).
+Means-Test suites: 183/183 passing.
+
 
 ### Epic 3 — completion record
 

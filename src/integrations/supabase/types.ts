@@ -13814,19 +13814,31 @@ export type Database = {
       bn_means_asset_fact: {
         Row: {
           assessment_id: string
+          asset_details: Json
           asset_fact_id: string
+          asset_notes: string | null
           category_code: string
+          co_owner_note: string | null
           created_at: string
           created_by: string | null
           currency_code: string
           description: string | null
           disregard_candidate: boolean
+          disregard_reason_code: string | null
+          effective_from: string | null
+          effective_to: string | null
           evidence_status: string
           fact_source: string
+          fact_version: number
           member_id: string | null
           ownership_share: number
+          ownership_type: string
           superseded_by_fact_id: string | null
+          supersedes_fact_id: string | null
+          updated_at: string
+          updated_by: string | null
           valuation_amount: number
+          valuation_basis: string
           valuation_date: string
           valuation_source: string | null
           verification_status: string
@@ -13835,19 +13847,31 @@ export type Database = {
         }
         Insert: {
           assessment_id: string
+          asset_details?: Json
           asset_fact_id?: string
+          asset_notes?: string | null
           category_code: string
+          co_owner_note?: string | null
           created_at?: string
           created_by?: string | null
           currency_code: string
           description?: string | null
           disregard_candidate?: boolean
+          disregard_reason_code?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
           evidence_status?: string
           fact_source?: string
+          fact_version?: number
           member_id?: string | null
           ownership_share?: number
+          ownership_type?: string
           superseded_by_fact_id?: string | null
+          supersedes_fact_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
           valuation_amount: number
+          valuation_basis?: string
           valuation_date: string
           valuation_source?: string | null
           verification_status?: string
@@ -13856,19 +13880,31 @@ export type Database = {
         }
         Update: {
           assessment_id?: string
+          asset_details?: Json
           asset_fact_id?: string
+          asset_notes?: string | null
           category_code?: string
+          co_owner_note?: string | null
           created_at?: string
           created_by?: string | null
           currency_code?: string
           description?: string | null
           disregard_candidate?: boolean
+          disregard_reason_code?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
           evidence_status?: string
           fact_source?: string
+          fact_version?: number
           member_id?: string | null
           ownership_share?: number
+          ownership_type?: string
           superseded_by_fact_id?: string | null
+          supersedes_fact_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
           valuation_amount?: number
+          valuation_basis?: string
           valuation_date?: string
           valuation_source?: string | null
           verification_status?: string
@@ -14795,6 +14831,72 @@ export type Database = {
           },
         ]
       }
+      bn_means_no_asset_declaration: {
+        Row: {
+          assessment_id: string
+          confirmation_note: string | null
+          created_at: string
+          declaration_id: string
+          declaration_source: string
+          declared_at: string
+          declared_by: string | null
+          effective_from: string
+          effective_to: string | null
+          member_id: string | null
+          reason_code: string | null
+          updated_at: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          assessment_id: string
+          confirmation_note?: string | null
+          created_at?: string
+          declaration_id?: string
+          declaration_source?: string
+          declared_at?: string
+          declared_by?: string | null
+          effective_from: string
+          effective_to?: string | null
+          member_id?: string | null
+          reason_code?: string | null
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          confirmation_note?: string | null
+          created_at?: string
+          declaration_id?: string
+          declaration_source?: string
+          declared_at?: string
+          declared_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          member_id?: string | null
+          reason_code?: string | null
+          updated_at?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_means_no_asset_declaration_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_means_no_asset_declaration_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "bn_means_household_member"
+            referencedColumns: ["member_id"]
+          },
+        ]
+      }
       bn_means_no_income_declaration: {
         Row: {
           assessment_id: string
@@ -14946,6 +15048,7 @@ export type Database = {
       }
       bn_means_policy_version: {
         Row: {
+          asset_rules: Json
           authority_reference: string | null
           created_at: string
           created_by: string | null
@@ -14967,6 +15070,7 @@ export type Database = {
           version_label: string
         }
         Insert: {
+          asset_rules?: Json
           authority_reference?: string | null
           created_at?: string
           created_by?: string | null
@@ -14988,6 +15092,7 @@ export type Database = {
           version_label: string
         }
         Update: {
+          asset_rules?: Json
           authority_reference?: string | null
           created_at?: string
           created_by?: string | null
@@ -105553,6 +105658,52 @@ export type Database = {
         Args: { p_amount: number; p_frequency: string }
         Returns: number
       }
+      _bn_means_asset_execute: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_from_status: string
+          p_justification: string
+          p_payload: Json
+          p_reason_code: string
+          p_row_version: number
+        }
+        Returns: Json
+      }
+      _bn_means_asset_fact_json: {
+        Args: {
+          p_f: Database["public"]["Tables"]["bn_means_asset_fact"]["Row"]
+        }
+        Returns: Json
+      }
+      _bn_means_asset_label: {
+        Args: { p_set: string; p_value: string }
+        Returns: string
+      }
+      _bn_means_asset_option: {
+        Args: { p_set: string; p_value: string }
+        Returns: Json
+      }
+      _bn_means_asset_readiness: {
+        Args: { p_assessment_id: string }
+        Returns: Json
+      }
+      _bn_means_asset_reference: { Args: never; Returns: Json }
+      _bn_means_asset_rules: {
+        Args: { p_policy_version_id: string }
+        Returns: Json
+      }
+      _bn_means_asset_validate: {
+        Args: {
+          p_assessment_id: string
+          p_exclude_fact_id?: string
+          p_payload: Json
+        }
+        Returns: Json
+      }
       _bn_means_can_transition: {
         Args: { p_from: string; p_to: string }
         Returns: boolean
@@ -107267,6 +107418,18 @@ export type Database = {
         Returns: Json
       }
       bn_means_assessment_detail_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_asset_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_asset_reference_v1: {
+        Args: { p_actor_user_id: string }
+        Returns: Json
+      }
+      bn_means_assets_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }

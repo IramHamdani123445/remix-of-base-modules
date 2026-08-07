@@ -26,6 +26,12 @@ export type BnMeansCommandName =
   | 'BN_MEANS_MARK_HOUSEHOLD_COMPLETE'
   | 'BN_MEANS_MARK_INCOME_COMPLETE'
   | 'BN_MEANS_ADD_ASSET'
+  // EPIC 4 — governed supporting operations for asset declaration.
+  | 'BN_MEANS_CORRECT_ASSET'
+  | 'BN_MEANS_VOID_ASSET'
+  | 'BN_MEANS_DECLARE_NO_ASSETS'
+  | 'BN_MEANS_WITHDRAW_NO_ASSETS'
+  | 'BN_MEANS_MARK_ASSETS_COMPLETE'
   | 'BN_MEANS_ADD_DEDUCTION'
   | 'BN_MEANS_ATTACH_EVIDENCE'
   | 'BN_MEANS_SUBMIT'
@@ -90,7 +96,13 @@ export const BN_MEANS_COMMANDS: readonly BnMeansCommandSpec[] = [
   S('BN_MEANS_MARK_HOUSEHOLD_COMPLETE', 'bn_means_tests:write', { implemented: true }),
   S('BN_MEANS_MARK_INCOME_COMPLETE',    'bn_means_tests:write', { implemented: true }),
 
-  S('BN_MEANS_ADD_ASSET',               'bn_means_tests:write'),
+  S('BN_MEANS_ADD_ASSET',               'bn_means_tests:write', { implemented: true }),
+  // EPIC 4 supporting operations — versioned asset facts and section state.
+  S('BN_MEANS_CORRECT_ASSET',           'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_VOID_ASSET',              'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_DECLARE_NO_ASSETS',       'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_WITHDRAW_NO_ASSETS',      'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_MARK_ASSETS_COMPLETE',    'bn_means_tests:write', { implemented: true }),
   S('BN_MEANS_ADD_DEDUCTION',           'bn_means_tests:write'),
   S('BN_MEANS_ATTACH_EVIDENCE',         'bn_means_tests:write'),
 
