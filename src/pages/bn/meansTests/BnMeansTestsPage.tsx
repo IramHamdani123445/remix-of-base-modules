@@ -68,13 +68,36 @@ function accessLevelLabel(ctx: BnModuleAccessContext): string {
 const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const queryClient = useQueryClient();
   const [selected, setSelected] = React.useState<string | null>(null);
+  // EPIC 14 — operational deep links carry the backend-chosen section and the
+  // operational context to return to when the officer navigates back.
+  const [selectedSection, setSelectedSection] = React.useState<string | null>(null);
+  const [returnTab, setReturnTab] = React.useState<string | null>(null);
+
+  const openAssessment = React.useCallback(
+    (assessmentId: string, section?: string | null, fromTab?: string) => {
+      setSelectedSection(section ?? null);
+      setReturnTab(fromTab ?? null);
+      setSelected(assessmentId);
+    },
+    [],
+  );
+
+  const closeAssessment = React.useCallback(() => {
+    setSelected(null);
+    setSelectedSection(null);
+    if (returnTab) setTab(returnTab);
+  }, [returnTab]);
   const [tab, setTab] = React.useState('overview');
   const [wizardOpen, setWizardOpen] = React.useState(false);
 
   if (selected) {
     return (
       <div className="p-4 sm:p-6">
-        <BnMeansAssessmentWorkspace assessmentId={selected} onBack={() => setSelected(null)} />
+        <BnMeansAssessmentWorkspace
+          assessmentId={selected}
+          initialSection={selectedSection}
+          onBack={closeAssessment}
+        />
       </div>
     );
   }
@@ -112,7 +135,9 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
               prefill={{ originSurface: 'MEANS_LANDING' }}
               onCreated={(assessmentId) => {
                 queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
-                setSelected(assessmentId);
+                queryClient.invalidateQueries({ queryKey: ['bn-means-operational-queue'] });
+                queryClient.invalidateQueries({ queryKey: ['bn-means-operational-counts'] });
+                openAssessment(assessmentId, 'household', 'operations');
               }}
             />
           </>
@@ -161,7 +186,9 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
                             ? 'reassessment'
                             : area.code === 'CONFIGURATION'
                               ? 'configuration'
-                              : 'team',
+                              : area.code === 'MY_ASSESSMENTS'
+                                ? 'operations'
+                                : 'team',
                     )
                   }
                 />
@@ -175,31 +202,31 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
         {/* EPIC 13 — operational queues, search and reporting. */}
         <TabsContent value="operations" className="pt-4">
           <BnMeansOperationsWorkspace
-            onOpen={(assessmentId) => setSelected(assessmentId)}
+            onOpen={(assessmentId, section) => openAssessment(assessmentId, section, 'operations')}
             canAssign={ctx.can('write')}
             actionsEnabled={ctx.actionsEnabled}
           />
         </TabsContent>
 
         <TabsContent value="team" className="pt-4">
-          <MeansTeamQueue onOpen={setSelected} />
+          <MeansTeamQueue onOpen={(id) => openAssessment(id, null, 'team')} />
         </TabsContent>
 
         {/* EPIC 8 — verification work is a distinct governed queue. */}
         <TabsContent value="verification" className="pt-4">
-          <BnMeansVerificationQueue onOpen={setSelected} />
+          <BnMeansVerificationQueue onOpen={(id) => openAssessment(id, 'verification', 'verification')} />
         </TabsContent>
 
 
         {/* EPIC 10 — adjustment and approval work in one governed surface. */}
         <TabsContent value="approval" className="pt-4">
-          <BnMeansDecisionQueue onOpenAssessment={setSelected} />
+          <BnMeansDecisionQueue onOpenAssessment={(id) => openAssessment(id, 'decision', 'approval')} />
         </TabsContent>
 
         {/* EPIC 12 — reassessment and change of circumstances. */}
         {ctx.can('reassess') && (
           <TabsContent value="reassessment" className="pt-4">
-            <BnMeansReassessmentQueuePanel onOpen={setSelected} />
+            <BnMeansReassessmentQueuePanel onOpen={(id) => openAssessment(id, 'lifecycle', 'reassessment')} />
           </TabsContent>
         )}
 
