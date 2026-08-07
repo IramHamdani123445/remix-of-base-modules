@@ -60,6 +60,8 @@ export type BnMeansCommandErrorCode =
   | 'DEDUCTION_FACT_NOT_FOUND'
   // EPIC 6 — evidence and information requests.
   | 'DUPLICATE_EVIDENCE_LINK'
+  // EPIC 7 — review and submission.
+  | 'MISSING_REQUIRED_DECLARATION'
   | 'INVALID_VALUE'
   | 'VERSION_CONFLICT'
   | 'FORBIDDEN'
@@ -90,6 +92,7 @@ const KNOWN_ERROR_CODES = new Set<string>([
   'SECTION_NOT_READY', 'ASSET_VALIDATION_FAILED', 'ASSET_FACT_NOT_FOUND',
   'DEDUCTION_VALIDATION_FAILED', 'DEDUCTION_FACT_NOT_FOUND',
   'DUPLICATE_EVIDENCE_LINK', 'INVALID_VALUE', 'VERSION_CONFLICT', 'FORBIDDEN',
+  'MISSING_REQUIRED_DECLARATION',
 ]);
 
 /** Deterministic key ordering so replays produce an identical hash. */
@@ -183,9 +186,14 @@ export const meansCommandService = {
     // EPIC 6 — evidence and information-request supporting operations are
     // served by a dedicated governed boundary with the identical contract
     // (permission, row version, idempotency, payload hash, audit event).
+    // EPIC 7 — submission keeps the authoritative `BN_MEANS_SUBMIT` command
+    // name and is served by its own governed boundary, which re-runs
+    // submission readiness, freezes the version and creates verification work.
     const rpcName = EVIDENCE_COMMANDS.has(request.command)
       ? 'bn_means_evidence_command_v1'
-      : 'bn_means_execute_command_v1';
+      : request.command === 'BN_MEANS_SUBMIT'
+        ? 'bn_means_submission_command_v1'
+        : 'bn_means_execute_command_v1';
 
     const { data, error } = await supabase.rpc(rpcName as never, {
       p_command_name: request.command,

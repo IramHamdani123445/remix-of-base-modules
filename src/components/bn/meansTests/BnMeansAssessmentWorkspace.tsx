@@ -39,6 +39,7 @@ import BnMeansIncomeSection from '@/components/bn/meansTests/income/BnMeansIncom
 import BnMeansAssetSection from '@/components/bn/meansTests/assets/BnMeansAssetSection';
 import BnMeansDeductionsSection from '@/components/bn/meansTests/deductions/BnMeansDeductionsSection';
 import BnMeansEvidenceSection from '@/components/bn/meansTests/evidence/BnMeansEvidenceSection';
+import BnMeansReviewSection from '@/components/bn/meansTests/review/BnMeansReviewSection';
 import BnMeansContextPanel from '@/components/bn/meansTests/context/BnMeansContextPanel';
 import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTests/BnMeansStageJourney';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
@@ -116,6 +117,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   const evidenceReadiness = useQuery({
     queryKey: ['bn-means-evidence-readiness', assessmentId],
     queryFn: () => meansQueryService.evidenceReadiness(assessmentId),
+  });
+  // EPIC 7 — submission readiness is the authoritative Review-stage boundary.
+  const submissionReadiness = useQuery({
+    queryKey: ['bn-means-submission-readiness', assessmentId],
+    queryFn: () => meansQueryService.submissionReadiness(assessmentId),
   });
   const [activeTab, setActiveTab] = React.useState('context');
 
@@ -249,6 +255,12 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     deductionReadiness.data?.status === 'OK' ? deductionReadiness.data.data : null;
   const evidenceReady =
     evidenceReadiness.data?.status === 'OK' ? evidenceReadiness.data.data : null;
+  const submissionReady =
+    submissionReadiness.data?.status === 'OK' ? submissionReadiness.data.data : null;
+  // A failed or denied readiness read must never present as "ready to submit".
+  const submissionReadinessUnavailable =
+    submissionReadiness.isError ||
+    Boolean(submissionReadiness.data && submissionReadiness.data.status !== 'OK');
   const householdComplete = Boolean(householdReady?.section_complete);
   const stages: readonly BnMeansStage[] = [
     { key: 'context', label: 'Confirm context', state: 'COMPLETE', hint: 'Person, claim and period' },
@@ -324,7 +336,26 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           }`
         : 'Required evidence and information requests',
     },
-    { key: 'review', label: 'Review & submit', state: 'PENDING', hint: 'Not implemented yet' },
+    {
+      key: 'review',
+      label: 'Review & submit',
+      state: submissionReady?.already_submitted
+        ? 'COMPLETE'
+        : !evidenceReady?.section_complete
+          ? 'PENDING'
+          : submissionReadinessUnavailable || (submissionReady?.blockers.length ?? 0) > 0
+            ? 'BLOCKED'
+            : 'CURRENT',
+      hint: submissionReady?.already_submitted
+        ? 'Submitted — awaiting verification'
+        : submissionReadinessUnavailable
+          ? 'Submission readiness unavailable'
+          : submissionReady
+            ? submissionReady.can_submit
+              ? 'Ready to submit'
+              : `${submissionReady.blockers.length} issue${submissionReady.blockers.length === 1 ? '' : 's'} to resolve`
+            : 'Final review before submission',
+    },
   ];
 
 
@@ -502,40 +533,11 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 
 
         <TabsContent value="review">
-          <Card>
-            <CardHeader>
-              <CardTitle>Completeness review and submission</CardTitle>
-              <CardDescription>
-                Submission freezes the assessment version. Later corrections require a successor
-                version, a return-to-information flow or the adjustment process.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Summary label="Household members" value={asRows(data.household).length} />
-                <Summary label="Income facts" value={asRows(data.income).length} />
-                <Summary label="Evidence items" value={asRows(data.evidence).length} />
-              </div>
-              <div className="flex flex-wrap gap-4">
-                <ActionButton command="BN_MEANS_SUBMIT" label="Submit assessment" />
-              </div>
-              <div>
-                <p className="mb-2 text-xs uppercase text-muted-foreground">Frozen versions</p>
-                {asRows(data.versions).length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No frozen version yet.</p>
-                ) : (
-                  <ul className="space-y-1 text-sm">
-                    {asRows(data.versions).map((v) => (
-                      <li key={String(v.assessment_version_id)}>
-                        v{String(v.version_no)} · {String(v.frozen_reason)} ·{' '}
-                        <span className="font-mono text-xs">{String(v.snapshot_hash).slice(0, 12)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <BnMeansReviewSection
+            assessmentId={assessmentId}
+            onNavigateSection={setActiveTab}
+            onReturnToQueue={onBack}
+          />
         </TabsContent>
 
         <TabsContent value="verification">
