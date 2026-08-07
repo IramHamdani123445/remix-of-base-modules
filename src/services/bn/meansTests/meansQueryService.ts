@@ -296,6 +296,75 @@ export const meansQueryService = {
     return envelope<readonly BnMeansHouseholdCandidate[]>(data);
   },
 
+  /** EPIC 3 — income records, household member refs and no-income declarations. */
+  async income(assessmentId: string): Promise<BnMeansQueryResult<BnMeansIncomeDetail>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_income_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansIncomeDetail>(data);
+  },
+
+  /** EPIC 3 — backend-owned income readiness. Never recomputed in React. */
+  async incomeReadiness(
+    assessmentId: string,
+  ): Promise<BnMeansQueryResult<BnMeansIncomeReadiness>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_income_readiness_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansIncomeReadiness>(data);
+  },
+
+  /** EPIC 3 — policy-governed income lists (categories, frequencies, basis, sources). */
+  async incomeReference(): Promise<BnMeansQueryResult<BnMeansIncomeReference>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_income_reference_v1', {
+      p_actor_user_id: uid,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansIncomeReference>(data);
+  },
+
+  /** EPIC 3 — existing contribution information shown as reference context only. */
+  async incomeContext(
+    assessmentId: string,
+    memberId: string,
+  ): Promise<BnMeansQueryResult<BnMeansIncomeContext>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_income_context_v1', {
+      p_actor_user_id: uid,
+      p_assessment_id: assessmentId,
+      p_member_id: memberId,
+    });
+    if (error) return failed(error.message);
+    return envelope<BnMeansIncomeContext>(data);
+  },
+
+  /** EPIC 3 — governed employer lookup. Internal identifiers are never returned. */
+  async employerSearch(
+    term: string,
+    limit = 20,
+  ): Promise<BnMeansQueryResult<readonly BnMeansEmployerRecord[]>> {
+    const uid = await actorId();
+    if (!uid) return failed('No authenticated actor', 'UNAUTHENTICATED');
+    const { data, error } = await supabase.rpc('bn_means_employer_search_v1', {
+      p_actor_user_id: uid,
+      p_term: term,
+      p_limit: limit,
+    });
+    if (error) return failed(error.message);
+    return envelope<readonly BnMeansEmployerRecord[]>(data);
+  },
+
   /** MT7 — secured work queues. Never derived from direct table reads. */
   async queue(
     queueCode: BnMeansQueueCode,
@@ -314,4 +383,5 @@ export const meansQueryService = {
     return envelope<readonly Record<string, unknown>[]>(data);
   },
 };
+
 
