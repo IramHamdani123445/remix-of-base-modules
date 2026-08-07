@@ -40,6 +40,16 @@ export type BnMeansCommandName =
   | 'BN_MEANS_WITHDRAW_NO_DEDUCTIONS'
   | 'BN_MEANS_MARK_DEDUCTIONS_COMPLETE'
   | 'BN_MEANS_ATTACH_EVIDENCE'
+  // EPIC 6 — governed supporting operations for evidence and information
+  // requests. `BN_MEANS_ATTACH_EVIDENCE` remains the canonical business
+  // command; these maintain the link register and the request register.
+  | 'BN_MEANS_UNLINK_EVIDENCE'
+  | 'BN_MEANS_RECORD_EVIDENCE_USABILITY'
+  | 'BN_MEANS_REQUEST_INFORMATION'
+  | 'BN_MEANS_RECORD_INFORMATION_RESPONSE'
+  | 'BN_MEANS_CLOSE_INFORMATION_REQUEST'
+  | 'BN_MEANS_MARK_EVIDENCE_COMPLETE'
+  | 'BN_MEANS_REOPEN_EVIDENCE'
   | 'BN_MEANS_SUBMIT'
   | 'BN_MEANS_VERIFY_INFORMATION'
   | 'BN_MEANS_CALCULATE'
@@ -116,7 +126,15 @@ export const BN_MEANS_COMMANDS: readonly BnMeansCommandSpec[] = [
   S('BN_MEANS_DECLARE_NO_DEDUCTIONS',   'bn_means_tests:write', { implemented: true }),
   S('BN_MEANS_WITHDRAW_NO_DEDUCTIONS',  'bn_means_tests:write', { implemented: true }),
   S('BN_MEANS_MARK_DEDUCTIONS_COMPLETE','bn_means_tests:write', { implemented: true }),
-  S('BN_MEANS_ATTACH_EVIDENCE',         'bn_means_tests:write'),
+  S('BN_MEANS_ATTACH_EVIDENCE',         'bn_means_tests:write', { implemented: true }),
+  // EPIC 6 supporting operations — evidence link register and information requests.
+  S('BN_MEANS_UNLINK_EVIDENCE',            'bn_means_tests:write', { implemented: true, requiresJustification: true }),
+  S('BN_MEANS_RECORD_EVIDENCE_USABILITY',  'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_REQUEST_INFORMATION',        'bn_means_tests:write', { implemented: true, emitsCommunication: true }),
+  S('BN_MEANS_RECORD_INFORMATION_RESPONSE','bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_CLOSE_INFORMATION_REQUEST',  'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_MARK_EVIDENCE_COMPLETE',     'bn_means_tests:write', { implemented: true }),
+  S('BN_MEANS_REOPEN_EVIDENCE',            'bn_means_tests:write', { implemented: true }),
 
   // Submission & verification
   S('BN_MEANS_SUBMIT',                  'bn_means_tests:write',   { emitsCommunication: true }),

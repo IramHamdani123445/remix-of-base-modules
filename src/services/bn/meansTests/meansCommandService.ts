@@ -58,6 +58,11 @@ export type BnMeansCommandErrorCode =
   | 'ASSET_FACT_NOT_FOUND'
   | 'DEDUCTION_VALIDATION_FAILED'
   | 'DEDUCTION_FACT_NOT_FOUND'
+  // EPIC 6 — evidence and information requests.
+  | 'DUPLICATE_EVIDENCE_LINK'
+  | 'INVALID_VALUE'
+  | 'VERSION_CONFLICT'
+  | 'FORBIDDEN'
   | 'UNKNOWN';
 
 export interface BnMeansCommandResult {
@@ -84,6 +89,7 @@ const KNOWN_ERROR_CODES = new Set<string>([
   'INCOME_VALIDATION_FAILED', 'INCOME_FACT_NOT_FOUND', 'FOREIGN_CURRENCY_NOT_SUPPORTED',
   'SECTION_NOT_READY', 'ASSET_VALIDATION_FAILED', 'ASSET_FACT_NOT_FOUND',
   'DEDUCTION_VALIDATION_FAILED', 'DEDUCTION_FACT_NOT_FOUND',
+  'DUPLICATE_EVIDENCE_LINK', 'INVALID_VALUE', 'VERSION_CONFLICT', 'FORBIDDEN',
 ]);
 
 /** Deterministic key ordering so replays produce an identical hash. */
@@ -136,6 +142,22 @@ function newUuid(): string {
       });
 }
 
+/**
+ * EPIC 6 — commands served by the governed evidence boundary.
+ * `BN_MEANS_ATTACH_EVIDENCE` stays the canonical business command; it is
+ * routed here so linking writes the authoritative evidence link register.
+ */
+const EVIDENCE_COMMANDS = new Set<string>([
+  'BN_MEANS_ATTACH_EVIDENCE',
+  'BN_MEANS_UNLINK_EVIDENCE',
+  'BN_MEANS_RECORD_EVIDENCE_USABILITY',
+  'BN_MEANS_REQUEST_INFORMATION',
+  'BN_MEANS_RECORD_INFORMATION_RESPONSE',
+  'BN_MEANS_CLOSE_INFORMATION_REQUEST',
+  'BN_MEANS_MARK_EVIDENCE_COMPLETE',
+  'BN_MEANS_REOPEN_EVIDENCE',
+]);
+
 export const meansCommandService = {
   canonicalisePayload,
   computePayloadHash,
@@ -158,7 +180,14 @@ export const meansCommandService = {
       };
     }
 
-    const { data, error } = await supabase.rpc('bn_means_execute_command_v1', {
+    // EPIC 6 — evidence and information-request supporting operations are
+    // served by a dedicated governed boundary with the identical contract
+    // (permission, row version, idempotency, payload hash, audit event).
+    const rpcName = EVIDENCE_COMMANDS.has(request.command)
+      ? 'bn_means_evidence_command_v1'
+      : 'bn_means_execute_command_v1';
+
+    const { data, error } = await supabase.rpc(rpcName as never, {
       p_command_name: request.command,
       p_assessment_id: request.assessmentId ?? null,
       p_actor_user_id: actorUserId,
@@ -170,7 +199,7 @@ export const meansCommandService = {
       p_payload: payload as never,
       p_payload_hash: payloadHash,
       p_idempotency_key: request.idempotencyKey ?? newUuid(),
-    });
+    } as never);
 
     if (error) {
       const parsed = parseCommandError(error.message);

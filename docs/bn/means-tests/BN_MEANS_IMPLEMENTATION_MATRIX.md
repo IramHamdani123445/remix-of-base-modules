@@ -202,6 +202,49 @@ suites — 54/54 passing.
 | Epic 3 | Income assessment (member-linked income capture, governed categories and frequencies, backend annualisation, employer/contribution reference, explicit no-income declarations, backend-owned income readiness) | **COMPLETE** |
 | Epic 4 | Asset assessment (owner-linked asset declaration, policy-version-controlled categories, category-driven capture, ownership and valuation context, possible-disregard flagging, explicit no-asset declarations, backend-owned asset readiness) | **COMPLETE** |
 | Epic 5 | Deductions and disregards (separate DEDUCTION_CLAIM and DISREGARD_CANDIDATE concepts, governed target selection, policy-controlled categories, claimed amount/period/provenance, Epic 4 disregard signal review, evidence requirement identification, explicit none-claimed confirmation, backend-owned deduction readiness) | **COMPLETE** |
+| Epic 6 | Evidence and information requests (policy-derived requirement checklist by subject, search and link of existing claim documents through the governed document boundary, external references, usability checks, information requests with response tracking and closure, backend-owned evidence readiness and completion invalidation) | **COMPLETE** |
+
+### Epic 6 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Journey delivered** — Deductions complete → determine required evidence →
+show requirements by assessment and by fact → search existing documents →
+link the document to the correct requirement and subject → record usability
+checks → request missing information or documents → track responses →
+resolve outstanding requirements → mark Evidence complete.
+
+**No parallel document store** — nothing is uploaded or stored by this
+section. `bn_means_document_search_v1` searches documents that already exist
+for the assessment's claim, and `bn_means_evidence_link` records only which
+document supports which requirement and subject. External references are
+recorded as references, never as content.
+
+**Usability, not truth** — a usability check answers whether a document can
+be relied on during verification (`RECEIVED`, `USABLE`, `UNREADABLE`,
+`WRONG_DOCUMENT`, `EXPIRED`, `INCOMPLETE`). It never decides whether the
+underlying fact is true; verification remains Epic 8.
+
+**Information requests** — requests carry type, recipient, reason, what is
+required, due date and a blocking flag. Responses are logged against the
+request and the request is explicitly closed. Any outbound message is issued
+by the Communication Hub from the backend command boundary.
+
+**Readiness is backend-owned** — `bn_means_evidence_readiness_v1` returns the
+section status, mandatory satisfied and outstanding counts, unusable document
+counts, open, blocking and overdue request counts, blockers, warnings and
+`completion_invalidated` when facts change after completion. The UI renders
+that verdict and never recomputes it.
+
+**Governed boundary** — evidence commands execute through
+`bn_means_evidence_command_v1` (`BN_MEANS_ATTACH_EVIDENCE`,
+`BN_MEANS_UNLINK_EVIDENCE`, `BN_MEANS_RECORD_EVIDENCE_USABILITY`,
+`BN_MEANS_REQUEST_INFORMATION`, `BN_MEANS_RECORD_INFORMATION_RESPONSE`,
+`BN_MEANS_CLOSE_INFORMATION_REQUEST`, `BN_MEANS_MARK_EVIDENCE_COMPLETE`,
+`BN_MEANS_REOPEN_EVIDENCE`), all mapped to `bn_means_tests:write`.
 
 ### Epic 5 — completion record
 
