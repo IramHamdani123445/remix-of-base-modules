@@ -15,6 +15,7 @@ import { MemoryRouter } from 'react-router-dom';
 const detail = vi.fn();
 const availableActions = vi.fn();
 const calculationReadiness = vi.fn();
+const calculationWorkspace = vi.fn();
 const benefit360Summary = vi.fn();
 const execute = vi.fn();
 const verificationWorkspace = vi.fn();
