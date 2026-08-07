@@ -1,11 +1,11 @@
 /**
- * BN Means-Test Assessments — module landing experience (Epic 0).
+ * BN Means-Test Assessments — module landing experience.
  *
  * The entry point for the module: what a Means Test is, where the process
- * stands, which work areas exist and which are still being built. The
- * delivered operational surfaces (team work queue, adjustment/approval
- * queues, assessment workspace) are reachable from here; everything else
- * states plainly that it is not implemented yet.
+ * stands and which work areas exist. Every operational surface (team work
+ * queue, adjustment/approval queues, operations workspace and assessment
+ * workspace) is reachable from here; availability of an individual action
+ * is decided by the backend, never by this page.
  *
  * Access is enforced by `BnModuleRouteGate` (fail-closed, database-driven).
  * Menu visibility is not security — the gate protects direct URL entry.
