@@ -106974,6 +106974,8 @@ export type Database = {
           requested: number
         }[]
       }
+      _bn_means_ops_action: { Args: { p_status: string }; Returns: string }
+      _bn_means_ops_section: { Args: { p_status: string }; Returns: string }
       _bn_means_person_label: { Args: { p_user_id: string }; Returns: string }
       _bn_means_policy_validate: {
         Args: { p_policy_version_id: string }
@@ -107006,6 +107008,7 @@ export type Database = {
         Args: { p_amount: number; p_method: string; p_scale: number }
         Returns: number
       }
+      _bn_means_status_label: { Args: { p_status: string }; Returns: string }
       _bn_means_submission_readiness: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
@@ -108803,6 +108806,38 @@ export type Database = {
       }
       bn_means_lifecycle_context_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_means_operational_assign_v1: {
+        Args: {
+          p_action: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_target_user_id?: string
+        }
+        Returns: Json
+      }
+      bn_means_operational_counts_v1: {
+        Args: { p_actor_user_id: string; p_queue_codes?: string[] }
+        Returns: Json
+      }
+      bn_means_operational_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+          p_queue_code: string
+          p_sort?: string
+        }
+        Returns: Json
+      }
+      bn_means_operational_report_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_report_code: string
+        }
         Returns: Json
       }
       bn_means_person_context_v1: {
