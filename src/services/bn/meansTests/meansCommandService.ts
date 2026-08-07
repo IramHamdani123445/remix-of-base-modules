@@ -72,7 +72,11 @@ export type BnMeansCommandErrorCode =
   | 'FROZEN_VERSION_MISSING'
   | 'FROZEN_VERSION_TAMPERED'
   | 'REASON_CODE_REQUIRED'
+  // EPIC 9 — calculation and explanation.
+  | 'NOT_READY_FOR_CALCULATION'
+  | 'POLICY_PARAMETER_MISSING'
   | 'UNKNOWN';
+
 
 export interface BnMeansCommandResult {
   readonly status: BnMeansCommandStatus;
@@ -102,7 +106,9 @@ const KNOWN_ERROR_CODES = new Set<string>([
   'MISSING_REQUIRED_DECLARATION',
   'SELF_VERIFICATION_DENIED', 'WORK_NOT_OWNED', 'FROZEN_VERSION_MISSING',
   'FROZEN_VERSION_TAMPERED', 'REASON_CODE_REQUIRED',
+  'NOT_READY_FOR_CALCULATION', 'POLICY_PARAMETER_MISSING',
 ]);
+
 
 /** Deterministic key ordering so replays produce an identical hash. */
 export function canonicalisePayload(payload: unknown): string {
