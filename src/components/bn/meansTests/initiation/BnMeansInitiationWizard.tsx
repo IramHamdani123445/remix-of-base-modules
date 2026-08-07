@@ -62,10 +62,16 @@ export interface BnMeansInitiationWizardProps {
   onOpenChange: (open: boolean) => void;
   prefill?: BnMeansInitiationPrefill;
   onCreated: (assessmentId: string) => void;
+  /**
+   * Offered when no policy is in force: takes a configuration-permitted
+   * officer straight to Means-Test policy configuration instead of leaving
+   * them at a dead end.
+   */
+  onOpenConfiguration?: () => void;
 }
 
 export const BnMeansInitiationWizard: React.FC<BnMeansInitiationWizardProps> = ({
-  open, onOpenChange, prefill, onCreated,
+  open, onOpenChange, prefill, onCreated, onOpenConfiguration,
 }) => {
   const [draft, setDraft] = React.useState<BnMeansInitiationDraft>(() => emptyInitiationDraft(prefill));
   const [step, setStep] = React.useState<BnMeansInitiationStep>('CONTEXT');
@@ -456,15 +462,27 @@ export const BnMeansInitiationWizard: React.FC<BnMeansInitiationWizardProps> = (
                   </CardContent>
                 </Card>
               ) : (
-                <MeansStateNotice
-                  state="EMPTY"
-                  reason={
-                    checkData?.policy_resolution?.state === 'OVERLAPPING'
-                      ? 'More than one policy version is in force for this programme and date. This is a configuration error — contact Means-Test configuration support.'
-                      : 'No Means-Test policy is in force for the selected programme and effective date.'
-                  }
-                  testId="means-policy-unresolved"
-                />
+                <div className="space-y-2">
+                  <MeansStateNotice
+                    state="EMPTY"
+                    reason={
+                      checkData?.policy_resolution?.state === 'OVERLAPPING'
+                        ? 'More than one policy version is in force for this programme and date. This is a configuration error — resolve it in Means-Test configuration before starting the assessment.'
+                        : 'No Means-Test policy is in force for the selected programme and effective date. A policy version must be configured and activated first.'
+                    }
+                    testId="means-policy-unresolved"
+                  />
+                  {onOpenConfiguration && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      data-testid="means-policy-open-configuration"
+                      onClick={() => { onOpenChange(false); onOpenConfiguration(); }}
+                    >
+                      Open Means-Test configuration
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           )}

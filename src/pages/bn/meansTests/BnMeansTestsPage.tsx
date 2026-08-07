@@ -44,6 +44,8 @@ import {
   MeansWorkAreaCard,
 } from '@/components/bn/meansTests/landing/MeansLanding';
 import { BnMeansVerificationQueue } from '@/components/bn/meansTests/verification/BnMeansVerificationQueue';
+import { BnMeansReassessmentQueuePanel } from '@/components/bn/meansTests/lifecycle/BnMeansReassessmentQueue';
+import { BnMeansPolicyConfiguration } from '@/components/bn/meansTests/configuration/BnMeansPolicyConfiguration';
 
 const STATUS_FILTERS = [
   'DRAFT', 'INFORMATION_PENDING', 'SUBMITTED', 'VERIFICATION_PENDING', 'CALCULATED',
@@ -104,6 +106,7 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
             </Button>
             <BnMeansInitiationWizard
               open={wizardOpen}
+              onOpenConfiguration={ctx.can('config') ? () => setTab('configuration') : undefined}
               onOpenChange={setWizardOpen}
               prefill={{ originSurface: 'MEANS_LANDING' }}
               onCreated={(assessmentId) => {
@@ -131,7 +134,8 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
           <TabsTrigger value="team">Team work queue</TabsTrigger>
           <TabsTrigger value="verification">Verification queue</TabsTrigger>
           <TabsTrigger value="approval">Decision queues</TabsTrigger>
-
+          {ctx.can('reassess') && <TabsTrigger value="reassessment">Reassessment queue</TabsTrigger>}
+          {ctx.can('config') && <TabsTrigger value="configuration">Configuration</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-4">
@@ -151,7 +155,11 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
                         ? 'approval'
                         : area.code === 'VERIFICATION_QUEUE'
                           ? 'verification'
-                          : 'team',
+                          : area.code === 'REASSESSMENT_QUEUE'
+                            ? 'reassessment'
+                            : area.code === 'CONFIGURATION'
+                              ? 'configuration'
+                              : 'team',
                     )
                   }
                 />
@@ -176,6 +184,23 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
         <TabsContent value="approval" className="pt-4">
           <BnMeansDecisionQueue onOpenAssessment={setSelected} />
         </TabsContent>
+
+        {/* EPIC 12 — reassessment and change of circumstances. */}
+        {ctx.can('reassess') && (
+          <TabsContent value="reassessment" className="pt-4">
+            <BnMeansReassessmentQueuePanel onOpen={setSelected} />
+          </TabsContent>
+        )}
+
+        {/* Policy configuration — governed administrative boundary. */}
+        {ctx.can('config') && (
+          <TabsContent value="configuration" className="pt-4">
+            <BnMeansPolicyConfiguration
+              actionsEnabled={ctx.actionsEnabled}
+              canConfigure={ctx.can('config')}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

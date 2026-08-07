@@ -118,7 +118,10 @@ describe('MEANS-TEST EPIC 0 · landing page', () => {
       </>,
     );
     expect(screen.getByTestId('means-work-area-TEAM_QUEUE')).toHaveAttribute('data-implemented', 'true');
-    const notImplemented = screen.getByTestId('means-work-area-REASSESSMENT_QUEUE');
+    // Reassessment and configuration are now delivered surfaces.
+    expect(screen.getByTestId('means-work-area-REASSESSMENT_QUEUE')).toHaveAttribute('data-implemented', 'true');
+    expect(screen.getByTestId('means-work-area-CONFIGURATION')).toHaveAttribute('data-implemented', 'true');
+    const notImplemented = screen.getByTestId('means-work-area-MY_ASSESSMENTS');
     expect(notImplemented).toHaveAttribute('data-implemented', 'false');
     expect(notImplemented).toHaveTextContent('Not implemented yet');
     // No unimplemented area may render a zero count.
