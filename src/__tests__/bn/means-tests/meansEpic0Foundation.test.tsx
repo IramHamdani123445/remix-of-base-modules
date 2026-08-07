@@ -109,24 +109,24 @@ describe('MEANS-TEST EPIC 0 · landing page', () => {
     }
   });
 
-  it('distinguishes implemented from unimplemented work areas without fake counts', () => {
-    const { container } = render(
+  it('marks every landing work area as delivered after Epic 14 closure', () => {
+    render(
       <>
         {MEANS_WORK_AREAS.map((area) => (
           <MeansWorkAreaCard key={area.code} area={area} permitted />
         ))}
       </>,
     );
-    expect(screen.getByTestId('means-work-area-TEAM_QUEUE')).toHaveAttribute('data-implemented', 'true');
-    // Reassessment and configuration are now delivered surfaces.
-    expect(screen.getByTestId('means-work-area-REASSESSMENT_QUEUE')).toHaveAttribute('data-implemented', 'true');
-    expect(screen.getByTestId('means-work-area-CONFIGURATION')).toHaveAttribute('data-implemented', 'true');
-    const notImplemented = screen.getByTestId('means-work-area-MY_ASSESSMENTS');
-    expect(notImplemented).toHaveAttribute('data-implemented', 'false');
-    expect(notImplemented).toHaveTextContent('Not implemented yet');
-    // No unimplemented area may render a zero count.
-    expect(notImplemented.textContent).not.toMatch(/\b0\b/);
-    expect(container.querySelectorAll('[data-implemented="false"]').length).toBeGreaterThan(0);
+    for (const area of MEANS_WORK_AREAS) {
+      const card = screen.getByTestId(`means-work-area-${area.code}`);
+      expect(card).toHaveAttribute('data-implemented', 'true');
+      // A delivered area still never fabricates a count.
+      expect(card.textContent).not.toMatch(/\b0\b/);
+    }
+    expect(screen.getByTestId('means-work-area-MY_ASSESSMENTS')).toHaveAttribute(
+      'data-implemented',
+      'true',
+    );
   });
 
   it('states missing permission rather than showing an empty area', () => {
