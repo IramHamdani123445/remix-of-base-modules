@@ -13571,6 +13571,57 @@ export type Database = {
           },
         ]
       }
+      bn_means_adjustment_reason: {
+        Row: {
+          benefit_programme: string | null
+          created_at: string
+          decision: string | null
+          description: string | null
+          display_order: number
+          is_active: boolean
+          label: string
+          policy_version_id: string | null
+          reason_code: string
+          reason_id: string
+          reason_scope: string
+          requires_evidence: boolean
+          requires_justification: boolean
+          target_kinds: string[] | null
+        }
+        Insert: {
+          benefit_programme?: string | null
+          created_at?: string
+          decision?: string | null
+          description?: string | null
+          display_order?: number
+          is_active?: boolean
+          label: string
+          policy_version_id?: string | null
+          reason_code: string
+          reason_id?: string
+          reason_scope: string
+          requires_evidence?: boolean
+          requires_justification?: boolean
+          target_kinds?: string[] | null
+        }
+        Update: {
+          benefit_programme?: string | null
+          created_at?: string
+          decision?: string | null
+          description?: string | null
+          display_order?: number
+          is_active?: boolean
+          label?: string
+          policy_version_id?: string | null
+          reason_code?: string
+          reason_id?: string
+          reason_scope?: string
+          requires_evidence?: boolean
+          requires_justification?: boolean
+          target_kinds?: string[] | null
+        }
+        Relationships: []
+      }
       bn_means_approval: {
         Row: {
           approval_id: string
@@ -15545,6 +15596,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           currency_code: string
+          decision_rules: Json
           deduction_rules: Json
           effective_from: string
           effective_to: string | null
@@ -15568,6 +15620,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency_code: string
+          decision_rules?: Json
           deduction_rules?: Json
           effective_from: string
           effective_to?: string | null
@@ -15591,6 +15644,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           currency_code?: string
+          decision_rules?: Json
           deduction_rules?: Json
           effective_from?: string
           effective_to?: string | null
@@ -106339,9 +106393,18 @@ export type Database = {
         Args: { p_command_name: string }
         Returns: string
       }
+      _bn_means_adjustment_reference: {
+        Args: { p_policy_version_id?: string; p_programme?: string }
+        Returns: Json
+      }
+      _bn_means_adjustment_target_catalogue: { Args: never; Returns: Json }
       _bn_means_annualise: {
         Args: { p_amount: number; p_frequency: string }
         Returns: number
+      }
+      _bn_means_approval_readiness: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
       }
       _bn_means_asset_execute: {
         Args: {
@@ -106670,6 +106733,19 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_means_mt7_execute_core: {
+        Args: {
+          p_actor: string
+          p_actor_code: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation: string
+          p_justification: string
+          p_payload: Json
+          p_reason_code: string
+        }
+        Returns: Json
+      }
       _bn_means_open_adjustments: {
         Args: { p_assessment_id: string }
         Returns: {
@@ -106677,6 +106753,7 @@ export type Database = {
           requested: number
         }[]
       }
+      _bn_means_person_label: { Args: { p_user_id: string }; Returns: string }
       _bn_means_readiness: { Args: { p_assessment_id: string }; Returns: Json }
       _bn_means_recalculate: {
         Args: {
@@ -108286,6 +108363,10 @@ export type Database = {
         Args: { p_claim_id: string }
         Returns: number
       }
+      bn_means_adjustment_reference_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id?: string }
+        Returns: Json
+      }
       bn_means_adjustments_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
@@ -108340,6 +108421,10 @@ export type Database = {
           p_actor_user_id: string
           p_is_mutation: boolean
         }
+        Returns: Json
+      }
+      bn_means_decision_context_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
       bn_means_deduction_readiness_v1: {
@@ -108471,15 +108556,26 @@ export type Database = {
         Args: { p_actor_user_id: string; p_effective_date?: string }
         Returns: Json
       }
-      bn_means_queues_v1: {
-        Args: {
-          p_actor_user_id: string
-          p_limit?: number
-          p_offset?: number
-          p_queue_code: string
-        }
-        Returns: Json
-      }
+      bn_means_queues_v1:
+        | {
+            Args: {
+              p_actor_user_id: string
+              p_filters: Json
+              p_limit?: number
+              p_offset?: number
+              p_queue_code: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_actor_user_id: string
+              p_limit?: number
+              p_offset?: number
+              p_queue_code: string
+            }
+            Returns: Json
+          }
       bn_means_review_summary_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
