@@ -67,13 +67,24 @@ const CANONICAL_COMMANDS: readonly BnMeansCommandName[] = [
   'BN_MEANS_CLOSE',
 ];
 
+/** EPIC 3 — governed supporting operations; the business catalogue is unchanged. */
+const SUPPORTING_OPERATIONS: readonly BnMeansCommandName[] = [
+  'BN_MEANS_CORRECT_INCOME',
+  'BN_MEANS_VOID_INCOME',
+  'BN_MEANS_DECLARE_NO_INCOME',
+  'BN_MEANS_WITHDRAW_NO_INCOME',
+  'BN_MEANS_MARK_HOUSEHOLD_COMPLETE',
+  'BN_MEANS_MARK_INCOME_COMPLETE',
+];
+
 describe('Means-Test command catalogue', () => {
-  it('registers all 21 canonical commands', () => {
-    expect(BN_MEANS_COMMANDS).toHaveLength(21);
-    for (const c of CANONICAL_COMMANDS) {
+  it('registers all 21 canonical commands plus the governed supporting operations', () => {
+    expect(BN_MEANS_COMMANDS).toHaveLength(CANONICAL_COMMANDS.length + SUPPORTING_OPERATIONS.length);
+    for (const c of [...CANONICAL_COMMANDS, ...SUPPORTING_OPERATIONS]) {
       expect(getMeansCommandSpec(c)).toBeDefined();
     }
   });
+
 
   it('maps every canonical command to a capability in the registry', () => {
     for (const c of CANONICAL_COMMANDS) {
