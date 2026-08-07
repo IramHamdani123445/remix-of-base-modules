@@ -223,25 +223,43 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 
   const householdReady =
     householdReadiness.data?.status === 'OK' ? householdReadiness.data.data : null;
-  const status = String(assessment.status ?? '');
-  const intakeDone = status !== 'DRAFT';
+  const incomeReady =
+    incomeReadiness.data?.status === 'OK' ? incomeReadiness.data.data : null;
+  const householdComplete = Boolean(householdReady?.section_complete);
   const stages: readonly BnMeansStage[] = [
     { key: 'context', label: 'Confirm context', state: 'COMPLETE', hint: 'Person, claim and period' },
     {
       key: 'household',
       label: 'Household composition',
-      state: householdReady?.section_complete
+      state: householdComplete
         ? 'COMPLETE'
         : (householdReady?.blockers.length ?? 0) > 0
           ? 'BLOCKED'
           : 'CURRENT',
       hint: householdReady ? `${householdReady.household_size} in household` : 'Who lived in the household',
     },
-    { key: 'income', label: 'Income', state: intakeDone ? 'COMPLETE' : 'PENDING', hint: 'Declared income' },
-    { key: 'assets', label: 'Assets', state: intakeDone ? 'COMPLETE' : 'PENDING' },
-    { key: 'evidence', label: 'Evidence', state: intakeDone ? 'COMPLETE' : 'PENDING' },
-    { key: 'review', label: 'Review & submit', state: intakeDone ? 'COMPLETE' : 'PENDING' },
+    {
+      key: 'income',
+      label: 'Income',
+      state: incomeReady?.section_marked_complete
+        ? 'COMPLETE'
+        : !householdComplete
+          ? 'PENDING'
+          : (incomeReady?.blockers.length ?? 0) > 0
+            ? 'BLOCKED'
+            : 'CURRENT',
+      hint: incomeReady
+        ? `${incomeReady.current_income_count} income record${
+            incomeReady.current_income_count === 1 ? '' : 's'
+          }`
+        : 'Declared income',
+    },
+    { key: 'assets', label: 'Assets', state: 'PENDING', hint: 'Not implemented yet' },
+    { key: 'deductions', label: 'Deductions', state: 'PENDING', hint: 'Not implemented yet' },
+    { key: 'evidence', label: 'Evidence', state: 'PENDING', hint: 'Not implemented yet' },
+    { key: 'review', label: 'Review & submit', state: 'PENDING', hint: 'Not implemented yet' },
   ];
+
 
   const ActionButton: React.FC<{ command: BnMeansCommandName; label: string; payload?: Record<string, unknown> }> = ({
     command,
