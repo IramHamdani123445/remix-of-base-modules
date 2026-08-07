@@ -205,8 +205,41 @@ suites — 54/54 passing.
 | Epic 6 | Evidence and information requests (policy-derived requirement checklist by subject, search and link of existing claim documents through the governed document boundary, external references, usability checks, information requests with response tracking and closure, backend-owned evidence readiness and completion invalidation) | **COMPLETE** |
 | Epic 7 | Review and submission (backend-owned submission readiness, business-readable section summaries with return-to-section routing, policy-configured declarations captured with statement text and version, atomic submission that revalidates, freezes the version with an immutable hashed snapshot, records maker and timestamp, creates verification work and moves to SUBMITTED) | **COMPLETE** |
 | Epic 8 | Verification and clarification (verification queue with governed scopes, frozen-version workspace with per-fact cards and supporting evidence, claim/release of verification work, Verify / Reject / Request clarification / Not applicable decisions with policy reason lists, clarification requests and responses that add information without rewriting history, re-review rounds, reopen with justification, independence rule preventing the submitter from verifying, snapshot integrity check, backend-owned verification readiness and completion) | **COMPLETE** |
+| Epic 9 | Calculation and explanation (single deterministic backend engine, backend-owned calculation readiness reconciled with Epic 8 verification, business-readable explanation of every included, excluded, disregarded and disallowed amount, immutable superseding calculations with history, staleness detection against the live verification revision, result presented as CALCULATED — PENDING INDEPENDENT APPROVAL) | **COMPLETE** |
+
+### Epic 9 — completion record
+
+Classification: `IMPLEMENTATION_IN_PROGRESS` ·
+`development_access = ENABLED` ·
+`production_activation = NOT_STARTED` ·
+`external_uat = NOT_STARTED`.
+
+**Journey delivered** — Verification complete → backend confirms calculation
+readiness → officer runs Calculate → deterministic engine produces one
+calculation with a full explanation → outcome is shown as CALCULATED —
+PENDING INDEPENDENT APPROVAL, ready for Epic 10.
+
+**Rules enforced**
+
+- One engine only. The existing MT6 `BN_MEANS_CALCULATE` command,
+  calculation and calculation-line tables were extended, not duplicated.
+- Readiness is backend-owned and reconciled with the Epic 8 verification
+  boundary, the frozen version, snapshot integrity, policy validity,
+  currency consistency and fact existence.
+- Calculations are immutable. Recalculation supersedes the previous
+  calculation and preserves it in history.
+- A calculation taken before later verification activity is reported stale
+  by the backend and must be re-run before approval.
+- The browser performs no arithmetic, derives no readiness and never
+  presents a failed read as an empty result.
+- Epic 9 does not adjust, approve, reject, activate or publish anything.
+
+**Boundaries** — `BN_MEANS_CALCULATE` via `bn_means_execute_command_v1`
+(command), `bn_means_calculation_workspace_v1` and
+`bn_means_calculation_readiness_v1` (reads).
 
 ### Epic 8 — completion record
+
 
 Classification: `IMPLEMENTATION_IN_PROGRESS` ·
 `development_access = ENABLED` ·
