@@ -38,13 +38,11 @@ describe('Uprating Epic 1 — canonical alignment', () => {
       expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(true);
     }
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
-    expect(implemented).toHaveLength(14);
+    expect(implemented).toHaveLength(16);
   });
 
   it('keeps every post-execution command unimplemented', () => {
     for (const command of [
-      'BN_UPRATING_RECONCILE_RUN',
-      'BN_UPRATING_ROLLBACK_ELIGIBLE',
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
       expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
@@ -93,7 +91,7 @@ describe('Uprating Epic 1 — single governed boundary', () => {
 describe('Uprating Epic 1 — pre-execution containment', () => {
   it('keeps the Epic 1 preparation surfaces free of execution and communication concepts', () => {
     for (const source of [runService, resolveDialog]) {
-      expect(source).not.toMatch(/ROLLBACK_ELIGIBLE|sendCommunication/);
+      expect(source).not.toMatch(/sendCommunication/);
     }
     expect(resolveDialog).not.toMatch(/EXECUTE_BATCH/);
   });

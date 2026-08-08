@@ -95,8 +95,8 @@ describe('Uprating Epic 0 — canonical catalogue', () => {
     }
   });
 
-  it('keeps every post-execution command NOT_STARTED', () => {
-    ['BN_UPRATING_ROLLBACK_ELIGIBLE', 'BN_UPRATING_CLOSE_RUN', 'BN_UPRATING_RECONCILE_RUN']
+  it('keeps run closure NOT_STARTED', () => {
+    ['BN_UPRATING_CLOSE_RUN']
       .forEach((c) => {
         expect(getUpratingCanonicalCommandSpec(c as BnUpratingCanonicalCommandName).implemented).toBe(false);
       });

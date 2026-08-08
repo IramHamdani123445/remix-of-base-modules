@@ -38,7 +38,13 @@ const epic3Sql = fs
   .readdirSync(migrationsDir)
   .filter((f) => f.endsWith('.sql'))
   .map((f) => fs.readFileSync(path.join(migrationsDir, f), 'utf8'))
-  .filter((sql) => sql.includes('bn_uprating_execution_session'))
+  .filter(
+    (sql) =>
+      sql.includes('bn_uprating_execution_session') &&
+      // Epic 4 migrations reuse the execution tables; they are certified separately.
+      !sql.includes('bn_uprating_rollback_operation') &&
+      !sql.includes('bn_uprating_schedule_rebuild'),
+  )
   .join('\n');
 
 const runService = read('src/services/bn/uprating/upratingRunService.ts');
@@ -67,8 +73,8 @@ describe('Epic 3 — canonical catalogue certification', () => {
     expect(new Set(BN_UPRATING_CANONICAL_COMMANDS.map((c) => c.command)).size).toBe(17);
   });
 
-  it('reports 14 of 17 implemented after Epic 3 (5 + 4 + 3 + 2)', () => {
-    expect(BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented)).toHaveLength(14);
+  it('reports 16 of 17 implemented after Epic 4 (5 + 4 + 3 + 2 + 2)', () => {
+    expect(BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented)).toHaveLength(16);
     expect(BN_UPRATING_EPIC1_CANONICAL_COMMANDS).toHaveLength(4);
     expect(BN_UPRATING_EPIC2_CANONICAL_COMMANDS).toHaveLength(3);
     expect(BN_UPRATING_EPIC3_CANONICAL_COMMANDS).toHaveLength(2);
@@ -80,10 +86,8 @@ describe('Epic 3 — canonical catalogue certification', () => {
     }
   });
 
-  it('leaves the three Epic 4+ commands NOT_STARTED', () => {
+  it('leaves run closure NOT_STARTED', () => {
     for (const command of [
-      'BN_UPRATING_RECONCILE_RUN',
-      'BN_UPRATING_ROLLBACK_ELIGIBLE',
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
       expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
@@ -478,15 +482,14 @@ describe('Epic 3 — operational surfaces', () => {
 // ---------------------------------------------------------------------------
 
 describe('Epic 3 — matrix reconciliation', () => {
-  it('records Epic 3 as complete and 14 of 17 commands implemented', () => {
+  it('records Epic 3 as complete and 16 of 17 commands implemented', () => {
     expect(matrix).toContain('| Epic 3 | Batch execution and retry | **COMPLETE — CERTIFIED** |');
     expect(matrix).toContain('BN_UPRATING_EXECUTE_BATCH | admin | yes | IMPLEMENTED (Epic 3)');
     expect(matrix).toContain('BN_UPRATING_RETRY_FAILED | admin | no | IMPLEMENTED (Epic 3)');
-    expect(matrix).toContain('14 implemented');
+    expect(matrix).toContain('16 implemented');
   });
 
-  it('keeps Epic 4 and Epic 5 not started', () => {
-    expect(matrix).toContain('| Epic 4 | Reconciliation and rollback | NOT_STARTED |');
-    expect(matrix).toContain('| Epic 5 | Run closure | NOT_STARTED |');
+  it('keeps Epic 5 not started', () => {
+        expect(matrix).toContain('| Epic 5 | Run closure | NOT_STARTED |');
   });
 });

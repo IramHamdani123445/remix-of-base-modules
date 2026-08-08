@@ -18,7 +18,12 @@ export type BnUpratingRunStatusCode =
   | 'EXECUTING'
   | 'COMPLETED'
   | 'PARTIAL'
-  | 'FAILED';
+  | 'FAILED'
+  // Epic 4 — post-execution operational lifecycle
+  | 'SCHEDULES_REBUILT'
+  | 'COMMUNICATIONS_ISSUED'
+  | 'RECONCILED'
+  | 'ROLLED_BACK';
 
 export type BnUpratingRunCommandName =
   | 'BN_UPRATING_CREATE_RUN'
@@ -33,7 +38,15 @@ export type BnUpratingRunCommandName =
   | 'BN_UPRATING_RESCHEDULE_EXECUTION'
   | 'BN_UPRATING_CANCEL_EXECUTION_SCHEDULE'
   | 'BN_UPRATING_EXECUTE_BATCH'
-  | 'BN_UPRATING_RETRY_FAILED';
+  | 'BN_UPRATING_RETRY_FAILED'
+  // Epic 4 — reconciliation, rollback and supporting operations
+  | 'BN_UPRATING_REBUILD_SCHEDULES'
+  | 'BN_UPRATING_ISSUE_COMMUNICATIONS'
+  | 'BN_UPRATING_RECONCILE_RUN'
+  | 'BN_UPRATING_MARK_FAILED'
+  | 'BN_UPRATING_ASSESS_ROLLBACK'
+  | 'BN_UPRATING_ROLLBACK_ELIGIBLE';
+
 
 /** Commands in this boundary that are canonical Epic 1 commands. */
 export const BN_UPRATING_EPIC1_CANONICAL_COMMANDS = [
@@ -331,7 +344,13 @@ export const BN_UPRATING_EPIC1_RUN_TRANSITIONS: Readonly<
   PARTIAL: ['EXECUTING'],
   COMPLETED: [],
   FAILED: [],
+  // Epic 4 — post-execution operational lifecycle (see BN_UPRATING_EPIC4_RUN_TRANSITIONS)
+  SCHEDULES_REBUILT: ['COMMUNICATIONS_ISSUED'],
+  COMMUNICATIONS_ISSUED: ['RECONCILED'],
+  RECONCILED: [],
+  ROLLED_BACK: [],
 };
+
 
 /** Alias used by Epic 2 surfaces — the same governed transition map. */
 export const BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2 = BN_UPRATING_EPIC1_RUN_TRANSITIONS;
@@ -758,4 +777,292 @@ export function formatMinor(
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+// ---------------------------------------------------------------------------
+// Epic 4 — post-execution completion, reconciliation and controlled rollback
+//
+// Every shape below models what the governed backend actually returns from
+// `bn_uprating_post_execution_readiness_v1`, `bn_uprating_reconciliation_v1`
+// and `bn_uprating_rollback_readiness_v1`. The frontend never decides Epic 4
+// availability locally: it renders the backend's own booleans and blockers.
+// ---------------------------------------------------------------------------
+
+/** Canonical Epic 4 commands (reconciliation and controlled rollback). */
+export const BN_UPRATING_EPIC4_CANONICAL_COMMANDS = [
+  'BN_UPRATING_RECONCILE_RUN',
+  'BN_UPRATING_ROLLBACK_ELIGIBLE',
+] as const;
+
+/** Supporting Epic 4 operations delivered inside the same governed boundary. */
+export const BN_UPRATING_EPIC4_SUPPORTING_OPERATIONS = [
+  'BN_UPRATING_REBUILD_SCHEDULES',
+  'BN_UPRATING_ISSUE_COMMUNICATIONS',
+  'BN_UPRATING_MARK_FAILED',
+  'BN_UPRATING_ASSESS_ROLLBACK',
+] as const;
+
+/** Governed Epic 4 transitions. Closure (`CLOSED`) is deliberately absent. */
+export const BN_UPRATING_EPIC4_RUN_TRANSITIONS: Readonly<
+  Record<string, readonly BnUpratingRunStatusCode[]>
+> = {
+  EXECUTING: ['SCHEDULES_REBUILT', 'FAILED'],
+  COMPLETED: ['SCHEDULES_REBUILT', 'FAILED'],
+  PARTIAL: ['FAILED'],
+  SCHEDULES_REBUILT: ['COMMUNICATIONS_ISSUED'],
+  COMMUNICATIONS_ISSUED: ['RECONCILED'],
+  RECONCILED: [],
+  FAILED: ['ROLLED_BACK'],
+  ROLLED_BACK: [],
+};
+
+export function canUpratingEpic4Transition(from: string, to: BnUpratingRunStatusCode): boolean {
+  return BN_UPRATING_EPIC4_RUN_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+export type BnUpratingScheduleRebuildStatus =
+  | 'PENDING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'NOT_REQUIRED';
+
+export type BnUpratingCommunicationIntentStatus = 'PENDING' | 'REQUESTED' | 'FAILED';
+
+export type BnUpratingReconciliationStatus = 'PASS' | 'PASS_WITH_WARNINGS' | 'BLOCKED';
+
+export type BnUpratingFindingSeverity = 'BLOCKING' | 'WARNING';
+
+export type BnUpratingRollbackOperationStatus =
+  | 'ASSESSED'
+  | 'BLOCKED'
+  | 'PARTIAL'
+  | 'COMPLETED';
+
+export type BnUpratingRollbackEligibility = 'ELIGIBLE' | 'INELIGIBLE';
+
+export type BnUpratingRollbackItemStatus = 'PENDING' | 'BLOCKED' | 'APPLIED' | 'FAILED';
+
+export interface BnUpratingExecutionCompletion {
+  readonly source_available?: boolean;
+  readonly execution_complete?: boolean;
+  readonly execution_successful?: boolean;
+  readonly applied_item_count?: number;
+  readonly final_failure_count?: number;
+  readonly planned_item_count?: number;
+  readonly [key: string]: unknown;
+}
+
+/** `bn_uprating_post_execution_readiness_v1` — backend-owned availability. */
+export interface BnUpratingPostExecutionReadiness {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly status: string;
+  readonly row_version: number;
+  readonly source_available: boolean;
+  readonly completion: BnUpratingExecutionCompletion | null;
+  readonly blockers: readonly BnUpratingReadinessItem[];
+  readonly can_finalise_execution: boolean;
+  readonly can_rebuild_schedules: boolean;
+  readonly can_retry_schedule_rebuild: boolean;
+  readonly can_issue_communications: boolean;
+  readonly can_retry_communications: boolean;
+  readonly can_mark_failed: boolean;
+  readonly schedule_required_count: number;
+  readonly schedule_completed_count: number;
+  readonly schedule_failed_count: number;
+  readonly schedule_pending_count: number;
+  readonly communication_required_count: number;
+  readonly communication_requested_count: number;
+  readonly communication_failed_count: number;
+  readonly communication_pending_count: number;
+  readonly communication_delivered_count: number;
+  readonly schedules_rebuilt_at: string | null;
+  readonly communications_issued_at: string | null;
+}
+
+export interface BnUpratingReconciliationSummary {
+  readonly reconciliation_id: string;
+  readonly reconciliation_no: number;
+  readonly status: BnUpratingReconciliationStatus;
+  readonly performed_by_name: string | null;
+  readonly performed_at: string | null;
+  readonly expected_item_count: number;
+  readonly actual_applied_item_count: number;
+  readonly actual_failed_item_count: number;
+  readonly expected_delta_total_minor: number;
+  readonly actual_delta_total_minor: number;
+  readonly variance_amount_minor: number;
+  readonly variance_count: number;
+  readonly tolerance_amount_minor: number;
+  readonly schedule_required_count: number;
+  readonly schedule_completed_count: number;
+  readonly schedule_failed_count: number;
+  readonly communication_required_count: number;
+  readonly communication_requested_count: number;
+  readonly communication_failed_count: number;
+  readonly communication_delivered_count: number;
+  readonly finding_count: number;
+  readonly blocking_finding_count: number;
+}
+
+export interface BnUpratingReconciliationFinding {
+  readonly finding_id: string;
+  readonly finding_code: string;
+  readonly label: string | null;
+  readonly severity: BnUpratingFindingSeverity;
+  readonly expected_value: string | null;
+  readonly actual_value: string | null;
+  readonly detail: string | null;
+}
+
+export interface BnUpratingReconciliationHistoryRow {
+  readonly reconciliation_id: string;
+  readonly reconciliation_no: number;
+  readonly status: BnUpratingReconciliationStatus;
+  readonly performed_by_name: string | null;
+  readonly performed_at: string | null;
+  readonly finding_count: number;
+}
+
+export interface BnUpratingScheduleRebuildRow {
+  readonly rebuild_id: string;
+  readonly award_reference: string;
+  readonly status: BnUpratingScheduleRebuildStatus;
+  readonly attempt_no: number;
+  readonly schedule_rows_rebuilt: number;
+  readonly failure_code: string | null;
+  readonly failure_reason: string | null;
+  readonly is_retryable: boolean;
+  readonly processed_at: string | null;
+}
+
+export interface BnUpratingCommunicationIntentRow {
+  readonly intent_id: string;
+  readonly award_reference: string;
+  readonly intent_kind: 'UPRATING_APPLIED' | 'UPRATING_REVERSED' | string;
+  readonly event_code: string;
+  readonly status: BnUpratingCommunicationIntentStatus;
+  readonly hub_status: string | null;
+  readonly hub_delivery_status: string | null;
+  readonly attempts: number;
+  readonly failure_code: string | null;
+  readonly failure_reason: string | null;
+  readonly is_retryable: boolean;
+  readonly requested_at: string | null;
+}
+
+/** `bn_uprating_reconciliation_v1`. */
+export interface BnUpratingReconciliationView {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly run_status: string;
+  readonly readiness: BnUpratingPostExecutionReadiness;
+  readonly current: BnUpratingReconciliationSummary | null;
+  readonly findings: readonly BnUpratingReconciliationFinding[];
+  readonly history: readonly BnUpratingReconciliationHistoryRow[];
+  readonly schedule_rebuilds: readonly BnUpratingScheduleRebuildRow[];
+  readonly communications: readonly BnUpratingCommunicationIntentRow[];
+}
+
+export interface BnUpratingRollbackOperation {
+  readonly rollback_id: string;
+  readonly rollback_no: number;
+  readonly status: BnUpratingRollbackOperationStatus;
+  readonly applied_item_count: number;
+  readonly eligible_count: number;
+  readonly ineligible_count: number;
+  readonly compensated_count: number;
+  readonly failed_count: number;
+  readonly compensated_delta_minor: number;
+  readonly reason_code: string | null;
+  readonly justification: string | null;
+  readonly assessed_by_name: string | null;
+  readonly assessed_at: string | null;
+  readonly authorised_by_name: string | null;
+  readonly authorised_at: string | null;
+  readonly row_version: number;
+}
+
+export interface BnUpratingRollbackItemRow {
+  readonly rollback_item_id: string;
+  readonly award_reference: string;
+  readonly applied_amount_minor: number;
+  readonly restore_amount_minor: number;
+  readonly eligibility_status: BnUpratingRollbackEligibility;
+  readonly blocker_code: string | null;
+  readonly blocker_label: string | null;
+  readonly status: BnUpratingRollbackItemStatus;
+  readonly failure_code: string | null;
+  readonly failure_reason: string | null;
+  readonly completed_at: string | null;
+}
+
+/** `bn_uprating_rollback_readiness_v1`. */
+export interface BnUpratingRollbackReadiness {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly run_status: string;
+  readonly row_version: number;
+  readonly can_assess_rollback: boolean;
+  readonly can_authorise_rollback: boolean;
+  readonly awaiting_authorisation: boolean;
+  readonly assessed_by_actor: boolean;
+  readonly current: BnUpratingRollbackOperation | null;
+  readonly items: readonly BnUpratingRollbackItemRow[];
+}
+
+/** Backend-owned operational queue buckets (`bn_uprating_operational_queue_v1`). */
+export type BnUpratingOperationalBucketCode =
+  | 'SCHEDULE_REBUILD_REQUIRED'
+  | 'COMMUNICATION_PENDING'
+  | 'READY_TO_RECONCILE'
+  | 'RECONCILIATION_BLOCKED'
+  | 'RECONCILED'
+  | 'ROLLBACK_ASSESSMENT_REQUIRED'
+  | 'ROLLBACK_AWAITING_AUTHORISATION'
+  | 'ROLLBACK_IN_PROGRESS'
+  | 'ROLLBACK_BLOCKED'
+  | 'ROLLED_BACK';
+
+export interface BnUpratingOperationalQueueRow {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly run_name: string | null;
+  readonly status: string;
+  readonly status_label: string | null;
+  readonly bucket_code: BnUpratingOperationalBucketCode;
+  readonly bucket_label: string;
+  readonly workspace_section: 'reconciliation' | 'rollback';
+  readonly target_effective_date: string;
+  readonly applied_item_count: number;
+  readonly failed_item_count: number;
+  readonly planned_item_count: number;
+  readonly applied_delta_total_minor: number;
+  readonly schedule_outstanding_count: number;
+  readonly communication_outstanding_count: number;
+  readonly reconciliation_status: BnUpratingReconciliationStatus | null;
+  readonly blocking_finding_count: number;
+  readonly rollback_status: BnUpratingRollbackOperationStatus | null;
+  readonly rollback_eligible_count: number;
+  readonly rollback_ineligible_count: number;
+  readonly rollback_compensated_count: number;
+  readonly last_activity_at: string | null;
+}
+
+export interface BnUpratingOperationalQueueBucketSummary {
+  readonly bucket_code: BnUpratingOperationalBucketCode;
+  readonly bucket_label: string;
+  readonly run_count: number;
+}
+
+export interface BnUpratingOperationalQueueView {
+  readonly rows: readonly BnUpratingOperationalQueueRow[];
+  readonly total: number;
+  readonly summary: readonly BnUpratingOperationalQueueBucketSummary[];
+}
+
+/** Percentage helper for schedule / communication progress bars. */
+export function upratingCompletionPercent(done: number, required: number): number {
+  if (!required) return 0;
+  return Math.min(100, Math.max(0, Math.round((done / required) * 100)));
 }
