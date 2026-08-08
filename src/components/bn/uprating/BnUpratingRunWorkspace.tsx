@@ -75,6 +75,7 @@ import {
 } from '@/services/bn/uprating/upratingRunService';
 import { fetchUpratingPolicyList } from '@/services/bn/uprating/upratingPolicyService';
 import { newUpratingUuid } from '@/services/bn/uprating/upratingPolicyService';
+import { BnPhaseSectionNav } from '@/components/bn/ux';
 import {
   formatMinor,
   type BnUpratingApprovalDecision,
@@ -331,7 +332,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
     });
     if (result.status !== 'ERROR') {
       setCreateOpen(false);
-      setSelectedRunId((result.data?.run_id as string) ?? null);
+      selectRun((result.data?.run_id as string) ?? null);
     }
   };
 
