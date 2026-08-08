@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp } from "lucide-react";
 import { BnUpratingPolicyWorkspace } from "@/components/bn/uprating/BnUpratingPolicyWorkspace";
 import { BnUpratingRunWorkspace } from "@/components/bn/uprating/BnUpratingRunWorkspace";
+import { BnUpratingApprovalQueue } from "@/components/bn/uprating/BnUpratingApprovalQueue";
+
 
 export default function BnUpratingPage() {
   return (
