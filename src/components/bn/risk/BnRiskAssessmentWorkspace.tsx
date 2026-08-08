@@ -70,11 +70,14 @@ interface Props {
 
 
 
-export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBack }) => {
+export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
+  assessmentId, onBack, focusSection = null,
+}) => {
   const queryClient = useQueryClient();
   const [completeOpen, setCompleteOpen] = React.useState(false);
   const [completeNote, setCompleteNote] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const approvalRef = React.useRef<HTMLDivElement | null>(null);
 
   const detail = useQuery({
     queryKey: ['bn-risk-assessment-detail', assessmentId],
