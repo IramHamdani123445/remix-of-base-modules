@@ -111793,6 +111793,25 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_risk_scoring_config_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_rule_set_id: string
+        }
+        Returns: Json
+      }
+      bn_risk_scoring_configuration_v1: {
+        Args: { p_actor_user_id: string; p_rule_set_id: string }
+        Returns: Json
+      }
       bn_risk_scoring_readiness_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
