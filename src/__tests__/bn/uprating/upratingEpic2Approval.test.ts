@@ -39,8 +39,9 @@ const epic2Sql = fs
   .map((f) => fs.readFileSync(path.join(migrationsDir, f), 'utf8'))
   .filter(
     (sql) =>
-      sql.includes('bn_uprating_run_approval_package') ||
-      sql.includes('bn_uprating_execution_schedule'),
+      !sql.includes('bn_uprating_execution_session') &&
+      (sql.includes('bn_uprating_run_approval_package') ||
+        sql.includes('bn_uprating_execution_schedule')),
   )
   .join('\n');
 
@@ -74,9 +75,9 @@ describe('Epic 2 — canonical catalogue certification', () => {
     expect(new Set(BN_UPRATING_CANONICAL_COMMANDS.map((c) => c.command)).size).toBe(17);
   });
 
-  it('reports 12 of 17 implemented after Epic 2 (5 + 4 + 3)', () => {
+  it('reports 14 of 17 implemented after Epic 3 (5 + 4 + 3 + 2)', () => {
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
-    expect(implemented).toHaveLength(12);
+    expect(implemented).toHaveLength(14);
     expect(BN_UPRATING_EPIC1_CANONICAL_COMMANDS).toHaveLength(4);
     expect(BN_UPRATING_EPIC2_CANONICAL_COMMANDS).toHaveLength(3);
   });
@@ -88,10 +89,8 @@ describe('Epic 2 — canonical catalogue certification', () => {
     }
   });
 
-  it('leaves the five execution-stage commands NOT_STARTED', () => {
+  it('leaves the three post-execution commands NOT_STARTED', () => {
     for (const command of [
-      'BN_UPRATING_EXECUTE_BATCH',
-      'BN_UPRATING_RETRY_FAILED',
       'BN_UPRATING_RECONCILE_RUN',
       'BN_UPRATING_ROLLBACK_ELIGIBLE',
       'BN_UPRATING_CLOSE_RUN',
@@ -138,10 +137,12 @@ describe('Epic 2 — run-state certification', () => {
     expect(canUpratingEpic1Transition('AWAITING_APPROVAL', 'DRY_RUN')).toBe(true);
   });
 
-  it('never allows APPROVED → EXECUTING in Epic 2', () => {
-    expect(BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2.APPROVED).toEqual([]);
-    expect(Object.keys(BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2)).not.toContain('EXECUTING');
-    expect(JSON.stringify(BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2)).not.toContain('EXECUTING');
+  it('never lets an Epic 2 command move a run into EXECUTING', () => {
+    // The governed map allows APPROVED → EXECUTING, but only the Epic 3
+    // execution command may make that move; approval and scheduling never do.
+    expect(BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2.APPROVED).toEqual(['EXECUTING']);
+    expect(canUpratingEpic1Transition('AWAITING_APPROVAL', 'EXECUTING')).toBe(false);
+    expect(canUpratingEpic1Transition('DRY_RUN', 'EXECUTING')).toBe(false);
   });
 
   it('cannot skip approval from DRY_RUN straight to APPROVED', () => {
@@ -683,10 +684,11 @@ describe('Epic 2 — award, payment, communication and Epic 3+ boundaries', () =
     }
   });
 
-  it('implements and calls no Epic 3 execution command', () => {
+  it('keeps the Epic 2 boundary and its own surfaces free of execution commands', () => {
+    const epic2Only = epic2Surfaces.filter((s) => s !== workspace);
     for (const command of ['BN_UPRATING_EXECUTE_BATCH', 'BN_UPRATING_RETRY_FAILED']) {
       expect(epic2Sql).not.toContain(command);
-      for (const source of epic2Surfaces) {
+      for (const source of epic2Only) {
         expect(source).not.toContain(command);
       }
     }

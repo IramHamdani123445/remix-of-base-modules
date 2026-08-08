@@ -30,6 +30,8 @@ import { BnUpratingResolveExceptionDialog } from './BnUpratingResolveExceptionDi
 import { BnUpratingRunApprovalSection } from './BnUpratingRunApprovalSection';
 import { BnUpratingExecutionScheduleSection } from './BnUpratingExecutionScheduleSection';
 import { BnUpratingExecutionSection } from './BnUpratingExecutionSection';
+import { BnUpratingExecuteBatchDialog } from './BnUpratingExecuteBatchDialog';
+import { BnUpratingRetryFailedDialog } from './BnUpratingRetryFailedDialog';
 import { BnUpratingSubmitForApprovalDialog } from './BnUpratingSubmitForApprovalDialog';
 import { BnUpratingApprovalDecisionDialog } from './BnUpratingApprovalDecisionDialog';
 import {
@@ -90,6 +92,9 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
   const [cancelOpen, setCancelOpen] = React.useState(false);
   const [cancelReason, setCancelReason] = React.useState('');
   const [onlyFailures, setOnlyFailures] = React.useState(false);
+  const [executeOpen, setExecuteOpen] = React.useState(false);
+  const [retryOpen, setRetryOpen] = React.useState(false);
+
 
 
   const listQuery = useQuery({
@@ -212,6 +217,7 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
     qc.invalidateQueries({ queryKey: ['bn-uprating-execution-readiness'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-execution'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-execution-items'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-execution-queue'] });
   };
 
 
@@ -286,6 +292,26 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
       idempotencyKey: newUpratingUuid(),
     });
     if (result.status !== 'ERROR') setScheduleMode(null);
+  };
+
+  const executeBatch = async () => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_EXECUTE_BATCH',
+      runId: selectedRunId,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setExecuteOpen(false);
+  };
+
+  const retryFailed = async () => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_RETRY_FAILED',
+      runId: selectedRunId,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setRetryOpen(false);
   };
 
   const cancelSchedule = async () => {
@@ -781,8 +807,8 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
                 }}
                 executeAction={action('BN_UPRATING_EXECUTE_BATCH')}
                 retryAction={action('BN_UPRATING_RETRY_FAILED')}
-                onExecuteBatch={() => runCommand('BN_UPRATING_EXECUTE_BATCH')}
-                onRetryFailed={() => runCommand('BN_UPRATING_RETRY_FAILED')}
+                onExecuteBatch={() => setExecuteOpen(true)}
+                onRetryFailed={() => setRetryOpen(true)}
                 failureFilter={onlyFailures}
                 onFailureFilterChange={setOnlyFailures}
               />
@@ -814,6 +840,24 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
         pkg={approvalView?.current_package ?? null}
         isSaving={command.isPending}
         onSubmit={recordDecision}
+      />
+
+      <BnUpratingExecuteBatchDialog
+        open={executeOpen}
+        onOpenChange={setExecuteOpen}
+        readiness={executionReadinessQuery.data?.data ?? null}
+        execution={executionQuery.data?.data ?? null}
+        isSaving={command.isPending}
+        onConfirm={executeBatch}
+      />
+
+      <BnUpratingRetryFailedDialog
+        open={retryOpen}
+        onOpenChange={setRetryOpen}
+        readiness={executionReadinessQuery.data?.data ?? null}
+        execution={executionQuery.data?.data ?? null}
+        isSaving={command.isPending}
+        onConfirm={retryFailed}
       />
 
       <BnUpratingScheduleExecutionDialog
