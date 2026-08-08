@@ -144,6 +144,12 @@ export const BnUpratingApprovalQueue: React.FC<Props> = ({ onOpenRun }) => {
             </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
+            {scheduledFailed && (
+              <p className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                The scheduling queue could not be loaded. This is not an empty queue — please retry.
+              </p>
+            )}
+
             <Table>
               <TableHeader>
                 <TableRow>
