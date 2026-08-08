@@ -29,6 +29,7 @@ import {
 import { BnUpratingResolveExceptionDialog } from './BnUpratingResolveExceptionDialog';
 import { BnUpratingRunApprovalSection } from './BnUpratingRunApprovalSection';
 import { BnUpratingExecutionScheduleSection } from './BnUpratingExecutionScheduleSection';
+import { BnUpratingExecutionSection } from './BnUpratingExecutionSection';
 import { BnUpratingSubmitForApprovalDialog } from './BnUpratingSubmitForApprovalDialog';
 import { BnUpratingApprovalDecisionDialog } from './BnUpratingApprovalDecisionDialog';
 import {
@@ -47,7 +48,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   executeUpratingRunCommand,
+  fetchUpratingExecutionItems,
+  fetchUpratingExecutionReadiness,
   fetchUpratingRunActions,
+  fetchUpratingRunExecution,
   fetchUpratingRunApproval,
   fetchUpratingRunDetail,
   fetchUpratingRunExceptions,
@@ -85,6 +89,7 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
   const [scheduleMode, setScheduleMode] = React.useState<'SCHEDULE' | 'RESCHEDULE' | null>(null);
   const [cancelOpen, setCancelOpen] = React.useState(false);
   const [cancelReason, setCancelReason] = React.useState('');
+  const [onlyFailures, setOnlyFailures] = React.useState(false);
 
 
   const listQuery = useQuery({
@@ -171,6 +176,28 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
   });
   const scheduleReadiness = scheduleQuery.data?.data ?? null;
 
+  const executionReadinessQuery = useQuery({
+    queryKey: ['bn-uprating-execution-readiness', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingExecutionReadiness(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+
+  const executionQuery = useQuery({
+    queryKey: ['bn-uprating-execution', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingRunExecution(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+
+  const executionItemsQuery = useQuery({
+    queryKey: ['bn-uprating-execution-items', selectedRunId, run?.row_version, onlyFailures],
+    queryFn: () =>
+      fetchUpratingExecutionItems(
+        selectedRunId as string,
+        onlyFailures ? { status: 'FAILED' } : {},
+      ),
+    enabled: !!selectedRunId && !!executionQuery.data?.data?.has_session,
+  });
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['bn-uprating-runs'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-run'] });
@@ -182,6 +209,9 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
     qc.invalidateQueries({ queryKey: ['bn-uprating-run-schedule'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-approval-queue'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-scheduled-queue'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-execution-readiness'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-execution'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-execution-items'] });
   };
 
 
@@ -720,7 +750,7 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
               />
             </TabsContent>
 
-            <TabsContent value="execution" className="pt-4">
+            <TabsContent value="execution" className="pt-4 space-y-4">
               <BnUpratingExecutionScheduleSection
                 readiness={scheduleReadiness}
                 schedules={approvalView?.schedules ?? []}
@@ -733,6 +763,28 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
                 onSchedule={() => setScheduleMode('SCHEDULE')}
                 onReschedule={() => setScheduleMode('RESCHEDULE')}
                 onCancel={() => setCancelOpen(true)}
+              />
+              <BnUpratingExecutionSection
+                readiness={executionReadinessQuery.data?.data ?? null}
+                execution={executionQuery.data?.data ?? null}
+                items={executionItemsQuery.data?.data?.rows ?? []}
+                itemTotal={executionItemsQuery.data?.data?.total ?? 0}
+                isLoading={executionReadinessQuery.isLoading}
+                isError={
+                  executionReadinessQuery.isError ||
+                  executionReadinessQuery.data?.status === 'ERROR'
+                }
+                onRetryLoad={() => {
+                  executionReadinessQuery.refetch();
+                  executionQuery.refetch();
+                  executionItemsQuery.refetch();
+                }}
+                executeAction={action('BN_UPRATING_EXECUTE_BATCH')}
+                retryAction={action('BN_UPRATING_RETRY_FAILED')}
+                onExecuteBatch={() => runCommand('BN_UPRATING_EXECUTE_BATCH')}
+                onRetryFailed={() => runCommand('BN_UPRATING_RETRY_FAILED')}
+                failureFilter={onlyFailures}
+                onFailureFilterChange={setOnlyFailures}
               />
             </TabsContent>
           </Tabs>

@@ -14,7 +14,11 @@ export type BnUpratingRunStatusCode =
   | 'EXCLUSIONS_APPLIED'
   | 'DRY_RUN'
   | 'AWAITING_APPROVAL'
-  | 'APPROVED';
+  | 'APPROVED'
+  | 'EXECUTING'
+  | 'COMPLETED'
+  | 'PARTIAL'
+  | 'FAILED';
 
 export type BnUpratingRunCommandName =
   | 'BN_UPRATING_CREATE_RUN'
@@ -27,7 +31,9 @@ export type BnUpratingRunCommandName =
   | 'BN_UPRATING_APPROVE_RUN'
   | 'BN_UPRATING_SCHEDULE_EXECUTION'
   | 'BN_UPRATING_RESCHEDULE_EXECUTION'
-  | 'BN_UPRATING_CANCEL_EXECUTION_SCHEDULE';
+  | 'BN_UPRATING_CANCEL_EXECUTION_SCHEDULE'
+  | 'BN_UPRATING_EXECUTE_BATCH'
+  | 'BN_UPRATING_RETRY_FAILED';
 
 /** Commands in this boundary that are canonical Epic 1 commands. */
 export const BN_UPRATING_EPIC1_CANONICAL_COMMANDS = [
@@ -42,6 +48,12 @@ export const BN_UPRATING_EPIC2_CANONICAL_COMMANDS = [
   'BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL',
   'BN_UPRATING_APPROVE_RUN',
   'BN_UPRATING_SCHEDULE_EXECUTION',
+] as const;
+
+/** Canonical Epic 3 commands (batch execution and failed-item retry). */
+export const BN_UPRATING_EPIC3_CANONICAL_COMMANDS = [
+  'BN_UPRATING_EXECUTE_BATCH',
+  'BN_UPRATING_RETRY_FAILED',
 ] as const;
 
 /** Supporting lifecycle operations delivered inside the same boundary. */
@@ -66,6 +78,10 @@ export const BN_UPRATING_RUN_READ_SERVICES = [
   'bn_uprating_run_approval_queue_v1',
   'bn_uprating_execution_schedule_readiness_v1',
   'bn_uprating_scheduled_run_queue_v1',
+  'bn_uprating_execution_readiness_v1',
+  'bn_uprating_run_execution_v1',
+  'bn_uprating_execution_items_v1',
+  'bn_uprating_execution_queue_v1',
 ] as const;
 
 
@@ -300,7 +316,7 @@ export interface BnUpratingRunActionsResult {
   readonly actions: readonly BnUpratingRunAction[];
 }
 
-/** Run statuses reachable up to Epic 2 (batch execution arrives in Epic 3+). */
+/** Governed run transitions across Epic 0-3. */
 export const BN_UPRATING_EPIC1_RUN_TRANSITIONS: Readonly<
   Record<BnUpratingRunStatusCode, readonly BnUpratingRunStatusCode[]>
 > = {
@@ -310,7 +326,11 @@ export const BN_UPRATING_EPIC1_RUN_TRANSITIONS: Readonly<
   EXCLUSIONS_APPLIED: ['ELIGIBILITY_SNAPSHOT', 'EXCLUSIONS_APPLIED', 'DRY_RUN'],
   DRY_RUN: ['ELIGIBILITY_SNAPSHOT', 'EXCLUSIONS_APPLIED', 'DRY_RUN', 'AWAITING_APPROVAL'],
   AWAITING_APPROVAL: ['APPROVED', 'DRY_RUN'],
-  APPROVED: [],
+  APPROVED: ['EXECUTING'],
+  EXECUTING: ['EXECUTING', 'COMPLETED', 'PARTIAL', 'FAILED'],
+  PARTIAL: ['EXECUTING'],
+  COMPLETED: [],
+  FAILED: [],
 };
 
 /** Alias used by Epic 2 surfaces — the same governed transition map. */
@@ -534,6 +554,187 @@ export interface BnUpratingScheduledRunRow {
   readonly time_zone: string | null;
   readonly schedule_status: string;
   readonly queue_state: 'APPROVED_NOT_SCHEDULED' | 'SCHEDULED' | 'DUE';
+}
+
+// ---------------------------------------------------------------------------
+// Epic 3 — batch execution and failed-item retry contracts.
+//
+// Execution applies exactly what was approved. Nothing on this surface
+// recalculates an amount: every value below originates from the frozen
+// approval package and its simulation items.
+// ---------------------------------------------------------------------------
+
+export type BnUpratingExecutionSessionStatus =
+  | 'PLANNED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'PARTIAL';
+
+export type BnUpratingExecutionBatchStatus = 'PENDING' | 'COMPLETED' | 'PARTIAL' | 'FAILED';
+
+export type BnUpratingExecutionBatchKind = 'PRIMARY' | 'RETRY';
+
+export type BnUpratingExecutionItemStatus =
+  | 'PENDING'
+  | 'APPLIED'
+  | 'FAILED'
+  | 'SKIPPED'
+  | 'SUPERSEDED';
+
+export type BnUpratingExecutionFailureCode =
+  | 'AWARD_NOT_FOUND'
+  | 'STALE_ROW_VERSION'
+  | 'AWARD_STATUS_CHANGED'
+  | 'AWARD_PAYMENT_HELD'
+  | 'BASE_AMOUNT_MISMATCH'
+  | 'TRANSIENT_ERROR';
+
+/** Failure codes that may be retried; everything else must be fixed at source. */
+export const BN_UPRATING_RETRYABLE_FAILURE_CODES: readonly BnUpratingExecutionFailureCode[] = [
+  'AWARD_PAYMENT_HELD',
+  'TRANSIENT_ERROR',
+];
+
+export function isUpratingFailureRetryable(
+  code: string | null | undefined,
+): boolean {
+  if (!code) return false;
+  return (BN_UPRATING_RETRYABLE_FAILURE_CODES as readonly string[]).includes(code);
+}
+
+export interface BnUpratingExecutionSession {
+  readonly session_id: string;
+  readonly status: BnUpratingExecutionSessionStatus;
+  readonly batch_size: number;
+  readonly planned_item_count: number;
+  readonly planned_batch_count: number;
+  readonly completed_batch_count: number;
+  readonly applied_item_count: number;
+  readonly failed_item_count: number;
+  readonly skipped_item_count: number;
+  readonly approved_delta_total_minor: number;
+  readonly applied_delta_total_minor: number;
+  readonly target_effective_date: string;
+  readonly input_fingerprint: string;
+  readonly started_by_name: string | null;
+  readonly started_at: string;
+  readonly completed_at: string | null;
+  readonly row_version: number;
+  readonly planned_execution_at: string | null;
+  readonly time_zone: string | null;
+}
+
+export interface BnUpratingExecutionBatch {
+  readonly batch_id: string;
+  readonly batch_no: number;
+  readonly batch_kind: BnUpratingExecutionBatchKind;
+  readonly status: BnUpratingExecutionBatchStatus;
+  readonly item_count: number;
+  readonly applied_count: number;
+  readonly failed_count: number;
+  readonly skipped_count: number;
+  readonly applied_delta_minor: number;
+  readonly executed_by_name: string | null;
+  readonly executed_at: string | null;
+}
+
+export interface BnUpratingExecutionFailureSummaryRow {
+  readonly failure_code: string | null;
+  readonly label: string | null;
+  readonly count: number;
+  readonly retryable: boolean;
+}
+
+export interface BnUpratingRunExecutionView {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly run_status: BnUpratingRunStatusCode;
+  readonly has_session: boolean;
+  readonly session: BnUpratingExecutionSession | null;
+  readonly batches: readonly BnUpratingExecutionBatch[];
+  readonly failure_summary: readonly BnUpratingExecutionFailureSummaryRow[];
+}
+
+export interface BnUpratingExecutionItemRow {
+  readonly execution_item_id: string;
+  readonly batch_id: string;
+  readonly batch_no: number;
+  readonly batch_kind: BnUpratingExecutionBatchKind;
+  readonly award_reference: string;
+  readonly award_component_code: string | null;
+  readonly attempt_no: number;
+  readonly status: BnUpratingExecutionItemStatus;
+  readonly status_label: string | null;
+  readonly approved_base_amount_minor: number;
+  readonly approved_amount_minor: number;
+  readonly approved_delta_minor: number;
+  readonly applied_amount_minor: number | null;
+  readonly applied_delta_minor: number | null;
+  readonly expected_row_version: number | null;
+  readonly observed_row_version: number | null;
+  readonly applied_row_version: number | null;
+  readonly failure_code: string | null;
+  readonly failure_label: string | null;
+  readonly failure_reason: string | null;
+  readonly is_retryable: boolean;
+  readonly applied_at: string | null;
+}
+
+export interface BnUpratingExecutionReadiness {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly status: BnUpratingRunStatusCode;
+  readonly row_version: number;
+  readonly can_execute: boolean;
+  readonly can_retry: boolean;
+  readonly blockers: readonly BnUpratingReadinessItem[];
+  readonly warnings: readonly BnUpratingReadinessItem[];
+  readonly has_session: boolean;
+  readonly session_status: BnUpratingExecutionSessionStatus | null;
+  readonly pending_batches: number;
+  readonly retryable_failures: number;
+  readonly permanent_failures: number;
+  readonly planned_item_count: number;
+  readonly planned_batch_count: number | null;
+  readonly schedule_id: string | null;
+  readonly planned_execution_at: string | null;
+  readonly batch_size: number | null;
+  readonly approved_delta_total_minor: number;
+}
+
+export interface BnUpratingExecutionQueueRow {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly run_name: string | null;
+  readonly status: BnUpratingRunStatusCode;
+  readonly status_label: string | null;
+  readonly target_effective_date: string;
+  readonly planned_item_count: number;
+  readonly applied_item_count: number;
+  readonly failed_item_count: number;
+  readonly planned_batch_count: number;
+  readonly completed_batch_count: number;
+  readonly applied_delta_total_minor: number;
+  readonly approved_delta_total_minor: number;
+  readonly planned_execution_at: string | null;
+  readonly execution_started_at: string | null;
+  readonly execution_completed_at: string | null;
+}
+
+/** Run statuses in which execution has begun and preparation is locked. */
+export const BN_UPRATING_EXECUTION_STATUSES: readonly BnUpratingRunStatusCode[] = [
+  'EXECUTING',
+  'COMPLETED',
+  'PARTIAL',
+  'FAILED',
+];
+
+export function upratingExecutionProgressPercent(
+  session: BnUpratingExecutionSession | null | undefined,
+): number {
+  if (!session || session.planned_item_count <= 0) return 0;
+  const done = session.applied_item_count + session.failed_item_count + session.skipped_item_count;
+  return Math.min(100, Math.round((done / session.planned_item_count) * 100));
 }
 
 
