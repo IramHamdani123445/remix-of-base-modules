@@ -43,7 +43,9 @@ const epic3Sql = fs
       sql.includes('bn_uprating_execution_session') &&
       // Epic 4 migrations reuse the execution tables; they are certified separately.
       !sql.includes('bn_uprating_rollback_operation') &&
-      !sql.includes('bn_uprating_schedule_rebuild'),
+      !sql.includes('bn_uprating_schedule_rebuild') &&
+      // Epic 5 recreates the shared actions function; it is certified separately.
+      !sql.includes('_bn_uprating_close_readiness'),
   )
   .join('\n');
 

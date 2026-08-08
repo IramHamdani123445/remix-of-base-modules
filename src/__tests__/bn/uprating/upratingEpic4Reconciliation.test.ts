@@ -39,10 +39,12 @@ const allMigrations = fs
 const epic4Sql = allMigrations
   .filter(
     (sql) =>
-      sql.includes('bn_uprating_rollback_operation') ||
+      // Epic 5 recreates the shared actions function; it is certified separately.
+      !sql.includes('_bn_uprating_close_readiness') &&
+      (sql.includes('bn_uprating_rollback_operation') ||
       sql.includes('bn_uprating_reconciliation') ||
       sql.includes('bn_uprating_operational_queue_v1') ||
-      sql.includes('bn_uprating_schedule_rebuild'),
+      sql.includes('bn_uprating_schedule_rebuild')),
   )
   .join('\n');
 

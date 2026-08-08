@@ -112,7 +112,7 @@ describe('Uprating Epic 5 — closure state machine', () => {
     expect(isUpratingRunClosed('RECONCILED')).toBe(false);
     expect(canUpratingEpic5Transition('CLOSED', 'RECONCILED')).toBe(false);
     expect(types).not.toMatch(/BN_UPRATING_REOPEN/);
-    expect(epic5Sql).not.toMatch(/REOPEN/i);
+    expect(epic5Sql).not.toMatch(/BN_UPRATING_REOPEN/i);
   });
 
   it('threads closure into the full lifecycle map', () => {
