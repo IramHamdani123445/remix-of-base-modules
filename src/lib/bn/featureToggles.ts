@@ -54,7 +54,10 @@ const DEFAULTS: Record<BnFeatureFlag, boolean> = {
   // Life Certificate mutations remain dark-launched server-side via
   // app_modules.actions_enabled=false; screen visibility is independent.
   "bn.servicing.lifeCert": true,
-  "bn.servicing.overpayment": false,
+  // BN-OP-NAV: default true — Overpayment Recovery is a certified workspace.
+  // Mutations remain governed server-side by app_modules.actions_enabled for
+  // `bn_overpayments`; this flag only controls screen/menu visibility.
+  "bn.servicing.overpayment": true,
   // BN-MR-UI: default true — registered servicing workspace, read-only.
   // Medical Review mutations remain dark-launched server-side via
   // app_modules.actions_enabled=false; screen visibility is independent.
