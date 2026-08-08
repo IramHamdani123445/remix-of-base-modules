@@ -64,6 +64,12 @@ export const BnUpratingApprovalQueue: React.FC<Props> = ({ onOpenRun }) => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {approvalFailed && (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                The approval queue could not be loaded. This is not an empty queue — please retry.
+              </p>
+            )}
+
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
