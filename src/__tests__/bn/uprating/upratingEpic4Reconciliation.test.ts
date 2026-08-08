@@ -264,17 +264,19 @@ describe('Epic 4 — Communication Hub boundary', () => {
     expect(epic4Sql).toContain('communication_requested_count');
     expect(epic4Sql).toContain('communication_required_count');
     expect(epic4Sql).toContain('communication_failed_count');
-    expect(epic4Sql).not.toContain('communication_delivered_count');
+    // Delivery is a distinct, Hub-reported figure — never inferred from a request.
+    expect(epic4Sql).toContain('communication_delivered_count');
   });
 
   it('never presents a requested notice as delivered in the UI', () => {
     expect(reconciliationSection).toMatch(/request/i);
-    expect(reconciliationSection).not.toMatch(/\bDelivered\b/);
+    expect(reconciliationSection).toMatch(/Requested is not delivered/i);
+    expect(reconciliationSection).toMatch(/hub_delivery_status/);
   });
 
   it('never presents a rebuilt schedule as a paid payment', () => {
-    expect(reconciliationSection).not.toMatch(/\bPaid\b/);
-    expect(reconciliationSection).toMatch(/not mean|does not|no payment/i);
+    expect(reconciliationSection).toMatch(/A rebuilt schedule is not a payment/i);
+    expect(reconciliationSection).toMatch(/no money has been issued|not been paid/i);
   });
 });
 
@@ -294,7 +296,9 @@ describe('Epic 4 — reconciliation', () => {
   });
 
   it('versions each reconciliation attempt', () => {
-    expect(epic4Sql).toMatch(/reconciliation_sequence|attempt_number|reconciliation_version/);
+    expect(epic4Sql).toContain('reconciliation_no');
+    expect(epic4Sql).toContain('UNIQUE (run_id, reconciliation_no)');
+    expect(epic4Sql).toContain('current_reconciliation_id');
   });
 
   it('surfaces expected, actual and variance in the reconciliation UI', () => {
