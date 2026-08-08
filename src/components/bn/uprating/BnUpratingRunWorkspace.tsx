@@ -75,7 +75,7 @@ import {
 } from '@/services/bn/uprating/upratingRunService';
 import { fetchUpratingPolicyList } from '@/services/bn/uprating/upratingPolicyService';
 import { newUpratingUuid } from '@/services/bn/uprating/upratingPolicyService';
-import { BnNextActionCard, BnPhaseSectionNav, BnRecordWorkspaceHeader } from '@/components/bn/ux';
+import { BnNextActionCard, BnRecordWorkspaceHeader, BnWorkflowSideNav } from '@/components/bn/ux';
 
 /**
  * Navigational mapping from a governed run command to the workspace section
@@ -124,6 +124,11 @@ export interface BnUpratingRunWorkspaceProps {
   readonly onSelectRun?: (runId: string | null) => void;
   /** Supplied when the workflow section lives in the URL (`?section=`). */
   readonly onSectionChange?: (section: string) => void;
+  /**
+   * Supplied when each workflow step is its own routed screen — the left
+   * navigator then renders real links instead of buttons.
+   */
+  readonly sectionHref?: (section: string) => string;
 }
 
 export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
@@ -132,6 +137,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
   initialTab = null,
   onSelectRun,
   onSectionChange,
+  sectionHref,
 }) => {
   const qc = useQueryClient();
   const [selectedRunId, setSelectedRunId] = React.useState<string | null>(initialRunId);
@@ -704,19 +710,20 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
           )}
 
           {/*
-            Nine lifecycle sections are grouped into five officer-meaningful
-            phases. Content, commands and permissions are unchanged.
+            Nine lifecycle sections are separate workflow screens reached from
+            a left navigator. Content, commands and permissions are unchanged.
           */}
-          <BnPhaseSectionNav
-            ariaLabel="Uprating run phases"
-            activeSection={activeTab}
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <BnWorkflowSideNav
+            ariaLabel="Uprating run workflow steps"
+            activeStepId={activeTab}
             onSelect={setActiveTab}
-            phases={[
+            groups={[
               {
                 id: 'prepare',
                 label: 'Prepare',
                 description: 'Build the population, clear exceptions and simulate the run.',
-                sections: [
+                steps: [
                   { id: 'population', label: 'Population' },
                   {
                     id: 'exceptions',
@@ -729,19 +736,19 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
                 id: 'approve',
                 label: 'Approve',
                 description: 'Independent approval and execution scheduling.',
-                sections: [{ id: 'approval', label: 'Approval & scheduling' }],
+                steps: [{ id: 'approval', label: 'Approval & scheduling' }],
               },
               {
                 id: 'execute',
                 label: 'Execute',
                 description: 'Apply exactly what was approved, in controlled batches.',
-                sections: [{ id: 'execution', label: 'Execution' }],
+                steps: [{ id: 'execution', label: 'Execution' }],
               },
               {
                 id: 'reconcile',
                 label: 'Reconcile',
                 description: 'Reconcile the consequences, or take the controlled failure path.',
-                sections: [
+                steps: [
                   { id: 'reconciliation', label: 'Reconciliation' },
                   { id: 'rollback', label: 'Rollback' },
                 ],
@@ -750,14 +757,21 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
                 id: 'close',
                 label: 'Close',
                 description: 'Terminal closure and the evidence trail for this run.',
-                sections: [
+                steps: [
                   { id: 'closure', label: 'Closure' },
                   { id: 'timeline', label: 'Activity & history' },
                 ],
               },
-            ]}
+            ].map((group) => ({
+              ...group,
+              steps: group.steps.map((step) => ({
+                ...step,
+                to: sectionHref ? sectionHref(step.id) : undefined,
+              })),
+            }))}
           />
 
+          <div className="min-w-0 flex-1">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="sr-only">
               <TabsTrigger value="population">Population</TabsTrigger>
@@ -1103,6 +1117,8 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
               />
             </TabsContent>
           </Tabs>
+          </div>
+          </div>
 
         </>
       )}
