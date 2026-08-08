@@ -18,7 +18,11 @@ import type {
   BnUpratingExecutionItemRow,
   BnUpratingExecutionQueueRow,
   BnUpratingExecutionReadiness,
+  BnUpratingOperationalQueueView,
   BnUpratingPopulationRow,
+  BnUpratingPostExecutionReadiness,
+  BnUpratingReconciliationView,
+  BnUpratingRollbackReadiness,
   BnUpratingRunActionsResult,
   BnUpratingRunApprovalView,
   BnUpratingRunCommandName,
@@ -86,6 +90,17 @@ const RUN_ERRORS: Record<string, string> = {
   E_BATCHES_PENDING: 'Finish executing the prepared batches before retrying failed items.',
   E_NO_RETRYABLE_ITEMS:
     'There are no eligible items to retry. The remaining failures must be corrected at source.',
+  // Epic 4 — post-execution completion, reconciliation and controlled rollback
+  E_EXECUTION_INCOMPLETE:
+    'Finish executing and retrying the outstanding items before post-execution processing.',
+  E_INVALID_TRANSITION: 'That operation is not available at this stage of the run.',
+  E_RECONCILIATION_BLOCKED:
+    'Reconciliation found material differences that must be resolved before this run can be reconciled.',
+  E_ROLLBACK_IN_PROGRESS:
+    'A rollback assessment is already awaiting authorisation for this run.',
+  E_ROLLBACK_NOT_ASSESSED:
+    'Assess rollback eligibility before authorising a rollback.',
+  E_ROLLBACK_BLOCKED: 'No award change on this run is eligible to be reversed.',
 };
 
 
@@ -389,5 +404,129 @@ export async function fetchUpratingExecutionQueue(
     p_filters: filters,
     p_limit: limit,
     p_offset: offset,
+  });
+}
+
+
+// ---------------------------------------------------------------------------
+// Epic 4 — post-execution completion, reconciliation and controlled rollback
+//
+// All reads use the governed `_v1` read services; all mutations go through
+// `bn_uprating_run_command_v1`. Nothing here writes to a table directly and
+// nothing here closes a run — closure is Epic 5.
+// ---------------------------------------------------------------------------
+
+export async function fetchUpratingPostExecutionReadiness(
+  runId: string,
+): Promise<BnUpratingQueryResult<BnUpratingPostExecutionReadiness>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_post_execution_readiness_v1', {
+    p_actor_user_id: uid,
+    p_run_id: runId,
+  });
+}
+
+export async function fetchUpratingReconciliation(
+  runId: string,
+): Promise<BnUpratingQueryResult<BnUpratingReconciliationView>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_reconciliation_v1', {
+    p_actor_user_id: uid,
+    p_run_id: runId,
+  });
+}
+
+export async function fetchUpratingRollbackReadiness(
+  runId: string,
+): Promise<BnUpratingQueryResult<BnUpratingRollbackReadiness>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_rollback_readiness_v1', {
+    p_actor_user_id: uid,
+    p_run_id: runId,
+  });
+}
+
+export async function fetchUpratingOperationalQueue(
+  filters: Record<string, unknown> = {},
+  limit = 50,
+  offset = 0,
+): Promise<BnUpratingQueryResult<BnUpratingOperationalQueueView>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_operational_queue_v1', {
+    p_actor_user_id: uid,
+    p_filters: filters,
+    p_limit: limit,
+    p_offset: offset,
+  });
+}
+
+interface Epic4CommandArgs {
+  readonly runId: string;
+  readonly expectedRowVersion?: number | null;
+  readonly idempotencyKey?: string;
+  readonly correlationId?: string;
+}
+
+/** Supporting operation — rebuild the payment-schedule consequences of an executed run. */
+export async function rebuildUpratingSchedules(
+  args: Epic4CommandArgs,
+): Promise<BnUpratingCommandResult> {
+  return executeUpratingRunCommand({ command: 'BN_UPRATING_REBUILD_SCHEDULES', ...args });
+}
+
+/** Supporting operation — request claimant notices through the Communication Hub. */
+export async function issueUpratingCommunications(
+  args: Epic4CommandArgs,
+): Promise<BnUpratingCommandResult> {
+  return executeUpratingRunCommand({ command: 'BN_UPRATING_ISSUE_COMMUNICATIONS', ...args });
+}
+
+/** Supporting operation — record a run as failed (admin, justified). */
+export async function markUpratingRunFailed(
+  args: Epic4CommandArgs & { readonly justification: string; readonly reasonCode?: string | null },
+): Promise<BnUpratingCommandResult> {
+  const { justification, reasonCode, ...rest } = args;
+  return executeUpratingRunCommand({
+    command: 'BN_UPRATING_MARK_FAILED',
+    payload: { justification, reason_code: reasonCode ?? null },
+    ...rest,
+  });
+}
+
+/** Supporting operation — (re)assess which applied award changes may be reversed. */
+export async function assessUpratingRollback(
+  args: Epic4CommandArgs & {
+    readonly justification?: string | null;
+    readonly reasonCode?: string | null;
+  },
+): Promise<BnUpratingCommandResult> {
+  const { justification, reasonCode, ...rest } = args;
+  return executeUpratingRunCommand({
+    command: 'BN_UPRATING_ASSESS_ROLLBACK',
+    payload: { justification: justification ?? null, reason_code: reasonCode ?? null },
+    ...rest,
+  });
+}
+
+/** Canonical `BN_UPRATING_RECONCILE_RUN`. */
+export async function reconcileUpratingRun(
+  args: Epic4CommandArgs,
+): Promise<BnUpratingCommandResult> {
+  return executeUpratingRunCommand({ command: 'BN_UPRATING_RECONCILE_RUN', ...args });
+}
+
+/** Canonical `BN_UPRATING_ROLLBACK_ELIGIBLE`. */
+export async function rollbackEligibleUpratingItems(
+  args: Epic4CommandArgs & { readonly justification: string; readonly reasonCode?: string | null },
+): Promise<BnUpratingCommandResult> {
+  const { justification, reasonCode, ...rest } = args;
+  return executeUpratingRunCommand({
+    command: 'BN_UPRATING_ROLLBACK_ELIGIBLE',
+    payload: { justification, reason_code: reasonCode ?? null },
+    ...rest,
   });
 }
