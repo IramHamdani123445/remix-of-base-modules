@@ -630,6 +630,7 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
       <BnWorkflowSideNav
         ariaLabel="Assessment workflow steps"
         activeStepId={activeTab}
+        onSelect={setActiveTab}
         groups={MEANS_WORKSPACE_PHASES.map((phase) => ({
           id: phase.id,
           label: phase.label,
@@ -637,7 +638,7 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           steps: phase.sections.map((s) => ({
             id: s.id,
             label: s.label,
-            to: sectionHref ? sectionHref(s.id) : '#',
+            to: sectionHref ? sectionHref(s.id) : undefined,
           })),
         }))}
       />
