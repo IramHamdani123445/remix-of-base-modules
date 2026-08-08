@@ -19,7 +19,6 @@ import {
   BnModuleRouteGate,
   type BnModuleAccessContext,
 } from "@/components/bn/access/BnModuleRouteGate";
-import { Badge } from "@/components/ui/badge";
 import { TrendingUp } from "lucide-react";
 import { BnUpratingPolicyWorkspace } from "@/components/bn/uprating/BnUpratingPolicyWorkspace";
 import { BnUpratingRunWorkspace } from "@/components/bn/uprating/BnUpratingRunWorkspace";
@@ -27,7 +26,13 @@ import { BnUpratingApprovalQueue } from "@/components/bn/uprating/BnUpratingAppr
 import { BnUpratingExecutionQueue } from "@/components/bn/uprating/BnUpratingExecutionQueue";
 import { BnUpratingOperationalQueue } from "@/components/bn/uprating/BnUpratingOperationalQueue";
 import { BnUpratingOverview } from "@/components/bn/uprating/BnUpratingOverview";
-import { BnModuleBreadcrumbs } from "@/components/bn/ux";
+import {
+  BnModuleBreadcrumbs,
+  BnModuleGuidance,
+  BnModuleHeader,
+  BnModulePage,
+  BnModuleTrail,
+} from "@/components/bn/ux";
 
 export const UPRATING_MODULE_BASE = "/bn/uprating";
 
@@ -48,19 +53,13 @@ const UPRATING_SCREEN_LABELS: Record<string, string> = {
   "post-execution": "Post-execution queue",
 };
 
-const UpratingBreadcrumbs: React.FC = () => {
-  const { pathname } = useLocation();
-  const tail = pathname.replace(UPRATING_MODULE_BASE, "").replace(/^\/+|\/+$/g, "").split("/")[0] ?? "";
-  return (
-    <BnModuleBreadcrumbs
-      items={[
-        { label: "Benefit Management" },
-        { label: "Uprating & Indexation", to: UPRATING_MODULE_BASE },
-        { label: UPRATING_SCREEN_LABELS[tail] ?? "Overview" },
-      ]}
-    />
-  );
-}
+const UpratingBreadcrumbs: React.FC = () => (
+  <BnModuleTrail
+    moduleLabel="Uprating & Indexation"
+    moduleBase={UPRATING_MODULE_BASE}
+    screenLabels={UPRATING_SCREEN_LABELS}
+  />
+);
 
 function useOpenRun() {
   const navigate = useNavigate();
@@ -71,30 +70,23 @@ function useOpenRun() {
 }
 
 const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => (
-  <div className="p-6 space-y-6">
-    <header className="flex flex-wrap items-start justify-between gap-4">
-      <div className="flex items-start gap-3">
-        <TrendingUp className="mt-1 h-6 w-6 text-primary" aria-hidden="true" />
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold">Uprating &amp; Indexation</h1>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Prepare, approve, execute and reconcile governed uprating runs that apply
-            approved benefit increases to live awards.
-          </p>
-          {ctx.rolloutState !== "public" && (
-            <div className="pt-1">
-              <Badge variant="secondary">Internal pilot</Badge>
-            </div>
-          )}
-        </div>
-      </div>
-    </header>
+  <BnModulePage>
+    <BnModuleHeader
+      icon={TrendingUp}
+      title="Uprating & Indexation"
+      description="Prepare, approve, execute and reconcile governed uprating runs that apply approved benefit increases to live awards."
+      badges={
+        ctx.rolloutState !== "public"
+          ? [{ label: "Internal pilot", variant: "secondary" as const }]
+          : undefined
+      }
+    />
 
-    <details className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
-      <summary className="cursor-pointer font-medium text-foreground">
-        How an uprating run works
-      </summary>
-      <p className="max-w-3xl pt-2">
+    {/* Module navigation lives in the left sidebar; the screen states its position. */}
+    <UpratingBreadcrumbs />
+
+    <BnModuleGuidance summary="How an uprating run works">
+      <p>
         Maintain the governed uprating policy catalogue, prepare runs — population
         snapshots, exception resolution and deterministic simulation — execute approved
         runs in controlled batches, then complete the consequences: payment-schedule
@@ -102,13 +94,10 @@ const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
         the failure path, controlled compensating rollback. Execution applies exactly what
         was approved; no amount is recalculated at execution time.
       </p>
-    </details>
-
-    {/* Module navigation lives in the left sidebar. */}
-    <UpratingBreadcrumbs />
+    </BnModuleGuidance>
 
     <Outlet />
-  </div>
+  </BnModulePage>
 );
 
 /** Execution and post-execution work are two separate management screens. */
@@ -156,7 +145,7 @@ const UpratingRunRecordRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx 
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-4 sm:p-6">
       <BnModuleBreadcrumbs
         items={[
           { label: "Benefit Management" },

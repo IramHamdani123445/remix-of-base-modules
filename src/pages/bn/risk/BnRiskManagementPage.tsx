@@ -26,7 +26,6 @@ import {
   type BnModuleAccessContext,
 } from '@/components/bn/access/BnModuleRouteGate';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ShieldAlert } from 'lucide-react';
 import { BnRiskSignalQueue } from '@/components/bn/risk/BnRiskSignalQueue';
@@ -40,7 +39,12 @@ import { BnRiskOutcomeQueue } from '@/components/bn/risk/BnRiskOutcomeQueue';
 import { BnRiskOperationsDashboard } from '@/components/bn/risk/BnRiskOperationsDashboard';
 import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel';
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
-import { BnModuleBreadcrumbs } from '@/components/bn/ux';
+import {
+  BnModuleBreadcrumbs,
+  BnModuleHeader,
+  BnModulePage,
+  BnModuleTrail,
+} from '@/components/bn/ux';
 
 export const RISK_MODULE_BASE = '/bn/risk-management';
 
@@ -73,19 +77,13 @@ const RISK_SCREEN_LABELS: Record<string, string> = {
   feedback: 'Rule feedback',
 };
 
-const RiskBreadcrumbs: React.FC = () => {
-  const { pathname } = useLocation();
-  const tail = pathname.replace(RISK_MODULE_BASE, '').replace(/^\/+|\/+$/g, '').split('/')[0] ?? '';
-  return (
-    <BnModuleBreadcrumbs
-      items={[
-        { label: 'Benefit Management' },
-        { label: 'Fraud, Error & Risk', to: RISK_MODULE_BASE },
-        { label: RISK_SCREEN_LABELS[tail] ?? 'Overview' },
-      ]}
-    />
-  );
-};
+const RiskBreadcrumbs: React.FC = () => (
+  <BnModuleTrail
+    moduleLabel="Fraud, Error & Risk"
+    moduleBase={RISK_MODULE_BASE}
+    screenLabels={RISK_SCREEN_LABELS}
+  />
+);
 
 export function riskAssessmentPath(
   assessmentId: string,
@@ -112,24 +110,22 @@ const RiskModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const canWrite = ctx.actionsEnabled && ctx.can('write');
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <ShieldAlert className="h-6 w-6 text-primary" />
-          <div>
-            <h1 className="text-2xl font-semibold">Fraud, Error &amp; Risk</h1>
-            <p className="text-sm text-muted-foreground">
-              Signal intake, triage and governed risk assessments.
-            </p>
-          </div>
-          {ctx.rolloutState === 'internal_pilot' && (
-            <Badge variant="secondary">Internal pilot</Badge>
-          )}
-        </div>
-        {canWrite && (
-          <Button onClick={() => setManualOpen(true)}>Register manual signal</Button>
-        )}
-      </div>
+    <BnModulePage>
+      <BnModuleHeader
+        icon={ShieldAlert}
+        title="Fraud, Error & Risk"
+        description="Signal intake, triage and governed risk assessments — scores are decision support, never an automatic benefit change."
+        badges={
+          ctx.rolloutState === 'internal_pilot'
+            ? [{ label: 'Internal pilot', variant: 'secondary' as const }]
+            : undefined
+        }
+        actions={
+          canWrite ? (
+            <Button onClick={() => setManualOpen(true)}>Register manual signal</Button>
+          ) : undefined
+        }
+      />
 
       {!ctx.actionsEnabled && (
         <Alert>
@@ -157,7 +153,7 @@ const RiskModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
           )
         }
       />
-    </div>
+    </BnModulePage>
   );
 };
 
@@ -236,7 +232,7 @@ const RiskAssessmentRecordRoute: React.FC = () => {
   if (!assessmentId) return <Navigate to={`${RISK_MODULE_BASE}/assessments`} replace />;
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-4 sm:p-6">
       <BnModuleBreadcrumbs
         items={[
           { label: 'Benefit Management' },

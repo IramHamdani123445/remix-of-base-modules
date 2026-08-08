@@ -21,10 +21,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Search, TrendingDown, Banknote, Loader2, ShieldAlert, RefreshCw } from 'lucide-react';
+import { TrendingDown, Banknote, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNumber } from '@/lib/culture/culture';
-import { BnNextActionCard, BnRecordWorkspaceHeader } from '@/components/bn/ux';
+import {
+  BnDataState,
+  BnFilterBar,
+  BnModuleGuidance,
+  BnModuleHeader,
+  BnModulePage,
+  BnModuleTrail,
+  BnNextActionCard,
+  BnRecordWorkspaceHeader,
+} from '@/components/bn/ux';
 import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
 import {
   overpaymentQueryService,
@@ -281,7 +290,7 @@ const OverpaymentRecovery: React.FC = () => {
     }));
 
     return (
-      <div className="space-y-6 p-6" data-testid="bn-overpayment-case-workspace">
+      <div className="space-y-6 p-4 sm:p-6" data-testid="bn-overpayment-case-workspace">
         <BnRecordWorkspaceHeader
           backLabel="Overpayment worklist"
           onBack={() => { setOpenCaseId(null); setSelected(null); setCommandError(null); }}
@@ -349,37 +358,48 @@ const OverpaymentRecovery: React.FC = () => {
     );
   }
 
+  const hasFilters = Boolean(search.trim() || statusFilter !== 'all');
+  const listState = loading
+    ? 'loading'
+    : loadError
+      ? 'error'
+      : rows.length === 0
+        ? 'empty'
+        : 'ready';
+
   return (
+    <BnModulePage>
+      <BnModuleHeader
+        icon={TrendingDown}
+        title="Overpayment Recovery"
+        description="Governed detection, liability, recovery and reconciliation of benefit overpayments."
+        badges={[{ label: 'Internal pilot', variant: 'secondary' }]}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className="h-4 w-4 mr-2" />Refresh
+            </Button>
+            <ReferToLegalButton module="benefits" reasonCode="BENEFIT_OVERPAYMENT" matter="BENEFIT_OVERPAYMENT" />
+          </>
+        }
+      />
 
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="t-page-title flex items-center gap-2">
-            <TrendingDown className="h-6 w-6" />Overpayment Recovery
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Governed detection, liability, recovery and reconciliation of benefit overpayments
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className="h-4 w-4 mr-2" />Refresh
-          </Button>
-          <ReferToLegalButton module="benefits" reasonCode="BENEFIT_OVERPAYMENT" matter="BENEFIT_OVERPAYMENT" />
-        </div>
-      </div>
+      <BnModuleTrail
+        moduleLabel="Overpayment Recovery"
+        moduleBase={OVERPAYMENT_MODULE_BASE}
+        screenLabels={{ '': 'Worklist', cases: 'Cases' }}
+        fallbackLabel="Worklist"
+      />
 
-      <Alert>
-        <ShieldAlert className="h-4 w-4" />
-        <AlertTitle>Internal pilot — actions disabled</AlertTitle>
-        <AlertDescription>
+      <BnModuleGuidance summary="Why actions may be rejected in this environment">
+        <p>
           Overpayment commands run through the secured server boundary. While the module is in
           internal pilot, command attempts are rejected with <code>E_ACTIONS_DISABLED</code> and no
           state changes are recorded.
-        </AlertDescription>
-      </Alert>
+        </p>
+      </BnModuleGuidance>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">Outstanding</p>
           <p className="text-2xl font-semibold">{loadError ? 'Unavailable' : money(totals.outstanding)}</p>
@@ -400,17 +420,14 @@ const OverpaymentRecovery: React.FC = () => {
 
       <Card>
         <CardContent className="p-4 space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                className="pl-8"
-                placeholder="Search by case reference or claimant"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                aria-label="Search overpayment cases"
-              />
-            </div>
+          <BnFilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by case reference or claimant"
+            searchLabel="Search overpayment cases"
+            hasFilters={hasFilters}
+            onClear={() => { setSearch(''); setStatusFilter('all'); }}
+          >
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="sm:w-56" aria-label="Filter by status">
                 <SelectValue placeholder="All statuses" />
@@ -420,72 +437,65 @@ const OverpaymentRecovery: React.FC = () => {
                 {STATUS_FILTERS.map((s) => <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
+          </BnFilterBar>
+
+          <BnDataState
+            state={listState}
+            testId="bn-overpayment-worklist"
+            errorTitle="Worklist unavailable"
+            errorDetail={loadError ? humaniseLoadError(loadError) : null}
+            onRetry={() => void load()}
+            emptyTitle="No overpayment cases"
+            emptyMessage={
+              hasFilters
+                ? 'No overpayment cases match the current search or status filter.'
+                : 'No overpayment cases are currently open for recovery.'
+            }
+          >
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Case</TableHead>
+                    <TableHead>Claimant</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Gross</TableHead>
+                    <TableHead className="text-right">Outstanding</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow key={r.case_id}>
+                      <TableCell className="font-mono text-xs">{r.case_reference}</TableCell>
+                      <TableCell>{r.claimant_display ?? '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={STATUS_STYLES[r.status] ?? ''}>
+                          {r.status.replace(/_/g, ' ')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{money(r.gross_amount, r.currency)}</TableCell>
+                      <TableCell className="text-right">{money(r.outstanding_amount, r.currency)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button size="sm" variant="outline" onClick={() => setOpenCaseId(r.case_id)}>Open</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </BnDataState>
 
           {loadError && (
-            <Alert variant="destructive">
-              <AlertTitle>Worklist unavailable</AlertTitle>
-              <AlertDescription className="space-y-2">
-                <p>{humaniseLoadError(loadError)}</p>
-                <p className="text-xs opacity-80">Technical detail: <code>{loadError}</code></p>
-              </AlertDescription>
-            </Alert>
+            <p className="text-xs text-muted-foreground">
+              Technical detail: <code>{loadError}</code>
+            </p>
           )}
-
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Case</TableHead>
-                  <TableHead>Claimant</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Gross</TableHead>
-                  <TableHead className="text-right">Outstanding</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin inline" />
-                  </TableCell></TableRow>
-                )}
-                {!loading && loadError && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    Unavailable — the worklist could not be read, so the number of cases is unknown.
-                  </TableCell></TableRow>
-                )}
-                {!loading && !loadError && rows.length === 0 && (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    {search.trim() || statusFilter !== 'all'
-                      ? 'No overpayment cases match the current search or status filter.'
-                      : 'No overpayment cases are currently open for recovery.'}
-                  </TableCell></TableRow>
-                )}
-                {!loading && !loadError && rows.map((r) => (
-                  <TableRow key={r.case_id}>
-                    <TableCell className="font-mono text-xs">{r.case_reference}</TableCell>
-                    <TableCell>{r.claimant_display ?? '—'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={STATUS_STYLES[r.status] ?? ''}>
-                        {r.status.replace(/_/g, ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{money(r.gross_amount, r.currency)}</TableCell>
-                    <TableCell className="text-right">{money(r.outstanding_amount, r.currency)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => setOpenCaseId(r.case_id)}>Open</Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
         </CardContent>
       </Card>
-    </div>
-
+    </BnModulePage>
   );
 };
+
 
 export default OverpaymentRecovery;
