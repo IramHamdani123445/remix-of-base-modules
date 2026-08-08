@@ -218,6 +218,62 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
       idempotencyKey: newUpratingUuid(),
     });
 
+  const submitForApproval = async (values: { submission_note: string }) => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL',
+      runId: selectedRunId,
+      payload: values,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setSubmitOpen(false);
+  };
+
+  const recordDecision = async (values: {
+    decision: BnUpratingApprovalDecision;
+    decision_reason: string;
+    justification: string;
+  }) => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_APPROVE_RUN',
+      runId: selectedRunId,
+      payload: values,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setDecisionOpen(false);
+  };
+
+  const submitSchedule = async (values: ScheduleExecutionFormValues) => {
+    const result = await command.mutateAsync({
+      command:
+        scheduleMode === 'RESCHEDULE'
+          ? 'BN_UPRATING_RESCHEDULE_EXECUTION'
+          : 'BN_UPRATING_SCHEDULE_EXECUTION',
+      runId: selectedRunId,
+      payload: { ...values },
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setScheduleMode(null);
+  };
+
+  const cancelSchedule = async () => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_CANCEL_EXECUTION_SCHEDULE',
+      runId: selectedRunId,
+      payload: { cancelled_reason: cancelReason.trim() },
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') {
+      setCancelOpen(false);
+      setCancelReason('');
+    }
+  };
+
+
+
   const resolveException = async (values: { resolution_code: string; justification: string }) => {
     if (!resolveTarget) return;
     const result = await command.mutateAsync({
