@@ -10,7 +10,7 @@
  * surfaces that state honestly rather than pretending the action succeeded.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,6 +86,8 @@ const ERROR_HINTS: Record<string, string> = {
   E_IDEMPOTENCY_PAYLOAD_MISMATCH: 'The same idempotency key was reused with different data.',
 };
 
+export const OVERPAYMENT_MODULE_BASE = '/bn/overpayments';
+
 const OverpaymentRecovery: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -94,11 +96,12 @@ const OverpaymentRecovery: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   /**
-   * The open case lives in the URL (`?case=<case_id>`) so refresh, browser
-   * Back and shared links land the officer back on the same record.
+   * The open case is its own screen (`/bn/overpayments/cases/<case_id>`) so
+   * refresh, browser Back and shared links land the officer on the record.
    */
-  const [caseParam, setCaseParam] = useSearchParams();
-  const openCaseId = caseParam.get('case');
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const openCaseId = /\/cases\/([^/]+)/.exec(pathname)?.[1] ?? null;
   const [selected, setSelected] = useState<BnOverpaymentWorklistRow | null>(null);
   const [actions, setActions] = useState<BnOverpaymentAvailableAction[]>([]);
   const [planOpen, setPlanOpen] = useState(false);
@@ -136,21 +139,12 @@ const OverpaymentRecovery: React.FC = () => {
 
   const setOpenCaseId = useCallback(
     (caseId: string | null) => {
-      setCaseParam(
-        (current) => {
-          // Rebuild without the `case` key rather than mutating, so the
-          // architecture guards on direct-mutation verbs stay clean.
-          const next = new URLSearchParams();
-          current.forEach((value, key) => {
-            if (key !== 'case') next.set(key, value);
-          });
-          if (caseId) next.set('case', caseId);
-          return next;
-        },
+      navigate(
+        caseId ? `${OVERPAYMENT_MODULE_BASE}/cases/${caseId}` : OVERPAYMENT_MODULE_BASE,
         { replace: !caseId },
       );
     },
-    [setCaseParam],
+    [navigate],
   );
 
   const openCase = useCallback(async (row: BnOverpaymentWorklistRow) => {
