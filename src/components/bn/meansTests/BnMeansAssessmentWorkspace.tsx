@@ -783,7 +783,6 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
       </div>
     </div>
   );
-  );
 };
 
 const Summary: React.FC<{ label: string; value: number }> = ({ label, value }) => (
