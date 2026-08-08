@@ -290,7 +290,7 @@ const OverpaymentRecovery: React.FC = () => {
     }));
 
     return (
-      <div className="space-y-6 p-6" data-testid="bn-overpayment-case-workspace">
+      <div className="space-y-6 p-4 sm:p-6" data-testid="bn-overpayment-case-workspace">
         <BnRecordWorkspaceHeader
           backLabel="Overpayment worklist"
           onBack={() => { setOpenCaseId(null); setSelected(null); setCommandError(null); }}
