@@ -24,6 +24,8 @@ import { BnRiskManualSignalDialog } from '@/components/bn/risk/BnRiskManualSigna
 import { BnRiskAssessmentQueue } from '@/components/bn/risk/BnRiskAssessmentQueue';
 import { BnRiskAssessmentWorkspace } from '@/components/bn/risk/BnRiskAssessmentWorkspace';
 import { BnRiskControlApprovalQueue } from '@/components/bn/risk/BnRiskControlApprovalQueue';
+import { BnRiskControlExecutionQueue } from '@/components/bn/risk/BnRiskControlExecutionQueue';
+
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
 
@@ -42,6 +44,8 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const [tab, setTab] = React.useState('signals');
   const [openAssessmentId, setOpenAssessmentId] = React.useState<string | null>(null);
   const [focusApproval, setFocusApproval] = React.useState(false);
+  const [focusExecution, setFocusExecution] = React.useState(false);
+
 
   const counts = useQuery({
     queryKey: ['bn-risk-signal-queue', 'counts'],
@@ -56,6 +60,7 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
 
   const openAssessment = React.useCallback((assessmentId: string) => {
     setFocusApproval(false);
+    setFocusExecution(false);
     setOpenAssessmentId(assessmentId);
     setTab('assessments');
   }, []);
@@ -63,9 +68,19 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   /** Deep link from the approval queue straight to the decision section. */
   const openApprovalDecision = React.useCallback((assessmentId: string) => {
     setFocusApproval(true);
+    setFocusExecution(false);
     setOpenAssessmentId(assessmentId);
     setTab('assessments');
   }, []);
+
+  /** Deep link from the execution queue straight to the execution section. */
+  const openControlExecution = React.useCallback((assessmentId: string) => {
+    setFocusApproval(false);
+    setFocusExecution(true);
+    setOpenAssessmentId(assessmentId);
+    setTab('assessments');
+  }, []);
+
 
 
 
@@ -123,6 +138,8 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
           <TabsTrigger value="signals">Signals</TabsTrigger>
           <TabsTrigger value="assessments">Assessments</TabsTrigger>
           <TabsTrigger value="control-decisions">Control decisions</TabsTrigger>
+          <TabsTrigger value="control-execution">Control execution</TabsTrigger>
+
           <TabsTrigger value="scoring-configuration">Scoring configuration</TabsTrigger>
         </TabsList>
 
@@ -144,14 +161,25 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
             ? (
               <BnRiskAssessmentWorkspace
                 assessmentId={openAssessmentId}
-                focusSection={focusApproval ? 'approval' : null}
-                onBack={() => { setOpenAssessmentId(null); setFocusApproval(false); }}
+                focusSection={
+                  focusApproval ? 'approval' : focusExecution ? 'execution' : null
+                }
+                onBack={() => {
+                  setOpenAssessmentId(null);
+                  setFocusApproval(false);
+                  setFocusExecution(false);
+                }}
               />
             )
             : (
               <BnRiskAssessmentQueue
-                onOpenAssessment={(id) => { setFocusApproval(false); setOpenAssessmentId(id); }}
+                onOpenAssessment={(id) => {
+                  setFocusApproval(false);
+                  setFocusExecution(false);
+                  setOpenAssessmentId(id);
+                }}
               />
+
             )}
         </TabsContent>
 
@@ -166,6 +194,20 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
             </AlertDescription>
           </Alert>
         </TabsContent>
+
+        <TabsContent value="control-execution" className="space-y-6">
+          <BnRiskControlExecutionQueue onOpenExecution={openControlExecution} />
+
+          <Alert>
+            <AlertTitle>The owning domain performs the action</AlertTitle>
+            <AlertDescription>
+              Risk requests an approved control through a governed handoff. Payments, Legal,
+              Investigation and the other owning domains decide whether and how it is applied,
+              and Risk records only the reference and status they return.
+            </AlertDescription>
+          </Alert>
+        </TabsContent>
+
 
         <TabsContent value="scoring-configuration" className="space-y-6">
           <BnRiskScoringConfigurationPanel />

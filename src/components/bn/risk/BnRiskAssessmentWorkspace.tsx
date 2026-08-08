@@ -34,6 +34,8 @@ import { BnRiskScoringSection } from './BnRiskScoringSection';
 import { BnRiskAssessmentReviewSection } from './BnRiskAssessmentReviewSection';
 import { BnRiskRecommendationSection } from './BnRiskRecommendationSection';
 import { BnRiskControlApprovalSection } from './BnRiskControlApprovalSection';
+import { BnRiskControlExecutionSection } from './BnRiskControlExecutionSection';
+
 
 /** Journey stages, driven by the backend assessment status. */
 const JOURNEY = ['Signals', 'Factors', 'Evidence', 'Scoring', 'Recommendation',
@@ -56,19 +58,19 @@ function journeyStates(status: string): Record<string, JourneyState> {
       : approving || decided ? 'COMPLETE' : scoring ? 'NEXT' : 'NOT_STARTED',
     Approval: approving ? 'CURRENT' : decided ? 'COMPLETE'
       : recommending ? 'NEXT' : 'NOT_STARTED',
-    'Control execution': decided ? 'NEXT' : 'NOT_STARTED',
-    Outcome: 'NOT_STARTED',
+    'Control execution': status === 'CONTROL_ACTION' || status === 'REFERRED' ? 'CURRENT'
+      : decided ? 'COMPLETE' : approving ? 'NEXT' : 'NOT_STARTED',
+    Outcome: ['COMPLETED', 'CLOSED'].includes(status) ? 'CURRENT' : 'NOT_STARTED',
+
   };
 }
 
 interface Props {
   assessmentId: string;
   onBack: () => void;
-  /** Deep link from the approval queue — scroll straight to the decision. */
-  focusSection?: 'approval' | null;
+  /** Deep link from an operational queue — scroll straight to that section. */
+  focusSection?: 'approval' | 'execution' | null;
 }
-
-
 
 export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
   assessmentId, onBack, focusSection = null,
@@ -78,6 +80,8 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
   const [completeNote, setCompleteNote] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const approvalRef = React.useRef<HTMLDivElement | null>(null);
+  const executionRef = React.useRef<HTMLDivElement | null>(null);
+
 
   const detail = useQuery({
     queryKey: ['bn-risk-assessment-detail', assessmentId],
@@ -126,12 +130,16 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
     queryClient.invalidateQueries({ queryKey: ['bn-risk-assessment-actions', assessmentId] });
   }, [assessmentId, queryClient]);
 
-  /** Approval queue deep link — put the decision in front of the approver. */
+  /** Operational queue deep links — put the required work in front of the user. */
   React.useEffect(() => {
     if (focusSection === 'approval' && approvalRef.current) {
       approvalRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    if (focusSection === 'execution' && executionRef.current) {
+      executionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, [focusSection, detail.data]);
+
 
   const completeMutation = useMutation({
     mutationFn: async () => {
@@ -435,6 +443,11 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
           onChanged={refresh}
         />
       </div>
+
+      <div ref={executionRef}>
+        <BnRiskControlExecutionSection assessmentId={assessmentId} onChanged={refresh} />
+      </div>
+
 
 
 

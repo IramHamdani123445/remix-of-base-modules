@@ -24507,6 +24507,260 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_risk_control_execution: {
+        Row: {
+          accepted_at: string | null
+          approved_parameters: Json
+          assessment_id: string
+          attempt_no: number
+          boundary_kind: string
+          command_name: string
+          completed_at: string | null
+          control_code: string
+          control_label: string | null
+          correlation_id: string | null
+          created_at: string
+          decision_id: string | null
+          execution_class: string
+          execution_id: string
+          execution_reference: string
+          failed_at: string | null
+          failure_code: string | null
+          failure_summary: string | null
+          handoff_id: string | null
+          is_retryable: boolean
+          recommendation_id: string
+          requested_at: string
+          requested_by_name: string | null
+          requested_by_user_id: string
+          retries_execution_id: string | null
+          row_version: number
+          runtime_parameters: Json
+          status: string
+          target_business_reference: string | null
+          target_correlation_reference: string | null
+          target_internal_reference: string | null
+          target_module: string | null
+          target_operation_reference: string | null
+          target_status: string | null
+          target_type: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          approved_parameters?: Json
+          assessment_id: string
+          attempt_no?: number
+          boundary_kind: string
+          command_name: string
+          completed_at?: string | null
+          control_code: string
+          control_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          decision_id?: string | null
+          execution_class: string
+          execution_id?: string
+          execution_reference: string
+          failed_at?: string | null
+          failure_code?: string | null
+          failure_summary?: string | null
+          handoff_id?: string | null
+          is_retryable?: boolean
+          recommendation_id: string
+          requested_at?: string
+          requested_by_name?: string | null
+          requested_by_user_id: string
+          retries_execution_id?: string | null
+          row_version?: number
+          runtime_parameters?: Json
+          status: string
+          target_business_reference?: string | null
+          target_correlation_reference?: string | null
+          target_internal_reference?: string | null
+          target_module?: string | null
+          target_operation_reference?: string | null
+          target_status?: string | null
+          target_type?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          approved_parameters?: Json
+          assessment_id?: string
+          attempt_no?: number
+          boundary_kind?: string
+          command_name?: string
+          completed_at?: string | null
+          control_code?: string
+          control_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          decision_id?: string | null
+          execution_class?: string
+          execution_id?: string
+          execution_reference?: string
+          failed_at?: string | null
+          failure_code?: string | null
+          failure_summary?: string | null
+          handoff_id?: string | null
+          is_retryable?: boolean
+          recommendation_id?: string
+          requested_at?: string
+          requested_by_name?: string | null
+          requested_by_user_id?: string
+          retries_execution_id?: string | null
+          row_version?: number
+          runtime_parameters?: Json
+          status?: string
+          target_business_reference?: string | null
+          target_correlation_reference?: string | null
+          target_internal_reference?: string | null
+          target_module?: string | null
+          target_operation_reference?: string | null
+          target_status?: string | null
+          target_type?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_control_execution_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_control_execution_decision_id_fkey"
+            columns: ["decision_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_recommendation_decision"
+            referencedColumns: ["decision_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_control_execution_handoff_id_fkey"
+            columns: ["handoff_id"]
+            isOneToOne: false
+            referencedRelation: "bn_cross_module_handoff"
+            referencedColumns: ["handoff_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_control_execution_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_recommendation"
+            referencedColumns: ["recommendation_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_control_execution_retries_execution_id_fkey"
+            columns: ["retries_execution_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_control_execution"
+            referencedColumns: ["execution_id"]
+          },
+        ]
+      }
+      bn_risk_control_execution_event: {
+        Row: {
+          actor_name: string | null
+          actor_source: string | null
+          actor_user_id: string | null
+          assessment_id: string
+          attempt_no: number | null
+          correlation_id: string | null
+          detail: Json
+          event_code: string
+          event_id: string
+          execution_id: string
+          from_status: string | null
+          occurred_at: string
+          to_status: string | null
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_source?: string | null
+          actor_user_id?: string | null
+          assessment_id: string
+          attempt_no?: number | null
+          correlation_id?: string | null
+          detail?: Json
+          event_code: string
+          event_id?: string
+          execution_id: string
+          from_status?: string | null
+          occurred_at?: string
+          to_status?: string | null
+        }
+        Update: {
+          actor_name?: string | null
+          actor_source?: string | null
+          actor_user_id?: string | null
+          assessment_id?: string
+          attempt_no?: number | null
+          correlation_id?: string | null
+          detail?: Json
+          event_code?: string
+          event_id?: string
+          execution_id?: string
+          from_status?: string | null
+          occurred_at?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_control_execution_event_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_control_execution"
+            referencedColumns: ["execution_id"]
+          },
+        ]
+      }
+      bn_risk_control_target_boundary: {
+        Row: {
+          boundary_kind: string
+          control_code: string
+          created_at: string
+          execution_class: string
+          handoff_type: string | null
+          is_active: boolean
+          is_asynchronous: boolean
+          missing_capability: string | null
+          permitted_runtime_fields: string[]
+          required_parameters: string[]
+          requires_confirmation: boolean
+          target_module: string | null
+        }
+        Insert: {
+          boundary_kind: string
+          control_code: string
+          created_at?: string
+          execution_class: string
+          handoff_type?: string | null
+          is_active?: boolean
+          is_asynchronous?: boolean
+          missing_capability?: string | null
+          permitted_runtime_fields?: string[]
+          required_parameters?: string[]
+          requires_confirmation?: boolean
+          target_module?: string | null
+        }
+        Update: {
+          boundary_kind?: string
+          control_code?: string
+          created_at?: string
+          execution_class?: string
+          handoff_type?: string | null
+          is_active?: boolean
+          is_asynchronous?: boolean
+          missing_capability?: string | null
+          permitted_runtime_fields?: string[]
+          required_parameters?: string[]
+          requires_confirmation?: boolean
+          target_module?: string | null
+        }
+        Relationships: []
+      }
       bn_risk_control_type: {
         Row: {
           allowed_target_types: string[]
@@ -109289,8 +109543,28 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bn_risk_exec_command_for_control: {
+        Args: { p_control: string }
+        Returns: string
+      }
+      _bn_risk_exec_event_label: { Args: { p_code: string }; Returns: string }
+      _bn_risk_exec_status_from_handoff: {
+        Args: { p_handoff_status: string }
+        Returns: string
+      }
+      _bn_risk_exec_status_label: {
+        Args: { p_status: string }
+        Returns: string
+      }
+      _bn_risk_execution_json: {
+        Args: {
+          e: Database["public"]["Tables"]["bn_risk_control_execution"]["Row"]
+        }
+        Returns: Json
+      }
       _bn_risk_mask_ssn: { Args: { p_ssn: string }; Returns: string }
       _bn_risk_next_assessment_reference: { Args: never; Returns: string }
+      _bn_risk_next_execution_reference: { Args: never; Returns: string }
       _bn_risk_next_factor_reference: { Args: never; Returns: string }
       _bn_risk_next_recommendation_reference: { Args: never; Returns: string }
       _bn_risk_next_reference: { Args: never; Returns: string }
@@ -112016,6 +112290,35 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_risk_control_execution_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_risk_control_execution_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters: Json
+          p_page: number
+          p_page_size: number
+        }
+        Returns: Json
+      }
+      bn_risk_control_execution_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
       bn_risk_evidence_search_v1: {
         Args: {
           p_actor_user_id: string
@@ -112042,6 +112345,10 @@ export type Database = {
         Returns: Json
       }
       bn_risk_factor_catalogue_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_outcome_readiness_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
