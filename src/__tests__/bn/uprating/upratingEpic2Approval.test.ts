@@ -79,7 +79,7 @@ describe('Epic 2 — canonical catalogue certification', () => {
 
   it('reports 17 of 17 implemented after Epic 5 (5 + 4 + 3 + 2 + 2 + 1)', () => {
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
-    expect(implemented).toHaveLength(16);
+    expect(implemented).toHaveLength(17);
     expect(BN_UPRATING_EPIC1_CANONICAL_COMMANDS).toHaveLength(4);
     expect(BN_UPRATING_EPIC2_CANONICAL_COMMANDS).toHaveLength(3);
   });
