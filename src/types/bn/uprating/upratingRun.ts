@@ -332,6 +332,11 @@ export interface BnUpratingRunActionsResult {
   readonly simulation_state: BnUpratingSimulationState;
   readonly blocking_exceptions: number;
   readonly actions: readonly BnUpratingRunAction[];
+  /** Epic 5 — backend-owned terminality and completion path. */
+  readonly is_terminal?: boolean;
+  readonly completion_path?: BnUpratingCompletionPath | null;
+  readonly closed_at?: string | null;
+  readonly closed_by_name?: string | null;
 }
 
 /** Governed run transitions across Epic 0-3. */
