@@ -95,23 +95,48 @@ export interface BnUpratingRunWorkspaceProps {
   readonly ctx: BnModuleAccessContext;
   /** Deep link from the operational queues — run to open on mount. */
   readonly initialRunId?: string | null;
-  /** Deep link target tab inside the run workspace. */
+  /** Deep link target section inside the run workspace. */
   readonly initialTab?: string | null;
+  /**
+   * Supplied when the run identity lives in the URL. Selecting a run then
+   * navigates to `/bn/uprating/runs/:runId`; `null` returns to the list.
+   */
+  readonly onSelectRun?: (runId: string | null) => void;
+  /** Supplied when the workflow section lives in the URL (`?section=`). */
+  readonly onSectionChange?: (section: string) => void;
 }
 
 export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
   ctx,
   initialRunId = null,
   initialTab = null,
+  onSelectRun,
+  onSectionChange,
 }) => {
   const qc = useQueryClient();
   const [selectedRunId, setSelectedRunId] = React.useState<string | null>(initialRunId);
-  const [activeTab, setActiveTab] = React.useState<string>(initialTab ?? 'population');
+  const [internalTab, setInternalTab] = React.useState<string>(initialTab ?? 'population');
+  const activeTab = onSectionChange ? initialTab ?? 'population' : internalTab;
+  const setActiveTab = React.useCallback(
+    (next: string) => {
+      if (onSectionChange) onSectionChange(next);
+      else setInternalTab(next);
+    },
+    [onSectionChange],
+  );
+  /** Run selection is URL-owned when the caller routes it. */
+  const selectRun = React.useCallback(
+    (runId: string | null) => {
+      if (onSelectRun) onSelectRun(runId);
+      else setSelectedRunId(runId);
+    },
+    [onSelectRun],
+  );
 
   React.useEffect(() => {
-    if (initialRunId) setSelectedRunId(initialRunId);
-    if (initialTab) setActiveTab(initialTab);
-  }, [initialRunId, initialTab]);
+    setSelectedRunId(initialRunId);
+    if (initialTab && !onSectionChange) setInternalTab(initialTab);
+  }, [initialRunId, initialTab, onSectionChange]);
   const [search, setSearch] = React.useState('');
   const [createOpen, setCreateOpen] = React.useState(false);
   const [resolveTarget, setResolveTarget] = React.useState<BnUpratingExceptionRow | null>(null);
