@@ -34,6 +34,8 @@ import { BnRiskScoringSection } from './BnRiskScoringSection';
 import { BnRiskAssessmentReviewSection } from './BnRiskAssessmentReviewSection';
 import { BnRiskRecommendationSection } from './BnRiskRecommendationSection';
 import { BnRiskControlApprovalSection } from './BnRiskControlApprovalSection';
+import { BnRiskControlExecutionSection } from './BnRiskControlExecutionSection';
+
 
 /** Journey stages, driven by the backend assessment status. */
 const JOURNEY = ['Signals', 'Factors', 'Evidence', 'Scoring', 'Recommendation',
@@ -435,6 +437,11 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
           onChanged={refresh}
         />
       </div>
+
+      <div ref={executionRef}>
+        <BnRiskControlExecutionSection assessmentId={assessmentId} onChanged={refresh} />
+      </div>
+
 
 
 
