@@ -82,6 +82,9 @@ const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
       }
     />
 
+    {/* Module navigation lives in the left sidebar; the screen states its position. */}
+    <UpratingBreadcrumbs />
+
     <BnModuleGuidance summary="How an uprating run works">
       <p>
         Maintain the governed uprating policy catalogue, prepare runs — population
@@ -92,9 +95,6 @@ const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
         was approved; no amount is recalculated at execution time.
       </p>
     </BnModuleGuidance>
-
-    {/* Module navigation lives in the left sidebar. */}
-    <UpratingBreadcrumbs />
 
     <Outlet />
   </BnModulePage>
