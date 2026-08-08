@@ -791,6 +791,7 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         */}
       </Tabs>
       </div>
+      </div>
     </div>
   );
 };
