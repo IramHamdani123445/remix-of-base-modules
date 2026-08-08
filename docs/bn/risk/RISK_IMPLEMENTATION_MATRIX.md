@@ -120,7 +120,76 @@ closed when no active configuration exists.
   and requires an explicit recalculation.
 - No opaque model: every point on the score is traced to a named rule.
 
-## Epics 3+ — Not started
+## Epic 3 — Control recommendation and independent approval — COMPLETE
 
-Recommendations, controls, approvals, payment holds, referrals, outcomes and
-rule feedback.
+A risk score informs a recommendation; it never chooses one. Approval
+authorises a control for a later governed execution step. **Nothing in Epic 3
+executes a control.**
+
+### Backend (governed boundary)
+
+| Object | Purpose |
+| --- | --- |
+| `bn_risk_control_type` | Governed control catalogue (benefit-affecting, approval, target, justification and execution metadata) |
+| `bn_risk_recommendation` | Immutable recommendation cycles bound to the exact score used |
+| `bn_risk_recommendation_decision` | Immutable approve / reject / return decisions |
+| `bn_risk_control_command_v1` | Single command boundary: `BN_RISK_RECOMMEND_CONTROL`, `BN_RISK_APPROVE_CONTROL`, withdraw |
+| `bn_risk_recommendation_readiness_v1` | May a control be recommended; published catalogue, reasons, factors, evidence |
+| `bn_risk_control_approval_readiness_v1` | May this recommendation be decided, and by this actor |
+| `bn_risk_control_approval_queue_v1` | Independent decision work queue |
+| `bn_risk_recommendation_history_v1` | Every retained cycle and its decisions |
+
+### Commands
+
+| Command | Capability | State effect | Status |
+| --- | --- | --- | --- |
+| `BN_RISK_RECOMMEND_CONTROL` | `write` (+ justification) | `RECOMMENDATION → PENDING_CONTROL_APPROVAL` | Implemented |
+| `BN_RISK_APPROVE_CONTROL` | `approve_control` | approve / reject / return | Implemented |
+| `BN_RISK_OP_WITHDRAW_RECOMMENDATION` | `write` | pending cycle withdrawn, retained | Implemented |
+
+### Frontend
+
+- `src/types/bn/risk/riskControl.ts` — contracts only; no catalogue, no rules
+- `src/services/bn/risk/riskControlService.ts` — governed RPC bindings only
+- `BnRiskRecommendationSection`, `BnRiskRecommendationDialog`
+- `BnRiskControlApprovalSection`, `BnRiskControlDecisionDialog`
+- `BnRiskControlApprovalQueue` — "Control decisions" tab with approval deep link
+- `BnRiskAssessmentWorkspace` — journey through Recommendation → Approval →
+  Control execution (execution shown as a later, not-started step)
+
+### Delivered
+
+| Item | Status |
+| --- | --- |
+| Recommendation readiness (backend governed, fails closed) | COMPLETE |
+| Governed control catalogue (backend reference data) | COMPLETE |
+| Recommendation UI with explicit human control selection | COMPLETE |
+| Score-version binding (`score_id`, version, rule set, fingerprint) | COMPLETE |
+| Immutable recommendation cycles | COMPLETE |
+| Approval readiness | COMPLETE |
+| Maker-checker (server enforced) | COMPLETE |
+| Approval queue and deep link | COMPLETE |
+| Approve / reject / return-for-review flow | COMPLETE |
+| Stale recommendation protection | COMPLETE |
+| Non-execution boundary | COMPLETE |
+| Privacy (Benefit 360, claim and award surfaces) | COMPLETE |
+| History and audit | COMPLETE |
+| Idempotent replay (no duplicate recommendation or decision) | COMPLETE |
+| Tests (`src/__tests__/bn/risk/riskEpic3ControlRecommendation.test.tsx`) | COMPLETE |
+| **Approved control execution** | **NOT_STARTED** |
+
+### Boundaries respected
+
+- No score or band is mapped to a control, a decision or an execution action;
+  a standing source guard enforces this for all current and future `bn/risk` code.
+- The Epic 3 frontend never invokes `BN_RISK_PLACE_PAYMENT_HOLD`,
+  `BN_RISK_REQUEST_ENH_VERIFICATION`, `BN_RISK_REFER_TO_LEGAL` or
+  `BN_RISK_REFER_TO_INVESTIGATION`.
+- No direct browser mutation of Claim, Award, Payment, Overpayment,
+  Person/Profile, Legal or Investigation records.
+- An approved control rests at "Approved — awaiting governed execution".
+
+## Epic 4 — Approved control execution and governed handoffs — NOT_STARTED
+
+Payment hold execution, enhanced verification requests, Legal referral,
+Investigation referral, outcome capture and rule feedback.
