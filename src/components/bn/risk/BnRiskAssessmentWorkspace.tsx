@@ -126,6 +126,13 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
     queryClient.invalidateQueries({ queryKey: ['bn-risk-assessment-actions', assessmentId] });
   }, [assessmentId, queryClient]);
 
+  /** Approval queue deep link — put the decision in front of the approver. */
+  React.useEffect(() => {
+    if (focusSection === 'approval' && approvalRef.current) {
+      approvalRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [focusSection, detail.data]);
+
   const completeMutation = useMutation({
     mutationFn: async () => {
       const result = await riskAssessmentService.execute({
