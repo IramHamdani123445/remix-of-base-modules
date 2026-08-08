@@ -46,9 +46,10 @@ export const BN_UPRATING_CANONICAL_COMMANDS: readonly BnUpratingCanonicalCommand
   { command: 'BN_UPRATING_SIMULATE',                   capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
   { command: 'BN_UPRATING_RESOLVE_EXCEPTION',          capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: true },
 
-  { command: 'BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL',    capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_UPRATING_APPROVE_RUN',                capability: 'bn_uprating:admin',  requiresMakerChecker: true,  transactional: false, requiresJustification: true,  implemented: false },
-  { command: 'BN_UPRATING_SCHEDULE_EXECUTION',         capability: 'bn_uprating:admin',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
+  { command: 'BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL',    capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
+  { command: 'BN_UPRATING_APPROVE_RUN',                capability: 'bn_uprating:admin',  requiresMakerChecker: true,  transactional: false, requiresJustification: true,  implemented: true },
+  { command: 'BN_UPRATING_SCHEDULE_EXECUTION',         capability: 'bn_uprating:admin',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
+
   { command: 'BN_UPRATING_EXECUTE_BATCH',              capability: 'bn_uprating:admin',  requiresMakerChecker: true,  transactional: true,  requiresJustification: false, implemented: false },
   { command: 'BN_UPRATING_RETRY_FAILED',               capability: 'bn_uprating:admin',  requiresMakerChecker: false, transactional: true,  requiresJustification: false, implemented: false },
   { command: 'BN_UPRATING_RECONCILE_RUN',              capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },

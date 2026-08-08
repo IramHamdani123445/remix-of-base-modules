@@ -10,7 +10,7 @@ Governed boundaries: `public.bn_uprating_policy_command_v1` (policy),
 | --- | --- | --- |
 | Epic 0 | Module foundation, policy catalogue, version governance | **COMPLETE — CERTIFIED** |
 | Epic 1 | Run creation, population snapshot, exceptions, simulation | **COMPLETE — CERTIFIED** |
-| Epic 2 | Run approval and execution scheduling | NOT_STARTED |
+| Epic 2 | Run approval and execution scheduling | **COMPLETE — CERTIFIED** |
 | Epic 3 | Batch execution and retry | NOT_STARTED |
 | Epic 4 | Reconciliation and rollback | NOT_STARTED |
 | Epic 5 | Run closure | NOT_STARTED |
@@ -28,9 +28,9 @@ Governed boundaries: `public.bn_uprating_policy_command_v1` (policy),
 | BN_UPRATING_BUILD_POPULATION | decide | no | IMPLEMENTED (Epic 1) |
 | BN_UPRATING_SIMULATE | decide | no | IMPLEMENTED (Epic 1) |
 | BN_UPRATING_RESOLVE_EXCEPTION | decide | no | IMPLEMENTED (Epic 1) |
-| BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL | decide | no | NOT_STARTED |
-| BN_UPRATING_APPROVE_RUN | admin | yes | NOT_STARTED |
-| BN_UPRATING_SCHEDULE_EXECUTION | admin | no | NOT_STARTED |
+| BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL | decide | no | IMPLEMENTED (Epic 2) |
+| BN_UPRATING_APPROVE_RUN | admin | yes | IMPLEMENTED (Epic 2) |
+| BN_UPRATING_SCHEDULE_EXECUTION | admin | no | IMPLEMENTED (Epic 2) |
 | BN_UPRATING_EXECUTE_BATCH | admin | yes | NOT_STARTED |
 | BN_UPRATING_RETRY_FAILED | admin | no | NOT_STARTED |
 | BN_UPRATING_RECONCILE_RUN | decide | no | NOT_STARTED |
@@ -41,7 +41,8 @@ Supporting governed lifecycle operations delivered inside the same boundaries
 (not new canonical commands): `BN_UPRATING_UPDATE_POLICY_VERSION`,
 `BN_UPRATING_ACTIVATE_POLICY_VERSION`, `BN_UPRATING_SUPERSEDE_POLICY_VERSION`,
 `BN_UPRATING_RETIRE_POLICY_VERSION`, `BN_UPRATING_UPDATE_RUN`,
-`BN_UPRATING_PARAMETERISE_RUN`.
+`BN_UPRATING_PARAMETERISE_RUN`, `BN_UPRATING_RESCHEDULE_EXECUTION`,
+`BN_UPRATING_CANCEL_EXECUTION_SCHEDULE`.
 
 ## Epic 0 delivered surface
 
@@ -91,10 +92,38 @@ Supporting governed lifecycle operations delivered inside the same boundaries
   parameters; any population or exception change marks the current simulation `STALE`.
   `FORMULA_DRIVEN` and `MANUAL_IMPORT` policy types are refused with `E_NOT_SIMULATABLE`.
 
+## Epic 2 delivered surface (approval and scheduling only)
+
+- Tables: `bn_uprating_run_approval_package`, `bn_uprating_run_approval`,
+  `bn_uprating_execution_schedule` (RLS on, service-role grants, no browser table access).
+- Boundary: `bn_uprating_run_command_v1` extended with submit-for-approval, approve /
+  return-for-rework, schedule, reschedule and cancel-schedule. Permission-gated, idempotent,
+  optimistic-concurrency protected, drift-detecting and fully audited.
+- Reads: `bn_uprating_run_approval_readiness_v1`, `bn_uprating_run_approval_v1`,
+  `bn_uprating_schedule_readiness_v1`, `bn_uprating_run_approval_queue_v1`,
+  `bn_uprating_scheduled_run_queue_v1`, and Epic 2 actions in `bn_uprating_run_actions_v1`.
+- Frontend: submit / decision / schedule dialogs, run approval and execution-schedule
+  sections, and the approval + scheduling queues on `/bn/uprating`.
+
+### Epic 2 governance guarantees
+
+- **Nothing executes**: no award, entitlement, payment schedule or communication is written;
+  an approved run remains `APPROVED` and scheduling only records a plan.
+- **Immutable package**: the snapshot, simulation, fingerprint and financial totals are frozen
+  at submission; a new cycle creates a new package and supersedes the previous one.
+- **Independent approval**: neither the submitter nor the officer who prepared the simulation
+  may approve; a decision reason and justification are mandatory.
+- **Drift protection**: approval is refused (`E_APPROVAL_STALE`) if the run, snapshot,
+  simulation or input fingerprint has moved since submission.
+- **Governed scheduling**: time zone, execution window, batch size, concurrency and minimum
+  lead time are validated against `SCHEDULE_CONFIG`; rescheduling supersedes rather than edits.
+
 ## Certification evidence
 
 - Epic 0 suite: `src/__tests__/bn/uprating/upratingEpic0Foundation.test.ts` — 59 tests green.
 - Epic 1 suite: `src/__tests__/bn/uprating/upratingEpic1Run.test.ts` — 26 tests green.
-- Regression: `src/__tests__/bn` — 140 files (139 passed / 1 skipped); 2798 tests: 2783 passed, 1 skipped, 14 todo, 0 failed.
+- Epic 2 suite: `src/__tests__/bn/uprating/upratingEpic2Approval.test.ts` — 84 tests green.
+- Uprating regression: 169/169 tests green across Epic 0–2 suites.
+- Regression: `src/__tests__/bn` — 141 files (140 passed / 1 skipped); 2882 tests: 2867 passed, 1 skipped, 14 todo, 0 failed.
 - Typecheck: CLEAN (`tsgo -p tsconfig.app.json`, no errors).
-- Canonical catalogue boundary: 17 commands total, 9 implemented (Epic 0 = 5, Epic 1 = 4), 8 NOT_STARTED (Epic 2+).
+- Canonical catalogue boundary: 17 commands total, 12 implemented (Epic 0 = 5, Epic 1 = 4, Epic 2 = 3), 5 NOT_STARTED (Epic 3+).

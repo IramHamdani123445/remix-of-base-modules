@@ -35,8 +35,14 @@ export const BnUpratingApprovalQueue: React.FC<Props> = ({ onOpenRun }) => {
     queryFn: () => fetchUpratingScheduledRunQueue({}),
   });
 
-  const approvals = approvalQuery.data?.data?.rows ?? [];
-  const scheduled = scheduledQuery.data?.data?.rows ?? [];
+  const approvalFailed =
+    approvalQuery.status === 'error' || approvalQuery.data?.status === 'ERROR';
+  const scheduledFailed =
+    scheduledQuery.status === 'error' || scheduledQuery.data?.status === 'ERROR';
+
+  const approvals = approvalFailed ? [] : approvalQuery.data?.data?.rows ?? [];
+  const scheduled = scheduledFailed ? [] : scheduledQuery.data?.data?.rows ?? [];
+
 
   return (
     <Tabs defaultValue="awaiting">
@@ -58,6 +64,12 @@ export const BnUpratingApprovalQueue: React.FC<Props> = ({ onOpenRun }) => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {approvalFailed && (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                The approval queue could not be loaded. This is not an empty queue — please retry.
+              </p>
+            )}
+
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -138,6 +150,12 @@ export const BnUpratingApprovalQueue: React.FC<Props> = ({ onOpenRun }) => {
             </CardDescription>
           </CardHeader>
           <CardContent className="overflow-x-auto">
+            {scheduledFailed && (
+              <p className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                The scheduling queue could not be loaded. This is not an empty queue — please retry.
+              </p>
+            )}
+
             <Table>
               <TableHeader>
                 <TableRow>
