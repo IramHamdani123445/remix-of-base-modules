@@ -12,7 +12,7 @@
  *   /bn/means-tests/decisions            adjustment and approval work
  *   /bn/means-tests/reassessments        reassessment work
  *   /bn/means-tests/configuration        governed policy configuration
- *   /bn/means-tests/assessments/:assessmentId?section=…   record workspace
+ *   /bn/means-tests/assessments/:assessmentId/:section   record workflow screen
  *
  * Access is enforced by `BnModuleRouteGate` (fail-closed, database-driven)
  * for every one of those addresses. Menu and nav visibility is convenience,
