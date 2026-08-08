@@ -163,11 +163,24 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     queryKey: ['bn-means-submission-readiness', assessmentId],
     queryFn: () => meansQueryService.submissionReadiness(assessmentId),
   });
-  const [activeTab, setActiveTab] = React.useState(() => meansSectionToTab(initialSection));
+  /**
+   * The selected workflow section may be owned by the URL (routed record
+   * workspace) so refresh, bookmarking and browser Back preserve position.
+   * When uncontrolled the workspace keeps its own state.
+   */
+  const [internalTab, setInternalTab] = React.useState(() => meansSectionToTab(initialSection));
+  const activeTab = section ? meansSectionToTab(section) : internalTab;
+  const setActiveTab = React.useCallback(
+    (next: string) => {
+      if (onSectionChange) onSectionChange(next);
+      else setInternalTab(next);
+    },
+    [onSectionChange],
+  );
   // A new deep link (different assessment or section) re-targets the workspace.
   React.useEffect(() => {
-    setActiveTab(meansSectionToTab(initialSection));
-  }, [assessmentId, initialSection]);
+    if (!onSectionChange) setInternalTab(meansSectionToTab(initialSection));
+  }, [assessmentId, initialSection, onSectionChange]);
 
   const run = useMutation({
     mutationFn: (input: { command: BnMeansCommandName; payload?: Record<string, unknown> }) =>
