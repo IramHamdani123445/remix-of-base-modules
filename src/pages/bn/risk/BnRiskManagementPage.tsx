@@ -44,6 +44,8 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const [tab, setTab] = React.useState('signals');
   const [openAssessmentId, setOpenAssessmentId] = React.useState<string | null>(null);
   const [focusApproval, setFocusApproval] = React.useState(false);
+  const [focusExecution, setFocusExecution] = React.useState(false);
+
 
   const counts = useQuery({
     queryKey: ['bn-risk-signal-queue', 'counts'],
@@ -58,6 +60,7 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
 
   const openAssessment = React.useCallback((assessmentId: string) => {
     setFocusApproval(false);
+    setFocusExecution(false);
     setOpenAssessmentId(assessmentId);
     setTab('assessments');
   }, []);
@@ -65,9 +68,19 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   /** Deep link from the approval queue straight to the decision section. */
   const openApprovalDecision = React.useCallback((assessmentId: string) => {
     setFocusApproval(true);
+    setFocusExecution(false);
     setOpenAssessmentId(assessmentId);
     setTab('assessments');
   }, []);
+
+  /** Deep link from the execution queue straight to the execution section. */
+  const openControlExecution = React.useCallback((assessmentId: string) => {
+    setFocusApproval(false);
+    setFocusExecution(true);
+    setOpenAssessmentId(assessmentId);
+    setTab('assessments');
+  }, []);
+
 
 
 
