@@ -541,7 +541,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
                     <TableRow
                       key={r.run_id}
                       className="cursor-pointer"
-                      onClick={() => setSelectedRunId(r.run_id)}
+                      onClick={() => selectRun(r.run_id)}
                     >
                       <TableCell>
                         <div className="font-medium">{r.run_reference}</div>
@@ -586,7 +586,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
 
   return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" onClick={() => setSelectedRunId(null)}>
+      <Button variant="ghost" size="sm" onClick={() => selectRun(null)}>
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to runs
       </Button>
 
