@@ -70,7 +70,7 @@ BEGIN
   INSERT INTO public.bn_formula_variable_registry
     (variable_code, display_name, source_type, source_path, data_type, is_active, created_by)
   VALUES ('AVG_INSURABLE_WAGE', 'Average insurable wage (harness)',
-          'MANUAL', NULL, 'NUMBER', true, 'HARNESS')
+          'FACT', 'harness.avg_insurable_wage', 'NUMBER', true, 'HARNESS')
   ON CONFLICT DO NOTHING;
 
   -- Two legitimate effective-dated successor versions (Journey C/H).
