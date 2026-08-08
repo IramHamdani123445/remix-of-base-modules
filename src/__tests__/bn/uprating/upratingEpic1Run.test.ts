@@ -93,10 +93,11 @@ describe('Uprating Epic 1 — single governed boundary', () => {
 });
 
 describe('Uprating Epic 1 — pre-execution containment', () => {
-  it('contains no execution, payment or communication concepts', () => {
-    for (const source of [runService, workspace, resolveDialog]) {
-      expect(source).not.toMatch(/EXECUTE_BATCH|ROLLBACK_ELIGIBLE|sendCommunication/);
+  it('keeps the Epic 1 preparation surfaces free of execution and communication concepts', () => {
+    for (const source of [runService, resolveDialog]) {
+      expect(source).not.toMatch(/ROLLBACK_ELIGIBLE|sendCommunication/);
     }
+    expect(resolveDialog).not.toMatch(/EXECUTE_BATCH/);
   });
 
   it('never touches award, entitlement or payment tables', () => {
@@ -105,8 +106,8 @@ describe('Uprating Epic 1 — pre-execution containment', () => {
     }
   });
 
-  it('states on the page that runs do not change awards or payments', () => {
-    expect(page).toMatch(/nothing on this page changes an award or a payment/i);
+  it('states on the page that execution applies only what was approved', () => {
+    expect(page).toMatch(/no amount is\s+recalculated at execution time/i);
   });
 });
 
