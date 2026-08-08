@@ -9,6 +9,8 @@
  */
 export { BnModuleSectionNav } from './BnModuleSectionNav';
 export type { BnModuleSectionNavItem } from './BnModuleSectionNav';
+export { BnPhaseSectionNav } from './BnPhaseSectionNav';
+export type { BnPhase, BnPhaseSection } from './BnPhaseSectionNav';
 export { BnWorkflowRail } from './BnWorkflowRail';
 export type { BnWorkflowStage, BnWorkflowStageState } from './BnWorkflowRail';
 export { BnNextActionCard, BN_ACTION_UNCONFIRMED_MESSAGE } from './BnNextActionCard';
