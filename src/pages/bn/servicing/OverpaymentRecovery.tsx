@@ -339,21 +339,49 @@ const OverpaymentRecovery: React.FC = () => {
   );
 
   /**
+   * OPEN RECORD (deep-link resolving). The address is authoritative, so the
+   * screen reports its own loading and not-found states instead of silently
+   * falling back to the worklist.
+   */
+  if (openCaseId && !selected) {
+    return (
+      <div className="space-y-4 p-4 sm:p-6" data-testid="bn-overpayment-case-workspace-loading">
+        <Button variant="ghost" size="sm" onClick={() => setOpenCaseId(null)}>
+          Back to overpayment worklist
+        </Button>
+        <BnDataState
+          status={caseLoading ? 'loading' : caseError ? 'error' : 'loading'}
+          errorMessage={caseError ?? undefined}
+          onRetry={() => { setSelected(null); setCaseError(null); void load(); }}
+          loadingLabel="Loading overpayment case…"
+        />
+      </div>
+    );
+  }
+
+  /**
    * OPEN RECORD. A selected case is a page-level workspace with its own
-   * refresh-survivable address (`?case=<case_id>`), not a modal. Available
+   * refresh-survivable address (`/cases/<case_id>`), not a modal. Available
    * actions come from the secured `available_actions` query only.
    */
   if (selected) {
-    const nextActions = actions.map((a) => ({
-      id: a.action,
-      label: a.action.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()),
-      available: a.allowed,
-      reason: a.allowed ? undefined : (a as { reason?: string }).reason,
-      onSelect:
+    const nextActions = actions.map((a) => {
+      const handler =
         a.action === 'propose_recovery_plan'
           ? () => { setPlanOpen(true); setCommandError(null); }
-          : undefined,
-    }));
+          : undefined;
+      const reason = (a as { reason?: string }).reason;
+      return {
+        id: a.action,
+        label: a.action.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()),
+        available: a.allowed && Boolean(handler),
+        reason: !a.allowed
+          ? reason
+          : 'Available on the server, but not yet operable from this screen.',
+        onSelect: handler,
+      };
+    });
+
 
     return (
       <div className="space-y-6 p-4 sm:p-6" data-testid="bn-overpayment-case-workspace">
