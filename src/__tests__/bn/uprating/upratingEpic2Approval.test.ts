@@ -139,10 +139,12 @@ describe('Epic 2 — run-state certification', () => {
     expect(canUpratingEpic1Transition('AWAITING_APPROVAL', 'DRY_RUN')).toBe(true);
   });
 
-  it('never allows APPROVED → EXECUTING in Epic 2', () => {
-    expect(BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2.APPROVED).toEqual([]);
-    expect(Object.keys(BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2)).not.toContain('EXECUTING');
-    expect(JSON.stringify(BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2)).not.toContain('EXECUTING');
+  it('never lets an Epic 2 command move a run into EXECUTING', () => {
+    // The governed map allows APPROVED → EXECUTING, but only the Epic 3
+    // execution command may make that move; approval and scheduling never do.
+    expect(BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2.APPROVED).toEqual(['EXECUTING']);
+    expect(canUpratingEpic1Transition('AWAITING_APPROVAL', 'EXECUTING')).toBe(false);
+    expect(canUpratingEpic1Transition('DRY_RUN', 'EXECUTING')).toBe(false);
   });
 
   it('cannot skip approval from DRY_RUN straight to APPROVED', () => {
