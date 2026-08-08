@@ -39,7 +39,7 @@ export default function BnUpratingPage() {
             snapshots, exception resolution and deterministic simulation — execute approved runs in
             controlled batches, then complete the consequences: payment-schedule rebuilds, claimant
             notices through the Communication Hub, reconciliation and, on the failure path,
-            controlled compensating rollback.
+            controlled compensating rollback. Execution applies exactly what was approved; no amount is recalculated at execution time.
           </p>
 
           <Tabs value={tab} onValueChange={setTab}>
