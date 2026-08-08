@@ -800,9 +800,12 @@ describe('Epic 4 — architecture guards', () => {
   });
 
   it('reaches target domains only through the governed handoff spine', () => {
+    // Permission-registry seeds (module_actions / role_permissions) are platform
+    // governance, not a domain write, so they are excluded from this boundary.
+    const registrySeeds = ['module_actions', 'role_permissions'];
     const inserts = [...BACKEND_SQL.matchAll(/INSERT INTO public\.([a-z0-9_]+)/g)]
       .map((m) => m[1])
-      .filter((t) => !t.startsWith('bn_risk_'));
+      .filter((t) => !t.startsWith('bn_risk_') && !registrySeeds.includes(t));
     expect([...new Set(inserts)].sort()).toEqual(
       ['bn_cross_module_handoff', 'bn_cross_module_handoff_event'],
     );
