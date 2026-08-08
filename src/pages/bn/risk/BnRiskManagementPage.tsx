@@ -232,7 +232,7 @@ const RiskAssessmentRecordRoute: React.FC = () => {
   if (!assessmentId) return <Navigate to={`${RISK_MODULE_BASE}/assessments`} replace />;
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-4 sm:p-6">
       <BnModuleBreadcrumbs
         items={[
           { label: 'Benefit Management' },
