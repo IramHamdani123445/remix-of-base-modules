@@ -55,7 +55,7 @@ const UPRATING_SCREEN_LABELS: Record<string, string> = {
 
 const UpratingBreadcrumbs: React.FC = () => (
   <BnModuleTrail
-    moduleLabel="Uprating &amp; Indexation"
+    moduleLabel="Uprating & Indexation"
     moduleBase={UPRATING_MODULE_BASE}
     screenLabels={UPRATING_SCREEN_LABELS}
   />
@@ -73,7 +73,7 @@ const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
   <BnModulePage>
     <BnModuleHeader
       icon={TrendingUp}
-      title="Uprating &amp; Indexation"
+      title="Uprating & Indexation"
       description="Prepare, approve, execute and reconcile governed uprating runs that apply approved benefit increases to live awards."
       badges={
         ctx.rolloutState !== "public"
@@ -145,7 +145,7 @@ const UpratingRunRecordRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx 
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-4 sm:p-6">
       <BnModuleBreadcrumbs
         items={[
           { label: "Benefit Management" },
