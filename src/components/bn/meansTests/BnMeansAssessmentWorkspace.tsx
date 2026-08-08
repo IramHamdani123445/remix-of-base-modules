@@ -462,6 +462,27 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
               {openAdjustmentCount} open adjustment{openAdjustmentCount === 1 ? '' : 's'}
             </Badge>
           )}
+          {/* Reference material stays one click away, out of the workflow. */}
+          <BnActivityDrawer
+            title="Activity & history"
+            description="Audit timeline for this assessment."
+          >
+            {asRows(data.timeline).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No events recorded.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {asRows(data.timeline).map((e) => (
+                  <li key={String(e.event_id)} className="border-l-2 border-border pl-3">
+                    <p className="font-medium">{String(e.event_code)}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {String(e.command_name ?? '')} · {String(e.from_status ?? '—')} →{' '}
+                      {String(e.to_status ?? '—')} · {String(e.created_at)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </BnActivityDrawer>
         </div>
       </div>
 
