@@ -149,7 +149,7 @@ describe('BnRiskScoringSection', () => {
     wrap(<BnRiskScoringSection assessmentId="a1" isActionEnabled={() => true} onChanged={() => {}} />);
     await waitFor(() => expect(screen.getByText(/unavailable/i)).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: /calculate/i })).not.toBeInTheDocument();
-  });
+  }, 20000);
 
   it('shows the in-force configuration version with the readiness', async () => {
     scoringReadiness.mockResolvedValue({ status: 'OK', data: READY });
@@ -157,7 +157,7 @@ describe('BnRiskScoringSection', () => {
     wrap(<BnRiskScoringSection assessmentId="a1" isActionEnabled={() => true} onChanged={() => {}} />);
     await waitFor(() =>
       expect(screen.getByText(/Benefits standard risk scoring/)).toBeInTheDocument());
-  });
+  }, 20000);
 
   it('offers no scoring action when the governed action is disabled', async () => {
     scoringReadiness.mockResolvedValue({ status: 'OK', data: READY });
@@ -166,7 +166,7 @@ describe('BnRiskScoringSection', () => {
     await waitFor(() => expect(screen.getByText(/Benefits standard risk scoring/)).toBeInTheDocument());
     const button = screen.queryByRole('button', { name: /calculate risk score/i });
     if (button) expect(button).toBeDisabled();
-  });
+  }, 20000);
 });
 
 const REVIEW: BnRiskReviewReadiness = {

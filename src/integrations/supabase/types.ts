@@ -24507,6 +24507,66 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_risk_control_type: {
+        Row: {
+          allowed_target_types: string[]
+          control_class: string
+          control_code: string
+          created_at: string
+          description: string | null
+          execution_boundary: string | null
+          execution_owner: string | null
+          is_active: boolean
+          is_benefit_affecting: boolean
+          label: string
+          requires_effective_period: boolean
+          requires_independent_approval: boolean
+          requires_justification: boolean
+          requires_supporting_evidence: boolean
+          requires_target: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          allowed_target_types?: string[]
+          control_class: string
+          control_code: string
+          created_at?: string
+          description?: string | null
+          execution_boundary?: string | null
+          execution_owner?: string | null
+          is_active?: boolean
+          is_benefit_affecting?: boolean
+          label: string
+          requires_effective_period?: boolean
+          requires_independent_approval?: boolean
+          requires_justification?: boolean
+          requires_supporting_evidence?: boolean
+          requires_target?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          allowed_target_types?: string[]
+          control_class?: string
+          control_code?: string
+          created_at?: string
+          description?: string | null
+          execution_boundary?: string | null
+          execution_owner?: string | null
+          is_active?: boolean
+          is_benefit_affecting?: boolean
+          label?: string
+          requires_effective_period?: boolean
+          requires_independent_approval?: boolean
+          requires_justification?: boolean
+          requires_supporting_evidence?: boolean
+          requires_target?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bn_risk_evidence_link: {
         Row: {
           assessment_id: string
@@ -24926,6 +24986,212 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_risk_signal"
             referencedColumns: ["signal_id"]
+          },
+        ]
+      }
+      bn_risk_recommendation: {
+        Row: {
+          assessment_id: string
+          assessment_row_version: number
+          band_code: string | null
+          band_label: string | null
+          control_class: string | null
+          control_code: string
+          control_label: string | null
+          correlation_id: string | null
+          created_at: string
+          cycle_no: number
+          decided_at: string | null
+          decided_by_name: string | null
+          decided_by_user_id: string | null
+          decision: string | null
+          execution_state: string
+          input_fingerprint: string | null
+          is_benefit_affecting: boolean
+          justification: string | null
+          reason_code: string | null
+          reason_label: string | null
+          recommendation_id: string
+          recommendation_reference: string
+          recommended_at: string
+          recommended_by_name: string | null
+          recommended_by_user_id: string
+          requested_effective_from: string | null
+          requested_effective_to: string | null
+          row_version: number
+          rule_set_code: string | null
+          rule_set_id: string | null
+          rule_set_version_no: number | null
+          scope_note: string | null
+          score: number | null
+          score_id: string | null
+          score_version_no: number | null
+          status: string
+          supporting_evidence_ids: string[]
+          supporting_factor_ids: string[]
+          target_id: string | null
+          target_reference: string | null
+          target_type: string | null
+        }
+        Insert: {
+          assessment_id: string
+          assessment_row_version: number
+          band_code?: string | null
+          band_label?: string | null
+          control_class?: string | null
+          control_code: string
+          control_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          cycle_no: number
+          decided_at?: string | null
+          decided_by_name?: string | null
+          decided_by_user_id?: string | null
+          decision?: string | null
+          execution_state?: string
+          input_fingerprint?: string | null
+          is_benefit_affecting?: boolean
+          justification?: string | null
+          reason_code?: string | null
+          reason_label?: string | null
+          recommendation_id?: string
+          recommendation_reference: string
+          recommended_at?: string
+          recommended_by_name?: string | null
+          recommended_by_user_id: string
+          requested_effective_from?: string | null
+          requested_effective_to?: string | null
+          row_version?: number
+          rule_set_code?: string | null
+          rule_set_id?: string | null
+          rule_set_version_no?: number | null
+          scope_note?: string | null
+          score?: number | null
+          score_id?: string | null
+          score_version_no?: number | null
+          status?: string
+          supporting_evidence_ids?: string[]
+          supporting_factor_ids?: string[]
+          target_id?: string | null
+          target_reference?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          assessment_row_version?: number
+          band_code?: string | null
+          band_label?: string | null
+          control_class?: string | null
+          control_code?: string
+          control_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          cycle_no?: number
+          decided_at?: string | null
+          decided_by_name?: string | null
+          decided_by_user_id?: string | null
+          decision?: string | null
+          execution_state?: string
+          input_fingerprint?: string | null
+          is_benefit_affecting?: boolean
+          justification?: string | null
+          reason_code?: string | null
+          reason_label?: string | null
+          recommendation_id?: string
+          recommendation_reference?: string
+          recommended_at?: string
+          recommended_by_name?: string | null
+          recommended_by_user_id?: string
+          requested_effective_from?: string | null
+          requested_effective_to?: string | null
+          row_version?: number
+          rule_set_code?: string | null
+          rule_set_id?: string | null
+          rule_set_version_no?: number | null
+          scope_note?: string | null
+          score?: number | null
+          score_id?: string | null
+          score_version_no?: number | null
+          status?: string
+          supporting_evidence_ids?: string[]
+          supporting_factor_ids?: string[]
+          target_id?: string | null
+          target_reference?: string | null
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_recommendation_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_recommendation_control_code_fkey"
+            columns: ["control_code"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_control_type"
+            referencedColumns: ["control_code"]
+          },
+        ]
+      }
+      bn_risk_recommendation_decision: {
+        Row: {
+          assessment_id: string
+          assessment_row_version: number | null
+          correlation_id: string | null
+          created_at: string
+          decided_at: string
+          decided_by_name: string | null
+          decided_by_user_id: string
+          decision: string
+          decision_id: string
+          decision_notes: string | null
+          reason_code: string | null
+          reason_label: string | null
+          recommendation_id: string
+          resulting_assessment_status: string | null
+        }
+        Insert: {
+          assessment_id: string
+          assessment_row_version?: number | null
+          correlation_id?: string | null
+          created_at?: string
+          decided_at?: string
+          decided_by_name?: string | null
+          decided_by_user_id: string
+          decision: string
+          decision_id?: string
+          decision_notes?: string | null
+          reason_code?: string | null
+          reason_label?: string | null
+          recommendation_id: string
+          resulting_assessment_status?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          assessment_row_version?: number | null
+          correlation_id?: string | null
+          created_at?: string
+          decided_at?: string
+          decided_by_name?: string | null
+          decided_by_user_id?: string
+          decision?: string
+          decision_id?: string
+          decision_notes?: string | null
+          reason_code?: string | null
+          reason_label?: string | null
+          recommendation_id?: string
+          resulting_assessment_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_recommendation_decision_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_recommendation"
+            referencedColumns: ["recommendation_id"]
           },
         ]
       }
@@ -109003,6 +109269,7 @@ export type Database = {
         Returns: undefined
       }
       _bn_risk_band_json: { Args: { p_rule_set: string }; Returns: Json }
+      _bn_risk_control_json: { Args: { p_code: string }; Returns: Json }
       _bn_risk_dedupe_hash: { Args: { p_input: string }; Returns: string }
       _bn_risk_event: {
         Args: {
@@ -109025,6 +109292,7 @@ export type Database = {
       _bn_risk_mask_ssn: { Args: { p_ssn: string }; Returns: string }
       _bn_risk_next_assessment_reference: { Args: never; Returns: string }
       _bn_risk_next_factor_reference: { Args: never; Returns: string }
+      _bn_risk_next_recommendation_reference: { Args: never; Returns: string }
       _bn_risk_next_reference: { Args: never; Returns: string }
       _bn_risk_next_request_reference: { Args: never; Returns: string }
       _bn_risk_person_display_name: { Args: { p_ssn: string }; Returns: string }
@@ -111719,6 +111987,35 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_risk_control_approval_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters: Json
+          p_page: number
+          p_page_size: number
+        }
+        Returns: Json
+      }
+      bn_risk_control_approval_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_control_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
       bn_risk_evidence_search_v1: {
         Args: {
           p_actor_user_id: string
@@ -111754,6 +112051,14 @@ export type Database = {
       }
       bn_risk_person_search_v1: {
         Args: { p_actor_user_id: string; p_limit?: number; p_search: string }
+        Returns: Json
+      }
+      bn_risk_recommendation_history_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_recommendation_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
       bn_risk_reference_data_v1: {
