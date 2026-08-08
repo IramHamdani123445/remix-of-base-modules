@@ -43,6 +43,11 @@ import BnMeansEvidenceSection from '@/components/bn/meansTests/evidence/BnMeansE
 import BnMeansReviewSection from '@/components/bn/meansTests/review/BnMeansReviewSection';
 import BnMeansContextPanel from '@/components/bn/meansTests/context/BnMeansContextPanel';
 import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTests/BnMeansStageJourney';
+import {
+  BnActivityDrawer,
+  BnPhaseSectionNav,
+  type BnPhase,
+} from '@/components/bn/ux';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
 import {
   BN_MEANS_REASON_LABEL,
@@ -109,7 +114,7 @@ export const MEANS_WORKSPACE_PHASES: readonly BnPhase[] = [
       { id: 'lifecycle', label: 'Lifecycle' },
     ],
   },
-] as const satisfies readonly BnPhase[];
+];
 
 export function meansSectionToTab(section: string | null | undefined): string {
   if (!section) return 'context';
@@ -145,6 +150,8 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
   assessmentId,
   onBack,
   initialSection = null,
+  section = null,
+  onSectionChange,
 }) => {
   const queryClient = useQueryClient();
   const [commandError, setCommandError] = React.useState<BnMeansCommandResult | null>(null);
