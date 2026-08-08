@@ -23,7 +23,9 @@ export type BnUpratingRunStatusCode =
   | 'SCHEDULES_REBUILT'
   | 'COMMUNICATIONS_ISSUED'
   | 'RECONCILED'
-  | 'ROLLED_BACK';
+  | 'ROLLED_BACK'
+  // Epic 5 — terminal closure
+  | 'CLOSED';
 
 export type BnUpratingRunCommandName =
   | 'BN_UPRATING_CREATE_RUN'
