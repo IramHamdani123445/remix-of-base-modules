@@ -9,6 +9,7 @@ import { TrendingUp } from "lucide-react";
 import { BnUpratingPolicyWorkspace } from "@/components/bn/uprating/BnUpratingPolicyWorkspace";
 import { BnUpratingRunWorkspace } from "@/components/bn/uprating/BnUpratingRunWorkspace";
 import { BnUpratingApprovalQueue } from "@/components/bn/uprating/BnUpratingApprovalQueue";
+import { BnUpratingExecutionQueue } from "@/components/bn/uprating/BnUpratingExecutionQueue";
 
 
 export default function BnUpratingPage() {
@@ -24,10 +25,10 @@ export default function BnUpratingPage() {
             )}
           </div>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            Maintain the governed uprating policy catalogue and prepare uprating runs:
-            population snapshots, exception resolution and deterministic simulation.
-            Run approval, execution scheduling and payment impact are delivered in a
-            later stage — nothing on this page changes an award or a payment.
+            Maintain the governed uprating policy catalogue, prepare uprating runs — population
+            snapshots, exception resolution and deterministic simulation — and execute approved
+            runs in controlled batches. Execution applies exactly what was approved; no amount is
+            recalculated at execution time.
           </p>
 
           <Tabs defaultValue="policies">
@@ -35,6 +36,7 @@ export default function BnUpratingPage() {
               <TabsTrigger value="policies">Policy catalogue</TabsTrigger>
               <TabsTrigger value="runs">Runs &amp; simulation</TabsTrigger>
               <TabsTrigger value="approvals">Approvals &amp; scheduling</TabsTrigger>
+              <TabsTrigger value="execution">Execution queue</TabsTrigger>
             </TabsList>
             <TabsContent value="policies" className="pt-4">
               <BnUpratingPolicyWorkspace ctx={ctx} />
@@ -45,7 +47,11 @@ export default function BnUpratingPage() {
             <TabsContent value="approvals" className="pt-4">
               <BnUpratingApprovalQueue />
             </TabsContent>
+            <TabsContent value="execution" className="pt-4">
+              <BnUpratingExecutionQueue />
+            </TabsContent>
           </Tabs>
+
 
         </div>
       )}

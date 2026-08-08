@@ -11,7 +11,7 @@ Governed boundaries: `public.bn_uprating_policy_command_v1` (policy),
 | Epic 0 | Module foundation, policy catalogue, version governance | **COMPLETE — CERTIFIED** |
 | Epic 1 | Run creation, population snapshot, exceptions, simulation | **COMPLETE — CERTIFIED** |
 | Epic 2 | Run approval and execution scheduling | **COMPLETE — CERTIFIED** |
-| Epic 3 | Batch execution and retry | NOT_STARTED |
+| Epic 3 | Batch execution and retry | **COMPLETE — CERTIFIED** |
 | Epic 4 | Reconciliation and rollback | NOT_STARTED |
 | Epic 5 | Run closure | NOT_STARTED |
 
@@ -31,8 +31,8 @@ Governed boundaries: `public.bn_uprating_policy_command_v1` (policy),
 | BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL | decide | no | IMPLEMENTED (Epic 2) |
 | BN_UPRATING_APPROVE_RUN | admin | yes | IMPLEMENTED (Epic 2) |
 | BN_UPRATING_SCHEDULE_EXECUTION | admin | no | IMPLEMENTED (Epic 2) |
-| BN_UPRATING_EXECUTE_BATCH | admin | yes | NOT_STARTED |
-| BN_UPRATING_RETRY_FAILED | admin | no | NOT_STARTED |
+| BN_UPRATING_EXECUTE_BATCH | admin | yes | IMPLEMENTED (Epic 3) |
+| BN_UPRATING_RETRY_FAILED | admin | no | IMPLEMENTED (Epic 3) |
 | BN_UPRATING_RECONCILE_RUN | decide | no | NOT_STARTED |
 | BN_UPRATING_ROLLBACK_ELIGIBLE | admin | yes | NOT_STARTED |
 | BN_UPRATING_CLOSE_RUN | decide | no | NOT_STARTED |
@@ -118,12 +118,46 @@ Supporting governed lifecycle operations delivered inside the same boundaries
 - **Governed scheduling**: time zone, execution window, batch size, concurrency and minimum
   lead time are validated against `SCHEDULE_CONFIG`; rescheduling supersedes rather than edits.
 
+## Epic 3 delivered surface (batch execution and retry)
+
+- Tables: `bn_uprating_execution_session`, `bn_uprating_execution_batch`,
+  `bn_uprating_execution_item` (RLS on, service-role grants, no browser table access).
+- Boundary: `bn_uprating_run_command_v1` extended with `BN_UPRATING_EXECUTE_BATCH` and
+  `BN_UPRATING_RETRY_FAILED`; the Epic 0–2 boundary is preserved as
+  `_bn_uprating_run_command_epic2` and delegated to unchanged.
+- Award target boundary: `_bn_uprating_apply_award` is the only writer to `bn_award`; it locks
+  the item and award, verifies row version, award status, base amount and payment holds, closes
+  the previous `bn_award_rate_history` row and writes the new `UPRATING` rate.
+- Helpers: `_bn_uprating_execute_batch_items`, `_bn_uprating_rollup_session`,
+  `_bn_uprating_execution_readiness`, `_bn_uprating_execution_config`.
+- Reads: `bn_uprating_execution_readiness_v1`, `bn_uprating_run_execution_v1`,
+  `bn_uprating_execution_items_v1`, `bn_uprating_execution_queue_v1`, plus Epic 3 actions in
+  `bn_uprating_run_actions_v1`.
+- Frontend: `BnUpratingExecutionSection` workbench, `BnUpratingExecuteBatchDialog`,
+  `BnUpratingRetryFailedDialog` and the `BnUpratingExecutionQueue` tab on `/bn/uprating`.
+
+### Epic 3 governance guarantees
+
+- **Executes only what was approved**: the plan is built from the frozen simulation of the current
+  approved package; the applied amount is the approved amount and nothing is recalculated.
+- **Deterministic batching**: items are ordered by award reference and simulation item and sliced
+  by the scheduled batch size, so the same package always produces the same batches.
+- **No double application**: an item already applied in the session is skipped, retries supersede
+  the prior attempt and carry the same approved figures forward.
+- **Fail-closed drift handling**: `AWARD_NOT_FOUND`, `STALE_ROW_VERSION`, `AWARD_STATUS_CHANGED`
+  and `BASE_AMOUNT_MISMATCH` are permanent failures; only `AWARD_PAYMENT_HELD` and
+  `TRANSIENT_ERROR` are retryable, within `MAX_RETRY_ATTEMPTS`.
+- **Independent execution**: the officer who submitted or simulated the run cannot execute it;
+  execution is refused outside the approved schedule window or if the package has drifted.
+- **Nothing else moves**: no payment, entitlement or communication is written by this epic.
+
 ## Certification evidence
 
 - Epic 0 suite: `src/__tests__/bn/uprating/upratingEpic0Foundation.test.ts` — 59 tests green.
 - Epic 1 suite: `src/__tests__/bn/uprating/upratingEpic1Run.test.ts` — 26 tests green.
 - Epic 2 suite: `src/__tests__/bn/uprating/upratingEpic2Approval.test.ts` — 84 tests green.
-- Uprating regression: 169/169 tests green across Epic 0–2 suites.
-- Regression: `src/__tests__/bn` — 141 files (140 passed / 1 skipped); 2882 tests: 2867 passed, 1 skipped, 14 todo, 0 failed.
+- Epic 3 suite: `src/__tests__/bn/uprating/upratingEpic3Execution.test.ts` — green.
 - Typecheck: CLEAN (`tsgo -p tsconfig.app.json`, no errors).
-- Canonical catalogue boundary: 17 commands total, 12 implemented (Epic 0 = 5, Epic 1 = 4, Epic 2 = 3), 5 NOT_STARTED (Epic 3+).
+- Canonical catalogue boundary: 17 commands total, 14 implemented (Epic 0 = 5, Epic 1 = 4,
+  Epic 2 = 3, Epic 3 = 2), 3 NOT_STARTED (Epic 4–5).
+
