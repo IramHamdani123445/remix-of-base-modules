@@ -40,7 +40,7 @@ import { BnRiskOperationsDashboard } from '@/components/bn/risk/BnRiskOperations
 import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel';
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import {
-  BnModuleSectionNav,
+  BnModuleBreadcrumbs,
   useBnWorkspaceSection,
 } from '@/components/bn/ux';
 
@@ -58,13 +58,36 @@ const WORKSPACE_SECTIONS: readonly BnRiskWorkspaceSection[] = [
   'approval', 'execution', 'outcome', 'closure', 'feedback',
 ];
 
+/** Screen-level "where am I", replacing the module-local tab bar. */
+const RISK_SCREEN_LABELS: Record<string, string> = {
+  '': 'Overview',
+  signals: 'Signals',
+  assessments: 'Assessments',
+  controls: 'Controls & outcomes',
+  reporting: 'Reporting',
+  configuration: 'Configuration',
+};
+
+const RiskBreadcrumbs: React.FC = () => {
+  const { pathname } = useLocation();
+  const tail = pathname.replace(RISK_MODULE_BASE, '').replace(/^\/+|\/+$/g, '').split('/')[0] ?? '';
+  return (
+    <BnModuleBreadcrumbs
+      items={[
+        { label: 'Benefit Management' },
+        { label: 'Fraud, Error & Risk', to: RISK_MODULE_BASE },
+        { label: RISK_SCREEN_LABELS[tail] ?? 'Overview' },
+      ]}
+    />
+  );
+};
 
 export function riskAssessmentPath(
   assessmentId: string,
   section?: BnRiskWorkspaceSection | null,
 ): string {
-  const query = section ? `?section=${section}` : '';
-  return `${RISK_MODULE_BASE}/assessments/${assessmentId}${query}`;
+  const step = section ? `/${section}` : '';
+  return `${RISK_MODULE_BASE}/assessments/${assessmentId}${step}`;
 }
 
 function useOpenRiskAssessment() {
