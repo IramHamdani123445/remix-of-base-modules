@@ -32,6 +32,11 @@ import { BnUpratingExecutionScheduleSection } from './BnUpratingExecutionSchedul
 import { BnUpratingExecutionSection } from './BnUpratingExecutionSection';
 import { BnUpratingExecuteBatchDialog } from './BnUpratingExecuteBatchDialog';
 import { BnUpratingRetryFailedDialog } from './BnUpratingRetryFailedDialog';
+import { BnUpratingReconciliationSection } from './BnUpratingReconciliationSection';
+import { BnUpratingRollbackWorkbench } from './BnUpratingRollbackWorkbench';
+import { BnUpratingReconcileDialog } from './BnUpratingReconcileDialog';
+import { BnUpratingRollbackDialog } from './BnUpratingRollbackDialog';
+import { BnUpratingMarkFailedDialog } from './BnUpratingMarkFailedDialog';
 import { BnUpratingSubmitForApprovalDialog } from './BnUpratingSubmitForApprovalDialog';
 import { BnUpratingApprovalDecisionDialog } from './BnUpratingApprovalDecisionDialog';
 import {
@@ -61,6 +66,9 @@ import {
   fetchUpratingRunPopulation,
   fetchUpratingScheduleReadiness,
   fetchUpratingSimulationResult,
+  fetchUpratingPostExecutionReadiness,
+  fetchUpratingReconciliation,
+  fetchUpratingRollbackReadiness,
 } from '@/services/bn/uprating/upratingRunService';
 import { fetchUpratingPolicyList } from '@/services/bn/uprating/upratingPolicyService';
 import { newUpratingUuid } from '@/services/bn/uprating/upratingPolicyService';
@@ -80,9 +88,27 @@ const runStatusVariant = (status: string): 'default' | 'secondary' | 'outline' |
   return 'outline';
 };
 
-export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
+export interface BnUpratingRunWorkspaceProps {
+  readonly ctx: BnModuleAccessContext;
+  /** Deep link from the operational queues — run to open on mount. */
+  readonly initialRunId?: string | null;
+  /** Deep link target tab inside the run workspace. */
+  readonly initialTab?: string | null;
+}
+
+export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
+  ctx,
+  initialRunId = null,
+  initialTab = null,
+}) => {
   const qc = useQueryClient();
-  const [selectedRunId, setSelectedRunId] = React.useState<string | null>(null);
+  const [selectedRunId, setSelectedRunId] = React.useState<string | null>(initialRunId);
+  const [activeTab, setActiveTab] = React.useState<string>(initialTab ?? 'population');
+
+  React.useEffect(() => {
+    if (initialRunId) setSelectedRunId(initialRunId);
+    if (initialTab) setActiveTab(initialTab);
+  }, [initialRunId, initialTab]);
   const [search, setSearch] = React.useState('');
   const [createOpen, setCreateOpen] = React.useState(false);
   const [resolveTarget, setResolveTarget] = React.useState<BnUpratingExceptionRow | null>(null);
@@ -94,6 +120,9 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
   const [onlyFailures, setOnlyFailures] = React.useState(false);
   const [executeOpen, setExecuteOpen] = React.useState(false);
   const [retryOpen, setRetryOpen] = React.useState(false);
+  const [reconcileOpen, setReconcileOpen] = React.useState(false);
+  const [markFailedOpen, setMarkFailedOpen] = React.useState(false);
+  const [rollbackOpen, setRollbackOpen] = React.useState(false);
 
 
 
@@ -203,6 +232,24 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
     enabled: !!selectedRunId && !!executionQuery.data?.data?.has_session,
   });
 
+  const postExecutionQuery = useQuery({
+    queryKey: ['bn-uprating-post-execution', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingPostExecutionReadiness(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+
+  const reconciliationQuery = useQuery({
+    queryKey: ['bn-uprating-reconciliation', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingReconciliation(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+
+  const rollbackQuery = useQuery({
+    queryKey: ['bn-uprating-rollback', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingRollbackReadiness(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['bn-uprating-runs'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-run'] });
@@ -218,6 +265,11 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
     qc.invalidateQueries({ queryKey: ['bn-uprating-execution'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-execution-items'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-execution-queue'] });
+    // Epic 4 — post-execution, reconciliation, rollback and operational queues
+    qc.invalidateQueries({ queryKey: ['bn-uprating-post-execution'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-reconciliation'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-rollback'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-operational-queue'] });
   };
 
 
@@ -312,6 +364,62 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
       idempotencyKey: newUpratingUuid(),
     });
     if (result.status !== 'ERROR') setRetryOpen(false);
+  };
+
+  const rebuildSchedules = () =>
+    command.mutate({
+      command: 'BN_UPRATING_REBUILD_SCHEDULES',
+      runId: selectedRunId,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+
+  const issueCommunications = () =>
+    command.mutate({
+      command: 'BN_UPRATING_ISSUE_COMMUNICATIONS',
+      runId: selectedRunId,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+
+  const reconcileRun = async () => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_RECONCILE_RUN',
+      runId: selectedRunId,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setReconcileOpen(false);
+  };
+
+  const markRunFailed = async (values: { reason_code: string; justification: string }) => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_MARK_FAILED',
+      runId: selectedRunId,
+      payload: values,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setMarkFailedOpen(false);
+  };
+
+  const assessRollback = () =>
+    command.mutate({
+      command: 'BN_UPRATING_ASSESS_ROLLBACK',
+      runId: selectedRunId,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+
+  const authoriseRollback = async (values: { reason_code: string; justification: string }) => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_ROLLBACK_ELIGIBLE',
+      runId: selectedRunId,
+      payload: values,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setRollbackOpen(false);
   };
 
   const cancelSchedule = async () => {
@@ -515,7 +623,7 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
             </Alert>
           )}
 
-          <Tabs defaultValue="population">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList>
               <TabsTrigger value="population">Population</TabsTrigger>
               <TabsTrigger value="exceptions">
@@ -524,6 +632,8 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
               <TabsTrigger value="simulation">Simulation</TabsTrigger>
               <TabsTrigger value="approval">Approval</TabsTrigger>
               <TabsTrigger value="execution">Execution</TabsTrigger>
+              <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
+              <TabsTrigger value="rollback">Rollback</TabsTrigger>
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
 
             </TabsList>
@@ -813,6 +923,41 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
                 onFailureFilterChange={setOnlyFailures}
               />
             </TabsContent>
+
+            <TabsContent value="reconciliation" className="pt-4">
+              <BnUpratingReconciliationSection
+                readiness={postExecutionQuery.data?.data ?? null}
+                view={reconciliationQuery.data?.data ?? null}
+                isLoading={postExecutionQuery.isLoading || reconciliationQuery.isLoading}
+                isError={
+                  postExecutionQuery.isError ||
+                  postExecutionQuery.data?.status === 'ERROR' ||
+                  reconciliationQuery.isError ||
+                  reconciliationQuery.data?.status === 'ERROR'
+                }
+                isBusy={command.isPending}
+                onRetryLoad={() => {
+                  postExecutionQuery.refetch();
+                  reconciliationQuery.refetch();
+                }}
+                onRebuildSchedules={rebuildSchedules}
+                onIssueCommunications={issueCommunications}
+                onReconcile={() => setReconcileOpen(true)}
+                onMarkFailed={() => setMarkFailedOpen(true)}
+              />
+            </TabsContent>
+
+            <TabsContent value="rollback" className="pt-4">
+              <BnUpratingRollbackWorkbench
+                readiness={rollbackQuery.data?.data ?? null}
+                isLoading={rollbackQuery.isLoading}
+                isError={rollbackQuery.isError || rollbackQuery.data?.status === 'ERROR'}
+                isBusy={command.isPending}
+                onRetryLoad={() => rollbackQuery.refetch()}
+                onAssessRollback={assessRollback}
+                onAuthoriseRollback={() => setRollbackOpen(true)}
+              />
+            </TabsContent>
           </Tabs>
 
         </>
@@ -867,6 +1012,31 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
         mode={scheduleMode ?? 'SCHEDULE'}
         isSaving={command.isPending}
         onSubmit={submitSchedule}
+      />
+
+      <BnUpratingReconcileDialog
+        open={reconcileOpen}
+        onOpenChange={setReconcileOpen}
+        readiness={postExecutionQuery.data?.data ?? null}
+        view={reconciliationQuery.data?.data ?? null}
+        isSaving={command.isPending}
+        onConfirm={reconcileRun}
+      />
+
+      <BnUpratingMarkFailedDialog
+        open={markFailedOpen}
+        onOpenChange={setMarkFailedOpen}
+        readiness={postExecutionQuery.data?.data ?? null}
+        isSaving={command.isPending}
+        onConfirm={markRunFailed}
+      />
+
+      <BnUpratingRollbackDialog
+        open={rollbackOpen}
+        onOpenChange={setRollbackOpen}
+        readiness={rollbackQuery.data?.data ?? null}
+        isSaving={command.isPending}
+        onConfirm={authoriseRollback}
       />
 
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
