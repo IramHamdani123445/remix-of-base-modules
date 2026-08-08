@@ -37,6 +37,7 @@ import { BnRiskControlApprovalSection } from './BnRiskControlApprovalSection';
 import { BnRiskControlExecutionSection } from './BnRiskControlExecutionSection';
 import { BnRiskOutcomeSection } from './BnRiskOutcomeSection';
 import { BnRiskClosureSection } from './BnRiskClosureSection';
+import { BnRiskRuleFeedbackSection } from './BnRiskRuleFeedbackSection';
 
 
 /** Journey stages, driven by the backend assessment status. */
@@ -76,7 +77,7 @@ interface Props {
   assessmentId: string;
   onBack: () => void;
   /** Deep link from an operational queue — scroll straight to that section. */
-  focusSection?: 'approval' | 'execution' | 'outcome' | 'closure' | null;
+  focusSection?: 'approval' | 'execution' | 'outcome' | 'closure' | 'feedback' | null;
 }
 
 export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
@@ -146,6 +147,7 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
       execution: executionRef,
       outcome: outcomeRef,
       closure: closureRef,
+      feedback: feedbackRef,
     };
     const target = focusSection ? targets[focusSection] : null;
     target?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -469,6 +471,10 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
           assessmentReference={header.assessment_reference}
           onChanged={refresh}
         />
+      </div>
+
+      <div ref={feedbackRef}>
+        <BnRiskRuleFeedbackSection assessmentId={assessmentId} onChanged={refresh} />
       </div>
 
 
