@@ -1,10 +1,10 @@
 /**
- * BN Risk — assessment workspace (EPIC 1).
+ * BN Risk — assessment workspace (EPIC 1 + EPIC 2).
  *
  * The single operational surface for a risk assessment: context, linked
- * signals, factors, evidence, information requests, readiness and history.
- * The workspace stops at "ready for review" — no score, recommendation or
- * control action exists in this epic.
+ * signals, factors, evidence, information requests, governed scoring, the
+ * officer review of that score, and history. The workspace stops at
+ * "ready for recommendation" — no recommendation or control action exists.
  */
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -25,14 +25,40 @@ import {
 import { formatAuditDate } from '@/lib/dateFormat';
 import { riskAssessmentService } from '@/services/bn/risk/riskAssessmentService';
 import type { BnRiskAssessmentActionCode } from '@/types/bn/risk/riskAssessment';
+import type { BnRiskScoringCommand } from '@/types/bn/risk/riskScoring';
 import { BnRiskEvidenceSection } from './BnRiskEvidenceSection';
 import { BnRiskFactorsSection } from './BnRiskFactorsSection';
 import { BnRiskInformationSection } from './BnRiskInformationSection';
+import { BnRiskScoringSection } from './BnRiskScoringSection';
+import { BnRiskAssessmentReviewSection } from './BnRiskAssessmentReviewSection';
+
+/** Journey stages, driven by the backend assessment status. */
+const JOURNEY = ['Signals', 'Factors', 'Evidence', 'Review/Scoring', 'Recommendation',
+  'Controls', 'Outcome'] as const;
+
+type JourneyState = 'COMPLETE' | 'CURRENT' | 'NEXT' | 'NOT_STARTED';
+
+function journeyStates(status: string): Record<string, JourneyState> {
+  const infoStage = ['DRAFT', 'OPEN', 'INFORMATION_PENDING'].includes(status);
+  const scoring = status === 'REVIEW';
+  const past = ['RECOMMENDATION', 'APPROVAL_PENDING', 'REFERRED', 'CONTROL_ACTION',
+    'COMPLETED', 'CLOSED'].includes(status);
+  return {
+    Signals: 'COMPLETE',
+    Factors: infoStage ? 'CURRENT' : 'COMPLETE',
+    Evidence: infoStage ? 'CURRENT' : 'COMPLETE',
+    'Review/Scoring': scoring ? 'CURRENT' : past ? 'COMPLETE' : 'NEXT',
+    Recommendation: past ? 'CURRENT' : scoring ? 'NEXT' : 'NOT_STARTED',
+    Controls: 'NOT_STARTED',
+    Outcome: 'NOT_STARTED',
+  };
+}
 
 interface Props {
   assessmentId: string;
   onBack: () => void;
 }
+
 
 export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBack }) => {
   const queryClient = useQueryClient();
@@ -63,6 +89,24 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBac
       actions.data?.actions.find((a) => a.action === action)?.enabled === true,
     [actions.data],
   );
+
+  /**
+   * Scoring commands are governed by the scoring/review readiness contracts.
+   * Where the action catalogue also publishes the command we honour it; if the
+   * catalogue could not be read at all we fail closed.
+   */
+  const isScoringActionEnabled = React.useCallback(
+    (command: BnRiskScoringCommand) => {
+      if (actions.isError || !actions.data) return false;
+      const published = actions.data.actions.find(
+        (a) => (a.action as string) === (command as string),
+      );
+      return published ? published.enabled === true : true;
+
+    },
+    [actions.data, actions.isError],
+  );
+
 
   const refresh = React.useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['bn-risk-assessment-detail', assessmentId] });
@@ -156,6 +200,27 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBac
         <Alert><AlertDescription>{actions.data.notice}</AlertDescription></Alert>
       )}
 
+      <div
+        className="flex flex-wrap gap-2"
+        aria-label="Assessment journey"
+        data-testid="bn-risk-journey"
+      >
+        {JOURNEY.map((stage) => {
+          const state = journeyStates(header.status)[stage];
+          return (
+            <Badge
+              key={stage}
+              variant={state === 'CURRENT' ? 'default' : state === 'COMPLETE' ? 'secondary' : 'outline'}
+              className={state === 'NOT_STARTED' ? 'opacity-60' : undefined}
+            >
+              {stage}
+            </Badge>
+          );
+        })}
+      </div>
+
+
+
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -224,10 +289,12 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBac
               <Alert>
                 <AlertTitle>Ready for review</AlertTitle>
                 <AlertDescription>
-                  Scoring and recommendation are delivered in a later release.
+                  Scoring is available below. A score is decision support only — it does not
+                  stop payment, suspend a benefit or refer anyone to investigation.
                 </AlertDescription>
               </Alert>
             )}
+
           </CardContent>
         </Card>
       </div>
@@ -293,6 +360,20 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBac
         isActionEnabled={isActionEnabled}
         onChanged={refresh}
       />
+
+      <BnRiskScoringSection
+        assessmentId={assessmentId}
+        isActionEnabled={isScoringActionEnabled}
+        onChanged={refresh}
+      />
+
+      <BnRiskAssessmentReviewSection
+        assessmentId={assessmentId}
+        isActionEnabled={isScoringActionEnabled}
+        onChanged={refresh}
+      />
+
+
 
       <Card>
         <CardHeader>
