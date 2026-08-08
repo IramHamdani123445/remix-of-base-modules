@@ -156,31 +156,68 @@ const OverpaymentRecovery: React.FC = () => {
     [navigate],
   );
 
-  const openCase = useCallback(async (row: BnOverpaymentWorklistRow) => {
-    setSelected(row);
-    setCommandError(null);
-    setActions([]);
+  const loadActions = useCallback(async (caseId: string) => {
     try {
-      const list = await overpaymentQueryService.availableActions(row.case_id);
+      const list = await overpaymentQueryService.availableActions(caseId);
       setActions(Array.isArray(list) ? list : []);
     } catch {
       setActions([]);
     }
   }, []);
 
+  const openCase = useCallback(async (row: BnOverpaymentWorklistRow) => {
+    setSelected(row);
+    setCommandError(null);
+    setCaseError(null);
+    setActions([]);
+    await loadActions(row.case_id);
+  }, [loadActions]);
+
   /**
-   * Restore the open case from the URL once the worklist is available. The
-   * record is only ever rendered from server data, never from the URL alone.
+   * Restore the open case from the URL. A deep link resolves against the
+   * secured case-detail query directly, so the record no longer depends on the
+   * worklist having loaded (or on the case being inside the current filter).
    */
   useEffect(() => {
     if (!openCaseId) {
       setSelected(null);
+      setCaseError(null);
       return;
     }
     if (selected?.case_id === openCaseId) return;
+
     const row = rows.find((r) => r.case_id === openCaseId);
-    if (row) void openCase(row);
-  }, [openCaseId, rows, selected?.case_id, openCase]);
+    if (row) {
+      void openCase(row);
+      return;
+    }
+
+    let cancelled = false;
+    setCaseLoading(true);
+    setCaseError(null);
+    void (async () => {
+      try {
+        const detail = await overpaymentQueryService.caseDetail(openCaseId);
+        if (cancelled) return;
+        const mapped = toWorklistRow(openCaseId, detail);
+        if (!mapped) {
+          setCaseError('This overpayment case could not be found, or you do not have access to it.');
+          return;
+        }
+        setSelected(mapped);
+        await loadActions(openCaseId);
+      } catch (e) {
+        if (!cancelled) {
+          setCaseError(e instanceof Error ? e.message : 'Failed to load this overpayment case.');
+        }
+      } finally {
+        if (!cancelled) setCaseLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [openCaseId, rows, selected?.case_id, openCase, loadActions]);
+
+
 
   const can = (action: string) => actions.some((a) => a.action === action && a.allowed);
 
