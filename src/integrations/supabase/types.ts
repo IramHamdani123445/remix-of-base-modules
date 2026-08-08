@@ -24232,11 +24232,14 @@ export type Database = {
           award_reference: string | null
           claim_id: string | null
           claim_reference: string | null
+          completed_at: string | null
           context_snapshot: Json
           correlation_id: string | null
           created_at: string
           information_complete_at: string | null
           information_gathering_complete: boolean
+          last_closed_at: string | null
+          last_reopened_at: string | null
           means_assessment_id: string | null
           means_assessment_reference: string | null
           opened_at: string
@@ -24244,8 +24247,10 @@ export type Database = {
           payment_id: string | null
           person_id: number | null
           person_ssn: string | null
+          phase_no: number
           primary_category_code: string
           primary_signal_id: string | null
+          reopen_count: number
           review_entered_at: string | null
           row_version: number
           scoring_review_completed_at: string | null
@@ -24263,11 +24268,14 @@ export type Database = {
           award_reference?: string | null
           claim_id?: string | null
           claim_reference?: string | null
+          completed_at?: string | null
           context_snapshot?: Json
           correlation_id?: string | null
           created_at?: string
           information_complete_at?: string | null
           information_gathering_complete?: boolean
+          last_closed_at?: string | null
+          last_reopened_at?: string | null
           means_assessment_id?: string | null
           means_assessment_reference?: string | null
           opened_at?: string
@@ -24275,8 +24283,10 @@ export type Database = {
           payment_id?: string | null
           person_id?: number | null
           person_ssn?: string | null
+          phase_no?: number
           primary_category_code: string
           primary_signal_id?: string | null
+          reopen_count?: number
           review_entered_at?: string | null
           row_version?: number
           scoring_review_completed_at?: string | null
@@ -24294,11 +24304,14 @@ export type Database = {
           award_reference?: string | null
           claim_id?: string | null
           claim_reference?: string | null
+          completed_at?: string | null
           context_snapshot?: Json
           correlation_id?: string | null
           created_at?: string
           information_complete_at?: string | null
           information_gathering_complete?: boolean
+          last_closed_at?: string | null
+          last_reopened_at?: string | null
           means_assessment_id?: string | null
           means_assessment_reference?: string | null
           opened_at?: string
@@ -24306,8 +24319,10 @@ export type Database = {
           payment_id?: string | null
           person_id?: number | null
           person_ssn?: string | null
+          phase_no?: number
           primary_category_code?: string
           primary_signal_id?: string | null
+          reopen_count?: number
           review_entered_at?: string | null
           row_version?: number
           scoring_review_completed_at?: string | null
@@ -24323,6 +24338,99 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_risk_signal"
             referencedColumns: ["signal_id"]
+          },
+        ]
+      }
+      bn_risk_assessment_closure: {
+        Row: {
+          assessment_id: string
+          assessment_row_version: number
+          closed_at: string
+          closed_by_name: string | null
+          closed_by_user_id: string
+          closure_id: string
+          closure_note: string | null
+          closure_reason_code: string | null
+          closure_reason_label: string | null
+          correlation_id: string | null
+          created_at: string
+          outcome_code: string
+          outcome_id: string
+          outcome_label: string
+          phase_no: number
+          reopen_destination_status: string | null
+          reopen_justification: string | null
+          reopen_reason_code: string | null
+          reopen_reason_label: string | null
+          reopened_at: string | null
+          reopened_by_name: string | null
+          reopened_by_user_id: string | null
+          status: string
+        }
+        Insert: {
+          assessment_id: string
+          assessment_row_version: number
+          closed_at?: string
+          closed_by_name?: string | null
+          closed_by_user_id: string
+          closure_id?: string
+          closure_note?: string | null
+          closure_reason_code?: string | null
+          closure_reason_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          outcome_code: string
+          outcome_id: string
+          outcome_label: string
+          phase_no?: number
+          reopen_destination_status?: string | null
+          reopen_justification?: string | null
+          reopen_reason_code?: string | null
+          reopen_reason_label?: string | null
+          reopened_at?: string | null
+          reopened_by_name?: string | null
+          reopened_by_user_id?: string | null
+          status?: string
+        }
+        Update: {
+          assessment_id?: string
+          assessment_row_version?: number
+          closed_at?: string
+          closed_by_name?: string | null
+          closed_by_user_id?: string
+          closure_id?: string
+          closure_note?: string | null
+          closure_reason_code?: string | null
+          closure_reason_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          outcome_code?: string
+          outcome_id?: string
+          outcome_label?: string
+          phase_no?: number
+          reopen_destination_status?: string | null
+          reopen_justification?: string | null
+          reopen_reason_code?: string | null
+          reopen_reason_label?: string | null
+          reopened_at?: string | null
+          reopened_by_name?: string | null
+          reopened_by_user_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_assessment_closure_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_assessment_closure_outcome_id_fkey"
+            columns: ["outcome_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_outcome"
+            referencedColumns: ["outcome_id"]
           },
         ]
       }
@@ -25242,6 +25350,216 @@ export type Database = {
             referencedColumns: ["signal_id"]
           },
         ]
+      }
+      bn_risk_outcome: {
+        Row: {
+          assessment_id: string
+          assessment_row_version: number
+          control_execution_summary: Json
+          correction_justification: string | null
+          correction_reason_code: string | null
+          correction_reason_label: string | null
+          correlation_id: string | null
+          created_at: string
+          decision_id: string | null
+          disposition_code: string | null
+          disposition_label: string | null
+          external_outcome_reference: string | null
+          external_outcome_summary: string | null
+          financial_impact_module: string | null
+          financial_impact_reference: string | null
+          finding_classification: string
+          is_fraud_related: boolean
+          justification: string | null
+          outcome_class: string
+          outcome_code: string
+          outcome_id: string
+          outcome_label: string
+          outcome_reference: string
+          phase_no: number
+          reason_code: string | null
+          reason_label: string | null
+          recommendation_id: string | null
+          recorded_at: string
+          recorded_by_name: string | null
+          recorded_by_user_id: string
+          referral_summary: Json
+          row_version: number
+          score_id: string | null
+          score_version_no: number | null
+          sequence_no: number
+          status: string
+          superseded_at: string | null
+          superseded_by_outcome_id: string | null
+          supersedes_outcome_id: string | null
+          supporting_evidence_ids: string[]
+          supporting_factor_ids: string[]
+          unresolved_control_disposition: string | null
+        }
+        Insert: {
+          assessment_id: string
+          assessment_row_version: number
+          control_execution_summary?: Json
+          correction_justification?: string | null
+          correction_reason_code?: string | null
+          correction_reason_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          decision_id?: string | null
+          disposition_code?: string | null
+          disposition_label?: string | null
+          external_outcome_reference?: string | null
+          external_outcome_summary?: string | null
+          financial_impact_module?: string | null
+          financial_impact_reference?: string | null
+          finding_classification: string
+          is_fraud_related?: boolean
+          justification?: string | null
+          outcome_class: string
+          outcome_code: string
+          outcome_id?: string
+          outcome_label: string
+          outcome_reference: string
+          phase_no?: number
+          reason_code?: string | null
+          reason_label?: string | null
+          recommendation_id?: string | null
+          recorded_at?: string
+          recorded_by_name?: string | null
+          recorded_by_user_id: string
+          referral_summary?: Json
+          row_version?: number
+          score_id?: string | null
+          score_version_no?: number | null
+          sequence_no: number
+          status?: string
+          superseded_at?: string | null
+          superseded_by_outcome_id?: string | null
+          supersedes_outcome_id?: string | null
+          supporting_evidence_ids?: string[]
+          supporting_factor_ids?: string[]
+          unresolved_control_disposition?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          assessment_row_version?: number
+          control_execution_summary?: Json
+          correction_justification?: string | null
+          correction_reason_code?: string | null
+          correction_reason_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          decision_id?: string | null
+          disposition_code?: string | null
+          disposition_label?: string | null
+          external_outcome_reference?: string | null
+          external_outcome_summary?: string | null
+          financial_impact_module?: string | null
+          financial_impact_reference?: string | null
+          finding_classification?: string
+          is_fraud_related?: boolean
+          justification?: string | null
+          outcome_class?: string
+          outcome_code?: string
+          outcome_id?: string
+          outcome_label?: string
+          outcome_reference?: string
+          phase_no?: number
+          reason_code?: string | null
+          reason_label?: string | null
+          recommendation_id?: string | null
+          recorded_at?: string
+          recorded_by_name?: string | null
+          recorded_by_user_id?: string
+          referral_summary?: Json
+          row_version?: number
+          score_id?: string | null
+          score_version_no?: number | null
+          sequence_no?: number
+          status?: string
+          superseded_at?: string | null
+          superseded_by_outcome_id?: string | null
+          supersedes_outcome_id?: string | null
+          supporting_evidence_ids?: string[]
+          supporting_factor_ids?: string[]
+          unresolved_control_disposition?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_outcome_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_outcome_outcome_code_fkey"
+            columns: ["outcome_code"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_outcome_type"
+            referencedColumns: ["outcome_code"]
+          },
+        ]
+      }
+      bn_risk_outcome_type: {
+        Row: {
+          allows_unresolved_control: boolean
+          asserts_legal_conclusion: boolean
+          created_at: string
+          description: string | null
+          finding_classification: string
+          is_active: boolean
+          is_fraud_related: boolean
+          label: string
+          outcome_class: string
+          outcome_code: string
+          permits_closure: boolean
+          requires_external_reference: boolean
+          requires_justification: boolean
+          requires_reason: boolean
+          requires_settled_controls: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          allows_unresolved_control?: boolean
+          asserts_legal_conclusion?: boolean
+          created_at?: string
+          description?: string | null
+          finding_classification: string
+          is_active?: boolean
+          is_fraud_related?: boolean
+          label: string
+          outcome_class: string
+          outcome_code: string
+          permits_closure?: boolean
+          requires_external_reference?: boolean
+          requires_justification?: boolean
+          requires_reason?: boolean
+          requires_settled_controls?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          allows_unresolved_control?: boolean
+          asserts_legal_conclusion?: boolean
+          created_at?: string
+          description?: string | null
+          finding_classification?: string
+          is_active?: boolean
+          is_fraud_related?: boolean
+          label?: string
+          outcome_class?: string
+          outcome_code?: string
+          permits_closure?: boolean
+          requires_external_reference?: boolean
+          requires_justification?: boolean
+          requires_reason?: boolean
+          requires_settled_controls?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       bn_risk_recommendation: {
         Row: {
@@ -109566,10 +109884,19 @@ export type Database = {
       _bn_risk_next_assessment_reference: { Args: never; Returns: string }
       _bn_risk_next_execution_reference: { Args: never; Returns: string }
       _bn_risk_next_factor_reference: { Args: never; Returns: string }
+      _bn_risk_next_outcome_reference: { Args: never; Returns: string }
       _bn_risk_next_recommendation_reference: { Args: never; Returns: string }
       _bn_risk_next_reference: { Args: never; Returns: string }
       _bn_risk_next_request_reference: { Args: never; Returns: string }
+      _bn_risk_outcome_control_facts: {
+        Args: { p_assessment: string }
+        Returns: Json
+      }
       _bn_risk_person_display_name: { Args: { p_ssn: string }; Returns: string }
+      _bn_risk_ref_label: {
+        Args: { p_code: string; p_domain: string }
+        Returns: string
+      }
       _bn_risk_require: {
         Args: { p_action: string; p_actor: string; p_mutation: boolean }
         Returns: undefined
@@ -112261,6 +112588,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_risk_closure_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
       bn_risk_control_approval_queue_v1: {
         Args: {
           p_actor_user_id: string
@@ -112346,6 +112677,28 @@ export type Database = {
       }
       bn_risk_factor_catalogue_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_outcome_command_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id?: string
+          p_expected_row_version: number
+          p_idempotency_key?: string
+          p_payload: Json
+          p_payload_hash?: string
+        }
+        Returns: Json
+      }
+      bn_risk_outcome_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters: Json
+          p_page: number
+          p_page_size: number
+        }
         Returns: Json
       }
       bn_risk_outcome_readiness_v1: {
