@@ -111,6 +111,7 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
         <TabsList>
           <TabsTrigger value="signals">Signals</TabsTrigger>
           <TabsTrigger value="assessments">Assessments</TabsTrigger>
+          <TabsTrigger value="control-decisions">Control decisions</TabsTrigger>
           <TabsTrigger value="scoring-configuration">Scoring configuration</TabsTrigger>
         </TabsList>
 
@@ -132,16 +133,34 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
             ? (
               <BnRiskAssessmentWorkspace
                 assessmentId={openAssessmentId}
-                onBack={() => setOpenAssessmentId(null)}
+                focusSection={focusApproval ? 'approval' : null}
+                onBack={() => { setOpenAssessmentId(null); setFocusApproval(false); }}
               />
             )
-            : <BnRiskAssessmentQueue onOpenAssessment={setOpenAssessmentId} />}
+            : (
+              <BnRiskAssessmentQueue
+                onOpenAssessment={(id) => { setFocusApproval(false); setOpenAssessmentId(id); }}
+              />
+            )}
+        </TabsContent>
+
+        <TabsContent value="control-decisions" className="space-y-6">
+          <BnRiskControlApprovalQueue onOpenApproval={openApprovalDecision} />
+
+          <Alert>
+            <AlertTitle>Approval authorises a control</AlertTitle>
+            <AlertDescription>
+              Approving a recommended control authorises it for later governed execution.
+              No payment, award, claim, overpayment or referral changes from this screen.
+            </AlertDescription>
+          </Alert>
         </TabsContent>
 
         <TabsContent value="scoring-configuration" className="space-y-6">
           <BnRiskScoringConfigurationPanel />
         </TabsContent>
       </Tabs>
+
 
 
       <BnRiskSignalDetailPanel
