@@ -29,6 +29,7 @@ DECLARE
   -- fixed fixture identities so postflight can assert their removal
   c_tpl_a      constant uuid := '0e11c0de-0000-4000-a000-00000000a001';
   c_tpl_amb    constant uuid := '0e11c0de-0000-4000-a000-00000000a002';
+  c_tpl_draft  constant uuid := '0e11c0de-0000-4000-a000-00000000a003';
   c_rate_tbl   constant uuid := '0e11c0de-0000-4000-a000-00000000b001';
   c_tier_tbl   constant uuid := '0e11c0de-0000-4000-a000-00000000b002';
   c_amb_tbl    constant uuid := '0e11c0de-0000-4000-a000-00000000b003';
@@ -64,7 +65,9 @@ BEGIN
     (c_tpl_a, c_code, 'Epic 0 harness formula', '{AVG_INSURABLE_WAGE} * 0.60',
      'CURRENCY', 'KN', true, 'ACTIVE', 'ROUND_HALF_UP', 'HARNESS'),
     (c_tpl_amb, c_code_amb, 'Epic 0 ambiguity fixture', '{AVG_INSURABLE_WAGE}',
-     'CURRENCY', 'KN', true, 'ACTIVE', 'ROUND_HALF_UP', 'HARNESS');
+     'CURRENCY', 'KN', true, 'ACTIVE', 'ROUND_HALF_UP', 'HARNESS'),
+    (c_tpl_draft, c_code || '_DRAFTONLY', 'Epic 0 draft-only fixture', '{AVG_INSURABLE_WAGE}',
+     'CURRENCY', 'KN', true, 'DRAFT', 'ROUND_HALF_UP', 'HARNESS');
 
   -- Variable registry entry so the formula's variable is governed/known.
   INSERT INTO public.bn_formula_variable_registry
@@ -215,7 +218,7 @@ BEGIN
   INSERT INTO public.bn_formula_version
     (formula_template_id, formula_code, version_no, expression_type, expression,
      output_variable, rounding_rule, governance_status, effective_from, is_active, entered_by)
-  VALUES (c_tpl_a, c_code || '_DRAFTONLY', 1, 'SIMPLE_EXPRESSION', '{AVG_INSURABLE_WAGE}',
+  VALUES (c_tpl_draft, c_code || '_DRAFTONLY', 1, 'SIMPLE_EXPRESSION', '{AVG_INSURABLE_WAGE}',
           'WEEKLY_RATE', 'ROUND_HALF_UP', 'DRAFT', DATE '2020-01-01', true, 'HARNESS');
   v_failed := false;
   BEGIN
