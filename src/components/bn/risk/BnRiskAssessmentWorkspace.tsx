@@ -68,9 +68,7 @@ interface Props {
   onBack: () => void;
   /** Deep link from an operational queue — scroll straight to that section. */
   focusSection?: 'approval' | 'execution' | null;
-
-
-
+}
 
 export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
   assessmentId, onBack, focusSection = null,
@@ -80,6 +78,8 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
   const [completeNote, setCompleteNote] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const approvalRef = React.useRef<HTMLDivElement | null>(null);
+  const executionRef = React.useRef<HTMLDivElement | null>(null);
+
 
   const detail = useQuery({
     queryKey: ['bn-risk-assessment-detail', assessmentId],
