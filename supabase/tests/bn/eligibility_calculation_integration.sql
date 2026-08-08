@@ -34,8 +34,8 @@ DECLARE
   c_tier_tbl   constant uuid := '0e11c0de-0000-4000-a000-00000000b002';
   c_amb_tbl    constant uuid := '0e11c0de-0000-4000-a000-00000000b003';
   c_claim      constant uuid := '0e11c0de-0000-4000-a000-00000000c001';
-  c_code       constant text := 'ZZ_EPIC0_HARNESS_FORMULA';
-  c_code_amb   constant text := 'ZZ_EPIC0_HARNESS_AMBIGUOUS';
+  c_code       constant text := 'ZZ_EPIC0_F1';
+  c_code_amb   constant text := 'ZZ_EPIC0_AMB';
 
   v_res        jsonb;
   v_look       jsonb;
