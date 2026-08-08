@@ -88,18 +88,21 @@ describe('Uprating Epic 0 — canonical catalogue', () => {
     expect(BN_UPRATING_CANONICAL_COMMANDS).toHaveLength(17);
   });
 
-  it('marks exactly the five Epic 0 commands as implemented', () => {
+  it('keeps every Epic 0 command implemented', () => {
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented).map((c) => c.command);
-    expect([...implemented].sort()).toEqual([...EPIC0_COMMANDS].sort());
+    for (const command of EPIC0_COMMANDS) {
+      expect(implemented).toContain(command);
+    }
   });
 
-  it('keeps every run, simulation and execution command NOT_STARTED', () => {
-    ['BN_UPRATING_CREATE_RUN', 'BN_UPRATING_BUILD_POPULATION', 'BN_UPRATING_SIMULATE',
-     'BN_UPRATING_EXECUTE_BATCH', 'BN_UPRATING_ROLLBACK_ELIGIBLE', 'BN_UPRATING_CLOSE_RUN']
+  it('keeps every execution-stage command NOT_STARTED', () => {
+    ['BN_UPRATING_EXECUTE_BATCH', 'BN_UPRATING_ROLLBACK_ELIGIBLE', 'BN_UPRATING_CLOSE_RUN',
+     'BN_UPRATING_APPROVE_RUN', 'BN_UPRATING_SCHEDULE_EXECUTION', 'BN_UPRATING_RECONCILE_RUN']
       .forEach((c) => {
         expect(getUpratingCanonicalCommandSpec(c as BnUpratingCanonicalCommandName).implemented).toBe(false);
       });
   });
+
 
   it('requires maker-checker and justification for policy approval', () => {
     const spec = getUpratingCanonicalCommandSpec('BN_UPRATING_APPROVE_POLICY');

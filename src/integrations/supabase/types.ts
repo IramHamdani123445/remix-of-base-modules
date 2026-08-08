@@ -27911,6 +27911,7 @@ export type Database = {
           previous_status: string | null
           reason_code: string | null
           result_status: string | null
+          run_id: string | null
         }
         Insert: {
           actor_name?: string | null
@@ -27929,6 +27930,7 @@ export type Database = {
           previous_status?: string | null
           reason_code?: string | null
           result_status?: string | null
+          run_id?: string | null
         }
         Update: {
           actor_name?: string | null
@@ -27947,6 +27949,7 @@ export type Database = {
           previous_status?: string | null
           reason_code?: string | null
           result_status?: string | null
+          run_id?: string | null
         }
         Relationships: []
       }
@@ -27980,6 +27983,42 @@ export type Database = {
           payload_hash?: string
           result_json?: Json
           status?: string
+        }
+        Relationships: []
+      }
+      bn_uprating_exception_policy: {
+        Row: {
+          allowed_resolutions: string[]
+          business_explanation: string
+          created_at: string
+          default_severity: string
+          exception_code: string
+          is_active: boolean
+          is_blocking: boolean
+          owning_domain: string
+          requires_source_correction: boolean
+        }
+        Insert: {
+          allowed_resolutions?: string[]
+          business_explanation: string
+          created_at?: string
+          default_severity?: string
+          exception_code: string
+          is_active?: boolean
+          is_blocking?: boolean
+          owning_domain: string
+          requires_source_correction?: boolean
+        }
+        Update: {
+          allowed_resolutions?: string[]
+          business_explanation?: string
+          created_at?: string
+          default_severity?: string
+          exception_code?: string
+          is_active?: boolean
+          is_blocking?: boolean
+          owning_domain?: string
+          requires_source_correction?: boolean
         }
         Relationships: []
       }
@@ -28604,6 +28643,744 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      bn_uprating_run: {
+        Row: {
+          calculation_basis: string
+          correlation_id: string | null
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          current_simulation_id: string | null
+          current_simulation_version: number | null
+          current_snapshot_id: string | null
+          current_snapshot_version: number | null
+          frozen_applicability: Json
+          frozen_effective_from: string | null
+          frozen_effective_to: string | null
+          frozen_fixed_amount_minor: number | null
+          frozen_formula_version_id: string | null
+          frozen_index_base_value: number | null
+          frozen_index_observation_id: string | null
+          frozen_index_series_id: string | null
+          frozen_index_value: number | null
+          frozen_percentage_bp: number | null
+          frozen_policy_type: string | null
+          frozen_rounding_mode: string | null
+          frozen_tiers: Json
+          input_fingerprint: string | null
+          parameterised_at: string | null
+          parameterised_by: string | null
+          policy_id: string
+          policy_version_id: string
+          row_version: number
+          run_id: string
+          run_name: string | null
+          run_reference: string
+          scope_award_component_code: string | null
+          scope_award_type_code: string | null
+          scope_description: string | null
+          scope_payment_frequency: string | null
+          scope_product_id: string | null
+          simulation_state: string
+          status: string
+          target_effective_date: string
+          updated_at: string
+        }
+        Insert: {
+          calculation_basis?: string
+          correlation_id?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          current_simulation_id?: string | null
+          current_simulation_version?: number | null
+          current_snapshot_id?: string | null
+          current_snapshot_version?: number | null
+          frozen_applicability?: Json
+          frozen_effective_from?: string | null
+          frozen_effective_to?: string | null
+          frozen_fixed_amount_minor?: number | null
+          frozen_formula_version_id?: string | null
+          frozen_index_base_value?: number | null
+          frozen_index_observation_id?: string | null
+          frozen_index_series_id?: string | null
+          frozen_index_value?: number | null
+          frozen_percentage_bp?: number | null
+          frozen_policy_type?: string | null
+          frozen_rounding_mode?: string | null
+          frozen_tiers?: Json
+          input_fingerprint?: string | null
+          parameterised_at?: string | null
+          parameterised_by?: string | null
+          policy_id: string
+          policy_version_id: string
+          row_version?: number
+          run_id?: string
+          run_name?: string | null
+          run_reference: string
+          scope_award_component_code?: string | null
+          scope_award_type_code?: string | null
+          scope_description?: string | null
+          scope_payment_frequency?: string | null
+          scope_product_id?: string | null
+          simulation_state?: string
+          status?: string
+          target_effective_date: string
+          updated_at?: string
+        }
+        Update: {
+          calculation_basis?: string
+          correlation_id?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          current_simulation_id?: string | null
+          current_simulation_version?: number | null
+          current_snapshot_id?: string | null
+          current_snapshot_version?: number | null
+          frozen_applicability?: Json
+          frozen_effective_from?: string | null
+          frozen_effective_to?: string | null
+          frozen_fixed_amount_minor?: number | null
+          frozen_formula_version_id?: string | null
+          frozen_index_base_value?: number | null
+          frozen_index_observation_id?: string | null
+          frozen_index_series_id?: string | null
+          frozen_index_value?: number | null
+          frozen_percentage_bp?: number | null
+          frozen_policy_type?: string | null
+          frozen_rounding_mode?: string | null
+          frozen_tiers?: Json
+          input_fingerprint?: string | null
+          parameterised_at?: string | null
+          parameterised_by?: string | null
+          policy_id?: string
+          policy_version_id?: string
+          row_version?: number
+          run_id?: string
+          run_name?: string | null
+          run_reference?: string
+          scope_award_component_code?: string | null
+          scope_award_type_code?: string | null
+          scope_description?: string | null
+          scope_payment_frequency?: string | null
+          scope_product_id?: string | null
+          simulation_state?: string
+          status?: string
+          target_effective_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_run_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_policy"
+            referencedColumns: ["policy_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_run_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_run_scope_product_id_fkey"
+            columns: ["scope_product_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_uprating_run_event: {
+        Row: {
+          actor_name: string | null
+          actor_user_id: string | null
+          correlation_id: string | null
+          detail: string | null
+          event_code: string
+          event_id: string
+          event_label: string
+          new_status: string | null
+          occurred_at: string
+          previous_status: string | null
+          run_id: string
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          detail?: string | null
+          event_code: string
+          event_id?: string
+          event_label: string
+          new_status?: string | null
+          occurred_at?: string
+          previous_status?: string | null
+          run_id: string
+        }
+        Update: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          detail?: string | null
+          event_code?: string
+          event_id?: string
+          event_label?: string
+          new_status?: string | null
+          occurred_at?: string
+          previous_status?: string | null
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_run_event_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      bn_uprating_run_exception: {
+        Row: {
+          award_reference: string
+          business_explanation: string
+          correlation_id: string | null
+          detected_at: string
+          exception_code: string
+          exception_id: string
+          is_blocking: boolean
+          justification: string | null
+          owning_domain: string
+          resolution_code: string | null
+          resolution_label: string | null
+          resolution_reason: string | null
+          resolution_status: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_by_name: string | null
+          row_version: number
+          run_id: string
+          severity: string
+          snapshot_id: string
+          snapshot_item_id: string
+          source_reference: string | null
+        }
+        Insert: {
+          award_reference: string
+          business_explanation: string
+          correlation_id?: string | null
+          detected_at?: string
+          exception_code: string
+          exception_id?: string
+          is_blocking?: boolean
+          justification?: string | null
+          owning_domain: string
+          resolution_code?: string | null
+          resolution_label?: string | null
+          resolution_reason?: string | null
+          resolution_status?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_by_name?: string | null
+          row_version?: number
+          run_id: string
+          severity?: string
+          snapshot_id: string
+          snapshot_item_id: string
+          source_reference?: string | null
+        }
+        Update: {
+          award_reference?: string
+          business_explanation?: string
+          correlation_id?: string | null
+          detected_at?: string
+          exception_code?: string
+          exception_id?: string
+          is_blocking?: boolean
+          justification?: string | null
+          owning_domain?: string
+          resolution_code?: string | null
+          resolution_label?: string | null
+          resolution_reason?: string | null
+          resolution_status?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_by_name?: string | null
+          row_version?: number
+          run_id?: string
+          severity?: string
+          snapshot_id?: string
+          snapshot_item_id?: string
+          source_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_run_exception_exception_code_fkey"
+            columns: ["exception_code"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_exception_policy"
+            referencedColumns: ["exception_code"]
+          },
+          {
+            foreignKeyName: "bn_uprating_run_exception_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_run_exception_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_snapshot"
+            referencedColumns: ["snapshot_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_run_exception_snapshot_item_id_fkey"
+            columns: ["snapshot_item_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_snapshot_item"
+            referencedColumns: ["snapshot_item_id"]
+          },
+        ]
+      }
+      bn_uprating_run_exception_history: {
+        Row: {
+          action_code: string
+          actor_name: string | null
+          actor_user_id: string | null
+          correlation_id: string | null
+          exception_id: string
+          history_id: string
+          justification: string | null
+          occurred_at: string
+          resolution_code: string | null
+          sequence_no: number
+        }
+        Insert: {
+          action_code: string
+          actor_name?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          exception_id: string
+          history_id?: string
+          justification?: string | null
+          occurred_at?: string
+          resolution_code?: string | null
+          sequence_no: number
+        }
+        Update: {
+          action_code?: string
+          actor_name?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          exception_id?: string
+          history_id?: string
+          justification?: string | null
+          occurred_at?: string
+          resolution_code?: string | null
+          sequence_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_run_exception_history_exception_id_fkey"
+            columns: ["exception_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_exception"
+            referencedColumns: ["exception_id"]
+          },
+        ]
+      }
+      bn_uprating_run_snapshot: {
+        Row: {
+          blocking_exception_items: number
+          correlation_id: string | null
+          current_total_minor: number
+          eligible_items: number
+          exception_items: number
+          excluded_items: number
+          policy_version_id: string
+          run_id: string
+          selection_criteria: Json
+          snapshot_fingerprint: string | null
+          snapshot_id: string
+          snapshot_version: number
+          status: string
+          superseded_at: string | null
+          superseded_by_snapshot_id: string | null
+          taken_at: string
+          taken_by: string | null
+          taken_by_name: string | null
+          total_items: number
+        }
+        Insert: {
+          blocking_exception_items?: number
+          correlation_id?: string | null
+          current_total_minor?: number
+          eligible_items?: number
+          exception_items?: number
+          excluded_items?: number
+          policy_version_id: string
+          run_id: string
+          selection_criteria?: Json
+          snapshot_fingerprint?: string | null
+          snapshot_id?: string
+          snapshot_version: number
+          status?: string
+          superseded_at?: string | null
+          superseded_by_snapshot_id?: string | null
+          taken_at?: string
+          taken_by?: string | null
+          taken_by_name?: string | null
+          total_items?: number
+        }
+        Update: {
+          blocking_exception_items?: number
+          correlation_id?: string | null
+          current_total_minor?: number
+          eligible_items?: number
+          exception_items?: number
+          excluded_items?: number
+          policy_version_id?: string
+          run_id?: string
+          selection_criteria?: Json
+          snapshot_fingerprint?: string | null
+          snapshot_id?: string
+          snapshot_version?: number
+          status?: string
+          superseded_at?: string | null
+          superseded_by_snapshot_id?: string | null
+          taken_at?: string
+          taken_by?: string | null
+          taken_by_name?: string | null
+          total_items?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_run_snapshot_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_run_snapshot_superseded_by_snapshot_id_fkey"
+            columns: ["superseded_by_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_snapshot"
+            referencedColumns: ["snapshot_id"]
+          },
+        ]
+      }
+      bn_uprating_run_snapshot_item: {
+        Row: {
+          award_component_code: string | null
+          award_end_date: string | null
+          award_id: string
+          award_reference: string
+          award_start_date: string | null
+          award_status: string | null
+          award_type_code: string | null
+          base_amount_minor: number | null
+          created_at: string
+          currency_code: string | null
+          eligibility_status: string
+          exception_status: string
+          exclusion_reason_code: string | null
+          inclusion_explanation: string | null
+          payment_frequency: string | null
+          person_reference: string | null
+          product_code: string | null
+          product_id: string | null
+          product_name: string | null
+          product_version_id: string | null
+          provenance: Json
+          run_id: string
+          snapshot_id: string
+          snapshot_item_id: string
+          source_observed_at: string
+          source_row_version: number | null
+        }
+        Insert: {
+          award_component_code?: string | null
+          award_end_date?: string | null
+          award_id: string
+          award_reference: string
+          award_start_date?: string | null
+          award_status?: string | null
+          award_type_code?: string | null
+          base_amount_minor?: number | null
+          created_at?: string
+          currency_code?: string | null
+          eligibility_status?: string
+          exception_status?: string
+          exclusion_reason_code?: string | null
+          inclusion_explanation?: string | null
+          payment_frequency?: string | null
+          person_reference?: string | null
+          product_code?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          product_version_id?: string | null
+          provenance?: Json
+          run_id: string
+          snapshot_id: string
+          snapshot_item_id?: string
+          source_observed_at?: string
+          source_row_version?: number | null
+        }
+        Update: {
+          award_component_code?: string | null
+          award_end_date?: string | null
+          award_id?: string
+          award_reference?: string
+          award_start_date?: string | null
+          award_status?: string | null
+          award_type_code?: string | null
+          base_amount_minor?: number | null
+          created_at?: string
+          currency_code?: string | null
+          eligibility_status?: string
+          exception_status?: string
+          exclusion_reason_code?: string | null
+          inclusion_explanation?: string | null
+          payment_frequency?: string | null
+          person_reference?: string | null
+          product_code?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          product_version_id?: string | null
+          provenance?: Json
+          run_id?: string
+          snapshot_id?: string
+          snapshot_item_id?: string
+          source_observed_at?: string
+          source_row_version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_run_snapshot_item_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_run_snapshot_item_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_snapshot"
+            referencedColumns: ["snapshot_id"]
+          },
+        ]
+      }
+      bn_uprating_simulation: {
+        Row: {
+          correlation_id: string | null
+          current_total_minor: number
+          decrease_count: number
+          delta_total_minor: number
+          exception_total: number
+          failed_items: number
+          increase_count: number
+          input_fingerprint: string
+          no_change_count: number
+          policy_type: string
+          policy_version_id: string
+          proposed_total_minor: number
+          provenance: Json
+          rounding_mode: string
+          run_id: string
+          simulated_at: string
+          simulated_by: string | null
+          simulated_by_name: string | null
+          simulated_items: number
+          simulation_id: string
+          simulation_version: number
+          snapshot_id: string
+          status: string
+          superseded_at: string | null
+          superseded_by_simulation_id: string | null
+        }
+        Insert: {
+          correlation_id?: string | null
+          current_total_minor?: number
+          decrease_count?: number
+          delta_total_minor?: number
+          exception_total?: number
+          failed_items?: number
+          increase_count?: number
+          input_fingerprint: string
+          no_change_count?: number
+          policy_type: string
+          policy_version_id: string
+          proposed_total_minor?: number
+          provenance?: Json
+          rounding_mode: string
+          run_id: string
+          simulated_at?: string
+          simulated_by?: string | null
+          simulated_by_name?: string | null
+          simulated_items?: number
+          simulation_id?: string
+          simulation_version: number
+          snapshot_id: string
+          status?: string
+          superseded_at?: string | null
+          superseded_by_simulation_id?: string | null
+        }
+        Update: {
+          correlation_id?: string | null
+          current_total_minor?: number
+          decrease_count?: number
+          delta_total_minor?: number
+          exception_total?: number
+          failed_items?: number
+          increase_count?: number
+          input_fingerprint?: string
+          no_change_count?: number
+          policy_type?: string
+          policy_version_id?: string
+          proposed_total_minor?: number
+          provenance?: Json
+          rounding_mode?: string
+          run_id?: string
+          simulated_at?: string
+          simulated_by?: string | null
+          simulated_by_name?: string | null
+          simulated_items?: number
+          simulation_id?: string
+          simulation_version?: number
+          snapshot_id?: string
+          status?: string
+          superseded_at?: string | null
+          superseded_by_simulation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_simulation_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_simulation_snapshot_id_fkey"
+            columns: ["snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_snapshot"
+            referencedColumns: ["snapshot_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_simulation_superseded_by_simulation_id_fkey"
+            columns: ["superseded_by_simulation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_simulation"
+            referencedColumns: ["simulation_id"]
+          },
+        ]
+      }
+      bn_uprating_simulation_item: {
+        Row: {
+          applied_factor: number | null
+          applied_fixed_amount_minor: number | null
+          applied_percentage_bp: number | null
+          award_component_code: string | null
+          award_reference: string
+          base_amount_minor: number
+          calculation_status: string
+          calculation_trace: Json
+          created_at: string
+          delta_amount_minor: number
+          exception_status: string
+          input_fingerprint: string
+          matched_tier_sequence: number | null
+          policy_method: string
+          proposed_amount_minor: number
+          rounding_mode: string
+          run_id: string
+          simulation_id: string
+          simulation_item_id: string
+          snapshot_item_id: string
+          unrounded_amount_minor: number
+        }
+        Insert: {
+          applied_factor?: number | null
+          applied_fixed_amount_minor?: number | null
+          applied_percentage_bp?: number | null
+          award_component_code?: string | null
+          award_reference: string
+          base_amount_minor: number
+          calculation_status?: string
+          calculation_trace?: Json
+          created_at?: string
+          delta_amount_minor: number
+          exception_status?: string
+          input_fingerprint: string
+          matched_tier_sequence?: number | null
+          policy_method: string
+          proposed_amount_minor: number
+          rounding_mode: string
+          run_id: string
+          simulation_id: string
+          simulation_item_id?: string
+          snapshot_item_id: string
+          unrounded_amount_minor: number
+        }
+        Update: {
+          applied_factor?: number | null
+          applied_fixed_amount_minor?: number | null
+          applied_percentage_bp?: number | null
+          award_component_code?: string | null
+          award_reference?: string
+          base_amount_minor?: number
+          calculation_status?: string
+          calculation_trace?: Json
+          created_at?: string
+          delta_amount_minor?: number
+          exception_status?: string
+          input_fingerprint?: string
+          matched_tier_sequence?: number | null
+          policy_method?: string
+          proposed_amount_minor?: number
+          rounding_mode?: string
+          run_id?: string
+          simulation_id?: string
+          simulation_item_id?: string
+          snapshot_item_id?: string
+          unrounded_amount_minor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_simulation_item_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_simulation_item_simulation_id_fkey"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_simulation"
+            referencedColumns: ["simulation_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_simulation_item_snapshot_item_id_fkey"
+            columns: ["snapshot_item_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_snapshot_item"
+            referencedColumns: ["snapshot_item_id"]
+          },
+        ]
       }
       bn_version_approval: {
         Row: {
@@ -111007,6 +111784,10 @@ export type Database = {
         Args: { p_payload: Json; p_version_id: string }
         Returns: undefined
       }
+      _bn_uprating_calc_item: {
+        Args: { p_base_minor: number; p_run_id: string }
+        Returns: Json
+      }
       _bn_uprating_event: {
         Args: {
           p_actor: string
@@ -111027,6 +111808,23 @@ export type Database = {
       }
       _bn_uprating_require: {
         Args: { p_action: string; p_actor: string; p_mutation: boolean }
+        Returns: undefined
+      }
+      _bn_uprating_round_minor: {
+        Args: { p_amount: number; p_mode: string }
+        Returns: number
+      }
+      _bn_uprating_run_event: {
+        Args: {
+          p_actor: string
+          p_code: string
+          p_correlation: string
+          p_detail: string
+          p_label: string
+          p_new: string
+          p_prev: string
+          p_run_id: string
+        }
         Returns: undefined
       }
       _bn_uprating_validate_version: {
@@ -113882,6 +114680,66 @@ export type Database = {
       }
       bn_uprating_reference_data_v1: {
         Args: { p_actor_user_id: string }
+        Returns: Json
+      }
+      bn_uprating_run_actions_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
+      bn_uprating_run_command_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id?: string
+          p_exception_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_payload?: Json
+          p_run_id?: string
+        }
+        Returns: Json
+      }
+      bn_uprating_run_detail_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
+      bn_uprating_run_exceptions_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+          p_run_id: string
+        }
+        Returns: Json
+      }
+      bn_uprating_run_list_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+      bn_uprating_run_population_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+          p_run_id: string
+        }
+        Returns: Json
+      }
+      bn_uprating_simulation_result_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+          p_run_id: string
+        }
         Returns: Json
       }
       bn_workbaskets_for_user: {
