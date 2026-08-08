@@ -170,6 +170,32 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
   const { header, context, signals, factors, evidence, requests, history, readiness, technical } =
     detail.data;
 
+  /**
+   * Known records this assessment is already attached to. Officers pick a
+   * record, never a raw UUID, and the backend still validates control/target
+   * compatibility at command time.
+   */
+  const targetOptions = [
+    technical.claim_id
+      ? { type: 'CLAIM', id: technical.claim_id, reference: header.claim_reference,
+        label: `Claim ${header.claim_reference ?? technical.claim_id}` }
+      : null,
+    technical.award_id
+      ? { type: 'AWARD', id: technical.award_id, reference: header.award_reference,
+        label: `Award ${header.award_reference ?? technical.award_id}` }
+      : null,
+    technical.payment_id
+      ? { type: 'PAYMENT', id: technical.payment_id, reference: null, label: 'Scheduled payment' }
+      : null,
+    header.person_id !== null
+      ? { type: 'PERSON', id: String(header.person_id), reference: header.person_masked_identifier,
+        label: `Person ${header.person_name ?? header.person_masked_identifier ?? ''}`.trim() }
+      : null,
+    { type: 'ASSESSMENT', id: assessmentId, reference: header.assessment_reference,
+      label: `Assessment ${header.assessment_reference}` },
+  ].filter((t): t is NonNullable<typeof t> => t !== null);
+
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
