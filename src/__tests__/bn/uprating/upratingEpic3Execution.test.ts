@@ -456,7 +456,7 @@ describe('Epic 3 — operational surfaces', () => {
     expect(executionQueue).toContain('fetchUpratingExecutionQueue');
     expect(executionQueue).toContain('Execution queue');
     expect(page).toContain('BnUpratingExecutionQueue');
-    expect(page).toContain('value="execution"');
+    expect(page).toContain('path="execution"');
   });
 
   it('never reports a failed queue load as an empty queue', () => {

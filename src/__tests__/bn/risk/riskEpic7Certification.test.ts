@@ -335,18 +335,15 @@ describe('Epic 7 — operations, reporting and navigation closure', () => {
     for (const route of ['signals', 'assessments', 'controls', 'reporting', 'configuration']) {
       expect(page, `missing route ${route}`).toContain(`path="${route}"`);
     }
-    // Control decision, execution and outcome work lives on the controls route.
-    for (const stage of ['decisions', 'execution', 'outcomes']) {
-      expect(page, `missing control stage ${stage}`).toContain(`value="${stage}"`);
+    // Control decision, execution and outcome work are separate screens.
+    for (const stage of ['control-decisions', 'control-execution', 'outcomes']) {
+      expect(page, `missing control screen ${stage}`).toContain(`path="${stage}"`);
     }
   });
 
   it('deep-links every operational card key to an existing queue tab', () => {
-    for (const k of ['signals', 'assessments', 'controls']) {
+    for (const k of ['signals', 'assessments', 'control-decisions', 'control-execution', 'outcomes']) {
       expect(page).toContain(`path="${k}"`);
-    }
-    for (const k of ['decisions', 'execution', 'outcomes']) {
-      expect(page).toContain(`value="${k}"`);
     }
   });
 

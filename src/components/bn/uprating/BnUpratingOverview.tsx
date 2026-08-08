@@ -52,14 +52,14 @@ export const UPRATING_OVERVIEW_TILES: readonly {
     label: 'In execution',
     description: 'Batches applying the approved result',
     statuses: ['EXECUTING', 'PARTIALLY_EXECUTED', 'EXECUTED'],
-    destination: '/bn/uprating/operations?stage=execution',
+    destination: '/bn/uprating/execution',
   },
   {
     id: 'post_execution',
     label: 'Post-execution',
     description: 'Rebuilds, notices, reconciliation and rollback',
     statuses: ['REBUILDING', 'NOTIFYING', 'RECONCILING', 'RECONCILED', 'ROLLING_BACK', 'ROLLED_BACK'],
-    destination: '/bn/uprating/operations?stage=operations',
+    destination: '/bn/uprating/post-execution',
   },
 ];
 

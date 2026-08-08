@@ -7,7 +7,8 @@
  * Navigation is URL driven. Every destination and every assessment has a
  * stable, refresh-survivable address:
  *   /bn/means-tests                      module overview
- *   /bn/means-tests/assessments          find work (queues + search)
+ *   /bn/means-tests/assessments          operational queues
+ *   /bn/means-tests/search               search all assessments
  *   /bn/means-tests/verification         verification work
  *   /bn/means-tests/decisions            adjustment and approval work
  *   /bn/means-tests/reassessments        reassessment work
@@ -32,7 +33,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BnMeansDecisionQueue } from '@/components/bn/meansTests/decision/BnMeansDecisionQueue';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertTriangle, ClipboardList, Plus, ShieldAlert } from 'lucide-react';
@@ -55,7 +55,7 @@ import { BnMeansVerificationQueue } from '@/components/bn/meansTests/verificatio
 import { BnMeansReassessmentQueuePanel } from '@/components/bn/meansTests/lifecycle/BnMeansReassessmentQueue';
 import { BnMeansPolicyConfiguration } from '@/components/bn/meansTests/configuration/BnMeansPolicyConfiguration';
 import BnMeansOperationsWorkspace from '@/components/bn/meansTests/operations/BnMeansOperationsWorkspace';
-import { BnModuleBreadcrumbs, useBnWorkspaceSection } from '@/components/bn/ux';
+import { BnModuleBreadcrumbs } from '@/components/bn/ux';
 
 const STATUS_FILTERS = [
   'DRAFT', 'INFORMATION_PENDING', 'SUBMITTED', 'VERIFICATION_PENDING', 'CALCULATED',
@@ -102,6 +102,7 @@ function useOpenAssessment() {
 const MEANS_SCREEN_LABELS: Record<string, string> = {
   '': 'Overview',
   assessments: 'Assessments',
+  search: 'Search assessments',
   verification: 'Verification',
   decisions: 'Decisions',
   reassessments: 'Reassessments',
@@ -243,31 +244,23 @@ const MeansOverviewRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =
 // ---------------------------------------------------------------- assessments
 
 /**
- * FIND WORK. Operational queues and the searchable team work queue live on
- * one destination so an officer never hunts across tab bars.
+ * FIND WORK. Operational queues are their own screen; searching every
+ * assessment is a separate, directly addressable screen in the left nav.
  */
 const MeansAssessmentsRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const openAssessment = useOpenAssessment();
-  const [view, setView] = useBnWorkspaceSection('queues', 'view');
-
   return (
-    <Tabs value={view} onValueChange={(next) => setView(next, { replace: true })}>
-      <TabsList>
-        <TabsTrigger value="queues">Operational queues</TabsTrigger>
-        <TabsTrigger value="search">Search all assessments</TabsTrigger>
-      </TabsList>
-      <TabsContent value="queues" className="pt-4">
-        <BnMeansOperationsWorkspace
-          onOpen={(assessmentId, section) => openAssessment(assessmentId, section)}
-          canAssign={ctx.can('write')}
-          actionsEnabled={ctx.actionsEnabled}
-        />
-      </TabsContent>
-      <TabsContent value="search" className="pt-4">
-        <MeansTeamQueue onOpen={(id) => openAssessment(id)} />
-      </TabsContent>
-    </Tabs>
+    <BnMeansOperationsWorkspace
+      onOpen={(assessmentId, section) => openAssessment(assessmentId, section)}
+      canAssign={ctx.can('write')}
+      actionsEnabled={ctx.actionsEnabled}
+    />
   );
+};
+
+const MeansSearchRoute: React.FC = () => {
+  const openAssessment = useOpenAssessment();
+  return <MeansTeamQueue onOpen={(id) => openAssessment(id)} />;
 };
 
 // ------------------------------------------------------------ record workspace
@@ -459,6 +452,7 @@ export default function BnMeansTestsPage() {
           <Route element={<MeansModuleShell ctx={ctx} />}>
             <Route index element={<MeansOverviewRoute ctx={ctx} />} />
             <Route path="assessments" element={<MeansAssessmentsRoute ctx={ctx} />} />
+            <Route path="search" element={<MeansSearchRoute />} />
             <Route path="verification" element={<MeansVerificationRoute />} />
             <Route path="decisions" element={<MeansDecisionsRoute />} />
             <Route
