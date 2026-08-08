@@ -75,9 +75,9 @@ describe('Epic 2 — canonical catalogue certification', () => {
     expect(new Set(BN_UPRATING_CANONICAL_COMMANDS.map((c) => c.command)).size).toBe(17);
   });
 
-  it('reports 12 of 17 implemented after Epic 2 (5 + 4 + 3)', () => {
+  it('reports 14 of 17 implemented after Epic 3 (5 + 4 + 3 + 2)', () => {
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
-    expect(implemented).toHaveLength(12);
+    expect(implemented).toHaveLength(14);
     expect(BN_UPRATING_EPIC1_CANONICAL_COMMANDS).toHaveLength(4);
     expect(BN_UPRATING_EPIC2_CANONICAL_COMMANDS).toHaveLength(3);
   });
@@ -89,10 +89,8 @@ describe('Epic 2 — canonical catalogue certification', () => {
     }
   });
 
-  it('leaves the five execution-stage commands NOT_STARTED', () => {
+  it('leaves the three post-execution commands NOT_STARTED', () => {
     for (const command of [
-      'BN_UPRATING_EXECUTE_BATCH',
-      'BN_UPRATING_RETRY_FAILED',
       'BN_UPRATING_RECONCILE_RUN',
       'BN_UPRATING_ROLLBACK_ELIGIBLE',
       'BN_UPRATING_CLOSE_RUN',
@@ -686,10 +684,11 @@ describe('Epic 2 — award, payment, communication and Epic 3+ boundaries', () =
     }
   });
 
-  it('implements and calls no Epic 3 execution command', () => {
+  it('keeps the Epic 2 boundary and its own surfaces free of execution commands', () => {
+    const epic2Only = epic2Surfaces.filter((s) => s !== workspace);
     for (const command of ['BN_UPRATING_EXECUTE_BATCH', 'BN_UPRATING_RETRY_FAILED']) {
       expect(epic2Sql).not.toContain(command);
-      for (const source of epic2Surfaces) {
+      for (const source of epic2Only) {
         expect(source).not.toContain(command);
       }
     }
