@@ -118,7 +118,22 @@ const OverpaymentRecovery: React.FC = () => {
     held: rows.filter((r) => r.status === 'ON_APPEAL_HOLD' || r.status === 'SUSPENDED').length,
   }), [rows]);
 
-  const openCase = async (row: BnOverpaymentWorklistRow) => {
+  const setOpenCaseId = useCallback(
+    (caseId: string | null) => {
+      setCaseParam(
+        (current) => {
+          const updated = new URLSearchParams(current);
+          if (caseId) updated.set('case', caseId);
+          else updated.delete('case');
+          return updated;
+        },
+        { replace: !caseId },
+      );
+    },
+    [setCaseParam],
+  );
+
+  const openCase = useCallback(async (row: BnOverpaymentWorklistRow) => {
     setSelected(row);
     setCommandError(null);
     setActions([]);
@@ -128,7 +143,21 @@ const OverpaymentRecovery: React.FC = () => {
     } catch {
       setActions([]);
     }
-  };
+  }, []);
+
+  /**
+   * Restore the open case from the URL once the worklist is available. The
+   * record is only ever rendered from server data, never from the URL alone.
+   */
+  useEffect(() => {
+    if (!openCaseId) {
+      setSelected(null);
+      return;
+    }
+    if (selected?.case_id === openCaseId) return;
+    const row = rows.find((r) => r.case_id === openCaseId);
+    if (row) void openCase(row);
+  }, [openCaseId, rows, selected?.case_id, openCase]);
 
   const can = (action: string) => actions.some((a) => a.action === action && a.allowed);
 
