@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils';
 export interface BnWorkflowNavStep {
   readonly id: string;
   readonly label: string;
-  readonly to: string;
+  /** Omitted when the workspace is not routed; then onSelect is used. */
+  readonly to?: string;
   readonly badge?: React.ReactNode;
 }
 
@@ -29,13 +30,21 @@ interface Props {
   readonly activeStepId: string;
   readonly ariaLabel: string;
   readonly className?: string;
+  /** Fallback for non-routed workspaces, or steps without an address. */
+  readonly onSelect?: (stepId: string) => void;
 }
+
+const STEP_CLASS =
+  'flex min-h-9 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+const ACTIVE_CLASS = 'bg-primary text-primary-foreground font-medium';
+const IDLE_CLASS = 'text-muted-foreground hover:bg-muted hover:text-foreground';
 
 export const BnWorkflowSideNav: React.FC<Props> = ({
   groups,
   activeStepId,
   ariaLabel,
   className,
+  onSelect,
 }) => (
   <nav
     aria-label={ariaLabel}
@@ -56,21 +65,28 @@ export const BnWorkflowSideNav: React.FC<Props> = ({
               const isActive = step.id === activeStepId;
               return (
                 <li key={step.id}>
-                  <NavLink
-                    to={step.to}
-                    aria-current={isActive ? 'step' : undefined}
-                    data-testid={`bn-workflow-step-${step.id}`}
-                    className={cn(
-                      'flex min-h-9 w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      isActive
-                        ? 'bg-primary text-primary-foreground font-medium'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
-                  >
-                    <span className="truncate">{step.label}</span>
-                    {step.badge}
-                  </NavLink>
+                  {step.to ? (
+                    <NavLink
+                      to={step.to}
+                      aria-current={isActive ? 'step' : undefined}
+                      data-testid={`bn-workflow-step-${step.id}`}
+                      className={cn(STEP_CLASS, isActive ? ACTIVE_CLASS : IDLE_CLASS)}
+                    >
+                      <span className="truncate">{step.label}</span>
+                      {step.badge}
+                    </NavLink>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onSelect?.(step.id)}
+                      aria-current={isActive ? 'step' : undefined}
+                      data-testid={`bn-workflow-step-${step.id}`}
+                      className={cn(STEP_CLASS, isActive ? ACTIVE_CLASS : IDLE_CLASS)}
+                    >
+                      <span className="truncate">{step.label}</span>
+                      {step.badge}
+                    </button>
+                  )}
                 </li>
               );
             })}
