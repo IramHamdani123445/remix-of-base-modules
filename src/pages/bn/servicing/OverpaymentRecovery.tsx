@@ -350,10 +350,11 @@ const OverpaymentRecovery: React.FC = () => {
           Back to overpayment worklist
         </Button>
         <BnDataState
-          status={caseLoading ? 'loading' : caseError ? 'error' : 'loading'}
-          errorMessage={caseError ?? undefined}
-          onRetry={() => { setSelected(null); setCaseError(null); void load(); }}
-          loadingLabel="Loading overpayment case…"
+          state={caseError ? 'error' : 'loading'}
+          errorTitle="This overpayment case could not be opened"
+          errorDetail={caseError}
+          onRetry={() => { setCaseError(null); setSelected(null); void load(); }}
+          testId="bn-overpayment-case"
         />
       </div>
     );
