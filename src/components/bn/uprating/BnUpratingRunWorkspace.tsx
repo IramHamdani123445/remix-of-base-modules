@@ -157,6 +157,20 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
     enabled: !!selectedRunId && !!run?.current_simulation_id,
   });
 
+  const approvalQuery = useQuery({
+    queryKey: ['bn-uprating-run-approval', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingRunApproval(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+  const approvalView = approvalQuery.data?.data ?? null;
+
+  const scheduleQuery = useQuery({
+    queryKey: ['bn-uprating-run-schedule', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingScheduleReadiness(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+  const scheduleReadiness = scheduleQuery.data?.data ?? null;
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['bn-uprating-runs'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-run'] });
@@ -164,7 +178,12 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
     qc.invalidateQueries({ queryKey: ['bn-uprating-run-population'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-run-exceptions'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-simulation'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-run-approval'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-run-schedule'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-approval-queue'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-scheduled-queue'] });
   };
+
 
   const command = useMutation({
     mutationFn: executeUpratingRunCommand,
