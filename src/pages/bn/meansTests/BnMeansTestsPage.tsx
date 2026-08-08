@@ -306,23 +306,44 @@ const MeansTeamQueue: React.FC<{ onOpen: (assessmentId: string) => void }> = ({ 
 
   const rows = (queue.data?.status === 'OK' ? queue.data.data ?? [] : []) as readonly BnMeansWorkQueueRow[];
 
+  const hasFilters = Boolean(
+    search || filters.status || filters.benefit_programme || filters.reassessment_due_before,
+  );
+
+  const state = queue.isLoading
+    ? 'loading'
+    : queue.data?.status === 'DENIED'
+      ? 'denied'
+      : queue.isError || (queue.data && queue.data.status !== 'OK')
+        ? 'error'
+        : rows.length === 0
+          ? 'empty'
+          : 'ready';
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>Narrow the team work queue.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>Team work queue</CardTitle>
+        <CardDescription>
+          {queue.data?.status === 'OK'
+            ? `${queue.data.totalCount ?? rows.length} assessment(s)`
+            : 'Assessment count is unavailable until the queue loads.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <BnFilterBar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by reference, e.g. MT-2026-…"
+          searchLabel="Search Means-Test assessments"
+          hasFilters={hasFilters}
+          onClear={() => { setSearch(''); setFilters({}); }}
+        >
           <div className="space-y-1">
-            <Label htmlFor="mt-search">Reference search</Label>
-            <Input id="mt-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="MT-2026-…" />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="mt-status">Status</Label>
+            <Label htmlFor="mt-status" className="sr-only">Status</Label>
             <select
               id="mt-status"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm sm:w-48"
               value={filters.status ?? ''}
               onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value || undefined }))}
             >
@@ -333,90 +354,81 @@ const MeansTeamQueue: React.FC<{ onOpen: (assessmentId: string) => void }> = ({ 
             </select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="mt-programme">Benefit programme</Label>
+            <Label htmlFor="mt-programme" className="sr-only">Benefit programme</Label>
             <Input
               id="mt-programme"
+              className="sm:w-48"
+              placeholder="Benefit programme"
               value={filters.benefit_programme ?? ''}
               onChange={(e) => setFilters((f) => ({ ...f, benefit_programme: e.target.value || undefined }))}
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="mt-reassess">Reassessment due before</Label>
+            <Label htmlFor="mt-reassess" className="text-xs text-muted-foreground">
+              Reassessment due before
+            </Label>
             <Input
               id="mt-reassess"
               type="date"
+              className="sm:w-44"
               value={filters.reassessment_due_before ?? ''}
               onChange={(e) => setFilters((f) => ({ ...f, reassessment_due_before: e.target.value || undefined }))}
             />
           </div>
-        </CardContent>
-      </Card>
+        </BnFilterBar>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Team work queue</CardTitle>
-          <CardDescription>
-            {queue.data?.status === 'OK'
-              ? `${queue.data.totalCount ?? rows.length} assessment(s)`
-              : 'Assessment count is unavailable until the queue loads.'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {queue.isLoading ? (
-            <Skeleton className="h-40 w-full" />
-          ) : queue.data && queue.data.status === 'DENIED' ? (
-            <Alert variant="destructive" data-testid="means-team-queue-denied">
-              <ShieldAlert className="h-4 w-4" />
-              <AlertTitle>Access denied</AlertTitle>
-              <AlertDescription>You do not hold read permission for Means-Test assessments.</AlertDescription>
-            </Alert>
-          ) : queue.isError || (queue.data && queue.data.status !== 'OK') ? (
-            <Alert variant="destructive" data-testid="means-team-queue-failed">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>The work queue could not be loaded</AlertTitle>
-              <AlertDescription>{queue.data?.detail ?? queue.data?.code ?? 'Unknown error'}</AlertDescription>
-            </Alert>
-          ) : rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No assessments match the current filters.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Reference</TableHead>
-                  <TableHead>Programme</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Effective from</TableHead>
-                  <TableHead>Missing info</TableHead>
-                  <TableHead>Evidence</TableHead>
-                  <TableHead />
+        <BnDataState
+          state={state}
+          testId="means-team-queue"
+          deniedMessage="You do not hold read permission for Means-Test assessments."
+          errorTitle="The work queue could not be loaded"
+          errorDetail={queue.data?.detail ?? queue.data?.code ?? null}
+          onRetry={() => void queue.refetch()}
+          emptyTitle="No assessments found"
+          emptyMessage={
+            hasFilters
+              ? 'No assessments match the current filters. Clear the filters to see the full queue.'
+              : 'No Means-Test assessments have been created yet.'
+          }
+        >
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reference</TableHead>
+                <TableHead>Programme</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Effective from</TableHead>
+                <TableHead>Missing info</TableHead>
+                <TableHead>Evidence</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.assessment_id}>
+                  <TableCell className="font-medium">{row.assessment_reference}</TableCell>
+                  <TableCell>{humaniseMeansCode(row.benefit_programme)}</TableCell>
+                  <TableCell>{humaniseMeansCode(row.assessment_reason)}</TableCell>
+                  <TableCell><Badge variant="outline">{humaniseMeansCode(row.status)}</Badge></TableCell>
+                  <TableCell>{row.effective_from}</TableCell>
+                  <TableCell>{row.open_information_requests > 0 ? `${row.open_information_requests} open` : '—'}</TableCell>
+                  <TableCell>{row.evidence_count}</TableCell>
+                  <TableCell className="text-right">
+                    <Button size="sm" variant="ghost" onClick={() => onOpen(row.assessment_id)}>
+                      Open
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row) => (
-                  <TableRow key={row.assessment_id}>
-                    <TableCell className="font-medium">{row.assessment_reference}</TableCell>
-                    <TableCell>{humaniseMeansCode(row.benefit_programme)}</TableCell>
-                    <TableCell>{humaniseMeansCode(row.assessment_reason)}</TableCell>
-                    <TableCell><Badge variant="outline">{humaniseMeansCode(row.status)}</Badge></TableCell>
-                    <TableCell>{row.effective_from}</TableCell>
-                    <TableCell>{row.open_information_requests > 0 ? `${row.open_information_requests} open` : '—'}</TableCell>
-                    <TableCell>{row.evidence_count}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="sm" variant="ghost" onClick={() => onOpen(row.assessment_id)}>
-                        Open
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+              ))}
+            </TableBody>
+          </Table>
+        </BnDataState>
+      </CardContent>
+    </Card>
   );
 };
+
 
 /** Permission-scoped destination: the nav hides it, the route refuses it. */
 const MeansPermissionBoundary: React.FC<{
