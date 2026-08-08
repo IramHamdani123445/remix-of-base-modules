@@ -53,7 +53,13 @@ export type BnRiskReferenceDomain =
   | 'REQUEST_CHANNEL'
   | 'REQUEST_RECIPIENT_KIND'
   | 'REQUEST_STATUS'
-  | 'RESPONSE_OUTCOME';
+  | 'RESPONSE_OUTCOME'
+  // Epic 5 — outcome, closure and exceptional reopening domains.
+  | 'OUTCOME_REASON'
+  | 'OUTCOME_DISPOSITION'
+  | 'OUTCOME_CORRECTION_REASON'
+  | 'CLOSURE_REASON'
+  | 'REOPEN_REASON';
 
 export interface BnRiskReferenceItem {
   readonly code: string;
