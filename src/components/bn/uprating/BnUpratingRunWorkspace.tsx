@@ -706,6 +706,35 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="approval" className="pt-4">
+              <BnUpratingRunApprovalSection
+                view={approvalView}
+                isLoading={approvalQuery.isLoading}
+                isError={approvalQuery.isError || approvalQuery.data?.status === 'ERROR'}
+                onRetry={() => approvalQuery.refetch()}
+                submitAction={action('BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL')}
+                decideAction={action('BN_UPRATING_APPROVE_RUN')}
+                onSubmitForApproval={() => setSubmitOpen(true)}
+                onRecordDecision={() => setDecisionOpen(true)}
+              />
+            </TabsContent>
+
+            <TabsContent value="execution" className="pt-4">
+              <BnUpratingExecutionScheduleSection
+                readiness={scheduleReadiness}
+                schedules={approvalView?.schedules ?? []}
+                isLoading={scheduleQuery.isLoading}
+                isError={scheduleQuery.isError || scheduleQuery.data?.status === 'ERROR'}
+                onRetry={() => scheduleQuery.refetch()}
+                scheduleAction={action('BN_UPRATING_SCHEDULE_EXECUTION')}
+                rescheduleAction={action('BN_UPRATING_RESCHEDULE_EXECUTION')}
+                cancelAction={action('BN_UPRATING_CANCEL_EXECUTION_SCHEDULE')}
+                onSchedule={() => setScheduleMode('SCHEDULE')}
+                onReschedule={() => setScheduleMode('RESCHEDULE')}
+                onCancel={() => setCancelOpen(true)}
+              />
+            </TabsContent>
           </Tabs>
 
         </>
@@ -718,6 +747,62 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
         isSaving={command.isPending}
         onSubmit={resolveException}
       />
+
+      <BnUpratingSubmitForApprovalDialog
+        open={submitOpen}
+        onOpenChange={setSubmitOpen}
+        readiness={approvalView?.approval_readiness ?? null}
+        isSaving={command.isPending}
+        onSubmit={submitForApproval}
+      />
+
+      <BnUpratingApprovalDecisionDialog
+        open={decisionOpen}
+        onOpenChange={setDecisionOpen}
+        pkg={approvalView?.current_package ?? null}
+        isSaving={command.isPending}
+        onSubmit={recordDecision}
+      />
+
+      <BnUpratingScheduleExecutionDialog
+        open={scheduleMode !== null}
+        onOpenChange={(open) => !open && setScheduleMode(null)}
+        readiness={scheduleReadiness}
+        mode={scheduleMode ?? 'SCHEDULE'}
+        isSaving={command.isPending}
+        onSubmit={submitSchedule}
+      />
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel execution schedule</DialogTitle>
+            <DialogDescription>
+              The schedule is retained in history with your reason. Nothing has executed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="uprating-cancel-reason">Reason</Label>
+            <Textarea
+              id="uprating-cancel-reason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={command.isPending}>
+              Keep schedule
+            </Button>
+            <Button
+              onClick={cancelSchedule}
+              disabled={command.isPending || cancelReason.trim().length === 0}
+            >
+              Cancel schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
