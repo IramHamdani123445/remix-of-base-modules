@@ -27986,6 +27986,109 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_uprating_communication_intent: {
+        Row: {
+          accepted_at: string | null
+          attempts: number
+          award_id: string | null
+          award_reference: string
+          communication_request_id: string | null
+          context: Json
+          correlation_id: string | null
+          created_at: string
+          dispatch_key: string
+          event_code: string
+          execution_item_id: string
+          failure_code: string | null
+          failure_reason: string | null
+          hub_delivery_status: string | null
+          hub_status: string | null
+          intent_id: string
+          intent_kind: string
+          is_retryable: boolean
+          requested_at: string | null
+          run_id: string
+          session_id: string
+          status: string
+          template_mapping_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          attempts?: number
+          award_id?: string | null
+          award_reference: string
+          communication_request_id?: string | null
+          context?: Json
+          correlation_id?: string | null
+          created_at?: string
+          dispatch_key: string
+          event_code: string
+          execution_item_id: string
+          failure_code?: string | null
+          failure_reason?: string | null
+          hub_delivery_status?: string | null
+          hub_status?: string | null
+          intent_id?: string
+          intent_kind?: string
+          is_retryable?: boolean
+          requested_at?: string | null
+          run_id: string
+          session_id: string
+          status?: string
+          template_mapping_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          attempts?: number
+          award_id?: string | null
+          award_reference?: string
+          communication_request_id?: string | null
+          context?: Json
+          correlation_id?: string | null
+          created_at?: string
+          dispatch_key?: string
+          event_code?: string
+          execution_item_id?: string
+          failure_code?: string | null
+          failure_reason?: string | null
+          hub_delivery_status?: string | null
+          hub_status?: string | null
+          intent_id?: string
+          intent_kind?: string
+          is_retryable?: boolean
+          requested_at?: string | null
+          run_id?: string
+          session_id?: string
+          status?: string
+          template_mapping_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_communication_intent_execution_item_id_fkey"
+            columns: ["execution_item_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_item"
+            referencedColumns: ["execution_item_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_communication_intent_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_communication_intent_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_session"
+            referencedColumns: ["session_id"]
+          },
+        ]
+      }
       bn_uprating_exception_policy: {
         Row: {
           allowed_resolutions: string[]
@@ -29036,6 +29139,187 @@ export type Database = {
           },
         ]
       }
+      bn_uprating_reconciliation: {
+        Row: {
+          actual_applied_item_count: number
+          actual_delta_total_minor: number
+          actual_executed_item_count: number
+          actual_failed_item_count: number
+          actual_new_total_minor: number
+          actual_prior_total_minor: number
+          blocking_finding_count: number
+          communication_delivered_count: number
+          communication_failed_count: number
+          communication_pending_count: number
+          communication_requested_count: number
+          communication_required_count: number
+          correlation_id: string | null
+          created_at: string
+          expected_current_total_minor: number
+          expected_delta_total_minor: number
+          expected_item_count: number
+          expected_proposed_total_minor: number
+          finance_confirmation_available: boolean
+          finding_count: number
+          idempotency_key: string | null
+          is_current: boolean
+          package_id: string | null
+          performed_at: string
+          performed_by: string
+          performed_by_name: string | null
+          reconciliation_id: string
+          reconciliation_no: number
+          run_id: string
+          schedule_completed_count: number
+          schedule_failed_count: number
+          schedule_pending_count: number
+          schedule_required_count: number
+          session_id: string | null
+          status: string
+          tolerance_amount_minor: number
+          variance_amount_minor: number
+          variance_count: number
+        }
+        Insert: {
+          actual_applied_item_count?: number
+          actual_delta_total_minor?: number
+          actual_executed_item_count?: number
+          actual_failed_item_count?: number
+          actual_new_total_minor?: number
+          actual_prior_total_minor?: number
+          blocking_finding_count?: number
+          communication_delivered_count?: number
+          communication_failed_count?: number
+          communication_pending_count?: number
+          communication_requested_count?: number
+          communication_required_count?: number
+          correlation_id?: string | null
+          created_at?: string
+          expected_current_total_minor?: number
+          expected_delta_total_minor?: number
+          expected_item_count?: number
+          expected_proposed_total_minor?: number
+          finance_confirmation_available?: boolean
+          finding_count?: number
+          idempotency_key?: string | null
+          is_current?: boolean
+          package_id?: string | null
+          performed_at?: string
+          performed_by: string
+          performed_by_name?: string | null
+          reconciliation_id?: string
+          reconciliation_no: number
+          run_id: string
+          schedule_completed_count?: number
+          schedule_failed_count?: number
+          schedule_pending_count?: number
+          schedule_required_count?: number
+          session_id?: string | null
+          status: string
+          tolerance_amount_minor?: number
+          variance_amount_minor?: number
+          variance_count?: number
+        }
+        Update: {
+          actual_applied_item_count?: number
+          actual_delta_total_minor?: number
+          actual_executed_item_count?: number
+          actual_failed_item_count?: number
+          actual_new_total_minor?: number
+          actual_prior_total_minor?: number
+          blocking_finding_count?: number
+          communication_delivered_count?: number
+          communication_failed_count?: number
+          communication_pending_count?: number
+          communication_requested_count?: number
+          communication_required_count?: number
+          correlation_id?: string | null
+          created_at?: string
+          expected_current_total_minor?: number
+          expected_delta_total_minor?: number
+          expected_item_count?: number
+          expected_proposed_total_minor?: number
+          finance_confirmation_available?: boolean
+          finding_count?: number
+          idempotency_key?: string | null
+          is_current?: boolean
+          package_id?: string | null
+          performed_at?: string
+          performed_by?: string
+          performed_by_name?: string | null
+          reconciliation_id?: string
+          reconciliation_no?: number
+          run_id?: string
+          schedule_completed_count?: number
+          schedule_failed_count?: number
+          schedule_pending_count?: number
+          schedule_required_count?: number
+          session_id?: string | null
+          status?: string
+          tolerance_amount_minor?: number
+          variance_amount_minor?: number
+          variance_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_reconciliation_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      bn_uprating_reconciliation_finding: {
+        Row: {
+          actual_value: string | null
+          created_at: string
+          detail: string | null
+          expected_value: string | null
+          finding_code: string
+          finding_id: string
+          reconciliation_id: string
+          run_id: string
+          severity: string
+          subject_reference: string | null
+          subject_type: string | null
+        }
+        Insert: {
+          actual_value?: string | null
+          created_at?: string
+          detail?: string | null
+          expected_value?: string | null
+          finding_code: string
+          finding_id?: string
+          reconciliation_id: string
+          run_id: string
+          severity?: string
+          subject_reference?: string | null
+          subject_type?: string | null
+        }
+        Update: {
+          actual_value?: string | null
+          created_at?: string
+          detail?: string | null
+          expected_value?: string | null
+          finding_code?: string
+          finding_id?: string
+          reconciliation_id?: string
+          run_id?: string
+          severity?: string
+          subject_reference?: string | null
+          subject_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_reconciliation_finding_reconciliation_id_fkey"
+            columns: ["reconciliation_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_reconciliation"
+            referencedColumns: ["reconciliation_id"]
+          },
+        ]
+      }
       bn_uprating_reference_value: {
         Row: {
           code: string
@@ -29066,6 +29350,185 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_uprating_rollback_item: {
+        Row: {
+          applied_amount_minor: number
+          attempt_no: number
+          award_id: string | null
+          award_reference: string
+          blocker_code: string | null
+          blocker_reason: string | null
+          compensating_rate_history_id: string | null
+          completed_at: string | null
+          correlation_id: string | null
+          created_at: string
+          eligibility_status: string
+          execution_item_id: string
+          expected_row_version: number | null
+          failure_code: string | null
+          failure_reason: string | null
+          observed_row_version: number | null
+          request_key: string
+          restore_amount_minor: number
+          rollback_id: string
+          rollback_item_id: string
+          run_id: string
+          status: string
+        }
+        Insert: {
+          applied_amount_minor: number
+          attempt_no?: number
+          award_id?: string | null
+          award_reference: string
+          blocker_code?: string | null
+          blocker_reason?: string | null
+          compensating_rate_history_id?: string | null
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          eligibility_status?: string
+          execution_item_id: string
+          expected_row_version?: number | null
+          failure_code?: string | null
+          failure_reason?: string | null
+          observed_row_version?: number | null
+          request_key: string
+          restore_amount_minor: number
+          rollback_id: string
+          rollback_item_id?: string
+          run_id: string
+          status?: string
+        }
+        Update: {
+          applied_amount_minor?: number
+          attempt_no?: number
+          award_id?: string | null
+          award_reference?: string
+          blocker_code?: string | null
+          blocker_reason?: string | null
+          compensating_rate_history_id?: string | null
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          eligibility_status?: string
+          execution_item_id?: string
+          expected_row_version?: number | null
+          failure_code?: string | null
+          failure_reason?: string | null
+          observed_row_version?: number | null
+          request_key?: string
+          restore_amount_minor?: number
+          rollback_id?: string
+          rollback_item_id?: string
+          run_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_rollback_item_execution_item_id_fkey"
+            columns: ["execution_item_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_item"
+            referencedColumns: ["execution_item_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_rollback_item_rollback_id_fkey"
+            columns: ["rollback_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_rollback_operation"
+            referencedColumns: ["rollback_id"]
+          },
+        ]
+      }
+      bn_uprating_rollback_operation: {
+        Row: {
+          applied_item_count: number
+          assessed_at: string
+          assessed_by: string
+          assessed_by_name: string | null
+          authorised_at: string | null
+          authorised_by: string | null
+          authorised_by_name: string | null
+          compensated_count: number
+          compensated_delta_minor: number
+          completed_at: string | null
+          correlation_id: string | null
+          created_at: string
+          eligible_count: number
+          failed_count: number
+          ineligible_count: number
+          justification: string | null
+          reason_code: string | null
+          rollback_id: string
+          rollback_no: number
+          row_version: number
+          run_id: string
+          session_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applied_item_count?: number
+          assessed_at?: string
+          assessed_by: string
+          assessed_by_name?: string | null
+          authorised_at?: string | null
+          authorised_by?: string | null
+          authorised_by_name?: string | null
+          compensated_count?: number
+          compensated_delta_minor?: number
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          eligible_count?: number
+          failed_count?: number
+          ineligible_count?: number
+          justification?: string | null
+          reason_code?: string | null
+          rollback_id?: string
+          rollback_no: number
+          row_version?: number
+          run_id: string
+          session_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applied_item_count?: number
+          assessed_at?: string
+          assessed_by?: string
+          assessed_by_name?: string | null
+          authorised_at?: string | null
+          authorised_by?: string | null
+          authorised_by_name?: string | null
+          compensated_count?: number
+          compensated_delta_minor?: number
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          eligible_count?: number
+          failed_count?: number
+          ineligible_count?: number
+          justification?: string | null
+          reason_code?: string | null
+          rollback_id?: string
+          rollback_no?: number
+          row_version?: number
+          run_id?: string
+          session_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_rollback_operation_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
       bn_uprating_run: {
         Row: {
           applied_delta_total_minor: number
@@ -29074,6 +29537,7 @@ export type Database = {
           approved_by: string | null
           approved_by_name: string | null
           calculation_basis: string
+          communications_issued_at: string | null
           correlation_id: string | null
           country_code: string | null
           created_at: string
@@ -29082,6 +29546,8 @@ export type Database = {
           current_approval_id: string | null
           current_approval_package_id: string | null
           current_execution_session_id: string | null
+          current_reconciliation_id: string | null
+          current_rollback_id: string | null
           current_schedule_id: string | null
           current_simulation_id: string | null
           current_simulation_version: number | null
@@ -29089,7 +29555,9 @@ export type Database = {
           current_snapshot_version: number | null
           executed_item_count: number
           execution_completed_at: string | null
+          execution_finalised_at: string | null
           execution_started_at: string | null
+          failed_at: string | null
           failed_item_count: number
           frozen_applicability: Json
           frozen_effective_from: string | null
@@ -29109,10 +29577,13 @@ export type Database = {
           parameterised_by: string | null
           policy_id: string
           policy_version_id: string
+          reconciled_at: string | null
+          rolled_back_at: string | null
           row_version: number
           run_id: string
           run_name: string | null
           run_reference: string
+          schedules_rebuilt_at: string | null
           scope_award_component_code: string | null
           scope_award_type_code: string | null
           scope_description: string | null
@@ -29130,6 +29601,7 @@ export type Database = {
           approved_by?: string | null
           approved_by_name?: string | null
           calculation_basis?: string
+          communications_issued_at?: string | null
           correlation_id?: string | null
           country_code?: string | null
           created_at?: string
@@ -29138,6 +29610,8 @@ export type Database = {
           current_approval_id?: string | null
           current_approval_package_id?: string | null
           current_execution_session_id?: string | null
+          current_reconciliation_id?: string | null
+          current_rollback_id?: string | null
           current_schedule_id?: string | null
           current_simulation_id?: string | null
           current_simulation_version?: number | null
@@ -29145,7 +29619,9 @@ export type Database = {
           current_snapshot_version?: number | null
           executed_item_count?: number
           execution_completed_at?: string | null
+          execution_finalised_at?: string | null
           execution_started_at?: string | null
+          failed_at?: string | null
           failed_item_count?: number
           frozen_applicability?: Json
           frozen_effective_from?: string | null
@@ -29165,10 +29641,13 @@ export type Database = {
           parameterised_by?: string | null
           policy_id: string
           policy_version_id: string
+          reconciled_at?: string | null
+          rolled_back_at?: string | null
           row_version?: number
           run_id?: string
           run_name?: string | null
           run_reference: string
+          schedules_rebuilt_at?: string | null
           scope_award_component_code?: string | null
           scope_award_type_code?: string | null
           scope_description?: string | null
@@ -29186,6 +29665,7 @@ export type Database = {
           approved_by?: string | null
           approved_by_name?: string | null
           calculation_basis?: string
+          communications_issued_at?: string | null
           correlation_id?: string | null
           country_code?: string | null
           created_at?: string
@@ -29194,6 +29674,8 @@ export type Database = {
           current_approval_id?: string | null
           current_approval_package_id?: string | null
           current_execution_session_id?: string | null
+          current_reconciliation_id?: string | null
+          current_rollback_id?: string | null
           current_schedule_id?: string | null
           current_simulation_id?: string | null
           current_simulation_version?: number | null
@@ -29201,7 +29683,9 @@ export type Database = {
           current_snapshot_version?: number | null
           executed_item_count?: number
           execution_completed_at?: string | null
+          execution_finalised_at?: string | null
           execution_started_at?: string | null
+          failed_at?: string | null
           failed_item_count?: number
           frozen_applicability?: Json
           frozen_effective_from?: string | null
@@ -29221,10 +29705,13 @@ export type Database = {
           parameterised_by?: string | null
           policy_id?: string
           policy_version_id?: string
+          reconciled_at?: string | null
+          rolled_back_at?: string | null
           row_version?: number
           run_id?: string
           run_name?: string | null
           run_reference?: string
+          schedules_rebuilt_at?: string | null
           scope_award_component_code?: string | null
           scope_award_type_code?: string | null
           scope_description?: string | null
@@ -29831,6 +30318,109 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_uprating_run_snapshot"
             referencedColumns: ["snapshot_id"]
+          },
+        ]
+      }
+      bn_uprating_schedule_rebuild: {
+        Row: {
+          applied_amount_minor: number
+          attempt_no: number
+          award_id: string | null
+          award_rate_history_id: string | null
+          award_reference: string
+          correlation_id: string | null
+          created_at: string
+          effective_date: string
+          execution_item_id: string
+          failure_code: string | null
+          failure_reason: string | null
+          is_retryable: boolean
+          package_id: string | null
+          processed_at: string | null
+          rebuild_id: string
+          request_key: string
+          requested_at: string
+          run_id: string
+          schedule_owner: string
+          schedule_reference: string | null
+          schedule_rows_rebuilt: number
+          session_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applied_amount_minor: number
+          attempt_no?: number
+          award_id?: string | null
+          award_rate_history_id?: string | null
+          award_reference: string
+          correlation_id?: string | null
+          created_at?: string
+          effective_date: string
+          execution_item_id: string
+          failure_code?: string | null
+          failure_reason?: string | null
+          is_retryable?: boolean
+          package_id?: string | null
+          processed_at?: string | null
+          rebuild_id?: string
+          request_key: string
+          requested_at?: string
+          run_id: string
+          schedule_owner?: string
+          schedule_reference?: string | null
+          schedule_rows_rebuilt?: number
+          session_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applied_amount_minor?: number
+          attempt_no?: number
+          award_id?: string | null
+          award_rate_history_id?: string | null
+          award_reference?: string
+          correlation_id?: string | null
+          created_at?: string
+          effective_date?: string
+          execution_item_id?: string
+          failure_code?: string | null
+          failure_reason?: string | null
+          is_retryable?: boolean
+          package_id?: string | null
+          processed_at?: string | null
+          rebuild_id?: string
+          request_key?: string
+          requested_at?: string
+          run_id?: string
+          schedule_owner?: string
+          schedule_reference?: string | null
+          schedule_rows_rebuilt?: number
+          session_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_schedule_rebuild_execution_item_id_fkey"
+            columns: ["execution_item_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_item"
+            referencedColumns: ["execution_item_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_schedule_rebuild_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_schedule_rebuild_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_session"
+            referencedColumns: ["session_id"]
           },
         ]
       }
@@ -112453,6 +113043,11 @@ export type Database = {
         Args: { p_base_minor: number; p_run_id: string }
         Returns: Json
       }
+      _bn_uprating_epic4_can_transition: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
+      }
+      _bn_uprating_epic4_config: { Args: never; Returns: Json }
       _bn_uprating_event: {
         Args: {
           p_actor: string
@@ -112478,14 +113073,26 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_uprating_execution_completion: {
+        Args: { p_run_id: string }
+        Returns: Json
+      }
       _bn_uprating_execution_config: { Args: never; Returns: Json }
       _bn_uprating_execution_readiness: {
+        Args: { p_actor: string; p_run_id: string }
+        Returns: Json
+      }
+      _bn_uprating_post_execution_readiness: {
         Args: { p_actor: string; p_run_id: string }
         Returns: Json
       }
       _bn_uprating_ref_label: {
         Args: { p_code: string; p_domain: string }
         Returns: string
+      }
+      _bn_uprating_request_communication: {
+        Args: { p_intent_id: string }
+        Returns: Json
       }
       _bn_uprating_require: {
         Args: { p_action: string; p_actor: string; p_mutation: boolean }
@@ -113081,6 +113688,19 @@ export type Database = {
           appeal_number: string
           row_version: number
         }[]
+      }
+      bn_award_apply_uprating_compensation_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_award_id: string
+          p_effective_date: string
+          p_expected_amount_minor: number
+          p_expected_row_version: number
+          p_reference: string
+          p_request_key: string
+          p_restore_amount_minor: number
+        }
+        Returns: Json
       }
       bn_award_reinstatement_approve_v1: {
         Args: {
@@ -114998,6 +115618,17 @@ export type Database = {
         Args: { p_case_id: string }
         Returns: Json
       }
+      bn_payment_schedule_rebuild_for_award_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_award_id: string
+          p_effective_date: string
+          p_request_key: string
+          p_source_module: string
+          p_source_reference: string
+        }
+        Returns: Json
+      }
       bn_product_can_activate: {
         Args: { _product_id: string }
         Returns: {
@@ -115415,6 +116046,10 @@ export type Database = {
       }
       bn_uprating_policy_validation_readiness_v1: {
         Args: { p_actor_user_id: string; p_policy_version_id: string }
+        Returns: Json
+      }
+      bn_uprating_post_execution_readiness_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
       }
       bn_uprating_reference_data_v1: {
