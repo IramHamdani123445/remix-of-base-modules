@@ -76,10 +76,15 @@ function accessLevelLabel(ctx: BnModuleAccessContext): string {
   return held.map((a) => humaniseMeansCode(a)).join(', ');
 }
 
-/** Route helper: an assessment always has one canonical address. */
+/**
+ * Route helper: an assessment always has one canonical address, and each
+ * workflow step of that assessment is its own routed screen.
+ */
+export const MEANS_DEFAULT_SECTION = 'context';
+
 export function meansAssessmentPath(assessmentId: string, section?: string | null): string {
-  const query = section ? `?section=${encodeURIComponent(section)}` : '';
-  return `${MEANS_MODULE_BASE}/assessments/${assessmentId}${query}`;
+  const step = section && section.trim() ? section.trim() : MEANS_DEFAULT_SECTION;
+  return `${MEANS_MODULE_BASE}/assessments/${assessmentId}/${encodeURIComponent(step)}`;
 }
 
 /** Hook used by every queue to open a record without losing its own URL. */
@@ -92,6 +97,32 @@ function useOpenAssessment() {
     [navigate],
   );
 }
+
+/** Screen-level "where am I", replacing the module-local tab bar. */
+const MEANS_SCREEN_LABELS: Record<string, string> = {
+  '': 'Overview',
+  assessments: 'Assessments',
+  verification: 'Verification',
+  decisions: 'Decisions',
+  reassessments: 'Reassessments',
+  configuration: 'Configuration',
+};
+
+const MeansBreadcrumbs: React.FC = () => {
+  const { pathname } = useLocation();
+  const tail = pathname.replace(MEANS_MODULE_BASE, '').replace(/^\/+|\/+$/g, '').split('/')[0] ?? '';
+  return (
+    <BnModuleBreadcrumbs
+      items={[
+        { label: 'Benefit Management' },
+        { label: 'Means-Test Assessments', to: MEANS_MODULE_BASE },
+        { label: MEANS_SCREEN_LABELS[tail] ?? 'Overview' },
+      ]}
+    />
+  );
+};
+
+
 
 // ---------------------------------------------------------------- module shell
 
