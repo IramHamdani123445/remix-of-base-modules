@@ -116056,6 +116056,15 @@ export type Database = {
         Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
       }
+      bn_uprating_operational_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
       bn_uprating_policy_actions_v1: {
         Args: { p_actor_user_id: string; p_policy_version_id: string }
         Returns: Json
