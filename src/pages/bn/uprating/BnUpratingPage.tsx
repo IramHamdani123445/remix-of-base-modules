@@ -46,19 +46,37 @@ function useOpenRun() {
 
 const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => (
   <div className="p-6 space-y-6">
-    <div className="flex items-center gap-3">
-      <TrendingUp className="h-6 w-6 text-primary" />
-      <h1 className="text-2xl font-semibold">Uprating</h1>
-      {ctx.rolloutState !== "public" && <Badge variant="secondary">Internal pilot</Badge>}
-    </div>
-    <p className="text-sm text-muted-foreground max-w-3xl">
-      Maintain the governed uprating policy catalogue, prepare uprating runs — population
-      snapshots, exception resolution and deterministic simulation — execute approved runs in
-      controlled batches, then complete the consequences: payment-schedule rebuilds, claimant
-      notices through the Communication Hub, reconciliation and, on the failure path,
-      controlled compensating rollback. Execution applies exactly what was approved;
-      no amount is recalculated at execution time.
-    </p>
+    <header className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex items-start gap-3">
+        <TrendingUp className="mt-1 h-6 w-6 text-primary" aria-hidden="true" />
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">Uprating &amp; Indexation</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Prepare, approve, execute and reconcile governed uprating runs that apply
+            approved benefit increases to live awards.
+          </p>
+          {ctx.rolloutState !== "public" && (
+            <div className="pt-1">
+              <Badge variant="secondary">Internal pilot</Badge>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
+
+    <details className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+      <summary className="cursor-pointer font-medium text-foreground">
+        How an uprating run works
+      </summary>
+      <p className="max-w-3xl pt-2">
+        Maintain the governed uprating policy catalogue, prepare runs — population
+        snapshots, exception resolution and deterministic simulation — execute approved
+        runs in controlled batches, then complete the consequences: payment-schedule
+        rebuilds, claimant notices through the Communication Hub, reconciliation and, on
+        the failure path, controlled compensating rollback. Execution applies exactly what
+        was approved; no amount is recalculated at execution time.
+      </p>
+    </details>
 
     <BnModuleSectionNav
       ariaLabel="Uprating destinations"

@@ -157,33 +157,14 @@ const RiskModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
 
 const RiskOverviewRoute: React.FC = () => {
   const navigate = useNavigate();
-  const counts = useQuery({
-    queryKey: ['bn-risk-signal-queue', 'counts'],
-    queryFn: async () => {
-      const result = await riskQueryService.signalQueue({}, 1, 1);
-      if (result.status !== 'OK' || !result.data) throw new Error(result.code ?? result.status);
-      return result.data.status_counts;
-    },
-  });
 
-  /** A failed count read is shown as unavailable, never as zero. */
-  const items: readonly BnQueueSummaryItem[] = OVERVIEW_TILES.map((tile) => ({
-    id: tile.code,
-    label: tile.label,
-    loading: counts.isLoading,
-    unavailable: counts.isError,
-    count: counts.isError ? undefined : counts.data?.[tile.code] ?? 0,
-    description: tile.code === 'NEW' ? 'Requires an officer decision' : 'In the risk pipeline',
-    onSelect: () => navigate(`${RISK_MODULE_BASE}/signals`),
-  }));
-
+  /**
+   * The operational position dashboard already carries every actionable queue
+   * (including new signals and awaiting triage) with backend-derived counts, so
+   * the module overview deliberately shows one queue set rather than two.
+   */
   return (
     <div className="space-y-6">
-      <BnQueueSummaryCards
-        ariaLabel="Signal pipeline"
-        items={items}
-        className="xl:grid-cols-5"
-      />
       <BnRiskOperationsDashboard
         onOpenQueue={(queue) => {
           /** Legacy queue codes map onto the consolidated destinations. */
