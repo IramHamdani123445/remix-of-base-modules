@@ -113082,6 +113082,43 @@ export type Database = {
         Args: { p_actor: string; p_run_id: string }
         Returns: Json
       }
+      _bn_uprating_latest_execution_items: {
+        Args: { p_run_id: string }
+        Returns: {
+          applied_amount_minor: number | null
+          applied_at: string | null
+          applied_delta_minor: number | null
+          applied_row_version: number | null
+          approved_amount_minor: number
+          approved_base_amount_minor: number
+          approved_delta_minor: number
+          attempt_no: number
+          award_component_code: string | null
+          award_id: string | null
+          award_rate_history_id: string | null
+          award_reference: string
+          batch_id: string
+          correlation_id: string | null
+          created_at: string
+          execution_item_id: string
+          expected_row_version: number | null
+          failure_code: string | null
+          failure_reason: string | null
+          is_retryable: boolean
+          observed_row_version: number | null
+          run_id: string
+          session_id: string
+          simulation_item_id: string
+          snapshot_item_id: string
+          status: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "bn_uprating_execution_item"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       _bn_uprating_post_execution_readiness: {
         Args: { p_actor: string; p_run_id: string }
         Returns: Json
@@ -113120,6 +113157,19 @@ export type Database = {
         Returns: Json
       }
       _bn_uprating_run_command_epic2: {
+        Args: {
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id?: string
+          p_exception_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_payload?: Json
+          p_run_id?: string
+        }
+        Returns: Json
+      }
+      _bn_uprating_run_command_epic3: {
         Args: {
           p_actor_user_id: string
           p_command_name: string
@@ -116052,8 +116102,16 @@ export type Database = {
         Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
       }
+      bn_uprating_reconciliation_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
       bn_uprating_reference_data_v1: {
         Args: { p_actor_user_id: string }
+        Returns: Json
+      }
+      bn_uprating_rollback_readiness_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
       }
       bn_uprating_run_actions_v1: {
