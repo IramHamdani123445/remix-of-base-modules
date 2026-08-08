@@ -162,7 +162,7 @@ describe('Epic 2 — run-state certification', () => {
   });
 
   it('treats scheduling state as a schedule-record concern only', () => {
-    expect(epic2Sql).toMatch(/status[^\n]*CHECK[^\n]*PLANNED/);
+    expect(epic2Sql).toMatch(/status text NOT NULL DEFAULT 'PLANNED'/);
     expect(BN_UPRATING_PRE_APPROVAL_STATUSES).not.toContain('AWAITING_APPROVAL' as never);
   });
 });
@@ -336,7 +336,7 @@ describe('Epic 2 — decision governance', () => {
     // trim() + NULLIF means '   ' becomes NULL and is refused.
     expect('   '.trim().length).toBe(0);
     expect(decisionDialog).toContain('reason.trim().length > 0 && justification.trim().length > 0');
-    expect(decisionDialog).toContain('disabled={!valid');
+    expect(decisionDialog).toContain('disabled={isSaving || !valid}');
   });
 
   it('records approver, reason, justification and decision time on approval', () => {
@@ -526,7 +526,8 @@ describe('Epic 2 — queues', () => {
   });
 
   it('does not turn a failed queue read into an empty queue', () => {
-    expect(queue).toContain('status === \'ERROR\'');
+    expect(queue).toContain("approvalQuery.data?.status === 'ERROR'");
+    expect(queue).toContain('not an empty queue');
     expect(queue).not.toMatch(/total\s*[:=]\s*0\s*\}\s*\)/);
   });
 
