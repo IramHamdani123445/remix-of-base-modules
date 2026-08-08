@@ -306,3 +306,34 @@ Governance held:
 
 Certification: `src/__tests__/bn/risk/riskEpic6Feedback.test.ts` (25 tests).
 Regression: 210/210 Risk tests pass; typecheck clean.
+
+
+## Epic 7 — End-to-end completion and technical certification — COMPLETE
+
+Certification only: no redesign, no new business features, no 19th canonical command.
+
+- Canonical catalogue corrected to reflect reality — all **18/18 canonical
+  commands are `implemented: true`**, each bound to its governed
+  `*_command_v1` boundary RPC and its single Risk service façade
+  (`src/types/bn/risk/riskCanonicalCommands.ts` now carries `boundaryRpc`
+  and `service`).
+- Signal and assessment state machines certified end to end, including the
+  prohibited shortcuts (score → control, recommendation without review,
+  approval without recommendation, execution without approval, closure
+  without completion, mutation after CLOSED).
+- Architecture guards: no browser component calls `supabase.rpc` or a table
+  directly; no foreign-domain writes; no ML/AI fraud classifier; no
+  auto-recommend/approve/execute; no feedback → scoring auto-learning;
+  deterministic scoring engine (no clock, no randomness).
+- Governed journeys A–J certified.
+- Privacy: Benefit 360 / Claim / Award projections expose safe status only.
+- Live development RPC contracts verified present and callable.
+
+Certification suite: `src/__tests__/bn/risk/riskEpic7Certification.test.ts`.
+Completion record: `docs/bn/risk/BN_RISK_EPIC_7_COMPLETION_RECORD.md`.
+
+**Epic 0 = COMPLETE · Epic 1 = COMPLETE · Epic 2 = COMPLETE · Epic 3 = COMPLETE ·
+Epic 4 = COMPLETE · Epic 5 = COMPLETE · Epic 6 = COMPLETE · Epic 7 = COMPLETE**
+
+Classification: **RISK/FRAUD — FUNCTIONALLY COMPLETE AND TECHNICALLY CERTIFIED —
+CONTROLLED UAT READY**. Production activation NOT_STARTED.
