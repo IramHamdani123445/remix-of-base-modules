@@ -75,9 +75,9 @@ describe('Epic 2 — canonical catalogue certification', () => {
     expect(new Set(BN_UPRATING_CANONICAL_COMMANDS.map((c) => c.command)).size).toBe(17);
   });
 
-  it('reports 14 of 17 implemented after Epic 3 (5 + 4 + 3 + 2)', () => {
+  it('reports 16 of 17 implemented after Epic 4 (5 + 4 + 3 + 2 + 2)', () => {
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
-    expect(implemented).toHaveLength(14);
+    expect(implemented).toHaveLength(16);
     expect(BN_UPRATING_EPIC1_CANONICAL_COMMANDS).toHaveLength(4);
     expect(BN_UPRATING_EPIC2_CANONICAL_COMMANDS).toHaveLength(3);
   });
@@ -89,10 +89,8 @@ describe('Epic 2 — canonical catalogue certification', () => {
     }
   });
 
-  it('leaves the three post-execution commands NOT_STARTED', () => {
+  it('leaves run closure NOT_STARTED', () => {
     for (const command of [
-      'BN_UPRATING_RECONCILE_RUN',
-      'BN_UPRATING_ROLLBACK_ELIGIBLE',
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
       expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
@@ -696,8 +694,6 @@ describe('Epic 2 — award, payment, communication and Epic 3+ boundaries', () =
 
   it('leaves reconciliation, rollback and closure untouched', () => {
     for (const command of [
-      'BN_UPRATING_RECONCILE_RUN',
-      'BN_UPRATING_ROLLBACK_ELIGIBLE',
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
       expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
