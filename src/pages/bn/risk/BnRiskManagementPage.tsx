@@ -23,6 +23,7 @@ import { BnRiskSignalDetailPanel } from '@/components/bn/risk/BnRiskSignalDetail
 import { BnRiskManualSignalDialog } from '@/components/bn/risk/BnRiskManualSignalDialog';
 import { BnRiskAssessmentQueue } from '@/components/bn/risk/BnRiskAssessmentQueue';
 import { BnRiskAssessmentWorkspace } from '@/components/bn/risk/BnRiskAssessmentWorkspace';
+import { BnRiskControlApprovalQueue } from '@/components/bn/risk/BnRiskControlApprovalQueue';
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
 
@@ -40,6 +41,7 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const [confirmation, setConfirmation] = React.useState<string | null>(null);
   const [tab, setTab] = React.useState('signals');
   const [openAssessmentId, setOpenAssessmentId] = React.useState<string | null>(null);
+  const [focusApproval, setFocusApproval] = React.useState(false);
 
   const counts = useQuery({
     queryKey: ['bn-risk-signal-queue', 'counts'],
@@ -53,9 +55,18 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const canWrite = ctx.actionsEnabled && ctx.can('write');
 
   const openAssessment = React.useCallback((assessmentId: string) => {
+    setFocusApproval(false);
     setOpenAssessmentId(assessmentId);
     setTab('assessments');
   }, []);
+
+  /** Deep link from the approval queue straight to the decision section. */
+  const openApprovalDecision = React.useCallback((assessmentId: string) => {
+    setFocusApproval(true);
+    setOpenAssessmentId(assessmentId);
+    setTab('assessments');
+  }, []);
+
 
 
   return (
