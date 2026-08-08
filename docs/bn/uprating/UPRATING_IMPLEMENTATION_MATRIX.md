@@ -12,8 +12,8 @@ Governed boundaries: `public.bn_uprating_policy_command_v1` (policy),
 | Epic 1 | Run creation, population snapshot, exceptions, simulation | **COMPLETE — CERTIFIED** |
 | Epic 2 | Run approval and execution scheduling | **COMPLETE — CERTIFIED** |
 | Epic 3 | Batch execution and retry | **COMPLETE — CERTIFIED** |
-| Epic 4 | Reconciliation and rollback | COMPLETE — CERTIFIED |
-| Epic 5 | Run closure | NOT_STARTED |
+| Epic 4 | Reconciliation and rollback | **COMPLETE — CERTIFIED** |
+| Epic 5 | Run closure | **COMPLETE — CERTIFIED** |
 
 ## Canonical command status
 
@@ -35,7 +35,7 @@ Governed boundaries: `public.bn_uprating_policy_command_v1` (policy),
 | BN_UPRATING_RETRY_FAILED | admin | no | IMPLEMENTED (Epic 3) |
 | BN_UPRATING_RECONCILE_RUN | decide | no | IMPLEMENTED |
 | BN_UPRATING_ROLLBACK_ELIGIBLE | admin | yes | IMPLEMENTED |
-| BN_UPRATING_CLOSE_RUN | decide | no | NOT_STARTED |
+| BN_UPRATING_CLOSE_RUN | decide | no | IMPLEMENTED (Epic 5) |
 
 Supporting governed lifecycle operations delivered inside the same boundaries
 (not new canonical commands): `BN_UPRATING_UPDATE_POLICY_VERSION`,
@@ -160,15 +160,15 @@ Supporting governed lifecycle operations delivered inside the same boundaries
 - Uprating regression: 224/224 tests green across Epic 0–3 suites.
 - Regression: `src/__tests__/bn` — 142 files (141 passed / 1 skipped); 2937 tests: 2922 passed, 1 skipped, 14 todo, 0 failed.
 - Typecheck: CLEAN (`tsgo -p tsconfig.app.json`, no errors).
-- Canonical catalogue boundary: 17 commands total, 16 implemented (Epic 0 = 5, Epic 1 = 4,
-  Epic 2 = 3, Epic 3 = 2, Epic 4 = 2), 1 NOT_STARTED (Epic 5 closure).
+- Canonical catalogue boundary: 17 commands total, 17 implemented (Epic 0 = 5, Epic 1 = 4,
+  Epic 2 = 3, Epic 3 = 2, Epic 4 = 2, Epic 5 = 1). Nothing remains NOT_STARTED.
 
 
 
 ## Epic 4 — Reconciliation, rollback and operational completion
 
-Status: **COMPLETE — CERTIFIED**. Canonical status: **16 / 17 implemented**
-(`BN_UPRATING_CLOSE_RUN` remains NOT_STARTED and belongs to Epic 5).
+Status: **COMPLETE — CERTIFIED**. Epic 4 itself never closes a run; closure is delivered
+by Epic 5 as a separate governed lifecycle transition.
 
 ### Delivered
 
@@ -223,3 +223,56 @@ Precise blocker: `public.platform_environment_marker` exists but contains no row
 environment cannot be positively identified as safe for live award mutation. Per the
 environment safety rule, no existing award was mutated. Automated Epic 4 certification is
 unaffected and remains green.
+
+
+---
+
+## Epic 5 — Run closure and end-to-end technical certification
+
+Status: **COMPLETE — CERTIFIED**. Canonical status: **17 / 17 implemented**.
+
+### Delivered boundary
+
+- Canonical command `BN_UPRATING_CLOSE_RUN`, routed through the single governed boundary
+  `bn_uprating_run_command_v1`. The pre-existing Epic 0–4 command body is preserved
+  unchanged as `_bn_uprating_run_command_epic4` and is delegated to for every other command.
+- Backend-owned readiness `bn_uprating_close_readiness_v1` (over
+  `_bn_uprating_close_readiness`). The frontend never decides closability.
+- Terminal state `CLOSED` on `bn_uprating_run`, with retained closure evidence:
+  `closed_at`, `closed_by`, `closed_by_name`, `closure_path`,
+  `closure_reconciliation_id`, `closure_rollback_id`.
+- `bn_uprating_run_actions_v1` returns an empty action list and `is_terminal = true`
+  for a closed run.
+- Reference values published for `RUN_STATUS/CLOSED`, `CLOSURE_PATH/*` and every
+  `CLOSE_BLOCKER/*` code — no hard-coded labels on the surfaces.
+
+### Delivered surface
+
+- `src/components/bn/uprating/BnUpratingClosureSection.tsx` — Closure tab in the run
+  workspace: state, completion path, open operational items, blocking reasons, retained
+  closure evidence, fail-closed error state.
+- `src/components/bn/uprating/BnUpratingCloseRunDialog.tsx` — confirmation with an optional
+  closing note; the confirm control is disabled unless the backend says `can_close`.
+- `src/services/bn/uprating/upratingRunService.ts` — `fetchUpratingCloseReadiness` and
+  `closeUpratingRun`.
+
+### Epic 5 governance guarantees
+
+- Closure is a lifecycle transition only. It mutates no award, entitlement, payment
+  schedule or communication, and deletes nothing.
+- Closure is reachable only from `RECONCILED` or `ROLLED_BACK`; every other state is
+  refused with `E_INVALID_TRANSITION`.
+- Outstanding execution, schedule, communication, reconciliation-finding or rollback work
+  blocks closure with a specific, plain-language reason (`E_CLOSURE_BLOCKED`).
+- Unreadable readiness fails closed — closure is never offered on a guess.
+- `CLOSED` is terminal: there is no reopen command anywhere in the boundary.
+- Optimistic concurrency (`E_STALE_ROW_VERSION`), replay safety
+  (`E_IDEMPOTENCY_MISMATCH`, cached replay) and a second-closure guard
+  (`E_ALREADY_CLOSED`) are all enforced in the backend.
+- Every closure writes a lifecycle event (`RUN_CLOSED`) and a command-audit row.
+
+### Epic 5 evidence
+
+- Epic 5 suite: `src/__tests__/bn/uprating/upratingEpic5Closure.test.ts`.
+- Epic 0–4 suites remain green at their baselines.
+- Typecheck: CLEAN (`tsgo -p tsconfig.app.json`).

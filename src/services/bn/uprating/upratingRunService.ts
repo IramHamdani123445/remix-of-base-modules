@@ -14,6 +14,7 @@ import type { BnUpratingCommandResult, BnUpratingQueryResult } from '@/types/bn/
 import type {
   BnUpratingApprovalQueueRow,
   BnUpratingApprovalReadiness,
+  BnUpratingCloseReadiness,
   BnUpratingExceptionRow,
   BnUpratingExecutionItemRow,
   BnUpratingExecutionQueueRow,
@@ -56,6 +57,10 @@ const RUN_ERRORS: Record<string, string> = {
   E_JUSTIFICATION_REQUIRED: 'A resolution and a justification are required.',
   E_STALE_ROW_VERSION: 'This run was changed by someone else. Reload and try again.',
   E_UNKNOWN_COMMAND: 'That action is not available in this module.',
+  // Epic 5 — closure
+  E_ALREADY_CLOSED: 'This uprating run is already closed.',
+  E_CLOSURE_BLOCKED: 'This run cannot be closed yet. Resolve the outstanding items first.',
+  E_CLOSURE_NOT_PERMITTED: 'Only a reconciled or a rolled-back run may be closed.',
   // Epic 2 — approval and execution scheduling
   E_ALREADY_SUBMITTED: 'This run already has an approval cycle awaiting a decision.',
   E_NO_SIMULATION: 'Run a simulation before submitting this run for approval.',
@@ -527,6 +532,43 @@ export async function rollbackEligibleUpratingItems(
   return executeUpratingRunCommand({
     command: 'BN_UPRATING_ROLLBACK_ELIGIBLE',
     payload: { justification, reason_code: reasonCode ?? null },
+    ...rest,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Epic 5 — run closure.
+//
+// Closure is a lifecycle transition only. This façade never mutates awards,
+// entitlements, payment schedules or communications, and never deletes
+// evidence. Closability is decided entirely by the governed backend.
+// ---------------------------------------------------------------------------
+
+export async function fetchUpratingCloseReadiness(
+  runId: string,
+): Promise<BnUpratingQueryResult<BnUpratingCloseReadiness>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_close_readiness_v1', {
+    p_actor_user_id: uid,
+    p_run_id: runId,
+  });
+}
+
+/** Canonical `BN_UPRATING_CLOSE_RUN` — the terminal Uprating command. */
+export async function closeUpratingRun(
+  args: Epic4CommandArgs & {
+    readonly justification?: string | null;
+    readonly reasonCode?: string | null;
+  },
+): Promise<BnUpratingCommandResult> {
+  const { justification, reasonCode, ...rest } = args;
+  return executeUpratingRunCommand({
+    command: 'BN_UPRATING_CLOSE_RUN',
+    payload: {
+      justification: justification ?? null,
+      reason_code: reasonCode ?? null,
+    },
     ...rest,
   });
 }

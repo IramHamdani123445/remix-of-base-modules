@@ -55,7 +55,7 @@ export const BN_UPRATING_CANONICAL_COMMANDS: readonly BnUpratingCanonicalCommand
   { command: 'BN_UPRATING_RECONCILE_RUN',              capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
   { command: 'BN_UPRATING_ROLLBACK_ELIGIBLE',          capability: 'bn_uprating:admin',  requiresMakerChecker: true,  transactional: true,  requiresJustification: true,  implemented: true },
 
-  { command: 'BN_UPRATING_CLOSE_RUN',                  capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
+  { command: 'BN_UPRATING_CLOSE_RUN',                  capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
 ] as const;
 
 export function getUpratingCanonicalCommandSpec(

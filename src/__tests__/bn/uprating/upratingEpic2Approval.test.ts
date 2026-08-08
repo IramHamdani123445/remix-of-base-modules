@@ -40,6 +40,8 @@ const epic2Sql = fs
   .filter(
     (sql) =>
       !sql.includes('bn_uprating_execution_session') &&
+      // Epic 5 recreates the shared actions function; it is certified separately.
+      !sql.includes('_bn_uprating_close_readiness') &&
       (sql.includes('bn_uprating_run_approval_package') ||
         sql.includes('bn_uprating_execution_schedule')),
   )
@@ -75,9 +77,9 @@ describe('Epic 2 — canonical catalogue certification', () => {
     expect(new Set(BN_UPRATING_CANONICAL_COMMANDS.map((c) => c.command)).size).toBe(17);
   });
 
-  it('reports 16 of 17 implemented after Epic 4 (5 + 4 + 3 + 2 + 2)', () => {
+  it('reports 17 of 17 implemented after Epic 5 (5 + 4 + 3 + 2 + 2 + 1)', () => {
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
-    expect(implemented).toHaveLength(16);
+    expect(implemented).toHaveLength(17);
     expect(BN_UPRATING_EPIC1_CANONICAL_COMMANDS).toHaveLength(4);
     expect(BN_UPRATING_EPIC2_CANONICAL_COMMANDS).toHaveLength(3);
   });
@@ -89,11 +91,12 @@ describe('Epic 2 — canonical catalogue certification', () => {
     }
   });
 
-  it('leaves run closure NOT_STARTED', () => {
+  it('keeps run closure outside the Epic 2 boundary', () => {
     for (const command of [
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
-      expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
+      // Delivered by Epic 5, never by approval or scheduling.
+      expect(epic2Sql).not.toContain(command);
     }
   });
 
@@ -502,7 +505,7 @@ describe('Epic 2 — execution schedule governance', () => {
     expect(cancelBlock).not.toMatch(/UPDATE public\.bn_uprating_run\s+SET status/);
     expect(cancelBlock).toContain("'EXECUTION_SCHEDULE_CANCELLED'");
     expect(cancelBlock).toContain("'E_JUSTIFICATION_REQUIRED'");
-    expect(getUpratingCanonicalCommandSpec('BN_UPRATING_CLOSE_RUN').implemented).toBe(false);
+    expect(epic2Sql).not.toContain('BN_UPRATING_CLOSE_RUN');
   });
 });
 
@@ -696,7 +699,6 @@ describe('Epic 2 — award, payment, communication and Epic 3+ boundaries', () =
     for (const command of [
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
-      expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
       expect(epic2Sql).not.toContain(command);
     }
   });

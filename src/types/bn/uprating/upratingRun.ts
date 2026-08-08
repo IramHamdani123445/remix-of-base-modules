@@ -23,7 +23,9 @@ export type BnUpratingRunStatusCode =
   | 'SCHEDULES_REBUILT'
   | 'COMMUNICATIONS_ISSUED'
   | 'RECONCILED'
-  | 'ROLLED_BACK';
+  | 'ROLLED_BACK'
+  // Epic 5 — terminal closure
+  | 'CLOSED';
 
 export type BnUpratingRunCommandName =
   | 'BN_UPRATING_CREATE_RUN'
@@ -45,7 +47,10 @@ export type BnUpratingRunCommandName =
   | 'BN_UPRATING_RECONCILE_RUN'
   | 'BN_UPRATING_MARK_FAILED'
   | 'BN_UPRATING_ASSESS_ROLLBACK'
-  | 'BN_UPRATING_ROLLBACK_ELIGIBLE';
+  | 'BN_UPRATING_ROLLBACK_ELIGIBLE'
+  // Epic 5 — terminal closure
+  | 'BN_UPRATING_CLOSE_RUN';
+
 
 
 /** Commands in this boundary that are canonical Epic 1 commands. */
@@ -327,6 +332,11 @@ export interface BnUpratingRunActionsResult {
   readonly simulation_state: BnUpratingSimulationState;
   readonly blocking_exceptions: number;
   readonly actions: readonly BnUpratingRunAction[];
+  /** Epic 5 — backend-owned terminality and completion path. */
+  readonly is_terminal?: boolean;
+  readonly completion_path?: BnUpratingCompletionPath | null;
+  readonly closed_at?: string | null;
+  readonly closed_by_name?: string | null;
 }
 
 /** Governed run transitions across Epic 0-3. */
@@ -347,8 +357,10 @@ export const BN_UPRATING_EPIC1_RUN_TRANSITIONS: Readonly<
   // Epic 4 — post-execution operational lifecycle (see BN_UPRATING_EPIC4_RUN_TRANSITIONS)
   SCHEDULES_REBUILT: ['COMMUNICATIONS_ISSUED'],
   COMMUNICATIONS_ISSUED: ['RECONCILED'],
-  RECONCILED: [],
-  ROLLED_BACK: [],
+  RECONCILED: ['CLOSED'],
+  ROLLED_BACK: ['CLOSED'],
+  // Epic 5 — CLOSED is terminal; there is no reopen transition.
+  CLOSED: [],
 };
 
 
@@ -1065,4 +1077,96 @@ export interface BnUpratingOperationalQueueView {
 export function upratingCompletionPercent(done: number, required: number): number {
   if (!required) return 0;
   return Math.min(100, Math.max(0, Math.round((done / required) * 100)));
+}
+
+// ---------------------------------------------------------------------------
+// Epic 5 — run closure and terminal state
+//
+// Closure is a governed lifecycle transition only. It never mutates an award,
+// an entitlement, a payment schedule or a communication, and it never deletes
+// evidence. `CLOSED` is terminal: the backend offers no reopen command and no
+// mutation action once a run is closed. The frontend never decides closure
+// availability locally — it renders `bn_uprating_close_readiness_v1`.
+// ---------------------------------------------------------------------------
+
+/** Canonical Epic 5 command. */
+export const BN_UPRATING_EPIC5_CANONICAL_COMMANDS = ['BN_UPRATING_CLOSE_RUN'] as const;
+
+/** How a run reached its terminal state. */
+export type BnUpratingCompletionPath = 'RECONCILED' | 'ROLLED_BACK';
+
+/** Statuses from which closure is permitted. */
+export const BN_UPRATING_CLOSABLE_STATUSES: readonly BnUpratingRunStatusCode[] = [
+  'RECONCILED',
+  'ROLLED_BACK',
+];
+
+/** Governed Epic 5 transitions. `CLOSED` has no outbound transition. */
+export const BN_UPRATING_EPIC5_RUN_TRANSITIONS: Readonly<
+  Record<string, readonly BnUpratingRunStatusCode[]>
+> = {
+  RECONCILED: ['CLOSED'],
+  ROLLED_BACK: ['CLOSED'],
+  CLOSED: [],
+};
+
+export function canUpratingEpic5Transition(from: string, to: BnUpratingRunStatusCode): boolean {
+  return BN_UPRATING_EPIC5_RUN_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+export function isUpratingRunClosed(status: BnUpratingRunStatusCode): boolean {
+  return status === 'CLOSED';
+}
+
+export type BnUpratingCloseBlockerCode =
+  | 'NOT_CLOSABLE_STATE'
+  | 'NO_RECONCILIATION'
+  | 'RECONCILIATION_NOT_PASSED'
+  | 'RECONCILIATION_FINDINGS_OPEN'
+  | 'EXECUTION_INCOMPLETE'
+  | 'SCHEDULE_OUTSTANDING'
+  | 'COMMUNICATION_OUTSTANDING'
+  | 'ROLLBACK_AWAITING_AUTHORISATION'
+  | 'NO_ROLLBACK'
+  | 'ROLLBACK_INCOMPLETE'
+  | 'ROLLBACK_ITEMS_PENDING'
+  | 'ROLLBACK_COMMUNICATION_OUTSTANDING'
+  | 'SOURCE_UNAVAILABLE'
+  | 'PERMISSION'
+  | 'ALREADY_CLOSED';
+
+export interface BnUpratingCloseBlocker {
+  readonly code: BnUpratingCloseBlockerCode;
+  readonly message: string;
+}
+
+/** Shape returned by `bn_uprating_close_readiness_v1`. */
+export interface BnUpratingCloseReadiness {
+  readonly run_id: string;
+  readonly run_reference?: string | null;
+  readonly source_available: boolean;
+  readonly can_close: boolean;
+  readonly run_status: BnUpratingRunStatusCode | null;
+  readonly row_version: number | null;
+  readonly completion_path: BnUpratingCompletionPath | null;
+  readonly reconciliation_status: BnUpratingReconciliationStatus | null;
+  readonly reconciliation_id?: string | null;
+  readonly rollback_status: BnUpratingRollbackOperationStatus | null;
+  readonly rollback_id?: string | null;
+  readonly open_operational_items: number;
+  readonly available_action: 'BN_UPRATING_CLOSE_RUN' | null;
+  readonly blocking_reasons: readonly BnUpratingCloseBlocker[];
+  readonly closed_at?: string | null;
+  readonly closed_by_name?: string | null;
+}
+
+/** Result payload of a successful `BN_UPRATING_CLOSE_RUN`. */
+export interface BnUpratingCloseRunResult {
+  readonly run_id: string;
+  readonly status: BnUpratingRunStatusCode;
+  readonly row_version: number;
+  readonly completion_path: BnUpratingCompletionPath;
+  readonly closed_at: string;
+  readonly reconciliation_id: string | null;
+  readonly rollback_id: string | null;
 }

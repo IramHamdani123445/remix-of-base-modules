@@ -95,10 +95,10 @@ describe('Uprating Epic 0 — canonical catalogue', () => {
     }
   });
 
-  it('keeps run closure NOT_STARTED', () => {
+  it('records run closure as delivered by Epic 5', () => {
     ['BN_UPRATING_CLOSE_RUN']
       .forEach((c) => {
-        expect(getUpratingCanonicalCommandSpec(c as BnUpratingCanonicalCommandName).implemented).toBe(false);
+        expect(getUpratingCanonicalCommandSpec(c as BnUpratingCanonicalCommandName).implemented).toBe(true);
       });
   });
 

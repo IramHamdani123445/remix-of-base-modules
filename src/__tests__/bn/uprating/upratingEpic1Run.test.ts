@@ -38,14 +38,14 @@ describe('Uprating Epic 1 — canonical alignment', () => {
       expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(true);
     }
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
-    expect(implemented).toHaveLength(16);
+    expect(implemented).toHaveLength(17);
   });
 
-  it('keeps every post-execution command unimplemented', () => {
+  it('keeps closure off the Epic 1 pre-execution capability', () => {
     for (const command of [
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
-      expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
+      expect(getUpratingCanonicalCommandSpec(command).capability).toBe('bn_uprating:decide');
     }
   });
 

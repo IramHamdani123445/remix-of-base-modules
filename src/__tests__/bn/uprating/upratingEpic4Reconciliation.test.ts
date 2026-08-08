@@ -39,10 +39,12 @@ const allMigrations = fs
 const epic4Sql = allMigrations
   .filter(
     (sql) =>
-      sql.includes('bn_uprating_rollback_operation') ||
+      // Epic 5 recreates the shared actions function; it is certified separately.
+      !sql.includes('_bn_uprating_close_readiness') &&
+      (sql.includes('bn_uprating_rollback_operation') ||
       sql.includes('bn_uprating_reconciliation') ||
       sql.includes('bn_uprating_operational_queue_v1') ||
-      sql.includes('bn_uprating_schedule_rebuild'),
+      sql.includes('bn_uprating_schedule_rebuild')),
   )
   .join('\n');
 
@@ -89,14 +91,17 @@ describe('Epic 4 — canonical command catalogue', () => {
     }
   });
 
-  it('leaves BN_UPRATING_CLOSE_RUN not started — closure belongs to Epic 5', () => {
-    expect(getUpratingCanonicalCommandSpec('BN_UPRATING_CLOSE_RUN').implemented).toBe(false);
+  it('delivers BN_UPRATING_CLOSE_RUN in Epic 5, outside the Epic 4 boundary', () => {
+    expect(getUpratingCanonicalCommandSpec('BN_UPRATING_CLOSE_RUN').implemented).toBe(true);
+    // Epic 4 itself still never closes a run.
+    expect(BN_UPRATING_EPIC4_CANONICAL_COMMANDS).not.toContain('BN_UPRATING_CLOSE_RUN');
+    expect(BN_UPRATING_EPIC4_SUPPORTING_OPERATIONS).not.toContain('BN_UPRATING_CLOSE_RUN');
   });
 
-  it('reaches 16 of 17 canonical commands implemented', () => {
+  it('reaches 17 of 17 canonical commands implemented', () => {
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
     expect(BN_UPRATING_CANONICAL_COMMANDS).toHaveLength(17);
-    expect(implemented).toHaveLength(16);
+    expect(implemented).toHaveLength(17);
   });
 
   it('did not invent a new canonical command for Epic 4', () => {
@@ -528,13 +533,13 @@ describe('Epic 4 — cache invalidation', () => {
 // 11. Matrix reconciliation
 // ---------------------------------------------------------------------------
 describe('Epic 4 — implementation matrix', () => {
-  it('records Epic 4 as certified and Epic 5 as not started', () => {
+  it('records Epic 4 and Epic 5 as certified', () => {
     expect(matrix).toMatch(/Epic 4[^\n]*COMPLETE — CERTIFIED/);
-    expect(matrix).toMatch(/Epic 5[^\n]*NOT_STARTED/);
+    expect(matrix).toMatch(/Epic 5[^\n]*COMPLETE — CERTIFIED/);
   });
 
-  it('records the canonical status as 16 / 17', () => {
-    expect(matrix).toMatch(/16\s*\/\s*17/);
+  it('records the canonical status as 17 / 17', () => {
+    expect(matrix).toMatch(/17\s*\/\s*17/);
   });
 
   it('states the controlled operational walkthrough outcome explicitly', () => {

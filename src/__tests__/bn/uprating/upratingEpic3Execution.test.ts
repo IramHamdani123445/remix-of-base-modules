@@ -43,7 +43,9 @@ const epic3Sql = fs
       sql.includes('bn_uprating_execution_session') &&
       // Epic 4 migrations reuse the execution tables; they are certified separately.
       !sql.includes('bn_uprating_rollback_operation') &&
-      !sql.includes('bn_uprating_schedule_rebuild'),
+      !sql.includes('bn_uprating_schedule_rebuild') &&
+      // Epic 5 recreates the shared actions function; it is certified separately.
+      !sql.includes('_bn_uprating_close_readiness'),
   )
   .join('\n');
 
@@ -73,8 +75,8 @@ describe('Epic 3 — canonical catalogue certification', () => {
     expect(new Set(BN_UPRATING_CANONICAL_COMMANDS.map((c) => c.command)).size).toBe(17);
   });
 
-  it('reports 16 of 17 implemented after Epic 4 (5 + 4 + 3 + 2 + 2)', () => {
-    expect(BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented)).toHaveLength(16);
+  it('reports 17 of 17 implemented after Epic 5 (5 + 4 + 3 + 2 + 2 + 1)', () => {
+    expect(BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented)).toHaveLength(17);
     expect(BN_UPRATING_EPIC1_CANONICAL_COMMANDS).toHaveLength(4);
     expect(BN_UPRATING_EPIC2_CANONICAL_COMMANDS).toHaveLength(3);
     expect(BN_UPRATING_EPIC3_CANONICAL_COMMANDS).toHaveLength(2);
@@ -86,11 +88,12 @@ describe('Epic 3 — canonical catalogue certification', () => {
     }
   });
 
-  it('leaves run closure NOT_STARTED', () => {
+  it('keeps run closure outside the Epic 3 execution boundary', () => {
     for (const command of [
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
-      expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
+      // Closure is a lifecycle transition delivered by Epic 5.
+      expect(getUpratingCanonicalCommandSpec(command).transactional).toBe(false);
     }
   });
 
@@ -482,14 +485,14 @@ describe('Epic 3 — operational surfaces', () => {
 // ---------------------------------------------------------------------------
 
 describe('Epic 3 — matrix reconciliation', () => {
-  it('records Epic 3 as complete and 16 of 17 commands implemented', () => {
+  it('records Epic 3 as complete and 17 of 17 commands implemented', () => {
     expect(matrix).toContain('| Epic 3 | Batch execution and retry | **COMPLETE — CERTIFIED** |');
     expect(matrix).toContain('BN_UPRATING_EXECUTE_BATCH | admin | yes | IMPLEMENTED (Epic 3)');
     expect(matrix).toContain('BN_UPRATING_RETRY_FAILED | admin | no | IMPLEMENTED (Epic 3)');
-    expect(matrix).toContain('16 implemented');
+    expect(matrix).toContain('17 implemented');
   });
 
-  it('keeps Epic 5 not started', () => {
-        expect(matrix).toContain('| Epic 5 | Run closure | NOT_STARTED |');
+  it('records Epic 5 run closure as complete', () => {
+        expect(matrix).toContain('| Epic 5 | Run closure | **COMPLETE — CERTIFIED** |');
   });
 });
