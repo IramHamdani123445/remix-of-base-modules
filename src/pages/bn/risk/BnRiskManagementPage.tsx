@@ -43,9 +43,7 @@ import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScor
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
 import {
   BnModuleSectionNav,
-  BnQueueSummaryCards,
   useBnWorkspaceSection,
-  type BnQueueSummaryItem,
 } from '@/components/bn/ux';
 
 export const RISK_MODULE_BASE = '/bn/risk-management';
@@ -62,13 +60,6 @@ const WORKSPACE_SECTIONS: readonly BnRiskWorkspaceSection[] = [
   'approval', 'execution', 'outcome', 'closure', 'feedback',
 ];
 
-const OVERVIEW_TILES: readonly { code: string; label: string }[] = [
-  { code: 'NEW', label: 'Awaiting triage' },
-  { code: 'TRIAGED', label: 'Triaged' },
-  { code: 'LINKED', label: 'Linked' },
-  { code: 'UNDER_REVIEW', label: 'Under review' },
-  { code: 'DISMISSED', label: 'Dismissed' },
-];
 
 export function riskAssessmentPath(
   assessmentId: string,
