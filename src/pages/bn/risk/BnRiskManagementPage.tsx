@@ -24,6 +24,8 @@ import { BnRiskManualSignalDialog } from '@/components/bn/risk/BnRiskManualSigna
 import { BnRiskAssessmentQueue } from '@/components/bn/risk/BnRiskAssessmentQueue';
 import { BnRiskAssessmentWorkspace } from '@/components/bn/risk/BnRiskAssessmentWorkspace';
 import { BnRiskControlApprovalQueue } from '@/components/bn/risk/BnRiskControlApprovalQueue';
+import { BnRiskControlExecutionQueue } from '@/components/bn/risk/BnRiskControlExecutionQueue';
+
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
 
@@ -123,6 +125,8 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
           <TabsTrigger value="signals">Signals</TabsTrigger>
           <TabsTrigger value="assessments">Assessments</TabsTrigger>
           <TabsTrigger value="control-decisions">Control decisions</TabsTrigger>
+          <TabsTrigger value="control-execution">Control execution</TabsTrigger>
+
           <TabsTrigger value="scoring-configuration">Scoring configuration</TabsTrigger>
         </TabsList>
 
@@ -166,6 +170,20 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
             </AlertDescription>
           </Alert>
         </TabsContent>
+
+        <TabsContent value="control-execution" className="space-y-6">
+          <BnRiskControlExecutionQueue onOpenExecution={openControlExecution} />
+
+          <Alert>
+            <AlertTitle>The owning domain performs the action</AlertTitle>
+            <AlertDescription>
+              Risk requests an approved control through a governed handoff. Payments, Legal,
+              Investigation and the other owning domains decide whether and how it is applied,
+              and Risk records only the reference and status they return.
+            </AlertDescription>
+          </Alert>
+        </TabsContent>
+
 
         <TabsContent value="scoring-configuration" className="space-y-6">
           <BnRiskScoringConfigurationPanel />
