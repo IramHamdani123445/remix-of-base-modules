@@ -33,19 +33,16 @@ describe('Uprating Epic 1 — canonical alignment', () => {
     expect(BN_UPRATING_CANONICAL_COMMANDS).toHaveLength(17);
   });
 
-  it('marks exactly the four Epic 1 commands as implemented alongside Epic 0', () => {
+  it('marks the four Epic 1 commands as implemented alongside Epic 0 and Epic 2', () => {
     for (const command of BN_UPRATING_EPIC1_CANONICAL_COMMANDS) {
       expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(true);
     }
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
-    expect(implemented).toHaveLength(9);
+    expect(implemented).toHaveLength(12);
   });
 
   it('keeps every execution-stage command unimplemented', () => {
     for (const command of [
-      'BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL',
-      'BN_UPRATING_APPROVE_RUN',
-      'BN_UPRATING_SCHEDULE_EXECUTION',
       'BN_UPRATING_EXECUTE_BATCH',
       'BN_UPRATING_RETRY_FAILED',
       'BN_UPRATING_RECONCILE_RUN',
@@ -98,7 +95,7 @@ describe('Uprating Epic 1 — single governed boundary', () => {
 describe('Uprating Epic 1 — pre-execution containment', () => {
   it('contains no execution, payment or communication concepts', () => {
     for (const source of [runService, workspace, resolveDialog]) {
-      expect(source).not.toMatch(/EXECUTE_BATCH|SCHEDULE_EXECUTION|ROLLBACK_ELIGIBLE|sendCommunication/);
+      expect(source).not.toMatch(/EXECUTE_BATCH|ROLLBACK_ELIGIBLE|sendCommunication/);
     }
   });
 
@@ -134,6 +131,8 @@ describe('Uprating Epic 1 — run lifecycle', () => {
     expect(BN_UPRATING_RUN_SUPPORTING_OPERATIONS).toEqual([
       'BN_UPRATING_UPDATE_RUN',
       'BN_UPRATING_PARAMETERISE_RUN',
+      'BN_UPRATING_RESCHEDULE_EXECUTION',
+      'BN_UPRATING_CANCEL_EXECUTION_SCHEDULE',
     ]);
     const canonical = BN_UPRATING_CANONICAL_COMMANDS.map((c) => c.command as string);
     for (const op of BN_UPRATING_RUN_SUPPORTING_OPERATIONS) {
