@@ -32,6 +32,7 @@ export default function BnUpratingPage() {
             <TabsList>
               <TabsTrigger value="policies">Policy catalogue</TabsTrigger>
               <TabsTrigger value="runs">Runs &amp; simulation</TabsTrigger>
+              <TabsTrigger value="approvals">Approvals &amp; scheduling</TabsTrigger>
             </TabsList>
             <TabsContent value="policies" className="pt-4">
               <BnUpratingPolicyWorkspace ctx={ctx} />
@@ -39,7 +40,11 @@ export default function BnUpratingPage() {
             <TabsContent value="runs" className="pt-4">
               <BnUpratingRunWorkspace ctx={ctx} />
             </TabsContent>
+            <TabsContent value="approvals" className="pt-4">
+              <BnUpratingApprovalQueue />
+            </TabsContent>
           </Tabs>
+
         </div>
       )}
     </BnModuleRouteGate>
