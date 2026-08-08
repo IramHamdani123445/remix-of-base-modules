@@ -4,8 +4,10 @@ import {
   type BnModuleAccessContext,
 } from "@/components/bn/access/BnModuleRouteGate";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp } from "lucide-react";
 import { BnUpratingPolicyWorkspace } from "@/components/bn/uprating/BnUpratingPolicyWorkspace";
+import { BnUpratingRunWorkspace } from "@/components/bn/uprating/BnUpratingRunWorkspace";
 
 export default function BnUpratingPage() {
   return (
@@ -20,11 +22,24 @@ export default function BnUpratingPage() {
             )}
           </div>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            Maintain the governed uprating policy catalogue: policy types, effective-dated
-            versions, applicability, rounding and independent approval. Uprating runs,
-            simulation and execution are delivered in a later stage.
+            Maintain the governed uprating policy catalogue and prepare uprating runs:
+            population snapshots, exception resolution and deterministic simulation.
+            Run approval, execution scheduling and payment impact are delivered in a
+            later stage — nothing on this page changes an award or a payment.
           </p>
-          <BnUpratingPolicyWorkspace ctx={ctx} />
+
+          <Tabs defaultValue="policies">
+            <TabsList>
+              <TabsTrigger value="policies">Policy catalogue</TabsTrigger>
+              <TabsTrigger value="runs">Runs &amp; simulation</TabsTrigger>
+            </TabsList>
+            <TabsContent value="policies" className="pt-4">
+              <BnUpratingPolicyWorkspace ctx={ctx} />
+            </TabsContent>
+            <TabsContent value="runs" className="pt-4">
+              <BnUpratingRunWorkspace ctx={ctx} />
+            </TabsContent>
+          </Tabs>
         </div>
       )}
     </BnModuleRouteGate>
