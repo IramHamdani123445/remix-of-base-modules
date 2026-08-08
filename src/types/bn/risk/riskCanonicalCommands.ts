@@ -60,7 +60,7 @@ export const BN_RISK_CANONICAL_COMMANDS: readonly BnRiskCanonicalCommandSpec[] =
   { command: 'BN_RISK_RECORD_OUTCOME',            capability: 'bn_risk_management:decide',          requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
   { command: 'BN_RISK_CLOSE_ASSESSMENT',          capability: 'bn_risk_management:decide',          requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
   { command: 'BN_RISK_REOPEN_ASSESSMENT',         capability: 'bn_risk_management:admin',           requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: false },
-  { command: 'BN_RISK_UPDATE_RULE_FEEDBACK',      capability: 'bn_risk_management:rule_admin',      requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
+  { command: 'BN_RISK_UPDATE_RULE_FEEDBACK',      capability: 'bn_risk_management:rule_admin',      requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
 ] as const;
 
 export function getRiskCanonicalCommandSpec(

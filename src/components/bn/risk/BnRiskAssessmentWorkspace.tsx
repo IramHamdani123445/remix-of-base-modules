@@ -91,6 +91,7 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
   const executionRef = React.useRef<HTMLDivElement | null>(null);
   const outcomeRef = React.useRef<HTMLDivElement | null>(null);
   const closureRef = React.useRef<HTMLDivElement | null>(null);
+  const feedbackRef = React.useRef<HTMLDivElement | null>(null);
 
 
   const detail = useQuery({
