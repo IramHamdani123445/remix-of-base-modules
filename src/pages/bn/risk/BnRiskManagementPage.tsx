@@ -18,7 +18,7 @@
  * query allows them.
  */
 import React from 'react';
-import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   BnModuleRouteGate,
   type BnModuleAccessContext,
