@@ -25,6 +25,7 @@ import { BnUpratingRunWorkspace } from "@/components/bn/uprating/BnUpratingRunWo
 import { BnUpratingApprovalQueue } from "@/components/bn/uprating/BnUpratingApprovalQueue";
 import { BnUpratingExecutionQueue } from "@/components/bn/uprating/BnUpratingExecutionQueue";
 import { BnUpratingOperationalQueue } from "@/components/bn/uprating/BnUpratingOperationalQueue";
+import { BnUpratingOverview } from "@/components/bn/uprating/BnUpratingOverview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BnModuleSectionNav, useBnWorkspaceSection } from "@/components/bn/ux";
 
@@ -62,12 +63,14 @@ const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
     <BnModuleSectionNav
       ariaLabel="Uprating destinations"
       items={[
+        { to: UPRATING_MODULE_BASE, label: "Overview", end: true },
         { to: `${UPRATING_MODULE_BASE}/policies`, label: "Policy catalogue" },
-        { to: `${UPRATING_MODULE_BASE}/runs`, label: "Runs & simulation", end: true },
+        { to: `${UPRATING_MODULE_BASE}/runs`, label: "Runs & simulation" },
         { to: `${UPRATING_MODULE_BASE}/approvals`, label: "Approvals & scheduling" },
         { to: `${UPRATING_MODULE_BASE}/operations`, label: "Operational queues" },
       ]}
     />
+
 
     <Outlet />
   </div>
@@ -135,8 +138,9 @@ export default function BnUpratingPage() {
           <Route path="runs/:runId" element={<UpratingRunRecordRoute ctx={ctx} />} />
 
           <Route element={<UpratingModuleShell ctx={ctx} />}>
-            <Route index element={<UpratingRunsRoute ctx={ctx} />} />
+            <Route index element={<BnUpratingOverview />} />
             <Route path="policies" element={<BnUpratingPolicyWorkspace ctx={ctx} />} />
+
             <Route path="runs" element={<UpratingRunsRoute ctx={ctx} />} />
             <Route path="approvals" element={<BnUpratingApprovalQueue />} />
             <Route path="operations" element={<UpratingOperationsRoute />} />

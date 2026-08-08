@@ -45,7 +45,9 @@ import BnMeansContextPanel from '@/components/bn/meansTests/context/BnMeansConte
 import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTests/BnMeansStageJourney';
 import {
   BnActivityDrawer,
+  BnNextActionCard,
   BnPhaseSectionNav,
+  BnRecordWorkspaceHeader,
   type BnPhase,
 } from '@/components/bn/ux';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
@@ -141,6 +143,28 @@ export function meansSectionToTab(section: string | null | undefined): string {
   };
   return aliases[normalised] ?? 'context';
 }
+
+/**
+ * Map a governed command onto the workspace section that performs it, so the
+ * Next Action card can take the officer straight to the right place. The
+ * mapping is navigational only — availability remains backend-owned.
+ */
+export function meansCommandSection(command: string): string {
+  const c = command.replace(/^BN_MEANS_/, '').toLowerCase();
+  if (c.includes('household')) return 'household';
+  if (c.includes('income')) return 'income';
+  if (c.includes('asset')) return 'assets';
+  if (c.includes('deduction') || c.includes('disregard')) return 'deductions';
+  if (c.includes('evidence') || c.includes('information')) return 'evidence';
+  if (c.includes('submit') || c.includes('review')) return 'review';
+  if (c.includes('verify') || c.includes('verification')) return 'verification';
+  if (c.includes('calculate') || c.includes('calculation')) return 'calculation';
+  if (c.includes('adjust') || c.includes('approve') || c.includes('reject') || c.includes('decide')) return 'decision';
+  if (c.includes('activate') || c.includes('publish')) return 'activation';
+  if (c.includes('reassess') || c.includes('close') || c.includes('circumstance')) return 'lifecycle';
+  return 'context';
+}
+
 
 function asRows(value: unknown): Row[] {
   return Array.isArray(value) ? (value as Row[]) : [];
@@ -489,38 +513,60 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
     );
   };
 
+  /**
+   * NEXT ACTION. The backend `bn_means_available_actions_v1` contract is the
+   * only source of availability. A failed read is surfaced as "could not be
+   * confirmed", never as "nothing to do".
+   */
+  const nextActionStatus: 'loading' | 'error' | 'ready' =
+    actions.isLoading ? 'loading'
+      : actions.isError || (actions.data && actions.data.status !== 'OK') ? 'error'
+        : 'ready';
+  const nextActions = availableActions
+    .filter((a) => a.allowed)
+    .slice(0, 4)
+    .map((a) => ({
+      id: a.command,
+      label: humaniseMeansCode(a.command.replace(/^BN_MEANS_/, '')),
+      available: true,
+      reason: a.reason ? REASON_LABEL[a.reason] ?? a.reason : undefined,
+      onSelect: () => setActiveTab(meansCommandSection(a.command)),
+    }));
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Work queue
-          </Button>
-          <div>
-            <h2 className="text-xl font-semibold">{personLabel}</h2>
-            <p className="text-sm text-muted-foreground">
-              {String(assessment.assessment_reference ?? '')} ·{' '}
-              {humaniseMeansCode(String(assessment.benefit_programme ?? ''))} ·{' '}
-              {humaniseMeansCode(String(assessment.assessment_reason ?? ''))}
-            </p>
-            <p className="text-xs text-muted-foreground">
+      <BnRecordWorkspaceHeader
+        backLabel="Work queue"
+        onBack={onBack}
+        reference={String(assessment.assessment_reference ?? personLabel)}
+        context={
+          <>
+            {personLabel} · {humaniseMeansCode(String(assessment.benefit_programme ?? ''))} ·{' '}
+            {humaniseMeansCode(String(assessment.assessment_reason ?? ''))}
+            <br />
+            <span className="text-xs">
               {String(assessment.effective_from ?? '—')} → {String(assessment.effective_to ?? 'open-ended')}
               {claimLabel ? ` · ${claimLabel}` : ''}
               {awardLabel ? ` · ${awardLabel}` : ''}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" data-testid="means-status-badge">
-            {meansStatusLabel(String(assessment.status ?? ''), Boolean(latestCalculation))}
-          </Badge>
-          <Badge variant="outline">Version {rowVersion}</Badge>
-          {openAdjustmentCount > 0 && (
-            <Badge variant="outline" data-testid="means-open-adjustments-badge">
-              {openAdjustmentCount} open adjustment{openAdjustmentCount === 1 ? '' : 's'}
+            </span>
+          </>
+        }
+        status={meansStatusLabel(String(assessment.status ?? ''), Boolean(latestCalculation))}
+        badges={
+          <>
+            <Badge variant="secondary" data-testid="means-status-badge">
+              {meansStatusLabel(String(assessment.status ?? ''), Boolean(latestCalculation))}
             </Badge>
-          )}
-          {/* Reference material stays one click away, out of the workflow. */}
+            <Badge variant="outline">Version {rowVersion}</Badge>
+            {openAdjustmentCount > 0 && (
+              <Badge variant="outline" data-testid="means-open-adjustments-badge">
+                {openAdjustmentCount} open adjustment{openAdjustmentCount === 1 ? '' : 's'}
+              </Badge>
+            )}
+          </>
+        }
+        actions={
+          /* Reference material stays one click away, out of the workflow. */
           <BnActivityDrawer
             title="Activity & history"
             description="Audit timeline for this assessment."
@@ -541,8 +587,8 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
               </ul>
             )}
           </BnActivityDrawer>
-        </div>
-      </div>
+        }
+      />
 
       {commandError && (
         <Alert variant="destructive">
@@ -555,7 +601,19 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
         </Alert>
       )}
 
+      <BnNextActionCard
+        status={nextActionStatus}
+        actions={nextActions}
+        emptyMessage="No Means-Test operation is available to you at this stage."
+        errorDetail={
+          actions.data && actions.data.status !== 'OK'
+            ? actions.data.detail ?? actions.data.code ?? undefined
+            : undefined
+        }
+      />
+
       <BnMeansStageJourney stages={stages} onSelect={setActiveTab} />
+
 
       {/*
         Thirteen lifecycle sections are grouped into two officer-meaningful

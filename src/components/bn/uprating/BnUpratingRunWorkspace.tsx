@@ -75,7 +75,26 @@ import {
 } from '@/services/bn/uprating/upratingRunService';
 import { fetchUpratingPolicyList } from '@/services/bn/uprating/upratingPolicyService';
 import { newUpratingUuid } from '@/services/bn/uprating/upratingPolicyService';
-import { BnPhaseSectionNav } from '@/components/bn/ux';
+import { BnNextActionCard, BnPhaseSectionNav, BnRecordWorkspaceHeader } from '@/components/bn/ux';
+
+/**
+ * Navigational mapping from a governed run command to the workspace section
+ * that performs it. Availability itself remains backend-owned.
+ */
+export function upratingCommandSection(command: string): string {
+  const c = command.replace(/^BN_UPRATING_/, '').toLowerCase();
+  if (c.includes('population') || c.includes('parameterise')) return 'population';
+  if (c.includes('exception')) return 'exceptions';
+  if (c.includes('simulate') || c.includes('simulation')) return 'simulation';
+  if (c.includes('approve') || c.includes('submit') || c.includes('schedule') || c.includes('reject')) {
+    return 'approval';
+  }
+  if (c.includes('execute') || c.includes('batch') || c.includes('retry')) return 'execution';
+  if (c.includes('rollback') || c.includes('compensat')) return 'rollback';
+  if (c.includes('reconcil') || c.includes('rebuild') || c.includes('notice')) return 'reconciliation';
+  if (c.includes('close')) return 'closure';
+  return 'population';
+}
 import {
   formatMinor,
   type BnUpratingApprovalDecision,
@@ -612,55 +631,66 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
 
   return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" onClick={() => selectRun(null)}>
-        <ArrowLeft className="mr-2 h-4 w-4" /> Back to runs
-      </Button>
-
       {detailQuery.isLoading && <p className="text-sm text-muted-foreground">Loading run…</p>}
 
       {run && (
         <>
-          <Card>
-            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <CardTitle className="flex flex-wrap items-center gap-2">
-                  {run.run_reference}
-                  <Badge variant={runStatusVariant(run.status)}>{run.status_label ?? run.status}</Badge>
-                  {run.simulation_state === 'STALE' && <Badge variant="destructive">Simulation stale</Badge>}
-                </CardTitle>
-                <CardDescription>
-                  {run.policy_code} · {run.version_reference} · effective {run.target_effective_date}
-                </CardDescription>
-              </div>
+          <BnRecordWorkspaceHeader
+            backLabel="Back to runs"
+            onBack={() => selectRun(null)}
+            reference={run.run_reference}
+            context={`${run.policy_code} · ${run.version_reference} · effective ${run.target_effective_date}`}
+            status={run.status_label ?? run.status}
+            badges={
+              run.simulation_state === 'STALE'
+                ? <Badge variant="destructive">Simulation stale</Badge>
+                : null
+            }
+            facts={[
+              { label: 'Method', value: run.frozen_policy_type ?? 'Not locked' },
+              { label: 'Rounding', value: run.frozen_rounding_mode ?? '—' },
+              {
+                label: 'Snapshot',
+                value: run.current_snapshot_version ? `v${run.current_snapshot_version}` : 'Not taken',
+              },
+              {
+                label: 'Simulation',
+                value: run.current_simulation_version ? `v${run.current_simulation_version}` : 'Not run',
+              },
+            ]}
+            actions={
               <div className="flex flex-wrap gap-2">
                 <ActionButton command="BN_UPRATING_PARAMETERISE_RUN" />
                 <ActionButton command="BN_UPRATING_BUILD_POPULATION" />
                 <ActionButton command="BN_UPRATING_SIMULATE" />
               </div>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Method</p>
-                <p className="font-medium">{run.frozen_policy_type ?? 'Not locked'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Rounding</p>
-                <p className="font-medium">{run.frozen_rounding_mode ?? '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Snapshot</p>
-                <p className="font-medium">
-                  {run.current_snapshot_version ? `v${run.current_snapshot_version}` : 'Not taken'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Simulation</p>
-                <p className="font-medium">
-                  {run.current_simulation_version ? `v${run.current_simulation_version}` : 'Not run'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            }
+          />
+
+          {/*
+            NEXT ACTION. Sourced only from the governed run-action contract;
+            an unreadable contract fails closed.
+          */}
+          <BnNextActionCard
+            status={
+              actionsQuery.isLoading
+                ? 'loading'
+                : actionsQuery.isError || actionsQuery.data?.status !== 'OK'
+                  ? 'error'
+                  : 'ready'
+            }
+            actions={actions
+              .filter((a) => a.available)
+              .slice(0, 4)
+              .map((a) => ({
+                id: a.command,
+                label: a.label,
+                available: true,
+                onSelect: () => setActiveTab(upratingCommandSection(a.command)),
+              }))}
+            emptyMessage="No uprating operation is available to you at this stage."
+          />
+
 
           {run.simulation_state === 'STALE' && (
             <Alert variant="destructive">
