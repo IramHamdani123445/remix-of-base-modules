@@ -145,25 +145,12 @@ const MeansModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => 
         )}
       </header>
 
-      <BnModuleSectionNav
-        ariaLabel="Means-Test destinations"
-        items={[
-          { to: MEANS_MODULE_BASE, label: 'Overview', end: true },
-          { to: `${MEANS_MODULE_BASE}/assessments`, label: 'Assessments' },
-          { to: `${MEANS_MODULE_BASE}/verification`, label: 'Verification' },
-          { to: `${MEANS_MODULE_BASE}/decisions`, label: 'Decisions' },
-          {
-            to: `${MEANS_MODULE_BASE}/reassessments`,
-            label: 'Reassessments',
-            visible: ctx.can('reassess'),
-          },
-          {
-            to: `${MEANS_MODULE_BASE}/configuration`,
-            label: 'Configuration',
-            visible: ctx.can('config'),
-          },
-        ]}
-      />
+      {/*
+        Module navigation lives in the left sidebar (Benefit Management →
+        Means-Test Assessments). The screen states only where it is.
+      */}
+      <MeansBreadcrumbs />
+
 
       <Outlet />
 
