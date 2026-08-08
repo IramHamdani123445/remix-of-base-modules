@@ -2592,7 +2592,9 @@ export const AppRoutes = () => {
       {/* Legacy scheduler preserved unchanged for backward compatibility. */}
       <Route path="/bn/medical-reviews/legacy-scheduler" element={<BnFeatureGate flag="bn.servicing.medicalReview"><BnMedicalReviewScheduler /></BnFeatureGate>} />
 
-      <Route path="/bn/overpayments" element={<BnFeatureGate flag="bn.servicing.overpayment"><BnOverpaymentRecovery /></BnFeatureGate>} />
+      <Route path="/bn/overpayments" element={<BnFeatureGate flag="bn.servicing.overpayment"><BnModuleRouteGate moduleCode="bn_overpayments" requiredAction="view">{() => <BnOverpaymentRecovery />}</BnModuleRouteGate></BnFeatureGate>} />
+      <Route path="/bn/overpayments/*" element={<BnFeatureGate flag="bn.servicing.overpayment"><BnModuleRouteGate moduleCode="bn_overpayments" requiredAction="view">{() => <BnOverpaymentRecovery />}</BnModuleRouteGate></BnFeatureGate>} />
+
       <Route path="/bn/mortality" element={<BnFeatureGate flag="bn.gap.mortality"><BnMortalityPage /></BnFeatureGate>} />
       <Route path="/bn/mortality/new" element={<BnFeatureGate flag="bn.gap.mortality"><BnMortalityRegistrationPage /></BnFeatureGate>} />
       <Route path="/bn/mortality/:eventId" element={<BnFeatureGate flag="bn.gap.mortality"><BnMortalityDetailPage /></BnFeatureGate>} />
