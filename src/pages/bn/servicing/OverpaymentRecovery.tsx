@@ -10,6 +10,7 @@
  * surfaces that state honestly rather than pretending the action succeeded.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -321,7 +322,7 @@ const OverpaymentRecovery: React.FC = () => {
                     <TableCell className="text-right">{money(r.gross_amount, r.currency)}</TableCell>
                     <TableCell className="text-right">{money(r.outstanding_amount, r.currency)}</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => void openCase(r)}>Open</Button>
+                      <Button size="sm" variant="outline" onClick={() => setOpenCaseId(r.case_id)}>Open</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -331,7 +332,7 @@ const OverpaymentRecovery: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selected} onOpenChange={(o) => { if (!o) { setSelected(null); setCommandError(null); } }}>
+      <Dialog open={!!selected} onOpenChange={(o) => { if (!o) { setOpenCaseId(null); setSelected(null); setCommandError(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
