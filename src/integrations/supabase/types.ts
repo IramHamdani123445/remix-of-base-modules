@@ -25806,6 +25806,239 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_risk_rule_feedback: {
+        Row: {
+          assessment_id: string
+          classification: string
+          contribution_id: string | null
+          contribution_outcome: string | null
+          contribution_value: number | null
+          correction_justification: string | null
+          correction_reason_code: string | null
+          correction_reason_label: string | null
+          correlation_id: string | null
+          created_at: string
+          factor_id: string | null
+          factor_type_code: string | null
+          feedback_code: string
+          feedback_id: string
+          feedback_label: string
+          feedback_reference: string
+          finding_classification: string | null
+          notes: string | null
+          outcome_code: string | null
+          outcome_id: string | null
+          reason_code: string | null
+          reason_label: string | null
+          recorded_at: string
+          recorded_by_name: string | null
+          recorded_by_user_id: string | null
+          rule_code: string | null
+          rule_id: string | null
+          rule_name: string | null
+          rule_set_code: string | null
+          rule_set_id: string | null
+          rule_set_version_no: number | null
+          score_id: string | null
+          score_version_no: number | null
+          sentiment: string
+          sequence_no: number
+          signal_id: string | null
+          status: string
+          superseded_at: string | null
+          superseded_by_feedback_id: string | null
+          supersedes_feedback_id: string | null
+          target_key: string
+          target_kind: string
+          target_label: string | null
+        }
+        Insert: {
+          assessment_id: string
+          classification: string
+          contribution_id?: string | null
+          contribution_outcome?: string | null
+          contribution_value?: number | null
+          correction_justification?: string | null
+          correction_reason_code?: string | null
+          correction_reason_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          factor_id?: string | null
+          factor_type_code?: string | null
+          feedback_code: string
+          feedback_id?: string
+          feedback_label: string
+          feedback_reference: string
+          finding_classification?: string | null
+          notes?: string | null
+          outcome_code?: string | null
+          outcome_id?: string | null
+          reason_code?: string | null
+          reason_label?: string | null
+          recorded_at?: string
+          recorded_by_name?: string | null
+          recorded_by_user_id?: string | null
+          rule_code?: string | null
+          rule_id?: string | null
+          rule_name?: string | null
+          rule_set_code?: string | null
+          rule_set_id?: string | null
+          rule_set_version_no?: number | null
+          score_id?: string | null
+          score_version_no?: number | null
+          sentiment: string
+          sequence_no: number
+          signal_id?: string | null
+          status?: string
+          superseded_at?: string | null
+          superseded_by_feedback_id?: string | null
+          supersedes_feedback_id?: string | null
+          target_key: string
+          target_kind: string
+          target_label?: string | null
+        }
+        Update: {
+          assessment_id?: string
+          classification?: string
+          contribution_id?: string | null
+          contribution_outcome?: string | null
+          contribution_value?: number | null
+          correction_justification?: string | null
+          correction_reason_code?: string | null
+          correction_reason_label?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          factor_id?: string | null
+          factor_type_code?: string | null
+          feedback_code?: string
+          feedback_id?: string
+          feedback_label?: string
+          feedback_reference?: string
+          finding_classification?: string | null
+          notes?: string | null
+          outcome_code?: string | null
+          outcome_id?: string | null
+          reason_code?: string | null
+          reason_label?: string | null
+          recorded_at?: string
+          recorded_by_name?: string | null
+          recorded_by_user_id?: string | null
+          rule_code?: string | null
+          rule_id?: string | null
+          rule_name?: string | null
+          rule_set_code?: string | null
+          rule_set_id?: string | null
+          rule_set_version_no?: number | null
+          score_id?: string | null
+          score_version_no?: number | null
+          sentiment?: string
+          sequence_no?: number
+          signal_id?: string | null
+          status?: string
+          superseded_at?: string | null
+          superseded_by_feedback_id?: string | null
+          supersedes_feedback_id?: string | null
+          target_key?: string
+          target_kind?: string
+          target_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_rule_feedback_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_rule_feedback_feedback_code_fkey"
+            columns: ["feedback_code"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_rule_feedback_type"
+            referencedColumns: ["feedback_code"]
+          },
+          {
+            foreignKeyName: "bn_risk_rule_feedback_outcome_id_fkey"
+            columns: ["outcome_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_outcome"
+            referencedColumns: ["outcome_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_rule_feedback_rule_set_id_fkey"
+            columns: ["rule_set_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_scoring_rule_set"
+            referencedColumns: ["rule_set_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_rule_feedback_score_id_fkey"
+            columns: ["score_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_score"
+            referencedColumns: ["score_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_rule_feedback_superseded_by_feedback_id_fkey"
+            columns: ["superseded_by_feedback_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_rule_feedback"
+            referencedColumns: ["feedback_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_rule_feedback_supersedes_feedback_id_fkey"
+            columns: ["supersedes_feedback_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_rule_feedback"
+            referencedColumns: ["feedback_id"]
+          },
+        ]
+      }
+      bn_risk_rule_feedback_type: {
+        Row: {
+          classification: string
+          created_at: string
+          description: string | null
+          feedback_code: string
+          is_active: boolean
+          label: string
+          requires_notes: boolean
+          requires_reason: boolean
+          sentiment: string
+          sort_order: number
+          target_kind: string
+          updated_at: string
+        }
+        Insert: {
+          classification: string
+          created_at?: string
+          description?: string | null
+          feedback_code: string
+          is_active?: boolean
+          label: string
+          requires_notes?: boolean
+          requires_reason?: boolean
+          sentiment?: string
+          sort_order?: number
+          target_kind: string
+          updated_at?: string
+        }
+        Update: {
+          classification?: string
+          created_at?: string
+          description?: string | null
+          feedback_code?: string
+          is_active?: boolean
+          label?: string
+          requires_notes?: boolean
+          requires_reason?: boolean
+          sentiment?: string
+          sort_order?: number
+          target_kind?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       bn_risk_score: {
         Row: {
           assessment_id: string
@@ -109884,6 +110117,7 @@ export type Database = {
       _bn_risk_next_assessment_reference: { Args: never; Returns: string }
       _bn_risk_next_execution_reference: { Args: never; Returns: string }
       _bn_risk_next_factor_reference: { Args: never; Returns: string }
+      _bn_risk_next_feedback_reference: { Args: never; Returns: string }
       _bn_risk_next_outcome_reference: { Args: never; Returns: string }
       _bn_risk_next_recommendation_reference: { Args: never; Returns: string }
       _bn_risk_next_reference: { Args: never; Returns: string }
@@ -109897,6 +110131,7 @@ export type Database = {
         Args: { p_code: string; p_domain: string }
         Returns: string
       }
+      _bn_risk_report_period: { Args: { p_filters: Json }; Returns: Json }
       _bn_risk_require: {
         Args: { p_action: string; p_actor: string; p_mutation: boolean }
         Returns: undefined
@@ -112679,6 +112914,10 @@ export type Database = {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
+      bn_risk_operational_metrics_v1: {
+        Args: { p_actor_user_id: string; p_filters?: Json }
+        Returns: Json
+      }
       bn_risk_outcome_command_v1: {
         Args: {
           p_actor_user_id: string
@@ -112690,6 +112929,10 @@ export type Database = {
           p_payload: Json
           p_payload_hash?: string
         }
+        Returns: Json
+      }
+      bn_risk_outcome_metrics_v1: {
+        Args: { p_actor_user_id: string; p_filters?: Json }
         Returns: Json
       }
       bn_risk_outcome_queue_v1: {
@@ -112735,6 +112978,26 @@ export type Database = {
         Returns: Json
       }
       bn_risk_review_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_rule_feedback_command_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id?: string
+          p_idempotency_key?: string
+          p_payload?: Json
+          p_payload_hash?: string
+        }
+        Returns: Json
+      }
+      bn_risk_rule_feedback_metrics_v1: {
+        Args: { p_actor_user_id: string; p_filters?: Json }
+        Returns: Json
+      }
+      bn_risk_rule_feedback_readiness_v1: {
         Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
