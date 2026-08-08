@@ -209,6 +209,16 @@ export const BnRiskScoringSection: React.FC<Props> = ({
       <CardContent className="space-y-4">
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
+        {ready.configuration && (
+          <p className="text-sm text-muted-foreground">
+            Scoring configuration in force: {ready.configuration.name} · version{' '}
+            {ready.configuration.version_no} · {ready.configuration.rule_count} rule(s),{' '}
+            {ready.configuration.band_count} band(s).
+          </p>
+        )}
+
+
+
         {ready.blockers.length > 0 && (
           <Alert variant="destructive">
             <AlertTitle>Scoring is not available yet</AlertTitle>
