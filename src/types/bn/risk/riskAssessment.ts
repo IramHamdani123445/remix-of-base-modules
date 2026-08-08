@@ -55,7 +55,13 @@ export type BnRiskAssessmentActionCode =
   | 'RECORD_RESPONSE'
   | 'CLOSE_REQUEST'
   | 'ADD_SIGNAL'
-  | 'COMPLETE_INFORMATION_GATHERING';
+  | 'COMPLETE_INFORMATION_GATHERING'
+  /* Epic 3 — recommendation and independent approval. */
+  | 'RECOMMEND_CONTROL'
+  | 'WITHDRAW_RECOMMENDATION'
+  | 'APPROVE_CONTROL'
+  | 'REJECT_CONTROL'
+  | 'RETURN_CONTROL';
 
 export interface BnRiskAssessmentAction {
   readonly action: BnRiskAssessmentActionCode;
