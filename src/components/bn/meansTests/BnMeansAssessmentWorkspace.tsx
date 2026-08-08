@@ -82,7 +82,7 @@ export const MEANS_WORKSPACE_SECTIONS = [
  * Phase A gathers the facts; Phase B assesses and decides. The audit
  * timeline is reference material and lives in the activity drawer.
  */
-export const MEANS_WORKSPACE_PHASES = [
+export const MEANS_WORKSPACE_PHASES: readonly BnPhase[] = [
   {
     id: 'prepare',
     label: 'Phase A — Prepare',
