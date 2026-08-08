@@ -38,7 +38,13 @@ const epic3Sql = fs
   .readdirSync(migrationsDir)
   .filter((f) => f.endsWith('.sql'))
   .map((f) => fs.readFileSync(path.join(migrationsDir, f), 'utf8'))
-  .filter((sql) => sql.includes('bn_uprating_execution_session'))
+  .filter(
+    (sql) =>
+      sql.includes('bn_uprating_execution_session') &&
+      // Epic 4 migrations reuse the execution tables; they are certified separately.
+      !sql.includes('bn_uprating_rollback_operation') &&
+      !sql.includes('bn_uprating_schedule_rebuild'),
+  )
   .join('\n');
 
 const runService = read('src/services/bn/uprating/upratingRunService.ts');
