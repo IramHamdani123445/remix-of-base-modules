@@ -11,7 +11,7 @@
  *   /bn/risk-management/controls             control decisions, execution, outcomes
  *   /bn/risk-management/reporting            aggregate evidence
  *   /bn/risk-management/configuration        scoring configuration
- *   /bn/risk-management/assessments/:assessmentId?section=…
+ *   /bn/risk-management/assessments/:assessmentId/:section
  *
  * Access is gated by `BnModuleRouteGate` for every address; mutation controls
  * are only offered when the module permits actions and the governed action
@@ -66,6 +66,11 @@ const RISK_SCREEN_LABELS: Record<string, string> = {
   controls: 'Controls & outcomes',
   reporting: 'Reporting',
   configuration: 'Configuration',
+  approval: 'Approval',
+  execution: 'Control execution',
+  outcome: 'Outcome',
+  closure: 'Closure',
+  feedback: 'Rule feedback',
 };
 
 const RiskBreadcrumbs: React.FC = () => {
