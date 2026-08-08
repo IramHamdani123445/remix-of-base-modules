@@ -10,9 +10,19 @@ import { BnUpratingPolicyWorkspace } from "@/components/bn/uprating/BnUpratingPo
 import { BnUpratingRunWorkspace } from "@/components/bn/uprating/BnUpratingRunWorkspace";
 import { BnUpratingApprovalQueue } from "@/components/bn/uprating/BnUpratingApprovalQueue";
 import { BnUpratingExecutionQueue } from "@/components/bn/uprating/BnUpratingExecutionQueue";
-
+import { BnUpratingOperationalQueue } from "@/components/bn/uprating/BnUpratingOperationalQueue";
 
 export default function BnUpratingPage() {
+  const [tab, setTab] = React.useState("policies");
+  const [deepLinkRunId, setDeepLinkRunId] = React.useState<string | null>(null);
+  const [deepLinkSection, setDeepLinkSection] = React.useState<string | null>(null);
+
+  const openRun = (runId: string, section: string) => {
+    setDeepLinkRunId(runId);
+    setDeepLinkSection(section);
+    setTab("runs");
+  };
+
   return (
     <BnModuleRouteGate moduleCode="bn_uprating" requiredAction="view">
       {(ctx: BnModuleAccessContext) => (
@@ -26,33 +36,42 @@ export default function BnUpratingPage() {
           </div>
           <p className="text-sm text-muted-foreground max-w-3xl">
             Maintain the governed uprating policy catalogue, prepare uprating runs — population
-            snapshots, exception resolution and deterministic simulation — and execute approved
-            runs in controlled batches. Execution applies exactly what was approved; no amount is
-            recalculated at execution time.
+            snapshots, exception resolution and deterministic simulation — execute approved runs in
+            controlled batches, then complete the consequences: payment-schedule rebuilds, claimant
+            notices through the Communication Hub, reconciliation and, on the failure path,
+            controlled compensating rollback.
           </p>
 
-          <Tabs defaultValue="policies">
-            <TabsList>
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList className="flex-wrap">
               <TabsTrigger value="policies">Policy catalogue</TabsTrigger>
               <TabsTrigger value="runs">Runs &amp; simulation</TabsTrigger>
               <TabsTrigger value="approvals">Approvals &amp; scheduling</TabsTrigger>
               <TabsTrigger value="execution">Execution queue</TabsTrigger>
+              <TabsTrigger value="operations">Post-execution queue</TabsTrigger>
             </TabsList>
             <TabsContent value="policies" className="pt-4">
               <BnUpratingPolicyWorkspace ctx={ctx} />
             </TabsContent>
             <TabsContent value="runs" className="pt-4">
-              <BnUpratingRunWorkspace ctx={ctx} />
+              <BnUpratingRunWorkspace
+                ctx={ctx}
+                initialRunId={deepLinkRunId}
+                initialTab={deepLinkSection}
+              />
             </TabsContent>
             <TabsContent value="approvals" className="pt-4">
               <BnUpratingApprovalQueue />
             </TabsContent>
             <TabsContent value="execution" className="pt-4">
-              <BnUpratingExecutionQueue />
+              <BnUpratingExecutionQueue
+                onOpenRun={(runId) => openRun(runId, "execution")}
+              />
+            </TabsContent>
+            <TabsContent value="operations" className="pt-4">
+              <BnUpratingOperationalQueue onOpenRun={openRun} />
             </TabsContent>
           </Tabs>
-
-
         </div>
       )}
     </BnModuleRouteGate>
