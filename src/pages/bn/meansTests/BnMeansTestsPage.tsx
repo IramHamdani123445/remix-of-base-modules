@@ -55,7 +55,7 @@ import { BnMeansVerificationQueue } from '@/components/bn/meansTests/verificatio
 import { BnMeansReassessmentQueuePanel } from '@/components/bn/meansTests/lifecycle/BnMeansReassessmentQueue';
 import { BnMeansPolicyConfiguration } from '@/components/bn/meansTests/configuration/BnMeansPolicyConfiguration';
 import BnMeansOperationsWorkspace from '@/components/bn/meansTests/operations/BnMeansOperationsWorkspace';
-import { BnModuleSectionNav, useBnWorkspaceSection } from '@/components/bn/ux';
+import { BnModuleBreadcrumbs, useBnWorkspaceSection } from '@/components/bn/ux';
 
 const STATUS_FILTERS = [
   'DRAFT', 'INFORMATION_PENDING', 'SUBMITTED', 'VERIFICATION_PENDING', 'CALCULATED',
