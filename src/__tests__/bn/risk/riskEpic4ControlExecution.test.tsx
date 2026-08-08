@@ -682,8 +682,7 @@ describe('Epic 4 — execution queue', () => {
     expect(opened).toEqual(['as-1']);
 
     const page = readSrc('pages/bn/risk/BnRiskManagementPage.tsx');
-    expect(page).toContain('onOpenExecution={openControlExecution}');
-    expect(page).toContain("openWorkspace(assessmentId, 'execution')");
+    expect(page).toContain("openAssessment(id, 'execution')");
     const workspace = readSrc('components/bn/risk/BnRiskAssessmentWorkspace.tsx');
     expect(workspace).toContain('execution: executionRef');
     expect(workspace).toContain('BnRiskControlExecutionSection');

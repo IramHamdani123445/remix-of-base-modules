@@ -331,17 +331,23 @@ describe('Epic 7 — operations, reporting and navigation closure', () => {
   const page = read(path.join(SRC, 'pages/bn/risk/BnRiskManagementPage.tsx'));
 
   it('exposes every major Risk entry point as a real route target', () => {
-    for (const tab of [
-      'signals', 'assessments', 'control-decisions', 'control-execution',
-      'outcomes', 'operations', 'reporting', 'scoring-configuration',
-    ]) {
-      expect(page, `missing tab ${tab}`).toContain(`value="${tab}"`);
+    // Destinations are real routes now, not tab values.
+    for (const route of ['signals', 'assessments', 'controls', 'reporting', 'configuration']) {
+      expect(page, `missing route ${route}`).toContain(`path="${route}"`);
+    }
+    // Control decision, execution and outcome work lives on the controls route.
+    for (const stage of ['decisions', 'execution', 'outcomes']) {
+      expect(page, `missing control stage ${stage}`).toContain(`value="${stage}"`);
     }
   });
 
   it('deep-links every operational card key to an existing queue tab', () => {
-    const keys = ['signals', 'assessments', 'control-decisions', 'control-execution', 'outcomes'];
-    for (const k of keys) expect(page).toContain(`value="${k}"`);
+    for (const k of ['signals', 'assessments', 'controls']) {
+      expect(page).toContain(`path="${k}"`);
+    }
+    for (const k of ['decisions', 'execution', 'outcomes']) {
+      expect(page).toContain(`value="${k}"`);
+    }
   });
 
   it('renders workspace deep-link sections for the late lifecycle', () => {
