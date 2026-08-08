@@ -108945,6 +108945,40 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_risk_active_rule_set: {
+        Args: never
+        Returns: {
+          activated_at: string | null
+          activated_by_user_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          description: string | null
+          effective_from: string | null
+          effective_to: string | null
+          name: string
+          retired_at: string | null
+          retired_by_user_id: string | null
+          row_version: number
+          rule_set_code: string
+          rule_set_id: string
+          score_scale_label: string | null
+          score_scale_max: number
+          score_scale_min: number
+          status: string
+          supersedes_rule_set_id: string | null
+          updated_at: string
+          validated_at: string | null
+          validated_by_user_id: string | null
+          version_no: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bn_risk_scoring_rule_set"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _bn_risk_actor_name: { Args: { p_actor: string }; Returns: string }
       _bn_risk_assessment_can_transition: {
         Args: { p_from: string; p_to: string }
@@ -108996,6 +109030,24 @@ export type Database = {
       _bn_risk_require: {
         Args: { p_action: string; p_actor: string; p_mutation: boolean }
         Returns: undefined
+      }
+      _bn_risk_score_evaluate: {
+        Args: {
+          p_bands: Json
+          p_factors: Json
+          p_rules: Json
+          p_scale_max: number
+          p_scale_min: number
+        }
+        Returns: Json
+      }
+      _bn_risk_score_factor_inputs: {
+        Args: { p_assessment: string }
+        Returns: Json
+      }
+      _bn_risk_score_fingerprint: {
+        Args: { p_assessment: string; p_rule_set: string }
+        Returns: string
       }
       _bn_risk_signal_can_transition: {
         Args: { p_from: string; p_to: string }
