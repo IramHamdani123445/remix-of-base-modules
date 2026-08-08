@@ -35,11 +35,13 @@ import { BnRiskAssessmentReviewSection } from './BnRiskAssessmentReviewSection';
 import { BnRiskRecommendationSection } from './BnRiskRecommendationSection';
 import { BnRiskControlApprovalSection } from './BnRiskControlApprovalSection';
 import { BnRiskControlExecutionSection } from './BnRiskControlExecutionSection';
+import { BnRiskOutcomeSection } from './BnRiskOutcomeSection';
+import { BnRiskClosureSection } from './BnRiskClosureSection';
 
 
 /** Journey stages, driven by the backend assessment status. */
 const JOURNEY = ['Signals', 'Factors', 'Evidence', 'Scoring', 'Recommendation',
-  'Approval', 'Control execution', 'Outcome'] as const;
+  'Approval', 'Control execution', 'Outcome', 'Closure'] as const;
 
 type JourneyState = 'COMPLETE' | 'CURRENT' | 'NEXT' | 'NOT_STARTED';
 
@@ -59,8 +61,13 @@ function journeyStates(status: string): Record<string, JourneyState> {
     Approval: approving ? 'CURRENT' : decided ? 'COMPLETE'
       : recommending ? 'NEXT' : 'NOT_STARTED',
     'Control execution': status === 'CONTROL_ACTION' || status === 'REFERRED' ? 'CURRENT'
-      : decided ? 'COMPLETE' : approving ? 'NEXT' : 'NOT_STARTED',
-    Outcome: ['COMPLETED', 'CLOSED'].includes(status) ? 'CURRENT' : 'NOT_STARTED',
+      : ['COMPLETED', 'CLOSED'].includes(status) ? 'COMPLETE'
+        : approving ? 'NEXT' : 'NOT_STARTED',
+    Outcome: status === 'COMPLETED' ? 'CURRENT'
+      : status === 'CLOSED' ? 'COMPLETE'
+        : ['CONTROL_ACTION', 'REFERRED'].includes(status) ? 'NEXT' : 'NOT_STARTED',
+    Closure: status === 'CLOSED' ? 'COMPLETE'
+      : status === 'COMPLETED' ? 'NEXT' : 'NOT_STARTED',
 
   };
 }
@@ -69,7 +76,7 @@ interface Props {
   assessmentId: string;
   onBack: () => void;
   /** Deep link from an operational queue — scroll straight to that section. */
-  focusSection?: 'approval' | 'execution' | null;
+  focusSection?: 'approval' | 'execution' | 'outcome' | 'closure' | null;
 }
 
 export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
@@ -81,6 +88,8 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
   const [error, setError] = React.useState<string | null>(null);
   const approvalRef = React.useRef<HTMLDivElement | null>(null);
   const executionRef = React.useRef<HTMLDivElement | null>(null);
+  const outcomeRef = React.useRef<HTMLDivElement | null>(null);
+  const closureRef = React.useRef<HTMLDivElement | null>(null);
 
 
   const detail = useQuery({
@@ -132,12 +141,14 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
 
   /** Operational queue deep links — put the required work in front of the user. */
   React.useEffect(() => {
-    if (focusSection === 'approval' && approvalRef.current) {
-      approvalRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    if (focusSection === 'execution' && executionRef.current) {
-      executionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    const targets: Record<string, React.RefObject<HTMLDivElement>> = {
+      approval: approvalRef,
+      execution: executionRef,
+      outcome: outcomeRef,
+      closure: closureRef,
+    };
+    const target = focusSection ? targets[focusSection] : null;
+    target?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [focusSection, detail.data]);
 
 
@@ -447,6 +458,20 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
       <div ref={executionRef}>
         <BnRiskControlExecutionSection assessmentId={assessmentId} onChanged={refresh} />
       </div>
+
+      <div ref={outcomeRef}>
+        <BnRiskOutcomeSection assessmentId={assessmentId} onChanged={refresh} />
+      </div>
+
+      <div ref={closureRef}>
+        <BnRiskClosureSection
+          assessmentId={assessmentId}
+          assessmentReference={header.assessment_reference}
+          onChanged={refresh}
+        />
+      </div>
+
+
 
 
 
