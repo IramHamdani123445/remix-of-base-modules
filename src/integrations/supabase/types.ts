@@ -767,6 +767,7 @@ export type Database = {
           display_name: string
           icon: string | null
           id: string
+          inherits_parent_access: boolean
           internal_only: boolean
           is_enabled: boolean | null
           name: string
@@ -796,6 +797,7 @@ export type Database = {
           display_name: string
           icon?: string | null
           id?: string
+          inherits_parent_access?: boolean
           internal_only?: boolean
           is_enabled?: boolean | null
           name: string
@@ -825,6 +827,7 @@ export type Database = {
           display_name?: string
           icon?: string | null
           id?: string
+          inherits_parent_access?: boolean
           internal_only?: boolean
           is_enabled?: boolean | null
           name?: string
