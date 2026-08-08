@@ -1,10 +1,11 @@
 /**
- * BN Risk — assessment workspace (EPIC 1 + EPIC 2).
+ * BN Risk — assessment workspace (EPIC 1 + EPIC 2 + EPIC 3).
  *
  * The single operational surface for a risk assessment: context, linked
  * signals, factors, evidence, information requests, governed scoring, the
- * officer review of that score, and history. The workspace stops at
- * "ready for recommendation" — no recommendation or control action exists.
+ * officer review of that score, the control recommendation and the
+ * independent approval decision. The workspace stops at "approved — awaiting
+ * governed execution": no control is executed here.
  */
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -31,25 +32,31 @@ import { BnRiskFactorsSection } from './BnRiskFactorsSection';
 import { BnRiskInformationSection } from './BnRiskInformationSection';
 import { BnRiskScoringSection } from './BnRiskScoringSection';
 import { BnRiskAssessmentReviewSection } from './BnRiskAssessmentReviewSection';
+import { BnRiskRecommendationSection } from './BnRiskRecommendationSection';
+import { BnRiskControlApprovalSection } from './BnRiskControlApprovalSection';
 
 /** Journey stages, driven by the backend assessment status. */
-const JOURNEY = ['Signals', 'Factors', 'Evidence', 'Review/Scoring', 'Recommendation',
-  'Controls', 'Outcome'] as const;
+const JOURNEY = ['Signals', 'Factors', 'Evidence', 'Scoring', 'Recommendation',
+  'Approval', 'Control execution', 'Outcome'] as const;
 
 type JourneyState = 'COMPLETE' | 'CURRENT' | 'NEXT' | 'NOT_STARTED';
 
 function journeyStates(status: string): Record<string, JourneyState> {
   const infoStage = ['DRAFT', 'OPEN', 'INFORMATION_PENDING'].includes(status);
   const scoring = status === 'REVIEW';
-  const past = ['RECOMMENDATION', 'APPROVAL_PENDING', 'REFERRED', 'CONTROL_ACTION',
-    'COMPLETED', 'CLOSED'].includes(status);
+  const recommending = status === 'RECOMMENDATION';
+  const approving = status === 'APPROVAL_PENDING';
+  const decided = ['REFERRED', 'CONTROL_ACTION', 'COMPLETED', 'CLOSED'].includes(status);
   return {
     Signals: 'COMPLETE',
     Factors: infoStage ? 'CURRENT' : 'COMPLETE',
     Evidence: infoStage ? 'CURRENT' : 'COMPLETE',
-    'Review/Scoring': scoring ? 'CURRENT' : past ? 'COMPLETE' : 'NEXT',
-    Recommendation: past ? 'CURRENT' : scoring ? 'NEXT' : 'NOT_STARTED',
-    Controls: 'NOT_STARTED',
+    Scoring: scoring ? 'CURRENT' : infoStage ? 'NEXT' : 'COMPLETE',
+    Recommendation: recommending ? 'CURRENT'
+      : approving || decided ? 'COMPLETE' : scoring ? 'NEXT' : 'NOT_STARTED',
+    Approval: approving ? 'CURRENT' : decided ? 'COMPLETE'
+      : recommending ? 'NEXT' : 'NOT_STARTED',
+    'Control execution': decided ? 'NEXT' : 'NOT_STARTED',
     Outcome: 'NOT_STARTED',
   };
 }
@@ -57,14 +64,20 @@ function journeyStates(status: string): Record<string, JourneyState> {
 interface Props {
   assessmentId: string;
   onBack: () => void;
+  /** Deep link from the approval queue — scroll straight to the decision. */
+  focusSection?: 'approval' | null;
 }
 
 
-export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBack }) => {
+
+export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
+  assessmentId, onBack, focusSection = null,
+}) => {
   const queryClient = useQueryClient();
   const [completeOpen, setCompleteOpen] = React.useState(false);
   const [completeNote, setCompleteNote] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const approvalRef = React.useRef<HTMLDivElement | null>(null);
 
   const detail = useQuery({
     queryKey: ['bn-risk-assessment-detail', assessmentId],
@@ -113,6 +126,13 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBac
     queryClient.invalidateQueries({ queryKey: ['bn-risk-assessment-actions', assessmentId] });
   }, [assessmentId, queryClient]);
 
+  /** Approval queue deep link — put the decision in front of the approver. */
+  React.useEffect(() => {
+    if (focusSection === 'approval' && approvalRef.current) {
+      approvalRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [focusSection, detail.data]);
+
   const completeMutation = useMutation({
     mutationFn: async () => {
       const result = await riskAssessmentService.execute({
@@ -156,6 +176,32 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBac
 
   const { header, context, signals, factors, evidence, requests, history, readiness, technical } =
     detail.data;
+
+  /**
+   * Known records this assessment is already attached to. Officers pick a
+   * record, never a raw UUID, and the backend still validates control/target
+   * compatibility at command time.
+   */
+  const targetOptions = [
+    technical.claim_id
+      ? { type: 'CLAIM', id: technical.claim_id, reference: header.claim_reference,
+        label: `Claim ${header.claim_reference ?? technical.claim_id}` }
+      : null,
+    technical.award_id
+      ? { type: 'AWARD', id: technical.award_id, reference: header.award_reference,
+        label: `Award ${header.award_reference ?? technical.award_id}` }
+      : null,
+    technical.payment_id
+      ? { type: 'PAYMENT', id: technical.payment_id, reference: null, label: 'Scheduled payment' }
+      : null,
+    header.person_id !== null
+      ? { type: 'PERSON', id: String(header.person_id), reference: header.person_masked_identifier,
+        label: `Person ${header.person_name ?? header.person_masked_identifier ?? ''}`.trim() }
+      : null,
+    { type: 'ASSESSMENT', id: assessmentId, reference: header.assessment_reference,
+      label: `Assessment ${header.assessment_reference}` },
+  ].filter((t): t is NonNullable<typeof t> => t !== null);
+
 
   return (
     <div className="space-y-4">
@@ -372,6 +418,25 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBac
         isActionEnabled={isScoringActionEnabled}
         onChanged={refresh}
       />
+
+      <BnRiskRecommendationSection
+        assessmentId={assessmentId}
+        isActionEnabled={isActionEnabled}
+        targetOptions={targetOptions}
+        onChanged={refresh}
+      />
+
+      <div ref={approvalRef}>
+        <BnRiskControlApprovalSection
+          assessmentId={assessmentId}
+          assessmentReference={header.assessment_reference}
+          personName={header.person_name}
+          isActionEnabled={isActionEnabled}
+          onChanged={refresh}
+        />
+      </div>
+
+
 
 
 
