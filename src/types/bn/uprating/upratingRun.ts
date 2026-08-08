@@ -344,7 +344,13 @@ export const BN_UPRATING_EPIC1_RUN_TRANSITIONS: Readonly<
   PARTIAL: ['EXECUTING'],
   COMPLETED: [],
   FAILED: [],
+  // Epic 4 — post-execution operational lifecycle (see BN_UPRATING_EPIC4_RUN_TRANSITIONS)
+  SCHEDULES_REBUILT: ['COMMUNICATIONS_ISSUED'],
+  COMMUNICATIONS_ISSUED: ['RECONCILED'],
+  RECONCILED: [],
+  ROLLED_BACK: [],
 };
+
 
 /** Alias used by Epic 2 surfaces — the same governed transition map. */
 export const BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2 = BN_UPRATING_EPIC1_RUN_TRANSITIONS;
