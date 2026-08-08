@@ -145,6 +145,8 @@ const OverpaymentRecovery: React.FC = () => {
   const [planNotes, setPlanNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
+  const [caseLoading, setCaseLoading] = useState(false);
+  const [caseError, setCaseError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
