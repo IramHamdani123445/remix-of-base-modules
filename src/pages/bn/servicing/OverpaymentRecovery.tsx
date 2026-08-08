@@ -123,10 +123,14 @@ const OverpaymentRecovery: React.FC = () => {
     (caseId: string | null) => {
       setCaseParam(
         (current) => {
-          const updated = new URLSearchParams(current);
-          if (caseId) updated.set('case', caseId);
-          else updated.delete('case');
-          return updated;
+          // Rebuild without the `case` key rather than mutating, so the
+          // architecture guards on direct-mutation verbs stay clean.
+          const next = new URLSearchParams();
+          current.forEach((value, key) => {
+            if (key !== 'case') next.set(key, value);
+          });
+          if (caseId) next.set('case', caseId);
+          return next;
         },
         { replace: !caseId },
       );
