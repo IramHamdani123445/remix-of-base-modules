@@ -201,24 +201,14 @@ const OverpaymentRecovery: React.FC = () => {
         </AlertDescription>
       </Alert>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card><CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">Outstanding</p>
-          <p className="text-2xl font-semibold">{money(totals.outstanding)}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">Recovered</p>
-          <p className="text-2xl font-semibold">{money(totals.recovered)}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">In recovery</p>
-          <p className="text-2xl font-semibold">{totals.inRecovery}</p>
-        </CardContent></Card>
-        <Card><CardContent className="p-4">
-          <p className="text-xs text-muted-foreground">Held / suspended</p>
-          <p className="text-2xl font-semibold">{totals.held}</p>
-        </CardContent></Card>
-      </div>
+      <BnQueueSummaryCards
+        items={[
+          { id: 'outstanding', label: 'Outstanding', value: money(totals.outstanding) },
+          { id: 'recovered', label: 'Recovered', value: money(totals.recovered) },
+          { id: 'in-recovery', label: 'In recovery', value: totals.inRecovery },
+          { id: 'held', label: 'Held / suspended', value: totals.held },
+        ]}
+      />
 
       <Card>
         <CardContent className="p-4 space-y-4">
