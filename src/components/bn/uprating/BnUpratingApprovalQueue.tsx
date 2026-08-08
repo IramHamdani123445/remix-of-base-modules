@@ -35,8 +35,14 @@ export const BnUpratingApprovalQueue: React.FC<Props> = ({ onOpenRun }) => {
     queryFn: () => fetchUpratingScheduledRunQueue({}),
   });
 
-  const approvals = approvalQuery.data?.data?.rows ?? [];
-  const scheduled = scheduledQuery.data?.data?.rows ?? [];
+  const approvalFailed =
+    approvalQuery.status === 'error' || approvalQuery.data?.status === 'ERROR';
+  const scheduledFailed =
+    scheduledQuery.status === 'error' || scheduledQuery.data?.status === 'ERROR';
+
+  const approvals = approvalFailed ? [] : approvalQuery.data?.data?.rows ?? [];
+  const scheduled = scheduledFailed ? [] : scheduledQuery.data?.data?.rows ?? [];
+
 
   return (
     <Tabs defaultValue="awaiting">
