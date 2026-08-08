@@ -454,6 +454,7 @@ export default function BnMeansTestsPage() {
         <Routes>
           {/* Record workspaces are full-width and outside the module shell. */}
           <Route path="assessments/:assessmentId" element={<MeansAssessmentRecordRoute />} />
+          <Route path="assessments/:assessmentId/:section" element={<MeansAssessmentRecordRoute />} />
 
           <Route element={<MeansModuleShell ctx={ctx} />}>
             <Route index element={<MeansOverviewRoute ctx={ctx} />} />
