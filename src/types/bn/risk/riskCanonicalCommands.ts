@@ -40,28 +40,34 @@ export interface BnRiskCanonicalCommandSpec {
   readonly transactional: boolean;
   readonly requiresJustification: boolean;
   readonly implemented: boolean;
+  /** Governed SQL boundary that owns the command. Browser code may only reach
+   *  the command through the Risk service that calls this RPC. */
+  readonly boundaryRpc: string;
+  /** Risk service façade module (relative to `src/`) permitted to call it. */
+  readonly service: string;
 }
 
 export const BN_RISK_CANONICAL_COMMANDS: readonly BnRiskCanonicalCommandSpec[] = [
-  { command: 'BN_RISK_GENERATE_SIGNAL',           capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_RISK_REGISTER_MANUAL_SIGNAL',    capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: false },
-  { command: 'BN_RISK_TRIAGE_SIGNAL',             capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_RISK_LINK_SIGNALS',              capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_RISK_DISMISS_SIGNAL',            capability: 'bn_risk_management:decide',          requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: false },
-  { command: 'BN_RISK_CREATE_ASSESSMENT',         capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_RISK_ADD_FACTOR',                capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_RISK_REQUEST_EVIDENCE',          capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_RISK_RECOMMEND_CONTROL',         capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: false },
-  { command: 'BN_RISK_APPROVE_CONTROL',           capability: 'bn_risk_management:approve_control', requiresMakerChecker: true,  transactional: true,  requiresJustification: true,  implemented: false },
-  { command: 'BN_RISK_PLACE_PAYMENT_HOLD',        capability: 'bn_risk_management:approve_control', requiresMakerChecker: true,  transactional: true,  requiresJustification: true,  implemented: false },
-  { command: 'BN_RISK_REQUEST_ENH_VERIFICATION',  capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_RISK_REFER_TO_LEGAL',            capability: 'bn_risk_management:refer',           requiresMakerChecker: true,  transactional: false, requiresJustification: true,  implemented: false },
-  { command: 'BN_RISK_REFER_TO_INVESTIGATION',    capability: 'bn_risk_management:refer',           requiresMakerChecker: true,  transactional: false, requiresJustification: true,  implemented: false },
-  { command: 'BN_RISK_RECORD_OUTCOME',            capability: 'bn_risk_management:decide',          requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_RISK_CLOSE_ASSESSMENT',          capability: 'bn_risk_management:decide',          requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_RISK_REOPEN_ASSESSMENT',         capability: 'bn_risk_management:admin',           requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: false },
-  { command: 'BN_RISK_UPDATE_RULE_FEEDBACK',      capability: 'bn_risk_management:rule_admin',      requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
+  { command: 'BN_RISK_GENERATE_SIGNAL',           capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_execute_command_v1',           service: 'services/bn/risk/riskCommandService.ts' },
+  { command: 'BN_RISK_REGISTER_MANUAL_SIGNAL',    capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: true, boundaryRpc: 'bn_risk_execute_command_v1',           service: 'services/bn/risk/riskCommandService.ts' },
+  { command: 'BN_RISK_TRIAGE_SIGNAL',             capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_execute_command_v1',           service: 'services/bn/risk/riskCommandService.ts' },
+  { command: 'BN_RISK_LINK_SIGNALS',              capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_execute_command_v1',           service: 'services/bn/risk/riskCommandService.ts' },
+  { command: 'BN_RISK_DISMISS_SIGNAL',            capability: 'bn_risk_management:decide',          requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: true, boundaryRpc: 'bn_risk_execute_command_v1',           service: 'services/bn/risk/riskCommandService.ts' },
+  { command: 'BN_RISK_CREATE_ASSESSMENT',         capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_assessment_command_v1',        service: 'services/bn/risk/riskAssessmentService.ts' },
+  { command: 'BN_RISK_ADD_FACTOR',                capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_assessment_command_v1',        service: 'services/bn/risk/riskAssessmentService.ts' },
+  { command: 'BN_RISK_REQUEST_EVIDENCE',          capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_assessment_command_v1',        service: 'services/bn/risk/riskAssessmentService.ts' },
+  { command: 'BN_RISK_RECOMMEND_CONTROL',         capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: true, boundaryRpc: 'bn_risk_control_command_v1',           service: 'services/bn/risk/riskControlService.ts' },
+  { command: 'BN_RISK_APPROVE_CONTROL',           capability: 'bn_risk_management:approve_control', requiresMakerChecker: true,  transactional: true,  requiresJustification: true,  implemented: true, boundaryRpc: 'bn_risk_control_command_v1',           service: 'services/bn/risk/riskControlService.ts' },
+  { command: 'BN_RISK_PLACE_PAYMENT_HOLD',        capability: 'bn_risk_management:approve_control', requiresMakerChecker: true,  transactional: true,  requiresJustification: true,  implemented: true, boundaryRpc: 'bn_risk_control_execution_command_v1', service: 'services/bn/risk/riskControlExecutionService.ts' },
+  { command: 'BN_RISK_REQUEST_ENH_VERIFICATION',  capability: 'bn_risk_management:write',           requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_control_execution_command_v1', service: 'services/bn/risk/riskControlExecutionService.ts' },
+  { command: 'BN_RISK_REFER_TO_LEGAL',            capability: 'bn_risk_management:refer',           requiresMakerChecker: true,  transactional: false, requiresJustification: true,  implemented: true, boundaryRpc: 'bn_risk_control_execution_command_v1', service: 'services/bn/risk/riskControlExecutionService.ts' },
+  { command: 'BN_RISK_REFER_TO_INVESTIGATION',    capability: 'bn_risk_management:refer',           requiresMakerChecker: true,  transactional: false, requiresJustification: true,  implemented: true, boundaryRpc: 'bn_risk_control_execution_command_v1', service: 'services/bn/risk/riskControlExecutionService.ts' },
+  { command: 'BN_RISK_RECORD_OUTCOME',            capability: 'bn_risk_management:decide',          requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_outcome_command_v1',           service: 'services/bn/risk/riskOutcomeService.ts' },
+  { command: 'BN_RISK_CLOSE_ASSESSMENT',          capability: 'bn_risk_management:decide',          requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_outcome_command_v1',           service: 'services/bn/risk/riskOutcomeService.ts' },
+  { command: 'BN_RISK_REOPEN_ASSESSMENT',         capability: 'bn_risk_management:admin',           requiresMakerChecker: false, transactional: false, requiresJustification: true,  implemented: true, boundaryRpc: 'bn_risk_outcome_command_v1',           service: 'services/bn/risk/riskOutcomeService.ts' },
+  { command: 'BN_RISK_UPDATE_RULE_FEEDBACK',      capability: 'bn_risk_management:rule_admin',      requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true, boundaryRpc: 'bn_risk_rule_feedback_command_v1',     service: 'services/bn/risk/riskFeedbackService.ts' },
 ] as const;
+
 
 export function getRiskCanonicalCommandSpec(
   command: BnRiskCanonicalCommandName,
