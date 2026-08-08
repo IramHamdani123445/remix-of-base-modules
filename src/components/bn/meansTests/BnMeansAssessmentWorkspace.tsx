@@ -780,7 +780,9 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
           reference material and lives in the activity drawer in the header.
         */}
       </Tabs>
+      </div>
     </div>
+  );
   );
 };
 
