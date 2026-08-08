@@ -58,7 +58,7 @@ const BACKEND_SQL = fs
   .readdirSync(MIGRATIONS)
   .filter((f) => f.endsWith('.sql'))
   .map((f) => fs.readFileSync(path.join(MIGRATIONS, f), 'utf8'))
-  .filter((sql) => sql.includes('bn_risk_control_execution'))
+  .filter((sql) => sql.includes('bn_risk_control_execution') && !sql.includes('bn_uprating_'))
   .join('\n');
 
 const EPIC4_SOURCES = [
