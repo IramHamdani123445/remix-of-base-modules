@@ -2606,9 +2606,10 @@ export const AppRoutes = () => {
       <Route path="/bn/appeals/:appealId" element={<BnFeatureGate flag="bn.gap.appeals"><BnModuleRouteGate moduleCode="bn_appeals_detail" requiredAction="view" adminCapabilities={[{ moduleCode: 'bn_appeals', action: 'view' }]}>{() => <BnAppealDetailPage />}</BnModuleRouteGate></BnFeatureGate>} />
       <Route path="/bn/appeals-workspace" element={<Navigate to="/bn/appeals" replace />} />
 
-      <Route path="/bn/means-tests" element={<BnFeatureGate flag="bn.gap.meansTests"><BnMeansTestsPage /></BnFeatureGate>} />
-      <Route path="/bn/risk-management" element={<BnFeatureGate flag="bn.gap.risk"><BnRiskManagementPage /></BnFeatureGate>} />
-      <Route path="/bn/uprating" element={<BnFeatureGate flag="bn.gap.uprating"><BnUpratingPage /></BnFeatureGate>} />
+      {/* Wildcards: these modules own their internal routing so every record has a stable URL. */}
+      <Route path="/bn/means-tests/*" element={<BnFeatureGate flag="bn.gap.meansTests"><BnMeansTestsPage /></BnFeatureGate>} />
+      <Route path="/bn/risk-management/*" element={<BnFeatureGate flag="bn.gap.risk"><BnRiskManagementPage /></BnFeatureGate>} />
+      <Route path="/bn/uprating/*" element={<BnFeatureGate flag="bn.gap.uprating"><BnUpratingPage /></BnFeatureGate>} />
       <Route path="/bn/award-suspension" element={<BnFeatureGate flag="bn.servicing.awardSuspension"><PermissionWrapper moduleName="bn_award_suspension"><BnAwardSuspensionConsole /></PermissionWrapper></BnFeatureGate>} />
       <Route path="/bn/survivors" element={<BnFeatureGate flag="bn.awards"><BnSurvivorsBenefitProcessing /></BnFeatureGate>} />
       <Route path="/bn/awards" element={<BnFeatureGate flag="bn.awards"><BnPensionerRegister /></BnFeatureGate>} />

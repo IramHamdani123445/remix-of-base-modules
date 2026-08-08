@@ -1,16 +1,25 @@
 /**
- * BN Means-Test Assessments — module landing experience.
+ * BN Means-Test Assessments — module experience.
  *
- * The entry point for the module: what a Means Test is, where the process
- * stands and which work areas exist. Every operational surface (team work
- * queue, adjustment/approval queues, operations workspace and assessment
- * workspace) is reachable from here; availability of an individual action
- * is decided by the backend, never by this page.
+ * Operational UX pattern:
+ *   MODULE → FIND WORK → OPEN RECORD → UNDERSTAND STAGE → NEXT ACTION
  *
- * Access is enforced by `BnModuleRouteGate` (fail-closed, database-driven).
- * Menu visibility is not security — the gate protects direct URL entry.
+ * Navigation is URL driven. Every destination and every assessment has a
+ * stable, refresh-survivable address:
+ *   /bn/means-tests                      module overview
+ *   /bn/means-tests/assessments          find work (queues + search)
+ *   /bn/means-tests/verification         verification work
+ *   /bn/means-tests/decisions            adjustment and approval work
+ *   /bn/means-tests/reassessments        reassessment work
+ *   /bn/means-tests/configuration        governed policy configuration
+ *   /bn/means-tests/assessments/:assessmentId?section=…   record workspace
+ *
+ * Access is enforced by `BnModuleRouteGate` (fail-closed, database-driven)
+ * for every one of those addresses. Menu and nav visibility is convenience,
+ * never security — the gate protects direct URL entry.
  */
 import React from 'react';
+import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BnModuleRouteGate,
@@ -34,7 +43,6 @@ import {
 } from '@/services/bn/meansTests/meansQueryService';
 import { BnMeansAssessmentWorkspace } from '@/components/bn/meansTests/BnMeansAssessmentWorkspace';
 import { BnMeansInitiationWizard } from '@/components/bn/meansTests/initiation/BnMeansInitiationWizard';
-import { BN_MEANS_QUEUES, type BnMeansQueueCode } from '@/types/bn/meansTests/meansAdjustments';
 import { humaniseMeansCode } from '@/types/bn/meansTests/meansFieldContract';
 import {
   MEANS_WORK_AREAS,
@@ -47,6 +55,7 @@ import { BnMeansVerificationQueue } from '@/components/bn/meansTests/verificatio
 import { BnMeansReassessmentQueuePanel } from '@/components/bn/meansTests/lifecycle/BnMeansReassessmentQueue';
 import { BnMeansPolicyConfiguration } from '@/components/bn/meansTests/configuration/BnMeansPolicyConfiguration';
 import BnMeansOperationsWorkspace from '@/components/bn/meansTests/operations/BnMeansOperationsWorkspace';
+import { BnModuleSectionNav, useBnWorkspaceSection } from '@/components/bn/ux';
 
 const STATUS_FILTERS = [
   'DRAFT', 'INFORMATION_PENDING', 'SUBMITTED', 'VERIFICATION_PENDING', 'CALCULATED',
@@ -58,6 +67,8 @@ export const MEANS_MODULE_ACTIONS = [
   'view', 'write', 'verify', 'decide', 'adjust_request', 'adjust_approve', 'approve', 'reassess', 'config',
 ] as const;
 
+export const MEANS_MODULE_BASE = '/bn/means-tests';
+
 function accessLevelLabel(ctx: BnModuleAccessContext): string {
   if (ctx.isAdmin) return 'Administrator — all Means-Test actions';
   const held = MEANS_MODULE_ACTIONS.filter((a) => ctx.can(a));
@@ -65,42 +76,30 @@ function accessLevelLabel(ctx: BnModuleAccessContext): string {
   return held.map((a) => humaniseMeansCode(a)).join(', ');
 }
 
-const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
-  const queryClient = useQueryClient();
-  const [selected, setSelected] = React.useState<string | null>(null);
-  // EPIC 14 — operational deep links carry the backend-chosen section and the
-  // operational context to return to when the officer navigates back.
-  const [selectedSection, setSelectedSection] = React.useState<string | null>(null);
-  const [returnTab, setReturnTab] = React.useState<string | null>(null);
+/** Route helper: an assessment always has one canonical address. */
+export function meansAssessmentPath(assessmentId: string, section?: string | null): string {
+  const query = section ? `?section=${encodeURIComponent(section)}` : '';
+  return `${MEANS_MODULE_BASE}/assessments/${assessmentId}${query}`;
+}
 
-  const openAssessment = React.useCallback(
-    (assessmentId: string, section?: string | null, fromTab?: string) => {
-      setSelectedSection(section ?? null);
-      setReturnTab(fromTab ?? null);
-      setSelected(assessmentId);
+/** Hook used by every queue to open a record without losing its own URL. */
+function useOpenAssessment() {
+  const navigate = useNavigate();
+  return React.useCallback(
+    (assessmentId: string, section?: string | null) => {
+      navigate(meansAssessmentPath(assessmentId, section));
     },
-    [],
+    [navigate],
   );
+}
 
-  const closeAssessment = React.useCallback(() => {
-    setSelected(null);
-    setSelectedSection(null);
-    if (returnTab) setTab(returnTab);
-  }, [returnTab]);
-  const [tab, setTab] = React.useState('overview');
+// ---------------------------------------------------------------- module shell
+
+const MeansModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const openAssessment = useOpenAssessment();
   const [wizardOpen, setWizardOpen] = React.useState(false);
-
-  if (selected) {
-    return (
-      <div className="p-4 sm:p-6">
-        <BnMeansAssessmentWorkspace
-          assessmentId={selected}
-          initialSection={selectedSection}
-          onBack={closeAssessment}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 p-4 sm:p-6">
@@ -130,14 +129,16 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
             </Button>
             <BnMeansInitiationWizard
               open={wizardOpen}
-              onOpenConfiguration={ctx.can('config') ? () => setTab('configuration') : undefined}
+              onOpenConfiguration={
+                ctx.can('config') ? () => navigate(`${MEANS_MODULE_BASE}/configuration`) : undefined
+              }
               onOpenChange={setWizardOpen}
               prefill={{ originSurface: 'MEANS_LANDING' }}
               onCreated={(assessmentId) => {
                 queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
                 queryClient.invalidateQueries({ queryKey: ['bn-means-operational-queue'] });
                 queryClient.invalidateQueries({ queryKey: ['bn-means-operational-counts'] });
-                openAssessment(assessmentId, 'household', 'operations');
+                openAssessment(assessmentId, 'household');
               }}
             />
           </>
@@ -154,95 +155,125 @@ const MeansTestsLanding: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
         }}
       />
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex flex-wrap">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="operations">Operations</TabsTrigger>
-          <TabsTrigger value="team">Team work queue</TabsTrigger>
-          <TabsTrigger value="verification">Verification queue</TabsTrigger>
-          <TabsTrigger value="approval">Decision queues</TabsTrigger>
-          {ctx.can('reassess') && <TabsTrigger value="reassessment">Reassessment queue</TabsTrigger>}
-          {ctx.can('config') && <TabsTrigger value="configuration">Configuration</TabsTrigger>}
-        </TabsList>
+      <BnModuleSectionNav
+        ariaLabel="Means-Test destinations"
+        items={[
+          { to: MEANS_MODULE_BASE, label: 'Overview', end: true },
+          { to: `${MEANS_MODULE_BASE}/assessments`, label: 'Assessments' },
+          { to: `${MEANS_MODULE_BASE}/verification`, label: 'Verification' },
+          { to: `${MEANS_MODULE_BASE}/decisions`, label: 'Decisions' },
+          {
+            to: `${MEANS_MODULE_BASE}/reassessments`,
+            label: 'Reassessments',
+            visible: ctx.can('reassess'),
+          },
+          {
+            to: `${MEANS_MODULE_BASE}/configuration`,
+            label: 'Configuration',
+            visible: ctx.can('config'),
+          },
+        ]}
+      />
 
-        <TabsContent value="overview" className="space-y-6 pt-4">
-          <MeansProcessJourney />
-
-          <section className="space-y-3" aria-labelledby="means-work-areas-heading">
-            <h2 id="means-work-areas-heading" className="text-lg font-semibold">Work areas</h2>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {MEANS_WORK_AREAS.map((area) => (
-                <MeansWorkAreaCard
-                  key={area.code}
-                  area={area}
-                  permitted={area.requiredAction ? ctx.can(area.requiredAction) : true}
-                  onOpen={() =>
-                    setTab(
-                      area.code === 'APPROVAL_QUEUE'
-                        ? 'approval'
-                        : area.code === 'VERIFICATION_QUEUE'
-                          ? 'verification'
-                          : area.code === 'REASSESSMENT_QUEUE'
-                            ? 'reassessment'
-                            : area.code === 'CONFIGURATION'
-                              ? 'configuration'
-                              : area.code === 'MY_ASSESSMENTS'
-                                ? 'operations'
-                                : 'team',
-                    )
-                  }
-                />
-              ))}
-            </div>
-          </section>
-
-          <MeansHowItWorksPanel />
-        </TabsContent>
-
-        {/* EPIC 13 — operational queues, search and reporting. */}
-        <TabsContent value="operations" className="pt-4">
-          <BnMeansOperationsWorkspace
-            onOpen={(assessmentId, section) => openAssessment(assessmentId, section, 'operations')}
-            canAssign={ctx.can('write')}
-            actionsEnabled={ctx.actionsEnabled}
-          />
-        </TabsContent>
-
-        <TabsContent value="team" className="pt-4">
-          <MeansTeamQueue onOpen={(id) => openAssessment(id, null, 'team')} />
-        </TabsContent>
-
-        {/* EPIC 8 — verification work is a distinct governed queue. */}
-        <TabsContent value="verification" className="pt-4">
-          <BnMeansVerificationQueue onOpen={(id) => openAssessment(id, 'verification', 'verification')} />
-        </TabsContent>
-
-
-        {/* EPIC 10 — adjustment and approval work in one governed surface. */}
-        <TabsContent value="approval" className="pt-4">
-          <BnMeansDecisionQueue onOpenAssessment={(id) => openAssessment(id, 'decision', 'approval')} />
-        </TabsContent>
-
-        {/* EPIC 12 — reassessment and change of circumstances. */}
-        {ctx.can('reassess') && (
-          <TabsContent value="reassessment" className="pt-4">
-            <BnMeansReassessmentQueuePanel onOpen={(id) => openAssessment(id, 'lifecycle', 'reassessment')} />
-          </TabsContent>
-        )}
-
-        {/* Policy configuration — governed administrative boundary. */}
-        {ctx.can('config') && (
-          <TabsContent value="configuration" className="pt-4">
-            <BnMeansPolicyConfiguration
-              actionsEnabled={ctx.actionsEnabled}
-              canConfigure={ctx.can('config')}
-            />
-          </TabsContent>
-        )}
-      </Tabs>
+      <Outlet />
     </div>
   );
 };
+
+// ------------------------------------------------------------------- overview
+
+const MeansOverviewRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
+  const navigate = useNavigate();
+  const destinationFor = (code: string) => {
+    switch (code) {
+      case 'APPROVAL_QUEUE':
+        return `${MEANS_MODULE_BASE}/decisions`;
+      case 'VERIFICATION_QUEUE':
+        return `${MEANS_MODULE_BASE}/verification`;
+      case 'REASSESSMENT_QUEUE':
+        return `${MEANS_MODULE_BASE}/reassessments`;
+      case 'CONFIGURATION':
+        return `${MEANS_MODULE_BASE}/configuration`;
+      default:
+        return `${MEANS_MODULE_BASE}/assessments`;
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <MeansProcessJourney />
+
+      <section className="space-y-3" aria-labelledby="means-work-areas-heading">
+        <h2 id="means-work-areas-heading" className="text-lg font-semibold">Work areas</h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {MEANS_WORK_AREAS.map((area) => (
+            <MeansWorkAreaCard
+              key={area.code}
+              area={area}
+              permitted={area.requiredAction ? ctx.can(area.requiredAction) : true}
+              onOpen={() => navigate(destinationFor(area.code))}
+            />
+          ))}
+        </div>
+      </section>
+
+      <MeansHowItWorksPanel />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------- assessments
+
+/**
+ * FIND WORK. Operational queues and the searchable team work queue live on
+ * one destination so an officer never hunts across tab bars.
+ */
+const MeansAssessmentsRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
+  const openAssessment = useOpenAssessment();
+  const [view, setView] = useBnWorkspaceSection('queues', 'view');
+
+  return (
+    <Tabs value={view} onValueChange={(next) => setView(next, { replace: true })}>
+      <TabsList>
+        <TabsTrigger value="queues">Operational queues</TabsTrigger>
+        <TabsTrigger value="search">Search all assessments</TabsTrigger>
+      </TabsList>
+      <TabsContent value="queues" className="pt-4">
+        <BnMeansOperationsWorkspace
+          onOpen={(assessmentId, section) => openAssessment(assessmentId, section)}
+          canAssign={ctx.can('write')}
+          actionsEnabled={ctx.actionsEnabled}
+        />
+      </TabsContent>
+      <TabsContent value="search" className="pt-4">
+        <MeansTeamQueue onOpen={(id) => openAssessment(id)} />
+      </TabsContent>
+    </Tabs>
+  );
+};
+
+// ------------------------------------------------------------ record workspace
+
+const MeansAssessmentRecordRoute: React.FC = () => {
+  const { assessmentId } = useParams<{ assessmentId: string }>();
+  const navigate = useNavigate();
+  const [section, setSection] = useBnWorkspaceSection('context');
+
+  if (!assessmentId) return <Navigate to={`${MEANS_MODULE_BASE}/assessments`} replace />;
+
+  return (
+    <div className="p-4 sm:p-6">
+      <BnMeansAssessmentWorkspace
+        assessmentId={assessmentId}
+        section={section}
+        onSectionChange={(next) => setSection(next, { replace: true })}
+        onBack={() => navigate(`${MEANS_MODULE_BASE}/assessments`)}
+      />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------- team queue
 
 const MeansTeamQueue: React.FC<{ onOpen: (assessmentId: string) => void }> = ({ onOpen }) => {
   const [filters, setFilters] = React.useState<BnMeansWorkQueueFilters>({});
@@ -367,16 +398,77 @@ const MeansTeamQueue: React.FC<{ onOpen: (assessmentId: string) => void }> = ({ 
   );
 };
 
-/**
- * MT7 work queues. Every queue is served by the secured
- * `bn_means_queues_v1` query — no direct table read, no client-side
- * derivation of who should act next.
- */
+/** Permission-scoped destination: the nav hides it, the route refuses it. */
+const MeansPermissionBoundary: React.FC<{
+  permitted: boolean;
+  action: string;
+  children: React.ReactNode;
+}> = ({ permitted, action, children }) => {
+  if (!permitted) {
+    return (
+      <Alert variant="destructive" data-testid="means-route-permission-denied">
+        <ShieldAlert className="h-4 w-4" />
+        <AlertTitle>Permission denied</AlertTitle>
+        <AlertDescription>
+          Your account lacks the &apos;{action}&apos; permission on Means-Test Assessments.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  return <>{children}</>;
+};
 
 export default function BnMeansTestsPage() {
   return (
     <BnModuleRouteGate moduleCode="bn_means_tests" requiredAction="view">
-      {(ctx: BnModuleAccessContext) => <MeansTestsLanding ctx={ctx} />}
+      {(ctx: BnModuleAccessContext) => (
+        <Routes>
+          {/* Record workspaces are full-width and outside the module shell. */}
+          <Route path="assessments/:assessmentId" element={<MeansAssessmentRecordRoute />} />
+
+          <Route element={<MeansModuleShell ctx={ctx} />}>
+            <Route index element={<MeansOverviewRoute ctx={ctx} />} />
+            <Route path="assessments" element={<MeansAssessmentsRoute ctx={ctx} />} />
+            <Route path="verification" element={<MeansVerificationRoute />} />
+            <Route path="decisions" element={<MeansDecisionsRoute />} />
+            <Route
+              path="reassessments"
+              element={
+                <MeansPermissionBoundary permitted={ctx.can('reassess')} action="reassess">
+                  <MeansReassessmentsRoute />
+                </MeansPermissionBoundary>
+              }
+            />
+            <Route
+              path="configuration"
+              element={
+                <MeansPermissionBoundary permitted={ctx.can('config')} action="config">
+                  <BnMeansPolicyConfiguration
+                    actionsEnabled={ctx.actionsEnabled}
+                    canConfigure={ctx.can('config')}
+                  />
+                </MeansPermissionBoundary>
+              }
+            />
+            <Route path="*" element={<Navigate to={MEANS_MODULE_BASE} replace />} />
+          </Route>
+        </Routes>
+      )}
     </BnModuleRouteGate>
   );
 }
+
+const MeansVerificationRoute: React.FC = () => {
+  const openAssessment = useOpenAssessment();
+  return <BnMeansVerificationQueue onOpen={(id) => openAssessment(id, 'verification')} />;
+};
+
+const MeansDecisionsRoute: React.FC = () => {
+  const openAssessment = useOpenAssessment();
+  return <BnMeansDecisionQueue onOpenAssessment={(id) => openAssessment(id, 'decision')} />;
+};
+
+const MeansReassessmentsRoute: React.FC = () => {
+  const openAssessment = useOpenAssessment();
+  return <BnMeansReassessmentQueuePanel onOpen={(id) => openAssessment(id, 'lifecycle')} />;
+};

@@ -10,6 +10,7 @@
  * surfaces that state honestly rather than pretending the action succeeded.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -77,6 +78,12 @@ const OverpaymentRecovery: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  /**
+   * The open case lives in the URL (`?case=<case_id>`) so refresh, browser
+   * Back and shared links land the officer back on the same record.
+   */
+  const [caseParam, setCaseParam] = useSearchParams();
+  const openCaseId = caseParam.get('case');
   const [selected, setSelected] = useState<BnOverpaymentWorklistRow | null>(null);
   const [actions, setActions] = useState<BnOverpaymentAvailableAction[]>([]);
   const [planOpen, setPlanOpen] = useState(false);
@@ -112,7 +119,26 @@ const OverpaymentRecovery: React.FC = () => {
     held: rows.filter((r) => r.status === 'ON_APPEAL_HOLD' || r.status === 'SUSPENDED').length,
   }), [rows]);
 
-  const openCase = async (row: BnOverpaymentWorklistRow) => {
+  const setOpenCaseId = useCallback(
+    (caseId: string | null) => {
+      setCaseParam(
+        (current) => {
+          // Rebuild without the `case` key rather than mutating, so the
+          // architecture guards on direct-mutation verbs stay clean.
+          const next = new URLSearchParams();
+          current.forEach((value, key) => {
+            if (key !== 'case') next.set(key, value);
+          });
+          if (caseId) next.set('case', caseId);
+          return next;
+        },
+        { replace: !caseId },
+      );
+    },
+    [setCaseParam],
+  );
+
+  const openCase = useCallback(async (row: BnOverpaymentWorklistRow) => {
     setSelected(row);
     setCommandError(null);
     setActions([]);
@@ -122,7 +148,21 @@ const OverpaymentRecovery: React.FC = () => {
     } catch {
       setActions([]);
     }
-  };
+  }, []);
+
+  /**
+   * Restore the open case from the URL once the worklist is available. The
+   * record is only ever rendered from server data, never from the URL alone.
+   */
+  useEffect(() => {
+    if (!openCaseId) {
+      setSelected(null);
+      return;
+    }
+    if (selected?.case_id === openCaseId) return;
+    const row = rows.find((r) => r.case_id === openCaseId);
+    if (row) void openCase(row);
+  }, [openCaseId, rows, selected?.case_id, openCase]);
 
   const can = (action: string) => actions.some((a) => a.action === action && a.allowed);
 
@@ -286,7 +326,7 @@ const OverpaymentRecovery: React.FC = () => {
                     <TableCell className="text-right">{money(r.gross_amount, r.currency)}</TableCell>
                     <TableCell className="text-right">{money(r.outstanding_amount, r.currency)}</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" onClick={() => void openCase(r)}>Open</Button>
+                      <Button size="sm" variant="outline" onClick={() => setOpenCaseId(r.case_id)}>Open</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -296,7 +336,7 @@ const OverpaymentRecovery: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selected} onOpenChange={(o) => { if (!o) { setSelected(null); setCommandError(null); } }}>
+      <Dialog open={!!selected} onOpenChange={(o) => { if (!o) { setOpenCaseId(null); setSelected(null); setCommandError(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

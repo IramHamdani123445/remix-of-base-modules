@@ -1,12 +1,24 @@
 /**
- * BN Risk / Fraud — operational surface (EPIC 0 signals, EPIC 1 assessments).
+ * BN Risk / Fraud — operational surface.
  *
- * Access is gated by `BnModuleRouteGate`; mutation controls are only offered
- * when the module permits actions and the governed action query allows them.
- * The assessment workspace is a deep link on this single governed route — no
- * new route is registered.
+ * Operational UX pattern:
+ *   MODULE → FIND WORK → OPEN RECORD → UNDERSTAND STAGE → NEXT ACTION
+ *
+ * Navigation is URL driven and every assessment has a stable address:
+ *   /bn/risk-management                      overview and operational queues
+ *   /bn/risk-management/signals              signal intake and triage
+ *   /bn/risk-management/assessments          assessment work
+ *   /bn/risk-management/controls             control decisions, execution, outcomes
+ *   /bn/risk-management/reporting            aggregate evidence
+ *   /bn/risk-management/configuration        scoring configuration
+ *   /bn/risk-management/assessments/:assessmentId?section=…
+ *
+ * Access is gated by `BnModuleRouteGate` for every address; mutation controls
+ * are only offered when the module permits actions and the governed action
+ * query allows them.
  */
 import React from 'react';
+import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   BnModuleRouteGate,
@@ -15,7 +27,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShieldAlert } from 'lucide-react';
 import { BnRiskSignalQueue } from '@/components/bn/risk/BnRiskSignalQueue';
@@ -28,9 +39,28 @@ import { BnRiskControlExecutionQueue } from '@/components/bn/risk/BnRiskControlE
 import { BnRiskOutcomeQueue } from '@/components/bn/risk/BnRiskOutcomeQueue';
 import { BnRiskOperationsDashboard } from '@/components/bn/risk/BnRiskOperationsDashboard';
 import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel';
-
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
+import {
+  BnModuleSectionNav,
+  BnQueueSummaryCards,
+  useBnWorkspaceSection,
+  type BnQueueSummaryItem,
+} from '@/components/bn/ux';
+
+export const RISK_MODULE_BASE = '/bn/risk-management';
+
+/** Sections owned by the assessment workspace. */
+export type BnRiskWorkspaceSection =
+  | 'approval'
+  | 'execution'
+  | 'outcome'
+  | 'closure'
+  | 'feedback';
+
+const WORKSPACE_SECTIONS: readonly BnRiskWorkspaceSection[] = [
+  'approval', 'execution', 'outcome', 'closure', 'feedback',
+];
 
 const OVERVIEW_TILES: readonly { code: string; label: string }[] = [
   { code: 'NEW', label: 'Awaiting triage' },
@@ -40,66 +70,29 @@ const OVERVIEW_TILES: readonly { code: string; label: string }[] = [
   { code: 'DISMISSED', label: 'Dismissed' },
 ];
 
-const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
-  const [openSignalId, setOpenSignalId] = React.useState<string | null>(null);
+export function riskAssessmentPath(
+  assessmentId: string,
+  section?: BnRiskWorkspaceSection | null,
+): string {
+  const query = section ? `?section=${section}` : '';
+  return `${RISK_MODULE_BASE}/assessments/${assessmentId}${query}`;
+}
+
+function useOpenRiskAssessment() {
+  const navigate = useNavigate();
+  return React.useCallback(
+    (assessmentId: string, section?: BnRiskWorkspaceSection | null) =>
+      navigate(riskAssessmentPath(assessmentId, section)),
+    [navigate],
+  );
+}
+
+// ---------------------------------------------------------------- module shell
+
+const RiskModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const [manualOpen, setManualOpen] = React.useState(false);
   const [confirmation, setConfirmation] = React.useState<string | null>(null);
-  const [tab, setTab] = React.useState('signals');
-  const [openAssessmentId, setOpenAssessmentId] = React.useState<string | null>(null);
-  const [focusSection, setFocusSection] =
-    React.useState<'approval' | 'execution' | 'outcome' | 'closure' | 'feedback' | null>(null);
-
-
-
-  const counts = useQuery({
-    queryKey: ['bn-risk-signal-queue', 'counts'],
-    queryFn: async () => {
-      const result = await riskQueryService.signalQueue({}, 1, 1);
-      if (result.status !== 'OK' || !result.data) throw new Error(result.code ?? result.status);
-      return result.data.status_counts;
-    },
-  });
-
   const canWrite = ctx.actionsEnabled && ctx.can('write');
-
-  /**
-   * Every queue deep link opens the workspace at the section that owns the
-   * outstanding work: approval, execution, outcome or closure.
-   */
-  const openWorkspace = React.useCallback(
-    (assessmentId: string,
-      section: 'approval' | 'execution' | 'outcome' | 'closure' | 'feedback' | null) => {
-      setFocusSection(section);
-      setOpenAssessmentId(assessmentId);
-      setTab('assessments');
-    },
-    [],
-  );
-
-  const openAssessment = React.useCallback(
-    (assessmentId: string) => openWorkspace(assessmentId, null), [openWorkspace]);
-
-  const openApprovalDecision = React.useCallback(
-    (assessmentId: string) => openWorkspace(assessmentId, 'approval'), [openWorkspace]);
-
-  const openControlExecution = React.useCallback(
-    (assessmentId: string) => openWorkspace(assessmentId, 'execution'), [openWorkspace]);
-
-  /** Operational cards deep link straight to the queue that owns the work. */
-  const openQueue = React.useCallback((queue: string) => {
-    setOpenAssessmentId(null);
-    setFocusSection(null);
-    setTab(queue);
-  }, []);
-
-  const openOutcomeWork = React.useCallback(
-    (assessmentId: string, section: 'outcome' | 'closure') =>
-      openWorkspace(assessmentId, section),
-    [openWorkspace],
-  );
-
-
-
 
   return (
     <div className="space-y-6 p-6">
@@ -130,143 +123,21 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
         </Alert>
       )}
 
-      {confirmation && (
-        <Alert><AlertDescription>{confirmation}</AlertDescription></Alert>
-      )}
+      {confirmation && <Alert><AlertDescription>{confirmation}</AlertDescription></Alert>}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {OVERVIEW_TILES.map((tile) => (
-          <Card key={tile.code}>
-            <CardHeader className="pb-2">
-              <CardDescription>{tile.label}</CardDescription>
-              <CardTitle className="text-2xl">
-                {counts.data?.[tile.code] ?? (counts.isLoading ? '—' : 0)}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 text-xs text-muted-foreground">
-              {tile.code === 'NEW' ? 'Requires an officer decision' : 'In the risk pipeline'}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === 'signals') setOpenAssessmentId(null); }}>
-        <TabsList>
-          <TabsTrigger value="signals">Signals</TabsTrigger>
-          <TabsTrigger value="assessments">Assessments</TabsTrigger>
-          <TabsTrigger value="control-decisions">Control decisions</TabsTrigger>
-          <TabsTrigger value="control-execution">Control execution</TabsTrigger>
-          <TabsTrigger value="outcomes">Outcomes &amp; closure</TabsTrigger>
-
-
-          <TabsTrigger value="operations">Operations</TabsTrigger>
-          <TabsTrigger value="reporting">Reporting</TabsTrigger>
-          <TabsTrigger value="scoring-configuration">Scoring configuration</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="signals" className="space-y-6">
-          <BnRiskSignalQueue onOpenSignal={setOpenSignalId} />
-
-          <Alert>
-            <AlertTitle>What happens after triage</AlertTitle>
-            <AlertDescription>
-              A confirmed signal can be taken forward into a risk assessment, where facts
-              and evidence are gathered, then scored for review. A score is decision support
-              only — no signal, assessment or score can affect a benefit on its own.
-            </AlertDescription>
-          </Alert>
-        </TabsContent>
-
-        <TabsContent value="assessments" className="space-y-6">
-          {openAssessmentId
-            ? (
-              <BnRiskAssessmentWorkspace
-                assessmentId={openAssessmentId}
-                focusSection={focusSection}
-                onBack={() => {
-                  setOpenAssessmentId(null);
-                  setFocusSection(null);
-                }}
-              />
-            )
-            : (
-              <BnRiskAssessmentQueue
-                onOpenAssessment={(id) => openWorkspace(id, null)}
-              />
-
-            )}
-        </TabsContent>
-
-        <TabsContent value="control-decisions" className="space-y-6">
-          <BnRiskControlApprovalQueue onOpenApproval={openApprovalDecision} />
-
-          <Alert>
-            <AlertTitle>Approval authorises a control</AlertTitle>
-            <AlertDescription>
-              Approving a recommended control authorises it for later governed execution.
-              No payment, award, claim, overpayment or referral changes from this screen.
-            </AlertDescription>
-          </Alert>
-        </TabsContent>
-
-        <TabsContent value="control-execution" className="space-y-6">
-          <BnRiskControlExecutionQueue onOpenExecution={openControlExecution} />
-
-          <Alert>
-            <AlertTitle>The owning domain performs the action</AlertTitle>
-            <AlertDescription>
-              Risk requests an approved control through a governed handoff. Payments, Legal,
-              Investigation and the other owning domains decide whether and how it is applied,
-              and Risk records only the reference and status they return.
-            </AlertDescription>
-          </Alert>
-        </TabsContent>
-
-        <TabsContent value="outcomes" className="space-y-6">
-          <BnRiskOutcomeQueue onOpenAssessment={openOutcomeWork} />
-
-          <Alert>
-            <AlertTitle>Outcome, completion and closure are governed</AlertTitle>
-            <AlertDescription>
-              An outcome records what the assessment concluded and why. Closure ends the
-              assessment; a closed assessment can only be reopened exceptionally, with a
-              recorded justification, and every reopening is audited.
-            </AlertDescription>
-          </Alert>
-        </TabsContent>
-
-
-        <TabsContent value="operations" className="space-y-6">
-          <BnRiskOperationsDashboard onOpenQueue={openQueue} />
-        </TabsContent>
-
-        <TabsContent value="reporting" className="space-y-6">
-          <BnRiskReportingPanel />
-
-          <Alert>
-            <AlertTitle>Reporting is aggregate evidence</AlertTitle>
-            <AlertDescription>
-              Reports describe volumes, outcomes and rule behaviour. A referral is not a finding
-              of fraud, and no rule is judged effective or ineffective by a figure alone —
-              changing a rule remains a separate, versioned and authorised decision.
-            </AlertDescription>
-          </Alert>
-        </TabsContent>
-
-        <TabsContent value="scoring-configuration" className="space-y-6">
-          <BnRiskScoringConfigurationPanel />
-        </TabsContent>
-      </Tabs>
-
-
-
-      <BnRiskSignalDetailPanel
-        signalId={openSignalId}
-        onOpenChange={(open) => !open && setOpenSignalId(null)}
-        actionsEnabled={ctx.actionsEnabled}
-        onOpenAssessment={openAssessment}
+      <BnModuleSectionNav
+        ariaLabel="Fraud, Error and Risk destinations"
+        items={[
+          { to: RISK_MODULE_BASE, label: 'Overview', end: true },
+          { to: `${RISK_MODULE_BASE}/signals`, label: 'Signals' },
+          { to: `${RISK_MODULE_BASE}/assessments`, label: 'Assessments' },
+          { to: `${RISK_MODULE_BASE}/controls`, label: 'Controls & outcomes' },
+          { to: `${RISK_MODULE_BASE}/reporting`, label: 'Reporting' },
+          { to: `${RISK_MODULE_BASE}/configuration`, label: 'Configuration' },
+        ]}
       />
 
+      <Outlet />
 
       <BnRiskManualSignalDialog
         open={manualOpen}
@@ -282,10 +153,200 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   );
 };
 
+// ------------------------------------------------------------------- overview
+
+const RiskOverviewRoute: React.FC = () => {
+  const navigate = useNavigate();
+  const counts = useQuery({
+    queryKey: ['bn-risk-signal-queue', 'counts'],
+    queryFn: async () => {
+      const result = await riskQueryService.signalQueue({}, 1, 1);
+      if (result.status !== 'OK' || !result.data) throw new Error(result.code ?? result.status);
+      return result.data.status_counts;
+    },
+  });
+
+  /** A failed count read is shown as unavailable, never as zero. */
+  const items: readonly BnQueueSummaryItem[] = OVERVIEW_TILES.map((tile) => ({
+    id: tile.code,
+    label: tile.label,
+    loading: counts.isLoading,
+    unavailable: counts.isError,
+    count: counts.isError ? undefined : counts.data?.[tile.code] ?? 0,
+    description: tile.code === 'NEW' ? 'Requires an officer decision' : 'In the risk pipeline',
+    onSelect: () => navigate(`${RISK_MODULE_BASE}/signals`),
+  }));
+
+  return (
+    <div className="space-y-6">
+      <BnQueueSummaryCards
+        ariaLabel="Signal pipeline"
+        items={items}
+        className="xl:grid-cols-5"
+      />
+      <BnRiskOperationsDashboard
+        onOpenQueue={(queue) => {
+          /** Legacy queue codes map onto the consolidated destinations. */
+          const destination =
+            queue === 'control-decisions'
+              ? 'controls?stage=decisions'
+              : queue === 'control-execution'
+                ? 'controls?stage=execution'
+                : 'controls?stage=outcomes';
+          navigate(`${RISK_MODULE_BASE}/${destination}`);
+        }}
+      />
+    </div>
+  );
+};
+
+// -------------------------------------------------------------------- signals
+
+const RiskSignalsRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
+  const [openSignalId, setOpenSignalId] = React.useState<string | null>(null);
+  const openAssessment = useOpenRiskAssessment();
+
+  return (
+    <div className="space-y-6">
+      <BnRiskSignalQueue onOpenSignal={setOpenSignalId} />
+
+      <Alert>
+        <AlertTitle>What happens after triage</AlertTitle>
+        <AlertDescription>
+          A confirmed signal can be taken forward into a risk assessment, where facts
+          and evidence are gathered, then scored for review. A score is decision support
+          only — no signal, assessment or score can affect a benefit on its own.
+        </AlertDescription>
+      </Alert>
+
+      <BnRiskSignalDetailPanel
+        signalId={openSignalId}
+        onOpenChange={(open) => !open && setOpenSignalId(null)}
+        actionsEnabled={ctx.actionsEnabled}
+        onOpenAssessment={(id) => openAssessment(id)}
+      />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------- assessments
+
+const RiskAssessmentsRoute: React.FC = () => {
+  const openAssessment = useOpenRiskAssessment();
+  return <BnRiskAssessmentQueue onOpenAssessment={(id) => openAssessment(id)} />;
+};
+
+const RiskAssessmentRecordRoute: React.FC = () => {
+  const { assessmentId } = useParams<{ assessmentId: string }>();
+  const navigate = useNavigate();
+  const [section] = useBnWorkspaceSection('');
+  const focusSection = WORKSPACE_SECTIONS.includes(section as BnRiskWorkspaceSection)
+    ? (section as BnRiskWorkspaceSection)
+    : null;
+
+  if (!assessmentId) return <Navigate to={`${RISK_MODULE_BASE}/assessments`} replace />;
+
+  return (
+    <div className="space-y-6 p-6">
+      <BnRiskAssessmentWorkspace
+        assessmentId={assessmentId}
+        focusSection={focusSection}
+        onBack={() => navigate(`${RISK_MODULE_BASE}/assessments`)}
+      />
+    </div>
+  );
+};
+
+// -------------------------------------------------------- controls & outcomes
+
+/**
+ * The former control-decision, control-execution and outcome tabs are one
+ * destination: they are the same body of control work at different stages.
+ */
+const RiskControlsRoute: React.FC = () => {
+  const openAssessment = useOpenRiskAssessment();
+  const [stage, setStage] = useBnWorkspaceSection('decisions', 'stage');
+
+  return (
+    <Tabs value={stage} onValueChange={(next) => setStage(next, { replace: true })}>
+      <TabsList>
+        <TabsTrigger value="decisions">Awaiting decision</TabsTrigger>
+        <TabsTrigger value="execution">Approved for execution</TabsTrigger>
+        <TabsTrigger value="outcomes">Outcomes &amp; closure</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="decisions" className="space-y-6 pt-4">
+        <BnRiskControlApprovalQueue onOpenApproval={(id) => openAssessment(id, 'approval')} />
+        <Alert>
+          <AlertTitle>Approval authorises a control</AlertTitle>
+          <AlertDescription>
+            Approving a recommended control authorises it for later governed execution.
+            No payment, award, claim, overpayment or referral changes from this screen.
+          </AlertDescription>
+        </Alert>
+      </TabsContent>
+
+      <TabsContent value="execution" className="space-y-6 pt-4">
+        <BnRiskControlExecutionQueue onOpenExecution={(id) => openAssessment(id, 'execution')} />
+        <Alert>
+          <AlertTitle>The owning domain performs the action</AlertTitle>
+          <AlertDescription>
+            Risk requests an approved control through a governed handoff. Payments, Legal,
+            Investigation and the other owning domains decide whether and how it is applied,
+            and Risk records only the reference and status they return.
+          </AlertDescription>
+        </Alert>
+      </TabsContent>
+
+      <TabsContent value="outcomes" className="space-y-6 pt-4">
+        <BnRiskOutcomeQueue
+          onOpenAssessment={(id, section) => openAssessment(id, section)}
+        />
+        <Alert>
+          <AlertTitle>Outcome, completion and closure are governed</AlertTitle>
+          <AlertDescription>
+            An outcome records what the assessment concluded and why. Closure ends the
+            assessment; a closed assessment can only be reopened exceptionally, with a
+            recorded justification, and every reopening is audited.
+          </AlertDescription>
+        </Alert>
+      </TabsContent>
+    </Tabs>
+  );
+};
+
+const RiskReportingRoute: React.FC = () => (
+  <div className="space-y-6">
+    <BnRiskReportingPanel />
+    <Alert>
+      <AlertTitle>Reporting is aggregate evidence</AlertTitle>
+      <AlertDescription>
+        Reports describe volumes, outcomes and rule behaviour. A referral is not a finding
+        of fraud, and no rule is judged effective or ineffective by a figure alone —
+        changing a rule remains a separate, versioned and authorised decision.
+      </AlertDescription>
+    </Alert>
+  </div>
+);
+
 export default function BnRiskManagementPage() {
   return (
     <BnModuleRouteGate moduleCode="bn_risk_management" requiredAction="view">
-      {(ctx: BnModuleAccessContext) => <RiskWorkspace ctx={ctx} />}
+      {(ctx: BnModuleAccessContext) => (
+        <Routes>
+          <Route path="assessments/:assessmentId" element={<RiskAssessmentRecordRoute />} />
+
+          <Route element={<RiskModuleShell ctx={ctx} />}>
+            <Route index element={<RiskOverviewRoute />} />
+            <Route path="signals" element={<RiskSignalsRoute ctx={ctx} />} />
+            <Route path="assessments" element={<RiskAssessmentsRoute />} />
+            <Route path="controls" element={<RiskControlsRoute />} />
+            <Route path="reporting" element={<RiskReportingRoute />} />
+            <Route path="configuration" element={<BnRiskScoringConfigurationPanel />} />
+            <Route path="*" element={<Navigate to={RISK_MODULE_BASE} replace />} />
+          </Route>
+        </Routes>
+      )}
     </BnModuleRouteGate>
   );
 }

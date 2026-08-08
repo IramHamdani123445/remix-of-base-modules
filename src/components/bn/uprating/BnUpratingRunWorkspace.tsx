@@ -75,6 +75,7 @@ import {
 } from '@/services/bn/uprating/upratingRunService';
 import { fetchUpratingPolicyList } from '@/services/bn/uprating/upratingPolicyService';
 import { newUpratingUuid } from '@/services/bn/uprating/upratingPolicyService';
+import { BnPhaseSectionNav } from '@/components/bn/ux';
 import {
   formatMinor,
   type BnUpratingApprovalDecision,
@@ -95,23 +96,48 @@ export interface BnUpratingRunWorkspaceProps {
   readonly ctx: BnModuleAccessContext;
   /** Deep link from the operational queues — run to open on mount. */
   readonly initialRunId?: string | null;
-  /** Deep link target tab inside the run workspace. */
+  /** Deep link target section inside the run workspace. */
   readonly initialTab?: string | null;
+  /**
+   * Supplied when the run identity lives in the URL. Selecting a run then
+   * navigates to `/bn/uprating/runs/:runId`; `null` returns to the list.
+   */
+  readonly onSelectRun?: (runId: string | null) => void;
+  /** Supplied when the workflow section lives in the URL (`?section=`). */
+  readonly onSectionChange?: (section: string) => void;
 }
 
 export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
   ctx,
   initialRunId = null,
   initialTab = null,
+  onSelectRun,
+  onSectionChange,
 }) => {
   const qc = useQueryClient();
   const [selectedRunId, setSelectedRunId] = React.useState<string | null>(initialRunId);
-  const [activeTab, setActiveTab] = React.useState<string>(initialTab ?? 'population');
+  const [internalTab, setInternalTab] = React.useState<string>(initialTab ?? 'population');
+  const activeTab = onSectionChange ? initialTab ?? 'population' : internalTab;
+  const setActiveTab = React.useCallback(
+    (next: string) => {
+      if (onSectionChange) onSectionChange(next);
+      else setInternalTab(next);
+    },
+    [onSectionChange],
+  );
+  /** Run selection is URL-owned when the caller routes it. */
+  const selectRun = React.useCallback(
+    (runId: string | null) => {
+      if (onSelectRun) onSelectRun(runId);
+      else setSelectedRunId(runId);
+    },
+    [onSelectRun],
+  );
 
   React.useEffect(() => {
-    if (initialRunId) setSelectedRunId(initialRunId);
-    if (initialTab) setActiveTab(initialTab);
-  }, [initialRunId, initialTab]);
+    setSelectedRunId(initialRunId);
+    if (initialTab && !onSectionChange) setInternalTab(initialTab);
+  }, [initialRunId, initialTab, onSectionChange]);
   const [search, setSearch] = React.useState('');
   const [createOpen, setCreateOpen] = React.useState(false);
   const [resolveTarget, setResolveTarget] = React.useState<BnUpratingExceptionRow | null>(null);
@@ -306,7 +332,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
     });
     if (result.status !== 'ERROR') {
       setCreateOpen(false);
-      setSelectedRunId((result.data?.run_id as string) ?? null);
+      selectRun((result.data?.run_id as string) ?? null);
     }
   };
 
@@ -541,7 +567,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
                     <TableRow
                       key={r.run_id}
                       className="cursor-pointer"
-                      onClick={() => setSelectedRunId(r.run_id)}
+                      onClick={() => selectRun(r.run_id)}
                     >
                       <TableCell>
                         <div className="font-medium">{r.run_reference}</div>
@@ -586,7 +612,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
 
   return (
     <div className="space-y-4">
-      <Button variant="ghost" size="sm" onClick={() => setSelectedRunId(null)}>
+      <Button variant="ghost" size="sm" onClick={() => selectRun(null)}>
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to runs
       </Button>
 
@@ -647,20 +673,72 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
             </Alert>
           )}
 
+          {/*
+            Nine lifecycle sections are grouped into five officer-meaningful
+            phases. Content, commands and permissions are unchanged.
+          */}
+          <BnPhaseSectionNav
+            ariaLabel="Uprating run phases"
+            activeSection={activeTab}
+            onSelect={setActiveTab}
+            phases={[
+              {
+                id: 'prepare',
+                label: 'Prepare',
+                description: 'Build the population, clear exceptions and simulate the run.',
+                sections: [
+                  { id: 'population', label: 'Population' },
+                  {
+                    id: 'exceptions',
+                    label: `Exceptions${exceptions?.open ? ` (${exceptions.open})` : ''}`,
+                  },
+                  { id: 'simulation', label: 'Simulation' },
+                ],
+              },
+              {
+                id: 'approve',
+                label: 'Approve',
+                description: 'Independent approval and execution scheduling.',
+                sections: [{ id: 'approval', label: 'Approval & scheduling' }],
+              },
+              {
+                id: 'execute',
+                label: 'Execute',
+                description: 'Apply exactly what was approved, in controlled batches.',
+                sections: [{ id: 'execution', label: 'Execution' }],
+              },
+              {
+                id: 'reconcile',
+                label: 'Reconcile',
+                description: 'Reconcile the consequences, or take the controlled failure path.',
+                sections: [
+                  { id: 'reconciliation', label: 'Reconciliation' },
+                  { id: 'rollback', label: 'Rollback' },
+                ],
+              },
+              {
+                id: 'close',
+                label: 'Close',
+                description: 'Terminal closure and the evidence trail for this run.',
+                sections: [
+                  { id: 'closure', label: 'Closure' },
+                  { id: 'timeline', label: 'Activity & history' },
+                ],
+              },
+            ]}
+          />
+
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
+            <TabsList className="sr-only">
               <TabsTrigger value="population">Population</TabsTrigger>
-              <TabsTrigger value="exceptions">
-                Exceptions{exceptions?.open ? ` (${exceptions.open})` : ''}
-              </TabsTrigger>
+              <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
               <TabsTrigger value="simulation">Simulation</TabsTrigger>
               <TabsTrigger value="approval">Approval</TabsTrigger>
               <TabsTrigger value="execution">Execution</TabsTrigger>
               <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
               <TabsTrigger value="rollback">Rollback</TabsTrigger>
               <TabsTrigger value="closure">Closure</TabsTrigger>
-              <TabsTrigger value="timeline">Timeline</TabsTrigger>
-
+              <TabsTrigger value="timeline">Activity &amp; history</TabsTrigger>
             </TabsList>
 
             <TabsContent value="population" className="pt-4">
