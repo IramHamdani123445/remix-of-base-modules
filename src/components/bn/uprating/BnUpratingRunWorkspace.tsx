@@ -466,7 +466,10 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
                 Exceptions{exceptions?.open ? ` (${exceptions.open})` : ''}
               </TabsTrigger>
               <TabsTrigger value="simulation">Simulation</TabsTrigger>
+              <TabsTrigger value="approval">Approval</TabsTrigger>
+              <TabsTrigger value="execution">Execution</TabsTrigger>
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
+
             </TabsList>
 
             <TabsContent value="population" className="pt-4">
