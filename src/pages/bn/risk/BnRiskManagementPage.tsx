@@ -221,9 +221,8 @@ const RiskAssessmentsRoute: React.FC = () => {
 };
 
 const RiskAssessmentRecordRoute: React.FC = () => {
-  const { assessmentId } = useParams<{ assessmentId: string }>();
+  const { assessmentId, section } = useParams<{ assessmentId: string; section?: string }>();
   const navigate = useNavigate();
-  const [section] = useBnWorkspaceSection('');
   const focusSection = WORKSPACE_SECTIONS.includes(section as BnRiskWorkspaceSection)
     ? (section as BnRiskWorkspaceSection)
     : null;
@@ -231,7 +230,15 @@ const RiskAssessmentRecordRoute: React.FC = () => {
   if (!assessmentId) return <Navigate to={`${RISK_MODULE_BASE}/assessments`} replace />;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 p-6">
+      <BnModuleBreadcrumbs
+        items={[
+          { label: 'Benefit Management' },
+          { label: 'Fraud, Error & Risk', to: RISK_MODULE_BASE },
+          { label: 'Assessments', to: `${RISK_MODULE_BASE}/assessments` },
+          { label: focusSection ? RISK_SCREEN_LABELS[focusSection] ?? focusSection : 'Assessment' },
+        ]}
+      />
       <BnRiskAssessmentWorkspace
         assessmentId={assessmentId}
         focusSection={focusSection}
