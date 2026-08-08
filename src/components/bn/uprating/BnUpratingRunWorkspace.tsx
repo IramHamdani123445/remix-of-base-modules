@@ -36,6 +36,8 @@ import { BnUpratingReconciliationSection } from './BnUpratingReconciliationSecti
 import { BnUpratingRollbackWorkbench } from './BnUpratingRollbackWorkbench';
 import { BnUpratingReconcileDialog } from './BnUpratingReconcileDialog';
 import { BnUpratingRollbackDialog } from './BnUpratingRollbackDialog';
+import { BnUpratingClosureSection } from './BnUpratingClosureSection';
+import { BnUpratingCloseRunDialog } from './BnUpratingCloseRunDialog';
 import { BnUpratingMarkFailedDialog } from './BnUpratingMarkFailedDialog';
 import { BnUpratingSubmitForApprovalDialog } from './BnUpratingSubmitForApprovalDialog';
 import { BnUpratingApprovalDecisionDialog } from './BnUpratingApprovalDecisionDialog';
@@ -69,6 +71,7 @@ import {
   fetchUpratingPostExecutionReadiness,
   fetchUpratingReconciliation,
   fetchUpratingRollbackReadiness,
+  fetchUpratingCloseReadiness,
 } from '@/services/bn/uprating/upratingRunService';
 import { fetchUpratingPolicyList } from '@/services/bn/uprating/upratingPolicyService';
 import { newUpratingUuid } from '@/services/bn/uprating/upratingPolicyService';
@@ -123,6 +126,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
   const [reconcileOpen, setReconcileOpen] = React.useState(false);
   const [markFailedOpen, setMarkFailedOpen] = React.useState(false);
   const [rollbackOpen, setRollbackOpen] = React.useState(false);
+  const [closeOpen, setCloseOpen] = React.useState(false);
 
 
 
@@ -250,6 +254,13 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
     enabled: !!selectedRunId,
   });
 
+  // Epic 5 — closure readiness is decided by the backend only.
+  const closeQuery = useQuery({
+    queryKey: ['bn-uprating-close-readiness', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingCloseReadiness(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['bn-uprating-runs'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-run'] });
@@ -258,6 +269,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
     qc.invalidateQueries({ queryKey: ['bn-uprating-run-exceptions'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-simulation'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-run-approval'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-close-readiness'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-run-schedule'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-approval-queue'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-scheduled-queue'] });
@@ -420,6 +432,18 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
       idempotencyKey: newUpratingUuid(),
     });
     if (result.status !== 'ERROR') setRollbackOpen(false);
+  };
+
+  /** Canonical `BN_UPRATING_CLOSE_RUN` — lifecycle transition only. */
+  const closeRun = async (justification: string | null) => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_CLOSE_RUN',
+      runId: selectedRunId,
+      payload: { justification },
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setCloseOpen(false);
   };
 
   const cancelSchedule = async () => {
@@ -634,6 +658,7 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
               <TabsTrigger value="execution">Execution</TabsTrigger>
               <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
               <TabsTrigger value="rollback">Rollback</TabsTrigger>
+              <TabsTrigger value="closure">Closure</TabsTrigger>
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
 
             </TabsList>
@@ -958,6 +983,17 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
                 onAuthoriseRollback={() => setRollbackOpen(true)}
               />
             </TabsContent>
+
+            <TabsContent value="closure" className="pt-4">
+              <BnUpratingClosureSection
+                readiness={closeQuery.data?.data ?? null}
+                isLoading={closeQuery.isLoading}
+                isError={closeQuery.isError || closeQuery.data?.status === 'ERROR'}
+                isBusy={command.isPending}
+                onRetryLoad={() => closeQuery.refetch()}
+                onCloseRun={() => setCloseOpen(true)}
+              />
+            </TabsContent>
           </Tabs>
 
         </>
@@ -1037,6 +1073,15 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
         readiness={rollbackQuery.data?.data ?? null}
         isSaving={command.isPending}
         onConfirm={authoriseRollback}
+      />
+
+      <BnUpratingCloseRunDialog
+        open={closeOpen}
+        onOpenChange={setCloseOpen}
+        readiness={closeQuery.data?.data ?? null}
+        isLoading={closeQuery.isLoading}
+        isSaving={command.isPending}
+        onConfirm={closeRun}
       />
 
       <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
