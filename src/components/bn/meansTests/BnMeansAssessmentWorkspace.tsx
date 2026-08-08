@@ -622,17 +622,27 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 
 
       {/*
-        Thirteen lifecycle sections are grouped into two officer-meaningful
-        phases. Section content, permissions and command availability are
-        unchanged — only the navigation is simplified.
+        Thirteen lifecycle sections are separate workflow screens reached from
+        a left navigator. Section content, permissions and command
+        availability are unchanged — only the navigation is simplified.
       */}
-      <BnPhaseSectionNav
-        ariaLabel="Assessment workflow phases"
-        phases={MEANS_WORKSPACE_PHASES}
-        activeSection={activeTab}
-        onSelect={setActiveTab}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <BnWorkflowSideNav
+        ariaLabel="Assessment workflow steps"
+        activeStepId={activeTab}
+        groups={MEANS_WORKSPACE_PHASES.map((phase) => ({
+          id: phase.id,
+          label: phase.label,
+          description: phase.description,
+          steps: phase.sections.map((s) => ({
+            id: s.id,
+            label: s.label,
+            to: sectionHref ? sectionHref(s.id) : '#',
+          })),
+        }))}
       />
 
+      <div className="min-w-0 flex-1">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="sr-only">
           {MEANS_WORKSPACE_PHASES.flatMap((phase) => phase.sections).map((section) => (
