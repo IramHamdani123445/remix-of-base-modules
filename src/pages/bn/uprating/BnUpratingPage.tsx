@@ -55,8 +55,8 @@ const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
       snapshots, exception resolution and deterministic simulation — execute approved runs in
       controlled batches, then complete the consequences: payment-schedule rebuilds, claimant
       notices through the Communication Hub, reconciliation and, on the failure path,
-      controlled compensating rollback. Execution applies exactly what was approved; no amount
-      is recalculated at execution time.
+      controlled compensating rollback. Execution applies exactly what was approved;
+      no amount is recalculated at execution time.
     </p>
 
     <BnModuleSectionNav
@@ -82,12 +82,12 @@ const UpratingOperationsRoute: React.FC = () => {
     <Tabs value={stage} onValueChange={(next) => setStage(next, { replace: true })}>
       <TabsList>
         <TabsTrigger value="execution">Execution queue</TabsTrigger>
-        <TabsTrigger value="post-execution">Post-execution queue</TabsTrigger>
+        <TabsTrigger value="operations">Post-execution queue</TabsTrigger>
       </TabsList>
       <TabsContent value="execution" className="pt-4">
         <BnUpratingExecutionQueue onOpenRun={(runId) => openRun(runId, "execution")} />
       </TabsContent>
-      <TabsContent value="post-execution" className="pt-4">
+      <TabsContent value="operations" className="pt-4">
         <BnUpratingOperationalQueue onOpenRun={(runId, section) => openRun(runId, section)} />
       </TabsContent>
     </Tabs>
