@@ -189,7 +189,50 @@ executes a control.**
   Person/Profile, Legal or Investigation records.
 - An approved control rests at "Approved — awaiting governed execution".
 
-## Epic 4 — Approved control execution and governed handoffs — NOT_STARTED
+## Epic 4 — Approved control execution and governed handoffs — COMPLETE
 
-Payment hold execution, enhanced verification requests, Legal referral,
-Investigation referral, outcome capture and rule feedback.
+Journey: approved control → execution readiness → governed target-module
+command/handoff → target accepts, rejects or processes → Risk records the
+returned reference and status.
+
+Commands (canonical, backend-only):
+
+| Command | Control | Boundary | Target |
+| --- | --- | --- | --- |
+| `BN_RISK_PLACE_PAYMENT_HOLD` | `TEMPORARY_PAYMENT_HOLD` | Cross-module handoff | `bn_payments` |
+| `BN_RISK_REQUEST_ENH_VERIFICATION` | `ENHANCED_VERIFICATION` | Cross-module handoff | `bn_verification` |
+| `BN_RISK_REFER_TO_LEGAL` | `REFER_TO_LEGAL` | Cross-module handoff | `bn_legal` |
+| `BN_RISK_REFER_TO_INVESTIGATION` | `REFER_TO_INVESTIGATION` | Cross-module handoff | `bn_investigation` |
+
+Backend: `bn_risk_control_target_boundary`, `bn_risk_control_execution`,
+`bn_risk_control_execution_event`, `bn_risk_control_execution_readiness_v1`,
+`bn_risk_control_execution_queue_v1`, `bn_risk_control_execution_command_v1`,
+`bn_risk_outcome_readiness_v1`.
+
+Frontend: `riskControlExecutionService.ts`, `BnRiskControlExecutionSection`,
+`BnRiskControlExecutionDialog`, `BnRiskControlExecutionQueue`, workspace
+`focusSection='execution'` deep link, "Control execution" tab.
+
+Guarantees proven by `src/__tests__/bn/risk/riskEpic4ControlExecution.test.tsx`
+(70 tests):
+
+- Execution requires a current, independently approved, non-stale control.
+- Risk writes only `bn_risk_*` and the shared handoff spine; no Payment,
+  Claim, Award, Person, Overpayment, Legal or Investigation table is touched.
+- Approved parameters cannot drift at execution; only backend-published
+  runtime fields are accepted.
+- Every attempt is an immutable record; retry appends, never overwrites.
+- Idempotency prevents duplicate holds and duplicate referrals; refresh
+  reconciles without re-raising a handoff.
+- Execute / Retry / Refresh come only from `available_action`; readiness
+  failures fail closed.
+- Requested is never presented as completed; ordinary surfaces leak no
+  control, score, band or referral detail.
+- `PREVENT_PROFILE_CHANGE` is blocked — no governed profile change-control
+  boundary exists.
+- No Epic 5 outcome, closure or reopen command is executed.
+
+## Epic 5 — Outcome recording, closure and reopening — NOT_STARTED
+
+Outcome capture, assessment closure, reopening and rule feedback.
+
