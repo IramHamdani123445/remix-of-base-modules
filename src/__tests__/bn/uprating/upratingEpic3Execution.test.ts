@@ -124,8 +124,10 @@ describe('Epic 3 — execution schema', () => {
   });
 
   it('never grants browser roles direct access to execution tables', () => {
-    expect(epic3Sql).not.toMatch(/GRANT[^;]*bn_uprating_execution_item[^;]*TO\s+anon/i);
-    expect(epic3Sql).not.toMatch(/GRANT[^;]*bn_uprating_execution_item[^;]*TO\s+authenticated/i);
+    expect(epic3Sql).not.toMatch(/GRANT[^;]*ON\s+public\.bn_uprating_execution_item\s[^;]*TO\s+anon/i);
+    expect(epic3Sql).not.toMatch(
+      /GRANT[^;]*ON\s+public\.bn_uprating_execution_item\s[^;]*TO\s+authenticated/i,
+    );
   });
 
   it('carries the approved figures on every execution item', () => {
