@@ -92,5 +92,6 @@ Supporting governed lifecycle operations delivered inside the same boundaries
 
 - Epic 0 suite: `src/__tests__/bn/uprating/upratingEpic0Foundation.test.ts` — 59 tests green.
 - Epic 1 suite: `src/__tests__/bn/uprating/upratingEpic1Run.test.ts` — 26 tests green.
-- Regression: `src/__tests__/bn` — green (2782+ passed / 1 skipped / 14 todo).
-- Typecheck: clean (`tsconfig.app.json`).
+- Regression: `src/__tests__/bn` — 140 files (139 passed / 1 skipped); 2798 tests: 2783 passed, 1 skipped, 14 todo, 0 failed.
+- Typecheck: CLEAN (`tsgo -p tsconfig.app.json`, no errors).
+- Canonical catalogue boundary: 17 commands total, 9 implemented (Epic 0 = 5, Epic 1 = 4), 8 NOT_STARTED (Epic 2+).
