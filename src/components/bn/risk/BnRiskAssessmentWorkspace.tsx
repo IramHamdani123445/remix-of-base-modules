@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { BnNextActionCard, BnRecordWorkspaceHeader } from '@/components/bn/ux';
 import { formatAuditDate } from '@/lib/dateFormat';
 import { riskAssessmentService } from '@/services/bn/risk/riskAssessmentService';
 import type { BnRiskAssessmentActionCode } from '@/types/bn/risk/riskAssessment';
@@ -225,23 +226,49 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
   ].filter((t): t is NonNullable<typeof t> => t !== null);
 
 
+  /**
+   * NEXT ACTION. Availability is published by the governed action catalogue.
+   * When it cannot be read the card fails closed with "could not be
+   * confirmed" rather than implying there is nothing to do.
+   */
+  const sectionRefFor = (action: BnRiskAssessmentActionCode) => {
+    if (action === 'RECOMMEND_CONTROL' || action === 'WITHDRAW_RECOMMENDATION') return approvalRef;
+    if (action === 'APPROVE_CONTROL' || action === 'REJECT_CONTROL' || action === 'RETURN_CONTROL') {
+      return approvalRef;
+    }
+    return null;
+  };
+  const nextActions = (actions.data?.actions ?? [])
+    .filter((a) => a.enabled)
+    .slice(0, 4)
+    .map((a) => ({
+      id: a.action,
+      label: a.label,
+      available: true,
+      onSelect: () => {
+        if (a.action === 'COMPLETE_INFORMATION_GATHERING') {
+          setError(null);
+          setCompleteOpen(true);
+          return;
+        }
+        sectionRefFor(a.action)?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      },
+    }));
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <Button size="sm" variant="ghost" onClick={onBack}>
-            <ArrowLeft className="mr-1 h-4 w-4" /> Assessments
-          </Button>
-          <div>
-            <h2 className="text-xl font-semibold">{header.assessment_reference}</h2>
-            <p className="text-sm text-muted-foreground">
-              {header.person_name ?? 'Person not identified'}
-              {header.person_masked_identifier ? ` · ${header.person_masked_identifier}` : ''}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">{header.status_label}</Badge>
+      <BnRecordWorkspaceHeader
+        backLabel="Assessments"
+        onBack={onBack}
+        reference={header.assessment_reference}
+        context={
+          <>
+            {header.person_name ?? 'Person not identified'}
+            {header.person_masked_identifier ? ` · ${header.person_masked_identifier}` : ''}
+          </>
+        }
+        status={header.status_label}
+        actions={
           <Button
             size="sm"
             disabled={!isActionEnabled('COMPLETE_INFORMATION_GATHERING')}
@@ -249,8 +276,15 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
           >
             Complete information gathering
           </Button>
-        </div>
-      </div>
+        }
+      />
+
+      <BnNextActionCard
+        status={actions.isLoading ? 'loading' : actions.isError ? 'error' : 'ready'}
+        actions={nextActions}
+        emptyMessage="No risk operation is available to you at this stage."
+      />
+
 
       {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 

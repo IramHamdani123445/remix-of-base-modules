@@ -15,36 +15,17 @@
  *   - `bn_medical_provider_type`   — reference data lookup.
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { listSourcesWithContents, SOURCE_ROOT } from '../support/sourceScan';
 
-const ROOT = process.cwd();
+const ROOT = SOURCE_ROOT;
 
 const TABLE_PATTERN = /bn_medical_(review|board|provider)[a-z_]*/;
 const MUTATIONS = ['insert', 'update', 'upsert', 'delete'] as const;
 
 /** Files allowed to name these tables in a mutating statement (none today). */
 const ALLOWED: ReadonlySet<string> = new Set<string>([]);
-
-function walk(dir: string, out: string[] = []): string[] {
-  let entries: string[];
-  try {
-    entries = readdirSync(join(ROOT, dir));
-  } catch {
-    return out;
-  }
-  for (const name of entries) {
-    const rel = `${dir}/${name}`;
-    const st = statSync(join(ROOT, rel));
-    if (st.isDirectory()) {
-      if (name === '__tests__' || name === 'node_modules') continue;
-      walk(rel, out);
-    } else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name)) {
-      out.push(rel);
-    }
-  }
-  return out;
-}
 
 /**
  * Detects `.from('<medical table>')` followed (within the same statement) by a
@@ -70,7 +51,9 @@ function findOffences(source: string): string[] {
 }
 
 describe('architecture: Medical Review tables are RPC-only from the browser', () => {
-  const files = walk('src').filter((f) => !f.includes('/integrations/supabase/types.ts'));
+  /** One cached walk + read, shared with every other architecture guard. */
+  const sources = listSourcesWithContents();
+  const files = sources.map(([f]) => f);
 
   it('scans a non-trivial number of source files', () => {
     expect(files.length).toBeGreaterThan(100);
@@ -78,9 +61,8 @@ describe('architecture: Medical Review tables are RPC-only from the browser', ()
 
   it('no direct mutation of bn_medical_review_schedule', () => {
     const offenders: string[] = [];
-    for (const f of files) {
+    for (const [f, src] of sources) {
       if (ALLOWED.has(f)) continue;
-      const src = readFileSync(join(ROOT, f), 'utf8');
       if (!src.includes('bn_medical_review_schedule')) continue;
       const hits = findOffences(src).filter((h) => h.startsWith('bn_medical_review_schedule.'));
       if (hits.length) offenders.push(`${f}: ${hits.join(', ')}`);
@@ -90,9 +72,8 @@ describe('architecture: Medical Review tables are RPC-only from the browser', ()
 
   it('no direct mutation of any canonical Medical Review / Board / Provider table', () => {
     const offenders: string[] = [];
-    for (const f of files) {
+    for (const [f, src] of sources) {
       if (ALLOWED.has(f)) continue;
-      const src = readFileSync(join(ROOT, f), 'utf8');
       const hits = findOffences(src);
       if (hits.length) offenders.push(`${f}: ${hits.join(', ')}`);
     }

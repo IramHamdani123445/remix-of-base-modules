@@ -24,6 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Search, TrendingDown, Banknote, Loader2, ShieldAlert, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatNumber } from '@/lib/culture/culture';
+import { BnNextActionCard, BnRecordWorkspaceHeader } from '@/components/bn/ux';
 import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
 import {
   overpaymentQueryService,
@@ -212,7 +213,136 @@ const OverpaymentRecovery: React.FC = () => {
     }
   };
 
+  /**
+   * The recovery-plan form remains a focused dialog, but it is now raised from
+   * the page-level case workspace rather than from a nested modal.
+   */
+  const planDialog = (
+    <Dialog open={planOpen} onOpenChange={setPlanOpen}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Propose recovery plan</DialogTitle>
+          <DialogDescription>
+            Submitted through <code>bn_overpayment_propose_recovery_plan_v1</code> with an
+            idempotency key and the current row version.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label htmlFor="op-instalment">Instalment amount</Label>
+            <Input
+              id="op-instalment"
+              inputMode="decimal"
+              value={instalment}
+              onChange={(e) => setInstalment(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="op-notes">Notes</Label>
+            <Textarea id="op-notes" value={planNotes} onChange={(e) => setPlanNotes(e.target.value)} />
+          </div>
+          {commandError && (
+            <Alert variant="destructive"><AlertDescription className="text-xs">{commandError}</AlertDescription></Alert>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setPlanOpen(false)}>Cancel</Button>
+          <Button onClick={() => void submitPlan()} disabled={submitting}>
+            {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Submit
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  /**
+   * OPEN RECORD. A selected case is a page-level workspace with its own
+   * refresh-survivable address (`?case=<case_id>`), not a modal. Available
+   * actions come from the secured `available_actions` query only.
+   */
+  if (selected) {
+    const nextActions = actions.map((a) => ({
+      id: a.action,
+      label: a.action.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()),
+      available: a.allowed,
+      reason: a.allowed ? undefined : (a as { reason?: string }).reason,
+      onSelect:
+        a.action === 'propose_recovery_plan'
+          ? () => { setPlanOpen(true); setCommandError(null); }
+          : undefined,
+    }));
+
+    return (
+      <div className="space-y-6 p-6" data-testid="bn-overpayment-case-workspace">
+        <BnRecordWorkspaceHeader
+          backLabel="Overpayment worklist"
+          onBack={() => { setOpenCaseId(null); setSelected(null); setCommandError(null); }}
+          reference={selected.case_reference}
+          context={selected.claimant_display ?? 'Claimant not identified'}
+          status={selected.status.replace(/_/g, ' ')}
+          facts={[
+            { label: 'Gross', value: money(selected.gross_amount, selected.currency) },
+            {
+              label: 'Outstanding',
+              value: money(selected.outstanding_amount, selected.currency),
+              emphasis: true,
+            },
+            { label: 'Recovered', value: money(selected.recovered_amount, selected.currency) },
+          ]}
+          actions={
+            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+              <RefreshCw className="h-4 w-4 mr-2" />Refresh
+            </Button>
+          }
+        />
+
+        {commandError && (
+          <Alert variant="destructive">
+            <AlertDescription className="text-xs">{commandError}</AlertDescription>
+          </Alert>
+        )}
+
+        <BnNextActionCard
+          status="ready"
+          actions={nextActions}
+          emptyMessage="No overpayment operation is available for this case at this stage."
+        />
+
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <h2 className="text-base font-semibold flex items-center gap-2">
+              <Banknote className="h-4 w-4" />Case detail
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Available actions are resolved server side from case state and your granular
+              permissions. This screen performs no direct table access.
+            </p>
+            <div className="grid gap-3 pt-2 text-sm sm:grid-cols-3">
+              <div>
+                <p className="text-muted-foreground text-xs">Status</p>
+                <Badge variant="outline" className={STATUS_STYLES[selected.status] ?? ''}>
+                  {selected.status.replace(/_/g, ' ')}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Currency</p>
+                <p>{selected.currency}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground text-xs">Record version</p>
+                <p>{selected.row_version}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {planDialog}
+      </div>
+    );
+  }
+
   return (
+
     <div className="space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -335,86 +465,8 @@ const OverpaymentRecovery: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-
-      <Dialog open={!!selected} onOpenChange={(o) => { if (!o) { setOpenCaseId(null); setSelected(null); setCommandError(null); } }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Banknote className="h-5 w-5" />{selected?.case_reference}
-            </DialogTitle>
-            <DialogDescription>
-              Available actions are resolved server side from case state and your granular permissions.
-            </DialogDescription>
-          </DialogHeader>
-
-          {selected && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-muted-foreground">Status</span><div>{selected.status.replace(/_/g, ' ')}</div></div>
-                <div><span className="text-muted-foreground">Outstanding</span><div>{money(selected.outstanding_amount, selected.currency)}</div></div>
-              </div>
-
-              {commandError && (
-                <Alert variant="destructive">
-                  <AlertDescription className="text-xs">{commandError}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  disabled={!can('propose_recovery_plan')}
-                  onClick={() => { setPlanOpen(true); setCommandError(null); }}
-                >
-                  Propose recovery plan
-                </Button>
-              </div>
-              {actions.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  No actions are currently available for this case.
-                </p>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={planOpen} onOpenChange={setPlanOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Propose recovery plan</DialogTitle>
-            <DialogDescription>
-              Submitted through <code>bn_overpayment_propose_recovery_plan_v1</code> with an
-              idempotency key and the current row version.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="op-instalment">Instalment amount</Label>
-              <Input
-                id="op-instalment"
-                inputMode="decimal"
-                value={instalment}
-                onChange={(e) => setInstalment(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="op-notes">Notes</Label>
-              <Textarea id="op-notes" value={planNotes} onChange={(e) => setPlanNotes(e.target.value)} />
-            </div>
-            {commandError && (
-              <Alert variant="destructive"><AlertDescription className="text-xs">{commandError}</AlertDescription></Alert>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPlanOpen(false)}>Cancel</Button>
-            <Button onClick={() => void submitPlan()} disabled={submitting}>
-              {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Submit
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
+
   );
 };
 
