@@ -194,16 +194,16 @@ const RiskSignalsRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => 
 
   return (
     <div className="space-y-6">
-      <BnRiskSignalQueue onOpenSignal={setOpenSignalId} />
-
-      <Alert>
-        <AlertTitle>What happens after triage</AlertTitle>
-        <AlertDescription>
+      <BnModuleGuidance summary="What happens after triage">
+        <p>
           A confirmed signal can be taken forward into a risk assessment, where facts
           and evidence are gathered, then scored for review. A score is decision support
           only — no signal, assessment or score can affect a benefit on its own.
-        </AlertDescription>
-      </Alert>
+        </p>
+      </BnModuleGuidance>
+
+      <BnRiskSignalQueue onOpenSignal={setOpenSignalId} />
+
 
       <BnRiskSignalDetailPanel
         signalId={openSignalId}
