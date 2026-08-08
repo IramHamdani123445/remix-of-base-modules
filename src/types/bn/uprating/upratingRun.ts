@@ -18,7 +18,12 @@ export type BnUpratingRunStatusCode =
   | 'EXECUTING'
   | 'COMPLETED'
   | 'PARTIAL'
-  | 'FAILED';
+  | 'FAILED'
+  // Epic 4 — post-execution operational lifecycle
+  | 'SCHEDULES_REBUILT'
+  | 'COMMUNICATIONS_ISSUED'
+  | 'RECONCILED'
+  | 'ROLLED_BACK';
 
 export type BnUpratingRunCommandName =
   | 'BN_UPRATING_CREATE_RUN'
@@ -33,7 +38,15 @@ export type BnUpratingRunCommandName =
   | 'BN_UPRATING_RESCHEDULE_EXECUTION'
   | 'BN_UPRATING_CANCEL_EXECUTION_SCHEDULE'
   | 'BN_UPRATING_EXECUTE_BATCH'
-  | 'BN_UPRATING_RETRY_FAILED';
+  | 'BN_UPRATING_RETRY_FAILED'
+  // Epic 4 — reconciliation, rollback and supporting operations
+  | 'BN_UPRATING_REBUILD_SCHEDULES'
+  | 'BN_UPRATING_ISSUE_COMMUNICATIONS'
+  | 'BN_UPRATING_RECONCILE_RUN'
+  | 'BN_UPRATING_MARK_FAILED'
+  | 'BN_UPRATING_ASSESS_ROLLBACK'
+  | 'BN_UPRATING_ROLLBACK_ELIGIBLE';
+
 
 /** Commands in this boundary that are canonical Epic 1 commands. */
 export const BN_UPRATING_EPIC1_CANONICAL_COMMANDS = [
