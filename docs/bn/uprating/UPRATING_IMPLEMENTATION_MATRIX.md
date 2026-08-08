@@ -12,7 +12,7 @@ Governed boundaries: `public.bn_uprating_policy_command_v1` (policy),
 | Epic 1 | Run creation, population snapshot, exceptions, simulation | **COMPLETE — CERTIFIED** |
 | Epic 2 | Run approval and execution scheduling | **COMPLETE — CERTIFIED** |
 | Epic 3 | Batch execution and retry | **COMPLETE — CERTIFIED** |
-| Epic 4 | Reconciliation and rollback | NOT_STARTED |
+| Epic 4 | Reconciliation and rollback | COMPLETE — CERTIFIED |
 | Epic 5 | Run closure | NOT_STARTED |
 
 ## Canonical command status
@@ -33,8 +33,8 @@ Governed boundaries: `public.bn_uprating_policy_command_v1` (policy),
 | BN_UPRATING_SCHEDULE_EXECUTION | admin | no | IMPLEMENTED (Epic 2) |
 | BN_UPRATING_EXECUTE_BATCH | admin | yes | IMPLEMENTED (Epic 3) |
 | BN_UPRATING_RETRY_FAILED | admin | no | IMPLEMENTED (Epic 3) |
-| BN_UPRATING_RECONCILE_RUN | decide | no | NOT_STARTED |
-| BN_UPRATING_ROLLBACK_ELIGIBLE | admin | yes | NOT_STARTED |
+| BN_UPRATING_RECONCILE_RUN | decide | no | IMPLEMENTED |
+| BN_UPRATING_ROLLBACK_ELIGIBLE | admin | yes | IMPLEMENTED |
 | BN_UPRATING_CLOSE_RUN | decide | no | NOT_STARTED |
 
 Supporting governed lifecycle operations delivered inside the same boundaries
@@ -160,6 +160,66 @@ Supporting governed lifecycle operations delivered inside the same boundaries
 - Uprating regression: 224/224 tests green across Epic 0–3 suites.
 - Regression: `src/__tests__/bn` — 142 files (141 passed / 1 skipped); 2937 tests: 2922 passed, 1 skipped, 14 todo, 0 failed.
 - Typecheck: CLEAN (`tsgo -p tsconfig.app.json`, no errors).
-- Canonical catalogue boundary: 17 commands total, 14 implemented (Epic 0 = 5, Epic 1 = 4,
-  Epic 2 = 3, Epic 3 = 2), 3 NOT_STARTED (Epic 4–5).
+- Canonical catalogue boundary: 17 commands total, 16 implemented (Epic 0 = 5, Epic 1 = 4,
+  Epic 2 = 3, Epic 3 = 2, Epic 4 = 2), 1 NOT_STARTED (Epic 5 closure).
 
+
+
+## Epic 4 — Reconciliation, rollback and operational completion
+
+Status: **COMPLETE — CERTIFIED**. Canonical status: **16 / 17 implemented**
+(`BN_UPRATING_CLOSE_RUN` remains NOT_STARTED and belongs to Epic 5).
+
+### Delivered
+
+- Lifecycle: `EXECUTING/COMPLETED → SCHEDULES_REBUILT → COMMUNICATIONS_ISSUED → RECONCILED`
+  and the controlled failure path `EXECUTING/PARTIAL → FAILED → ROLLED_BACK`. Closure is
+  deliberately unreachable in this epic.
+- Ledgers: `bn_uprating_schedule_rebuild`, `bn_uprating_communication_intent`,
+  `bn_uprating_reconciliation`, `bn_uprating_reconciliation_finding`,
+  `bn_uprating_rollback_operation`, `bn_uprating_rollback_item`.
+- Owning-domain boundaries: `bn_payment_schedule_rebuild_for_award_v1` (payment schedules) and
+  `bn_award_apply_uprating_compensation_v1` (compensating award history). Uprating never writes
+  payment or award tables directly.
+- Communication Hub: `_bn_uprating_request_communication` → `communication_request` →
+  `communication_recipient` → `bn_communication_dispatch` via the `BN_UPRATING` adapter source.
+  Requested, failed and Hub-reported delivered counts are held separately; a request is never
+  displayed as a delivery.
+- Commands: `BN_UPRATING_RECONCILE_RUN` and `BN_UPRATING_ROLLBACK_ELIGIBLE`, plus the supporting
+  governed operations `REBUILD_SCHEDULES`, `ISSUE_COMMUNICATIONS`, `MARK_FAILED` and
+  `ASSESS_ROLLBACK`, all inside `bn_uprating_run_command_v1`.
+- Reads: `bn_uprating_post_execution_readiness_v1`, `bn_uprating_reconciliation_v1`,
+  `bn_uprating_rollback_readiness_v1`, `bn_uprating_operational_queue_v1`.
+- Frontend: `BnUpratingReconciliationSection`, `BnUpratingRollbackWorkbench`,
+  `BnUpratingReconcileDialog`, `BnUpratingRollbackDialog`, `BnUpratingMarkFailedDialog` and the
+  `BnUpratingOperationalQueue` tab on `/bn/uprating`, with deep links into the exact workspace
+  section holding the next governed action.
+
+### Governance guarantees
+
+- Rollback is blocked per item where a payment has already been issued
+  (`PAYMENT_ALREADY_ISSUED`) or the award changed after execution (`LATER_AWARD_AMENDMENT`).
+  There is no force, override or ignore control anywhere in the UI.
+- Rollback authorisation is maker-checker separated (`E_MAKER_CHECKER`), requires a
+  justification, and only compensates items that are `ELIGIBLE` and still `PENDING`, so repeated
+  authorisation cannot double-compensate.
+- Reconciliation compares the approved package against actual award, schedule and communication
+  records, versions each attempt (`reconciliation_no`, `current_reconciliation_id`) and records
+  blocking findings rather than passing silently.
+- A rebuilt schedule is never presented as a payment; regenerated future instalments are not
+  money issued.
+
+### Certification evidence
+
+- Epic 4 suite: `src/__tests__/bn/uprating/upratingEpic4Reconciliation.test.ts` — 65 tests green.
+- Epic 0–3 suites remain green at their baselines (59 / 26 / 84 / 55).
+- Typecheck: CLEAN (`tsgo -p tsconfig.app.json`).
+
+### Controlled existing-data operational walkthrough
+
+CONTROLLED EXISTING-DATA OPERATIONAL WALKTHROUGH = BLOCKED
+
+Precise blocker: `public.platform_environment_marker` exists but contains no row, so the
+environment cannot be positively identified as safe for live award mutation. Per the
+environment safety rule, no existing award was mutated. Automated Epic 4 certification is
+unaffected and remains green.
