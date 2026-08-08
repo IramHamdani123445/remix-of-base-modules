@@ -413,7 +413,7 @@ describe('Epic 3 — a score never chooses a control', () => {
     const control = await screen.findByRole('combobox', { name: /^control$/i });
     expect(within(control).getByText(/choose a control/i)).toBeInTheDocument();
     // Submission is impossible until the officer chooses.
-    expect(screen.getByRole('button', { name: /record recommendation|recommend/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /submit for independent approval/i })).toBeDisabled();
   });
 
   it('ships no band-to-control mapping anywhere in Epic 3 source', () => {
@@ -576,7 +576,7 @@ describe('Epic 3 — recommendation submission', () => {
         onCompleted={() => {}}
       />,
     );
-    const submit = await screen.findByRole('button', { name: /record recommendation|recommend/i });
+    const submit = await screen.findByRole('button', { name: /submit for independent approval/i });
     expect(submit).toBeDisabled();
   });
 });
