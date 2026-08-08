@@ -66,9 +66,9 @@ function journeyStates(status: string): Record<string, JourneyState> {
 interface Props {
   assessmentId: string;
   onBack: () => void;
-  /** Deep link from the approval queue — scroll straight to the decision. */
-  focusSection?: 'approval' | null;
-}
+  /** Deep link from an operational queue — scroll straight to that section. */
+  focusSection?: 'approval' | 'execution' | null;
+
 
 
 
