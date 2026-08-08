@@ -77,6 +77,12 @@ const OverpaymentRecovery: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  /**
+   * The open case lives in the URL (`?case=<case_id>`) so refresh, browser
+   * Back and shared links land the officer back on the same record.
+   */
+  const [caseParam, setCaseParam] = useSearchParams();
+  const openCaseId = caseParam.get('case');
   const [selected, setSelected] = useState<BnOverpaymentWorklistRow | null>(null);
   const [actions, setActions] = useState<BnOverpaymentAvailableAction[]>([]);
   const [planOpen, setPlanOpen] = useState(false);
