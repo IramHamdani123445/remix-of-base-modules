@@ -29537,6 +29537,12 @@ export type Database = {
           approved_by: string | null
           approved_by_name: string | null
           calculation_basis: string
+          closed_at: string | null
+          closed_by: string | null
+          closed_by_name: string | null
+          closure_path: string | null
+          closure_reconciliation_id: string | null
+          closure_rollback_id: string | null
           communications_issued_at: string | null
           correlation_id: string | null
           country_code: string | null
@@ -29601,6 +29607,12 @@ export type Database = {
           approved_by?: string | null
           approved_by_name?: string | null
           calculation_basis?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_by_name?: string | null
+          closure_path?: string | null
+          closure_reconciliation_id?: string | null
+          closure_rollback_id?: string | null
           communications_issued_at?: string | null
           correlation_id?: string | null
           country_code?: string | null
@@ -29665,6 +29677,12 @@ export type Database = {
           approved_by?: string | null
           approved_by_name?: string | null
           calculation_basis?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_by_name?: string | null
+          closure_path?: string | null
+          closure_reconciliation_id?: string | null
+          closure_rollback_id?: string | null
           communications_issued_at?: string | null
           correlation_id?: string | null
           country_code?: string | null
@@ -113043,11 +113061,19 @@ export type Database = {
         Args: { p_base_minor: number; p_run_id: string }
         Returns: Json
       }
+      _bn_uprating_close_readiness: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
       _bn_uprating_epic4_can_transition: {
         Args: { p_from: string; p_to: string }
         Returns: boolean
       }
       _bn_uprating_epic4_config: { Args: never; Returns: Json }
+      _bn_uprating_epic5_can_transition: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
+      }
       _bn_uprating_event: {
         Args: {
           p_actor: string
@@ -113170,6 +113196,19 @@ export type Database = {
         Returns: Json
       }
       _bn_uprating_run_command_epic3: {
+        Args: {
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id?: string
+          p_exception_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_payload?: Json
+          p_run_id?: string
+        }
+        Returns: Json
+      }
+      _bn_uprating_run_command_epic4: {
         Args: {
           p_actor_user_id: string
           p_command_name: string
@@ -116027,6 +116066,10 @@ export type Database = {
           p_actor_user_id: string
           p_is_mutation: boolean
         }
+        Returns: Json
+      }
+      bn_uprating_close_readiness_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
       }
       bn_uprating_execution_items_v1: {
