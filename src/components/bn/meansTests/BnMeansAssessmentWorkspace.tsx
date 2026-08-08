@@ -62,6 +62,10 @@ export interface BnMeansAssessmentWorkspaceProps {
    * section (`deep_link_section`); React only translates it to a tab.
    */
   initialSection?: string | null;
+  /** Controlled (URL-owned) workflow section. */
+  section?: string | null;
+  /** Supplied when the section lives in the URL. */
+  onSectionChange?: (section: string) => void;
 }
 
 type Row = Record<string, unknown>;
@@ -70,8 +74,42 @@ type Row = Record<string, unknown>;
 export const MEANS_WORKSPACE_SECTIONS = [
   'context', 'household', 'income', 'assets', 'deductions', 'evidence',
   'review', 'verification', 'calculation', 'decision', 'activation',
-  'lifecycle', 'timeline',
+  'lifecycle',
 ] as const;
+
+/**
+ * Two officer-meaningful phases replace the former thirteen-tab bar.
+ * Phase A gathers the facts; Phase B assesses and decides. The audit
+ * timeline is reference material and lives in the activity drawer.
+ */
+export const MEANS_WORKSPACE_PHASES = [
+  {
+    id: 'prepare',
+    label: 'Phase A — Prepare',
+    description: 'Record the household facts and supporting evidence, then submit.',
+    sections: [
+      { id: 'context', label: 'Context' },
+      { id: 'household', label: 'Household' },
+      { id: 'income', label: 'Income' },
+      { id: 'assets', label: 'Assets' },
+      { id: 'deductions', label: 'Deductions' },
+      { id: 'evidence', label: 'Evidence' },
+      { id: 'review', label: 'Review & submit' },
+    ],
+  },
+  {
+    id: 'assess',
+    label: 'Phase B — Assess and decide',
+    description: 'Verify, calculate, decide, activate and manage the ongoing assessment.',
+    sections: [
+      { id: 'verification', label: 'Verification' },
+      { id: 'calculation', label: 'Calculation' },
+      { id: 'decision', label: 'Decision' },
+      { id: 'activation', label: 'Activation' },
+      { id: 'lifecycle', label: 'Lifecycle' },
+    ],
+  },
+] as const satisfies readonly BnPhase[];
 
 export function meansSectionToTab(section: string | null | undefined): string {
   if (!section) return 'context';
