@@ -478,23 +478,25 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 
       <BnMeansStageJourney stages={stages} onSelect={setActiveTab} />
 
+      {/*
+        Thirteen lifecycle sections are grouped into two officer-meaningful
+        phases. Section content, permissions and command availability are
+        unchanged — only the navigation is simplified.
+      */}
+      <BnPhaseSectionNav
+        ariaLabel="Assessment workflow phases"
+        phases={MEANS_WORKSPACE_PHASES}
+        activeSection={activeTab}
+        onSelect={setActiveTab}
+      />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap">
-          <TabsTrigger value="context">Context</TabsTrigger>
-          <TabsTrigger value="household">Household</TabsTrigger>
-          <TabsTrigger value="income">Income</TabsTrigger>
-          <TabsTrigger value="assets">Assets</TabsTrigger>
-          <TabsTrigger value="deductions">Deductions</TabsTrigger>
-          <TabsTrigger value="evidence">Evidence</TabsTrigger>
-          <TabsTrigger value="review">Review &amp; submit</TabsTrigger>
-          <TabsTrigger value="verification">Verification</TabsTrigger>
-          <TabsTrigger value="calculation">Calculation</TabsTrigger>
-          <TabsTrigger value="decision">Decision</TabsTrigger>
-          <TabsTrigger value="activation">Activation</TabsTrigger>
-          <TabsTrigger value="lifecycle">Lifecycle</TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
-
-
+        <TabsList className="sr-only">
+          {MEANS_WORKSPACE_PHASES.flatMap((phase) => phase.sections).map((section) => (
+            <TabsTrigger key={section.id} value={section.id}>
+              {section.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="context">
@@ -630,31 +632,10 @@ export const BnMeansAssessmentWorkspace: React.FC<BnMeansAssessmentWorkspaceProp
 
 
 
-        <TabsContent value="timeline">
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Audit timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {asRows(data.timeline).length === 0 ? (
-                <p className="text-sm text-muted-foreground">No events recorded.</p>
-              ) : (
-                <ul className="space-y-2 text-sm">
-                  {asRows(data.timeline).map((e) => (
-                    <li key={String(e.event_id)} className="border-l-2 border-border pl-3">
-                      <p className="font-medium">{String(e.event_code)}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {String(e.command_name ?? '')} · {String(e.from_status ?? '—')} →{' '}
-                        {String(e.to_status ?? '—')} · {String(e.created_at)}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {/*
+          The audit timeline is deliberately NOT a workflow step. It is
+          reference material and lives in the activity drawer in the header.
+        */}
       </Tabs>
     </div>
   );
