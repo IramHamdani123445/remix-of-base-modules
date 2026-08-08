@@ -36,11 +36,11 @@ export interface BnUpratingCanonicalCommandSpec {
 }
 
 export const BN_UPRATING_CANONICAL_COMMANDS: readonly BnUpratingCanonicalCommandSpec[] = [
-  { command: 'BN_UPRATING_CREATE_POLICY',              capability: 'bn_uprating:write',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_UPRATING_CREATE_POLICY_VERSION',      capability: 'bn_uprating:write',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_UPRATING_VALIDATE_POLICY',            capability: 'bn_uprating:write',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_UPRATING_SUBMIT_POLICY_FOR_APPROVAL', capability: 'bn_uprating:write',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
-  { command: 'BN_UPRATING_APPROVE_POLICY',             capability: 'bn_uprating:admin',  requiresMakerChecker: true,  transactional: false, requiresJustification: true,  implemented: false },
+  { command: 'BN_UPRATING_CREATE_POLICY',              capability: 'bn_uprating:write',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
+  { command: 'BN_UPRATING_CREATE_POLICY_VERSION',      capability: 'bn_uprating:write',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
+  { command: 'BN_UPRATING_VALIDATE_POLICY',            capability: 'bn_uprating:write',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
+  { command: 'BN_UPRATING_SUBMIT_POLICY_FOR_APPROVAL', capability: 'bn_uprating:write',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: true },
+  { command: 'BN_UPRATING_APPROVE_POLICY',             capability: 'bn_uprating:admin',  requiresMakerChecker: true,  transactional: false, requiresJustification: true,  implemented: true },
   { command: 'BN_UPRATING_CREATE_RUN',                 capability: 'bn_uprating:write',  requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
   { command: 'BN_UPRATING_BUILD_POPULATION',           capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: true,  requiresJustification: false, implemented: false },
   { command: 'BN_UPRATING_SIMULATE',                   capability: 'bn_uprating:decide', requiresMakerChecker: false, transactional: false, requiresJustification: false, implemented: false },
