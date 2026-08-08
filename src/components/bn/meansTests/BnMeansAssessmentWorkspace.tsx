@@ -73,6 +73,11 @@ export interface BnMeansAssessmentWorkspaceProps {
   section?: string | null;
   /** Supplied when the section lives in the URL. */
   onSectionChange?: (section: string) => void;
+  /**
+   * Supplied when each workflow step is its own routed screen — the left
+   * navigator then renders real links instead of buttons.
+   */
+  sectionHref?: (section: string) => string;
 }
 
 type Row = Record<string, unknown>;
