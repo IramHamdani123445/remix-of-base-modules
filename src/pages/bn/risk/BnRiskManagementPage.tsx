@@ -19,7 +19,6 @@
  */
 import React from 'react';
 import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import {
   BnModuleRouteGate,
   type BnModuleAccessContext,
@@ -40,7 +39,6 @@ import { BnRiskOutcomeQueue } from '@/components/bn/risk/BnRiskOutcomeQueue';
 import { BnRiskOperationsDashboard } from '@/components/bn/risk/BnRiskOperationsDashboard';
 import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel';
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
-import { riskQueryService } from '@/services/bn/risk/riskQueryService';
 import {
   BnModuleSectionNav,
   useBnWorkspaceSection,
