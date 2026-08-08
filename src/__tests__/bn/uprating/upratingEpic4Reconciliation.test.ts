@@ -533,13 +533,13 @@ describe('Epic 4 — cache invalidation', () => {
 // 11. Matrix reconciliation
 // ---------------------------------------------------------------------------
 describe('Epic 4 — implementation matrix', () => {
-  it('records Epic 4 as certified and Epic 5 as not started', () => {
+  it('records Epic 4 and Epic 5 as certified', () => {
     expect(matrix).toMatch(/Epic 4[^\n]*COMPLETE — CERTIFIED/);
-    expect(matrix).toMatch(/Epic 5[^\n]*NOT_STARTED/);
+    expect(matrix).toMatch(/Epic 5[^\n]*COMPLETE — CERTIFIED/);
   });
 
-  it('records the canonical status as 16 / 17', () => {
-    expect(matrix).toMatch(/16\s*\/\s*17/);
+  it('records the canonical status as 17 / 17', () => {
+    expect(matrix).toMatch(/17\s*\/\s*17/);
   });
 
   it('states the controlled operational walkthrough outcome explicitly', () => {
