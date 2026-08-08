@@ -386,6 +386,25 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
         onChanged={refresh}
       />
 
+      <BnRiskRecommendationSection
+        assessmentId={assessmentId}
+        isActionEnabled={isActionEnabled}
+        targetOptions={targetOptions}
+        onChanged={refresh}
+      />
+
+      <div ref={approvalRef}>
+        <BnRiskControlApprovalSection
+          assessmentId={assessmentId}
+          assessmentReference={header.assessment_reference}
+          personName={header.person_name}
+          isActionEnabled={isActionEnabled}
+          onChanged={refresh}
+        />
+      </div>
+
+
+
 
 
       <Card>
