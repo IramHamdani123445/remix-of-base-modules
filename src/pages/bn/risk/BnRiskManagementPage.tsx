@@ -26,6 +26,8 @@ import { BnRiskAssessmentWorkspace } from '@/components/bn/risk/BnRiskAssessment
 import { BnRiskControlApprovalQueue } from '@/components/bn/risk/BnRiskControlApprovalQueue';
 import { BnRiskControlExecutionQueue } from '@/components/bn/risk/BnRiskControlExecutionQueue';
 import { BnRiskOutcomeQueue } from '@/components/bn/risk/BnRiskOutcomeQueue';
+import { BnRiskOperationsDashboard } from '@/components/bn/risk/BnRiskOperationsDashboard';
+import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel';
 
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
@@ -45,7 +47,7 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const [tab, setTab] = React.useState('signals');
   const [openAssessmentId, setOpenAssessmentId] = React.useState<string | null>(null);
   const [focusSection, setFocusSection] =
-    React.useState<'approval' | 'execution' | 'outcome' | 'closure' | null>(null);
+    React.useState<'approval' | 'execution' | 'outcome' | 'closure' | 'feedback' | null>(null);
 
 
 
@@ -65,7 +67,8 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
    * outstanding work: approval, execution, outcome or closure.
    */
   const openWorkspace = React.useCallback(
-    (assessmentId: string, section: 'approval' | 'execution' | 'outcome' | 'closure' | null) => {
+    (assessmentId: string,
+      section: 'approval' | 'execution' | 'outcome' | 'closure' | 'feedback' | null) => {
       setFocusSection(section);
       setOpenAssessmentId(assessmentId);
       setTab('assessments');
@@ -81,6 +84,13 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
 
   const openControlExecution = React.useCallback(
     (assessmentId: string) => openWorkspace(assessmentId, 'execution'), [openWorkspace]);
+
+  /** Operational cards deep link straight to the queue that owns the work. */
+  const openQueue = React.useCallback((queue: string) => {
+    setOpenAssessmentId(null);
+    setFocusSection(null);
+    setTab(queue);
+  }, []);
 
   const openOutcomeWork = React.useCallback(
     (assessmentId: string, section: 'outcome' | 'closure') =>
@@ -149,6 +159,8 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
           <TabsTrigger value="outcomes">Outcomes &amp; closure</TabsTrigger>
 
 
+          <TabsTrigger value="operations">Operations</TabsTrigger>
+          <TabsTrigger value="reporting">Reporting</TabsTrigger>
           <TabsTrigger value="scoring-configuration">Scoring configuration</TabsTrigger>
         </TabsList>
 
@@ -223,6 +235,23 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
           </Alert>
         </TabsContent>
 
+
+        <TabsContent value="operations" className="space-y-6">
+          <BnRiskOperationsDashboard onOpenQueue={openQueue} />
+        </TabsContent>
+
+        <TabsContent value="reporting" className="space-y-6">
+          <BnRiskReportingPanel />
+
+          <Alert>
+            <AlertTitle>Reporting is aggregate evidence</AlertTitle>
+            <AlertDescription>
+              Reports describe volumes, outcomes and rule behaviour. A referral is not a finding
+              of fraud, and no rule is judged effective or ineffective by a figure alone —
+              changing a rule remains a separate, versioned and authorised decision.
+            </AlertDescription>
+          </Alert>
+        </TabsContent>
 
         <TabsContent value="scoring-configuration" className="space-y-6">
           <BnRiskScoringConfigurationPanel />

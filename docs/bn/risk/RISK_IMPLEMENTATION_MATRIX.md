@@ -277,3 +277,32 @@ Risk suite regression: 185/185 passing.
 
 
 
+
+## Epic 6 — Rule feedback, operational queues and reporting — COMPLETE
+
+Canonical command: `BN_RISK_UPDATE_RULE_FEEDBACK` (capability `bn_risk_management:rule_admin`).
+No second canonical command was created for reporting; reporting is read-only.
+
+Backend:
+- `bn_risk_rule_feedback_type` (governed classification catalogue), `bn_risk_rule_feedback`
+  (immutable records; corrections supersede via `supersedes_feedback_id`).
+- `bn_risk_rule_feedback_readiness_v1`, `bn_risk_rule_feedback_command_v1`
+  (idempotency-hashed, duplicate-protected, rule-version bound).
+- `bn_risk_operational_metrics_v1`, `bn_risk_outcome_metrics_v1`,
+  `bn_risk_rule_feedback_metrics_v1` — all aggregation is backend-owned.
+
+Frontend:
+- `BnRiskRuleFeedbackSection` / `BnRiskRuleFeedbackDialog` in the assessment workspace
+  (`feedback` deep-link section).
+- `BnRiskOperationsDashboard` and `BnRiskReportingPanel` on the new
+  "Operations" and "Reporting" tabs of Risk management.
+
+Governance held:
+- Feedback changes no scoring rule, weight, threshold or active version. Rule change
+  remains a separate, versioned and authorised decision.
+- Rule effectiveness is version aware and restricted to rule administrators.
+- Reporting is aggregate only; a referral is never reported as a finding of fraud.
+- Failed reads fail closed — never rendered as an empty queue or a zero.
+
+Certification: `src/__tests__/bn/risk/riskEpic6Feedback.test.ts` (25 tests).
+Regression: 210/210 Risk tests pass; typecheck clean.
