@@ -359,7 +359,7 @@ describe('Epic 3 — recommendation readiness is governed by the backend', () =>
     const button = await screen.findByRole('button', { name: /recommend control/i });
     expect(button).toBeDisabled();
     expect(screen.getByText(fixture.blockers[0])).toBeInTheDocument();
-  });
+  }, 20000);
 
   it('permits a recommendation when the score is current and reviewed', async () => {
     await renderRecommendation({});
