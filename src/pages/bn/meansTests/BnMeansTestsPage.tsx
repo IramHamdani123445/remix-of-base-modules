@@ -55,7 +55,14 @@ import { BnMeansVerificationQueue } from '@/components/bn/meansTests/verificatio
 import { BnMeansReassessmentQueuePanel } from '@/components/bn/meansTests/lifecycle/BnMeansReassessmentQueue';
 import { BnMeansPolicyConfiguration } from '@/components/bn/meansTests/configuration/BnMeansPolicyConfiguration';
 import BnMeansOperationsWorkspace from '@/components/bn/meansTests/operations/BnMeansOperationsWorkspace';
-import { BnModuleBreadcrumbs } from '@/components/bn/ux';
+import {
+  BnDataState,
+  BnFilterBar,
+  BnModuleBreadcrumbs,
+  BnModuleHeader,
+  BnModulePage,
+  BnModuleTrail,
+} from '@/components/bn/ux';
 
 const STATUS_FILTERS = [
   'DRAFT', 'INFORMATION_PENDING', 'SUBMITTED', 'VERIFICATION_PENDING', 'CALCULATED',
@@ -109,21 +116,13 @@ const MEANS_SCREEN_LABELS: Record<string, string> = {
   configuration: 'Configuration',
 };
 
-const MeansBreadcrumbs: React.FC = () => {
-  const { pathname } = useLocation();
-  const tail = pathname.replace(MEANS_MODULE_BASE, '').replace(/^\/+|\/+$/g, '').split('/')[0] ?? '';
-  return (
-    <BnModuleBreadcrumbs
-      items={[
-        { label: 'Benefit Management' },
-        { label: 'Means-Test Assessments', to: MEANS_MODULE_BASE },
-        { label: MEANS_SCREEN_LABELS[tail] ?? 'Overview' },
-      ]}
-    />
-  );
-};
-
-
+const MeansBreadcrumbs: React.FC = () => (
+  <BnModuleTrail
+    moduleLabel="Means-Test Assessments"
+    moduleBase={MEANS_MODULE_BASE}
+    screenLabels={MEANS_SCREEN_LABELS}
+  />
+);
 
 // ---------------------------------------------------------------- module shell
 
@@ -134,55 +133,54 @@ const MeansModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => 
   const [wizardOpen, setWizardOpen] = React.useState(false);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <ClipboardList className="mt-1 h-6 w-6 text-primary" aria-hidden="true" />
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold">Means-Test Assessments</h1>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              Record and verify a household&apos;s income, assets and allowable deductions, calculate
-              assessed means under the policy in force, and publish the approved result to Eligibility.
-            </p>
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              <Badge variant="secondary" data-testid="means-development-status">
-                In development — available to authorised development users
-              </Badge>
-              <Badge variant="outline" data-testid="means-access-level">
-                Your access: {accessLevelLabel(ctx)}
-              </Badge>
-            </div>
-          </div>
-        </div>
-        {ctx.can('write') && ctx.actionsEnabled && (
-          <>
+    <BnModulePage>
+      <BnModuleHeader
+        icon={ClipboardList}
+        title="Means-Test Assessments"
+        description="Record and verify a household's income, assets and allowable deductions, calculate assessed means under the policy in force, and publish the approved result to Eligibility."
+        badges={[
+          {
+            label: 'In development — available to authorised development users',
+            variant: 'secondary',
+            testId: 'means-development-status',
+          },
+          {
+            label: `Your access: ${accessLevelLabel(ctx)}`,
+            variant: 'outline',
+            testId: 'means-access-level',
+          },
+        ]}
+        actions={
+          ctx.can('write') && ctx.actionsEnabled ? (
             <Button onClick={() => setWizardOpen(true)} data-testid="means-start-assessment">
               <Plus className="mr-2 h-4 w-4" /> Start assessment
             </Button>
-            <BnMeansInitiationWizard
-              open={wizardOpen}
-              onOpenConfiguration={
-                ctx.can('config') ? () => navigate(`${MEANS_MODULE_BASE}/configuration`) : undefined
-              }
-              onOpenChange={setWizardOpen}
-              prefill={{ originSurface: 'MEANS_LANDING' }}
-              onCreated={(assessmentId) => {
-                queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
-                queryClient.invalidateQueries({ queryKey: ['bn-means-operational-queue'] });
-                queryClient.invalidateQueries({ queryKey: ['bn-means-operational-counts'] });
-                openAssessment(assessmentId, 'household');
-              }}
-            />
-          </>
-        )}
-      </header>
+          ) : undefined
+        }
+      />
+
+      {ctx.can('write') && ctx.actionsEnabled && (
+        <BnMeansInitiationWizard
+          open={wizardOpen}
+          onOpenConfiguration={
+            ctx.can('config') ? () => navigate(`${MEANS_MODULE_BASE}/configuration`) : undefined
+          }
+          onOpenChange={setWizardOpen}
+          prefill={{ originSurface: 'MEANS_LANDING' }}
+          onCreated={(assessmentId) => {
+            queryClient.invalidateQueries({ queryKey: ['bn-means-queue'] });
+            queryClient.invalidateQueries({ queryKey: ['bn-means-operational-queue'] });
+            queryClient.invalidateQueries({ queryKey: ['bn-means-operational-counts'] });
+            openAssessment(assessmentId, 'household');
+          }}
+        />
+      )}
 
       {/*
         Module navigation lives in the left sidebar (Benefit Management →
         Means-Test Assessments). The screen states only where it is.
       */}
       <MeansBreadcrumbs />
-
 
       <Outlet />
 
@@ -195,7 +193,7 @@ const MeansModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => 
           'Module id': ctx.moduleId,
         }}
       />
-    </div>
+    </BnModulePage>
   );
 };
 
