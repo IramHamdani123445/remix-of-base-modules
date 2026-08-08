@@ -110,7 +110,7 @@ BEGIN
     (id, table_code, table_name, table_type, lookup_mode, country_code,
      version_no, effective_from, effective_to, status, entered_by)
   VALUES (c_rate_tbl, 'ZZ_EPIC0_RATE', 'Epic 0 harness rate table', 'RATE_TABLE',
-          'EXACT_MATCH', 'KN', 1, DATE '2020-01-01', NULL, 'ACTIVE', 'HARNESS');
+          'EXACT_MATCH', 'KN', 1, DATE '2020-01-01', NULL, 'DRAFT', 'HARNESS');
 
   INSERT INTO public.bn_rate_table_dimension
     (rate_table_id, dimension_key, dimension_label, dimension_type, match_type, sequence_no)
@@ -132,7 +132,7 @@ BEGIN
     (id, table_code, table_name, table_type, lookup_mode, country_code,
      version_no, effective_from, status, entered_by)
   VALUES (c_tier_tbl, 'ZZ_EPIC0_TIER', 'Epic 0 harness tier table', 'TIER',
-          'RANGE_MATCH', 'KN', 1, DATE '2020-01-01', 'ACTIVE', 'HARNESS');
+          'RANGE_MATCH', 'KN', 1, DATE '2020-01-01', 'DRAFT', 'HARNESS');
 
   INSERT INTO public.bn_rate_table_dimension
     (rate_table_id, dimension_key, dimension_label, dimension_type, match_type, sequence_no)
@@ -155,7 +155,7 @@ BEGIN
     (id, table_code, table_name, table_type, lookup_mode, country_code,
      version_no, effective_from, status, entered_by)
   VALUES (c_amb_tbl, 'ZZ_EPIC0_AMBIG', 'Epic 0 ambiguous matrix', 'MATRIX',
-          'RANGE_MATCH', 'KN', 1, DATE '2020-01-01', 'ACTIVE', 'HARNESS');
+          'RANGE_MATCH', 'KN', 1, DATE '2020-01-01', 'DRAFT', 'HARNESS');
 
   INSERT INTO public.bn_rate_table_dimension
     (rate_table_id, dimension_key, dimension_label, dimension_type, match_type, sequence_no)
@@ -166,6 +166,10 @@ BEGIN
   VALUES
     (c_amb_tbl, 1, '{"weekly_wage":{"min":0,"max":500}}'::jsonb, 'X', 10, 'AMOUNT', 'HARNESS'),
     (c_amb_tbl, 2, '{"weekly_wage":{"min":100,"max":900}}'::jsonb, 'Y', 20, 'AMOUNT', 'HARNESS');
+
+  -- Activate the configured tables (rows are only editable while DRAFT).
+  UPDATE public.bn_rate_table SET status = 'ACTIVE'
+  WHERE id IN (c_rate_tbl, c_tier_tbl, c_amb_tbl);
 
   -- =================================================================
   -- Journey A — effective formula/version resolution
