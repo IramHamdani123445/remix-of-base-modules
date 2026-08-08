@@ -97,6 +97,33 @@ const ERROR_HINTS: Record<string, string> = {
 
 export const OVERPAYMENT_MODULE_BASE = '/bn/overpayments';
 
+const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
+const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v) || 0);
+
+/**
+ * Map the secured case-detail payload onto the worklist row shape the record
+ * workspace renders, so a deep link resolves without the worklist.
+ */
+export function toWorklistRow(
+  caseId: string,
+  detail: Record<string, unknown> | null,
+): BnOverpaymentWorklistRow | null {
+  if (!detail || typeof detail !== 'object') return null;
+  const status = str(detail.status);
+  if (!status) return null;
+  return {
+    case_id: str(detail.case_id) ?? caseId,
+    case_reference: str(detail.case_reference) ?? caseId,
+    claimant_display: str(detail.claimant_display),
+    status,
+    gross_amount: num(detail.gross_amount),
+    outstanding_amount: num(detail.outstanding_amount),
+    recovered_amount: num(detail.recovered_amount),
+    currency: str(detail.currency) ?? 'XCD',
+    row_version: num(detail.row_version),
+  } as BnOverpaymentWorklistRow;
+}
+
 const OverpaymentRecovery: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -118,6 +145,8 @@ const OverpaymentRecovery: React.FC = () => {
   const [planNotes, setPlanNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [commandError, setCommandError] = useState<string | null>(null);
+  const [caseLoading, setCaseLoading] = useState(false);
+  const [caseError, setCaseError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -156,31 +185,68 @@ const OverpaymentRecovery: React.FC = () => {
     [navigate],
   );
 
-  const openCase = useCallback(async (row: BnOverpaymentWorklistRow) => {
-    setSelected(row);
-    setCommandError(null);
-    setActions([]);
+  const loadActions = useCallback(async (caseId: string) => {
     try {
-      const list = await overpaymentQueryService.availableActions(row.case_id);
+      const list = await overpaymentQueryService.availableActions(caseId);
       setActions(Array.isArray(list) ? list : []);
     } catch {
       setActions([]);
     }
   }, []);
 
+  const openCase = useCallback(async (row: BnOverpaymentWorklistRow) => {
+    setSelected(row);
+    setCommandError(null);
+    setCaseError(null);
+    setActions([]);
+    await loadActions(row.case_id);
+  }, [loadActions]);
+
   /**
-   * Restore the open case from the URL once the worklist is available. The
-   * record is only ever rendered from server data, never from the URL alone.
+   * Restore the open case from the URL. A deep link resolves against the
+   * secured case-detail query directly, so the record no longer depends on the
+   * worklist having loaded (or on the case being inside the current filter).
    */
   useEffect(() => {
     if (!openCaseId) {
       setSelected(null);
+      setCaseError(null);
       return;
     }
     if (selected?.case_id === openCaseId) return;
+
     const row = rows.find((r) => r.case_id === openCaseId);
-    if (row) void openCase(row);
-  }, [openCaseId, rows, selected?.case_id, openCase]);
+    if (row) {
+      void openCase(row);
+      return;
+    }
+
+    let cancelled = false;
+    setCaseLoading(true);
+    setCaseError(null);
+    void (async () => {
+      try {
+        const detail = await overpaymentQueryService.caseDetail(openCaseId);
+        if (cancelled) return;
+        const mapped = toWorklistRow(openCaseId, detail);
+        if (!mapped) {
+          setCaseError('This overpayment case could not be found, or you do not have access to it.');
+          return;
+        }
+        setSelected(mapped);
+        await loadActions(openCaseId);
+      } catch (e) {
+        if (!cancelled) {
+          setCaseError(e instanceof Error ? e.message : 'Failed to load this overpayment case.');
+        }
+      } finally {
+        if (!cancelled) setCaseLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [openCaseId, rows, selected?.case_id, openCase, loadActions]);
+
+
 
   const can = (action: string) => actions.some((a) => a.action === action && a.allowed);
 
@@ -273,21 +339,50 @@ const OverpaymentRecovery: React.FC = () => {
   );
 
   /**
+   * OPEN RECORD (deep-link resolving). The address is authoritative, so the
+   * screen reports its own loading and not-found states instead of silently
+   * falling back to the worklist.
+   */
+  if (openCaseId && !selected) {
+    return (
+      <div className="space-y-4 p-4 sm:p-6" data-testid="bn-overpayment-case-workspace-loading">
+        <Button variant="ghost" size="sm" onClick={() => setOpenCaseId(null)}>
+          Back to overpayment worklist
+        </Button>
+        <BnDataState
+          state={!caseLoading && caseError ? 'error' : 'loading'}
+          errorTitle="This overpayment case could not be opened"
+          errorDetail={caseError}
+          onRetry={() => { setCaseError(null); setSelected(null); void load(); }}
+          testId="bn-overpayment-case"
+        />
+      </div>
+    );
+  }
+
+  /**
    * OPEN RECORD. A selected case is a page-level workspace with its own
-   * refresh-survivable address (`?case=<case_id>`), not a modal. Available
+   * refresh-survivable address (`/cases/<case_id>`), not a modal. Available
    * actions come from the secured `available_actions` query only.
    */
   if (selected) {
-    const nextActions = actions.map((a) => ({
-      id: a.action,
-      label: a.action.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()),
-      available: a.allowed,
-      reason: a.allowed ? undefined : (a as { reason?: string }).reason,
-      onSelect:
+    const nextActions = actions.map((a) => {
+      const handler =
         a.action === 'propose_recovery_plan'
           ? () => { setPlanOpen(true); setCommandError(null); }
-          : undefined,
-    }));
+          : undefined;
+      const reason = (a as { reason?: string }).reason;
+      return {
+        id: a.action,
+        label: a.action.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()),
+        available: a.allowed && Boolean(handler),
+        reason: !a.allowed
+          ? reason
+          : 'Available on the server, but not yet operable from this screen.',
+        onSelect: handler,
+      };
+    });
+
 
     return (
       <div className="space-y-6 p-4 sm:p-6" data-testid="bn-overpayment-case-workspace">

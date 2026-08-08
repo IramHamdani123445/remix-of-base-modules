@@ -41,6 +41,7 @@ import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel'
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import {
   BnModuleBreadcrumbs,
+  BnModuleGuidance,
   BnModuleHeader,
   BnModulePage,
   BnModuleTrail,
@@ -194,16 +195,16 @@ const RiskSignalsRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => 
 
   return (
     <div className="space-y-6">
-      <BnRiskSignalQueue onOpenSignal={setOpenSignalId} />
-
-      <Alert>
-        <AlertTitle>What happens after triage</AlertTitle>
-        <AlertDescription>
+      <BnModuleGuidance summary="What happens after triage">
+        <p>
           A confirmed signal can be taken forward into a risk assessment, where facts
           and evidence are gathered, then scored for review. A score is decision support
           only — no signal, assessment or score can affect a benefit on its own.
-        </AlertDescription>
-      </Alert>
+        </p>
+      </BnModuleGuidance>
+
+      <BnRiskSignalQueue onOpenSignal={setOpenSignalId} />
+
 
       <BnRiskSignalDetailPanel
         signalId={openSignalId}
@@ -261,14 +262,13 @@ const RiskControlDecisionsRoute: React.FC = () => {
   const openAssessment = useOpenRiskAssessment();
   return (
     <div className="space-y-6">
-      <BnRiskControlApprovalQueue onOpenApproval={(id) => openAssessment(id, 'approval')} />
-      <Alert>
-        <AlertTitle>Approval authorises a control</AlertTitle>
-        <AlertDescription>
+      <BnModuleGuidance summary="Approval authorises a control">
+        <p>
           Approving a recommended control authorises it for later governed execution.
           No payment, award, claim, overpayment or referral changes from this screen.
-        </AlertDescription>
-      </Alert>
+        </p>
+      </BnModuleGuidance>
+      <BnRiskControlApprovalQueue onOpenApproval={(id) => openAssessment(id, 'approval')} />
     </div>
   );
 };
@@ -277,15 +277,14 @@ const RiskControlExecutionRoute: React.FC = () => {
   const openAssessment = useOpenRiskAssessment();
   return (
     <div className="space-y-6">
-      <BnRiskControlExecutionQueue onOpenExecution={(id) => openAssessment(id, 'execution')} />
-      <Alert>
-        <AlertTitle>The owning domain performs the action</AlertTitle>
-        <AlertDescription>
+      <BnModuleGuidance summary="The owning domain performs the action">
+        <p>
           Risk requests an approved control through a governed handoff. Payments, Legal,
           Investigation and the other owning domains decide whether and how it is applied,
           and Risk records only the reference and status they return.
-        </AlertDescription>
-      </Alert>
+        </p>
+      </BnModuleGuidance>
+      <BnRiskControlExecutionQueue onOpenExecution={(id) => openAssessment(id, 'execution')} />
     </div>
   );
 };
@@ -294,15 +293,14 @@ const RiskOutcomesRoute: React.FC = () => {
   const openAssessment = useOpenRiskAssessment();
   return (
     <div className="space-y-6">
-      <BnRiskOutcomeQueue onOpenAssessment={(id, section) => openAssessment(id, section)} />
-      <Alert>
-        <AlertTitle>Outcome, completion and closure are governed</AlertTitle>
-        <AlertDescription>
+      <BnModuleGuidance summary="Outcome, completion and closure are governed">
+        <p>
           An outcome records what the assessment concluded and why. Closure ends the
           assessment; a closed assessment can only be reopened exceptionally, with a
           recorded justification, and every reopening is audited.
-        </AlertDescription>
-      </Alert>
+        </p>
+      </BnModuleGuidance>
+      <BnRiskOutcomeQueue onOpenAssessment={(id, section) => openAssessment(id, section)} />
     </div>
   );
 };
@@ -323,17 +321,17 @@ const RiskControlsRedirect: React.FC = () => {
 
 const RiskReportingRoute: React.FC = () => (
   <div className="space-y-6">
-    <BnRiskReportingPanel />
-    <Alert>
-      <AlertTitle>Reporting is aggregate evidence</AlertTitle>
-      <AlertDescription>
+    <BnModuleGuidance summary="Reporting is aggregate evidence">
+      <p>
         Reports describe volumes, outcomes and rule behaviour. A referral is not a finding
         of fraud, and no rule is judged effective or ineffective by a figure alone —
         changing a rule remains a separate, versioned and authorised decision.
-      </AlertDescription>
-    </Alert>
+      </p>
+    </BnModuleGuidance>
+    <BnRiskReportingPanel />
   </div>
 );
+
 
 export default function BnRiskManagementPage() {
   return (
