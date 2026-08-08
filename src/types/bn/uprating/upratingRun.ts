@@ -349,8 +349,10 @@ export const BN_UPRATING_EPIC1_RUN_TRANSITIONS: Readonly<
   // Epic 4 — post-execution operational lifecycle (see BN_UPRATING_EPIC4_RUN_TRANSITIONS)
   SCHEDULES_REBUILT: ['COMMUNICATIONS_ISSUED'],
   COMMUNICATIONS_ISSUED: ['RECONCILED'],
-  RECONCILED: [],
-  ROLLED_BACK: [],
+  RECONCILED: ['CLOSED'],
+  ROLLED_BACK: ['CLOSED'],
+  // Epic 5 — CLOSED is terminal; there is no reopen transition.
+  CLOSED: [],
 };
 
 
