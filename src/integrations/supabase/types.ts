@@ -27893,6 +27893,718 @@ export type Database = {
           },
         ]
       }
+      bn_uprating_command_audit: {
+        Row: {
+          actor_name: string | null
+          actor_user_id: string | null
+          audit_id: string
+          command_class: string
+          command_name: string
+          correlation_id: string | null
+          idempotency_key: string | null
+          justification: string | null
+          new_status: string | null
+          occurred_at: string
+          payload: Json | null
+          policy_id: string | null
+          policy_version_id: string | null
+          previous_status: string | null
+          reason_code: string | null
+          result_status: string | null
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          audit_id?: string
+          command_class?: string
+          command_name: string
+          correlation_id?: string | null
+          idempotency_key?: string | null
+          justification?: string | null
+          new_status?: string | null
+          occurred_at?: string
+          payload?: Json | null
+          policy_id?: string | null
+          policy_version_id?: string | null
+          previous_status?: string | null
+          reason_code?: string | null
+          result_status?: string | null
+        }
+        Update: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          audit_id?: string
+          command_class?: string
+          command_name?: string
+          correlation_id?: string | null
+          idempotency_key?: string | null
+          justification?: string | null
+          new_status?: string | null
+          occurred_at?: string
+          payload?: Json | null
+          policy_id?: string | null
+          policy_version_id?: string | null
+          previous_status?: string | null
+          reason_code?: string | null
+          result_status?: string | null
+        }
+        Relationships: []
+      }
+      bn_uprating_command_idempotency: {
+        Row: {
+          actor_user_id: string | null
+          command_name: string
+          correlation_id: string | null
+          created_at: string
+          idempotency_key: string
+          payload_hash: string
+          result_json: Json
+          status: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          command_name: string
+          correlation_id?: string | null
+          created_at?: string
+          idempotency_key: string
+          payload_hash?: string
+          result_json: Json
+          status?: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          command_name?: string
+          correlation_id?: string | null
+          created_at?: string
+          idempotency_key?: string
+          payload_hash?: string
+          result_json?: Json
+          status?: string
+        }
+        Relationships: []
+      }
+      bn_uprating_index_observation: {
+        Row: {
+          created_at: string
+          index_series_id: string
+          observation_id: string
+          observed_value: number
+          published_at: string | null
+          reference_period: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          index_series_id: string
+          observation_id?: string
+          observed_value: number
+          published_at?: string | null
+          reference_period: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          index_series_id?: string
+          observation_id?: string
+          observed_value?: number
+          published_at?: string | null
+          reference_period?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_index_observation_index_series_id_fkey"
+            columns: ["index_series_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_index_series"
+            referencedColumns: ["index_series_id"]
+          },
+        ]
+      }
+      bn_uprating_index_series: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          index_series_id: string
+          is_active: boolean
+          publisher: string | null
+          series_code: string
+          series_name: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          index_series_id?: string
+          is_active?: boolean
+          publisher?: string | null
+          series_code: string
+          series_name: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          index_series_id?: string
+          is_active?: boolean
+          publisher?: string | null
+          series_code?: string
+          series_name?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      bn_uprating_policy: {
+        Row: {
+          award_component_code: string | null
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          description: string | null
+          owner_name: string | null
+          owner_user_id: string | null
+          policy_code: string
+          policy_id: string
+          policy_name: string
+          policy_type: string
+          product_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          award_component_code?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          description?: string | null
+          owner_name?: string | null
+          owner_user_id?: string | null
+          policy_code: string
+          policy_id?: string
+          policy_name: string
+          policy_type: string
+          product_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          award_component_code?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          description?: string | null
+          owner_name?: string | null
+          owner_user_id?: string | null
+          policy_code?: string
+          policy_id?: string
+          policy_name?: string
+          policy_type?: string
+          product_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_policy_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_uprating_policy_approval: {
+        Row: {
+          approval_id: string
+          correlation_id: string | null
+          decided_at: string
+          decided_by: string
+          decided_by_name: string | null
+          decision: string
+          justification: string
+          policy_version_id: string
+          reason_code: string | null
+          reason_label: string | null
+          sequence_no: number
+          submitted_at: string | null
+          submitted_by: string | null
+        }
+        Insert: {
+          approval_id?: string
+          correlation_id?: string | null
+          decided_at?: string
+          decided_by: string
+          decided_by_name?: string | null
+          decision: string
+          justification: string
+          policy_version_id: string
+          reason_code?: string | null
+          reason_label?: string | null
+          sequence_no: number
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Update: {
+          approval_id?: string
+          correlation_id?: string | null
+          decided_at?: string
+          decided_by?: string
+          decided_by_name?: string | null
+          decision?: string
+          justification?: string
+          policy_version_id?: string
+          reason_code?: string | null
+          reason_label?: string | null
+          sequence_no?: number
+          submitted_at?: string | null
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_policy_approval_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+        ]
+      }
+      bn_uprating_policy_event: {
+        Row: {
+          actor_name: string | null
+          actor_user_id: string | null
+          correlation_id: string | null
+          detail: string | null
+          event_code: string
+          event_id: string
+          event_label: string
+          new_status: string | null
+          occurred_at: string
+          policy_id: string
+          policy_version_id: string | null
+          previous_status: string | null
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          detail?: string | null
+          event_code: string
+          event_id?: string
+          event_label: string
+          new_status?: string | null
+          occurred_at?: string
+          policy_id: string
+          policy_version_id?: string | null
+          previous_status?: string | null
+        }
+        Update: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          correlation_id?: string | null
+          detail?: string | null
+          event_code?: string
+          event_id?: string
+          event_label?: string
+          new_status?: string | null
+          occurred_at?: string
+          policy_id?: string
+          policy_version_id?: string | null
+          previous_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_policy_event_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_policy"
+            referencedColumns: ["policy_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_event_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+        ]
+      }
+      bn_uprating_policy_tier: {
+        Row: {
+          created_at: string
+          fixed_amount_minor: number | null
+          lower_bound_minor: number
+          percentage_bp: number | null
+          policy_version_id: string
+          sequence_no: number
+          tier_id: string
+          upper_bound_minor: number | null
+        }
+        Insert: {
+          created_at?: string
+          fixed_amount_minor?: number | null
+          lower_bound_minor: number
+          percentage_bp?: number | null
+          policy_version_id: string
+          sequence_no: number
+          tier_id?: string
+          upper_bound_minor?: number | null
+        }
+        Update: {
+          created_at?: string
+          fixed_amount_minor?: number | null
+          lower_bound_minor?: number
+          percentage_bp?: number | null
+          policy_version_id?: string
+          sequence_no?: number
+          tier_id?: string
+          upper_bound_minor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_policy_tier_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+        ]
+      }
+      bn_uprating_policy_validation: {
+        Row: {
+          attempt_no: number
+          correlation_id: string | null
+          errors: Json
+          policy_version_id: string
+          validated_at: string
+          validated_by: string | null
+          validated_by_name: string | null
+          validation_id: string
+          validation_status: string
+          warnings: Json
+        }
+        Insert: {
+          attempt_no: number
+          correlation_id?: string | null
+          errors?: Json
+          policy_version_id: string
+          validated_at?: string
+          validated_by?: string | null
+          validated_by_name?: string | null
+          validation_id?: string
+          validation_status: string
+          warnings?: Json
+        }
+        Update: {
+          attempt_no?: number
+          correlation_id?: string | null
+          errors?: Json
+          policy_version_id?: string
+          validated_at?: string
+          validated_by?: string | null
+          validated_by_name?: string | null
+          validation_id?: string
+          validation_status?: string
+          warnings?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_policy_validation_policy_version_id_fkey"
+            columns: ["policy_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+        ]
+      }
+      bn_uprating_policy_version: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          approval_decision: string | null
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_name: string | null
+          award_component_code: string | null
+          award_type_code: string | null
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          currency_code: string | null
+          decision_justification: string | null
+          decision_reason_code: string | null
+          effective_from: string | null
+          effective_to: string | null
+          fixed_amount_minor: number | null
+          formula_template_id: string | null
+          formula_version_id: string | null
+          index_base_period: string | null
+          index_reference_period: string | null
+          index_series_id: string | null
+          legal_reference_id: string | null
+          manual_source_code: string | null
+          manual_source_description: string | null
+          payment_frequency: string | null
+          percentage_bp: number | null
+          policy_id: string
+          policy_type: string
+          policy_version_id: string
+          product_id: string | null
+          product_version_id: string | null
+          retired_at: string | null
+          retirement_reason_code: string | null
+          rounding_mode: string
+          row_version: number
+          source_reference: string | null
+          status: string
+          submitted_at: string | null
+          submitted_by: string | null
+          submitted_by_name: string | null
+          superseded_at: string | null
+          superseded_by_version_id: string | null
+          updated_at: string
+          validated_at: string | null
+          validated_by: string | null
+          validated_by_name: string | null
+          validation_errors: Json
+          validation_status: string
+          validation_warnings: Json
+          version_no: number
+          version_reference: string
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          approval_decision?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_name?: string | null
+          award_component_code?: string | null
+          award_type_code?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          currency_code?: string | null
+          decision_justification?: string | null
+          decision_reason_code?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          fixed_amount_minor?: number | null
+          formula_template_id?: string | null
+          formula_version_id?: string | null
+          index_base_period?: string | null
+          index_reference_period?: string | null
+          index_series_id?: string | null
+          legal_reference_id?: string | null
+          manual_source_code?: string | null
+          manual_source_description?: string | null
+          payment_frequency?: string | null
+          percentage_bp?: number | null
+          policy_id: string
+          policy_type: string
+          policy_version_id?: string
+          product_id?: string | null
+          product_version_id?: string | null
+          retired_at?: string | null
+          retirement_reason_code?: string | null
+          rounding_mode?: string
+          row_version?: number
+          source_reference?: string | null
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          superseded_at?: string | null
+          superseded_by_version_id?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validated_by_name?: string | null
+          validation_errors?: Json
+          validation_status?: string
+          validation_warnings?: Json
+          version_no: number
+          version_reference: string
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          approval_decision?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_name?: string | null
+          award_component_code?: string | null
+          award_type_code?: string | null
+          country_code?: string | null
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          currency_code?: string | null
+          decision_justification?: string | null
+          decision_reason_code?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          fixed_amount_minor?: number | null
+          formula_template_id?: string | null
+          formula_version_id?: string | null
+          index_base_period?: string | null
+          index_reference_period?: string | null
+          index_series_id?: string | null
+          legal_reference_id?: string | null
+          manual_source_code?: string | null
+          manual_source_description?: string | null
+          payment_frequency?: string | null
+          percentage_bp?: number | null
+          policy_id?: string
+          policy_type?: string
+          policy_version_id?: string
+          product_id?: string | null
+          product_version_id?: string | null
+          retired_at?: string | null
+          retirement_reason_code?: string | null
+          rounding_mode?: string
+          row_version?: number
+          source_reference?: string | null
+          status?: string
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitted_by_name?: string | null
+          superseded_at?: string | null
+          superseded_by_version_id?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validated_by_name?: string | null
+          validation_errors?: Json
+          validation_status?: string
+          validation_warnings?: Json
+          version_no?: number
+          version_reference?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_policy_version_formula_template_id_fkey"
+            columns: ["formula_template_id"]
+            isOneToOne: false
+            referencedRelation: "bn_formula_template"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_formula_version_id_fkey"
+            columns: ["formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_formula_version"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_index_series_id_fkey"
+            columns: ["index_series_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_index_series"
+            referencedColumns: ["index_series_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_legal_reference_id_fkey"
+            columns: ["legal_reference_id"]
+            isOneToOne: false
+            referencedRelation: "bn_country_legal_ref"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_legal_reference_id_fkey"
+            columns: ["legal_reference_id"]
+            isOneToOne: false
+            referencedRelation: "bn_legal_reference"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_legal_reference_id_fkey"
+            columns: ["legal_reference_id"]
+            isOneToOne: false
+            referencedRelation: "core_legal_reference"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_legal_reference_id_fkey"
+            columns: ["legal_reference_id"]
+            isOneToOne: false
+            referencedRelation: "legal_reference"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_policy_id_fkey"
+            columns: ["policy_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_policy"
+            referencedColumns: ["policy_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_product_version_id_fkey"
+            columns: ["product_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product_version"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_policy_version_superseded_by_version_id_fkey"
+            columns: ["superseded_by_version_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_policy_version"
+            referencedColumns: ["policy_version_id"]
+          },
+        ]
+      }
+      bn_uprating_reference_value: {
+        Row: {
+          code: string
+          created_at: string
+          description: string | null
+          domain: string
+          is_active: boolean
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          description?: string | null
+          domain: string
+          is_active?: boolean
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          description?: string | null
+          domain?: string
+          is_active?: boolean
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       bn_version_approval: {
         Row: {
           action: string
@@ -110290,6 +111002,37 @@ export type Database = {
         Returns: string
       }
       _bn_susp_user_code: { Args: { p_user_id: string }; Returns: string }
+      _bn_uprating_actor_name: { Args: { p_actor: string }; Returns: string }
+      _bn_uprating_apply_version_payload: {
+        Args: { p_payload: Json; p_version_id: string }
+        Returns: undefined
+      }
+      _bn_uprating_event: {
+        Args: {
+          p_actor: string
+          p_code: string
+          p_correlation: string
+          p_detail: string
+          p_label: string
+          p_new: string
+          p_policy_id: string
+          p_prev: string
+          p_version_id: string
+        }
+        Returns: undefined
+      }
+      _bn_uprating_ref_label: {
+        Args: { p_code: string; p_domain: string }
+        Returns: string
+      }
+      _bn_uprating_require: {
+        Args: { p_action: string; p_actor: string; p_mutation: boolean }
+        Returns: undefined
+      }
+      _bn_uprating_validate_version: {
+        Args: { p_version_id: string }
+        Returns: Json
+      }
       _ch_extract_domain: { Args: { p_email: string }; Returns: string }
       _ch_mask_email: { Args: { p_email: string }; Returns: string }
       _ch_target_stage_to_send_context: {
@@ -113086,6 +113829,60 @@ export type Database = {
           claim_number: string
           workflow_instance_id: string
         }[]
+      }
+      bn_uprating_check_actor_permission: {
+        Args: {
+          p_action_name: string
+          p_actor_user_id: string
+          p_is_mutation: boolean
+        }
+        Returns: Json
+      }
+      bn_uprating_policy_actions_v1: {
+        Args: { p_actor_user_id: string; p_policy_version_id: string }
+        Returns: Json
+      }
+      bn_uprating_policy_approval_queue_v1: {
+        Args: { p_actor_user_id: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      bn_uprating_policy_approval_readiness_v1: {
+        Args: { p_actor_user_id: string; p_policy_version_id: string }
+        Returns: Json
+      }
+      bn_uprating_policy_command_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_payload?: Json
+          p_policy_id?: string
+          p_policy_version_id?: string
+        }
+        Returns: Json
+      }
+      bn_uprating_policy_detail_v1: {
+        Args: { p_actor_user_id: string; p_policy_id: string }
+        Returns: Json
+      }
+      bn_uprating_policy_list_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+      bn_uprating_policy_validation_readiness_v1: {
+        Args: { p_actor_user_id: string; p_policy_version_id: string }
+        Returns: Json
+      }
+      bn_uprating_reference_data_v1: {
+        Args: { p_actor_user_id: string }
+        Returns: Json
       }
       bn_workbaskets_for_user: {
         Args: { p_user_id: string }
