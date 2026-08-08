@@ -50,6 +50,7 @@ DECLARE
   v_entitle_before     bigint;
   v_awards_after       bigint;
   v_entitle_after      bigint;
+  v_issue_before       bigint;
   v_failed     boolean;
   v_msg        text;
 BEGIN
@@ -462,6 +463,7 @@ BEGIN
   -- =================================================================
   -- Journey I — simulation safety
   -- =================================================================
+  SELECT count(*) INTO v_issue_before   FROM public.bn_issue_record;
   SELECT count(*) INTO v_awards_before  FROM public.bn_award;
   SELECT count(*) INTO v_entitle_before FROM public.bn_entitlement;
 
@@ -483,7 +485,8 @@ BEGIN
   IF v_awards_after <> v_awards_before OR v_entitle_after <> v_entitle_before THEN
     RAISE EXCEPTION 'I3 FAIL: simulation mutated award/entitlement state';
   END IF;
-  IF EXISTS (SELECT 1 FROM public.bn_issue_record WHERE entered_by = 'HARNESS') THEN
+  SELECT count(*) INTO v_awards_after FROM public.bn_issue_record;
+  IF v_awards_after <> v_issue_before THEN
     RAISE EXCEPTION 'I4 FAIL: simulation created a payment issue record';
   END IF;
 
