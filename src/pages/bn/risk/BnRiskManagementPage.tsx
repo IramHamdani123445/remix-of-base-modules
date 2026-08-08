@@ -11,14 +11,14 @@
  *   /bn/risk-management/controls             control decisions, execution, outcomes
  *   /bn/risk-management/reporting            aggregate evidence
  *   /bn/risk-management/configuration        scoring configuration
- *   /bn/risk-management/assessments/:assessmentId?section=…
+ *   /bn/risk-management/assessments/:assessmentId/:section
  *
  * Access is gated by `BnModuleRouteGate` for every address; mutation controls
  * are only offered when the module permits actions and the governed action
  * query allows them.
  */
 import React from 'react';
-import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   BnModuleRouteGate,
   type BnModuleAccessContext,
@@ -40,7 +40,7 @@ import { BnRiskOperationsDashboard } from '@/components/bn/risk/BnRiskOperations
 import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel';
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import {
-  BnModuleSectionNav,
+  BnModuleBreadcrumbs,
   useBnWorkspaceSection,
 } from '@/components/bn/ux';
 
@@ -58,13 +58,41 @@ const WORKSPACE_SECTIONS: readonly BnRiskWorkspaceSection[] = [
   'approval', 'execution', 'outcome', 'closure', 'feedback',
 ];
 
+/** Screen-level "where am I", replacing the module-local tab bar. */
+const RISK_SCREEN_LABELS: Record<string, string> = {
+  '': 'Overview',
+  signals: 'Signals',
+  assessments: 'Assessments',
+  controls: 'Controls & outcomes',
+  reporting: 'Reporting',
+  configuration: 'Configuration',
+  approval: 'Approval',
+  execution: 'Control execution',
+  outcome: 'Outcome',
+  closure: 'Closure',
+  feedback: 'Rule feedback',
+};
+
+const RiskBreadcrumbs: React.FC = () => {
+  const { pathname } = useLocation();
+  const tail = pathname.replace(RISK_MODULE_BASE, '').replace(/^\/+|\/+$/g, '').split('/')[0] ?? '';
+  return (
+    <BnModuleBreadcrumbs
+      items={[
+        { label: 'Benefit Management' },
+        { label: 'Fraud, Error & Risk', to: RISK_MODULE_BASE },
+        { label: RISK_SCREEN_LABELS[tail] ?? 'Overview' },
+      ]}
+    />
+  );
+};
 
 export function riskAssessmentPath(
   assessmentId: string,
   section?: BnRiskWorkspaceSection | null,
 ): string {
-  const query = section ? `?section=${section}` : '';
-  return `${RISK_MODULE_BASE}/assessments/${assessmentId}${query}`;
+  const step = section ? `/${section}` : '';
+  return `${RISK_MODULE_BASE}/assessments/${assessmentId}${step}`;
 }
 
 function useOpenRiskAssessment() {
@@ -114,17 +142,8 @@ const RiskModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
 
       {confirmation && <Alert><AlertDescription>{confirmation}</AlertDescription></Alert>}
 
-      <BnModuleSectionNav
-        ariaLabel="Fraud, Error and Risk destinations"
-        items={[
-          { to: RISK_MODULE_BASE, label: 'Overview', end: true },
-          { to: `${RISK_MODULE_BASE}/signals`, label: 'Signals' },
-          { to: `${RISK_MODULE_BASE}/assessments`, label: 'Assessments' },
-          { to: `${RISK_MODULE_BASE}/controls`, label: 'Controls & outcomes' },
-          { to: `${RISK_MODULE_BASE}/reporting`, label: 'Reporting' },
-          { to: `${RISK_MODULE_BASE}/configuration`, label: 'Configuration' },
-        ]}
-      />
+      {/* Module navigation lives in the left sidebar. */}
+      <RiskBreadcrumbs />
 
       <Outlet />
 
@@ -207,9 +226,8 @@ const RiskAssessmentsRoute: React.FC = () => {
 };
 
 const RiskAssessmentRecordRoute: React.FC = () => {
-  const { assessmentId } = useParams<{ assessmentId: string }>();
+  const { assessmentId, section } = useParams<{ assessmentId: string; section?: string }>();
   const navigate = useNavigate();
-  const [section] = useBnWorkspaceSection('');
   const focusSection = WORKSPACE_SECTIONS.includes(section as BnRiskWorkspaceSection)
     ? (section as BnRiskWorkspaceSection)
     : null;
@@ -217,7 +235,15 @@ const RiskAssessmentRecordRoute: React.FC = () => {
   if (!assessmentId) return <Navigate to={`${RISK_MODULE_BASE}/assessments`} replace />;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 p-6">
+      <BnModuleBreadcrumbs
+        items={[
+          { label: 'Benefit Management' },
+          { label: 'Fraud, Error & Risk', to: RISK_MODULE_BASE },
+          { label: 'Assessments', to: `${RISK_MODULE_BASE}/assessments` },
+          { label: focusSection ? RISK_SCREEN_LABELS[focusSection] ?? focusSection : 'Assessment' },
+        ]}
+      />
       <BnRiskAssessmentWorkspace
         assessmentId={assessmentId}
         focusSection={focusSection}
@@ -305,6 +331,7 @@ export default function BnRiskManagementPage() {
       {(ctx: BnModuleAccessContext) => (
         <Routes>
           <Route path="assessments/:assessmentId" element={<RiskAssessmentRecordRoute />} />
+          <Route path="assessments/:assessmentId/:section" element={<RiskAssessmentRecordRoute />} />
 
           <Route element={<RiskModuleShell ctx={ctx} />}>
             <Route index element={<RiskOverviewRoute />} />

@@ -10,10 +10,10 @@
  *   /bn/uprating/runs                runs and simulation
  *   /bn/uprating/approvals           approvals and scheduling
  *   /bn/uprating/operations          execution and post-execution queues
- *   /bn/uprating/runs/:runId?section=…   run workspace (five phases)
+ *   /bn/uprating/runs/:runId/:section    run workflow screen
  */
 import React from "react";
-import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   BnModuleRouteGate,
   type BnModuleAccessContext,
@@ -27,13 +27,38 @@ import { BnUpratingExecutionQueue } from "@/components/bn/uprating/BnUpratingExe
 import { BnUpratingOperationalQueue } from "@/components/bn/uprating/BnUpratingOperationalQueue";
 import { BnUpratingOverview } from "@/components/bn/uprating/BnUpratingOverview";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BnModuleSectionNav, useBnWorkspaceSection } from "@/components/bn/ux";
+import { BnModuleBreadcrumbs, useBnWorkspaceSection } from "@/components/bn/ux";
 
 export const UPRATING_MODULE_BASE = "/bn/uprating";
 
+export const UPRATING_DEFAULT_SECTION = "population";
+
 export function upratingRunPath(runId: string, section?: string | null): string {
-  const query = section ? `?section=${encodeURIComponent(section)}` : "";
-  return `${UPRATING_MODULE_BASE}/runs/${runId}${query}`;
+  const step = section && section.trim() ? section.trim() : UPRATING_DEFAULT_SECTION;
+  return `${UPRATING_MODULE_BASE}/runs/${runId}/${encodeURIComponent(step)}`;
+}
+
+/** Screen-level "where am I", replacing the module-local tab bar. */
+const UPRATING_SCREEN_LABELS: Record<string, string> = {
+  "": "Overview",
+  policies: "Policy catalogue",
+  runs: "Runs & simulation",
+  approvals: "Approvals & scheduling",
+  operations: "Operational queues",
+};
+
+const UpratingBreadcrumbs: React.FC = () => {
+  const { pathname } = useLocation();
+  const tail = pathname.replace(UPRATING_MODULE_BASE, "").replace(/^\/+|\/+$/g, "").split("/")[0] ?? "";
+  return (
+    <BnModuleBreadcrumbs
+      items={[
+        { label: "Benefit Management" },
+        { label: "Uprating & Indexation", to: UPRATING_MODULE_BASE },
+        { label: UPRATING_SCREEN_LABELS[tail] ?? "Overview" },
+      ]}
+    />
+  );
 }
 
 function useOpenRun() {
@@ -78,17 +103,8 @@ const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
       </p>
     </details>
 
-    <BnModuleSectionNav
-      ariaLabel="Uprating destinations"
-      items={[
-        { to: UPRATING_MODULE_BASE, label: "Overview", end: true },
-        { to: `${UPRATING_MODULE_BASE}/policies`, label: "Policy catalogue" },
-        { to: `${UPRATING_MODULE_BASE}/runs`, label: "Runs & simulation" },
-        { to: `${UPRATING_MODULE_BASE}/approvals`, label: "Approvals & scheduling" },
-        { to: `${UPRATING_MODULE_BASE}/operations`, label: "Operational queues" },
-      ]}
-    />
-
+    {/* Module navigation lives in the left sidebar. */}
+    <UpratingBreadcrumbs />
 
     <Outlet />
   </div>
@@ -127,19 +143,30 @@ const UpratingRunsRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) =>
 };
 
 const UpratingRunRecordRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
-  const { runId } = useParams<{ runId: string }>();
+  const { runId, section } = useParams<{ runId: string; section?: string }>();
   const navigate = useNavigate();
-  const [section, setSection] = useBnWorkspaceSection("population");
 
   if (!runId) return <Navigate to={`${UPRATING_MODULE_BASE}/runs`} replace />;
+  if (!section) {
+    return <Navigate to={upratingRunPath(runId, UPRATING_DEFAULT_SECTION)} replace />;
+  }
 
   return (
-    <div className="p-6">
+    <div className="space-y-4 p-6">
+      <BnModuleBreadcrumbs
+        items={[
+          { label: "Benefit Management" },
+          { label: "Uprating & Indexation", to: UPRATING_MODULE_BASE },
+          { label: "Runs & simulation", to: `${UPRATING_MODULE_BASE}/runs` },
+          { label: section.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) },
+        ]}
+      />
       <BnUpratingRunWorkspace
         ctx={ctx}
         initialRunId={runId}
         initialTab={section}
-        onSectionChange={(next) => setSection(next, { replace: true })}
+        sectionHref={(next) => upratingRunPath(runId, next)}
+        onSectionChange={(next) => navigate(upratingRunPath(runId, next))}
         onSelectRun={(next) =>
           navigate(next ? upratingRunPath(next) : `${UPRATING_MODULE_BASE}/runs`)
         }
@@ -154,6 +181,7 @@ export default function BnUpratingPage() {
       {(ctx: BnModuleAccessContext) => (
         <Routes>
           <Route path="runs/:runId" element={<UpratingRunRecordRoute ctx={ctx} />} />
+          <Route path="runs/:runId/:section" element={<UpratingRunRecordRoute ctx={ctx} />} />
 
           <Route element={<UpratingModuleShell ctx={ctx} />}>
             <Route index element={<BnUpratingOverview />} />

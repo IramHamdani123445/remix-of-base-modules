@@ -21,3 +21,7 @@ export { BnActivityDrawer } from './BnActivityDrawer';
 export { BnQueueSummaryCards } from './BnQueueSummaryCards';
 export type { BnQueueSummaryItem } from './BnQueueSummaryCards';
 export { useBnWorkspaceSection } from './useBnWorkspaceSection';
+export { BnModuleBreadcrumbs } from './BnModuleBreadcrumbs';
+export type { BnBreadcrumb } from './BnModuleBreadcrumbs';
+export { BnWorkflowSideNav } from './BnWorkflowSideNav';
+export type { BnWorkflowNavGroup, BnWorkflowNavStep } from './BnWorkflowSideNav';

@@ -12,14 +12,14 @@
  *   /bn/means-tests/decisions            adjustment and approval work
  *   /bn/means-tests/reassessments        reassessment work
  *   /bn/means-tests/configuration        governed policy configuration
- *   /bn/means-tests/assessments/:assessmentId?section=…   record workspace
+ *   /bn/means-tests/assessments/:assessmentId/:section   record workflow screen
  *
  * Access is enforced by `BnModuleRouteGate` (fail-closed, database-driven)
  * for every one of those addresses. Menu and nav visibility is convenience,
  * never security — the gate protects direct URL entry.
  */
 import React from 'react';
-import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BnModuleRouteGate,
@@ -55,7 +55,7 @@ import { BnMeansVerificationQueue } from '@/components/bn/meansTests/verificatio
 import { BnMeansReassessmentQueuePanel } from '@/components/bn/meansTests/lifecycle/BnMeansReassessmentQueue';
 import { BnMeansPolicyConfiguration } from '@/components/bn/meansTests/configuration/BnMeansPolicyConfiguration';
 import BnMeansOperationsWorkspace from '@/components/bn/meansTests/operations/BnMeansOperationsWorkspace';
-import { BnModuleSectionNav, useBnWorkspaceSection } from '@/components/bn/ux';
+import { BnModuleBreadcrumbs, useBnWorkspaceSection } from '@/components/bn/ux';
 
 const STATUS_FILTERS = [
   'DRAFT', 'INFORMATION_PENDING', 'SUBMITTED', 'VERIFICATION_PENDING', 'CALCULATED',
@@ -76,10 +76,15 @@ function accessLevelLabel(ctx: BnModuleAccessContext): string {
   return held.map((a) => humaniseMeansCode(a)).join(', ');
 }
 
-/** Route helper: an assessment always has one canonical address. */
+/**
+ * Route helper: an assessment always has one canonical address, and each
+ * workflow step of that assessment is its own routed screen.
+ */
+export const MEANS_DEFAULT_SECTION = 'context';
+
 export function meansAssessmentPath(assessmentId: string, section?: string | null): string {
-  const query = section ? `?section=${encodeURIComponent(section)}` : '';
-  return `${MEANS_MODULE_BASE}/assessments/${assessmentId}${query}`;
+  const step = section && section.trim() ? section.trim() : MEANS_DEFAULT_SECTION;
+  return `${MEANS_MODULE_BASE}/assessments/${assessmentId}/${encodeURIComponent(step)}`;
 }
 
 /** Hook used by every queue to open a record without losing its own URL. */
@@ -92,6 +97,32 @@ function useOpenAssessment() {
     [navigate],
   );
 }
+
+/** Screen-level "where am I", replacing the module-local tab bar. */
+const MEANS_SCREEN_LABELS: Record<string, string> = {
+  '': 'Overview',
+  assessments: 'Assessments',
+  verification: 'Verification',
+  decisions: 'Decisions',
+  reassessments: 'Reassessments',
+  configuration: 'Configuration',
+};
+
+const MeansBreadcrumbs: React.FC = () => {
+  const { pathname } = useLocation();
+  const tail = pathname.replace(MEANS_MODULE_BASE, '').replace(/^\/+|\/+$/g, '').split('/')[0] ?? '';
+  return (
+    <BnModuleBreadcrumbs
+      items={[
+        { label: 'Benefit Management' },
+        { label: 'Means-Test Assessments', to: MEANS_MODULE_BASE },
+        { label: MEANS_SCREEN_LABELS[tail] ?? 'Overview' },
+      ]}
+    />
+  );
+};
+
+
 
 // ---------------------------------------------------------------- module shell
 
@@ -145,25 +176,12 @@ const MeansModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => 
         )}
       </header>
 
-      <BnModuleSectionNav
-        ariaLabel="Means-Test destinations"
-        items={[
-          { to: MEANS_MODULE_BASE, label: 'Overview', end: true },
-          { to: `${MEANS_MODULE_BASE}/assessments`, label: 'Assessments' },
-          { to: `${MEANS_MODULE_BASE}/verification`, label: 'Verification' },
-          { to: `${MEANS_MODULE_BASE}/decisions`, label: 'Decisions' },
-          {
-            to: `${MEANS_MODULE_BASE}/reassessments`,
-            label: 'Reassessments',
-            visible: ctx.can('reassess'),
-          },
-          {
-            to: `${MEANS_MODULE_BASE}/configuration`,
-            label: 'Configuration',
-            visible: ctx.can('config'),
-          },
-        ]}
-      />
+      {/*
+        Module navigation lives in the left sidebar (Benefit Management →
+        Means-Test Assessments). The screen states only where it is.
+      */}
+      <MeansBreadcrumbs />
+
 
       <Outlet />
 
@@ -255,18 +273,29 @@ const MeansAssessmentsRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }
 // ------------------------------------------------------------ record workspace
 
 const MeansAssessmentRecordRoute: React.FC = () => {
-  const { assessmentId } = useParams<{ assessmentId: string }>();
+  const { assessmentId, section } = useParams<{ assessmentId: string; section?: string }>();
   const navigate = useNavigate();
-  const [section, setSection] = useBnWorkspaceSection('context');
 
   if (!assessmentId) return <Navigate to={`${MEANS_MODULE_BASE}/assessments`} replace />;
+  if (!section) {
+    return <Navigate to={meansAssessmentPath(assessmentId, MEANS_DEFAULT_SECTION)} replace />;
+  }
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="space-y-4 p-4 sm:p-6">
+      <BnModuleBreadcrumbs
+        items={[
+          { label: 'Benefit Management' },
+          { label: 'Means-Test Assessments', to: MEANS_MODULE_BASE },
+          { label: 'Assessments', to: `${MEANS_MODULE_BASE}/assessments` },
+          { label: humaniseMeansCode(section) },
+        ]}
+      />
       <BnMeansAssessmentWorkspace
         assessmentId={assessmentId}
         section={section}
-        onSectionChange={(next) => setSection(next, { replace: true })}
+        sectionHref={(next) => meansAssessmentPath(assessmentId, next)}
+        onSectionChange={(next) => navigate(meansAssessmentPath(assessmentId, next))}
         onBack={() => navigate(`${MEANS_MODULE_BASE}/assessments`)}
       />
     </div>
@@ -425,6 +454,7 @@ export default function BnMeansTestsPage() {
         <Routes>
           {/* Record workspaces are full-width and outside the module shell. */}
           <Route path="assessments/:assessmentId" element={<MeansAssessmentRecordRoute />} />
+          <Route path="assessments/:assessmentId/:section" element={<MeansAssessmentRecordRoute />} />
 
           <Route element={<MeansModuleShell ctx={ctx} />}>
             <Route index element={<MeansOverviewRoute ctx={ctx} />} />
