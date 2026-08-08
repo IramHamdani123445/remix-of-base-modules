@@ -161,6 +161,6 @@ describe('module workspaces consume the shared pattern', () => {
     expect(sourceOf('src/pages/bn/risk/BnRiskManagementPage.tsx')).toContain(
       'assessments/:assessmentId',
     );
-    expect(sourceOf('src/pages/bn/servicing/OverpaymentRecovery.tsx')).toContain("get('case')");
+    expect(sourceOf('src/pages/bn/servicing/OverpaymentRecovery.tsx')).toContain('/cases/');
   });
 });
