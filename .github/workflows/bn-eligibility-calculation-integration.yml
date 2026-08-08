@@ -1,0 +1,93 @@
+name: BN Eligibility & Calculation Integration (PG15)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'src/services/bn/calc/**'
+      - 'src/services/bn/calculationEngine.ts'
+      - 'src/services/bn/governance/formulaResolverService.ts'
+      - 'scripts/ci/**'
+      - 'docs/bn/eligibility-calculation/**'
+      - '.github/workflows/bn-eligibility-calculation-integration.yml'
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'src/services/bn/calc/**'
+      - 'scripts/ci/**'
+      - '.github/workflows/bn-eligibility-calculation-integration.yml'
+  workflow_dispatch:
+
+jobs:
+  eligibility-calculation-certification:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap disposable Supabase-shaped database
+        run: bash scripts/ci/bootstrap-supabase-test-db.sh
+
+      - name: Environment marker guard (never certify against production)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -Atc \
+            "select upper(environment_kind) from public.platform_environment_marker where id = true" \
+            | tee /tmp/elig-env.log
+          grep -qx 'CI' /tmp/elig-env.log
+
+      - name: Effective-grant verifier
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/verify/bn_eligibility_calculation_effective_grants.sql 2>&1 \
+            | tee /tmp/elig-grants.log
+          test "$(grep -c 'BN_ELIG_CALC_GRANTS_RESULT: PASS' /tmp/elig-grants.log)" -eq 1
+          ! grep -q 'BN_ELIG_CALC_GRANTS_RESULT: FAIL' /tmp/elig-grants.log
+
+      - name: Clean-database runtime harness (Journeys A–J)
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/bn/eligibility_calculation_integration.sql 2>&1 \
+            | tee /tmp/elig-harness.log
+          test "$(grep -c 'BN_ELIG_CALC_HARNESS_RESULT: PASS' /tmp/elig-harness.log)" -eq 1
+          test "$(grep -c 'BN_ELIG_CALC_POSTFLIGHT_RESULT: PASS' /tmp/elig-harness.log)" -eq 1
+          ! grep -q 'BN_ELIG_CALC_HARNESS_RESULT: FAIL' /tmp/elig-harness.log
+          ! grep -q 'BN_ELIG_CALC_POSTFLIGHT_RESULT: FAIL' /tmp/elig-harness.log
+
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+
+      - name: Existing calculation / formula unit suites
+        run: bunx vitest run src/__tests__/bn-calc
+
+      - name: Typecheck
+        run: bunx tsc --noEmit -p tsconfig.app.json
+
+      - name: Upload certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bn-eligibility-calculation-certification-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            /tmp/elig-env.log
+            /tmp/elig-grants.log
+            /tmp/elig-harness.log

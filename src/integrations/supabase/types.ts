@@ -7281,54 +7281,72 @@ export type Database = {
           duration_ms: number | null
           engine_layer: string
           entered_at: string | null
+          formula_code: string | null
           formula_expression: string | null
+          formula_version_id: string | null
+          formula_version_no: number | null
           id: string
           inputs: Json | null
+          lookup_provenance: Json
           message: string | null
           output_text: string | null
           output_value: number | null
           passed: boolean | null
+          rounding_rule: string | null
           rule_code: string | null
           severity: string | null
           step_code: string
           step_label: string
           step_number: number
+          unrounded_value: number | null
         }
         Insert: {
           calc_run_id: string
           duration_ms?: number | null
           engine_layer: string
           entered_at?: string | null
+          formula_code?: string | null
           formula_expression?: string | null
+          formula_version_id?: string | null
+          formula_version_no?: number | null
           id?: string
           inputs?: Json | null
+          lookup_provenance?: Json
           message?: string | null
           output_text?: string | null
           output_value?: number | null
           passed?: boolean | null
+          rounding_rule?: string | null
           rule_code?: string | null
           severity?: string | null
           step_code: string
           step_label: string
           step_number: number
+          unrounded_value?: number | null
         }
         Update: {
           calc_run_id?: string
           duration_ms?: number | null
           engine_layer?: string
           entered_at?: string | null
+          formula_code?: string | null
           formula_expression?: string | null
+          formula_version_id?: string | null
+          formula_version_no?: number | null
           id?: string
           inputs?: Json | null
+          lookup_provenance?: Json
           message?: string | null
           output_text?: string | null
           output_value?: number | null
           passed?: boolean | null
+          rounding_rule?: string | null
           rule_code?: string | null
           severity?: string | null
           step_code?: string
           step_label?: string
           step_number?: number
+          unrounded_value?: number | null
         }
         Relationships: [
           {
@@ -111776,6 +111794,13 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_calc_boundary_enter: { Args: never; Returns: undefined }
+      _bn_calc_dim_match: {
+        Args: { p_input: Json; p_match_type: string; p_row_val: Json }
+        Returns: boolean
+      }
+      _bn_calc_in_boundary: { Args: never; Returns: boolean }
+      _bn_calc_num: { Args: { p_val: string }; Returns: number }
       _bn_comm_map_hub_status: { Args: { p_status: string }; Returns: string }
       _bn_comm_transition_allowed: {
         Args: { p_from: string; p_to: string }
@@ -113957,6 +113982,70 @@ export type Database = {
           p_source_impact_id: string
           p_source_module: string
         }
+        Returns: Json
+      }
+      bn_calc_check_variables_v1: {
+        Args: { p_expression: string; p_raise?: boolean }
+        Returns: Json
+      }
+      bn_calc_config_delete_rate_table_row_v1: {
+        Args: { p_row_id: string; p_user_code: string }
+        Returns: undefined
+      }
+      bn_calc_config_save_formula_version_v1: {
+        Args: {
+          p_expression: string
+          p_expression_type: string
+          p_steps_json: Json
+          p_user_code: string
+          p_version_id: string
+        }
+        Returns: Json
+      }
+      bn_calc_config_save_rate_table_row_v1: {
+        Args: {
+          p_dimension_values: Json
+          p_effective_from: string
+          p_effective_to: string
+          p_output_key: string
+          p_output_text: string
+          p_output_type: string
+          p_output_value: number
+          p_rate_table_id: string
+          p_row_id: string
+          p_row_order: number
+          p_user_code: string
+        }
+        Returns: string
+      }
+      bn_calc_finalise_run_v1: {
+        Args: { p_calc_run_id: string; p_outputs?: Json; p_status: string }
+        Returns: Json
+      }
+      bn_calc_open_run_v1: {
+        Args: {
+          p_claim_id: string
+          p_country_code?: string
+          p_mode: string
+          p_product_version_id: string
+          p_triggered_by: string
+        }
+        Returns: string
+      }
+      bn_calc_rate_lookup_v1: {
+        Args: { p_as_of?: string; p_inputs: Json; p_table_code: string }
+        Returns: Json
+      }
+      bn_calc_record_trace_v1: {
+        Args: { p_calc_run_id: string; p_steps: Json }
+        Returns: number
+      }
+      bn_calc_resolve_formula_version_v1: {
+        Args: { p_as_of?: string; p_formula_code: string; p_mode?: string }
+        Returns: Json
+      }
+      bn_calc_round_v1: {
+        Args: { p_rule?: string; p_value: number }
         Returns: Json
       }
       bn_can_approve: {
