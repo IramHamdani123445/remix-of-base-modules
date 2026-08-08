@@ -46,7 +46,7 @@ import BnMeansStageJourney, { type BnMeansStage } from '@/components/bn/meansTes
 import {
   BnActivityDrawer,
   BnNextActionCard,
-  BnPhaseSectionNav,
+  BnWorkflowSideNav,
   BnRecordWorkspaceHeader,
   type BnPhase,
 } from '@/components/bn/ux';
