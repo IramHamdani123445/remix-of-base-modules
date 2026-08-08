@@ -161,14 +161,25 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
             ? (
               <BnRiskAssessmentWorkspace
                 assessmentId={openAssessmentId}
-                focusSection={focusApproval ? 'approval' : null}
-                onBack={() => { setOpenAssessmentId(null); setFocusApproval(false); }}
+                focusSection={
+                  focusApproval ? 'approval' : focusExecution ? 'execution' : null
+                }
+                onBack={() => {
+                  setOpenAssessmentId(null);
+                  setFocusApproval(false);
+                  setFocusExecution(false);
+                }}
               />
             )
             : (
               <BnRiskAssessmentQueue
-                onOpenAssessment={(id) => { setFocusApproval(false); setOpenAssessmentId(id); }}
+                onOpenAssessment={(id) => {
+                  setFocusApproval(false);
+                  setFocusExecution(false);
+                  setOpenAssessmentId(id);
+                }}
               />
+
             )}
         </TabsContent>
 
