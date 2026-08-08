@@ -86,11 +86,12 @@ describe('Epic 3 — canonical catalogue certification', () => {
     }
   });
 
-  it('leaves run closure NOT_STARTED', () => {
+  it('keeps run closure outside the Epic 3 execution boundary', () => {
     for (const command of [
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
-      expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
+      // Closure is a lifecycle transition delivered by Epic 5.
+      expect(getUpratingCanonicalCommandSpec(command).transactional).toBe(false);
     }
   });
 
@@ -486,10 +487,10 @@ describe('Epic 3 — matrix reconciliation', () => {
     expect(matrix).toContain('| Epic 3 | Batch execution and retry | **COMPLETE — CERTIFIED** |');
     expect(matrix).toContain('BN_UPRATING_EXECUTE_BATCH | admin | yes | IMPLEMENTED (Epic 3)');
     expect(matrix).toContain('BN_UPRATING_RETRY_FAILED | admin | no | IMPLEMENTED (Epic 3)');
-    expect(matrix).toContain('16 implemented');
+    expect(matrix).toContain('17 implemented');
   });
 
-  it('keeps Epic 5 not started', () => {
-        expect(matrix).toContain('| Epic 5 | Run closure | NOT_STARTED |');
+  it('records Epic 5 run closure as complete', () => {
+        expect(matrix).toContain('| Epic 5 | Run closure | **COMPLETE — CERTIFIED** |');
   });
 });

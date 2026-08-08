@@ -89,11 +89,12 @@ describe('Epic 2 — canonical catalogue certification', () => {
     }
   });
 
-  it('leaves run closure NOT_STARTED', () => {
+  it('keeps run closure outside the Epic 2 boundary', () => {
     for (const command of [
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
-      expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
+      // Delivered by Epic 5, never by approval or scheduling.
+      expect(epic2Sql).not.toContain(command);
     }
   });
 
@@ -502,7 +503,7 @@ describe('Epic 2 — execution schedule governance', () => {
     expect(cancelBlock).not.toMatch(/UPDATE public\.bn_uprating_run\s+SET status/);
     expect(cancelBlock).toContain("'EXECUTION_SCHEDULE_CANCELLED'");
     expect(cancelBlock).toContain("'E_JUSTIFICATION_REQUIRED'");
-    expect(getUpratingCanonicalCommandSpec('BN_UPRATING_CLOSE_RUN').implemented).toBe(false);
+    expect(epic2Sql).not.toContain('BN_UPRATING_CLOSE_RUN');
   });
 });
 
@@ -696,7 +697,6 @@ describe('Epic 2 — award, payment, communication and Epic 3+ boundaries', () =
     for (const command of [
       'BN_UPRATING_CLOSE_RUN',
     ] as const) {
-      expect(getUpratingCanonicalCommandSpec(command).implemented).toBe(false);
       expect(epic2Sql).not.toContain(command);
     }
   });

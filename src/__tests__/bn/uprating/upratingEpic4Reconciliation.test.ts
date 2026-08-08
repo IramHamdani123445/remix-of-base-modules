@@ -89,14 +89,17 @@ describe('Epic 4 — canonical command catalogue', () => {
     }
   });
 
-  it('leaves BN_UPRATING_CLOSE_RUN not started — closure belongs to Epic 5', () => {
-    expect(getUpratingCanonicalCommandSpec('BN_UPRATING_CLOSE_RUN').implemented).toBe(false);
+  it('delivers BN_UPRATING_CLOSE_RUN in Epic 5, outside the Epic 4 boundary', () => {
+    expect(getUpratingCanonicalCommandSpec('BN_UPRATING_CLOSE_RUN').implemented).toBe(true);
+    // Epic 4 itself still never closes a run.
+    expect(BN_UPRATING_EPIC4_CANONICAL_COMMANDS).not.toContain('BN_UPRATING_CLOSE_RUN');
+    expect(BN_UPRATING_EPIC4_SUPPORTING_OPERATIONS).not.toContain('BN_UPRATING_CLOSE_RUN');
   });
 
-  it('reaches 16 of 17 canonical commands implemented', () => {
+  it('reaches 17 of 17 canonical commands implemented', () => {
     const implemented = BN_UPRATING_CANONICAL_COMMANDS.filter((c) => c.implemented);
     expect(BN_UPRATING_CANONICAL_COMMANDS).toHaveLength(17);
-    expect(implemented).toHaveLength(16);
+    expect(implemented).toHaveLength(17);
   });
 
   it('did not invent a new canonical command for Epic 4', () => {
