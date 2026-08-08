@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TrendingUp } from "lucide-react";
 import { BnUpratingPolicyWorkspace } from "@/components/bn/uprating/BnUpratingPolicyWorkspace";
 import { BnUpratingRunWorkspace } from "@/components/bn/uprating/BnUpratingRunWorkspace";
+import { BnUpratingApprovalQueue } from "@/components/bn/uprating/BnUpratingApprovalQueue";
+
 
 export default function BnUpratingPage() {
   return (
@@ -32,6 +34,7 @@ export default function BnUpratingPage() {
             <TabsList>
               <TabsTrigger value="policies">Policy catalogue</TabsTrigger>
               <TabsTrigger value="runs">Runs &amp; simulation</TabsTrigger>
+              <TabsTrigger value="approvals">Approvals &amp; scheduling</TabsTrigger>
             </TabsList>
             <TabsContent value="policies" className="pt-4">
               <BnUpratingPolicyWorkspace ctx={ctx} />
@@ -39,7 +42,11 @@ export default function BnUpratingPage() {
             <TabsContent value="runs" className="pt-4">
               <BnUpratingRunWorkspace ctx={ctx} />
             </TabsContent>
+            <TabsContent value="approvals" className="pt-4">
+              <BnUpratingApprovalQueue />
+            </TabsContent>
           </Tabs>
+
         </div>
       )}
     </BnModuleRouteGate>

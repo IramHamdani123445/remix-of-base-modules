@@ -12,12 +12,17 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { BnUpratingCommandResult, BnUpratingQueryResult } from '@/types/bn/uprating/upratingPolicy';
 import type {
+  BnUpratingApprovalQueueRow,
+  BnUpratingApprovalReadiness,
   BnUpratingExceptionRow,
   BnUpratingPopulationRow,
   BnUpratingRunActionsResult,
+  BnUpratingRunApprovalView,
   BnUpratingRunCommandName,
   BnUpratingRunDetail,
   BnUpratingRunListRow,
+  BnUpratingScheduleReadiness,
+  BnUpratingScheduledRunRow,
   BnUpratingSimulationItemRow,
   BnUpratingSimulationSummary,
 } from '@/types/bn/uprating/upratingRun';
@@ -43,7 +48,32 @@ const RUN_ERRORS: Record<string, string> = {
   E_JUSTIFICATION_REQUIRED: 'A resolution and a justification are required.',
   E_STALE_ROW_VERSION: 'This run was changed by someone else. Reload and try again.',
   E_UNKNOWN_COMMAND: 'That action is not available in this module.',
+  // Epic 2 — approval and execution scheduling
+  E_ALREADY_SUBMITTED: 'This run already has an approval cycle awaiting a decision.',
+  E_NO_SIMULATION: 'Run a simulation before submitting this run for approval.',
+  E_SIMULATION_STALE: 'The simulation is stale. Run it again before submitting for approval.',
+  E_FINGERPRINT_MISMATCH: 'The simulation no longer matches the current run inputs.',
+  E_CALCULATION_FAILURES: 'Some awards failed calculation in the current simulation.',
+  E_POLICY_PROVENANCE: 'The policy version behind this run is no longer valid for approval.',
+  E_NOT_READY: 'This run is not ready for approval.',
+  E_NO_PENDING_APPROVAL: 'There is no approval cycle awaiting a decision.',
+  E_MAKER_CHECKER:
+    'You prepared or submitted this run, so an independent officer must record the decision.',
+  E_APPROVAL_STALE:
+    'The submitted package no longer matches the run. Resubmit a fresh package for approval.',
+  E_NO_APPROVAL: 'There is no current approved package for this run.',
+  E_SCHEDULE_EXISTS: 'This run already has an active execution schedule.',
+  E_NO_SCHEDULE: 'There is no active execution schedule for this run.',
+  E_SCHEDULE_IN_PAST: 'The planned execution time must be in the future.',
+  E_INVALID_TIME_ZONE: 'That time zone is not recognised.',
+  E_INVALID_WINDOW: 'The execution window is not valid.',
+  E_INVALID_BATCH_SIZE: 'The batch size is outside the permitted range.',
+  E_INVALID_CONCURRENCY: 'The batch concurrency is outside the permitted range.',
+  E_INVALID_PAYLOAD: 'Some required information is missing or invalid.',
+  E_IDEMPOTENCY_MISMATCH:
+    'This request key has already been used with different details. Start a new request.',
 };
+
 
 export function upratingRunErrorMessage(code?: string | null, fallback?: string | null): string {
   if (code && RUN_ERRORS[code]) return RUN_ERRORS[code];
@@ -217,4 +247,69 @@ export async function fetchUpratingRunActions(
   const uid = await actorId();
   if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
   return callQuery('bn_uprating_run_actions_v1', { p_actor_user_id: uid, p_run_id: runId });
+}
+
+// ---------------------------------------------------------------------------
+// Epic 2 — approval and execution scheduling reads.
+// Availability, readiness and validation are decided by the backend only.
+// ---------------------------------------------------------------------------
+
+export async function fetchUpratingApprovalReadiness(
+  runId: string,
+): Promise<BnUpratingQueryResult<BnUpratingApprovalReadiness>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_run_approval_readiness_v1', {
+    p_actor_user_id: uid,
+    p_run_id: runId,
+  });
+}
+
+export async function fetchUpratingRunApproval(
+  runId: string,
+): Promise<BnUpratingQueryResult<BnUpratingRunApprovalView>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_run_approval_v1', { p_actor_user_id: uid, p_run_id: runId });
+}
+
+export async function fetchUpratingScheduleReadiness(
+  runId: string,
+): Promise<BnUpratingQueryResult<BnUpratingScheduleReadiness>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_execution_schedule_readiness_v1', {
+    p_actor_user_id: uid,
+    p_run_id: runId,
+  });
+}
+
+export async function fetchUpratingApprovalQueue(
+  filters: Record<string, unknown> = {},
+  limit = 25,
+  offset = 0,
+): Promise<BnUpratingQueryResult<{ rows: BnUpratingApprovalQueueRow[]; total: number }>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_run_approval_queue_v1', {
+    p_actor_user_id: uid,
+    p_filters: filters,
+    p_limit: limit,
+    p_offset: offset,
+  });
+}
+
+export async function fetchUpratingScheduledRunQueue(
+  filters: Record<string, unknown> = {},
+  limit = 25,
+  offset = 0,
+): Promise<BnUpratingQueryResult<{ rows: BnUpratingScheduledRunRow[]; total: number }>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_scheduled_run_queue_v1', {
+    p_actor_user_id: uid,
+    p_filters: filters,
+    p_limit: limit,
+    p_offset: offset,
+  });
 }

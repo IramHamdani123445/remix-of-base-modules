@@ -12,7 +12,9 @@ export type BnUpratingRunStatusCode =
   | 'PARAMETERISED'
   | 'ELIGIBILITY_SNAPSHOT'
   | 'EXCLUSIONS_APPLIED'
-  | 'DRY_RUN';
+  | 'DRY_RUN'
+  | 'AWAITING_APPROVAL'
+  | 'APPROVED';
 
 export type BnUpratingRunCommandName =
   | 'BN_UPRATING_CREATE_RUN'
@@ -20,7 +22,12 @@ export type BnUpratingRunCommandName =
   | 'BN_UPRATING_PARAMETERISE_RUN'
   | 'BN_UPRATING_BUILD_POPULATION'
   | 'BN_UPRATING_RESOLVE_EXCEPTION'
-  | 'BN_UPRATING_SIMULATE';
+  | 'BN_UPRATING_SIMULATE'
+  | 'BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL'
+  | 'BN_UPRATING_APPROVE_RUN'
+  | 'BN_UPRATING_SCHEDULE_EXECUTION'
+  | 'BN_UPRATING_RESCHEDULE_EXECUTION'
+  | 'BN_UPRATING_CANCEL_EXECUTION_SCHEDULE';
 
 /** Commands in this boundary that are canonical Epic 1 commands. */
 export const BN_UPRATING_EPIC1_CANONICAL_COMMANDS = [
@@ -30,10 +37,19 @@ export const BN_UPRATING_EPIC1_CANONICAL_COMMANDS = [
   'BN_UPRATING_RESOLVE_EXCEPTION',
 ] as const;
 
+/** Canonical Epic 2 commands (approval and execution scheduling). */
+export const BN_UPRATING_EPIC2_CANONICAL_COMMANDS = [
+  'BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL',
+  'BN_UPRATING_APPROVE_RUN',
+  'BN_UPRATING_SCHEDULE_EXECUTION',
+] as const;
+
 /** Supporting lifecycle operations delivered inside the same boundary. */
 export const BN_UPRATING_RUN_SUPPORTING_OPERATIONS = [
   'BN_UPRATING_UPDATE_RUN',
   'BN_UPRATING_PARAMETERISE_RUN',
+  'BN_UPRATING_RESCHEDULE_EXECUTION',
+  'BN_UPRATING_CANCEL_EXECUTION_SCHEDULE',
 ] as const;
 
 export const BN_UPRATING_RUN_BOUNDARY_RPC = 'bn_uprating_run_command_v1' as const;
@@ -45,7 +61,13 @@ export const BN_UPRATING_RUN_READ_SERVICES = [
   'bn_uprating_run_exceptions_v1',
   'bn_uprating_simulation_result_v1',
   'bn_uprating_run_actions_v1',
+  'bn_uprating_run_approval_readiness_v1',
+  'bn_uprating_run_approval_v1',
+  'bn_uprating_run_approval_queue_v1',
+  'bn_uprating_execution_schedule_readiness_v1',
+  'bn_uprating_scheduled_run_queue_v1',
 ] as const;
+
 
 export type BnUpratingEligibilityStatus = 'ELIGIBLE' | 'EXCLUDED' | 'DEFERRED';
 export type BnUpratingItemExceptionStatus = 'NONE' | 'OPEN' | 'BLOCKING' | 'RESOLVED';
@@ -278,7 +300,7 @@ export interface BnUpratingRunActionsResult {
   readonly actions: readonly BnUpratingRunAction[];
 }
 
-/** Run statuses reachable in Epic 1 (execution states arrive in Epic 2+). */
+/** Run statuses reachable up to Epic 2 (batch execution arrives in Epic 3+). */
 export const BN_UPRATING_EPIC1_RUN_TRANSITIONS: Readonly<
   Record<BnUpratingRunStatusCode, readonly BnUpratingRunStatusCode[]>
 > = {
@@ -286,8 +308,13 @@ export const BN_UPRATING_EPIC1_RUN_TRANSITIONS: Readonly<
   PARAMETERISED: ['ELIGIBILITY_SNAPSHOT', 'EXCLUSIONS_APPLIED'],
   ELIGIBILITY_SNAPSHOT: ['EXCLUSIONS_APPLIED', 'DRY_RUN', 'ELIGIBILITY_SNAPSHOT'],
   EXCLUSIONS_APPLIED: ['ELIGIBILITY_SNAPSHOT', 'EXCLUSIONS_APPLIED', 'DRY_RUN'],
-  DRY_RUN: ['ELIGIBILITY_SNAPSHOT', 'EXCLUSIONS_APPLIED', 'DRY_RUN'],
+  DRY_RUN: ['ELIGIBILITY_SNAPSHOT', 'EXCLUSIONS_APPLIED', 'DRY_RUN', 'AWAITING_APPROVAL'],
+  AWAITING_APPROVAL: ['APPROVED', 'DRY_RUN'],
+  APPROVED: [],
 };
+
+/** Alias used by Epic 2 surfaces — the same governed transition map. */
+export const BN_UPRATING_RUN_TRANSITIONS_TO_EPIC2 = BN_UPRATING_EPIC1_RUN_TRANSITIONS;
 
 export function canUpratingEpic1Transition(
   from: BnUpratingRunStatusCode,
@@ -295,6 +322,220 @@ export function canUpratingEpic1Transition(
 ): boolean {
   return BN_UPRATING_EPIC1_RUN_TRANSITIONS[from]?.includes(to) ?? false;
 }
+
+/** Statuses in which the pre-approval preparation steps remain available. */
+export const BN_UPRATING_PRE_APPROVAL_STATUSES: readonly BnUpratingRunStatusCode[] = [
+  'DRAFT',
+  'PARAMETERISED',
+  'ELIGIBILITY_SNAPSHOT',
+  'EXCLUSIONS_APPLIED',
+  'DRY_RUN',
+];
+
+// ---------------------------------------------------------------------------
+// Epic 2 — approval package, approval cycle and execution schedule contracts
+// ---------------------------------------------------------------------------
+
+export type BnUpratingApprovalStatus = 'PENDING' | 'APPROVED' | 'RETURNED';
+export type BnUpratingApprovalDecision = 'APPROVE' | 'RETURN_FOR_REWORK';
+export type BnUpratingPackageStatus = 'CURRENT' | 'APPROVED' | 'HISTORICAL' | 'SUPERSEDED';
+export type BnUpratingScheduleStatus = 'PLANNED' | 'DUE' | 'SUPERSEDED' | 'CANCELLED';
+
+export interface BnUpratingReadinessItem {
+  readonly code: string;
+  readonly message: string;
+}
+
+export interface BnUpratingApprovalReadiness {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly status: BnUpratingRunStatusCode;
+  readonly row_version: number;
+  readonly can_submit: boolean;
+  readonly blockers: readonly BnUpratingReadinessItem[];
+  readonly warnings: readonly BnUpratingReadinessItem[];
+  readonly current_snapshot_version: number | null;
+  readonly current_simulation_version: number | null;
+  readonly simulation_fingerprint: string | null;
+  readonly available_action: 'BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL' | null;
+  readonly population_summary: {
+    readonly total_items: number;
+    readonly included_count: number;
+    readonly excluded_count: number;
+  };
+  readonly exception_summary: {
+    readonly exception_items: number;
+    readonly open_exceptions: number;
+    readonly unresolved_blocking: number;
+  };
+  readonly financial_summary: {
+    readonly simulated_current_total_minor: number;
+    readonly simulated_proposed_total_minor: number;
+    readonly simulated_change_minor: number;
+    readonly failed_items: number;
+  };
+}
+
+export interface BnUpratingApprovalPackage {
+  readonly package_id: string;
+  readonly run_id: string;
+  readonly cycle_no: number;
+  readonly run_row_version: number;
+  readonly policy_version_reference: string | null;
+  readonly frozen_policy_type: string | null;
+  readonly target_effective_date: string;
+  readonly scope_description: string | null;
+  readonly snapshot_version: number;
+  readonly snapshot_fingerprint: string | null;
+  readonly simulation_version: number;
+  readonly input_fingerprint: string;
+  readonly population_total: number;
+  readonly included_count: number;
+  readonly excluded_count: number;
+  readonly exception_count: number;
+  readonly unresolved_blocking_count: number;
+  readonly failed_item_count: number;
+  readonly current_total_minor: number;
+  readonly proposed_total_minor: number;
+  readonly delta_total_minor: number;
+  readonly status: BnUpratingPackageStatus;
+  readonly submitted_by: string;
+  readonly submitted_by_name: string | null;
+  readonly submitted_at: string;
+}
+
+export interface BnUpratingApprovalCycle {
+  readonly approval_id: string;
+  readonly package_id: string;
+  readonly cycle_no: number;
+  readonly status: BnUpratingApprovalStatus;
+  readonly submitted_by: string;
+  readonly submitted_by_name: string | null;
+  readonly submitted_at: string;
+  readonly submission_note: string | null;
+  readonly decision: BnUpratingApprovalDecision | null;
+  readonly decision_reason: string | null;
+  readonly justification: string | null;
+  readonly decided_by_name: string | null;
+  readonly decided_at: string | null;
+  readonly row_version: number;
+}
+
+export interface BnUpratingExecutionSchedule {
+  readonly schedule_id: string;
+  readonly run_id: string;
+  readonly approval_id: string;
+  readonly package_id: string;
+  readonly schedule_version: number;
+  readonly status: BnUpratingScheduleStatus;
+  readonly planned_execution_at: string;
+  readonly time_zone: string;
+  readonly window_start_at: string | null;
+  readonly window_end_at: string | null;
+  readonly batch_size: number | null;
+  readonly max_concurrent_batches: number | null;
+  readonly batch_strategy: string | null;
+  readonly notes: string | null;
+  readonly supersedes_schedule_id: string | null;
+  readonly cancelled_reason: string | null;
+  readonly cancelled_at: string | null;
+  readonly cancelled_by_name: string | null;
+  readonly created_by_name: string | null;
+  readonly created_at: string;
+  readonly row_version: number;
+}
+
+export interface BnUpratingRunApprovalView {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly status: BnUpratingRunStatusCode;
+  readonly row_version: number;
+  readonly current_package: BnUpratingApprovalPackage | null;
+  readonly cycles: readonly BnUpratingApprovalCycle[];
+  readonly schedules: readonly BnUpratingExecutionSchedule[];
+  readonly approval_readiness: BnUpratingApprovalReadiness;
+}
+
+export interface BnUpratingScheduleConfiguration {
+  readonly DEFAULT_TIME_ZONE?: string;
+  readonly DEFAULT_BATCH_SIZE?: string;
+  readonly MIN_BATCH_SIZE?: string;
+  readonly MAX_BATCH_SIZE?: string;
+  readonly DEFAULT_MAX_CONCURRENT_BATCHES?: string;
+  readonly MAX_CONCURRENT_BATCHES?: string;
+  readonly MIN_LEAD_MINUTES?: string;
+}
+
+export interface BnUpratingScheduleReadiness {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly status: BnUpratingRunStatusCode;
+  readonly row_version: number;
+  readonly can_schedule: boolean;
+  readonly blockers: readonly BnUpratingReadinessItem[];
+  readonly warnings: readonly BnUpratingReadinessItem[];
+  readonly approved_package: {
+    readonly package_id: string;
+    readonly cycle_no: number;
+    readonly snapshot_version: number;
+    readonly simulation_version: number;
+    readonly input_fingerprint: string;
+    readonly target_effective_date: string;
+    readonly included_count: number;
+    readonly excluded_count: number;
+    readonly simulated_current_total_minor: number;
+    readonly simulated_proposed_total_minor: number;
+    readonly simulated_change_minor: number;
+    readonly approved_by_name: string | null;
+    readonly approved_at: string | null;
+  } | null;
+  readonly current_schedule: BnUpratingExecutionSchedule | null;
+  readonly allowed_scheduling_fields: Record<string, boolean>;
+  readonly configuration: BnUpratingScheduleConfiguration;
+  readonly available_actions: readonly BnUpratingRunCommandName[];
+}
+
+export interface BnUpratingApprovalQueueRow {
+  readonly approval_id: string;
+  readonly package_id: string;
+  readonly cycle_no: number;
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly run_name: string | null;
+  readonly policy_code: string;
+  readonly policy_name: string;
+  readonly policy_version_reference: string | null;
+  readonly target_effective_date: string;
+  readonly population_total: number;
+  readonly included_count: number;
+  readonly excluded_count: number;
+  readonly exception_count: number;
+  readonly unresolved_blocking_count: number;
+  readonly simulated_current_total_minor: number;
+  readonly simulated_proposed_total_minor: number;
+  readonly simulated_change_minor: number;
+  readonly submitted_by: string;
+  readonly submitted_by_name: string | null;
+  readonly submitted_at: string;
+  readonly age_hours: number;
+  readonly action_required: string;
+}
+
+export interface BnUpratingScheduledRunRow {
+  readonly run_id: string;
+  readonly run_reference: string;
+  readonly run_name: string | null;
+  readonly target_effective_date: string;
+  readonly approved_at: string | null;
+  readonly approved_by_name: string | null;
+  readonly schedule_id: string | null;
+  readonly schedule_version: number | null;
+  readonly planned_execution_at: string | null;
+  readonly time_zone: string | null;
+  readonly schedule_status: string;
+  readonly queue_state: 'APPROVED_NOT_SCHEDULED' | 'SCHEDULED' | 'DUE';
+}
+
 
 /** Policy methods that cannot be simulated deterministically in Epic 1. */
 export const BN_UPRATING_NON_SIMULATABLE_POLICY_TYPES = [

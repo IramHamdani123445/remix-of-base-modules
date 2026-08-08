@@ -27,23 +27,45 @@ import {
   type UpratingPolicyVersionOption,
 } from './BnUpratingCreateRunDialog';
 import { BnUpratingResolveExceptionDialog } from './BnUpratingResolveExceptionDialog';
+import { BnUpratingRunApprovalSection } from './BnUpratingRunApprovalSection';
+import { BnUpratingExecutionScheduleSection } from './BnUpratingExecutionScheduleSection';
+import { BnUpratingSubmitForApprovalDialog } from './BnUpratingSubmitForApprovalDialog';
+import { BnUpratingApprovalDecisionDialog } from './BnUpratingApprovalDecisionDialog';
+import {
+  BnUpratingScheduleExecutionDialog,
+  type ScheduleExecutionFormValues,
+} from './BnUpratingScheduleExecutionDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   executeUpratingRunCommand,
   fetchUpratingRunActions,
+  fetchUpratingRunApproval,
   fetchUpratingRunDetail,
   fetchUpratingRunExceptions,
   fetchUpratingRunList,
   fetchUpratingRunPopulation,
+  fetchUpratingScheduleReadiness,
   fetchUpratingSimulationResult,
 } from '@/services/bn/uprating/upratingRunService';
 import { fetchUpratingPolicyList } from '@/services/bn/uprating/upratingPolicyService';
 import { newUpratingUuid } from '@/services/bn/uprating/upratingPolicyService';
 import {
   formatMinor,
+  type BnUpratingApprovalDecision,
   type BnUpratingExceptionRow,
   type BnUpratingRunAction,
   type BnUpratingRunCommandName,
 } from '@/types/bn/uprating/upratingRun';
+
 
 const runStatusVariant = (status: string): 'default' | 'secondary' | 'outline' | 'destructive' => {
   if (status === 'DRY_RUN') return 'default';
@@ -58,6 +80,12 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
   const [search, setSearch] = React.useState('');
   const [createOpen, setCreateOpen] = React.useState(false);
   const [resolveTarget, setResolveTarget] = React.useState<BnUpratingExceptionRow | null>(null);
+  const [submitOpen, setSubmitOpen] = React.useState(false);
+  const [decisionOpen, setDecisionOpen] = React.useState(false);
+  const [scheduleMode, setScheduleMode] = React.useState<'SCHEDULE' | 'RESCHEDULE' | null>(null);
+  const [cancelOpen, setCancelOpen] = React.useState(false);
+  const [cancelReason, setCancelReason] = React.useState('');
+
 
   const listQuery = useQuery({
     queryKey: ['bn-uprating-runs', search],
@@ -129,6 +157,20 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
     enabled: !!selectedRunId && !!run?.current_simulation_id,
   });
 
+  const approvalQuery = useQuery({
+    queryKey: ['bn-uprating-run-approval', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingRunApproval(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+  const approvalView = approvalQuery.data?.data ?? null;
+
+  const scheduleQuery = useQuery({
+    queryKey: ['bn-uprating-run-schedule', selectedRunId, run?.row_version],
+    queryFn: () => fetchUpratingScheduleReadiness(selectedRunId as string),
+    enabled: !!selectedRunId,
+  });
+  const scheduleReadiness = scheduleQuery.data?.data ?? null;
+
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['bn-uprating-runs'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-run'] });
@@ -136,7 +178,12 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
     qc.invalidateQueries({ queryKey: ['bn-uprating-run-population'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-run-exceptions'] });
     qc.invalidateQueries({ queryKey: ['bn-uprating-simulation'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-run-approval'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-run-schedule'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-approval-queue'] });
+    qc.invalidateQueries({ queryKey: ['bn-uprating-scheduled-queue'] });
   };
+
 
   const command = useMutation({
     mutationFn: executeUpratingRunCommand,
@@ -170,6 +217,62 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
       expectedRowVersion: run?.row_version ?? null,
       idempotencyKey: newUpratingUuid(),
     });
+
+  const submitForApproval = async (values: { submission_note: string }) => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL',
+      runId: selectedRunId,
+      payload: values,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setSubmitOpen(false);
+  };
+
+  const recordDecision = async (values: {
+    decision: BnUpratingApprovalDecision;
+    decision_reason: string;
+    justification: string;
+  }) => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_APPROVE_RUN',
+      runId: selectedRunId,
+      payload: values,
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setDecisionOpen(false);
+  };
+
+  const submitSchedule = async (values: ScheduleExecutionFormValues) => {
+    const result = await command.mutateAsync({
+      command:
+        scheduleMode === 'RESCHEDULE'
+          ? 'BN_UPRATING_RESCHEDULE_EXECUTION'
+          : 'BN_UPRATING_SCHEDULE_EXECUTION',
+      runId: selectedRunId,
+      payload: { ...values },
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') setScheduleMode(null);
+  };
+
+  const cancelSchedule = async () => {
+    const result = await command.mutateAsync({
+      command: 'BN_UPRATING_CANCEL_EXECUTION_SCHEDULE',
+      runId: selectedRunId,
+      payload: { cancelled_reason: cancelReason.trim() },
+      expectedRowVersion: run?.row_version ?? null,
+      idempotencyKey: newUpratingUuid(),
+    });
+    if (result.status !== 'ERROR') {
+      setCancelOpen(false);
+      setCancelReason('');
+    }
+  };
+
+
 
   const resolveException = async (values: { resolution_code: string; justification: string }) => {
     if (!resolveTarget) return;
@@ -363,7 +466,10 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
                 Exceptions{exceptions?.open ? ` (${exceptions.open})` : ''}
               </TabsTrigger>
               <TabsTrigger value="simulation">Simulation</TabsTrigger>
+              <TabsTrigger value="approval">Approval</TabsTrigger>
+              <TabsTrigger value="execution">Execution</TabsTrigger>
               <TabsTrigger value="timeline">Timeline</TabsTrigger>
+
             </TabsList>
 
             <TabsContent value="population" className="pt-4">
@@ -600,7 +706,37 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="approval" className="pt-4">
+              <BnUpratingRunApprovalSection
+                view={approvalView}
+                isLoading={approvalQuery.isLoading}
+                isError={approvalQuery.isError || approvalQuery.data?.status === 'ERROR'}
+                onRetry={() => approvalQuery.refetch()}
+                submitAction={action('BN_UPRATING_SUBMIT_RUN_FOR_APPROVAL')}
+                decideAction={action('BN_UPRATING_APPROVE_RUN')}
+                onSubmitForApproval={() => setSubmitOpen(true)}
+                onRecordDecision={() => setDecisionOpen(true)}
+              />
+            </TabsContent>
+
+            <TabsContent value="execution" className="pt-4">
+              <BnUpratingExecutionScheduleSection
+                readiness={scheduleReadiness}
+                schedules={approvalView?.schedules ?? []}
+                isLoading={scheduleQuery.isLoading}
+                isError={scheduleQuery.isError || scheduleQuery.data?.status === 'ERROR'}
+                onRetry={() => scheduleQuery.refetch()}
+                scheduleAction={action('BN_UPRATING_SCHEDULE_EXECUTION')}
+                rescheduleAction={action('BN_UPRATING_RESCHEDULE_EXECUTION')}
+                cancelAction={action('BN_UPRATING_CANCEL_EXECUTION_SCHEDULE')}
+                onSchedule={() => setScheduleMode('SCHEDULE')}
+                onReschedule={() => setScheduleMode('RESCHEDULE')}
+                onCancel={() => setCancelOpen(true)}
+              />
+            </TabsContent>
           </Tabs>
+
         </>
       )}
 
@@ -611,6 +747,62 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
         isSaving={command.isPending}
         onSubmit={resolveException}
       />
+
+      <BnUpratingSubmitForApprovalDialog
+        open={submitOpen}
+        onOpenChange={setSubmitOpen}
+        readiness={approvalView?.approval_readiness ?? null}
+        isSaving={command.isPending}
+        onSubmit={submitForApproval}
+      />
+
+      <BnUpratingApprovalDecisionDialog
+        open={decisionOpen}
+        onOpenChange={setDecisionOpen}
+        pkg={approvalView?.current_package ?? null}
+        isSaving={command.isPending}
+        onSubmit={recordDecision}
+      />
+
+      <BnUpratingScheduleExecutionDialog
+        open={scheduleMode !== null}
+        onOpenChange={(open) => !open && setScheduleMode(null)}
+        readiness={scheduleReadiness}
+        mode={scheduleMode ?? 'SCHEDULE'}
+        isSaving={command.isPending}
+        onSubmit={submitSchedule}
+      />
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel execution schedule</DialogTitle>
+            <DialogDescription>
+              The schedule is retained in history with your reason. Nothing has executed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="uprating-cancel-reason">Reason</Label>
+            <Textarea
+              id="uprating-cancel-reason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOpen(false)} disabled={command.isPending}>
+              Keep schedule
+            </Button>
+            <Button
+              onClick={cancelSchedule}
+              disabled={command.isPending || cancelReason.trim().length === 0}
+            >
+              Cancel schedule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };
