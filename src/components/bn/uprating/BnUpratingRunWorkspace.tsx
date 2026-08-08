@@ -27,23 +27,45 @@ import {
   type UpratingPolicyVersionOption,
 } from './BnUpratingCreateRunDialog';
 import { BnUpratingResolveExceptionDialog } from './BnUpratingResolveExceptionDialog';
+import { BnUpratingRunApprovalSection } from './BnUpratingRunApprovalSection';
+import { BnUpratingExecutionScheduleSection } from './BnUpratingExecutionScheduleSection';
+import { BnUpratingSubmitForApprovalDialog } from './BnUpratingSubmitForApprovalDialog';
+import { BnUpratingApprovalDecisionDialog } from './BnUpratingApprovalDecisionDialog';
+import {
+  BnUpratingScheduleExecutionDialog,
+  type ScheduleExecutionFormValues,
+} from './BnUpratingScheduleExecutionDialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   executeUpratingRunCommand,
   fetchUpratingRunActions,
+  fetchUpratingRunApproval,
   fetchUpratingRunDetail,
   fetchUpratingRunExceptions,
   fetchUpratingRunList,
   fetchUpratingRunPopulation,
+  fetchUpratingScheduleReadiness,
   fetchUpratingSimulationResult,
 } from '@/services/bn/uprating/upratingRunService';
 import { fetchUpratingPolicyList } from '@/services/bn/uprating/upratingPolicyService';
 import { newUpratingUuid } from '@/services/bn/uprating/upratingPolicyService';
 import {
   formatMinor,
+  type BnUpratingApprovalDecision,
   type BnUpratingExceptionRow,
   type BnUpratingRunAction,
   type BnUpratingRunCommandName,
 } from '@/types/bn/uprating/upratingRun';
+
 
 const runStatusVariant = (status: string): 'default' | 'secondary' | 'outline' | 'destructive' => {
   if (status === 'DRY_RUN') return 'default';
