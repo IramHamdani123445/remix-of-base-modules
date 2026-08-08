@@ -647,20 +647,72 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
             </Alert>
           )}
 
+          {/*
+            Nine lifecycle sections are grouped into five officer-meaningful
+            phases. Content, commands and permissions are unchanged.
+          */}
+          <BnPhaseSectionNav
+            ariaLabel="Uprating run phases"
+            activeSection={activeTab}
+            onSelect={setActiveTab}
+            phases={[
+              {
+                id: 'prepare',
+                label: 'Prepare',
+                description: 'Build the population, clear exceptions and simulate the run.',
+                sections: [
+                  { id: 'population', label: 'Population' },
+                  {
+                    id: 'exceptions',
+                    label: `Exceptions${exceptions?.open ? ` (${exceptions.open})` : ''}`,
+                  },
+                  { id: 'simulation', label: 'Simulation' },
+                ],
+              },
+              {
+                id: 'approve',
+                label: 'Approve',
+                description: 'Independent approval and execution scheduling.',
+                sections: [{ id: 'approval', label: 'Approval & scheduling' }],
+              },
+              {
+                id: 'execute',
+                label: 'Execute',
+                description: 'Apply exactly what was approved, in controlled batches.',
+                sections: [{ id: 'execution', label: 'Execution' }],
+              },
+              {
+                id: 'reconcile',
+                label: 'Reconcile',
+                description: 'Reconcile the consequences, or take the controlled failure path.',
+                sections: [
+                  { id: 'reconciliation', label: 'Reconciliation' },
+                  { id: 'rollback', label: 'Rollback' },
+                ],
+              },
+              {
+                id: 'close',
+                label: 'Close',
+                description: 'Terminal closure and the evidence trail for this run.',
+                sections: [
+                  { id: 'closure', label: 'Closure' },
+                  { id: 'timeline', label: 'Activity & history' },
+                ],
+              },
+            ]}
+          />
+
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
+            <TabsList className="sr-only">
               <TabsTrigger value="population">Population</TabsTrigger>
-              <TabsTrigger value="exceptions">
-                Exceptions{exceptions?.open ? ` (${exceptions.open})` : ''}
-              </TabsTrigger>
+              <TabsTrigger value="exceptions">Exceptions</TabsTrigger>
               <TabsTrigger value="simulation">Simulation</TabsTrigger>
               <TabsTrigger value="approval">Approval</TabsTrigger>
               <TabsTrigger value="execution">Execution</TabsTrigger>
               <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
               <TabsTrigger value="rollback">Rollback</TabsTrigger>
               <TabsTrigger value="closure">Closure</TabsTrigger>
-              <TabsTrigger value="timeline">Timeline</TabsTrigger>
-
+              <TabsTrigger value="timeline">Activity &amp; history</TabsTrigger>
             </TabsList>
 
             <TabsContent value="population" className="pt-4">
