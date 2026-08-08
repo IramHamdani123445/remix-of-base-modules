@@ -109,7 +109,7 @@ BEGIN
   INSERT INTO public.bn_rate_table
     (id, table_code, table_name, table_type, lookup_mode, country_code,
      version_no, effective_from, effective_to, status, entered_by)
-  VALUES (c_rate_tbl, 'ZZ_EPIC0_RATE', 'Epic 0 harness rate table', 'RATE',
+  VALUES (c_rate_tbl, 'ZZ_EPIC0_RATE', 'Epic 0 harness rate table', 'RATE_TABLE',
           'EXACT_MATCH', 'KN', 1, DATE '2020-01-01', NULL, 'ACTIVE', 'HARNESS');
 
   INSERT INTO public.bn_rate_table_dimension
@@ -131,7 +131,7 @@ BEGIN
   INSERT INTO public.bn_rate_table
     (id, table_code, table_name, table_type, lookup_mode, country_code,
      version_no, effective_from, status, entered_by)
-  VALUES (c_tier_tbl, 'ZZ_EPIC0_TIER', 'Epic 0 harness tier table', 'MATRIX',
+  VALUES (c_tier_tbl, 'ZZ_EPIC0_TIER', 'Epic 0 harness tier table', 'TIER',
           'RANGE_MATCH', 'KN', 1, DATE '2020-01-01', 'ACTIVE', 'HARNESS');
 
   INSERT INTO public.bn_rate_table_dimension
