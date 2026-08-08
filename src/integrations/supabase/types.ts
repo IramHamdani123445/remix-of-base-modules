@@ -109002,6 +109002,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bn_risk_band_json: { Args: { p_rule_set: string }; Returns: Json }
       _bn_risk_dedupe_hash: { Args: { p_input: string }; Returns: string }
       _bn_risk_event: {
         Args: {
@@ -109030,6 +109031,11 @@ export type Database = {
       _bn_risk_require: {
         Args: { p_action: string; p_actor: string; p_mutation: boolean }
         Returns: undefined
+      }
+      _bn_risk_rule_set_json: { Args: { p_rule_set: string }; Returns: Json }
+      _bn_risk_rule_set_validation: {
+        Args: { p_rule_set: string }
+        Returns: Json
       }
       _bn_risk_score_evaluate: {
         Args: {
@@ -111761,6 +111767,34 @@ export type Database = {
           p_search?: string
           p_signal_id: string
         }
+        Returns: Json
+      }
+      bn_risk_review_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_score_detail_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_scoring_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_risk_scoring_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
       bn_risk_signal_assessment_links_v1: {
