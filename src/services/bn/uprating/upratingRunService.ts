@@ -60,7 +60,7 @@ const RUN_ERRORS: Record<string, string> = {
   // Epic 5 — closure
   E_ALREADY_CLOSED: 'This uprating run is already closed.',
   E_CLOSURE_BLOCKED: 'This run cannot be closed yet. Resolve the outstanding items first.',
-  E_INVALID_TRANSITION: 'Only a reconciled or a rolled-back run may be closed.',
+  E_CLOSURE_NOT_PERMITTED: 'Only a reconciled or a rolled-back run may be closed.',
   // Epic 2 — approval and execution scheduling
   E_ALREADY_SUBMITTED: 'This run already has an approval cycle awaiting a decision.',
   E_NO_SIMULATION: 'Run a simulation before submitting this run for approval.',
