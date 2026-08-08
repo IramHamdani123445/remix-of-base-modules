@@ -1,10 +1,11 @@
 /**
- * BN Risk — assessment workspace (EPIC 1 + EPIC 2).
+ * BN Risk — assessment workspace (EPIC 1 + EPIC 2 + EPIC 3).
  *
  * The single operational surface for a risk assessment: context, linked
  * signals, factors, evidence, information requests, governed scoring, the
- * officer review of that score, and history. The workspace stops at
- * "ready for recommendation" — no recommendation or control action exists.
+ * officer review of that score, the control recommendation and the
+ * independent approval decision. The workspace stops at "approved — awaiting
+ * governed execution": no control is executed here.
  */
 import React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -31,25 +32,31 @@ import { BnRiskFactorsSection } from './BnRiskFactorsSection';
 import { BnRiskInformationSection } from './BnRiskInformationSection';
 import { BnRiskScoringSection } from './BnRiskScoringSection';
 import { BnRiskAssessmentReviewSection } from './BnRiskAssessmentReviewSection';
+import { BnRiskRecommendationSection } from './BnRiskRecommendationSection';
+import { BnRiskControlApprovalSection } from './BnRiskControlApprovalSection';
 
 /** Journey stages, driven by the backend assessment status. */
-const JOURNEY = ['Signals', 'Factors', 'Evidence', 'Review/Scoring', 'Recommendation',
-  'Controls', 'Outcome'] as const;
+const JOURNEY = ['Signals', 'Factors', 'Evidence', 'Scoring', 'Recommendation',
+  'Approval', 'Control execution', 'Outcome'] as const;
 
 type JourneyState = 'COMPLETE' | 'CURRENT' | 'NEXT' | 'NOT_STARTED';
 
 function journeyStates(status: string): Record<string, JourneyState> {
   const infoStage = ['DRAFT', 'OPEN', 'INFORMATION_PENDING'].includes(status);
   const scoring = status === 'REVIEW';
-  const past = ['RECOMMENDATION', 'APPROVAL_PENDING', 'REFERRED', 'CONTROL_ACTION',
-    'COMPLETED', 'CLOSED'].includes(status);
+  const recommending = status === 'RECOMMENDATION';
+  const approving = status === 'APPROVAL_PENDING';
+  const decided = ['REFERRED', 'CONTROL_ACTION', 'COMPLETED', 'CLOSED'].includes(status);
   return {
     Signals: 'COMPLETE',
     Factors: infoStage ? 'CURRENT' : 'COMPLETE',
     Evidence: infoStage ? 'CURRENT' : 'COMPLETE',
-    'Review/Scoring': scoring ? 'CURRENT' : past ? 'COMPLETE' : 'NEXT',
-    Recommendation: past ? 'CURRENT' : scoring ? 'NEXT' : 'NOT_STARTED',
-    Controls: 'NOT_STARTED',
+    Scoring: scoring ? 'CURRENT' : infoStage ? 'NEXT' : 'COMPLETE',
+    Recommendation: recommending ? 'CURRENT'
+      : approving || decided ? 'COMPLETE' : scoring ? 'NEXT' : 'NOT_STARTED',
+    Approval: approving ? 'CURRENT' : decided ? 'COMPLETE'
+      : recommending ? 'NEXT' : 'NOT_STARTED',
+    'Control execution': decided ? 'NEXT' : 'NOT_STARTED',
     Outcome: 'NOT_STARTED',
   };
 }
@@ -57,7 +64,10 @@ function journeyStates(status: string): Record<string, JourneyState> {
 interface Props {
   assessmentId: string;
   onBack: () => void;
+  /** Deep link from the approval queue — scroll straight to the decision. */
+  focusSection?: 'approval' | null;
 }
+
 
 
 export const BnRiskAssessmentWorkspace: React.FC<Props> = ({ assessmentId, onBack }) => {
