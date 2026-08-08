@@ -186,14 +186,13 @@ const RiskOverviewRoute: React.FC = () => {
       />
       <BnRiskOperationsDashboard
         onOpenQueue={(queue) => {
+          /** Legacy queue codes map onto the consolidated destinations. */
           const destination =
-            queue === 'signals'
-              ? 'signals'
-              : queue === 'assessments'
-                ? 'assessments'
-                : queue === 'reporting'
-                  ? 'reporting'
-                  : 'controls';
+            queue === 'control-decisions'
+              ? 'controls?stage=decisions'
+              : queue === 'control-execution'
+                ? 'controls?stage=execution'
+                : 'controls?stage=outcomes';
           navigate(`${RISK_MODULE_BASE}/${destination}`);
         }}
       />
