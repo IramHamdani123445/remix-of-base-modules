@@ -273,18 +273,29 @@ const MeansAssessmentsRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }
 // ------------------------------------------------------------ record workspace
 
 const MeansAssessmentRecordRoute: React.FC = () => {
-  const { assessmentId } = useParams<{ assessmentId: string }>();
+  const { assessmentId, section } = useParams<{ assessmentId: string; section?: string }>();
   const navigate = useNavigate();
-  const [section, setSection] = useBnWorkspaceSection('context');
 
   if (!assessmentId) return <Navigate to={`${MEANS_MODULE_BASE}/assessments`} replace />;
+  if (!section) {
+    return <Navigate to={meansAssessmentPath(assessmentId, MEANS_DEFAULT_SECTION)} replace />;
+  }
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="space-y-4 p-4 sm:p-6">
+      <BnModuleBreadcrumbs
+        items={[
+          { label: 'Benefit Management' },
+          { label: 'Means-Test Assessments', to: MEANS_MODULE_BASE },
+          { label: 'Assessments', to: `${MEANS_MODULE_BASE}/assessments` },
+          { label: humaniseMeansCode(section) },
+        ]}
+      />
       <BnMeansAssessmentWorkspace
         assessmentId={assessmentId}
         section={section}
-        onSectionChange={(next) => setSection(next, { replace: true })}
+        sectionHref={(next) => meansAssessmentPath(assessmentId, next)}
+        onSectionChange={(next) => navigate(meansAssessmentPath(assessmentId, next))}
         onBack={() => navigate(`${MEANS_MODULE_BASE}/assessments`)}
       />
     </div>
