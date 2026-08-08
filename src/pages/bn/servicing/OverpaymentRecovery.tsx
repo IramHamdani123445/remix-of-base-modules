@@ -97,6 +97,33 @@ const ERROR_HINTS: Record<string, string> = {
 
 export const OVERPAYMENT_MODULE_BASE = '/bn/overpayments';
 
+const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
+const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v) || 0);
+
+/**
+ * Map the secured case-detail payload onto the worklist row shape the record
+ * workspace renders, so a deep link resolves without the worklist.
+ */
+export function toWorklistRow(
+  caseId: string,
+  detail: Record<string, unknown> | null,
+): BnOverpaymentWorklistRow | null {
+  if (!detail || typeof detail !== 'object') return null;
+  const status = str(detail.status);
+  if (!status) return null;
+  return {
+    case_id: str(detail.case_id) ?? caseId,
+    case_reference: str(detail.case_reference) ?? caseId,
+    claimant_display: str(detail.claimant_display),
+    status,
+    gross_amount: num(detail.gross_amount),
+    outstanding_amount: num(detail.outstanding_amount),
+    recovered_amount: num(detail.recovered_amount),
+    currency: str(detail.currency) ?? 'XCD',
+    row_version: num(detail.row_version),
+  } as BnOverpaymentWorklistRow;
+}
+
 const OverpaymentRecovery: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
