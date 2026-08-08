@@ -51,12 +51,16 @@ describe('BN-MENU-S1: Award Suspension is menu-visible and read-only', () => {
     expect(mod.isFeatureEnabled('bn.servicing.lifeCert')).toBe(true);
   });
 
-  it('unreleased servicing flags remain hidden by default in production', async () => {
+  it('Overpayment Recovery is a registered read-only workspace in production', async () => {
+    // BN-OP-NAV: the Overpayment Recovery workspace is menu-visible like Life
+    // Certificates and Medical Reviews. Mutations stay dark-launched through
+    // app_modules.actions_enabled and route permissions, never through this toggle.
     vi.stubEnv('MODE', 'production');
     vi.stubEnv('PROD', 'true' as any);
     const mod = await reloadModule();
-    expect(mod.isFeatureEnabled('bn.servicing.overpayment')).toBe(false);
+    expect(mod.isFeatureEnabled('bn.servicing.overpayment')).toBe(true);
   });
+
 
   it('medical review is visible read-only, gated server-side not by the flag', async () => {
     // BN-MR-UI: the Medical Review workspace is a registered servicing surface,

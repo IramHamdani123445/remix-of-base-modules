@@ -19,7 +19,6 @@
  */
 import React from 'react';
 import { Navigate, Outlet, Route, Routes, useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import {
   BnModuleRouteGate,
   type BnModuleAccessContext,
@@ -40,12 +39,9 @@ import { BnRiskOutcomeQueue } from '@/components/bn/risk/BnRiskOutcomeQueue';
 import { BnRiskOperationsDashboard } from '@/components/bn/risk/BnRiskOperationsDashboard';
 import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel';
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
-import { riskQueryService } from '@/services/bn/risk/riskQueryService';
 import {
   BnModuleSectionNav,
-  BnQueueSummaryCards,
   useBnWorkspaceSection,
-  type BnQueueSummaryItem,
 } from '@/components/bn/ux';
 
 export const RISK_MODULE_BASE = '/bn/risk-management';
@@ -62,13 +58,6 @@ const WORKSPACE_SECTIONS: readonly BnRiskWorkspaceSection[] = [
   'approval', 'execution', 'outcome', 'closure', 'feedback',
 ];
 
-const OVERVIEW_TILES: readonly { code: string; label: string }[] = [
-  { code: 'NEW', label: 'Awaiting triage' },
-  { code: 'TRIAGED', label: 'Triaged' },
-  { code: 'LINKED', label: 'Linked' },
-  { code: 'UNDER_REVIEW', label: 'Under review' },
-  { code: 'DISMISSED', label: 'Dismissed' },
-];
 
 export function riskAssessmentPath(
   assessmentId: string,
@@ -157,33 +146,14 @@ const RiskModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
 
 const RiskOverviewRoute: React.FC = () => {
   const navigate = useNavigate();
-  const counts = useQuery({
-    queryKey: ['bn-risk-signal-queue', 'counts'],
-    queryFn: async () => {
-      const result = await riskQueryService.signalQueue({}, 1, 1);
-      if (result.status !== 'OK' || !result.data) throw new Error(result.code ?? result.status);
-      return result.data.status_counts;
-    },
-  });
 
-  /** A failed count read is shown as unavailable, never as zero. */
-  const items: readonly BnQueueSummaryItem[] = OVERVIEW_TILES.map((tile) => ({
-    id: tile.code,
-    label: tile.label,
-    loading: counts.isLoading,
-    unavailable: counts.isError,
-    count: counts.isError ? undefined : counts.data?.[tile.code] ?? 0,
-    description: tile.code === 'NEW' ? 'Requires an officer decision' : 'In the risk pipeline',
-    onSelect: () => navigate(`${RISK_MODULE_BASE}/signals`),
-  }));
-
+  /**
+   * The operational position dashboard already carries every actionable queue
+   * (including new signals and awaiting triage) with backend-derived counts, so
+   * the module overview deliberately shows one queue set rather than two.
+   */
   return (
     <div className="space-y-6">
-      <BnQueueSummaryCards
-        ariaLabel="Signal pipeline"
-        items={items}
-        className="xl:grid-cols-5"
-      />
       <BnRiskOperationsDashboard
         onOpenQueue={(queue) => {
           /** Legacy queue codes map onto the consolidated destinations. */

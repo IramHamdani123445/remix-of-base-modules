@@ -145,16 +145,6 @@ const MeansModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => 
         )}
       </header>
 
-      <MeansTechnicalDetails
-        details={{
-          'Module code': ctx.moduleCode,
-          'Rollout state': ctx.rolloutState,
-          'Routes enabled': String(ctx.routesEnabled),
-          'Actions enabled': String(ctx.actionsEnabled),
-          'Module id': ctx.moduleId,
-        }}
-      />
-
       <BnModuleSectionNav
         ariaLabel="Means-Test destinations"
         items={[
@@ -176,6 +166,16 @@ const MeansModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => 
       />
 
       <Outlet />
+
+      <MeansTechnicalDetails
+        details={{
+          'Module code': ctx.moduleCode,
+          'Rollout state': ctx.rolloutState,
+          'Routes enabled': String(ctx.routesEnabled),
+          'Actions enabled': String(ctx.actionsEnabled),
+          'Module id': ctx.moduleId,
+        }}
+      />
     </div>
   );
 };

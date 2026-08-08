@@ -54,6 +54,20 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: 'bg-muted text-muted-foreground border-muted',
 };
 
+const humaniseLoadError = (raw: string): string => {
+  const code = raw.split(':')[0]?.trim();
+  switch (code) {
+    case 'E_PERMISSION_DENIED':
+      return 'You do not have permission to view the overpayment worklist. Ask an administrator for the Overpayment Recovery view permission.';
+    case 'E_ACTIONS_DISABLED':
+      return 'Overpayment Recovery is in internal pilot, so this data cannot be read in this environment yet.';
+    case 'E_MODULE_DISABLED':
+      return 'Overpayment Recovery is not activated in this environment.';
+    default:
+      return 'The overpayment worklist could not be loaded. Try refreshing; if it continues, contact support.';
+  }
+};
+
 const STATUS_FILTERS = [
   'CANDIDATE', 'CALCULATED', 'VERIFIED', 'NOTICE_ISSUED', 'REPRESENTATION',
   'LIABILITY_CONFIRMED', 'PLAN_PROPOSED', 'PLAN_APPROVED', 'IN_RECOVERY',
@@ -374,19 +388,19 @@ const OverpaymentRecovery: React.FC = () => {
       <div className="grid gap-4 md:grid-cols-4">
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">Outstanding</p>
-          <p className="text-2xl font-semibold">{money(totals.outstanding)}</p>
+          <p className="text-2xl font-semibold">{loadError ? 'Unavailable' : money(totals.outstanding)}</p>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">Recovered</p>
-          <p className="text-2xl font-semibold">{money(totals.recovered)}</p>
+          <p className="text-2xl font-semibold">{loadError ? 'Unavailable' : money(totals.recovered)}</p>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">In recovery</p>
-          <p className="text-2xl font-semibold">{totals.inRecovery}</p>
+          <p className="text-2xl font-semibold">{loadError ? 'Unavailable' : totals.inRecovery}</p>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground">Held / suspended</p>
-          <p className="text-2xl font-semibold">{totals.held}</p>
+          <p className="text-2xl font-semibold">{loadError ? 'Unavailable' : totals.held}</p>
         </CardContent></Card>
       </div>
 
@@ -417,7 +431,10 @@ const OverpaymentRecovery: React.FC = () => {
           {loadError && (
             <Alert variant="destructive">
               <AlertTitle>Worklist unavailable</AlertTitle>
-              <AlertDescription>{loadError}</AlertDescription>
+              <AlertDescription className="space-y-2">
+                <p>{humaniseLoadError(loadError)}</p>
+                <p className="text-xs opacity-80">Technical detail: <code>{loadError}</code></p>
+              </AlertDescription>
             </Alert>
           )}
 
@@ -439,12 +456,19 @@ const OverpaymentRecovery: React.FC = () => {
                     <Loader2 className="h-5 w-5 animate-spin inline" />
                   </TableCell></TableRow>
                 )}
-                {!loading && rows.length === 0 && (
+                {!loading && loadError && (
                   <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No overpayment cases match the current filters.
+                    Unavailable — the worklist could not be read, so the number of cases is unknown.
                   </TableCell></TableRow>
                 )}
-                {!loading && rows.map((r) => (
+                {!loading && !loadError && rows.length === 0 && (
+                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    {search.trim() || statusFilter !== 'all'
+                      ? 'No overpayment cases match the current search or status filter.'
+                      : 'No overpayment cases are currently open for recovery.'}
+                  </TableCell></TableRow>
+                )}
+                {!loading && !loadError && rows.map((r) => (
                   <TableRow key={r.case_id}>
                     <TableCell className="font-mono text-xs">{r.case_reference}</TableCell>
                     <TableCell>{r.claimant_display ?? '—'}</TableCell>
