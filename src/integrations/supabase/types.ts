@@ -28022,6 +28022,115 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_uprating_execution_schedule: {
+        Row: {
+          approval_id: string
+          batch_size: number | null
+          batch_strategy: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_by_name: string | null
+          cancelled_reason: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by: string
+          created_by_name: string | null
+          max_concurrent_batches: number | null
+          notes: string | null
+          package_id: string
+          planned_execution_at: string
+          row_version: number
+          run_id: string
+          schedule_id: string
+          schedule_version: number
+          status: string
+          superseded_at: string | null
+          supersedes_schedule_id: string | null
+          time_zone: string
+          updated_at: string
+          window_end_at: string | null
+          window_start_at: string | null
+        }
+        Insert: {
+          approval_id: string
+          batch_size?: number | null
+          batch_strategy?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_by_name?: string | null
+          cancelled_reason?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by: string
+          created_by_name?: string | null
+          max_concurrent_batches?: number | null
+          notes?: string | null
+          package_id: string
+          planned_execution_at: string
+          row_version?: number
+          run_id: string
+          schedule_id?: string
+          schedule_version: number
+          status?: string
+          superseded_at?: string | null
+          supersedes_schedule_id?: string | null
+          time_zone: string
+          updated_at?: string
+          window_end_at?: string | null
+          window_start_at?: string | null
+        }
+        Update: {
+          approval_id?: string
+          batch_size?: number | null
+          batch_strategy?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_by_name?: string | null
+          cancelled_reason?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by?: string
+          created_by_name?: string | null
+          max_concurrent_batches?: number | null
+          notes?: string | null
+          package_id?: string
+          planned_execution_at?: string
+          row_version?: number
+          run_id?: string
+          schedule_id?: string
+          schedule_version?: number
+          status?: string
+          superseded_at?: string | null
+          supersedes_schedule_id?: string | null
+          time_zone?: string
+          updated_at?: string
+          window_end_at?: string | null
+          window_start_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_execution_schedule_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_approval"
+            referencedColumns: ["approval_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_execution_schedule_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_approval_package"
+            referencedColumns: ["package_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_execution_schedule_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
       bn_uprating_index_observation: {
         Row: {
           created_at: string
@@ -28646,12 +28755,19 @@ export type Database = {
       }
       bn_uprating_run: {
         Row: {
+          approval_cycle_count: number
+          approved_at: string | null
+          approved_by: string | null
+          approved_by_name: string | null
           calculation_basis: string
           correlation_id: string | null
           country_code: string | null
           created_at: string
           created_by: string | null
           created_by_name: string | null
+          current_approval_id: string | null
+          current_approval_package_id: string | null
+          current_schedule_id: string | null
           current_simulation_id: string | null
           current_simulation_version: number | null
           current_snapshot_id: string | null
@@ -28689,12 +28805,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_cycle_count?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_name?: string | null
           calculation_basis?: string
           correlation_id?: string | null
           country_code?: string | null
           created_at?: string
           created_by?: string | null
           created_by_name?: string | null
+          current_approval_id?: string | null
+          current_approval_package_id?: string | null
+          current_schedule_id?: string | null
           current_simulation_id?: string | null
           current_simulation_version?: number | null
           current_snapshot_id?: string | null
@@ -28732,12 +28855,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_cycle_count?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          approved_by_name?: string | null
           calculation_basis?: string
           correlation_id?: string | null
           country_code?: string | null
           created_at?: string
           created_by?: string | null
           created_by_name?: string | null
+          current_approval_id?: string | null
+          current_approval_package_id?: string | null
+          current_schedule_id?: string | null
           current_simulation_id?: string | null
           current_simulation_version?: number | null
           current_snapshot_id?: string | null
@@ -28795,6 +28925,197 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_product"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      bn_uprating_run_approval: {
+        Row: {
+          approval_id: string
+          correlation_id: string | null
+          created_at: string
+          cycle_no: number
+          decided_at: string | null
+          decided_by: string | null
+          decided_by_name: string | null
+          decision: string | null
+          decision_reason: string | null
+          justification: string | null
+          package_id: string
+          row_version: number
+          run_id: string
+          status: string
+          submission_note: string | null
+          submitted_at: string
+          submitted_by: string
+          submitted_by_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          approval_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          cycle_no: number
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_name?: string | null
+          decision?: string | null
+          decision_reason?: string | null
+          justification?: string | null
+          package_id: string
+          row_version?: number
+          run_id: string
+          status?: string
+          submission_note?: string | null
+          submitted_at?: string
+          submitted_by: string
+          submitted_by_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          approval_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          cycle_no?: number
+          decided_at?: string | null
+          decided_by?: string | null
+          decided_by_name?: string | null
+          decision?: string | null
+          decision_reason?: string | null
+          justification?: string | null
+          package_id?: string
+          row_version?: number
+          run_id?: string
+          status?: string
+          submission_note?: string | null
+          submitted_at?: string
+          submitted_by?: string
+          submitted_by_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_run_approval_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_approval_package"
+            referencedColumns: ["package_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_run_approval_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      bn_uprating_run_approval_package: {
+        Row: {
+          correlation_id: string | null
+          created_at: string
+          current_total_minor: number
+          cycle_no: number
+          delta_total_minor: number
+          exception_count: number
+          excluded_count: number
+          failed_item_count: number
+          frozen_policy_type: string | null
+          included_count: number
+          input_fingerprint: string
+          package_id: string
+          policy_id: string
+          policy_version_id: string
+          policy_version_reference: string | null
+          population_total: number
+          proposed_total_minor: number
+          run_id: string
+          run_row_version: number
+          scope_description: string | null
+          simulation_id: string
+          simulation_version: number
+          snapshot_fingerprint: string | null
+          snapshot_id: string
+          snapshot_version: number
+          status: string
+          submitted_at: string
+          submitted_by: string
+          submitted_by_name: string | null
+          target_effective_date: string
+          unresolved_blocking_count: number
+        }
+        Insert: {
+          correlation_id?: string | null
+          created_at?: string
+          current_total_minor?: number
+          cycle_no: number
+          delta_total_minor?: number
+          exception_count?: number
+          excluded_count?: number
+          failed_item_count?: number
+          frozen_policy_type?: string | null
+          included_count?: number
+          input_fingerprint: string
+          package_id?: string
+          policy_id: string
+          policy_version_id: string
+          policy_version_reference?: string | null
+          population_total?: number
+          proposed_total_minor?: number
+          run_id: string
+          run_row_version: number
+          scope_description?: string | null
+          simulation_id: string
+          simulation_version: number
+          snapshot_fingerprint?: string | null
+          snapshot_id: string
+          snapshot_version: number
+          status?: string
+          submitted_at?: string
+          submitted_by: string
+          submitted_by_name?: string | null
+          target_effective_date: string
+          unresolved_blocking_count?: number
+        }
+        Update: {
+          correlation_id?: string | null
+          created_at?: string
+          current_total_minor?: number
+          cycle_no?: number
+          delta_total_minor?: number
+          exception_count?: number
+          excluded_count?: number
+          failed_item_count?: number
+          frozen_policy_type?: string | null
+          included_count?: number
+          input_fingerprint?: string
+          package_id?: string
+          policy_id?: string
+          policy_version_id?: string
+          policy_version_reference?: string | null
+          population_total?: number
+          proposed_total_minor?: number
+          run_id?: string
+          run_row_version?: number
+          scope_description?: string | null
+          simulation_id?: string
+          simulation_version?: number
+          snapshot_fingerprint?: string | null
+          snapshot_id?: string
+          snapshot_version?: number
+          status?: string
+          submitted_at?: string
+          submitted_by?: string
+          submitted_by_name?: string | null
+          target_effective_date?: string
+          unresolved_blocking_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_run_approval_package_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
           },
         ]
       }
@@ -111784,6 +112105,10 @@ export type Database = {
         Args: { p_payload: Json; p_version_id: string }
         Returns: undefined
       }
+      _bn_uprating_approval_readiness: {
+        Args: { p_actor: string; p_run_id: string }
+        Returns: Json
+      }
       _bn_uprating_calc_item: {
         Args: { p_base_minor: number; p_run_id: string }
         Returns: Json
@@ -111814,6 +112139,19 @@ export type Database = {
         Args: { p_amount: number; p_mode: string }
         Returns: number
       }
+      _bn_uprating_run_command_epic1: {
+        Args: {
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id?: string
+          p_exception_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_payload?: Json
+          p_run_id?: string
+        }
+        Returns: Json
+      }
       _bn_uprating_run_event: {
         Args: {
           p_actor: string
@@ -111827,6 +112165,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bn_uprating_schedule_config: { Args: never; Returns: Json }
       _bn_uprating_validate_version: {
         Args: { p_version_id: string }
         Returns: Json
@@ -114636,6 +114975,10 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_uprating_execution_schedule_readiness_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
       bn_uprating_policy_actions_v1: {
         Args: { p_actor_user_id: string; p_policy_version_id: string }
         Returns: Json
@@ -114686,6 +115029,23 @@ export type Database = {
         Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
       }
+      bn_uprating_run_approval_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+      bn_uprating_run_approval_readiness_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
+      bn_uprating_run_approval_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
       bn_uprating_run_command_v1: {
         Args: {
           p_actor_user_id: string
@@ -114729,6 +115089,15 @@ export type Database = {
           p_limit?: number
           p_offset?: number
           p_run_id: string
+        }
+        Returns: Json
+      }
+      bn_uprating_scheduled_run_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
         }
         Returns: Json
       }
