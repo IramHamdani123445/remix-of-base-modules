@@ -69,7 +69,58 @@ and covered by tests.
 - Every failed read returns an explicit status; an error is never shown as an
   empty queue.
 
-## Epics 1+ — Not started
+## Epic 1 — Assessment creation, factors and evidence — COMPLETE
 
-Risk assessments, factors, evidence, controls, approvals, payment holds,
-referrals, outcomes and rule feedback.
+Confirmed signal → risk assessment → linked signals → governed factors →
+evidence and information requests → complete information gathering → `REVIEW`.
+
+Backend: `bn_risk_assessment_command_v1`, `bn_risk_assessment_detail_v1`,
+`bn_risk_assessment_queue_v1`, `bn_risk_assessment_actions_v1`.
+Frontend: `BnRiskAssessmentQueue`, `BnRiskAssessmentWorkspace`,
+`BnRiskFactorsSection`, `BnRiskEvidenceSection`, `BnRiskInformationSection`,
+`BnRiskCreateAssessmentDialog`.
+
+## Epic 2 — Explainable deterministic scoring and assessment review — COMPLETE
+
+A risk score is decision support. Nothing in Epic 2 stops a payment, suspends a
+benefit or refers anyone to investigation.
+
+### Backend (governed boundary)
+
+| Object | Purpose |
+| --- | --- |
+| `bn_risk_scoring_command_v1` | `CALCULATE_SCORE`, `RECALCULATE_SCORE`, `COMPLETE_SCORING_REVIEW` |
+| `bn_risk_scoring_config_command_v1` | Versioned configuration lifecycle |
+| `_bn_risk_score_evaluate` | Deterministic rule evaluation (backend only) |
+| `_bn_risk_score_fingerprint` | Input fingerprint used to detect stale scores |
+| `bn_risk_scoring_readiness_v1` | May this assessment be scored; is the score current |
+| `bn_risk_score_detail_v1` | Immutable score, contributions and score history |
+| `bn_risk_review_readiness_v1` | May the scoring review be completed |
+| `bn_risk_scoring_configuration_v1` | Configuration versions; detail for administrators |
+
+Configuration lifecycle: `DRAFT → VALIDATED → ACTIVE → RETIRED`. Only one
+version is in force; a version in force is never edited in place. Scoring fails
+closed when no active configuration exists.
+
+### Frontend
+
+- `src/types/bn/risk/riskScoring.ts` — contracts only; no rule, weight, band or threshold
+- `src/services/bn/risk/riskScoringService.ts` — governed RPC bindings
+- `BnRiskScoringSection` — score, band, staleness and per-rule explanation
+- `BnRiskAssessmentReviewSection` — officer review completion into `RECOMMENDATION`
+- `BnRiskScoringConfigurationPanel` — read-only for officers, lifecycle for administrators
+- `BnRiskAssessmentWorkspace` — journey strip through Review/Scoring
+- `Benefit360RiskCard` — privacy-safe stage label only; never a score or band
+
+### Boundaries respected
+
+- Scoring is backend-only; the browser never computes or sends a score.
+- Identical inputs and the same configuration version produce the same score.
+- Score records are immutable; a change of inputs marks the score out of date
+  and requires an explicit recalculation.
+- No opaque model: every point on the score is traced to a named rule.
+
+## Epics 3+ — Not started
+
+Recommendations, controls, approvals, payment holds, referrals, outcomes and
+rule feedback.

@@ -23,6 +23,7 @@ import { BnRiskSignalDetailPanel } from '@/components/bn/risk/BnRiskSignalDetail
 import { BnRiskManualSignalDialog } from '@/components/bn/risk/BnRiskManualSignalDialog';
 import { BnRiskAssessmentQueue } from '@/components/bn/risk/BnRiskAssessmentQueue';
 import { BnRiskAssessmentWorkspace } from '@/components/bn/risk/BnRiskAssessmentWorkspace';
+import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
 
 const OVERVIEW_TILES: readonly { code: string; label: string }[] = [
@@ -110,6 +111,7 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
         <TabsList>
           <TabsTrigger value="signals">Signals</TabsTrigger>
           <TabsTrigger value="assessments">Assessments</TabsTrigger>
+          <TabsTrigger value="scoring-configuration">Scoring configuration</TabsTrigger>
         </TabsList>
 
         <TabsContent value="signals" className="space-y-6">
@@ -119,8 +121,8 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
             <AlertTitle>What happens after triage</AlertTitle>
             <AlertDescription>
               A confirmed signal can be taken forward into a risk assessment, where facts
-              and evidence are gathered. Scoring, recommendations and controls are released
-              in a later stage — no signal or assessment can affect a benefit on its own.
+              and evidence are gathered, then scored for review. A score is decision support
+              only — no signal, assessment or score can affect a benefit on its own.
             </AlertDescription>
           </Alert>
         </TabsContent>
@@ -135,7 +137,12 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
             )
             : <BnRiskAssessmentQueue onOpenAssessment={setOpenAssessmentId} />}
         </TabsContent>
+
+        <TabsContent value="scoring-configuration" className="space-y-6">
+          <BnRiskScoringConfigurationPanel />
+        </TabsContent>
       </Tabs>
+
 
       <BnRiskSignalDetailPanel
         signalId={openSignalId}
