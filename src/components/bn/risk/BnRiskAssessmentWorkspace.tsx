@@ -58,8 +58,10 @@ function journeyStates(status: string): Record<string, JourneyState> {
       : approving || decided ? 'COMPLETE' : scoring ? 'NEXT' : 'NOT_STARTED',
     Approval: approving ? 'CURRENT' : decided ? 'COMPLETE'
       : recommending ? 'NEXT' : 'NOT_STARTED',
-    'Control execution': decided ? 'NEXT' : 'NOT_STARTED',
-    Outcome: 'NOT_STARTED',
+    'Control execution': status === 'CONTROL_ACTION' || status === 'REFERRED' ? 'CURRENT'
+      : decided ? 'COMPLETE' : approving ? 'NEXT' : 'NOT_STARTED',
+    Outcome: ['COMPLETED', 'CLOSED'].includes(status) ? 'CURRENT' : 'NOT_STARTED',
+
   };
 }
 
@@ -128,12 +130,16 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
     queryClient.invalidateQueries({ queryKey: ['bn-risk-assessment-actions', assessmentId] });
   }, [assessmentId, queryClient]);
 
-  /** Approval queue deep link — put the decision in front of the approver. */
+  /** Operational queue deep links — put the required work in front of the user. */
   React.useEffect(() => {
     if (focusSection === 'approval' && approvalRef.current) {
       approvalRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    if (focusSection === 'execution' && executionRef.current) {
+      executionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }, [focusSection, detail.data]);
+
 
   const completeMutation = useMutation({
     mutationFn: async () => {
