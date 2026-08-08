@@ -39,8 +39,9 @@ const epic2Sql = fs
   .map((f) => fs.readFileSync(path.join(migrationsDir, f), 'utf8'))
   .filter(
     (sql) =>
-      sql.includes('bn_uprating_run_approval_package') ||
-      sql.includes('bn_uprating_execution_schedule'),
+      !sql.includes('bn_uprating_execution_session') &&
+      (sql.includes('bn_uprating_run_approval_package') ||
+        sql.includes('bn_uprating_execution_schedule')),
   )
   .join('\n');
 
