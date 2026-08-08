@@ -1180,9 +1180,9 @@ describe('Epic 3 — control decision queue', () => {
 
   it('routes the workspace deep link to the approval section', () => {
     const page = readSrc('pages/bn/risk/BnRiskManagementPage.tsx');
-    expect(page).toMatch(/focusApproval \? 'approval' :/);
+    expect(page).toMatch(/openWorkspace\(assessmentId, 'approval'\)/);
     const workspace = readSrc('components/bn/risk/BnRiskAssessmentWorkspace.tsx');
-    expect(workspace).toMatch(/focusSection === 'approval'/);
+    expect(workspace).toMatch(/approval: approvalRef/);
   });
 });
 

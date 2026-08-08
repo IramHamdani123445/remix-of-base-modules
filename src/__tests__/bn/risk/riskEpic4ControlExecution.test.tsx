@@ -377,10 +377,12 @@ describe('Epic 4 — target boundaries', () => {
     expect(screen.queryByRole('button', { name: /execute approved control/i })).toBeNull();
   });
 
-  it('completes NO_ACTION internally without any target operation or closure', () => {
+  it('completes NO_ACTION internally without any target operation', () => {
     expect(BACKEND_SQL).toContain("IF v_r.control_code = 'NO_ACTION' THEN");
     expect(BACKEND_SQL).toContain("v_status := 'COMPLETED'");
-    expect(BACKEND_SQL).not.toContain('BN_RISK_CLOSE_ASSESSMENT');
+    /** Execution never closes the assessment — closure is an Epic 5 command. */
+    expect(readSrc('services/bn/risk/riskControlExecutionService.ts'))
+      .not.toContain('BN_RISK_CLOSE_ASSESSMENT');
   });
 
   it('reuses the Epic 1 Risk evidence engine for REQUEST_DOCUMENTS', () => {
@@ -681,9 +683,9 @@ describe('Epic 4 — execution queue', () => {
 
     const page = readSrc('pages/bn/risk/BnRiskManagementPage.tsx');
     expect(page).toContain('onOpenExecution={openControlExecution}');
-    expect(page).toContain("setFocusExecution(true)");
+    expect(page).toContain("openWorkspace(assessmentId, 'execution')");
     const workspace = readSrc('components/bn/risk/BnRiskAssessmentWorkspace.tsx');
-    expect(workspace).toContain("focusSection === 'execution'");
+    expect(workspace).toContain('execution: executionRef');
     expect(workspace).toContain('BnRiskControlExecutionSection');
   });
 });
@@ -846,7 +848,13 @@ describe('Epic 4 — architecture guards', () => {
     expect(await screen.findByText(/The control was not executed/i)).toBeInTheDocument();
   });
 
-  it('executes no Epic 5 command', () => {
+  it('executes no Epic 5 command from an Epic 4 surface', () => {
+    /**
+     * Epic 5 has since delivered outcome, closure and reopening in the same
+     * migration set, so the shared SQL text no longer isolates Epic 4. What
+     * still must hold is the surface boundary: no Epic 4 source may record an
+     * outcome, close an assessment or reopen one.
+     */
     for (const rel of EPIC4_SOURCES) {
       const src = readSrc(rel);
       for (const c of ['BN_RISK_RECORD_OUTCOME', 'BN_RISK_CLOSE_ASSESSMENT',
@@ -854,7 +862,5 @@ describe('Epic 4 — architecture guards', () => {
         expect(src).not.toContain(c);
       }
     }
-    expect(BACKEND_SQL).not.toContain('BN_RISK_RECORD_OUTCOME');
-    expect(BACKEND_SQL).not.toContain('BN_RISK_REOPEN_ASSESSMENT');
   });
 });

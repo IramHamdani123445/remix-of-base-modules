@@ -25,6 +25,7 @@ import { BnRiskAssessmentQueue } from '@/components/bn/risk/BnRiskAssessmentQueu
 import { BnRiskAssessmentWorkspace } from '@/components/bn/risk/BnRiskAssessmentWorkspace';
 import { BnRiskControlApprovalQueue } from '@/components/bn/risk/BnRiskControlApprovalQueue';
 import { BnRiskControlExecutionQueue } from '@/components/bn/risk/BnRiskControlExecutionQueue';
+import { BnRiskOutcomeQueue } from '@/components/bn/risk/BnRiskOutcomeQueue';
 
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import { riskQueryService } from '@/services/bn/risk/riskQueryService';
@@ -43,8 +44,9 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const [confirmation, setConfirmation] = React.useState<string | null>(null);
   const [tab, setTab] = React.useState('signals');
   const [openAssessmentId, setOpenAssessmentId] = React.useState<string | null>(null);
-  const [focusApproval, setFocusApproval] = React.useState(false);
-  const [focusExecution, setFocusExecution] = React.useState(false);
+  const [focusSection, setFocusSection] =
+    React.useState<'approval' | 'execution' | 'outcome' | 'closure' | null>(null);
+
 
 
   const counts = useQuery({
@@ -58,28 +60,33 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
 
   const canWrite = ctx.actionsEnabled && ctx.can('write');
 
-  const openAssessment = React.useCallback((assessmentId: string) => {
-    setFocusApproval(false);
-    setFocusExecution(false);
-    setOpenAssessmentId(assessmentId);
-    setTab('assessments');
-  }, []);
+  /**
+   * Every queue deep link opens the workspace at the section that owns the
+   * outstanding work: approval, execution, outcome or closure.
+   */
+  const openWorkspace = React.useCallback(
+    (assessmentId: string, section: 'approval' | 'execution' | 'outcome' | 'closure' | null) => {
+      setFocusSection(section);
+      setOpenAssessmentId(assessmentId);
+      setTab('assessments');
+    },
+    [],
+  );
 
-  /** Deep link from the approval queue straight to the decision section. */
-  const openApprovalDecision = React.useCallback((assessmentId: string) => {
-    setFocusApproval(true);
-    setFocusExecution(false);
-    setOpenAssessmentId(assessmentId);
-    setTab('assessments');
-  }, []);
+  const openAssessment = React.useCallback(
+    (assessmentId: string) => openWorkspace(assessmentId, null), [openWorkspace]);
 
-  /** Deep link from the execution queue straight to the execution section. */
-  const openControlExecution = React.useCallback((assessmentId: string) => {
-    setFocusApproval(false);
-    setFocusExecution(true);
-    setOpenAssessmentId(assessmentId);
-    setTab('assessments');
-  }, []);
+  const openApprovalDecision = React.useCallback(
+    (assessmentId: string) => openWorkspace(assessmentId, 'approval'), [openWorkspace]);
+
+  const openControlExecution = React.useCallback(
+    (assessmentId: string) => openWorkspace(assessmentId, 'execution'), [openWorkspace]);
+
+  const openOutcomeWork = React.useCallback(
+    (assessmentId: string, section: 'outcome' | 'closure') =>
+      openWorkspace(assessmentId, section),
+    [openWorkspace],
+  );
 
 
 
@@ -139,6 +146,8 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
           <TabsTrigger value="assessments">Assessments</TabsTrigger>
           <TabsTrigger value="control-decisions">Control decisions</TabsTrigger>
           <TabsTrigger value="control-execution">Control execution</TabsTrigger>
+          <TabsTrigger value="outcomes">Outcomes &amp; closure</TabsTrigger>
+
 
           <TabsTrigger value="scoring-configuration">Scoring configuration</TabsTrigger>
         </TabsList>
@@ -161,23 +170,16 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
             ? (
               <BnRiskAssessmentWorkspace
                 assessmentId={openAssessmentId}
-                focusSection={
-                  focusApproval ? 'approval' : focusExecution ? 'execution' : null
-                }
+                focusSection={focusSection}
                 onBack={() => {
                   setOpenAssessmentId(null);
-                  setFocusApproval(false);
-                  setFocusExecution(false);
+                  setFocusSection(null);
                 }}
               />
             )
             : (
               <BnRiskAssessmentQueue
-                onOpenAssessment={(id) => {
-                  setFocusApproval(false);
-                  setFocusExecution(false);
-                  setOpenAssessmentId(id);
-                }}
+                onOpenAssessment={(id) => openWorkspace(id, null)}
               />
 
             )}
@@ -204,6 +206,19 @@ const RiskWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
               Risk requests an approved control through a governed handoff. Payments, Legal,
               Investigation and the other owning domains decide whether and how it is applied,
               and Risk records only the reference and status they return.
+            </AlertDescription>
+          </Alert>
+        </TabsContent>
+
+        <TabsContent value="outcomes" className="space-y-6">
+          <BnRiskOutcomeQueue onOpenAssessment={openOutcomeWork} />
+
+          <Alert>
+            <AlertTitle>Outcome, completion and closure are governed</AlertTitle>
+            <AlertDescription>
+              An outcome records what the assessment concluded and why. Closure ends the
+              assessment; a closed assessment can only be reopened exceptionally, with a
+              recorded justification, and every reopening is audited.
             </AlertDescription>
           </Alert>
         </TabsContent>

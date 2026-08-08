@@ -232,7 +232,48 @@ Guarantees proven by `src/__tests__/bn/risk/riskEpic4ControlExecution.test.tsx`
   boundary exists.
 - No Epic 5 outcome, closure or reopen command is executed.
 
-## Epic 5 — Outcome recording, closure and reopening — NOT_STARTED
+## Epic 5 — Outcome recording, closure and reopening — COMPLETE
 
-Outcome capture, assessment closure, reopening and rule feedback.
+Governed conclusion of a risk assessment: outcome, completion, closure and
+exceptional audited reopening.
+
+### Backend
+
+- `bn_risk_outcome`, `bn_risk_assessment_closure`; completion and reopening
+  columns on `bn_risk_assessment`.
+- `bn_risk_outcome_command_v1` — `BN_RISK_RECORD_OUTCOME`,
+  `BN_RISK_OP_CORRECT_OUTCOME`, `BN_RISK_CLOSE_ASSESSMENT`,
+  `BN_RISK_REOPEN_ASSESSMENT`.
+- `bn_risk_outcome_readiness_v1`, `bn_risk_closure_readiness_v1`,
+  `bn_risk_outcome_queue_v1`.
+
+### Frontend
+
+- `BnRiskOutcomeSection` / `BnRiskOutcomeDialog` — record and correct.
+- `BnRiskClosureSection` / `BnRiskClosureDialog` / `BnRiskReopenDialog`.
+- `BnRiskOutcomeQueue` — backend-bucketed operational queue.
+- Wired into `BnRiskAssessmentWorkspace` (outcome and closure deep links) and
+  the "Outcomes & closure" tab on `BnRiskManagementPage`.
+
+### Governed properties proven
+
+- Readiness, blockers, catalogue and available actions are backend-owned; a
+  failed readiness read fails closed and offers no action.
+- An outcome is never inferred from a score, band, recommendation or control.
+- A recorded outcome is immutable; a correction supersedes it and the previous
+  outcome remains visible with its author.
+- Closure requires a current outcome; reopening is exceptional, justified,
+  capability-gated and audited, and reverses nothing in an owning domain.
+- Every mutation goes through the single command RPC with an idempotency key,
+  payload hash and expected row version; stale versions fail loudly.
+- The queue is privacy-safe: outcome and finding detail appear only when the
+  backend publishes restricted detail, and a failed read is never shown as an
+  empty workload.
+
+### Certification
+
+`src/__tests__/bn/risk/riskEpic5Outcome.test.tsx` — 24 tests.
+Risk suite regression: 185/185 passing.
+
+
 
