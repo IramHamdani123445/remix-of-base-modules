@@ -41,6 +41,7 @@ import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel'
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
 import {
   BnModuleBreadcrumbs,
+  BnModuleGuidance,
   BnModuleHeader,
   BnModulePage,
   BnModuleTrail,
