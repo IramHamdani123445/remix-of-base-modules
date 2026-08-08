@@ -47,7 +47,10 @@ export type BnUpratingRunCommandName =
   | 'BN_UPRATING_RECONCILE_RUN'
   | 'BN_UPRATING_MARK_FAILED'
   | 'BN_UPRATING_ASSESS_ROLLBACK'
-  | 'BN_UPRATING_ROLLBACK_ELIGIBLE';
+  | 'BN_UPRATING_ROLLBACK_ELIGIBLE'
+  // Epic 5 — terminal closure
+  | 'BN_UPRATING_CLOSE_RUN';
+
 
 
 /** Commands in this boundary that are canonical Epic 1 commands. */
