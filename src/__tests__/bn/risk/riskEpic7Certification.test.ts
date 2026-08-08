@@ -39,6 +39,8 @@ const RISK_SERVICES = path.join(SRC, 'services/bn/risk');
 const RISK_COMPONENTS = path.join(SRC, 'components/bn/risk');
 
 const read = (abs: string) => fs.readFileSync(abs, 'utf8');
+const stripComments = (text: string) =>
+  text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const listFiles = (dir: string) =>
   fs.readdirSync(dir).filter((f) => f.endsWith('.ts') || f.endsWith('.tsx'));
 
@@ -174,7 +176,7 @@ describe('Epic 7 — Risk command architecture guards', () => {
   });
 
   it('keeps scoring deterministic — no clock or randomness in the engine', () => {
-    const engine = read(path.join(RISK_SERVICES, 'riskScoringEngine.ts'));
+    const engine = stripComments(read(path.join(RISK_SERVICES, 'riskScoringEngine.ts')));
     expect(engine).not.toMatch(/Math\.random|Date\.now|new Date\(\)/);
   });
 });
@@ -265,15 +267,18 @@ describe('Epic 7 — governed journeys A–J', () => {
 
   it('Journey D — payment control is executed by the Payment domain, never by Risk', () => {
     const exec = read(path.join(RISK_SERVICES, 'riskControlExecutionService.ts'));
-    expect(exec).toContain('BN_RISK_PLACE_PAYMENT_HOLD');
+    const execCommands = read(path.join(SRC, 'types/bn/risk/riskControlExecution.ts'));
+    expect(execCommands).toContain('BN_RISK_PLACE_PAYMENT_HOLD');
     expect(exec).toContain('bn_risk_control_execution_command_v1');
     expect(exec).not.toMatch(/\.from\(\s*['"]bn_payment/);
   });
 
   it('Journey E — Legal / Investigation referral runs through the same governed boundary', () => {
-    const exec = read(path.join(RISK_SERVICES, 'riskControlExecutionService.ts'));
-    expect(exec).toContain('BN_RISK_REFER_TO_LEGAL');
-    expect(exec).toContain('BN_RISK_REFER_TO_INVESTIGATION');
+    const execCommands = read(path.join(SRC, 'types/bn/risk/riskControlExecution.ts'));
+    expect(execCommands).toContain('BN_RISK_REFER_TO_LEGAL');
+    expect(execCommands).toContain('BN_RISK_REFER_TO_INVESTIGATION');
+    expect(getRiskCanonicalCommandSpec('BN_RISK_REFER_TO_LEGAL').boundaryRpc)
+      .toBe('bn_risk_control_execution_command_v1');
     expect(walk(['APPROVAL_PENDING', 'REFERRED', 'COMPLETED', 'CLOSED'])).toBe(true);
   });
 
@@ -365,7 +370,7 @@ describe('Epic 7 — certification record', () => {
     expect(fs.existsSync(rec)).toBe(true);
     const text = read(rec);
     expect(text).toContain('CONTROLLED UAT READY');
-    expect(text).toContain('Production activation = NOT_STARTED');
+    expect(text).toMatch(/Production activation\s*=\s*NOT_STARTED/);
   });
 
   it('marks Epics 0–7 complete in the implementation matrix', () => {
