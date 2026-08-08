@@ -80,6 +80,12 @@ export const BnUpratingRunWorkspace: React.FC<{ ctx: BnModuleAccessContext }> = 
   const [search, setSearch] = React.useState('');
   const [createOpen, setCreateOpen] = React.useState(false);
   const [resolveTarget, setResolveTarget] = React.useState<BnUpratingExceptionRow | null>(null);
+  const [submitOpen, setSubmitOpen] = React.useState(false);
+  const [decisionOpen, setDecisionOpen] = React.useState(false);
+  const [scheduleMode, setScheduleMode] = React.useState<'SCHEDULE' | 'RESCHEDULE' | null>(null);
+  const [cancelOpen, setCancelOpen] = React.useState(false);
+  const [cancelReason, setCancelReason] = React.useState('');
+
 
   const listQuery = useQuery({
     queryKey: ['bn-uprating-runs', search],
