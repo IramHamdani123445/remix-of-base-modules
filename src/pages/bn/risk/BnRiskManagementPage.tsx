@@ -137,17 +137,8 @@ const RiskModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
 
       {confirmation && <Alert><AlertDescription>{confirmation}</AlertDescription></Alert>}
 
-      <BnModuleSectionNav
-        ariaLabel="Fraud, Error and Risk destinations"
-        items={[
-          { to: RISK_MODULE_BASE, label: 'Overview', end: true },
-          { to: `${RISK_MODULE_BASE}/signals`, label: 'Signals' },
-          { to: `${RISK_MODULE_BASE}/assessments`, label: 'Assessments' },
-          { to: `${RISK_MODULE_BASE}/controls`, label: 'Controls & outcomes' },
-          { to: `${RISK_MODULE_BASE}/reporting`, label: 'Reporting' },
-          { to: `${RISK_MODULE_BASE}/configuration`, label: 'Configuration' },
-        ]}
-      />
+      {/* Module navigation lives in the left sidebar. */}
+      <RiskBreadcrumbs />
 
       <Outlet />
 
