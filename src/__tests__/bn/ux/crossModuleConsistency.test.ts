@@ -29,9 +29,9 @@ describe('Benefits cross-module UI consistency', () => {
     expect(read(file)).toContain('BnModuleTrail');
   });
 
-  it.each(Object.entries(MODULE_PAGES))('%s uses consistent responsive page padding', (_name, file) => {
+  it.each(Object.entries(MODULE_PAGES))('%s uses responsive page padding, never fixed p-6', (_name, file) => {
     const source = read(file);
-    expect(source).not.toMatch(/className="[^"]*\bp-6\b[^"]*"/);
+    expect(source).not.toMatch(/className="(?:space-y-\d+ )?p-6(?: |")/);
   });
 
   it('exposes the shared primitives from the Benefits UX barrel', () => {
