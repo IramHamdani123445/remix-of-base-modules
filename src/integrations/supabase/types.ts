@@ -28022,6 +28022,200 @@ export type Database = {
         }
         Relationships: []
       }
+      bn_uprating_execution_batch: {
+        Row: {
+          applied_count: number
+          applied_delta_minor: number
+          batch_id: string
+          batch_kind: string
+          batch_no: number
+          correlation_id: string | null
+          created_at: string
+          executed_at: string | null
+          executed_by: string | null
+          executed_by_name: string | null
+          failed_count: number
+          item_count: number
+          retry_of_batch_id: string | null
+          run_id: string
+          session_id: string
+          skipped_count: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          applied_count?: number
+          applied_delta_minor?: number
+          batch_id?: string
+          batch_kind?: string
+          batch_no: number
+          correlation_id?: string | null
+          created_at?: string
+          executed_at?: string | null
+          executed_by?: string | null
+          executed_by_name?: string | null
+          failed_count?: number
+          item_count?: number
+          retry_of_batch_id?: string | null
+          run_id: string
+          session_id: string
+          skipped_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          applied_count?: number
+          applied_delta_minor?: number
+          batch_id?: string
+          batch_kind?: string
+          batch_no?: number
+          correlation_id?: string | null
+          created_at?: string
+          executed_at?: string | null
+          executed_by?: string | null
+          executed_by_name?: string | null
+          failed_count?: number
+          item_count?: number
+          retry_of_batch_id?: string | null
+          run_id?: string
+          session_id?: string
+          skipped_count?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_execution_batch_retry_of_batch_id_fkey"
+            columns: ["retry_of_batch_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_batch"
+            referencedColumns: ["batch_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_execution_batch_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_execution_batch_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_session"
+            referencedColumns: ["session_id"]
+          },
+        ]
+      }
+      bn_uprating_execution_item: {
+        Row: {
+          applied_amount_minor: number | null
+          applied_at: string | null
+          applied_delta_minor: number | null
+          applied_row_version: number | null
+          approved_amount_minor: number
+          approved_base_amount_minor: number
+          approved_delta_minor: number
+          attempt_no: number
+          award_component_code: string | null
+          award_id: string | null
+          award_rate_history_id: string | null
+          award_reference: string
+          batch_id: string
+          correlation_id: string | null
+          created_at: string
+          execution_item_id: string
+          expected_row_version: number | null
+          failure_code: string | null
+          failure_reason: string | null
+          is_retryable: boolean
+          observed_row_version: number | null
+          run_id: string
+          session_id: string
+          simulation_item_id: string
+          snapshot_item_id: string
+          status: string
+        }
+        Insert: {
+          applied_amount_minor?: number | null
+          applied_at?: string | null
+          applied_delta_minor?: number | null
+          applied_row_version?: number | null
+          approved_amount_minor: number
+          approved_base_amount_minor: number
+          approved_delta_minor: number
+          attempt_no?: number
+          award_component_code?: string | null
+          award_id?: string | null
+          award_rate_history_id?: string | null
+          award_reference: string
+          batch_id: string
+          correlation_id?: string | null
+          created_at?: string
+          execution_item_id?: string
+          expected_row_version?: number | null
+          failure_code?: string | null
+          failure_reason?: string | null
+          is_retryable?: boolean
+          observed_row_version?: number | null
+          run_id: string
+          session_id: string
+          simulation_item_id: string
+          snapshot_item_id: string
+          status?: string
+        }
+        Update: {
+          applied_amount_minor?: number | null
+          applied_at?: string | null
+          applied_delta_minor?: number | null
+          applied_row_version?: number | null
+          approved_amount_minor?: number
+          approved_base_amount_minor?: number
+          approved_delta_minor?: number
+          attempt_no?: number
+          award_component_code?: string | null
+          award_id?: string | null
+          award_rate_history_id?: string | null
+          award_reference?: string
+          batch_id?: string
+          correlation_id?: string | null
+          created_at?: string
+          execution_item_id?: string
+          expected_row_version?: number | null
+          failure_code?: string | null
+          failure_reason?: string | null
+          is_retryable?: boolean
+          observed_row_version?: number | null
+          run_id?: string
+          session_id?: string
+          simulation_item_id?: string
+          snapshot_item_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_execution_item_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_batch"
+            referencedColumns: ["batch_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_execution_item_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_execution_item_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_session"
+            referencedColumns: ["session_id"]
+          },
+        ]
+      }
       bn_uprating_execution_schedule: {
         Row: {
           approval_id: string
@@ -28128,6 +28322,125 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "bn_uprating_run"
             referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      bn_uprating_execution_session: {
+        Row: {
+          applied_delta_total_minor: number
+          applied_item_count: number
+          approval_id: string
+          approved_delta_total_minor: number
+          batch_size: number
+          completed_at: string | null
+          completed_batch_count: number
+          correlation_id: string | null
+          created_at: string
+          failed_item_count: number
+          input_fingerprint: string
+          package_id: string
+          planned_batch_count: number
+          planned_item_count: number
+          row_version: number
+          run_id: string
+          schedule_id: string
+          session_id: string
+          simulation_id: string
+          skipped_item_count: number
+          snapshot_id: string
+          started_at: string
+          started_by: string
+          started_by_name: string | null
+          status: string
+          target_effective_date: string
+          updated_at: string
+        }
+        Insert: {
+          applied_delta_total_minor?: number
+          applied_item_count?: number
+          approval_id: string
+          approved_delta_total_minor?: number
+          batch_size: number
+          completed_at?: string | null
+          completed_batch_count?: number
+          correlation_id?: string | null
+          created_at?: string
+          failed_item_count?: number
+          input_fingerprint: string
+          package_id: string
+          planned_batch_count?: number
+          planned_item_count?: number
+          row_version?: number
+          run_id: string
+          schedule_id: string
+          session_id?: string
+          simulation_id: string
+          skipped_item_count?: number
+          snapshot_id: string
+          started_at?: string
+          started_by: string
+          started_by_name?: string | null
+          status?: string
+          target_effective_date: string
+          updated_at?: string
+        }
+        Update: {
+          applied_delta_total_minor?: number
+          applied_item_count?: number
+          approval_id?: string
+          approved_delta_total_minor?: number
+          batch_size?: number
+          completed_at?: string | null
+          completed_batch_count?: number
+          correlation_id?: string | null
+          created_at?: string
+          failed_item_count?: number
+          input_fingerprint?: string
+          package_id?: string
+          planned_batch_count?: number
+          planned_item_count?: number
+          row_version?: number
+          run_id?: string
+          schedule_id?: string
+          session_id?: string
+          simulation_id?: string
+          skipped_item_count?: number
+          snapshot_id?: string
+          started_at?: string
+          started_by?: string
+          started_by_name?: string | null
+          status?: string
+          target_effective_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_uprating_execution_session_approval_id_fkey"
+            columns: ["approval_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_approval"
+            referencedColumns: ["approval_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_execution_session_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run_approval_package"
+            referencedColumns: ["package_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_execution_session_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_run"
+            referencedColumns: ["run_id"]
+          },
+          {
+            foreignKeyName: "bn_uprating_execution_session_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "bn_uprating_execution_schedule"
+            referencedColumns: ["schedule_id"]
           },
         ]
       }
@@ -28755,6 +29068,7 @@ export type Database = {
       }
       bn_uprating_run: {
         Row: {
+          applied_delta_total_minor: number
           approval_cycle_count: number
           approved_at: string | null
           approved_by: string | null
@@ -28767,11 +29081,16 @@ export type Database = {
           created_by_name: string | null
           current_approval_id: string | null
           current_approval_package_id: string | null
+          current_execution_session_id: string | null
           current_schedule_id: string | null
           current_simulation_id: string | null
           current_simulation_version: number | null
           current_snapshot_id: string | null
           current_snapshot_version: number | null
+          executed_item_count: number
+          execution_completed_at: string | null
+          execution_started_at: string | null
+          failed_item_count: number
           frozen_applicability: Json
           frozen_effective_from: string | null
           frozen_effective_to: string | null
@@ -28805,6 +29124,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          applied_delta_total_minor?: number
           approval_cycle_count?: number
           approved_at?: string | null
           approved_by?: string | null
@@ -28817,11 +29137,16 @@ export type Database = {
           created_by_name?: string | null
           current_approval_id?: string | null
           current_approval_package_id?: string | null
+          current_execution_session_id?: string | null
           current_schedule_id?: string | null
           current_simulation_id?: string | null
           current_simulation_version?: number | null
           current_snapshot_id?: string | null
           current_snapshot_version?: number | null
+          executed_item_count?: number
+          execution_completed_at?: string | null
+          execution_started_at?: string | null
+          failed_item_count?: number
           frozen_applicability?: Json
           frozen_effective_from?: string | null
           frozen_effective_to?: string | null
@@ -28855,6 +29180,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          applied_delta_total_minor?: number
           approval_cycle_count?: number
           approved_at?: string | null
           approved_by?: string | null
@@ -28867,11 +29193,16 @@ export type Database = {
           created_by_name?: string | null
           current_approval_id?: string | null
           current_approval_package_id?: string | null
+          current_execution_session_id?: string | null
           current_schedule_id?: string | null
           current_simulation_id?: string | null
           current_simulation_version?: number | null
           current_snapshot_id?: string | null
           current_snapshot_version?: number | null
+          executed_item_count?: number
+          execution_completed_at?: string | null
+          execution_started_at?: string | null
+          failed_item_count?: number
           frozen_applicability?: Json
           frozen_effective_from?: string | null
           frozen_effective_to?: string | null
@@ -112101,6 +112432,15 @@ export type Database = {
       }
       _bn_susp_user_code: { Args: { p_user_id: string }; Returns: string }
       _bn_uprating_actor_name: { Args: { p_actor: string }; Returns: string }
+      _bn_uprating_apply_award: {
+        Args: {
+          p_actor_user_id: string
+          p_item_id: string
+          p_run_reference: string
+          p_target_effective_date: string
+        }
+        Returns: Json
+      }
       _bn_uprating_apply_version_payload: {
         Args: { p_payload: Json; p_version_id: string }
         Returns: undefined
@@ -112127,6 +112467,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bn_uprating_execute_batch_items: {
+        Args: {
+          p_actor_name: string
+          p_actor_user_id: string
+          p_batch_id: string
+          p_correlation_id: string
+          p_run_reference: string
+          p_target_effective_date: string
+        }
+        Returns: Json
+      }
+      _bn_uprating_execution_config: { Args: never; Returns: Json }
+      _bn_uprating_execution_readiness: {
+        Args: { p_actor: string; p_run_id: string }
+        Returns: Json
+      }
       _bn_uprating_ref_label: {
         Args: { p_code: string; p_domain: string }
         Returns: string
@@ -112135,11 +112491,28 @@ export type Database = {
         Args: { p_action: string; p_actor: string; p_mutation: boolean }
         Returns: undefined
       }
+      _bn_uprating_rollup_session: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       _bn_uprating_round_minor: {
         Args: { p_amount: number; p_mode: string }
         Returns: number
       }
       _bn_uprating_run_command_epic1: {
+        Args: {
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id?: string
+          p_exception_id?: string
+          p_expected_row_version?: number
+          p_idempotency_key?: string
+          p_payload?: Json
+          p_run_id?: string
+        }
+        Returns: Json
+      }
+      _bn_uprating_run_command_epic2: {
         Args: {
           p_actor_user_id: string
           p_command_name: string
@@ -114975,6 +115348,29 @@ export type Database = {
         }
         Returns: Json
       }
+      bn_uprating_execution_items_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+          p_run_id: string
+        }
+        Returns: Json
+      }
+      bn_uprating_execution_queue_v1: {
+        Args: {
+          p_actor_user_id: string
+          p_filters?: Json
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
+      bn_uprating_execution_readiness_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
+        Returns: Json
+      }
       bn_uprating_execution_schedule_readiness_v1: {
         Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
@@ -115071,6 +115467,10 @@ export type Database = {
           p_offset?: number
           p_run_id: string
         }
+        Returns: Json
+      }
+      bn_uprating_run_execution_v1: {
+        Args: { p_actor_user_id: string; p_run_id: string }
         Returns: Json
       }
       bn_uprating_run_list_v1: {

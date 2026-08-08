@@ -15,11 +15,15 @@ import type {
   BnUpratingApprovalQueueRow,
   BnUpratingApprovalReadiness,
   BnUpratingExceptionRow,
+  BnUpratingExecutionItemRow,
+  BnUpratingExecutionQueueRow,
+  BnUpratingExecutionReadiness,
   BnUpratingPopulationRow,
   BnUpratingRunActionsResult,
   BnUpratingRunApprovalView,
   BnUpratingRunCommandName,
   BnUpratingRunDetail,
+  BnUpratingRunExecutionView,
   BnUpratingRunListRow,
   BnUpratingScheduleReadiness,
   BnUpratingScheduledRunRow,
@@ -72,7 +76,18 @@ const RUN_ERRORS: Record<string, string> = {
   E_INVALID_PAYLOAD: 'Some required information is missing or invalid.',
   E_IDEMPOTENCY_MISMATCH:
     'This request key has already been used with different details. Start a new request.',
+  // Epic 3 — batch execution and failed-item retry
+  E_NOT_DUE: 'The planned execution time has not been reached yet.',
+  E_WINDOW_CLOSED:
+    'The approved execution window has closed. Reschedule the run before executing it.',
+  E_NO_PENDING_BATCH: 'Every prepared batch has already been executed.',
+  E_NOTHING_TO_EXECUTE: 'The approved package contains no award changes to apply.',
+  E_NO_SESSION: 'This run has not been executed yet, so there is nothing to retry.',
+  E_BATCHES_PENDING: 'Finish executing the prepared batches before retrying failed items.',
+  E_NO_RETRYABLE_ITEMS:
+    'There are no eligible items to retry. The remaining failures must be corrected at source.',
 };
+
 
 
 export function upratingRunErrorMessage(code?: string | null, fallback?: string | null): string {
@@ -307,6 +322,69 @@ export async function fetchUpratingScheduledRunQueue(
   const uid = await actorId();
   if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
   return callQuery('bn_uprating_scheduled_run_queue_v1', {
+    p_actor_user_id: uid,
+    p_filters: filters,
+    p_limit: limit,
+    p_offset: offset,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Epic 3 — batch execution and failed-item retry reads.
+// Execution applies the approved package verbatim; this module never
+// recalculates an amount and never writes to an award directly.
+// ---------------------------------------------------------------------------
+
+export async function fetchUpratingExecutionReadiness(
+  runId: string,
+): Promise<BnUpratingQueryResult<BnUpratingExecutionReadiness>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_execution_readiness_v1', {
+    p_actor_user_id: uid,
+    p_run_id: runId,
+  });
+}
+
+export async function fetchUpratingRunExecution(
+  runId: string,
+): Promise<BnUpratingQueryResult<BnUpratingRunExecutionView>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_run_execution_v1', { p_actor_user_id: uid, p_run_id: runId });
+}
+
+export async function fetchUpratingExecutionItems(
+  runId: string,
+  filters: Record<string, unknown> = {},
+  limit = 50,
+  offset = 0,
+): Promise<
+  BnUpratingQueryResult<{
+    rows: BnUpratingExecutionItemRow[];
+    total: number;
+    session_id: string | null;
+  }>
+> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_execution_items_v1', {
+    p_actor_user_id: uid,
+    p_run_id: runId,
+    p_filters: filters,
+    p_limit: limit,
+    p_offset: offset,
+  });
+}
+
+export async function fetchUpratingExecutionQueue(
+  filters: Record<string, unknown> = {},
+  limit = 25,
+  offset = 0,
+): Promise<BnUpratingQueryResult<{ rows: BnUpratingExecutionQueueRow[]; total: number }>> {
+  const uid = await actorId();
+  if (!uid) return { status: 'ERROR', code: 'E_UNAUTHENTICATED', data: null };
+  return callQuery('bn_uprating_execution_queue_v1', {
     p_actor_user_id: uid,
     p_filters: filters,
     p_limit: limit,
