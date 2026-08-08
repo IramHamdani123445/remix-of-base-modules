@@ -24248,6 +24248,8 @@ export type Database = {
           primary_signal_id: string | null
           review_entered_at: string | null
           row_version: number
+          scoring_review_completed_at: string | null
+          scoring_review_completed_by_user_id: string | null
           status: string
           summary: string
           updated_at: string
@@ -24277,6 +24279,8 @@ export type Database = {
           primary_signal_id?: string | null
           review_entered_at?: string | null
           row_version?: number
+          scoring_review_completed_at?: string | null
+          scoring_review_completed_by_user_id?: string | null
           status?: string
           summary: string
           updated_at?: string
@@ -24306,6 +24310,8 @@ export type Database = {
           primary_signal_id?: string | null
           review_entered_at?: string | null
           row_version?: number
+          scoring_review_completed_at?: string | null
+          scoring_review_completed_by_user_id?: string | null
           status?: string
           summary?: string
           updated_at?: string
@@ -24961,6 +24967,449 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      bn_risk_score: {
+        Row: {
+          assessment_id: string
+          assessment_row_version: number
+          band_code: string | null
+          band_label: string | null
+          calculated_at: string
+          calculated_by_name: string | null
+          calculated_by_user_id: string | null
+          contribution_count: number
+          correlation_id: string | null
+          created_at: string
+          input_fingerprint: string
+          matched_rule_count: number
+          recalculation_reason: string | null
+          rule_set_code: string
+          rule_set_id: string
+          rule_set_name: string
+          rule_set_version_no: number
+          score: number
+          score_id: string
+          score_scale_max: number
+          score_scale_min: number
+          status: string
+          supersedes_score_id: string | null
+          version_no: number
+        }
+        Insert: {
+          assessment_id: string
+          assessment_row_version: number
+          band_code?: string | null
+          band_label?: string | null
+          calculated_at?: string
+          calculated_by_name?: string | null
+          calculated_by_user_id?: string | null
+          contribution_count?: number
+          correlation_id?: string | null
+          created_at?: string
+          input_fingerprint: string
+          matched_rule_count?: number
+          recalculation_reason?: string | null
+          rule_set_code: string
+          rule_set_id: string
+          rule_set_name: string
+          rule_set_version_no: number
+          score: number
+          score_id?: string
+          score_scale_max: number
+          score_scale_min: number
+          status?: string
+          supersedes_score_id?: string | null
+          version_no?: number
+        }
+        Update: {
+          assessment_id?: string
+          assessment_row_version?: number
+          band_code?: string | null
+          band_label?: string | null
+          calculated_at?: string
+          calculated_by_name?: string | null
+          calculated_by_user_id?: string | null
+          contribution_count?: number
+          correlation_id?: string | null
+          created_at?: string
+          input_fingerprint?: string
+          matched_rule_count?: number
+          recalculation_reason?: string | null
+          rule_set_code?: string
+          rule_set_id?: string
+          rule_set_name?: string
+          rule_set_version_no?: number
+          score?: number
+          score_id?: string
+          score_scale_max?: number
+          score_scale_min?: number
+          status?: string
+          supersedes_score_id?: string | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_score_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_assessment"
+            referencedColumns: ["assessment_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_score_rule_set_id_fkey"
+            columns: ["rule_set_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_scoring_rule_set"
+            referencedColumns: ["rule_set_id"]
+          },
+          {
+            foreignKeyName: "bn_risk_score_supersedes_score_id_fkey"
+            columns: ["supersedes_score_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_score"
+            referencedColumns: ["score_id"]
+          },
+        ]
+      }
+      bn_risk_score_contribution: {
+        Row: {
+          comparison_display: string | null
+          contribution: number
+          contribution_id: string
+          created_at: string
+          direction_code: string | null
+          direction_label: string | null
+          evaluated_input: string | null
+          explanation: string
+          factor_id: string | null
+          factor_reference: string | null
+          factor_type_code: string | null
+          factor_type_label: string | null
+          operator: string | null
+          outcome: string
+          rule_code: string
+          rule_id: string | null
+          rule_name: string
+          score_id: string
+          sequence_no: number
+        }
+        Insert: {
+          comparison_display?: string | null
+          contribution?: number
+          contribution_id?: string
+          created_at?: string
+          direction_code?: string | null
+          direction_label?: string | null
+          evaluated_input?: string | null
+          explanation: string
+          factor_id?: string | null
+          factor_reference?: string | null
+          factor_type_code?: string | null
+          factor_type_label?: string | null
+          operator?: string | null
+          outcome: string
+          rule_code: string
+          rule_id?: string | null
+          rule_name: string
+          score_id: string
+          sequence_no: number
+        }
+        Update: {
+          comparison_display?: string | null
+          contribution?: number
+          contribution_id?: string
+          created_at?: string
+          direction_code?: string | null
+          direction_label?: string | null
+          evaluated_input?: string | null
+          explanation?: string
+          factor_id?: string | null
+          factor_reference?: string | null
+          factor_type_code?: string | null
+          factor_type_label?: string | null
+          operator?: string | null
+          outcome?: string
+          rule_code?: string
+          rule_id?: string | null
+          rule_name?: string
+          score_id?: string
+          sequence_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_score_contribution_score_id_fkey"
+            columns: ["score_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_score"
+            referencedColumns: ["score_id"]
+          },
+        ]
+      }
+      bn_risk_scoring_band: {
+        Row: {
+          band_code: string
+          band_id: string
+          created_at: string
+          description: string | null
+          label: string
+          max_score: number
+          min_score: number
+          review_priority: string | null
+          rule_set_id: string
+          sort_order: number
+        }
+        Insert: {
+          band_code: string
+          band_id?: string
+          created_at?: string
+          description?: string | null
+          label: string
+          max_score: number
+          min_score: number
+          review_priority?: string | null
+          rule_set_id: string
+          sort_order?: number
+        }
+        Update: {
+          band_code?: string
+          band_id?: string
+          created_at?: string
+          description?: string | null
+          label?: string
+          max_score?: number
+          min_score?: number
+          review_priority?: string | null
+          rule_set_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_scoring_band_rule_set_id_fkey"
+            columns: ["rule_set_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_scoring_rule_set"
+            referencedColumns: ["rule_set_id"]
+          },
+        ]
+      }
+      bn_risk_scoring_rule: {
+        Row: {
+          comparison_code: string | null
+          comparison_numeric: number | null
+          contribution: number
+          created_at: string
+          created_by_user_id: string | null
+          description: string | null
+          direction_code: string | null
+          explanation_template: string | null
+          factor_type_code: string | null
+          is_enabled: boolean
+          max_contribution: number | null
+          name: string
+          operator: string
+          requires_usable_evidence: boolean
+          rule_code: string
+          rule_id: string
+          rule_set_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          comparison_code?: string | null
+          comparison_numeric?: number | null
+          contribution: number
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          direction_code?: string | null
+          explanation_template?: string | null
+          factor_type_code?: string | null
+          is_enabled?: boolean
+          max_contribution?: number | null
+          name: string
+          operator: string
+          requires_usable_evidence?: boolean
+          rule_code: string
+          rule_id?: string
+          rule_set_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          comparison_code?: string | null
+          comparison_numeric?: number | null
+          contribution?: number
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          direction_code?: string | null
+          explanation_template?: string | null
+          factor_type_code?: string | null
+          is_enabled?: boolean
+          max_contribution?: number | null
+          name?: string
+          operator?: string
+          requires_usable_evidence?: boolean
+          rule_code?: string
+          rule_id?: string
+          rule_set_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_scoring_rule_rule_set_id_fkey"
+            columns: ["rule_set_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_scoring_rule_set"
+            referencedColumns: ["rule_set_id"]
+          },
+        ]
+      }
+      bn_risk_scoring_rule_set: {
+        Row: {
+          activated_at: string | null
+          activated_by_user_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          description: string | null
+          effective_from: string | null
+          effective_to: string | null
+          name: string
+          retired_at: string | null
+          retired_by_user_id: string | null
+          row_version: number
+          rule_set_code: string
+          rule_set_id: string
+          score_scale_label: string | null
+          score_scale_max: number
+          score_scale_min: number
+          status: string
+          supersedes_rule_set_id: string | null
+          updated_at: string
+          validated_at: string | null
+          validated_by_user_id: string | null
+          version_no: number
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by_user_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          name: string
+          retired_at?: string | null
+          retired_by_user_id?: string | null
+          row_version?: number
+          rule_set_code: string
+          rule_set_id?: string
+          score_scale_label?: string | null
+          score_scale_max?: number
+          score_scale_min?: number
+          status?: string
+          supersedes_rule_set_id?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by_user_id?: string | null
+          version_no?: number
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by_user_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          created_by_user_id?: string | null
+          description?: string | null
+          effective_from?: string | null
+          effective_to?: string | null
+          name?: string
+          retired_at?: string | null
+          retired_by_user_id?: string | null
+          row_version?: number
+          rule_set_code?: string
+          rule_set_id?: string
+          score_scale_label?: string | null
+          score_scale_max?: number
+          score_scale_min?: number
+          status?: string
+          supersedes_rule_set_id?: string | null
+          updated_at?: string
+          validated_at?: string | null
+          validated_by_user_id?: string | null
+          version_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_scoring_rule_set_supersedes_rule_set_id_fkey"
+            columns: ["supersedes_rule_set_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_scoring_rule_set"
+            referencedColumns: ["rule_set_id"]
+          },
+        ]
+      }
+      bn_risk_scoring_rule_set_event: {
+        Row: {
+          actor_user_code: string | null
+          actor_user_id: string | null
+          command_name: string | null
+          correlation_id: string | null
+          created_at: string
+          detail: Json
+          entity_version: number | null
+          event_code: string
+          event_id: string
+          from_status: string | null
+          justification: string | null
+          reason_code: string | null
+          rule_set_id: string
+          to_status: string | null
+        }
+        Insert: {
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          command_name?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          detail?: Json
+          entity_version?: number | null
+          event_code: string
+          event_id?: string
+          from_status?: string | null
+          justification?: string | null
+          reason_code?: string | null
+          rule_set_id: string
+          to_status?: string | null
+        }
+        Update: {
+          actor_user_code?: string | null
+          actor_user_id?: string | null
+          command_name?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          detail?: Json
+          entity_version?: number | null
+          event_code?: string
+          event_id?: string
+          from_status?: string | null
+          justification?: string | null
+          reason_code?: string | null
+          rule_set_id?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bn_risk_scoring_rule_set_event_rule_set_id_fkey"
+            columns: ["rule_set_id"]
+            isOneToOne: false
+            referencedRelation: "bn_risk_scoring_rule_set"
+            referencedColumns: ["rule_set_id"]
+          },
+        ]
       }
       bn_risk_signal: {
         Row: {
@@ -108496,6 +108945,40 @@ export type Database = {
         }
         Returns: Json
       }
+      _bn_risk_active_rule_set: {
+        Args: never
+        Returns: {
+          activated_at: string | null
+          activated_by_user_id: string | null
+          correlation_id: string | null
+          created_at: string
+          created_by_user_id: string | null
+          description: string | null
+          effective_from: string | null
+          effective_to: string | null
+          name: string
+          retired_at: string | null
+          retired_by_user_id: string | null
+          row_version: number
+          rule_set_code: string
+          rule_set_id: string
+          score_scale_label: string | null
+          score_scale_max: number
+          score_scale_min: number
+          status: string
+          supersedes_rule_set_id: string | null
+          updated_at: string
+          validated_at: string | null
+          validated_by_user_id: string | null
+          version_no: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bn_risk_scoring_rule_set"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _bn_risk_actor_name: { Args: { p_actor: string }; Returns: string }
       _bn_risk_assessment_can_transition: {
         Args: { p_from: string; p_to: string }
@@ -108519,6 +109002,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      _bn_risk_band_json: { Args: { p_rule_set: string }; Returns: Json }
       _bn_risk_dedupe_hash: { Args: { p_input: string }; Returns: string }
       _bn_risk_event: {
         Args: {
@@ -108547,6 +109031,29 @@ export type Database = {
       _bn_risk_require: {
         Args: { p_action: string; p_actor: string; p_mutation: boolean }
         Returns: undefined
+      }
+      _bn_risk_rule_set_json: { Args: { p_rule_set: string }; Returns: Json }
+      _bn_risk_rule_set_validation: {
+        Args: { p_rule_set: string }
+        Returns: Json
+      }
+      _bn_risk_score_evaluate: {
+        Args: {
+          p_bands: Json
+          p_factors: Json
+          p_rules: Json
+          p_scale_max: number
+          p_scale_min: number
+        }
+        Returns: Json
+      }
+      _bn_risk_score_factor_inputs: {
+        Args: { p_assessment: string }
+        Returns: Json
+      }
+      _bn_risk_score_fingerprint: {
+        Args: { p_assessment: string; p_rule_set: string }
+        Returns: string
       }
       _bn_risk_signal_can_transition: {
         Args: { p_from: string; p_to: string }
@@ -111260,6 +111767,53 @@ export type Database = {
           p_search?: string
           p_signal_id: string
         }
+        Returns: Json
+      }
+      bn_risk_review_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_score_detail_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
+        Returns: Json
+      }
+      bn_risk_scoring_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_assessment_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_reason_code: string
+        }
+        Returns: Json
+      }
+      bn_risk_scoring_config_command_v1: {
+        Args: {
+          p_actor_user_code: string
+          p_actor_user_id: string
+          p_command_name: string
+          p_correlation_id: string
+          p_expected_row_version: number
+          p_idempotency_key: string
+          p_justification: string
+          p_payload: Json
+          p_payload_hash: string
+          p_rule_set_id: string
+        }
+        Returns: Json
+      }
+      bn_risk_scoring_configuration_v1: {
+        Args: { p_actor_user_id: string; p_rule_set_id: string }
+        Returns: Json
+      }
+      bn_risk_scoring_readiness_v1: {
+        Args: { p_actor_user_id: string; p_assessment_id: string }
         Returns: Json
       }
       bn_risk_signal_assessment_links_v1: {
