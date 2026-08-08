@@ -10,7 +10,10 @@ Governed boundaries: `public.bn_uprating_policy_command_v1` (policy),
 | --- | --- | --- |
 | Epic 0 | Module foundation, policy catalogue, version governance | **COMPLETE — CERTIFIED** |
 | Epic 1 | Run creation, population snapshot, exceptions, simulation | **COMPLETE — CERTIFIED** |
-| Epic 2+ | Run approval, execution scheduling, execution, reconciliation, rollback | NOT_STARTED |
+| Epic 2 | Run approval and execution scheduling | NOT_STARTED |
+| Epic 3 | Batch execution and retry | NOT_STARTED |
+| Epic 4 | Reconciliation and rollback | NOT_STARTED |
+| Epic 5 | Run closure | NOT_STARTED |
 
 ## Canonical command status
 
