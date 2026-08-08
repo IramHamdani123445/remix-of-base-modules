@@ -487,7 +487,7 @@ describe('Epic 4 — operational action completeness', () => {
 describe('Epic 4 — post-execution operational queue', () => {
   it('is reachable from the Uprating module page', () => {
     expect(page).toContain('BnUpratingOperationalQueue');
-    expect(page).toContain('value="operations"');
+    expect(page).toContain('path="post-execution"');
   });
 
   it('uses backend-owned buckets', () => {

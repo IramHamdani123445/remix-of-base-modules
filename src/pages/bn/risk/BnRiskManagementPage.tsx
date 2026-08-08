@@ -8,7 +8,9 @@
  *   /bn/risk-management                      overview and operational queues
  *   /bn/risk-management/signals              signal intake and triage
  *   /bn/risk-management/assessments          assessment work
- *   /bn/risk-management/controls             control decisions, execution, outcomes
+ *   /bn/risk-management/control-decisions    controls awaiting decision
+ *   /bn/risk-management/control-execution    approved controls awaiting execution
+ *   /bn/risk-management/outcomes             outcomes, completion and closure
  *   /bn/risk-management/reporting            aggregate evidence
  *   /bn/risk-management/configuration        scoring configuration
  *   /bn/risk-management/assessments/:assessmentId/:section
@@ -26,7 +28,6 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ShieldAlert } from 'lucide-react';
 import { BnRiskSignalQueue } from '@/components/bn/risk/BnRiskSignalQueue';
 import { BnRiskSignalDetailPanel } from '@/components/bn/risk/BnRiskSignalDetailPanel';
@@ -39,10 +40,7 @@ import { BnRiskOutcomeQueue } from '@/components/bn/risk/BnRiskOutcomeQueue';
 import { BnRiskOperationsDashboard } from '@/components/bn/risk/BnRiskOperationsDashboard';
 import { BnRiskReportingPanel } from '@/components/bn/risk/BnRiskReportingPanel';
 import { BnRiskScoringConfigurationPanel } from '@/components/bn/risk/BnRiskScoringConfigurationPanel';
-import {
-  BnModuleBreadcrumbs,
-  useBnWorkspaceSection,
-} from '@/components/bn/ux';
+import { BnModuleBreadcrumbs } from '@/components/bn/ux';
 
 export const RISK_MODULE_BASE = '/bn/risk-management';
 
@@ -63,7 +61,9 @@ const RISK_SCREEN_LABELS: Record<string, string> = {
   '': 'Overview',
   signals: 'Signals',
   assessments: 'Assessments',
-  controls: 'Controls & outcomes',
+  'control-decisions': 'Control decisions',
+  'control-execution': 'Control execution',
+  outcomes: 'Outcomes & closure',
   reporting: 'Reporting',
   configuration: 'Configuration',
   approval: 'Approval',
@@ -175,16 +175,17 @@ const RiskOverviewRoute: React.FC = () => {
     <div className="space-y-6">
       <BnRiskOperationsDashboard
         onOpenQueue={(queue) => {
-          /** Legacy queue codes map onto the consolidated destinations. */
+          /** Legacy queue codes map onto the separated destinations. */
           const destination =
             queue === 'control-decisions'
-              ? 'controls?stage=decisions'
+              ? 'control-decisions'
               : queue === 'control-execution'
-                ? 'controls?stage=execution'
-                : 'controls?stage=outcomes';
+                ? 'control-execution'
+                : 'outcomes';
           navigate(`${RISK_MODULE_BASE}/${destination}`);
         }}
       />
+
     </div>
   );
 };
@@ -256,60 +257,73 @@ const RiskAssessmentRecordRoute: React.FC = () => {
 // -------------------------------------------------------- controls & outcomes
 
 /**
- * The former control-decision, control-execution and outcome tabs are one
- * destination: they are the same body of control work at different stages.
+ * Control decision, control execution and outcome work are three distinct
+ * management functions, so each is its own routed screen reachable directly
+ * from the left navigation.
  */
-const RiskControlsRoute: React.FC = () => {
+const RiskControlDecisionsRoute: React.FC = () => {
   const openAssessment = useOpenRiskAssessment();
-  const [stage, setStage] = useBnWorkspaceSection('decisions', 'stage');
-
   return (
-    <Tabs value={stage} onValueChange={(next) => setStage(next, { replace: true })}>
-      <TabsList>
-        <TabsTrigger value="decisions">Awaiting decision</TabsTrigger>
-        <TabsTrigger value="execution">Approved for execution</TabsTrigger>
-        <TabsTrigger value="outcomes">Outcomes &amp; closure</TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="decisions" className="space-y-6 pt-4">
-        <BnRiskControlApprovalQueue onOpenApproval={(id) => openAssessment(id, 'approval')} />
-        <Alert>
-          <AlertTitle>Approval authorises a control</AlertTitle>
-          <AlertDescription>
-            Approving a recommended control authorises it for later governed execution.
-            No payment, award, claim, overpayment or referral changes from this screen.
-          </AlertDescription>
-        </Alert>
-      </TabsContent>
-
-      <TabsContent value="execution" className="space-y-6 pt-4">
-        <BnRiskControlExecutionQueue onOpenExecution={(id) => openAssessment(id, 'execution')} />
-        <Alert>
-          <AlertTitle>The owning domain performs the action</AlertTitle>
-          <AlertDescription>
-            Risk requests an approved control through a governed handoff. Payments, Legal,
-            Investigation and the other owning domains decide whether and how it is applied,
-            and Risk records only the reference and status they return.
-          </AlertDescription>
-        </Alert>
-      </TabsContent>
-
-      <TabsContent value="outcomes" className="space-y-6 pt-4">
-        <BnRiskOutcomeQueue
-          onOpenAssessment={(id, section) => openAssessment(id, section)}
-        />
-        <Alert>
-          <AlertTitle>Outcome, completion and closure are governed</AlertTitle>
-          <AlertDescription>
-            An outcome records what the assessment concluded and why. Closure ends the
-            assessment; a closed assessment can only be reopened exceptionally, with a
-            recorded justification, and every reopening is audited.
-          </AlertDescription>
-        </Alert>
-      </TabsContent>
-    </Tabs>
+    <div className="space-y-6">
+      <BnRiskControlApprovalQueue onOpenApproval={(id) => openAssessment(id, 'approval')} />
+      <Alert>
+        <AlertTitle>Approval authorises a control</AlertTitle>
+        <AlertDescription>
+          Approving a recommended control authorises it for later governed execution.
+          No payment, award, claim, overpayment or referral changes from this screen.
+        </AlertDescription>
+      </Alert>
+    </div>
   );
 };
+
+const RiskControlExecutionRoute: React.FC = () => {
+  const openAssessment = useOpenRiskAssessment();
+  return (
+    <div className="space-y-6">
+      <BnRiskControlExecutionQueue onOpenExecution={(id) => openAssessment(id, 'execution')} />
+      <Alert>
+        <AlertTitle>The owning domain performs the action</AlertTitle>
+        <AlertDescription>
+          Risk requests an approved control through a governed handoff. Payments, Legal,
+          Investigation and the other owning domains decide whether and how it is applied,
+          and Risk records only the reference and status they return.
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+};
+
+const RiskOutcomesRoute: React.FC = () => {
+  const openAssessment = useOpenRiskAssessment();
+  return (
+    <div className="space-y-6">
+      <BnRiskOutcomeQueue onOpenAssessment={(id, section) => openAssessment(id, section)} />
+      <Alert>
+        <AlertTitle>Outcome, completion and closure are governed</AlertTitle>
+        <AlertDescription>
+          An outcome records what the assessment concluded and why. Closure ends the
+          assessment; a closed assessment can only be reopened exceptionally, with a
+          recorded justification, and every reopening is audited.
+        </AlertDescription>
+      </Alert>
+    </div>
+  );
+};
+
+/** Back-compatibility for the retired combined `controls` destination. */
+const RiskControlsRedirect: React.FC = () => {
+  const { search } = useLocation();
+  const stage = new URLSearchParams(search).get('stage');
+  const target =
+    stage === 'execution'
+      ? 'control-execution'
+      : stage === 'outcomes'
+        ? 'outcomes'
+        : 'control-decisions';
+  return <Navigate to={`${RISK_MODULE_BASE}/${target}`} replace />;
+};
+
 
 const RiskReportingRoute: React.FC = () => (
   <div className="space-y-6">
@@ -337,7 +351,10 @@ export default function BnRiskManagementPage() {
             <Route index element={<RiskOverviewRoute />} />
             <Route path="signals" element={<RiskSignalsRoute ctx={ctx} />} />
             <Route path="assessments" element={<RiskAssessmentsRoute />} />
-            <Route path="controls" element={<RiskControlsRoute />} />
+            <Route path="control-decisions" element={<RiskControlDecisionsRoute />} />
+            <Route path="control-execution" element={<RiskControlExecutionRoute />} />
+            <Route path="outcomes" element={<RiskOutcomesRoute />} />
+            <Route path="controls" element={<RiskControlsRedirect />} />
             <Route path="reporting" element={<RiskReportingRoute />} />
             <Route path="configuration" element={<BnRiskScoringConfigurationPanel />} />
             <Route path="*" element={<Navigate to={RISK_MODULE_BASE} replace />} />

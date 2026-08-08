@@ -9,7 +9,8 @@
  *   /bn/uprating/policies            policy catalogue
  *   /bn/uprating/runs                runs and simulation
  *   /bn/uprating/approvals           approvals and scheduling
- *   /bn/uprating/operations          execution and post-execution queues
+ *   /bn/uprating/execution           execution queue
+ *   /bn/uprating/post-execution      post-execution queue
  *   /bn/uprating/runs/:runId/:section    run workflow screen
  */
 import React from "react";
@@ -26,8 +27,7 @@ import { BnUpratingApprovalQueue } from "@/components/bn/uprating/BnUpratingAppr
 import { BnUpratingExecutionQueue } from "@/components/bn/uprating/BnUpratingExecutionQueue";
 import { BnUpratingOperationalQueue } from "@/components/bn/uprating/BnUpratingOperationalQueue";
 import { BnUpratingOverview } from "@/components/bn/uprating/BnUpratingOverview";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BnModuleBreadcrumbs, useBnWorkspaceSection } from "@/components/bn/ux";
+import { BnModuleBreadcrumbs } from "@/components/bn/ux";
 
 export const UPRATING_MODULE_BASE = "/bn/uprating";
 
@@ -44,7 +44,8 @@ const UPRATING_SCREEN_LABELS: Record<string, string> = {
   policies: "Policy catalogue",
   runs: "Runs & simulation",
   approvals: "Approvals & scheduling",
-  operations: "Operational queues",
+  execution: "Execution queue",
+  "post-execution": "Post-execution queue",
 };
 
 const UpratingBreadcrumbs: React.FC = () => {
@@ -110,26 +111,29 @@ const UpratingModuleShell: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) 
   </div>
 );
 
-/** Execution and post-execution work is one destination, not two tabs. */
-const UpratingOperationsRoute: React.FC = () => {
+/** Execution and post-execution work are two separate management screens. */
+const UpratingExecutionRoute: React.FC = () => {
   const openRun = useOpenRun();
-  const [stage, setStage] = useBnWorkspaceSection("execution", "stage");
+  return <BnUpratingExecutionQueue onOpenRun={(runId) => openRun(runId, "execution")} />;
+};
 
+const UpratingPostExecutionRoute: React.FC = () => {
+  const openRun = useOpenRun();
+  return <BnUpratingOperationalQueue onOpenRun={(runId, section) => openRun(runId, section)} />;
+};
+
+/** Back-compatibility for the retired combined `operations` destination. */
+const UpratingOperationsRedirect: React.FC = () => {
+  const { search } = useLocation();
+  const stage = new URLSearchParams(search).get("stage");
   return (
-    <Tabs value={stage} onValueChange={(next) => setStage(next, { replace: true })}>
-      <TabsList>
-        <TabsTrigger value="execution">Execution queue</TabsTrigger>
-        <TabsTrigger value="operations">Post-execution queue</TabsTrigger>
-      </TabsList>
-      <TabsContent value="execution" className="pt-4">
-        <BnUpratingExecutionQueue onOpenRun={(runId) => openRun(runId, "execution")} />
-      </TabsContent>
-      <TabsContent value="operations" className="pt-4">
-        <BnUpratingOperationalQueue onOpenRun={(runId, section) => openRun(runId, section)} />
-      </TabsContent>
-    </Tabs>
+    <Navigate
+      to={`${UPRATING_MODULE_BASE}/${stage === "operations" ? "post-execution" : "execution"}`}
+      replace
+    />
   );
 };
+
 
 const UpratingRunsRoute: React.FC<{ ctx: BnModuleAccessContext }> = ({ ctx }) => {
   const navigate = useNavigate();
@@ -189,7 +193,9 @@ export default function BnUpratingPage() {
 
             <Route path="runs" element={<UpratingRunsRoute ctx={ctx} />} />
             <Route path="approvals" element={<BnUpratingApprovalQueue />} />
-            <Route path="operations" element={<UpratingOperationsRoute />} />
+            <Route path="execution" element={<UpratingExecutionRoute />} />
+            <Route path="post-execution" element={<UpratingPostExecutionRoute />} />
+            <Route path="operations" element={<UpratingOperationsRedirect />} />
             <Route path="*" element={<Navigate to={UPRATING_MODULE_BASE} replace />} />
           </Route>
         </Routes>

@@ -664,7 +664,7 @@ describe('Epic 5 — navigation closure', () => {
   it('wires the outcome queue and sections into the Risk management surface', () => {
     const page = readSrc('pages/bn/risk/BnRiskManagementPage.tsx');
     expect(page).toContain('BnRiskOutcomeQueue');
-    expect(page).toContain('value="outcomes"');
+    expect(page).toContain('path="outcomes"');
 
     const workspace = readSrc('components/bn/risk/BnRiskAssessmentWorkspace.tsx');
     expect(workspace).toContain('BnRiskOutcomeSection');
