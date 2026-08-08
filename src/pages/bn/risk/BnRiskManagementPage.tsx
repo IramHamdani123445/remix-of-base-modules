@@ -326,6 +326,7 @@ export default function BnRiskManagementPage() {
       {(ctx: BnModuleAccessContext) => (
         <Routes>
           <Route path="assessments/:assessmentId" element={<RiskAssessmentRecordRoute />} />
+          <Route path="assessments/:assessmentId/:section" element={<RiskAssessmentRecordRoute />} />
 
           <Route element={<RiskModuleShell ctx={ctx} />}>
             <Route index element={<RiskOverviewRoute />} />
