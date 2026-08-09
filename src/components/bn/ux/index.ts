@@ -15,7 +15,7 @@ export { BnWorkflowRail } from './BnWorkflowRail';
 export type { BnWorkflowStage, BnWorkflowStageState } from './BnWorkflowRail';
 export { BnNextActionCard, BN_ACTION_UNCONFIRMED_MESSAGE } from './BnNextActionCard';
 export type { BnNextAction } from './BnNextActionCard';
-export { BnRecordWorkspaceHeader } from './BnRecordWorkspaceHeader';
+export { BnRecordWorkspaceHeader, BnRecordBackLink } from './BnRecordWorkspaceHeader';
 export type { BnRecordFact } from './BnRecordWorkspaceHeader';
 export { BnActivityDrawer } from './BnActivityDrawer';
 export { BnQueueSummaryCards } from './BnQueueSummaryCards';

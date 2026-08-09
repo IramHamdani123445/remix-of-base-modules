@@ -23,7 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { BnNextActionCard, BnRecordWorkspaceHeader } from '@/components/bn/ux';
+import { BnNextActionCard, BnRecordBackLink, BnRecordWorkspaceHeader } from '@/components/bn/ux';
 import { formatAuditDate } from '@/lib/dateFormat';
 import { riskAssessmentService } from '@/services/bn/risk/riskAssessmentService';
 import type { BnRiskAssessmentActionCode } from '@/types/bn/risk/riskAssessment';
@@ -190,7 +190,7 @@ export const BnRiskAssessmentWorkspace: React.FC<Props> = ({
         <AlertDescription>
           Nothing has been changed. Please retry, or return to the assessment list.
           <div className="mt-3">
-            <Button size="sm" variant="outline" onClick={onBack}>Back to assessments</Button>
+            <BnRecordBackLink label="Assessments" onBack={onBack} />
           </div>
         </AlertDescription>
       </Alert>

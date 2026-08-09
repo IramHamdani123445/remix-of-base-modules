@@ -33,6 +33,7 @@ import {
   BnModuleTrail,
   BnNextActionCard,
   BnRecordWorkspaceHeader,
+  BnRecordBackLink,
 } from '@/components/bn/ux';
 import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
 import {
@@ -346,9 +347,7 @@ const OverpaymentRecovery: React.FC = () => {
   if (openCaseId && !selected) {
     return (
       <div className="space-y-4 p-4 sm:p-6" data-testid="bn-overpayment-case-workspace-loading">
-        <Button variant="ghost" size="sm" onClick={() => setOpenCaseId(null)}>
-          Back to overpayment worklist
-        </Button>
+        <BnRecordBackLink label="Overpayment worklist" onBack={() => setOpenCaseId(null)} />
         <BnDataState
           state={!caseLoading && caseError ? 'error' : 'loading'}
           errorTitle="This overpayment case could not be opened"
@@ -401,11 +400,8 @@ const OverpaymentRecovery: React.FC = () => {
             },
             { label: 'Recovered', value: money(selected.recovered_amount, selected.currency) },
           ]}
-          actions={
-            <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-              <RefreshCw className="h-4 w-4 mr-2" />Refresh
-            </Button>
-          }
+          onRefresh={() => void load()}
+          refreshing={loading}
         />
 
         {commandError && (

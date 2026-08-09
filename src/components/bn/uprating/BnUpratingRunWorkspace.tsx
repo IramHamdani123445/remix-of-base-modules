@@ -75,7 +75,7 @@ import {
 } from '@/services/bn/uprating/upratingRunService';
 import { fetchUpratingPolicyList } from '@/services/bn/uprating/upratingPolicyService';
 import { newUpratingUuid } from '@/services/bn/uprating/upratingPolicyService';
-import { BnNextActionCard, BnRecordWorkspaceHeader, BnWorkflowSideNav } from '@/components/bn/ux';
+import { BnNextActionCard, BnRecordBackLink, BnRecordWorkspaceHeader, BnWorkflowSideNav } from '@/components/bn/ux';
 
 /**
  * Navigational mapping from a governed run command to the workspace section
@@ -637,13 +637,20 @@ export const BnUpratingRunWorkspace: React.FC<BnUpratingRunWorkspaceProps> = ({
 
   return (
     <div className="space-y-4">
-      {detailQuery.isLoading && <p className="text-sm text-muted-foreground">Loading run…</p>}
+      {detailQuery.isLoading && (
+        <div className="space-y-2">
+          <BnRecordBackLink label="Back to runs" onBack={() => selectRun(null)} />
+          <p className="text-sm text-muted-foreground">Loading run…</p>
+        </div>
+      )}
 
       {run && (
         <>
           <BnRecordWorkspaceHeader
             backLabel="Back to runs"
             onBack={() => selectRun(null)}
+            onRefresh={() => { void detailQuery.refetch(); }}
+            refreshing={detailQuery.isFetching}
             reference={run.run_reference}
             context={`${run.policy_code} · ${run.version_reference} · effective ${run.target_effective_date}`}
             status={run.status_label ?? run.status}

@@ -8,7 +8,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface BnRecordFact {
@@ -16,6 +16,29 @@ export interface BnRecordFact {
   readonly value: React.ReactNode;
   readonly emphasis?: boolean;
 }
+
+interface BackLinkProps {
+  readonly label: string;
+  readonly onBack: () => void;
+  readonly className?: string;
+}
+
+/**
+ * The single back control for record workspaces — used by the header and by
+ * the loading / error states that render before the header can appear, so a
+ * record screen never shows two differently styled ways back to its queue.
+ */
+export const BnRecordBackLink: React.FC<BackLinkProps> = ({ label, onBack, className }) => (
+  <Button
+    variant="ghost"
+    size="sm"
+    onClick={onBack}
+    className={className}
+    data-testid="bn-record-back"
+  >
+    <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" /> {label}
+  </Button>
+);
 
 interface Props {
   readonly backLabel: string;
@@ -31,6 +54,9 @@ interface Props {
   readonly facts?: readonly BnRecordFact[];
   readonly actions?: React.ReactNode;
   readonly badges?: React.ReactNode;
+  /** Standard refresh control; owned by the header so queues and records match. */
+  readonly onRefresh?: () => void;
+  readonly refreshing?: boolean;
   readonly className?: string;
 }
 
@@ -45,12 +71,13 @@ export const BnRecordWorkspaceHeader: React.FC<Props> = ({
   facts = [],
   actions,
   badges,
+  onRefresh,
+  refreshing = false,
   className,
 }) => (
   <header className={cn('space-y-3', className)} data-testid="bn-record-workspace-header">
-    <Button variant="ghost" size="sm" onClick={onBack} data-testid="bn-record-back">
-      <ArrowLeft className="mr-2 h-4 w-4" aria-hidden="true" /> {backLabel}
-    </Button>
+    <BnRecordBackLink label={backLabel} onBack={onBack} />
+
 
     <div className="flex flex-wrap items-start justify-between gap-3 rounded-lg border bg-card p-4">
       <div className="min-w-0 space-y-1">
@@ -79,7 +106,20 @@ export const BnRecordWorkspaceHeader: React.FC<Props> = ({
             <p className={cn('font-medium', fact.emphasis && 'text-lg')}>{fact.value}</p>
           </div>
         ))}
+        {onRefresh && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            disabled={refreshing}
+            data-testid="bn-record-refresh"
+          >
+            <RefreshCw className={cn('mr-2 h-4 w-4', refreshing && 'animate-spin')} aria-hidden="true" />
+            Refresh
+          </Button>
+        )}
         {actions}
+
       </div>
     </div>
   </header>
