@@ -106,7 +106,20 @@ export const BnRecordWorkspaceHeader: React.FC<Props> = ({
             <p className={cn('font-medium', fact.emphasis && 'text-lg')}>{fact.value}</p>
           </div>
         ))}
+        {onRefresh && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            disabled={refreshing}
+            data-testid="bn-record-refresh"
+          >
+            <RefreshCw className={cn('mr-2 h-4 w-4', refreshing && 'animate-spin')} aria-hidden="true" />
+            Refresh
+          </Button>
+        )}
         {actions}
+
       </div>
     </div>
   </header>
