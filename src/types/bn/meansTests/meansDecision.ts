@@ -557,15 +557,19 @@ export function buildDecisionTimeline(
   });
 
   context.decisions.forEach((d) => {
+    // The boundary records the decision in past tense (`APPROVED` / `REJECTED`);
+    // the command payload uses the imperative form. Accept both.
+    const approved = String(d.decision ?? '').toUpperCase().startsWith('APPROVE');
     events.push({
       id: `decision-${d.approval_id}`,
-      event: d.decision === 'APPROVE' ? 'Assessment approved' : 'Assessment rejected',
+      event: approved ? 'Assessment approved' : 'Assessment rejected',
       actor: d.decided_by_label,
       at: d.decided_at,
       reason: d.decision_reason,
-      result: d.decision === 'APPROVE' ? 'Approved — not yet active' : 'Means-Test assessment rejected',
+      result: approved ? 'Approved — not yet active' : 'Means-Test assessment rejected',
     });
   });
+
 
   return events.sort((a, b) => String(b.at ?? '').localeCompare(String(a.at ?? '')));
 }
