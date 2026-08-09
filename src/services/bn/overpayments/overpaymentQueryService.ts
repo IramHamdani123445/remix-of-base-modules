@@ -107,42 +107,81 @@ export const overpaymentQueryService = {
     toDetail(await q<unknown>('bn_overpayment_case_detail_v1', { p_case_id: caseId })),
 
 
-  timeline: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_timeline_v1', { p_case_id: caseId }),
+  timeline: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_timeline_v1', { p_case_id: caseId })),
 
-  balance: (caseId: string) =>
-    q<Record<string, unknown>>('bn_overpayment_balance_v1', { p_case_id: caseId }),
+  balance: async (caseId: string) =>
+    ((await q<unknown>('bn_overpayment_balance_v1', { p_case_id: caseId })) ?? {}) as Json,
 
-  transactions: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_transactions_v1', { p_case_id: caseId }),
+  transactions: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_transactions_v1', { p_case_id: caseId })),
 
-  liabilityVersions: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_liability_versions_v1', { p_case_id: caseId }),
+  liabilityVersions: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_liability_versions_v1', { p_case_id: caseId })),
 
-  recoveryPlans: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_recovery_plans_v1', { p_case_id: caseId }),
+  recoveryPlans: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_recovery_plans_v1', { p_case_id: caseId })),
 
-  waiverRequests: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_waiver_requests_v1', { p_case_id: caseId }),
+  waiverRequests: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_waiver_requests_v1', { p_case_id: caseId })),
 
-  writeoffRequests: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_writeoff_requests_v1', { p_case_id: caseId }),
+  writeoffRequests: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_writeoff_requests_v1', { p_case_id: caseId })),
 
-  referrals: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_referrals_v1', { p_case_id: caseId }),
+  referrals: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_referrals_v1', { p_case_id: caseId })),
 
-  reconciliations: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_reconciliations_v1', { p_case_id: caseId }),
+  reconciliations: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_reconciliations_v1', { p_case_id: caseId })),
 
-  appealHolds: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_appeal_holds_v1', { p_case_id: caseId }),
+  appealHolds: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_appeal_holds_v1', { p_case_id: caseId })),
 
-  auditHistory: (caseId: string) =>
-    q<Record<string, unknown>[]>('bn_overpayment_audit_history_v1', { p_case_id: caseId }),
+  auditHistory: async (caseId: string) =>
+    rowsOf(await q<unknown>('bn_overpayment_audit_history_v1', { p_case_id: caseId })),
 
-  availableActions: (caseId: string) =>
-    q<BnOverpaymentAvailableAction[]>('bn_overpayment_available_actions_v1', { p_case_id: caseId }),
+  availableActions: async (caseId: string) => {
+    const payload = (await q<unknown>('bn_overpayment_available_actions_v1', { p_case_id: caseId })) as Json;
+    if (Array.isArray(payload)) return payload as unknown as BnOverpaymentAvailableAction[];
+    const granted = Array.isArray(payload?.granted_actions) ? (payload.granted_actions as string[]) : [];
+    const enabled = payload?.actions_enabled === true;
+    return granted.map((action) => ({
+      action,
+      command: OVERPAYMENT_ACTION_COMMANDS[action] ?? '',
+      allowed: enabled,
+      reason_code: enabled ? null : 'E_ACTIONS_DISABLED',
+    })) as BnOverpaymentAvailableAction[];
+  },
 } as const;
+
+/** Granted action code → canonical command name, for display and audit. */
+export const OVERPAYMENT_ACTION_COMMANDS: Record<string, string> = {
+  create_candidate: 'BN_OVP_CREATE_CANDIDATE',
+  calculate_liability: 'BN_OVP_CALCULATE_LIABILITY',
+  confirm_liability: 'BN_OVP_CONFIRM_LIABILITY',
+  issue_notice: 'BN_OVP_ISSUE_NOTICE',
+  record_representation: 'BN_OVP_RECORD_REPRESENTATION',
+  propose_recovery_plan: 'BN_OVP_PROPOSE_RECOVERY_PLAN',
+  approve_recovery_plan: 'BN_OVP_APPROVE_RECOVERY_PLAN',
+  activate_deduction: 'BN_OVP_ACTIVATE_DEDUCTION',
+  record_receipt: 'BN_OVP_RECORD_RECEIPT',
+  allocate_receipt: 'BN_OVP_ALLOCATE_RECEIPT',
+  request_waiver: 'BN_OVP_REQUEST_WAIVER',
+  approve_waiver: 'BN_OVP_APPROVE_WAIVER',
+  request_writeoff: 'BN_OVP_REQUEST_WRITEOFF',
+  approve_writeoff: 'BN_OVP_APPROVE_WRITEOFF',
+  place_appeal_hold: 'BN_OVP_PLACE_APPEAL_HOLD',
+  release_appeal_hold: 'BN_OVP_RELEASE_APPEAL_HOLD',
+  suspend_recovery: 'BN_OVP_SUSPEND_RECOVERY',
+  resume_recovery: 'BN_OVP_RESUME_RECOVERY',
+  refer_legal: 'BN_OVP_REFER_LEGAL',
+  refer_estate: 'BN_OVP_REFER_ESTATE',
+  reverse_transaction: 'BN_OVP_REVERSE_TRANSACTION',
+  reconcile: 'BN_OVP_RECONCILE',
+  close: 'BN_OVP_CLOSE_CASE',
+  reopen: 'BN_OVP_REOPEN_CASE',
+};
+
 
 /** Canonical query RPC list — asserted by the query-boundary parity test. */
 export const BN_OVERPAYMENT_QUERY_RPCS = [
