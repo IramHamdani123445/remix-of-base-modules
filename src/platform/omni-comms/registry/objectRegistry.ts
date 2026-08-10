@@ -354,6 +354,17 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Channels C7 — Controlled business Email dispatch',
 
   },
+  {
+    name: 'omni_comms_module_sender_profile',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Authorised sender-profile assignments for an Omni-Comms caller/business module: which sender addresses a module may use on a channel, which one is its default, and whether event-level override or organisation fallback is permitted. Configuration governance only — never consulted at send time.',
+    status: 'AVAILABLE',
+    introductionStory: 'Module Sender Profiles — module → sender assignment layer',
+  },
+
 ] as const;
 
 
