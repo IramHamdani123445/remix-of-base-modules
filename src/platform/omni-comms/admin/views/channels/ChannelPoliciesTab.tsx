@@ -44,6 +44,7 @@ import {
   isPolicyChannel,
   isReferencePolicy,
   policyScopeLabel,
+  resolveEffectivePolicy,
   validateCommonPolicy,
   type ChannelPolicyRow,
   type ChannelPolicySummary,
