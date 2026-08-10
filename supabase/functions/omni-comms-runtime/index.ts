@@ -43,6 +43,8 @@ import {
   type SendCommunicationResult,
 } from "./responseContract.ts";
 import { runProviderDomainStatus, runProviderVerification } from "./providerVerification.ts";
+import { runSendingDomainVerification } from "./domainDnsVerification.ts";
+
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
 
 
@@ -337,6 +339,31 @@ Deno.serve(async (req: Request) => {
     );
     return json(result.body, result.status);
   }
+
+  // 1e. Trusted sending-domain verification with server-observed DNS evidence.
+  // Used when the runtime credential is deliberately sending-only and cannot
+  // read the provider's domain API: the operator verifies the domain in the
+  // provider console, and the server independently proves the published DNS.
+  // Resolves DNS only. Contacts no provider API and sends no email.
+  if (new URL(req.url).pathname.endsWith("/verify-sending-domain")) {
+    let nBody: Record<string, unknown>;
+    try { nBody = await req.json(); } catch { nBody = {}; }
+    const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const result = await runSendingDomainVerification(
+      {
+        actorId: userId,
+        organizationId: String(nBody.organizationId ?? ""),
+        domainVerificationId: String(nBody.domainVerificationId ?? ""),
+      },
+      {
+        admin: svc as unknown as {
+          rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+        },
+      },
+    );
+    return json(result.body, result.status);
+  }
+
 
 
 

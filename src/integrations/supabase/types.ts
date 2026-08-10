@@ -94793,6 +94793,96 @@ export type Database = {
           },
         ]
       }
+      omni_comms_domain_verification: {
+        Row: {
+          channel_endpoint_id: string
+          claimed_status: string | null
+          created_at: string
+          created_by: string | null
+          data_origin: string
+          detail: string | null
+          dns_checked_at: string | null
+          dns_evidence: Json
+          domain_name: string
+          expected_dns: Json
+          id: string
+          notes: string | null
+          organization_id: string
+          provider_account_id: string | null
+          provider_reference: string | null
+          result_code: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          verification_source: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          channel_endpoint_id: string
+          claimed_status?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          detail?: string | null
+          dns_checked_at?: string | null
+          dns_evidence?: Json
+          domain_name: string
+          expected_dns?: Json
+          id?: string
+          notes?: string | null
+          organization_id: string
+          provider_account_id?: string | null
+          provider_reference?: string | null
+          result_code?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          verification_source?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          channel_endpoint_id?: string
+          claimed_status?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          detail?: string | null
+          dns_checked_at?: string | null
+          dns_evidence?: Json
+          domain_name?: string
+          expected_dns?: Json
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          provider_account_id?: string | null
+          provider_reference?: string | null
+          result_code?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          verification_source?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_domain_verification_channel_endpoint_id_fkey"
+            columns: ["channel_endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_endpoint"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_domain_verification_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_event_contract: {
         Row: {
           checksum: string | null
@@ -120602,6 +120692,24 @@ export type Database = {
         Returns: Json
       }
       omni_comms_dispatch_tick_authorize: { Args: never; Returns: Json }
+      omni_comms_domain_verification_summary: {
+        Args: { p_channel_endpoint_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_domain_verification_upsert: {
+        Args: {
+          p_channel_endpoint_id: string
+          p_claimed_status?: string
+          p_domain_name: string
+          p_expected_dns?: Json
+          p_notes?: string
+          p_organization_id: string
+          p_provider_account_id?: string
+          p_provider_reference?: string
+          p_verification_source?: string
+        }
+        Returns: string
+      }
       omni_comms_email_config_summary: {
         Args: { p_organization_id: string }
         Returns: Json
@@ -121447,6 +121555,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_domain_verification_context: {
+        Args: {
+          p_actor_id: string
+          p_domain_verification_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_dry_run_gate_state: { Args: never; Returns: string }
       omni_comms_priv_email_provider_id: { Args: never; Returns: string }
       omni_comms_priv_endpoint_requires_account: {
@@ -121640,6 +121756,18 @@ export type Database = {
           p_verification_status: string
         }
         Returns: string
+      }
+      omni_comms_priv_record_domain_verification: {
+        Args: {
+          p_actor_id: string
+          p_all_matched: boolean
+          p_detail: string
+          p_dns_evidence: Json
+          p_domain_verification_id: string
+          p_organization_id: string
+          p_result_code: string
+        }
+        Returns: Json
       }
       omni_comms_priv_record_provider_verification: {
         Args: {
