@@ -102,7 +102,7 @@ describe('readProviderErrorCode', () => {
 describe('probes end-to-end', () => {
   it('restricted key returns no domains and is not a failed credential', async () => {
     const out = await probeResendDomains('re_k', fetchOf(401, { name: 'restricted_api_key' }));
-    expect(out).toEqual({ resultCode: 'restricted_api_key', domains: [] });
+    expect(out).toMatchObject({ resultCode: 'restricted_api_key', domains: [], providerErrorCode: 'restricted_api_key' });
   });
 
   it('network failure maps to provider_unavailable', async () => {
