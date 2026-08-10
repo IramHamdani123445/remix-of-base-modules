@@ -29,7 +29,34 @@ const CORS = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const SIGNING_SECRET = Deno.env.get("OMNI_COMMS_RESEND_WEBHOOK_SECRET") ?? "";
+const LEGACY_SIGNING_SECRET =
+  Deno.env.get("OMNI_COMMS_RESEND_WEBHOOK_SECRET") ?? "";
+
+/**
+ * Resolves the Resend webhook signing secret.
+ *
+ * A secret saved from the Omni-Comms Admin UI lives in the encrypted vault
+ * and is read through a service-role-only RPC. The deployment-managed Edge
+ * Function Secret remains supported as a fallback so an existing
+ * configuration keeps verifying callbacks unchanged. The value is used only
+ * for signature verification: it is never logged, persisted or returned.
+ */
+async function resolveSigningSecret(
+  client: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+): Promise<string> {
+  try {
+    const { data, error } = await client.rpc(
+      "omni_comms_priv_resolve_webhook_signing_secret",
+      { p_adapter_key: "resend" },
+    );
+    if (!error && typeof data === "string" && data.trim() !== "") {
+      return data.trim();
+    }
+  } catch {
+    // fall through to the deployment-managed secret
+  }
+  return LEGACY_SIGNING_SECRET;
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -42,7 +69,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!SUPABASE_URL || !SERVICE_ROLE) return json({ error: "configuration_error" }, 503);
-  if (!SIGNING_SECRET) return json({ error: "webhook_secret_missing" }, 503);
+  const signingClient = createClient(SUPABASE_URL, SERVICE_ROLE);
+  const signingSecret = await resolveSigningSecret(signingClient);
+  if (!signingSecret) return json({ error: "webhook_secret_missing" }, 503);
 
   const svixId = req.headers.get("svix-id") ?? "";
   const svixTs = req.headers.get("svix-timestamp") ?? "";
@@ -50,7 +79,7 @@ Deno.serve(async (req) => {
   const rawBody = await req.text();
 
   const verified = await verifySvixSignature(
-    SIGNING_SECRET,
+    signingSecret,
     svixId,
     svixTs,
     svixSig,
