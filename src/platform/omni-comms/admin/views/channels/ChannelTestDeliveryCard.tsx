@@ -47,6 +47,30 @@ import type {
   TestCentreChannel,
 } from '@/platform/omni-comms/application/channelTestCentreTypes';
 import { Detail, Field, toastError } from './channelFormPrimitives';
+import { OmniCommsRpcError } from '@/platform/omni-comms/application/omniCommsRpcErrors';
+
+/** Operator-facing wording for the controlled test-delivery refusals. */
+export const TEST_DELIVERY_MESSAGES: Record<string, string> = {
+  preflight_stale:
+    'The configuration preflight is no longer current. Run a new configuration '
+    + 'preflight for this sender, then send the technical test message again.',
+  preflight_not_passed:
+    'The configuration preflight has not passed. Resolve the preflight blockers first.',
+  content_mismatch:
+    'The subject and body must match exactly the content that passed the preflight.',
+  approval_missing:
+    'Provider test delivery is not approved. Approve it above before sending.',
+  approval_expired:
+    'The test delivery approval has expired. Save a new approval window above.',
+  recipient_not_approved:
+    'This recipient is not on the approved technical test address list.',
+  max_deliveries_reached:
+    'The approved delivery volume for this window has been used. Save a new approval window.',
+  min_interval_not_elapsed:
+    'The minimum spacing between test deliveries has not elapsed yet. Try again shortly.',
+};
+
+
 
 export const DELIVERY_SAFETY_BULLETS: readonly string[] = [
   'One real technical email is sent to an approved test address only.',
@@ -308,8 +332,15 @@ export const ChannelTestDeliveryCard: React.FC<{
       await refresh();
       onChanged?.();
     } catch (e) {
-      toastError(e, 'Test delivery could not be completed');
+      const detail = e instanceof OmniCommsRpcError ? e.detail ?? '' : '';
+      const friendly = TEST_DELIVERY_MESSAGES[detail];
+      if (friendly) {
+        toast.error(friendly);
+      } else {
+        toastError(e, 'Test delivery could not be completed');
+      }
       await refresh();
+
     } finally {
       setSending(false);
     }
