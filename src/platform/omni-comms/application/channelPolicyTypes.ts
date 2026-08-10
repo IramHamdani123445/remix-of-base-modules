@@ -320,6 +320,41 @@ export function operationalStateAllowsTesting(
   return state === 'test_only' || state === 'pilot_ready';
 }
 
+export interface EffectivePolicyResolution {
+  readonly source: EffectivePolicySource;
+  readonly policy: ChannelPolicyRow | null;
+  readonly operational_state: OperationalState | null;
+  readonly allows_testing: boolean;
+  /** True when an enabled department override shadows the organisation baseline. */
+  readonly overrides_baseline: boolean;
+}
+
+/**
+ * Canonical client-side mirror of the server policy resolution used by the
+ * configuration preflight: an enabled department override wins, otherwise the
+ * organisation baseline is effective.
+ */
+export function resolveEffectivePolicy(
+  organizationPolicy: ChannelPolicyRow | null | undefined,
+  departmentPolicy: ChannelPolicyRow | null | undefined,
+): EffectivePolicyResolution {
+  const overrideActive = Boolean(
+    departmentPolicy && departmentPolicy.department_override_enabled,
+  );
+  const policy = overrideActive
+    ? (departmentPolicy as ChannelPolicyRow)
+    : (organizationPolicy ?? null);
+  return {
+    source: policy
+      ? (overrideActive ? 'department_override' : 'organisation_baseline')
+      : 'none',
+    policy,
+    operational_state: policy?.operational_state ?? null,
+    allows_testing: operationalStateAllowsTesting(policy?.operational_state),
+    overrides_baseline: overrideActive && Boolean(organizationPolicy),
+  };
+}
+
 export interface CommonPolicyValidationIssue {
   readonly field: string;
   readonly message: string;
