@@ -95484,34 +95484,49 @@ export type Database = {
       }
       omni_comms_provider_account_secret_ref: {
         Row: {
+          access_classification: string | null
           created_at: string
           created_by: string | null
           id: string
+          last_rotated_at: string | null
           provider_account_id: string
           purpose: string
+          rotated_by: string | null
           secret_ref: string
+          storage_mode: string
           updated_at: string
           updated_by: string | null
+          vault_secret_id: string | null
         }
         Insert: {
+          access_classification?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          last_rotated_at?: string | null
           provider_account_id: string
           purpose: string
+          rotated_by?: string | null
           secret_ref: string
+          storage_mode?: string
           updated_at?: string
           updated_by?: string | null
+          vault_secret_id?: string | null
         }
         Update: {
+          access_classification?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
+          last_rotated_at?: string | null
           provider_account_id?: string
           purpose?: string
+          rotated_by?: string | null
           secret_ref?: string
+          storage_mode?: string
           updated_at?: string
           updated_by?: string | null
+          vault_secret_id?: string | null
         }
         Relationships: [
           {
@@ -96181,6 +96196,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      omni_comms_test_recipient: {
+        Row: {
+          address: string
+          channel: string
+          created_at: string
+          created_by: string | null
+          data_origin: string
+          id: string
+          is_active: boolean
+          label: string
+          notes: string | null
+          organization_id: string
+          purpose: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address: string
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          notes?: string | null
+          organization_id: string
+          purpose?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          notes?: string | null
+          organization_id?: string
+          purpose?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       omni_comms_webhook_event: {
         Row: {
@@ -121651,6 +121714,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      omni_comms_priv_resolve_managed_secret: {
+        Args: { p_secret_ref: string }
+        Returns: string
+      }
       omni_comms_priv_runtime_certification: { Args: never; Returns: Json }
       omni_comms_priv_runtime_environment: { Args: never; Returns: string }
       omni_comms_priv_runtime_health_posture: {
@@ -121691,6 +121758,18 @@ export type Database = {
         Returns: Json
       }
       omni_comms_priv_slice1_verify: { Args: never; Returns: string }
+      omni_comms_priv_store_managed_secret: {
+        Args: {
+          p_access_classification?: string
+          p_actor_id: string
+          p_correlation_id?: string
+          p_organization_id: string
+          p_provider_account_id: string
+          p_purpose: string
+          p_secret_value: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_sync_legacy_secret_ref: {
         Args: { p_account_id: string }
         Returns: undefined
@@ -121826,6 +121905,10 @@ export type Database = {
           p_secret_ref: string
         }
         Returns: string
+      }
+      omni_comms_provider_secret_configuration: {
+        Args: { p_organization_id: string }
+        Returns: Json
       }
       omni_comms_reference_seed_apply: {
         Args: {
@@ -122013,6 +122096,33 @@ export type Database = {
           p_id: string
         }
         Returns: Json
+      }
+      omni_comms_test_recipient_set_active: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_is_active: boolean
+        }
+        Returns: string
+      }
+      omni_comms_test_recipient_summary: {
+        Args: { p_channel?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_test_recipient_upsert: {
+        Args: {
+          p_address: string
+          p_channel: string
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_label: string
+          p_notes?: string
+          p_organization_id: string
+          p_purpose: string
+        }
+        Returns: string
       }
       omni_comms_upsert_producer_event_binding_draft: {
         Args: {
