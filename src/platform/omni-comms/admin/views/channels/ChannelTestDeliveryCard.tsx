@@ -308,8 +308,15 @@ export const ChannelTestDeliveryCard: React.FC<{
       await refresh();
       onChanged?.();
     } catch (e) {
-      toastError(e, 'Test delivery could not be completed');
+      const detail = e instanceof OmniCommsRpcError ? e.detail ?? '' : '';
+      const friendly = TEST_DELIVERY_MESSAGES[detail];
+      if (friendly) {
+        toast.error(friendly);
+      } else {
+        toastError(e, 'Test delivery could not be completed');
+      }
       await refresh();
+
     } finally {
       setSending(false);
     }
