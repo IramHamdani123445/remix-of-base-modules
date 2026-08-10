@@ -45,7 +45,7 @@ function walk(dir: string): string[] {
 
 describe('Epic 1 — Story 5 final verification', () => {
   it('registers exactly 34 active logical objects with approved statuses', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(34);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(35);
     for (const o of OMNI_COMMS_OBJECT_REGISTRY) {
       expect(['PLANNED', 'AVAILABLE']).toContain(o.status);
     }
