@@ -105,6 +105,17 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     status: 'AVAILABLE',
     introductionStory: 'Provider Administration — controlled test recipients',
   },
+  {
+    name: 'omni_comms_domain_verification',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'How a sending domain was verified with the external provider, together with the DNS evidence the trusted server observed. An operator claim alone never marks a domain verified.',
+    status: 'AVAILABLE',
+    introductionStory: 'Provider Administration — external domain verification',
+  },
+
 
 
 
