@@ -43,9 +43,12 @@ import {
   DOMAIN_VERIFICATION_SOURCE_LABELS,
   DOMAIN_VERIFICATION_STATUS_LABELS,
   domainReadinessBlocker,
+  EXACT_FACTS_REQUIRED_HELP,
+  expectationsAreExact,
   getDomainVerificationSummary,
   PROVIDER_CONSOLE_STATUS_LABELS,
   PROVIDER_CONSOLE_STATUSES,
+  RESEND_DEFAULT_DKIM_SELECTOR,
   resendExpectedDnsRecords,
   upsertDomainVerification,
   verifySendingDomain,
@@ -53,6 +56,7 @@ import {
   type DomainVerificationSummary,
   type ExpectedDnsRecord,
   type ProviderConsoleStatus,
+  type ProviderDomainStatus,
 } from '@/platform/omni-comms/application/domainVerificationService';
 import { toastError } from './channelFormPrimitives';
 
@@ -65,6 +69,12 @@ export const EXTERNAL_VERIFICATION_REQUIRED_HELP =
 export const ATTESTATION_NEVER_VERIFIED_HELP =
   'An administrator statement is recorded for audit only. It never marks a '
   + 'domain verified — only DNS records observed by the server can do that.';
+
+export const EVIDENCE_INVALIDATION_HELP =
+  'Changing the provider account, domain, provider domain ID, region or any '
+  + 'expected DNS value clears the previous DNS evidence and the previous '
+  + 'provider-account confirmation, so old proof is never reused.';
+
 
 export interface SendingDomainVerificationSectionProps {
   client: OmniCommsRpcClient;
@@ -111,13 +121,45 @@ export const SendingDomainVerificationSection: React.FC<
   const [domainName, setDomainName] = React.useState('');
   const [providerReference, setProviderReference] = React.useState('');
   const [attestationOnly, setAttestationOnly] = React.useState(false);
-  const [expected, setExpected] = React.useState<ExpectedDnsRecord[]>([]);
+  // Exact, non-secret provider domain facts copied from the provider console.
+  const [providerDomainId, setProviderDomainId] = React.useState('');
+  const [providerRegion, setProviderRegion] = React.useState('');
+  const [providerDomainStatus, setProviderDomainStatus] =
+    React.useState<ProviderDomainStatus>('verified');
+  const [sendingEnabled, setSendingEnabled] = React.useState(false);
+  const [spfValue, setSpfValue] = React.useState('');
+  const [mxHost, setMxHost] = React.useState('');
+  const [mxPriority, setMxPriority] = React.useState('10');
+  const [dkimSelector, setDkimSelector] = React.useState(RESEND_DEFAULT_DKIM_SELECTOR);
+  const [dkimValue, setDkimValue] = React.useState('');
   const [assocRow, setAssocRow] = React.useState<DomainVerificationRow | null>(null);
   const [assocAccountId, setAssocAccountId] = React.useState('');
   const [assocStatus, setAssocStatus] = React.useState<ProviderConsoleStatus>('verified');
   const [assocReference, setAssocReference] = React.useState('');
   const [assocNote, setAssocNote] = React.useState('');
   const [assocSaving, setAssocSaving] = React.useState(false);
+
+  const priorityNumber = Number.parseInt(mxPriority, 10);
+  const factsComplete = domainName.trim() !== ''
+    && spfValue.trim() !== ''
+    && mxHost.trim() !== ''
+    && Number.isInteger(priorityNumber)
+    && dkimValue.trim() !== '';
+
+  /** Expectations are derived from the exact facts, never guessed. */
+  const expected: ExpectedDnsRecord[] = React.useMemo(
+    () => (factsComplete
+      ? resendExpectedDnsRecords(domainName, {
+        spfValue,
+        mxHost,
+        mxPriority: priorityNumber,
+        dkimSelector,
+        dkimValue,
+      })
+      : []),
+    [factsComplete, domainName, spfValue, mxHost, priorityNumber, dkimSelector, dkimValue],
+  );
+
 
   const openAssociation = (row: DomainVerificationRow) => {
     setAssocRow(row);
@@ -171,23 +213,35 @@ export const SendingDomainVerificationSection: React.FC<
 
   React.useEffect(() => { void load(); }, [load]);
 
-  const openDialog = () => {
-    setEndpointId(endpoints[0]?.id ?? '');
-    setDomainName('');
-    setProviderReference('');
-    setAttestationOnly(false);
-    setExpected([]);
+  const openDialog = (row?: DomainVerificationRow) => {
+    setEndpointId(row?.channelEndpointId ?? endpoints[0]?.id ?? '');
+    setDomainName(row?.domainName ?? '');
+    setProviderReference(row?.providerReference ?? '');
+    setAttestationOnly(row?.verificationSource === 'external_admin_attestation');
+    setProviderDomainId(row?.providerDomainId ?? '');
+    setProviderRegion(row?.providerDomainRegion ?? '');
+    setProviderDomainStatus(row?.providerDomainStatus ?? 'verified');
+    setSendingEnabled(row?.sendingCapability === 'enabled');
+    const spf = row?.expectedDns?.find((e) => e.purpose === 'spf');
+    const mx = row?.expectedDns?.find((e) => e.purpose === 'bounce_feedback');
+    const dkim = row?.expectedDns?.find((e) => e.purpose === 'dkim');
+    setSpfValue(spf?.matchMode === 'exact_txt' ? spf.expectedValue : '');
+    setMxHost(mx?.matchMode === 'exact_mx' ? mx.expectedValue : '');
+    setMxPriority(String(mx?.expectedPriority ?? 10));
+    setDkimSelector(
+      dkim?.name?.split('._domainkey.')[0] ?? RESEND_DEFAULT_DKIM_SELECTOR,
+    );
+    setDkimValue(dkim?.matchMode === 'exact_txt' ? dkim.expectedValue : '');
     setOpen(true);
-  };
-
-  const onDomainChange = (value: string) => {
-    setDomainName(value);
-    setExpected(value.trim() ? resendExpectedDnsRecords(value) : []);
   };
 
   const save = async () => {
     if (!endpointId || !domainName.trim()) {
       toast.error('Choose a sending-domain endpoint and enter the domain.');
+      return;
+    }
+    if (!attestationOnly && !factsComplete) {
+      toast.error('Enter the exact SPF value, MX host and priority, and DKIM key.');
       return;
     }
     setSaving(true);
@@ -203,6 +257,11 @@ export const SendingDomainVerificationSection: React.FC<
         claimedStatus: attestationOnly ? 'claimed_verified' : 'verified_in_provider_console',
         providerReference: providerReference.trim() || null,
         expectedDns: expected,
+        providerCode: 'resend',
+        providerDomainId: providerDomainId.trim() || null,
+        providerDomainStatus,
+        providerDomainRegion: providerRegion.trim() || null,
+        sendingCapability: sendingEnabled ? 'enabled' : 'disabled',
       });
       toast.success('Sending domain recorded. Run the DNS check to prove it.');
       setOpen(false);
@@ -214,6 +273,7 @@ export const SendingDomainVerificationSection: React.FC<
       setSaving(false);
     }
   };
+
 
   const runCheck = async (row: DomainVerificationRow) => {
     setChecking(row.id);
@@ -256,7 +316,7 @@ export const SendingDomainVerificationSection: React.FC<
             </Button>
             <Button
               size="sm"
-              onClick={openDialog}
+              onClick={() => openDialog()}
               disabled={!canManage || endpoints.length === 0}
               data-testid="omni-comms-domain-record"
             >
@@ -300,6 +360,15 @@ export const SendingDomainVerificationSection: React.FC<
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={!canManage}
+                      onClick={() => openDialog(row)}
+                      data-testid={`omni-comms-domain-edit-${row.domainName}`}
+                    >
+                      Update provider facts
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       disabled={!canManage || checking === row.id}
                       onClick={() => void runCheck(row)}
                       data-testid={`omni-comms-domain-check-${row.domainName}`}
@@ -310,6 +379,7 @@ export const SendingDomainVerificationSection: React.FC<
                       Run DNS check
                     </Button>
                   </div>
+
                 </div>
 
                 {row.verificationSource === 'external_admin_attestation' ? (
@@ -317,6 +387,31 @@ export const SendingDomainVerificationSection: React.FC<
                     {ATTESTATION_NEVER_VERIFIED_HELP}
                   </p>
                 ) : null}
+
+                <div
+                  className="rounded-md bg-muted/40 p-2 text-xs space-y-0.5"
+                  data-testid={`omni-comms-domain-facts-${row.domainName}`}
+                >
+                  <p className="font-medium">Recorded provider facts</p>
+                  <p className="text-muted-foreground break-all">
+                    Provider domain ID: {row.providerDomainId ?? 'not recorded'} · Region:{' '}
+                    {row.providerDomainRegion ?? 'not recorded'} · Provider status:{' '}
+                    {row.providerDomainStatus ?? 'not recorded'} · Sending:{' '}
+                    {row.sendingCapability ?? 'unknown'}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {row.expectationsExact === false
+                      ? 'Expectations are generic and are not accepted as evidence.'
+                      : 'Expectations state exact provider values.'}
+                    {row.dnsFreshnessDays
+                      ? ` DNS evidence is ${row.dnsFresh === false ? 'stale' : 'fresh'} (window ${row.dnsFreshnessDays} days).`
+                      : ''}
+                    {row.associationFreshnessDays
+                      ? ` Confirmation is ${row.associationFresh === false ? 'stale' : 'fresh'} (window ${row.associationFreshnessDays} days).`
+                      : ''}
+                  </p>
+                  <p className="text-muted-foreground">{EVIDENCE_INVALIDATION_HELP}</p>
+                </div>
 
                 <p className="text-xs text-muted-foreground">
                   {row.detail
@@ -326,6 +421,7 @@ export const SendingDomainVerificationSection: React.FC<
                     ? ` Last checked ${new Date(row.dnsCheckedAt).toLocaleString()}.`
                     : ''}
                 </p>
+
 
                 {row.dnsEvidence.length > 0 ? (
                   <ul className="space-y-1 text-xs">
@@ -395,12 +491,13 @@ export const SendingDomainVerificationSection: React.FC<
       </CardContent>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Record a verified sending domain</DialogTitle>
             <DialogDescription>
-              Record the domain you verified in the provider console. Nothing is
-              sent, and the platform will still prove the DNS records itself.
+              Record the exact domain configuration shown in the provider
+              console. Nothing is sent, and the platform still proves every DNS
+              record itself.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -423,7 +520,7 @@ export const SendingDomainVerificationSection: React.FC<
                 id="omni-domain-name"
                 value={domainName}
                 placeholder="example.org"
-                onChange={(e) => onDomainChange(e.target.value)}
+                onChange={(e) => setDomainName(e.target.value)}
               />
             </div>
             <div className="space-y-1">
@@ -435,6 +532,109 @@ export const SendingDomainVerificationSection: React.FC<
                 onChange={(e) => setProviderReference(e.target.value)}
               />
             </div>
+
+            <div className="rounded-md border p-3 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Exact provider domain facts</p>
+                <p className="text-xs text-muted-foreground">
+                  {EXACT_FACTS_REQUIRED_HELP}
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <Label htmlFor="omni-domain-provider-id">Provider domain ID</Label>
+                  <Input
+                    id="omni-domain-provider-id"
+                    value={providerDomainId}
+                    placeholder="dom_..."
+                    onChange={(e) => setProviderDomainId(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="omni-domain-region">Provider region</Label>
+                  <Input
+                    id="omni-domain-region"
+                    value={providerRegion}
+                    placeholder="us-east-1"
+                    onChange={(e) => setProviderRegion(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="omni-domain-provider-status">
+                  Status shown in the provider console
+                </Label>
+                <select
+                  id="omni-domain-provider-status"
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  value={providerDomainStatus}
+                  onChange={(e) =>
+                    setProviderDomainStatus(e.target.value as ProviderDomainStatus)}
+                >
+                  {(['verified', 'pending', 'temporary_failure', 'not_started', 'failed', 'not_found'] as ProviderDomainStatus[])
+                    .map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={sendingEnabled}
+                  onChange={(e) => setSendingEnabled(e.target.checked)}
+                  data-testid="omni-comms-domain-sending-enabled"
+                />
+                <span>Sending is enabled for this domain in the provider account.</span>
+              </label>
+              <div className="space-y-1">
+                <Label htmlFor="omni-domain-spf">Exact SPF TXT value</Label>
+                <Input
+                  id="omni-domain-spf"
+                  value={spfValue}
+                  placeholder="v=spf1 include:amazonses.com ~all"
+                  onChange={(e) => setSpfValue(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[1fr,120px]">
+                <div className="space-y-1">
+                  <Label htmlFor="omni-domain-mx">Exact MX host</Label>
+                  <Input
+                    id="omni-domain-mx"
+                    value={mxHost}
+                    placeholder="feedback-smtp.us-east-1.amazonses.com"
+                    onChange={(e) => setMxHost(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="omni-domain-mx-priority">MX priority</Label>
+                  <Input
+                    id="omni-domain-mx-priority"
+                    value={mxPriority}
+                    inputMode="numeric"
+                    onChange={(e) => setMxPriority(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[140px,1fr]">
+                <div className="space-y-1">
+                  <Label htmlFor="omni-domain-dkim-selector">DKIM selector</Label>
+                  <Input
+                    id="omni-domain-dkim-selector"
+                    value={dkimSelector}
+                    onChange={(e) => setDkimSelector(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="omni-domain-dkim">Exact DKIM TXT value</Label>
+                  <Input
+                    id="omni-domain-dkim"
+                    value={dkimValue}
+                    placeholder="p=MIGfMA0GCSq..."
+                    onChange={(e) => setDkimValue(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
             <label className="flex items-start gap-2 text-sm">
               <input
                 type="checkbox"
@@ -451,16 +651,22 @@ export const SendingDomainVerificationSection: React.FC<
               </span>
             </label>
             {expected.length > 0 ? (
-              <div className="rounded-md bg-muted/50 p-3 text-xs space-y-1">
-                <p className="font-medium">DNS records the server will check</p>
+              <div
+                className="rounded-md bg-muted/50 p-3 text-xs space-y-1"
+                data-testid="omni-comms-domain-expected-preview"
+              >
+                <p className="font-medium">DNS records the server will check exactly</p>
                 {expected.map((e, i) => (
                   <p key={i} className="break-all text-muted-foreground">
-                    {e.recordType} {e.name} → contains “{e.expectedValue}”
+                    {e.recordType} {e.name} → exactly “{e.expectedValue}”
+                    {e.expectedPriority != null ? ` (priority ${e.expectedPriority})` : ''}
                   </p>
                 ))}
               </div>
             ) : null}
+            <p className="text-xs text-muted-foreground">{EVIDENCE_INVALIDATION_HELP}</p>
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={() => void save()} disabled={saving}>

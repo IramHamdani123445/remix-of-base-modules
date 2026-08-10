@@ -32,13 +32,27 @@ export type DomainVerificationStatus =
   | 'verified'
   | 'failed';
 
+/**
+ * `contains` is a LEGACY generic mode kept only so historic rows remain
+ * readable. Readiness requires exact modes.
+ */
+export type DnsMatchMode = 'contains' | 'equals' | 'exact_txt' | 'exact_mx';
+
+export const EXACT_DNS_MATCH_MODES: readonly DnsMatchMode[] = [
+  'equals',
+  'exact_txt',
+  'exact_mx',
+];
+
 export interface ExpectedDnsRecord {
   recordType: 'TXT' | 'MX' | 'CNAME' | 'A';
   name: string;
   expectedValue: string;
-  matchMode: 'contains' | 'equals';
+  matchMode: DnsMatchMode;
   required: boolean;
   purpose?: string | null;
+  /** Exact MX priority published by the provider (exact_mx only). */
+  expectedPriority?: number | null;
 }
 
 export interface DnsEvidenceEntry extends ExpectedDnsRecord {
@@ -46,6 +60,16 @@ export interface DnsEvidenceEntry extends ExpectedDnsRecord {
   matched: boolean;
   resolverStatus: string;
 }
+
+export type ProviderDomainStatus =
+  | 'not_started'
+  | 'pending'
+  | 'temporary_failure'
+  | 'verified'
+  | 'failed'
+  | 'not_found';
+
+export type SendingCapability = 'enabled' | 'disabled' | 'unknown';
 
 export interface DomainVerificationRow {
   id: string;
@@ -67,6 +91,23 @@ export interface DomainVerificationRow {
   /** Human labels for the provider account the domain is claimed against. */
   providerAccountCode?: string | null;
   providerAccountName?: string | null;
+  /** Exact, non-secret provider domain facts captured from the console. */
+  providerCode?: string | null;
+  providerDomainId?: string | null;
+  providerDomainStatus?: ProviderDomainStatus | null;
+  providerDomainRegion?: string | null;
+  sendingCapability?: SendingCapability | null;
+  /** Freshness windows applied by the server to each kind of evidence. */
+  dnsFreshnessDays?: number | null;
+  associationFreshnessDays?: number | null;
+  dnsFresh?: boolean;
+  associationFresh?: boolean;
+  expectationsExact?: boolean;
+  accountMatchesEndpoint?: boolean;
+  endpointProviderAccountId?: string | null;
+  endpointChannel?: string | null;
+  /** Server-computed single next blocker; authoritative when present. */
+  readinessBlocker?: string | null;
   /**
    * Provider-account association evidence. DNS proves domain control; it does
    * NOT prove the domain lives in the exact provider account used at runtime.
@@ -76,9 +117,13 @@ export interface DomainVerificationRow {
   associationProviderReference: string | null;
   associationNote: string | null;
   associationConfirmedAt: string | null;
-  /** True only when DNS evidence passed AND the association was confirmed. */
+  /**
+   * Server truth: exact expectations matched, association confirmed against
+   * the endpoint's own provider account, and all evidence still fresh.
+   */
   readyForProviderAccount: boolean;
 }
+
 
 export interface DomainVerificationSummary {
   organizationId: string;
@@ -123,34 +168,74 @@ export const DOMAIN_VERIFICATION_RESULT_MESSAGES: Record<string, string> = {
 };
 
 /**
- * The DNS records Resend requires for a sending domain. Values follow the
- * provider's published setup; the operator can amend them before saving so an
- * exotic configuration is never blocked by our assumption.
+ * Exact provider domain facts, copied by an administrator from the provider
+ * console. Nothing here is secret, and none of it is guessed: a generic
+ * "looks like Resend" expectation is no longer accepted as evidence.
  */
-export function resendExpectedDnsRecords(domain: string): ExpectedDnsRecord[] {
+export interface ResendDomainFacts {
+  /** Exact TXT value published at `send.<domain>` (the SPF record). */
+  spfValue: string;
+  /** Exact MX host published at `send.<domain>`. */
+  mxHost: string;
+  /** Exact MX priority published at `send.<domain>`. */
+  mxPriority: number;
+  /** DKIM selector, e.g. `resend`. */
+  dkimSelector: string;
+  /** Exact DKIM TXT value, including `p=`. */
+  dkimValue: string;
+}
+
+export const RESEND_DEFAULT_DKIM_SELECTOR = 'resend';
+
+export const EXACT_FACTS_REQUIRED_HELP =
+  'Copy the exact SPF value, MX host and priority, and DKIM key from the '
+  + 'provider console. Generic expectations such as “contains amazonses.com” '
+  + 'are no longer accepted as evidence that this domain is configured.';
+
+/** True only when every required expectation states an exact provider value. */
+export function expectationsAreExact(
+  records: readonly ExpectedDnsRecord[],
+): boolean {
+  const required = records.filter((r) => r.required);
+  return required.length > 0
+    && required.every((r) => EXACT_DNS_MATCH_MODES.includes(r.matchMode));
+}
+
+/**
+ * Builds the EXACT DNS expectations for a Resend sending domain from facts an
+ * administrator read in the provider console. Values are compared exactly;
+ * the MX priority is part of the comparison.
+ */
+export function resendExpectedDnsRecords(
+  domain: string,
+  facts: ResendDomainFacts,
+): ExpectedDnsRecord[] {
   const d = domain.trim().toLowerCase().replace(/^\.+|\.+$/g, '');
+  const selector = (facts.dkimSelector || RESEND_DEFAULT_DKIM_SELECTOR)
+    .trim().toLowerCase().replace(/\.$/, '');
   return [
     {
       recordType: 'TXT',
       name: `send.${d}`,
-      expectedValue: 'include:amazonses.com',
-      matchMode: 'contains',
+      expectedValue: facts.spfValue.trim(),
+      matchMode: 'exact_txt',
       required: true,
       purpose: 'spf',
     },
     {
       recordType: 'MX',
       name: `send.${d}`,
-      expectedValue: 'feedback-smtp',
-      matchMode: 'contains',
+      expectedValue: facts.mxHost.trim().toLowerCase().replace(/\.$/, ''),
+      matchMode: 'exact_mx',
       required: true,
       purpose: 'bounce_feedback',
+      expectedPriority: facts.mxPriority,
     },
     {
       recordType: 'TXT',
-      name: `resend._domainkey.${d}`,
-      expectedValue: 'p=',
-      matchMode: 'contains',
+      name: `${selector}._domainkey.${d}`,
+      expectedValue: facts.dkimValue.trim(),
+      matchMode: 'exact_txt',
       required: true,
       purpose: 'dkim',
     },
@@ -182,6 +267,12 @@ export interface UpsertDomainVerificationInput {
   providerReference?: string | null;
   expectedDns: readonly ExpectedDnsRecord[];
   notes?: string | null;
+  /** Exact provider domain facts; a change to any of these voids old evidence. */
+  providerCode?: string | null;
+  providerDomainId?: string | null;
+  providerDomainStatus?: ProviderDomainStatus | null;
+  providerDomainRegion?: string | null;
+  sendingCapability?: SendingCapability | null;
 }
 
 export function upsertDomainVerification(
@@ -201,8 +292,14 @@ export function upsertDomainVerification(
       p_provider_reference: input.providerReference ?? null,
       p_expected_dns: input.expectedDns,
       p_notes: input.notes ?? null,
+      p_provider_code: input.providerCode ?? 'resend',
+      p_provider_domain_id: input.providerDomainId ?? null,
+      p_provider_domain_status: input.providerDomainStatus ?? null,
+      p_provider_domain_region: input.providerDomainRegion ?? null,
+      p_sending_capability: input.sendingCapability ?? 'unknown',
     },
   );
+
 }
 
 export interface VerifySendingDomainResponse {
@@ -313,6 +410,7 @@ export interface ConfirmDomainAssociationResult {
   associationProviderReference: string | null;
   associationConfirmedAt: string;
   readyForProviderAccount: boolean;
+  readinessBlocker?: string | null;
 }
 
 export function confirmDomainProviderAssociation(
@@ -333,20 +431,45 @@ export function confirmDomainProviderAssociation(
   );
 }
 
-/** Single, human-readable next blocker for a sending domain. */
+/**
+ * Single, human-readable next blocker for a sending domain.
+ *
+ * The server computes the authoritative blocker; when it is present it is
+ * shown verbatim so the UI can never be more optimistic than the evidence.
+ */
 export function domainReadinessBlocker(
   row: Pick<
     DomainVerificationRow,
     'status' | 'associationConfirmed' | 'verificationSource' | 'readyForProviderAccount'
-  >,
+  > & Partial<DomainVerificationRow>,
 ): string | null {
   if (row.readyForProviderAccount) return null;
+  if (row.readinessBlocker) return row.readinessBlocker;
   if (row.status !== 'verified') return 'Server DNS evidence has not passed yet.';
   if (row.verificationSource === 'external_admin_attestation') {
     return 'An administrator statement alone cannot make this domain ready.';
   }
+  if (row.expectationsExact === false) {
+    return 'Record the exact provider DNS values (SPF, MX with priority, DKIM key) before this domain can be used.';
+  }
+  if (row.dnsFresh === false) {
+    return 'DNS evidence is beyond the freshness window. Run the DNS check again.';
+  }
   if (!row.associationConfirmed) {
     return 'Confirm the domain is registered in this exact provider account.';
   }
+  if (row.accountMatchesEndpoint === false) {
+    return 'The confirmed provider account is not the account assigned to this sending-domain endpoint.';
+  }
+  if (row.associationFresh === false) {
+    return 'The provider-account confirmation is beyond the freshness window. Confirm it again.';
+  }
+  if (row.providerDomainStatus && row.providerDomainStatus !== 'verified') {
+    return 'The provider does not report this domain as verified.';
+  }
+  if (row.sendingCapability && row.sendingCapability !== 'enabled') {
+    return 'Sending is not enabled for this domain in the provider account.';
+  }
   return 'Domain readiness is incomplete.';
 }
+

@@ -12,7 +12,18 @@
 //   - Only DNS-over-HTTPS resolution and bounded SECURITY DEFINER RPCs.
 
 export type DnsRecordType = "TXT" | "MX" | "CNAME" | "A";
-export type DnsMatchMode = "contains" | "equals";
+/**
+ * `contains` is a LEGACY, generic mode retained only so historic rows can
+ * still be read and re-checked. It is never accepted as production evidence:
+ * readiness requires every required expectation to use an exact mode.
+ */
+export type DnsMatchMode = "contains" | "equals" | "exact_txt" | "exact_mx";
+
+export const EXACT_DNS_MATCH_MODES: readonly DnsMatchMode[] = [
+  "equals",
+  "exact_txt",
+  "exact_mx",
+];
 
 export interface ExpectedDnsRecord {
   recordType: DnsRecordType;
@@ -21,6 +32,8 @@ export interface ExpectedDnsRecord {
   matchMode: DnsMatchMode;
   required: boolean;
   purpose?: string | null;
+  /** Exact MX priority the provider publishes (exact_mx only). */
+  expectedPriority?: number | null;
 }
 
 export interface DnsEvidenceEntry extends ExpectedDnsRecord {
@@ -28,6 +41,7 @@ export interface DnsEvidenceEntry extends ExpectedDnsRecord {
   matched: boolean;
   resolverStatus: string;
 }
+
 
 export interface DnsVerificationOutcome {
   allMatched: boolean;
@@ -38,7 +52,19 @@ export interface DnsVerificationOutcome {
     | "dns_lookup_failed";
   detail: string;
   evidence: DnsEvidenceEntry[];
+  /** False when any required expectation still uses the generic legacy mode. */
+  expectationsExact: boolean;
 }
+
+/** True only when every required expectation states an exact provider value. */
+export function expectationsAreExact(
+  expected: readonly ExpectedDnsRecord[],
+): boolean {
+  const required = expected.filter((e) => e.required);
+  return required.length > 0 &&
+    required.every((e) => EXACT_DNS_MATCH_MODES.includes(e.matchMode));
+}
+
 
 const DOH_ENDPOINT = "https://dns.google/resolve";
 const USER_AGENT = "SSB-OmniComms-DomainVerification/1.0";
@@ -68,21 +94,50 @@ export function normaliseDnsValue(raw: string): string {
   return v.replace(/\s+/g, " ");
 }
 
+/** Splits an MX answer ("10 host.example.com.") into priority and host. */
+export function parseMxAnswer(
+  raw: string,
+): { priority: number | null; host: string } {
+  const v = normaliseDnsValue(raw);
+  const m = v.match(/^(\d+)\s+(\S+)$/);
+  if (!m) return { priority: null, host: v.toLowerCase().replace(/\.$/, "") };
+  return { priority: Number(m[1]), host: m[2].toLowerCase().replace(/\.$/, "") };
+}
+
 export function dnsValueMatches(
   observed: string,
   expected: string,
   mode: DnsMatchMode,
+  expectedPriority: number | null = null,
 ): boolean {
   const o = normaliseDnsValue(observed).toLowerCase();
   const e = normaliseDnsValue(expected).toLowerCase();
   if (e === "") return false;
-  return mode === "equals" ? o === e : o.includes(e);
+
+  if (mode === "exact_mx") {
+    const obs = parseMxAnswer(observed);
+    const exp = parseMxAnswer(expected);
+    const wantHost = exp.host;
+    const wantPriority = expectedPriority ?? exp.priority;
+    if (obs.host !== wantHost) return false;
+    // A priority is part of the exact configuration when the provider states it.
+    return wantPriority === null || obs.priority === wantPriority;
+  }
+  if (mode === "exact_txt" || mode === "equals") return o === e;
+  return o.includes(e);
 }
 
 /** Rejects anything that is not a plain hostname, so no SSRF-shaped input. */
 export function isSafeDnsName(name: string): boolean {
   const n = String(name ?? "").trim().replace(/\.$/, "");
   return n.length > 0 && n.length <= 253 && HOSTNAME_PATTERN.test(n);
+}
+
+function readMatchMode(raw: unknown): DnsMatchMode {
+  const v = String(raw ?? "contains").trim().toLowerCase();
+  return v === "equals" || v === "exact_txt" || v === "exact_mx"
+    ? (v as DnsMatchMode)
+    : "contains";
 }
 
 export function parseExpectedDnsRecords(raw: unknown): ExpectedDnsRecord[] {
@@ -96,9 +151,13 @@ export function parseExpectedDnsRecords(raw: unknown): ExpectedDnsRecord[] {
     ).toUpperCase() as DnsRecordType;
     const name = String(r.name ?? "").trim();
     const expectedValue = String(r.expectedValue ?? r.expected_value ?? "").trim();
-    const matchMode = (String(r.matchMode ?? r.match_mode ?? "contains") === "equals"
-      ? "equals"
-      : "contains") as DnsMatchMode;
+    const matchMode = readMatchMode(r.matchMode ?? r.match_mode);
+    const priorityRaw = r.expectedPriority ?? r.expected_priority;
+    const expectedPriority =
+      typeof priorityRaw === "number" && Number.isInteger(priorityRaw) &&
+        priorityRaw >= 0 && priorityRaw <= 65535
+        ? priorityRaw
+        : null;
     if (!(recordType in DNS_TYPE_CODES)) continue;
     if (!isSafeDnsName(name) || expectedValue === "") continue;
     out.push({
@@ -108,10 +167,12 @@ export function parseExpectedDnsRecords(raw: unknown): ExpectedDnsRecord[] {
       matchMode,
       required: r.required !== false,
       purpose: typeof r.purpose === "string" ? r.purpose : null,
+      expectedPriority,
     });
   }
   return out;
 }
+
 
 type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -150,6 +211,7 @@ export async function collectDnsEvidence(
       resultCode: "dns_records_missing",
       detail: "No DNS expectations were recorded for this domain.",
       evidence: [],
+      expectationsExact: false,
     };
   }
 
@@ -161,7 +223,12 @@ export async function collectDnsEvidence(
       observed,
       resolverStatus,
       matched: observed.some((o) =>
-        dnsValueMatches(o, record.expectedValue, record.matchMode)
+        dnsValueMatches(
+          o,
+          record.expectedValue,
+          record.matchMode,
+          record.expectedPriority ?? null,
+        )
       ),
     });
   }
@@ -172,12 +239,18 @@ export async function collectDnsEvidence(
     e.resolverStatus.startsWith("resolver_")
   );
   const missing = required.filter((e) => e.resolverStatus === "no_records");
+  const expectationsExact = expectationsAreExact(expected);
 
   let resultCode: DnsVerificationOutcome["resultCode"];
   let detail: string;
   if (allMatched) {
     resultCode = "verified";
     detail = `All ${required.length} required DNS records were observed by the server.`;
+    if (!expectationsExact) {
+      detail +=
+        " These expectations are generic, so they are not accepted as" +
+        " production evidence — record the exact provider values.";
+    }
   } else if (lookupFailed) {
     resultCode = "dns_lookup_failed";
     detail = "The DNS resolver could not be reached for one or more records.";
@@ -189,8 +262,9 @@ export async function collectDnsEvidence(
     detail = `${required.filter((e) => !e.matched).length} required DNS record(s) do not match the expected value.`;
   }
 
-  return { allMatched, resultCode, detail, evidence };
+  return { allMatched, resultCode, detail, evidence, expectationsExact };
 }
+
 
 interface AdminClient {
   rpc: (
@@ -274,7 +348,9 @@ export async function runSendingDomainVerification(
       detail: outcome.detail,
       domainName: ctx.domain_name ?? null,
       verificationSource: ctx.verification_source ?? null,
+      expectationsExact: outcome.expectationsExact,
       evidence: outcome.evidence,
+
     },
   };
 }
