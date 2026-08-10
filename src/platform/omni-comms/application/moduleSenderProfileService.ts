@@ -154,3 +154,10 @@ export function bootstrapModuleSenderProfiles(
     },
   );
 }
+
+/** Configuration hint shown by the route editor when creating a new route. */
+export interface ModuleSenderResolutionHint {
+  moduleCode: string;
+  senderIdentityId: string | null;
+  allowEventOverride: boolean;
+}

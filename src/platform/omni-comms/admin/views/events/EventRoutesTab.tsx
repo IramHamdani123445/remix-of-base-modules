@@ -34,6 +34,7 @@ import type {
 import * as ecSvc from "@/platform/omni-comms/application/eventCatalogueService";
 import type { EventDefinitionListItem } from "@/platform/omni-comms/application/eventCatalogueTypes";
 import * as tplSvc from "@/platform/omni-comms/application/templateCatalogueService";
+import * as mspSvc from "@/platform/omni-comms/application/moduleSenderProfileService";
 import type { TemplateFamilyListItem } from "@/platform/omni-comms/application/templateCatalogueTypes";
 import { getEmailConfigSummary } from "@/platform/omni-comms/application/channelManagementService";
 
