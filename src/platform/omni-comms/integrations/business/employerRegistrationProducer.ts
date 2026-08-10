@@ -2,9 +2,11 @@
  * Build 4A — Pilot business producer: Employer Registration APPLICATION
  * SUBMITTED acknowledgement.
  *
- * The ONE wired pilot action. Shadow mode only: the runtime resolves,
- * renders and records evidence, but no provider is contacted, no dispatch
- * job becomes runnable and no email leaves the platform.
+ * The ONE wired pilot action. Step 2 (controlled production go-live) raises
+ * it in `queued` mode: the runtime resolves the recipient, renders the
+ * published Email template version and persists a HELD dispatch job. The job
+ * is not runnable — only Release Control can later make it eligible — so no
+ * provider is contacted and no email leaves the platform.
  *
  * IMPORTANT — semantics. Submitting an employer registration places the
  * record in `Pending`. It is NOT a completed registration. This producer
@@ -18,7 +20,10 @@
  */
 
 import { emitBusinessCommunication } from './emitBusinessCommunication';
-import type { BusinessProducerResult } from './businessProducerTypes';
+import type {
+  BusinessProducerMode,
+  BusinessProducerResult,
+} from './businessProducerTypes';
 
 /** Registered caller module code. */
 export const EMPLOYER_REGISTRATION_MODULE_CODE = 'EMPLOYER_REGISTRATION';
@@ -32,6 +37,25 @@ export const EMPLOYER_APPLICATION_SUBMITTED_EVENT_CODE =
  * explicit and testable: the submission pilot must NEVER emit it.
  */
 export const EMPLOYER_REGISTERED_EVENT_CODE = 'REGISTRATION.EMPLOYER.REGISTERED';
+
+/**
+ * Pilot emission mode. `queued` produces a HELD (non-runnable) Email dispatch
+ * job. Release Control, not this producer, decides eligibility for dispatch.
+ */
+export const EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE: BusinessProducerMode =
+  'queued';
+
+/** Deterministic correlation-id prefix joining the business flow to the request. */
+export const EMPLOYER_APPLICATION_SUBMITTED_CORRELATION_PREFIX =
+  'employer-registration-application-submitted';
+
+/**
+ * Stable business identity of the emission. Application submission is a
+ * once-per-registration fact, so the version is a constant: repeating the
+ * business action resolves to the SAME logical communication.
+ */
+export const EMPLOYER_APPLICATION_SUBMITTED_ENTITY_VERSION =
+  'application-submitted-v1';
 
 /** Durable business entity the emission belongs to. */
 export const EMPLOYER_REGISTRATION_ENTITY_TYPE = 'employer_registration';
@@ -76,6 +100,16 @@ export function buildEmployerRegistrationApplicationSubmittedPayload(
   };
 }
 
+/**
+ * Deterministic correlation identifier. Derived from the business reference
+ * only, so every retry of the same business action joins the same flow.
+ */
+export function buildEmployerRegistrationApplicationSubmittedCorrelationId(
+  reference: string,
+): string {
+  return `${EMPLOYER_APPLICATION_SUBMITTED_CORRELATION_PREFIX}:${String(reference ?? '').trim()}`;
+}
+
 export async function emitEmployerRegistrationApplicationSubmitted(
   input: EmployerRegistrationApplicationSubmittedInput,
 ): Promise<BusinessProducerResult> {
@@ -86,11 +120,12 @@ export async function emitEmployerRegistrationApplicationSubmitted(
     departmentId: input.departmentId ?? null,
     entityType: EMPLOYER_REGISTRATION_ENTITY_TYPE,
     entityId: input.reference,
-    // Application submission is a once-per-registration fact.
-    entityVersion: 'application-submitted-v1',
-    mode: 'shadow',
+    entityVersion: EMPLOYER_APPLICATION_SUBMITTED_ENTITY_VERSION,
+    mode: EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE,
     requestedChannels: ['email'],
-    correlationId: input.correlationId ?? null,
+    correlationId:
+      input.correlationId?.trim() ||
+      buildEmployerRegistrationApplicationSubmittedCorrelationId(input.reference),
     recipients: [
       {
         recipientType: 'employer',

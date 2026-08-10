@@ -19,17 +19,20 @@ export interface CommunicationOutcome {
 }
 
 const COMMUNICATION_SUMMARY: Record<string, string> = {
-  accepted: 'Acknowledgement prepared (test mode — nothing was sent).',
-  replayed: 'Acknowledgement already prepared for this application.',
+  accepted:
+    'Acknowledgement queued. It is held pending release authorisation — nothing has been sent.',
+  replayed:
+    'Acknowledgement already queued for this application — no duplicate was created.',
   blocked: 'Acknowledgement not prepared.',
   unavailable: 'Acknowledgement could not be prepared right now.',
   skipped: 'Acknowledgement not applicable for this organisation.',
 };
 
 /**
- * Build 4A pilot — raise the employer-registration APPLICATION SUBMITTED
- * acknowledgement through the single Omni-Comms facade in SHADOW mode.
- * Provider-free and fail-closed: the runtime records evidence only. This
+ * Controlled production pilot — raise the employer-registration APPLICATION
+ * SUBMITTED acknowledgement through the single Omni-Comms facade in QUEUED
+ * mode. The runtime persists a HELD dispatch job that only Release Control
+ * can make eligible, so no provider is contacted. Fail-closed: this
  * never blocks or fails the business submission, never contacts a provider
  * and never writes to a comms table. The outcome is returned so the caller
  * can surface it — it is observed, not fire-and-forget.
@@ -247,7 +250,7 @@ export function useEmployerRegistrationSubmit() {
       // Trigger workflow with the new permanent regno (if configured)
       const workflowInstanceId = await triggerWorkflow(newRegno, recordName, userId);
 
-      // Build 4A pilot — Omni-Comms shadow emission. Awaited so the outcome
+      // Controlled pilot — Omni-Comms queued emission. Awaited so the outcome
       // is observable, but total: it can never fail the submission.
       const communication = await emitOmniCommsRegistrationEvent(
         newRegno,

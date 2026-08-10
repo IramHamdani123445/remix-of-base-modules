@@ -64,16 +64,15 @@ beforeEach(() => {
   });
 });
 
-describe('Build 4A — producer modes', () => {
-  it('only exposes provider-free modes', () => {
-    expect([...BUSINESS_PRODUCER_MODES]).toEqual(['dry_run', 'shadow']);
-    expect(BUSINESS_PRODUCER_MODES as readonly string[]).not.toContain('queued');
+describe('Producer modes', () => {
+  it('exposes exactly the bounded mode vocabulary', () => {
+    expect([...BUSINESS_PRODUCER_MODES]).toEqual(['dry_run', 'shadow', 'queued']);
   });
 
-  it('refuses a queued emission before it reaches the façade', async () => {
+  it('refuses an unknown mode before it reaches the façade', async () => {
     const res = await emitBusinessCommunication({
       ...baseEmission(),
-      mode: 'queued' as never,
+      mode: 'live' as never,
     });
     expect(res.outcome).toBe('blocked');
     expect(res.blockers).toContain('producer_mode_not_available');

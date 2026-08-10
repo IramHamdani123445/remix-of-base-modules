@@ -8,7 +8,9 @@
  *  - Delegates to the single canonical façade `sendCommunication()`.
  *  - Never imports a provider SDK, never contacts a provider, never writes to
  *    any Omni-Comms or Legacy communication table.
- *  - `queued` mode is impossible from this layer (Build 4A is provider-free).
+ *  - `queued` mode is permitted from Step 2 onward, but it only ever yields a
+ *    HELD (non-runnable) dispatch job: eligibility for provider dispatch is
+ *    decided by Release Control, never by a business caller.
  *  - Deterministic, collision-resistant idempotency key: SHA-256 over the
  *    COMPLETE canonical identity string. No component is ever truncated, so
  *    two distinct business facts can never collapse onto one key.
