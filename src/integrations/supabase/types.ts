@@ -120479,6 +120479,10 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_binding_verify_configuration: {
+        Args: { p_correlation_id?: string; p_id: string }
+        Returns: Json
+      }
       omni_comms_bootstrap_employer_registration_pilot: {
         Args: { p_apply?: boolean; p_organization_code?: string }
         Returns: Json
@@ -122266,6 +122270,10 @@ export type Database = {
       omni_comms_priv_validate_timezone: {
         Args: { p_tz: string }
         Returns: boolean
+      }
+      omni_comms_priv_verify_binding_configuration: {
+        Args: { p_actor_id: string; p_correlation_id?: string; p_id: string }
+        Returns: Json
       }
       omni_comms_priv_verify_department_ownership: {
         Args: { p_department_id: string; p_organization_id: string }

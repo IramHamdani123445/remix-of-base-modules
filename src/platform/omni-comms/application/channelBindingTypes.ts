@@ -290,3 +290,16 @@ export function bindingActivationBlockers(
   }
   return blockers;
 }
+
+/** Result of the trusted, zero-send binding configuration verification. */
+export interface ChannelBindingConfigurationVerification {
+  readonly bindingId: string;
+  readonly verificationStatus: 'verified' | 'failed';
+  readonly verificationSource: 'service';
+  readonly resultCode: string;
+  readonly checks: ReadonlyArray<{ readonly key: string; readonly ok: boolean }>;
+  /** Always 0 — this worker never sends. */
+  readonly emailsSent: number;
+  /** Always 0 — this worker never contacts a provider. */
+  readonly providerCalls: number;
+}

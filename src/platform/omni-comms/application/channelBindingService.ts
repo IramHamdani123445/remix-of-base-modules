@@ -15,6 +15,7 @@ import {
   type OmniCommsRpcClient,
 } from './omniCommsRpcErrors';
 import type {
+  ChannelBindingConfigurationVerification,
   ChannelBindingSummary,
   OmniCommsBindingChannel,
   SetChannelBindingLifecycleInput,
@@ -77,5 +78,25 @@ export function setChannelBindingLifecycle(
       p_reason: input.reason ?? null,
       p_correlation_id: input.correlationId ?? null,
     },
+  );
+}
+
+/**
+ * Trusted, server-side binding configuration verification.
+ *
+ * Boundaries: the administrator can only REQUEST the check. The verification
+ * result is computed and recorded exclusively by the bounded server-side
+ * worker against canonical configuration records. It contacts no provider,
+ * performs no DNS lookup and sends no email.
+ */
+export function verifyChannelBindingConfiguration(
+  client: OmniCommsRpcClient,
+  id: string,
+  correlationId?: string | null,
+): Promise<ChannelBindingConfigurationVerification> {
+  return callOmniCommsRpc<ChannelBindingConfigurationVerification>(
+    client,
+    'omni_comms_binding_verify_configuration',
+    { p_id: id, p_correlation_id: correlationId ?? null },
   );
 }

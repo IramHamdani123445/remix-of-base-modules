@@ -351,13 +351,16 @@ describe('C4A — verification is provider-owned', () => {
     );
   });
 
-  it('exposes no administrator verification function on the service adapter', () => {
+  it('exposes no administrator-recorded verification on the service adapter', () => {
     const exported = Object.keys(bindingService);
-    expect(exported.some((k) => /verification/i.test(k))).toBe(false);
+    // Only a REQUEST for the trusted server-side check may exist; no adapter
+    // may accept or carry an administrator-supplied verification status.
+    expect(exported.some((k) => /record.*verification/i.test(k))).toBe(false);
     expect(exported.sort()).toEqual([
       'getChannelBindingSummary',
       'setChannelBindingLifecycle',
       'upsertChannelBindingDraft',
+      'verifyChannelBindingConfiguration',
     ]);
   });
 });
