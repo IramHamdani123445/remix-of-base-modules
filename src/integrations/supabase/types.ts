@@ -96016,6 +96016,7 @@ export type Database = {
         Row: {
           activated_at: string | null
           activated_by: string | null
+          audience: string
           channel: string
           code: string
           created_at: string
@@ -96042,6 +96043,7 @@ export type Database = {
         Insert: {
           activated_at?: string | null
           activated_by?: string | null
+          audience?: string
           channel: string
           code: string
           created_at?: string
@@ -96068,6 +96070,7 @@ export type Database = {
         Update: {
           activated_at?: string | null
           activated_by?: string | null
+          audience?: string
           channel?: string
           code?: string
           created_at?: string
@@ -121799,6 +121802,10 @@ export type Database = {
         Args: { p_input: string }
         Returns: string
       }
+      omni_comms_priv_event_is_internal: {
+        Args: { p_event_definition_id: string }
+        Returns: boolean
+      }
       omni_comms_priv_extract_tokens: {
         Args: { p_source: string }
         Returns: string[]
@@ -121901,6 +121908,7 @@ export type Database = {
         Returns: {
           activated_at: string | null
           activated_by: string | null
+          audience: string
           channel: string
           code: string
           created_at: string
@@ -122174,6 +122182,18 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_sender_catalogue: {
+        Args: never
+        Returns: {
+          audience: string
+          department_code: string
+          local_part: string
+          name_suffix: string
+          purpose: string
+          sender_code: string
+          tier: string
+        }[]
+      }
       omni_comms_priv_set_runtime_environment: {
         Args: { p_environment: string }
         Returns: Json
@@ -122383,6 +122403,16 @@ export type Database = {
         Args: {
           p_department_id?: string
           p_include_reference?: boolean
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_sender_catalogue_bootstrap: {
+        Args: {
+          p_apply?: boolean
+          p_channel?: string
+          p_correlation_id?: string
+          p_domain?: string
           p_organization_id: string
         }
         Returns: Json
