@@ -95364,6 +95364,89 @@ export type Database = {
           },
         ]
       }
+      omni_comms_module_sender_profile: {
+        Row: {
+          activated_at: string | null
+          activated_by: string | null
+          allow_event_override: boolean
+          allow_organization_fallback: boolean
+          caller_module_code: string
+          channel: string
+          communication_class: string | null
+          created_at: string
+          created_by: string | null
+          data_origin: string
+          department_id: string | null
+          id: string
+          is_default: boolean
+          organization_id: string
+          profile_role: string
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          sender_identity_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          activated_at?: string | null
+          activated_by?: string | null
+          allow_event_override?: boolean
+          allow_organization_fallback?: boolean
+          caller_module_code: string
+          channel: string
+          communication_class?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          id?: string
+          is_default?: boolean
+          organization_id: string
+          profile_role?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          sender_identity_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          activated_at?: string | null
+          activated_by?: string | null
+          allow_event_override?: boolean
+          allow_organization_fallback?: boolean
+          caller_module_code?: string
+          channel?: string
+          communication_class?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          id?: string
+          is_default?: boolean
+          organization_id?: string
+          profile_role?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          sender_identity_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_module_sender_profile_sender_identity_id_fkey"
+            columns: ["sender_identity_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_sender_identity"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_producer_event_binding: {
         Row: {
           activated_at: string | null
@@ -121032,6 +121115,67 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_module_sender_profile_bootstrap: {
+        Args: {
+          p_apply?: boolean
+          p_channel?: string
+          p_correlation_id?: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_module_sender_profile_delete: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_module_sender_profile_impact: {
+        Args: { p_id: string }
+        Returns: Json
+      }
+      omni_comms_module_sender_profile_resolve: {
+        Args: {
+          p_channel?: string
+          p_event_definition_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_module_sender_profile_set_lifecycle: {
+        Args: {
+          p_action: string
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      omni_comms_module_sender_profile_summary: {
+        Args: { p_channel?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_module_sender_profile_upsert_draft: {
+        Args: {
+          p_allow_event_override?: boolean
+          p_allow_organization_fallback?: boolean
+          p_caller_module_code: string
+          p_channel: string
+          p_communication_class?: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_expected_updated_at: string
+          p_id: string
+          p_is_default?: boolean
+          p_organization_id: string
+          p_profile_role?: string
+          p_sender_identity_id: string
+        }
+        Returns: string
+      }
       omni_comms_ops_message_content: {
         Args: {
           p_message_id: string
@@ -121729,6 +121873,63 @@ export type Database = {
       omni_comms_priv_mask_reference: {
         Args: { p_value: string }
         Returns: string
+      }
+      omni_comms_priv_module_sender_impact: {
+        Args: {
+          p_row: Database["public"]["Tables"]["omni_comms_module_sender_profile"]["Row"]
+        }
+        Returns: Json
+      }
+      omni_comms_priv_module_sender_route_block: {
+        Args: {
+          p_channel: string
+          p_event_definition_id: string
+          p_organization_id: string
+          p_sender_identity_id: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_module_sender_validate: {
+        Args: {
+          p_caller_module_code: string
+          p_channel: string
+          p_department_id: string
+          p_organization_id: string
+          p_profile_role: string
+          p_sender_identity_id: string
+        }
+        Returns: {
+          activated_at: string | null
+          activated_by: string | null
+          channel: string
+          code: string
+          created_at: string
+          created_by: string | null
+          data_origin: string
+          department_id: string | null
+          display_name: string
+          event_definition_id: string | null
+          from_address: string | null
+          from_name: string | null
+          id: string
+          identity_config: Json
+          identity_type: string | null
+          organization_id: string
+          print_config: Json | null
+          reply_to_address: string | null
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "omni_comms_sender_identity"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       omni_comms_priv_next_event_sequence: {
         Args: { p_request_id: string }

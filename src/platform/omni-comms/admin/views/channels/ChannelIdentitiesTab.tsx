@@ -67,6 +67,8 @@ import { DeferredCapabilityCard, Field, SelectField, toastError } from './channe
 import { isReferenceSenderIdentity, visibleRecords } from './channelReferenceData';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
 import { EmailSenderAddressesPanel } from './senders/EmailSenderAddressesPanel';
+import { ModuleSenderAssignmentsPanel } from './senders/ModuleSenderAssignmentsPanel';
+
 
 import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
 import {
@@ -134,18 +136,23 @@ export const ChannelIdentitiesTab: React.FC<{
     );
   }
 
-  // Email uses the dedicated operator-facing "Sender Addresses" screen.
+  // Email uses the dedicated operator-facing "Sender Addresses" screen plus
+  // the module → sender profile assignment layer.
   if (definition.code === 'email') {
     return (
-      <EmailSenderAddressesPanel
-        client={client}
-        orgId={orgId}
-        departmentId={departmentId}
-        departmentName={departmentName}
-        onChanged={onChanged}
-      />
+      <div className="space-y-6">
+        <EmailSenderAddressesPanel
+          client={client}
+          orgId={orgId}
+          departmentId={departmentId}
+          departmentName={departmentName}
+          onChanged={onChanged}
+        />
+        <ModuleSenderAssignmentsPanel client={client} orgId={orgId} channel="email" />
+      </div>
     );
   }
+
 
   return (
     <GenericIdentitiesPanel

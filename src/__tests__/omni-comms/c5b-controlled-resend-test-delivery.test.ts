@@ -273,7 +273,7 @@ describe('C5B — registry and script governance', () => {
   });
 
   it('raises the registered object count to 31', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(35);
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(36);
   });
 
   it('keeps the C5B rollback script fail-safe', () => {

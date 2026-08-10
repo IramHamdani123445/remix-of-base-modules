@@ -134,8 +134,8 @@ describe('C5A closure — 2. registry classification', () => {
   });
 
   it('keeps the object count aligned with the registry', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(35);
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(35);
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(36);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(36);
   });
 
   it('registers exactly one C5A object and keeps registries valid', () => {
