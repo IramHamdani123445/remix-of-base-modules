@@ -410,7 +410,7 @@ export async function runProviderDomainStatus(
   if (!SECRET_REF_PATTERN.test(secretRef)) {
     return { status: 200, body: { ok: false, code: "configuration_incomplete", domains: [] } };
   }
-  const key = deps.getSecret(secretRef);
+  const key = await deps.getSecret(secretRef);
   if (!key || key.trim() === "") {
     return { status: 200, body: { ok: false, code: "secret_missing", domains: [] } };
   }
