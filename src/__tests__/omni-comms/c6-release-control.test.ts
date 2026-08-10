@@ -317,8 +317,8 @@ describe('C6 — registries', () => {
     expect(names).toContain('omni_comms_channel_release_event');
   });
 
-  it('raises the approved object ceiling to 33', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(33);
+  it('raises the approved object ceiling to 34', () => {
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(34);
   });
 
   it('registers the release-control edge function', () => {
@@ -331,7 +331,7 @@ describe('C6 — registries', () => {
     const result = validateOmniCommsRegistries();
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
-    expect(result.counts.activeObjects).toBe(33);
+    expect(result.counts.activeObjects).toBe(34);
     expect(result.counts.integrations).toBe(9);
   });
 });

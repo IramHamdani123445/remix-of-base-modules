@@ -12,8 +12,13 @@ import {
   OMNI_COMMS_OVERVIEW_ROUTE,
   resolveActiveNavItem,
 } from './omniCommsNavigation';
-import { CHANNEL_RAIL_TAB_LABELS } from './channelWorkspaceRail';
+import {
+  CHANNEL_SECTION_TAB_LABELS,
+  getSectionDefinition,
+  sectionForTab,
+} from './channelWorkspaceSections';
 import { resolveChannelWorkspaceTab } from '../hooks/useOmniCommsTabParam';
+
 
 export interface OmniCommsCrumb {
   readonly id: string;
@@ -73,11 +78,21 @@ export function buildOmniCommsBreadcrumbs(
         (input.channel ?? '').trim(),
       )}`,
     });
+    // Workspace context is the task-shaped SECTION, then the surface inside
+    // it. A section with a single surface never repeats itself.
     const tab = resolveChannelWorkspaceTab(input.tab);
+    const workspaceSection = getSectionDefinition(sectionForTab(tab));
     crumbs.push({
-      id: `tab-${tab}`,
-      label: CHANNEL_RAIL_TAB_LABELS[tab],
+      id: `section-workspace-${workspaceSection.id}`,
+      label: workspaceSection.label,
     });
+    if (workspaceSection.tabs.length > 1) {
+      crumbs.push({
+        id: `tab-${tab}`,
+        label: CHANNEL_SECTION_TAB_LABELS[tab],
+      });
+    }
+
   }
 
   // The trailing crumb is always the current page and is never a link.

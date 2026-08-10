@@ -95,6 +95,18 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     status: 'AVAILABLE',
     introductionStory: 'Channels C2 — Generic provider accounts',
   },
+  {
+    name: 'omni_comms_test_recipient',
+    category: 'channels_senders_preferences',
+    epic: 4,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Approved recipients a controlled test delivery is permitted to reach. Governs the test allowlist only; never used by business dispatch.',
+    status: 'AVAILABLE',
+    introductionStory: 'Provider Administration — controlled test recipients',
+  },
+
+
 
   {
     name: 'omni_comms_channel_endpoint',

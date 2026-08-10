@@ -19,9 +19,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ShieldAlert } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+
 import { useOmniCommsChannelWorkspaceTab } from "../hooks/useOmniCommsTabParam";
-import { useOmniCommsCertificationPosture } from "../hooks/useOmniCommsCertificationPosture";
 import { useChannelTestDeliveryTransport } from "@/platform/omni-comms/admin/hooks/useChannelTestDeliveryTransport";
 
 import { useChannelReleaseControlTransport } from "@/platform/omni-comms/admin/hooks/useChannelReleaseControlTransport";
@@ -48,23 +47,22 @@ import {
 } from "@/platform/omni-comms/domain/channelCatalogue";
 import { ChannelCatalogue, type ChannelCatalogueReadiness } from "./channels/ChannelCatalogue";
 import { ChannelWorkspaceHeader } from "./channels/ChannelWorkspaceHeader";
-import { ChannelWorkspaceRail } from "./channels/ChannelWorkspaceRail";
-
-import { ChannelOverviewTab } from "./channels/ChannelOverviewTab";
-import { ChannelAccountsTab } from "./channels/ChannelAccountsTab";
-import { ChannelProvidersTab } from "./channels/ChannelProvidersTab";
-import { ChannelIdentitiesTab } from "./channels/ChannelIdentitiesTab";
-import { ChannelEndpointsTab } from "./channels/ChannelEndpointsTab";
-import { ChannelBindingsTab } from "./channels/ChannelBindingsTab";
-import { ChannelPoliciesTab } from "./channels/ChannelPoliciesTab";
-import { ChannelReleaseControlTab } from "./channels/ChannelReleaseControlTab";
-import { ChannelTestCentreTab } from "./channels/ChannelTestCentreTab";
-import { ChannelDiagnosticsTab } from "./channels/ChannelDiagnosticsTab";
+import {
+  ChannelSectionSteps,
+  ChannelWorkspaceSectionNav,
+} from "./channels/ChannelWorkspaceSectionNav";
+import { ChannelWorkspaceSurfaces } from "./channels/ChannelWorkspaceSurfaces";
+import { EmailReadinessSummary } from "./channels/EmailReadinessSummary";
+import {
+  getSectionDefinition,
+  sectionForTab,
+} from "../navigation/channelWorkspaceSections";
 import {
   isTabDisabled,
   resolveChannelUi,
   type ChannelWorkspaceTab,
 } from "./channels/channelUiRegistry";
+
 
 import { projectEmailReadiness } from "./channels/emailReadiness";
 import { projectDispatchDiagnostics } from "./channels/dispatchDiagnosticsProjection";
@@ -90,9 +88,8 @@ export const OmniCommsChannelsPage: React.FC = () => {
   const deliveryTransport = useChannelTestDeliveryTransport();
   const releaseTransport = useChannelReleaseControlTransport();
   const { organizationId: orgId, organizationName, departmentId, departmentName } = useOmniCommsTenant();
-  // Environment only decides whether the non-production Safe Test rail link is
-  // offered. No probe is triggered from this page.
-  const { environment } = useOmniCommsCertificationPosture({ autoProbe: false });
+
+
 
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   // C4B — the shared Email readiness projection resolves policy state from the
@@ -315,6 +312,9 @@ export const OmniCommsChannelsPage: React.FC = () => {
   // ── Selected channel workspace ────────────────────────────────────
   const readiness = isEmail ? emailReadiness : null;
   const applicable = (t: ChannelWorkspaceTab) => isTabApplicable(definition.code, t);
+  const activeSection = sectionForTab(tab);
+  const sectionDefinition = getSectionDefinition(activeSection);
+  const sectionSteps = sectionDefinition.tabs.filter(applicable);
 
   return (
     <div className="space-y-6" data-testid="omni-comms-channels-page">
@@ -330,117 +330,70 @@ export const OmniCommsChannelsPage: React.FC = () => {
       />
 
       {/*
-        UI Phase 1 — the workspace destinations are presented by a grouped
-        vertical rail (drawer below lg). CG1 — the rail only ever offers the
-        tabs the capability matrix declares for the selected channel.
+        UX Simplification — readiness answers "can this send?" before the
+        operator has to read anything else, on EVERY section of the workspace.
       */}
-      <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
-        <ChannelWorkspaceRail
-          tabs={definition.tabs as ChannelWorkspaceTab[]}
+      {isEmail ? (
+        <EmailReadinessSummary
+          readiness={goLiveReadiness}
+          loading={loading}
+          onGoToTab={setTab}
+        />
+      ) : null}
+
+      {/*
+        UX Simplification — the ten-destination rail is replaced by five
+        task-shaped sections. The `?tab=` vocabulary is unchanged, so every
+        existing deep link still resolves to exactly the same surface.
+      */}
+      <ChannelWorkspaceSectionNav
+        tabs={definition.tabs as ChannelWorkspaceTab[]}
+        activeTab={tab}
+        isTabDisabled={(t) => isTabDisabled(definition, t)}
+        onSelectTab={setTab}
+      />
+
+      <div className="space-y-4">
+        <p
+          className="text-sm text-muted-foreground"
+          data-testid="omni-comms-channel-section-description"
+        >
+          {sectionDefinition.description}
+        </p>
+
+        <ChannelSectionSteps
+          steps={sectionSteps}
           activeTab={tab}
-          environment={environment}
           isTabDisabled={(t) => isTabDisabled(definition, t)}
           onSelectTab={setTab}
         />
 
-        <Tabs value={tab} onValueChange={setTab} className="min-w-0">
-        <TabsContent value="overview">
-          <ChannelOverviewTab
-            definition={definition}
-            readiness={readiness}
-            channelReadiness={channelReadiness}
-            configuration={channelSummary}
-            summary={isEmail ? summary : null}
-            goLive={isEmail ? goLiveReadiness : null}
-            dispatchDiagnosticsUnavailable={isEmail ? dispatchRow === null : false}
-          />
-        </TabsContent>
-        {applicable("providers") ? (
-        <TabsContent value="providers">
-          <ChannelProvidersTab
-            definition={definition} client={client} onChanged={refreshChannel}
-          />
-        </TabsContent>
-        ) : null}
-        {applicable("accounts") ? (
-        <TabsContent value="accounts">
-          <ChannelAccountsTab
-            definition={definition} client={client} orgId={orgId}
-            summary={isEmail ? summary : null}
-            onChanged={isEmail ? refresh : refreshChannel}
-          />
-        </TabsContent>
-        ) : null}
-        {applicable("identities") ? (
-        <TabsContent value="identities">
-          <ChannelIdentitiesTab
-            definition={definition} client={client} orgId={orgId}
-            departmentId={departmentId} departmentName={departmentName}
-            onChanged={isEmail ? refresh : refreshChannel}
-          />
-        </TabsContent>
-        ) : null}
-        {applicable("endpoints") ? (
-        <TabsContent value="endpoints">
-          <ChannelEndpointsTab
-            definition={definition} client={client} orgId={orgId}
-            departmentId={departmentId} departmentName={departmentName}
-            onChanged={isEmail ? refresh : refreshChannel}
-          />
-        </TabsContent>
-        ) : null}
-        {applicable("bindings") ? (
-        <TabsContent value="bindings">
-          <ChannelBindingsTab
-            definition={definition} client={client} orgId={orgId}
-            departmentId={departmentId} departmentName={departmentName}
-            onChanged={isEmail ? refresh : refreshChannel}
-          />
-        </TabsContent>
-        ) : null}
-        {applicable("policies") ? (
-        <TabsContent value="policies">
-          <ChannelPoliciesTab
-            definition={definition} client={client} orgId={orgId}
-            departmentId={departmentId} departmentName={departmentName}
-            onChanged={isEmail ? refresh : refreshChannel}
-          />
-        </TabsContent>
-        ) : null}
-        {/* Release Control is an Email-only governance contract. */}
-        {applicable("release-control") ? (
-        <TabsContent value="release-control">
-          <ChannelReleaseControlTab
-            definition={definition} client={client} orgId={orgId}
-            departmentId={departmentId} departmentName={departmentName}
-            transport={releaseTransport}
-            onChanged={refresh}
-          />
-        </TabsContent>
-        ) : null}
-        {applicable("test-centre") ? (
-        <TabsContent value="test-centre">
-          <ChannelTestCentreTab
-            definition={definition} client={client} orgId={orgId}
-            departmentId={departmentId} departmentName={departmentName}
-            deliveryTransport={deliveryTransport}
-            onChanged={isEmail ? refreshTestCentre : refreshChannel}
-          />
-        </TabsContent>
-        ) : null}
-        {applicable("diagnostics") ? (
-        <TabsContent value="diagnostics">
-          <ChannelDiagnosticsTab
-            definition={definition} client={client} orgId={orgId}
-            departmentId={departmentId}
-          />
-        </TabsContent>
-        ) : null}
-        </Tabs>
+        <ChannelWorkspaceSurfaces
+          definition={definition}
+          client={client}
+          orgId={orgId}
+          departmentId={departmentId}
+          departmentName={departmentName}
+          tab={tab}
+          onSelectTab={setTab}
+          isEmail={isEmail}
+          summary={summary}
+          channelSummary={channelSummary}
+          readiness={readiness}
+          channelReadiness={channelReadiness}
+          goLiveReadiness={goLiveReadiness}
+          dispatchDiagnosticsUnavailable={isEmail ? dispatchRow === null : false}
+          deliveryTransport={deliveryTransport}
+          releaseTransport={releaseTransport}
+          onRefreshEmail={refresh}
+          onRefreshChannel={refreshChannel}
+          onRefreshTestCentre={refreshTestCentre}
+        />
       </div>
     </div>
-
   );
 };
 
 export default OmniCommsChannelsPage;
+
+
