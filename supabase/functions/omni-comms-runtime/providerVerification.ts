@@ -81,6 +81,62 @@ export async function probeResendCredential(
   return { resultCode: "provider_unavailable", detail: DETAIL.provider_unavailable };
 }
 
+/**
+ * Bounded sending-domain record. Only the domain name and its provider-stated
+ * verification status are ever surfaced — never DNS values, tokens or keys.
+ */
+export interface ResendDomainRecord {
+  name: string;
+  status: string;
+  region: string | null;
+}
+
+/** Pure parser for the Resend `GET /domains` payload. */
+export function parseResendDomains(payload: unknown): ResendDomainRecord[] {
+  const rows = (payload as { data?: unknown } | null)?.data;
+  if (!Array.isArray(rows)) return [];
+  const out: ResendDomainRecord[] = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object") continue;
+    const r = row as Record<string, unknown>;
+    const name = typeof r.name === "string" ? r.name.trim().toLowerCase() : "";
+    if (!name) continue;
+    out.push({
+      name,
+      status: typeof r.status === "string" ? r.status.trim().toLowerCase() : "unknown",
+      region: typeof r.region === "string" ? r.region : null,
+    });
+  }
+  return out;
+}
+
+/**
+ * Read-only sending-domain listing. Sends no email and returns no credential
+ * material — only bounded domain names and provider-stated statuses.
+ */
+export async function probeResendDomains(
+  apiKey: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ resultCode: VerificationResultCode; domains: ResendDomainRecord[] }> {
+  let res: Response;
+  try {
+    res = await fetchImpl("https://api.resend.com/domains", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+  } catch {
+    return { resultCode: "provider_unavailable", domains: [] };
+  }
+  if (res.status === 401 || res.status === 403) {
+    return { resultCode: "invalid_credentials", domains: [] };
+  }
+  if (res.status === 429) return { resultCode: "rate_limited", domains: [] };
+  if (res.status !== 200) return { resultCode: "provider_unavailable", domains: [] };
+  let body: unknown = null;
+  try { body = await res.json(); } catch { body = null; }
+  return { resultCode: "verified", domains: parseResendDomains(body) };
+}
+
 export interface VerificationDeps {
   /** service-role supabase client */
   admin: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
@@ -202,6 +258,58 @@ export async function runProviderVerification(
       verificationDetail: rec.verification_detail,
       verificationCheckedAt: rec.verification_checked_at,
       updatedAt: rec.updated_at,
+      emailsSent: 0,
+      deliveryAttemptsCreated: 0,
+      dispatchJobsCreated: 0,
+    },
+  };
+}
+
+/**
+ * Read-only sending-domain readiness report for a provider account.
+ *
+ * Authorisation reuses the same service-role verification-context RPC as
+ * credential verification. Nothing is persisted, no email is sent and no
+ * credential value is ever returned.
+ */
+export async function runProviderDomainStatus(
+  req: VerificationRequest,
+  deps: VerificationDeps,
+): Promise<VerificationResponse> {
+  if (!req.organizationId || !req.providerAccountId) {
+    return { status: 400, body: { ok: false, code: "invalid_input" } };
+  }
+  const ctxRes = await deps.admin.rpc(
+    "omni_comms_priv_provider_account_verification_context",
+    {
+      p_actor_id: req.actorId,
+      p_organization_id: req.organizationId,
+      p_provider_account_id: req.providerAccountId,
+    },
+  );
+  if (ctxRes.error) {
+    return { status: 500, body: { ok: false, code: "verification_context_failed" } };
+  }
+  const ctx = (ctxRes.data ?? {}) as Record<string, unknown>;
+  if (ctx.allowed !== true) {
+    const code = typeof ctx.code === "string" ? ctx.code : "permission_denied";
+    return { status: DENIAL_STATUS[code] ?? 403, body: { ok: false, code } };
+  }
+  const secretRef = String(ctx.secret_ref ?? "");
+  if (!SECRET_REF_PATTERN.test(secretRef)) {
+    return { status: 200, body: { ok: false, code: "configuration_incomplete", domains: [] } };
+  }
+  const key = deps.getSecret(secretRef);
+  if (!key || key.trim() === "") {
+    return { status: 200, body: { ok: false, code: "secret_missing", domains: [] } };
+  }
+  const probe = await probeResendDomains(key, deps.fetchImpl ?? fetch);
+  return {
+    status: 200,
+    body: {
+      ok: probe.resultCode === "verified",
+      code: probe.resultCode,
+      domains: probe.domains,
       emailsSent: 0,
       deliveryAttemptsCreated: 0,
       dispatchJobsCreated: 0,

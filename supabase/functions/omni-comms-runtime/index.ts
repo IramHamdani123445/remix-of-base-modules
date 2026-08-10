@@ -42,7 +42,7 @@ import {
   type SendCommunicationRecipientResult,
   type SendCommunicationResult,
 } from "./responseContract.ts";
-import { runProviderVerification } from "./providerVerification.ts";
+import { runProviderDomainStatus, runProviderVerification } from "./providerVerification.ts";
 
 
 const corsHeaders = {
@@ -234,6 +234,31 @@ Deno.serve(async (req: Request) => {
     );
     return json(result.body, result.status);
   }
+
+  // 1d. Bounded, read-only provider sending-domain readiness report.
+  // Contacts Resend's read-only domains listing. Sends no email, persists
+  // nothing, and returns no credential material.
+  if (new URL(req.url).pathname.endsWith("/provider-domain-status")) {
+    let dBody: Record<string, unknown>;
+    try { dBody = await req.json(); } catch { dBody = {}; }
+    const svc = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const result = await runProviderDomainStatus(
+      {
+        actorId: userId,
+        organizationId: String(dBody.organizationId ?? ""),
+        providerAccountId: String(dBody.providerAccountId ?? ""),
+      },
+      {
+        admin: svc as unknown as {
+          rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+        },
+        getSecret: (name) => Deno.env.get(name),
+      },
+    );
+    return json(result.body, result.status);
+  }
+
+
 
 
 
