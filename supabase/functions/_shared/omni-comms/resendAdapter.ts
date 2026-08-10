@@ -37,7 +37,13 @@ export interface ResendSendInput {
   readonly html?: string | null;
   /** Deterministic per-logical-send key. The SAME key is used on every retry. */
   readonly idempotencyKey: string;
+  /**
+   * Optional server-only resolver for UI-managed (vault-backed) credentials.
+   * When omitted, only a deployment-managed Edge Function Secret is used.
+   */
+  readonly secretResolver?: ((ref: string) => Promise<string | null>) | null;
 }
+
 
 export interface ResendSendResult {
   readonly status: ResendOutcomeStatus;
