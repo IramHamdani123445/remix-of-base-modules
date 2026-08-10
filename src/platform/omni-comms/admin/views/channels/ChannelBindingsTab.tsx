@@ -17,7 +17,7 @@
  *   - Reference/simulation bindings are hidden by default and read-only.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Plus, RefreshCcw } from 'lucide-react';
+import { Loader2, Plus, RefreshCcw, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,6 +49,7 @@ import {
   getChannelBindingSummary,
   setChannelBindingLifecycle,
   upsertChannelBindingDraft,
+  verifyChannelBindingConfiguration,
 } from '@/platform/omni-comms/application/channelBindingService';
 import {
   bindingActivationBlockers,
@@ -476,17 +477,46 @@ export const BindingRowActions: React.FC<{
 
   const dialog = useLifecycleDialog(run);
 
+  const requestVerification = async () => {
+    if (isReference) return;
+    setBusy(true);
+    try {
+      const result = await verifyChannelBindingConfiguration(client, row.id);
+      if (result.verificationStatus === 'verified') {
+        toast.success('Configuration verified by the trusted server-side check');
+      } else {
+        toast.error(`Verification failed · ${result.resultCode}`);
+      }
+      await onChanged();
+    } catch (e) { toastError(e, 'Verification failed'); }
+    finally { setBusy(false); }
+  };
+
   return (
     <>
-      <ResourceActionMenu
-        testId={`omni-comms-binding-actions-${row.id}`}
-        label={`Actions for binding ${row.identity_display_name}`}
-        disabled={busy || isReference}
-        actions={isReference ? [] : bindingLifecycleActions(row, blockers)}
-        onSelect={dialog.request}
-        onEdit={!isReference && row.status === 'draft' ? onEdit : undefined}
-        onViewDetails={onViewDetails}
-      />
+      <div className="flex items-center justify-end gap-2">
+        {isReference ? null : (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => void requestVerification()}
+            data-testid={`omni-comms-binding-verify-${row.id}`}
+          >
+            <ShieldCheck className="h-4 w-4 mr-1" aria-hidden="true" />
+            Verify configuration
+          </Button>
+        )}
+        <ResourceActionMenu
+          testId={`omni-comms-binding-actions-${row.id}`}
+          label={`Actions for binding ${row.identity_display_name}`}
+          disabled={busy || isReference}
+          actions={isReference ? [] : bindingLifecycleActions(row, blockers)}
+          onSelect={dialog.request}
+          onEdit={!isReference && row.status === 'draft' ? onEdit : undefined}
+          onViewDetails={onViewDetails}
+        />
+      </div>
       <LifecycleActionDialog
         controller={dialog}
         resourceLabel="binding"
