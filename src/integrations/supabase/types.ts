@@ -96017,6 +96017,7 @@ export type Database = {
           activated_at: string | null
           activated_by: string | null
           audience: string
+          catalogue_sender_code: string | null
           channel: string
           code: string
           created_at: string
@@ -96044,6 +96045,7 @@ export type Database = {
           activated_at?: string | null
           activated_by?: string | null
           audience?: string
+          catalogue_sender_code?: string | null
           channel: string
           code: string
           created_at?: string
@@ -96071,6 +96073,7 @@ export type Database = {
           activated_at?: string | null
           activated_by?: string | null
           audience?: string
+          catalogue_sender_code?: string | null
           channel?: string
           code?: string
           created_at?: string
@@ -121909,6 +121912,7 @@ export type Database = {
           activated_at: string | null
           activated_by: string | null
           audience: string
+          catalogue_sender_code: string | null
           channel: string
           code: string
           created_at: string
@@ -122187,12 +122191,18 @@ export type Database = {
         Returns: {
           audience: string
           department_code: string
+          department_required: boolean
           local_part: string
           name_suffix: string
           purpose: string
+          scope_note: string
           sender_code: string
           tier: string
         }[]
+      }
+      omni_comms_priv_sender_usage: {
+        Args: { p_sender_id: string }
+        Returns: Json
       }
       omni_comms_priv_set_runtime_environment: {
         Args: { p_environment: string }
@@ -122414,6 +122424,17 @@ export type Database = {
           p_correlation_id?: string
           p_domain?: string
           p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_sender_catalogue_resolve_conflict: {
+        Args: {
+          p_action: string
+          p_catalogue_sender_code: string
+          p_correlation_id?: string
+          p_expected_updated_at?: string
+          p_organization_id: string
+          p_sender_identity_id: string
         }
         Returns: Json
       }
