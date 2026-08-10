@@ -67,6 +67,8 @@ import { DeferredCapabilityCard, Field, SelectField, toastError } from './channe
 import { isReferenceSenderIdentity, visibleRecords } from './channelReferenceData';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
 import { EmailSenderAddressesPanel } from './senders/EmailSenderAddressesPanel';
+import { ModuleSenderAssignmentsPanel } from './senders/ModuleSenderAssignmentsPanel';
+
 
 import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
 import {
