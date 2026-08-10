@@ -270,6 +270,10 @@ export function projectEmailReadiness(
     && policySummary.effective_policy.data_origin !== 'reference_seed'
       ? policySummary.effective_policy
       : null;
+  /** Test & Verify gate — kept strictly separate from the configuration gate. */
+  const testingAllowed = operationalStateAllowsTesting(
+    effectivePolicy?.operational_state,
+  );
   const verified = part.accounts.some((a) => a.verification_status === 'verified');
   /**
    * Resend authenticated the key but restricts it to sending-only access, so
