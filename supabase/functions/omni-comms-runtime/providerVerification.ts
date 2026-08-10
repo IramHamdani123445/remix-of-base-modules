@@ -264,3 +264,55 @@ export async function runProviderVerification(
     },
   };
 }
+
+/**
+ * Read-only sending-domain readiness report for a provider account.
+ *
+ * Authorisation reuses the same service-role verification-context RPC as
+ * credential verification. Nothing is persisted, no email is sent and no
+ * credential value is ever returned.
+ */
+export async function runProviderDomainStatus(
+  req: VerificationRequest,
+  deps: VerificationDeps,
+): Promise<VerificationResponse> {
+  if (!req.organizationId || !req.providerAccountId) {
+    return { status: 400, body: { ok: false, code: "invalid_input" } };
+  }
+  const ctxRes = await deps.admin.rpc(
+    "omni_comms_priv_provider_account_verification_context",
+    {
+      p_actor_id: req.actorId,
+      p_organization_id: req.organizationId,
+      p_provider_account_id: req.providerAccountId,
+    },
+  );
+  if (ctxRes.error) {
+    return { status: 500, body: { ok: false, code: "verification_context_failed" } };
+  }
+  const ctx = (ctxRes.data ?? {}) as Record<string, unknown>;
+  if (ctx.allowed !== true) {
+    const code = typeof ctx.code === "string" ? ctx.code : "permission_denied";
+    return { status: DENIAL_STATUS[code] ?? 403, body: { ok: false, code } };
+  }
+  const secretRef = String(ctx.secret_ref ?? "");
+  if (!SECRET_REF_PATTERN.test(secretRef)) {
+    return { status: 200, body: { ok: false, code: "configuration_incomplete", domains: [] } };
+  }
+  const key = deps.getSecret(secretRef);
+  if (!key || key.trim() === "") {
+    return { status: 200, body: { ok: false, code: "secret_missing", domains: [] } };
+  }
+  const probe = await probeResendDomains(key, deps.fetchImpl ?? fetch);
+  return {
+    status: 200,
+    body: {
+      ok: probe.resultCode === "verified",
+      code: probe.resultCode,
+      domains: probe.domains,
+      emailsSent: 0,
+      deliveryAttemptsCreated: 0,
+      dispatchJobsCreated: 0,
+    },
+  };
+}
