@@ -148,7 +148,14 @@ export const ChannelIdentitiesTab: React.FC<{
           departmentName={departmentName}
           onChanged={onChanged}
         />
+        <SenderCatalogueBootstrapPanel
+          client={client}
+          orgId={orgId}
+          channel="email"
+          onChanged={onChanged}
+        />
         <ModuleSenderAssignmentsPanel client={client} orgId={orgId} channel="email" />
+
       </div>
     );
   }
