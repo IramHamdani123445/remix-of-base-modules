@@ -183,7 +183,8 @@ describe('UI Phase 1 — breadcrumbs', () => {
       'Omnichannel Communications',
       'Channels',
       'Email',
-      'Sender Identities',
+      'Delivery Setup',
+      'Sender addresses',
     ]);
   });
 
@@ -195,7 +196,7 @@ describe('UI Phase 1 — breadcrumbs', () => {
       channelLabel: 'Email',
       tab: 'senders',
     });
-    expect(crumbs[crumbs.length - 1].label).toBe('Sender Identities');
+    expect(crumbs[crumbs.length - 1].label).toBe('Sender addresses');
   });
 
   it('never makes the trailing crumb a link', () => {
@@ -231,7 +232,8 @@ describe('UI Phase 1 — shell composition', () => {
     const src = read(CHANNELS_PAGE);
     expect(src).not.toContain('TabsList');
     expect(src).not.toContain('overflow-x-auto');
-    expect(src).toContain('ChannelWorkspaceRail');
+    // UX Simplification — superseded by the five task-shaped sections.
+    expect(src).toContain('ChannelWorkspaceSectionNav');
   });
 
   it('offers the rail as a persistent rail on desktop and a drawer below lg', () => {
