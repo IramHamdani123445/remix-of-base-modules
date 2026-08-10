@@ -25,6 +25,7 @@ import type {
 } from '@/platform/omni-comms/application/channelPolicyTypes';
 import {
   operationalStateAllowsConfiguration,
+  operationalStateAllowsTesting,
 } from '@/platform/omni-comms/application/channelPolicyTypes';
 import type {
   ChannelTestCentreSummary,
