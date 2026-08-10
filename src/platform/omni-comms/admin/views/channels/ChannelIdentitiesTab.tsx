@@ -134,18 +134,23 @@ export const ChannelIdentitiesTab: React.FC<{
     );
   }
 
-  // Email uses the dedicated operator-facing "Sender Addresses" screen.
+  // Email uses the dedicated operator-facing "Sender Addresses" screen plus
+  // the module → sender profile assignment layer.
   if (definition.code === 'email') {
     return (
-      <EmailSenderAddressesPanel
-        client={client}
-        orgId={orgId}
-        departmentId={departmentId}
-        departmentName={departmentName}
-        onChanged={onChanged}
-      />
+      <div className="space-y-6">
+        <EmailSenderAddressesPanel
+          client={client}
+          orgId={orgId}
+          departmentId={departmentId}
+          departmentName={departmentName}
+          onChanged={onChanged}
+        />
+        <ModuleSenderAssignmentsPanel client={client} orgId={orgId} channel="email" />
+      </div>
     );
   }
+
 
   return (
     <GenericIdentitiesPanel
