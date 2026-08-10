@@ -143,7 +143,18 @@ export interface EmailReadinessCheck {
   readonly label: string;
   readonly state: EmailReadinessCheckState;
   readonly detail: string;
+  /** Overrides the generic next-action sentence for this check when present. */
+  readonly nextAction?: string;
+  /** Overrides where the operator is sent to clear this specific blocker. */
+  readonly navigationKey?: string;
 }
+
+/** Shown when the policy exists but testing is not switched on. */
+export const EMAIL_POLICY_TESTING_DISABLED_DETAIL =
+  'Email policy is configured, but testing is not enabled.';
+
+export const EMAIL_POLICY_TESTING_DISABLED_ACTION =
+  'Change Email policy operational state to Test only.';
 
 /**
  * C7 — read-only controlled business dispatch diagnostics, projected by the
