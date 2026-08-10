@@ -14,7 +14,9 @@ export const OMNI_COMMS_RESEND_SECRET_REF_PATTERN =
 
 export type ProviderVerificationResultCode =
   | "verified"
+  | "restricted_api_key"
   | "invalid_credentials"
+  | "request_rejected"
   | "secret_missing"
   | "provider_unavailable"
   | "rate_limited"
@@ -40,6 +42,10 @@ function functionsBaseUrl(): string {
 
 export const PROVIDER_VERIFICATION_MESSAGES: Record<string, string> = {
   verified: "Credentials verified with Resend.",
+  restricted_api_key:
+    "Resend authenticated this key, but it has sending-only access and cannot read domains. The sending credential is valid; domain status needs separate verification.",
+  request_rejected:
+    "Resend rejected the request format. This says nothing about the credential — no replacement key is required.",
   invalid_credentials: "Resend rejected the configured API key.",
   secret_missing: "No Edge secret exists for this secret reference.",
   provider_unavailable: "Resend could not be reached. Try again shortly.",
