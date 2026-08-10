@@ -94798,25 +94798,33 @@ export type Database = {
           association_confirmed: boolean
           association_confirmed_at: string | null
           association_confirmed_by: string | null
+          association_freshness_days: number
           association_note: string | null
           association_provider_reference: string | null
           association_provider_status: string | null
           channel_endpoint_id: string
           claimed_status: string | null
+          config_fingerprint: string | null
           created_at: string
           created_by: string | null
           data_origin: string
           detail: string | null
           dns_checked_at: string | null
           dns_evidence: Json
+          dns_freshness_days: number
           domain_name: string
           expected_dns: Json
           id: string
           notes: string | null
           organization_id: string
           provider_account_id: string | null
+          provider_code: string
+          provider_domain_id: string | null
+          provider_domain_region: string | null
+          provider_domain_status: string | null
           provider_reference: string | null
           result_code: string | null
+          sending_capability: string
           status: string
           updated_at: string
           updated_by: string | null
@@ -94828,25 +94836,33 @@ export type Database = {
           association_confirmed?: boolean
           association_confirmed_at?: string | null
           association_confirmed_by?: string | null
+          association_freshness_days?: number
           association_note?: string | null
           association_provider_reference?: string | null
           association_provider_status?: string | null
           channel_endpoint_id: string
           claimed_status?: string | null
+          config_fingerprint?: string | null
           created_at?: string
           created_by?: string | null
           data_origin?: string
           detail?: string | null
           dns_checked_at?: string | null
           dns_evidence?: Json
+          dns_freshness_days?: number
           domain_name: string
           expected_dns?: Json
           id?: string
           notes?: string | null
           organization_id: string
           provider_account_id?: string | null
+          provider_code?: string
+          provider_domain_id?: string | null
+          provider_domain_region?: string | null
+          provider_domain_status?: string | null
           provider_reference?: string | null
           result_code?: string | null
+          sending_capability?: string
           status?: string
           updated_at?: string
           updated_by?: string | null
@@ -94858,25 +94874,33 @@ export type Database = {
           association_confirmed?: boolean
           association_confirmed_at?: string | null
           association_confirmed_by?: string | null
+          association_freshness_days?: number
           association_note?: string | null
           association_provider_reference?: string | null
           association_provider_status?: string | null
           channel_endpoint_id?: string
           claimed_status?: string | null
+          config_fingerprint?: string | null
           created_at?: string
           created_by?: string | null
           data_origin?: string
           detail?: string | null
           dns_checked_at?: string | null
           dns_evidence?: Json
+          dns_freshness_days?: number
           domain_name?: string
           expected_dns?: Json
           id?: string
           notes?: string | null
           organization_id?: string
           provider_account_id?: string | null
+          provider_code?: string
+          provider_domain_id?: string | null
+          provider_domain_region?: string | null
+          provider_domain_status?: string | null
           provider_reference?: string | null
           result_code?: string | null
+          sending_capability?: string
           status?: string
           updated_at?: string
           updated_by?: string | null
@@ -120734,7 +120758,12 @@ export type Database = {
           p_notes?: string
           p_organization_id: string
           p_provider_account_id?: string
+          p_provider_code?: string
+          p_provider_domain_id?: string
+          p_provider_domain_region?: string
+          p_provider_domain_status?: string
           p_provider_reference?: string
+          p_sending_capability?: string
           p_verification_source?: string
         }
         Returns: string
@@ -121581,6 +121610,30 @@ export type Database = {
           p_reason: string
           p_release_control_id: string
           p_trigger: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_domain_config_fingerprint: {
+        Args: {
+          p_domain_name: string
+          p_expected_dns: Json
+          p_provider_account_id: string
+          p_provider_code: string
+          p_provider_domain_id: string
+          p_provider_domain_region: string
+          p_provider_domain_status: string
+          p_sending_capability: string
+          p_verification_source: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_domain_expectations_exact: {
+        Args: { p_expected_dns: Json }
+        Returns: boolean
+      }
+      omni_comms_priv_domain_readiness: {
+        Args: {
+          d: Database["public"]["Tables"]["omni_comms_domain_verification"]["Row"]
         }
         Returns: Json
       }

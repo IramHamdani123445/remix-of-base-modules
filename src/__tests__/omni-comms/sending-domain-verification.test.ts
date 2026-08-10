@@ -9,12 +9,15 @@ import { readFileSync } from 'node:fs';
 import {
   collectDnsEvidence,
   dnsValueMatches,
+  expectationsAreExact,
   isSafeDnsName,
   normaliseDnsValue,
   parseExpectedDnsRecords,
+  parseMxAnswer,
   runSendingDomainVerification,
   type ExpectedDnsRecord,
 } from '../../../supabase/functions/omni-comms-runtime/domainDnsVerification';
+
 import {
   resendExpectedDnsRecords,
   DOMAIN_VERIFICATION_SOURCE_LABELS,
@@ -39,6 +42,14 @@ function dohResponder(map: Record<string, string[]>) {
   };
 }
 
+const EXACT_FACTS = {
+  spfValue: 'v=spf1 include:amazonses.com ~all',
+  mxHost: 'feedback-smtp.eu-west-1.amazonses.com',
+  mxPriority: 10,
+  dkimSelector: 'resend',
+  dkimValue: 'p=MIGfMA0GCS',
+};
+
 describe('DNS value handling', () => {
   it('normalises quoted, chunked and dot-terminated answers', () => {
     expect(normaliseDnsValue('"v=spf1 include:amazonses.com ~all"'))
@@ -53,6 +64,43 @@ describe('DNS value handling', () => {
     expect(dnsValueMatches('v=spf1 include:other.com ~all', 'include:amazonses.com', 'contains')).toBe(false);
     expect(dnsValueMatches('"abc"', 'ABC', 'equals')).toBe(true);
     expect(dnsValueMatches('abcd', 'abc', 'equals')).toBe(false);
+  });
+
+  it('compares exact TXT values without accepting a superset', () => {
+    expect(dnsValueMatches(
+      '"v=spf1 include:amazonses.com ~all"',
+      'v=spf1 include:amazonses.com ~all',
+      'exact_txt',
+    )).toBe(true);
+    // A generic "contains" would have accepted this; exact matching does not.
+    expect(dnsValueMatches(
+      '"v=spf1 include:amazonses.com include:elsewhere.test ~all"',
+      'v=spf1 include:amazonses.com ~all',
+      'exact_txt',
+    )).toBe(false);
+  });
+
+  it('compares MX host AND priority exactly', () => {
+    expect(parseMxAnswer('10 feedback-smtp.eu-west-1.amazonses.com.'))
+      .toEqual({ priority: 10, host: 'feedback-smtp.eu-west-1.amazonses.com' });
+    expect(dnsValueMatches(
+      '10 feedback-smtp.eu-west-1.amazonses.com.',
+      'feedback-smtp.eu-west-1.amazonses.com',
+      'exact_mx',
+      10,
+    )).toBe(true);
+    expect(dnsValueMatches(
+      '20 feedback-smtp.eu-west-1.amazonses.com.',
+      'feedback-smtp.eu-west-1.amazonses.com',
+      'exact_mx',
+      10,
+    )).toBe(false);
+    expect(dnsValueMatches(
+      '10 feedback-smtp.us-east-1.amazonses.com.',
+      'feedback-smtp.eu-west-1.amazonses.com',
+      'exact_mx',
+      10,
+    )).toBe(false);
   });
 
   it('accepts only plain hostnames as lookup targets', () => {
@@ -73,10 +121,46 @@ describe('DNS value handling', () => {
     expect(parsed).toHaveLength(1);
     expect(parsed[0]).toMatchObject({ recordType: 'TXT', required: true, matchMode: 'contains' });
   });
+
+  it('carries the exact MX priority through parsing', () => {
+    const parsed = parseExpectedDnsRecords([
+      {
+        recordType: 'MX',
+        name: 'send.example.org',
+        expectedValue: 'feedback-smtp.eu-west-1.amazonses.com',
+        matchMode: 'exact_mx',
+        expectedPriority: 10,
+      },
+    ]);
+    expect(parsed[0]).toMatchObject({ matchMode: 'exact_mx', expectedPriority: 10 });
+  });
+});
+
+describe('exact expectation gate', () => {
+  it('builds exact expectations from provider facts only', () => {
+    const records = resendExpectedDnsRecords('Example.org', EXACT_FACTS);
+    expect(records.map((r) => r.matchMode)).toEqual(['exact_txt', 'exact_mx', 'exact_txt']);
+    expect(records[1]).toMatchObject({ expectedPriority: 10 });
+    expect(records[2].name).toBe('resend._domainkey.example.org');
+    expect(expectationsAreExact(records)).toBe(true);
+  });
+
+  it('rejects legacy generic expectations as evidence', () => {
+    expect(expectationsAreExact([
+      {
+        recordType: 'TXT',
+        name: 'send.example.org',
+        expectedValue: 'include:amazonses.com',
+        matchMode: 'contains',
+        required: true,
+      },
+    ])).toBe(false);
+    expect(expectationsAreExact([])).toBe(false);
+  });
 });
 
 describe('server-observed DNS evidence', () => {
-  const expected = resendExpectedDnsRecords('example.org') as ExpectedDnsRecord[];
+  const expected = resendExpectedDnsRecords('example.org', EXACT_FACTS) as ExpectedDnsRecord[];
 
   it('verifies only when every required record matches', async () => {
     const outcome = await collectDnsEvidence(expected, dohResponder({
@@ -86,7 +170,34 @@ describe('server-observed DNS evidence', () => {
     }));
     expect(outcome.allMatched).toBe(true);
     expect(outcome.resultCode).toBe('verified');
+    expect(outcome.expectationsExact).toBe(true);
     expect(outcome.evidence.every((e) => e.matched)).toBe(true);
+  });
+
+  it('rejects a near-miss that a generic match would have accepted', async () => {
+    const outcome = await collectDnsEvidence(expected, dohResponder({
+      'send.example.org|16': ['"v=spf1 include:amazonses.com include:other.test ~all"'],
+      'send.example.org|15': ['20 feedback-smtp.eu-west-1.amazonses.com.'],
+      'resend._domainkey.example.org|16': ['"p=SOMETHINGELSE"'],
+    }));
+    expect(outcome.allMatched).toBe(false);
+    expect(outcome.resultCode).toBe('dns_mismatch');
+  });
+
+  it('flags generic expectations even when they all match', async () => {
+    const outcome = await collectDnsEvidence(
+      [{
+        recordType: 'TXT',
+        name: 'send.example.org',
+        expectedValue: 'include:amazonses.com',
+        matchMode: 'contains',
+        required: true,
+      }],
+      dohResponder({ 'send.example.org|16': ['"v=spf1 include:amazonses.com ~all"'] }),
+    );
+    expect(outcome.allMatched).toBe(true);
+    expect(outcome.expectationsExact).toBe(false);
+    expect(outcome.detail).toMatch(/not accepted as/i);
   });
 
   it('reports missing records rather than assuming success', async () => {
@@ -102,7 +213,7 @@ describe('server-observed DNS evidence', () => {
     const outcome = await collectDnsEvidence(expected, dohResponder({
       'send.example.org|16': ['"v=spf1 include:someoneelse.com ~all"'],
       'send.example.org|15': ['10 feedback-smtp.eu-west-1.amazonses.com.'],
-      'resend._domainkey.example.org|16': ['"p=AAA"'],
+      'resend._domainkey.example.org|16': ['"p=MIGfMA0GCS"'],
     }));
     expect(outcome.resultCode).toBe('dns_mismatch');
   });
@@ -125,8 +236,9 @@ describe('verification request handler', () => {
     code: 'ok',
     domain_name: 'example.org',
     verification_source: 'external_provider_plus_dns',
-    expected_dns: resendExpectedDnsRecords('example.org'),
+    expected_dns: resendExpectedDnsRecords('example.org', EXACT_FACTS),
   };
+
 
   function admin(ctx: unknown, calls: { fn: string; args: Record<string, unknown> }[]) {
     return {
@@ -149,7 +261,7 @@ describe('verification request handler', () => {
         fetchImpl: dohResponder({
           'send.example.org|16': ['"v=spf1 include:amazonses.com ~all"'],
           'send.example.org|15': ['10 feedback-smtp.eu-west-1.amazonses.com.'],
-          'resend._domainkey.example.org|16': ['"p=AAA"'],
+          'resend._domainkey.example.org|16': ['"p=MIGfMA0GCS"'],
         }),
       },
     );
