@@ -15,7 +15,9 @@
 
 export type VerificationResultCode =
   | "verified"
+  | "restricted_api_key"
   | "invalid_credentials"
+  | "request_rejected"
   | "secret_missing"
   | "provider_unavailable"
   | "rate_limited"
@@ -31,7 +33,11 @@ export interface ProbeOutcome {
 /** Bounded, non-sensitive detail messages. Never contains provider payloads. */
 const DETAIL: Record<VerificationResultCode, string> = {
   verified: "Resend credential accepted.",
+  restricted_api_key:
+    "Resend authenticated the key, but it has sending-only access and cannot read domains.",
   invalid_credentials: "Resend rejected the configured API key.",
+  request_rejected:
+    "Resend rejected the verification request format. No credential conclusion was drawn.",
   secret_missing: "No Edge secret is configured for the secret reference.",
   provider_unavailable: "Resend could not be reached.",
   rate_limited: "Resend rate limited the verification request.",
@@ -39,7 +45,12 @@ const DETAIL: Record<VerificationResultCode, string> = {
 };
 
 export function statusForResult(code: VerificationResultCode): VerificationStatus {
-  return code === "verified" ? "verified" : "failed";
+  if (code === "verified") return "verified";
+  // A restricted (sending-access) key is AUTHENTIC — it simply lacks the
+  // domain-read permission. It must never be recorded as a failed credential.
+  // A rejected request format says nothing about the credential either.
+  if (code === "restricted_api_key" || code === "request_rejected") return "pending";
+  return "failed";
 }
 
 export function detailForResult(code: VerificationResultCode): string {
@@ -54,6 +65,107 @@ export function detailForResult(code: VerificationResultCode): string {
 export const SECRET_REF_PATTERN = /^OMNI_COMMS_RESEND_[A-Z0-9]+(?:_[A-Z0-9]+)*$/;
 
 /**
+ * Bounded, non-sensitive client identifier sent to Resend. Contains no secret,
+ * user, recipient or claim information.
+ */
+export const OMNI_COMMS_USER_AGENT = "OmniComms-Admin-Verification/1.0";
+
+/** Bounded provider error codes Resend may return on the domains endpoint. */
+export const RESEND_RESTRICTED_CODES = new Set([
+  "restricted_api_key",
+  "insufficient_permissions",
+  "not_authorized",
+]);
+const RESEND_INVALID_CODES = new Set([
+  "invalid_api_key",
+  "missing_api_key",
+  "unauthorized",
+  "invalid_access",
+]);
+const RESEND_REQUEST_CODES = new Set([
+  "validation_error",
+  "invalid_request",
+  "missing_required_field",
+  "not_found",
+  "method_not_allowed",
+]);
+
+/** Bounded, non-sensitive projection of a Resend response used for classification. */
+export interface ResendProbeResponse {
+  httpStatus: number;
+  /** Provider-stated error name only. Never headers, payloads or credentials. */
+  providerErrorCode: string | null;
+  body: unknown;
+}
+
+/** Pure classifier — maps a bounded provider response to an Omni-Comms code. */
+export function classifyResendResponse(
+  res: Pick<ResendProbeResponse, "httpStatus" | "providerErrorCode">,
+): VerificationResultCode {
+  const code = (res.providerErrorCode ?? "").trim().toLowerCase();
+  if (res.httpStatus === 200) return "verified";
+  if (RESEND_RESTRICTED_CODES.has(code)) return "restricted_api_key";
+  if (RESEND_INVALID_CODES.has(code)) return "invalid_credentials";
+  if (RESEND_REQUEST_CODES.has(code)) return "request_rejected";
+  if (res.httpStatus === 429) return "rate_limited";
+  if (res.httpStatus === 401) return "invalid_credentials";
+  // 403 without an explicit provider code means authenticated-but-not-permitted.
+  if (res.httpStatus === 403) return "restricted_api_key";
+  if (res.httpStatus === 400 || res.httpStatus === 404 || res.httpStatus === 405 ||
+      res.httpStatus === 422) {
+    return "request_rejected";
+  }
+  return "provider_unavailable";
+}
+
+/** Reads ONLY the provider error name from a bounded Resend error body. */
+export function readProviderErrorCode(body: unknown): string | null {
+  if (!body || typeof body !== "object") return null;
+  const b = body as Record<string, unknown>;
+  const raw = typeof b.name === "string"
+    ? b.name
+    : typeof (b.error as Record<string, unknown> | undefined)?.name === "string"
+      ? ((b.error as Record<string, unknown>).name as string)
+      : typeof b.type === "string"
+        ? b.type
+        : null;
+  if (!raw) return null;
+  const trimmed = raw.trim().toLowerCase().slice(0, 64);
+  return /^[a-z0-9_]+$/.test(trimmed) ? trimmed : null;
+}
+
+/**
+ * Single read-only Resend request used by every verification probe.
+ * Sends no email and never returns credential material or provider headers.
+ */
+export async function resendDomainsRequest(
+  apiKey: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ResendProbeResponse | null> {
+  let res: Response;
+  try {
+    res = await fetchImpl("https://api.resend.com/domains", {
+      method: "GET",
+      headers: {
+        // Server-side only. Never returned, logged or persisted.
+        Authorization: `Bearer ${apiKey}`,
+        Accept: "application/json",
+        "User-Agent": OMNI_COMMS_USER_AGENT,
+      },
+    });
+  } catch {
+    return null;
+  }
+  let body: unknown = null;
+  try { body = await res.json(); } catch { body = null; }
+  return {
+    httpStatus: res.status,
+    providerErrorCode: res.status === 200 ? null : readProviderErrorCode(body),
+    body: res.status === 200 ? body : null,
+  };
+}
+
+/**
  * Safe, non-sending Resend credential probe.
  * Uses the read-only domains listing endpoint; it dispatches no email.
  */
@@ -61,24 +173,12 @@ export async function probeResendCredential(
   apiKey: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ProbeOutcome> {
-  let res: Response;
-  try {
-    res = await fetchImpl("https://api.resend.com/domains", {
-      method: "GET",
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-  } catch {
+  const res = await resendDomainsRequest(apiKey, fetchImpl);
+  if (!res) {
     return { resultCode: "provider_unavailable", detail: DETAIL.provider_unavailable };
   }
-  // The body is intentionally not read, logged, or persisted.
-  try { await res.text(); } catch { /* ignore */ }
-
-  if (res.status === 200) return { resultCode: "verified", detail: DETAIL.verified };
-  if (res.status === 401 || res.status === 403) {
-    return { resultCode: "invalid_credentials", detail: DETAIL.invalid_credentials };
-  }
-  if (res.status === 429) return { resultCode: "rate_limited", detail: DETAIL.rate_limited };
-  return { resultCode: "provider_unavailable", detail: DETAIL.provider_unavailable };
+  const resultCode = classifyResendResponse(res);
+  return { resultCode, detail: DETAIL[resultCode] };
 }
 
 /**
@@ -117,24 +217,29 @@ export function parseResendDomains(payload: unknown): ResendDomainRecord[] {
 export async function probeResendDomains(
   apiKey: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<{ resultCode: VerificationResultCode; domains: ResendDomainRecord[] }> {
-  let res: Response;
-  try {
-    res = await fetchImpl("https://api.resend.com/domains", {
-      method: "GET",
-      headers: { Authorization: `Bearer ${apiKey}` },
-    });
-  } catch {
-    return { resultCode: "provider_unavailable", domains: [] };
+): Promise<{
+  resultCode: VerificationResultCode;
+  domains: ResendDomainRecord[];
+  /** Bounded diagnostics — HTTP status and provider error NAME only. */
+  httpStatus: number | null;
+  providerErrorCode: string | null;
+}> {
+  const res = await resendDomainsRequest(apiKey, fetchImpl);
+  if (!res) {
+    return {
+      resultCode: "provider_unavailable",
+      domains: [],
+      httpStatus: null,
+      providerErrorCode: null,
+    };
   }
-  if (res.status === 401 || res.status === 403) {
-    return { resultCode: "invalid_credentials", domains: [] };
-  }
-  if (res.status === 429) return { resultCode: "rate_limited", domains: [] };
-  if (res.status !== 200) return { resultCode: "provider_unavailable", domains: [] };
-  let body: unknown = null;
-  try { body = await res.json(); } catch { body = null; }
-  return { resultCode: "verified", domains: parseResendDomains(body) };
+  const resultCode = classifyResendResponse(res);
+  return {
+    resultCode,
+    domains: resultCode === "verified" ? parseResendDomains(res.body) : [],
+    httpStatus: res.httpStatus,
+    providerErrorCode: res.providerErrorCode,
+  };
 }
 
 export interface VerificationDeps {
@@ -310,6 +415,8 @@ export async function runProviderDomainStatus(
       ok: probe.resultCode === "verified",
       code: probe.resultCode,
       domains: probe.domains,
+      httpStatus: probe.httpStatus,
+      providerErrorCode: probe.providerErrorCode,
       emailsSent: 0,
       deliveryAttemptsCreated: 0,
       dispatchJobsCreated: 0,

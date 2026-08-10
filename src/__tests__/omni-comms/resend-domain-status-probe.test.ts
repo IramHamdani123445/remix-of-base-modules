@@ -34,7 +34,7 @@ describe('probeResendDomains', () => {
 
   it('maps a rejected key to invalid_credentials without domains', async () => {
     const out = await probeResendDomains('k', (async () => res(401)) as unknown as typeof fetch);
-    expect(out).toEqual({ resultCode: 'invalid_credentials', domains: [] });
+    expect(out).toMatchObject({ resultCode: 'invalid_credentials', domains: [], httpStatus: 401 });
   });
 
   it('maps rate limiting and outages without domains', async () => {
@@ -53,7 +53,7 @@ describe('probeResendDomains', () => {
       'k',
       (async () => res(200, { data: [{ name: 'secureserve.biz', status: 'verified' }] })) as unknown as typeof fetch,
     );
-    expect(out).toEqual({
+    expect(out).toMatchObject({
       resultCode: 'verified',
       domains: [{ name: 'secureserve.biz', status: 'verified', region: null }],
     });
