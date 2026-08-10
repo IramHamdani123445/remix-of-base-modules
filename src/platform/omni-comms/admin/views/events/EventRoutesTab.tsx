@@ -290,6 +290,8 @@ const RouteEditorDialog: React.FC<{
   const [senderPolicy, setSenderPolicy] = React.useState<SenderResolutionPolicy>("organisation_default");
   const [preferencePolicy, setPreferencePolicy] = React.useState<PreferencePolicy>("honour");
   const [busy, setBusy] = React.useState(false);
+  const [moduleDefault, setModuleDefault] =
+    React.useState<mspSvc.ModuleSenderResolutionHint | null>(null);
 
   React.useEffect(() => {
     if (!state.open) return;
@@ -302,8 +304,36 @@ const RouteEditorDialog: React.FC<{
     setSenderIdentityId(existing?.sender_identity_id ?? NONE);
     setSenderPolicy(existing?.sender_resolution_policy ?? "organisation_default");
     setPreferencePolicy(existing?.preference_policy ?? "honour");
+    setModuleDefault(null);
     setBusy(false);
   }, [state.open, existing]);
+
+  // Configuration-time only: a NEW route inherits the module default sender.
+  // Existing routes keep their persisted sender; nothing is rewritten.
+  React.useEffect(() => {
+    if (!state.open || existing || !eventId || !organizationId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await mspSvc.resolveModuleSenderForEvent(
+          client, organizationId, eventId, channel,
+        );
+        if (cancelled) return;
+        setModuleDefault({
+          moduleCode: res.module_code,
+          senderIdentityId: res.module_default_sender_identity_id,
+          allowEventOverride: res.allow_event_override,
+        });
+        if (res.module_default_sender_identity_id) {
+          setSenderIdentityId(res.module_default_sender_identity_id);
+        }
+      } catch {
+        if (!cancelled) setModuleDefault(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [state.open, existing, eventId, channel, organizationId, client]);
+
 
   const save = async () => {
     setBusy(true);
