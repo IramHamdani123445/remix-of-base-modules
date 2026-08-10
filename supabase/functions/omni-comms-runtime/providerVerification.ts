@@ -245,7 +245,13 @@ export async function probeResendDomains(
 export interface VerificationDeps {
   /** service-role supabase client */
   admin: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
-  getSecret: (name: string) => string | undefined;
+  /**
+   * Resolves a bounded credential reference NAME to its VALUE. May be async:
+   * UI-managed credentials are resolved from the encrypted vault through a
+   * service-role-only RPC, with a deployment-managed Edge Function Secret as
+   * the fallback. The value never leaves this module.
+   */
+  getSecret: (name: string) => string | undefined | Promise<string | undefined>;
   fetchImpl?: typeof fetch;
 }
 
@@ -321,7 +327,7 @@ export async function runProviderVerification(
       detail: DETAIL.configuration_incomplete,
     };
   } else {
-    const key = deps.getSecret(secretRef);
+    const key = await deps.getSecret(secretRef);
     if (!key || key.trim() === "") {
       outcome = { resultCode: "secret_missing", detail: DETAIL.secret_missing };
     } else {
