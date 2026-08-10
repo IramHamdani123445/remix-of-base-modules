@@ -545,18 +545,19 @@ export function projectEmailReadiness(
         ? `${CONFIGURATION_PREFLIGHT_PENDING} — no Test Centre result supplied.`
         : testPassed
           ? CONFIGURATION_PREFLIGHT_CURRENT
-          : !testingAllowed
-            ? EMAIL_POLICY_TESTING_DISABLED_DETAIL
-            : testStale
-              ? CONFIGURATION_PREFLIGHT_STALE
+          : testStale
+            ? CONFIGURATION_PREFLIGHT_STALE
+            : testingBlockedByPolicy
+              ? EMAIL_POLICY_TESTING_DISABLED_DETAIL
               : `${CONFIGURATION_PREFLIGHT_PENDING} — run a configuration preflight `
                 + 'for the selected binding in the Test Centre.',
       // The policy gate is never weakened and is never switched on by the
       // preflight button; the operator is sent to the Sending rules screen.
-      nextAction: testPassed || testingAllowed
+      nextAction: testPassed || !testingBlockedByPolicy
         ? undefined
         : EMAIL_POLICY_TESTING_DISABLED_ACTION,
-      navigationKey: testPassed || testingAllowed ? undefined : 'policy_state',
+      navigationKey:
+        testPassed || !testingBlockedByPolicy ? undefined : 'policy_state',
     } as EmailReadinessCheck,
     {
       key: 'provider_delivery_test',
