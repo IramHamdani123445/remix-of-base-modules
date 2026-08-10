@@ -18,7 +18,7 @@ export const OMNI_COMMS_POSTURE_STATEMENTS = {
   runtimeImplemented: 'Runtime implemented',
   certificationPending: 'Privileged certification pending',
   liveDeliveryDisabled: 'Live delivery disabled',
-  noProviderDispatch: 'No provider dispatch',
+  noProviderDispatch: 'Controlled dispatch only',
   legacyActive: 'Legacy remains active',
 } as const;
 
@@ -184,7 +184,7 @@ export function buildPostureFacets(input: PostureInput): PostureFacet[] {
         : `${OMNI_COMMS_POSTURE_STATEMENTS.liveDeliveryDisabled} · ${OMNI_COMMS_POSTURE_STATEMENTS.noProviderDispatch}`,
       tone: input.liveDeliveryEnabled ? 'positive' : 'blocked',
       detail:
-        'No provider dispatch, retry, resend or webhook processing exists in this build.',
+        'Controlled business Email dispatch and Resend callback processing are implemented. Provider delivery occurs only when Release Control authorises it; unrestricted live delivery is not enabled.',
     },
     {
       id: 'environment',
@@ -422,7 +422,7 @@ export function deriveCertificationPosture(
       'The deployed runtime is certified but the server withheld the safe dry test. Treat the safe dry test as unavailable.';
   } else if (state === 'certified') {
     reason =
-      'The deployed runtime is certified. Live delivery remains disabled and no provider dispatch exists.';
+      'The deployed runtime is certified. Unrestricted live delivery remains disabled and provider dispatch stays governed by Release Control.';
   } else if (revision === 'mismatch') {
     reason =
       'The certified commit does not match the deployed runtime revision. Treat the deployed runtime as uncertified.';

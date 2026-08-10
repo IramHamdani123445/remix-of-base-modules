@@ -24,6 +24,8 @@ import {
 } from './emailReadiness';
 import type { ChannelUiDefinition } from './channelUiRegistry';
 import type { ChannelReadinessProjection } from './channelReadiness';
+import type { GoLiveReadinessProjection } from './goLiveReadiness';
+import { EmailGoLiveReadinessCard } from './EmailGoLiveReadinessCard';
 import {
   channelCapability,
   OMNI_COMMS_CHANNEL_RESOURCES,
@@ -63,7 +65,14 @@ export const ChannelOverviewTab: React.FC<{
   channelReadiness?: ChannelReadinessProjection | null;
   /** CG1 — generic configuration summary for non-Email channels. */
   configuration?: ChannelConfigurationSummary | null;
-}> = ({ definition, summary, readiness, channelReadiness, configuration }) => {
+  /** Email go-live readiness, derived from backend/runtime state by the page. */
+  goLive?: GoLiveReadinessProjection | null;
+  /** True when dispatch diagnostics could not be read for the scope. */
+  dispatchDiagnosticsUnavailable?: boolean;
+}> = ({
+  definition, summary, readiness, channelReadiness, configuration, goLive,
+  dispatchDiagnosticsUnavailable,
+}) => {
   if (definition.code !== 'email') {
     /*
      * CG1 — truthful non-Email overview. Counts come from the generic summary
@@ -144,6 +153,13 @@ export const ChannelOverviewTab: React.FC<{
 
   return (
     <div className="space-y-4">
+      {goLive ? (
+        <EmailGoLiveReadinessCard
+          projection={goLive}
+          diagnosticsUnavailable={dispatchDiagnosticsUnavailable}
+        />
+      ) : null}
+
       <Card data-testid="omni-comms-channel-overview">
         <CardHeader>
           <CardTitle>Email readiness checklist</CardTitle>

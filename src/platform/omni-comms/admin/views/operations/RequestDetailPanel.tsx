@@ -330,7 +330,9 @@ export const RequestDetailPanel: React.FC<RequestDetailPanelProps> = ({
                   </p>
                   {detail.delivery_attempts.length === 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      None. No provider dispatch exists in this build.
+                      None recorded for this request. Controlled business Email
+                      dispatch is implemented; provider delivery occurs only when
+                      Release Control and the producer prerequisites allow it.
                     </p>
                   ) : (
                     <Table>

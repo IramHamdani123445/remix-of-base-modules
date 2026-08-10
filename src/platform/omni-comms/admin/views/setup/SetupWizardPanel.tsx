@@ -343,8 +343,9 @@ export const SetupWizardPanel: React.FC = () => {
                 </div>
               ) : (
                 <p>
-                  Every configuration step is complete for this path. Live
-                  delivery remains disabled and no provider dispatch exists.
+                  Every configuration step is complete for this path.
+                  Unrestricted live delivery remains disabled and provider
+                  dispatch stays governed by Release Control.
                 </p>
               )}
             </CardContent>

@@ -94,8 +94,8 @@ function outcomeOf(mode: string, status: string): string {
   if (status === "failed") return "Failed during processing";
   if (mode === "dry_run") return "Validated only — nothing was sent";
   if (mode === "shadow") return "Rendered and held — nothing was sent";
-  if (status === "held") return "Held — awaiting a dispatch capability that does not exist yet";
-  if (status === "completed") return "Processed — no provider dispatch exists";
+  if (status === "held") return "Held — awaiting controlled dispatch authorisation";
+  if (status === "completed") return "Processed — provider dispatch only when Release Control allows it";
   return "In progress";
 }
 

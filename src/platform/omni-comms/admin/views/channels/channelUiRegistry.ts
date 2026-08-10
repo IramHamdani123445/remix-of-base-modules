@@ -126,7 +126,7 @@ const COPY: Record<OmniCommsChannel, ChannelUiCopy> = {
     description:
       'Transactional email configuration: provider account, sender identities, bindings and channel policy.',
     icon: 'Mail',
-    statusText: 'Configuration in progress. Provider dispatch is not implemented.',
+    statusText: 'Configuration in progress. Controlled business dispatch is implemented; provider delivery requires Release Control authorisation.',
     accounts: {
       meaning:
         'A credentialed email provider account resolved from an Edge Function secret reference.',
