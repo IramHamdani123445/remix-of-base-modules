@@ -309,6 +309,17 @@ export function operationalStateAllowsConfiguration(
   return state === 'configuration' || state === 'test_only' || state === 'pilot_ready';
 }
 
+/**
+ * Testing gate — deliberately STRICTER than configuration. A policy that is
+ * merely `configuration` is configured but does not enable testing. This gate
+ * is never weakened and is never changed automatically by a preflight.
+ */
+export function operationalStateAllowsTesting(
+  state: OperationalState | null | undefined,
+): boolean {
+  return state === 'test_only' || state === 'pilot_ready';
+}
+
 export interface CommonPolicyValidationIssue {
   readonly field: string;
   readonly message: string;
