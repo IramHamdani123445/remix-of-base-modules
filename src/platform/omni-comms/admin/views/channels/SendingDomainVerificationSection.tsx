@@ -37,16 +37,22 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { OmniCommsRpcClient } from '@/platform/omni-comms/application/omniCommsRpcErrors';
 import {
+  ASSOCIATION_REQUIRED_HELP,
+  confirmDomainProviderAssociation,
   DOMAIN_VERIFICATION_RESULT_MESSAGES,
   DOMAIN_VERIFICATION_SOURCE_LABELS,
   DOMAIN_VERIFICATION_STATUS_LABELS,
+  domainReadinessBlocker,
   getDomainVerificationSummary,
+  PROVIDER_CONSOLE_STATUS_LABELS,
+  PROVIDER_CONSOLE_STATUSES,
   resendExpectedDnsRecords,
   upsertDomainVerification,
   verifySendingDomain,
   type DomainVerificationRow,
   type DomainVerificationSummary,
   type ExpectedDnsRecord,
+  type ProviderConsoleStatus,
 } from '@/platform/omni-comms/application/domainVerificationService';
 import { toastError } from './channelFormPrimitives';
 
@@ -66,6 +72,8 @@ export interface SendingDomainVerificationSectionProps {
   /** Sending-domain endpoints the operator may attach a verification to. */
   endpoints: readonly { id: string; code: string; display_name: string }[];
   providerAccountId?: string | null;
+  /** Genuine provider accounts an association may be confirmed against. */
+  providerAccounts?: readonly { id: string; code: string; display_name: string }[];
   onChanged?: () => void;
 }
 
@@ -93,7 +101,7 @@ function statusBadge(row: DomainVerificationRow) {
 
 export const SendingDomainVerificationSection: React.FC<
   SendingDomainVerificationSectionProps
-> = ({ client, orgId, endpoints, providerAccountId, onChanged }) => {
+> = ({ client, orgId, endpoints, providerAccountId, providerAccounts = [], onChanged }) => {
   const [summary, setSummary] = React.useState<DomainVerificationSummary | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [checking, setChecking] = React.useState<string | null>(null);
@@ -104,6 +112,50 @@ export const SendingDomainVerificationSection: React.FC<
   const [providerReference, setProviderReference] = React.useState('');
   const [attestationOnly, setAttestationOnly] = React.useState(false);
   const [expected, setExpected] = React.useState<ExpectedDnsRecord[]>([]);
+  const [assocRow, setAssocRow] = React.useState<DomainVerificationRow | null>(null);
+  const [assocAccountId, setAssocAccountId] = React.useState('');
+  const [assocStatus, setAssocStatus] = React.useState<ProviderConsoleStatus>('verified');
+  const [assocReference, setAssocReference] = React.useState('');
+  const [assocNote, setAssocNote] = React.useState('');
+  const [assocSaving, setAssocSaving] = React.useState(false);
+
+  const openAssociation = (row: DomainVerificationRow) => {
+    setAssocRow(row);
+    setAssocAccountId(row.providerAccountId ?? providerAccountId ?? providerAccounts[0]?.id ?? '');
+    setAssocStatus('verified');
+    setAssocReference(row.associationProviderReference ?? row.providerReference ?? '');
+    setAssocNote(row.associationNote ?? '');
+  };
+
+  const saveAssociation = async () => {
+    if (!assocRow || !assocAccountId) {
+      toast.error('Choose the provider account this domain is registered in.');
+      return;
+    }
+    setAssocSaving(true);
+    try {
+      const res = await confirmDomainProviderAssociation(client, {
+        organizationId: orgId,
+        domainVerificationId: assocRow.id,
+        providerAccountId: assocAccountId,
+        providerConsoleStatus: assocStatus,
+        providerReference: assocReference.trim() || null,
+        note: assocNote.trim() || null,
+      });
+      toast.success(
+        res.readyForProviderAccount
+          ? 'Domain is ready for this provider account.'
+          : 'Association recorded. DNS evidence must also pass.',
+      );
+      setAssocRow(null);
+      await load();
+      onChanged?.();
+    } catch (err) {
+      toastError(err, 'Could not record the provider-account association.');
+    } finally {
+      setAssocSaving(false);
+    }
+  };
 
   const load = React.useCallback(async () => {
     if (!orgId) return;
@@ -296,6 +348,46 @@ export const SendingDomainVerificationSection: React.FC<
                     ))}
                   </ul>
                 ) : null}
+
+                <div
+                  className="rounded-md border border-dashed p-2 space-y-1"
+                  data-testid={`omni-comms-domain-association-${row.domainName}`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-medium">Provider-account association</p>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={row.associationConfirmed ? 'default' : 'outline'}>
+                        {row.associationConfirmed
+                          ? `Confirmed in ${row.providerAccountName ?? 'provider account'}`
+                          : 'Not confirmed'}
+                      </Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!canManage || providerAccounts.length === 0}
+                        onClick={() => openAssociation(row)}
+                        data-testid={`omni-comms-domain-associate-${row.domainName}`}
+                      >
+                        Confirm provider account
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{ASSOCIATION_REQUIRED_HELP}</p>
+                  {row.associationConfirmedAt ? (
+                    <p className="text-xs text-muted-foreground">
+                      Console status “{row.associationProviderStatus}”
+                      {row.associationProviderReference
+                        ? ` · reference ${row.associationProviderReference}`
+                        : ''}{' '}
+                      · confirmed {new Date(row.associationConfirmedAt).toLocaleString()}
+                    </p>
+                  ) : null}
+                  <p className="text-xs font-medium">
+                    {row.readyForProviderAccount
+                      ? 'Ready for this provider account.'
+                      : `Next step: ${domainReadinessBlocker(row)}`}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
@@ -374,6 +466,82 @@ export const SendingDomainVerificationSection: React.FC<
             <Button onClick={() => void save()} disabled={saving}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Save domain
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={assocRow !== null} onOpenChange={(v) => { if (!v) setAssocRow(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Confirm provider-account association</DialogTitle>
+            <DialogDescription>
+              Confirm that {assocRow?.domainName} is registered in the same
+              provider account this platform sends with. No credential is
+              entered and no message is sent.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="omni-assoc-account">Provider account</Label>
+              <select
+                id="omni-assoc-account"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={assocAccountId}
+                onChange={(e) => setAssocAccountId(e.target.value)}
+              >
+                <option value="">Select an account…</option>
+                {providerAccounts.map((a) => (
+                  <option key={a.id} value={a.id}>{a.display_name} ({a.code})</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="omni-assoc-status">Status shown in the provider console</Label>
+              <select
+                id="omni-assoc-status"
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={assocStatus}
+                onChange={(e) => setAssocStatus(e.target.value as ProviderConsoleStatus)}
+              >
+                {PROVIDER_CONSOLE_STATUSES.map((s) => (
+                  <option key={s} value={s}>{PROVIDER_CONSOLE_STATUS_LABELS[s]}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="omni-assoc-ref">Provider domain ID / reference (preferred)</Label>
+              <Input
+                id="omni-assoc-ref"
+                value={assocReference}
+                placeholder="Domain id shown in the provider console"
+                onChange={(e) => setAssocReference(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="omni-assoc-note">Evidence note (optional, non-secret)</Label>
+              <Input
+                id="omni-assoc-note"
+                value={assocNote}
+                placeholder="Where this was checked"
+                onChange={(e) => setAssocNote(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The confirming administrator and a server timestamp are recorded
+              automatically. Confirmation alone does not make the domain ready —
+              server DNS evidence must also pass.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssocRow(null)}>Cancel</Button>
+            <Button
+              onClick={() => void saveAssociation()}
+              disabled={assocSaving}
+              data-testid="omni-comms-domain-association-save"
+            >
+              {assocSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Record confirmation
             </Button>
           </DialogFooter>
         </DialogContent>

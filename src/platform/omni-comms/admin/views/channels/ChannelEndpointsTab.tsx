@@ -367,6 +367,9 @@ const GenericEndpointsPanel: React.FC<{
           providerAccountId={
             genuine.find((e) => e.endpoint_type === 'sending_domain')?.provider_account_id ?? null
           }
+          providerAccounts={(summary?.provider_accounts ?? [])
+            .filter((a) => a.data_origin === 'user')
+            .map((a) => ({ id: a.id, code: a.code, display_name: a.display_name }))}
           onChanged={refreshAll}
         />
       ) : null}

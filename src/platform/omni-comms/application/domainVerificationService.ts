@@ -64,6 +64,20 @@ export interface DomainVerificationRow {
   notes: string | null;
   verifiedAt: string | null;
   updatedAt: string;
+  /** Human labels for the provider account the domain is claimed against. */
+  providerAccountCode?: string | null;
+  providerAccountName?: string | null;
+  /**
+   * Provider-account association evidence. DNS proves domain control; it does
+   * NOT prove the domain lives in the exact provider account used at runtime.
+   */
+  associationConfirmed: boolean;
+  associationProviderStatus: string | null;
+  associationProviderReference: string | null;
+  associationNote: string | null;
+  associationConfirmedAt: string | null;
+  /** True only when DNS evidence passed AND the association was confirmed. */
+  readyForProviderAccount: boolean;
 }
 
 export interface DomainVerificationSummary {
@@ -247,4 +261,92 @@ export async function verifySendingDomain(params: {
     evidence: Array.isArray(body.evidence) ? (body.evidence as DnsEvidenceEntry[]) : [],
     httpStatus: res.status,
   };
+}
+
+/**
+ * Structured provider-account association.
+ *
+ * DNS evidence proves the domain is configured for the provider's
+ * infrastructure. It cannot prove the domain is registered in the SAME
+ * provider account the runtime credential belongs to, because that credential
+ * is deliberately sending-only. An administrator therefore confirms the
+ * association from the provider console, and that confirmation is stored as
+ * structured, non-secret evidence with actor and server timestamp.
+ */
+export const PROVIDER_CONSOLE_STATUSES = [
+  'verified',
+  'pending',
+  'failed',
+  'not_found',
+] as const;
+
+export type ProviderConsoleStatus = (typeof PROVIDER_CONSOLE_STATUSES)[number];
+
+export const PROVIDER_CONSOLE_STATUS_LABELS: Record<ProviderConsoleStatus, string> = {
+  verified: 'Verified in the provider console',
+  pending: 'Pending in the provider console',
+  failed: 'Failed in the provider console',
+  not_found: 'Not present in this provider account',
+};
+
+export const ASSOCIATION_REQUIRED_HELP =
+  'DNS proves the domain is configured, but not that it lives in the same '
+  + 'provider account this platform sends with. Confirm the association from '
+  + 'the provider console before the domain is treated as ready.';
+
+export interface ConfirmDomainAssociationInput {
+  organizationId: string;
+  domainVerificationId: string;
+  providerAccountId: string;
+  providerConsoleStatus: ProviderConsoleStatus;
+  providerReference?: string | null;
+  note?: string | null;
+}
+
+export interface ConfirmDomainAssociationResult {
+  id: string;
+  domainName: string;
+  providerAccountCode: string;
+  providerAccountName: string;
+  associationConfirmed: boolean;
+  associationProviderStatus: string;
+  associationProviderReference: string | null;
+  associationConfirmedAt: string;
+  readyForProviderAccount: boolean;
+}
+
+export function confirmDomainProviderAssociation(
+  client: OmniCommsRpcClient,
+  input: ConfirmDomainAssociationInput,
+): Promise<ConfirmDomainAssociationResult> {
+  return callOmniCommsRpc<ConfirmDomainAssociationResult>(
+    client,
+    'omni_comms_domain_association_confirm',
+    {
+      p_organization_id: input.organizationId,
+      p_domain_verification_id: input.domainVerificationId,
+      p_provider_account_id: input.providerAccountId,
+      p_provider_console_status: input.providerConsoleStatus,
+      p_provider_reference: input.providerReference ?? null,
+      p_note: input.note ?? null,
+    },
+  );
+}
+
+/** Single, human-readable next blocker for a sending domain. */
+export function domainReadinessBlocker(
+  row: Pick<
+    DomainVerificationRow,
+    'status' | 'associationConfirmed' | 'verificationSource' | 'readyForProviderAccount'
+  >,
+): string | null {
+  if (row.readyForProviderAccount) return null;
+  if (row.status !== 'verified') return 'Server DNS evidence has not passed yet.';
+  if (row.verificationSource === 'external_admin_attestation') {
+    return 'An administrator statement alone cannot make this domain ready.';
+  }
+  if (!row.associationConfirmed) {
+    return 'Confirm the domain is registered in this exact provider account.';
+  }
+  return 'Domain readiness is incomplete.';
 }

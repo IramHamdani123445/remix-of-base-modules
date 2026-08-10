@@ -94795,6 +94795,12 @@ export type Database = {
       }
       omni_comms_domain_verification: {
         Row: {
+          association_confirmed: boolean
+          association_confirmed_at: string | null
+          association_confirmed_by: string | null
+          association_note: string | null
+          association_provider_reference: string | null
+          association_provider_status: string | null
           channel_endpoint_id: string
           claimed_status: string | null
           created_at: string
@@ -94819,6 +94825,12 @@ export type Database = {
           verified_by: string | null
         }
         Insert: {
+          association_confirmed?: boolean
+          association_confirmed_at?: string | null
+          association_confirmed_by?: string | null
+          association_note?: string | null
+          association_provider_reference?: string | null
+          association_provider_status?: string | null
           channel_endpoint_id: string
           claimed_status?: string | null
           created_at?: string
@@ -94843,6 +94855,12 @@ export type Database = {
           verified_by?: string | null
         }
         Update: {
+          association_confirmed?: boolean
+          association_confirmed_at?: string | null
+          association_confirmed_by?: string | null
+          association_note?: string | null
+          association_provider_reference?: string | null
+          association_provider_status?: string | null
           channel_endpoint_id?: string
           claimed_status?: string | null
           created_at?: string
@@ -120692,6 +120710,17 @@ export type Database = {
         Returns: Json
       }
       omni_comms_dispatch_tick_authorize: { Args: never; Returns: Json }
+      omni_comms_domain_association_confirm: {
+        Args: {
+          p_domain_verification_id: string
+          p_note?: string
+          p_organization_id: string
+          p_provider_account_id: string
+          p_provider_console_status: string
+          p_provider_reference?: string
+        }
+        Returns: Json
+      }
       omni_comms_domain_verification_summary: {
         Args: { p_channel_endpoint_id?: string; p_organization_id: string }
         Returns: Json
