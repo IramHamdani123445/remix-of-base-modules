@@ -274,6 +274,12 @@ export function projectEmailReadiness(
   const testingAllowed = operationalStateAllowsTesting(
     effectivePolicy?.operational_state,
   );
+  /**
+   * Only report the policy gate as the preflight blocker when a genuine policy
+   * exists but does not enable testing. Absence of a policy is already the
+   * `policy` check's job and must not be restated here.
+   */
+  const testingBlockedByPolicy = effectivePolicy !== null && !testingAllowed;
   const verified = part.accounts.some((a) => a.verification_status === 'verified');
   /**
    * Resend authenticated the key but restricts it to sending-only access, so
