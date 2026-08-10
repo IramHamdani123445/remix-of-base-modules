@@ -259,6 +259,21 @@ export function projectEmailReadiness(
       ? policySummary.effective_policy
       : null;
   const verified = part.accounts.some((a) => a.verification_status === 'verified');
+  /**
+   * Resend authenticated the key but restricts it to sending-only access, so
+   * the domain-listing probe cannot complete. This is NOT an invalid or
+   * rejected credential and must never be reported as one: the sending
+   * credential is usable and only external (provider-side) confirmation of
+   * the sending domain remains outstanding.
+   */
+  const restrictedSendingKey =
+    !verified
+    && part.accounts.some(
+      (a) =>
+        (a as { verification_result_code?: string | null }).verification_result_code
+        === 'restricted_api_key',
+    );
+
 
   const domains = genuineActiveEmailEndpoints(summary?.endpoints, 'sending_domain');
   const callbacks = genuineActiveEmailEndpoints(summary?.endpoints, 'event_callback');
@@ -318,8 +333,13 @@ export function projectEmailReadiness(
       state: yn(verified),
       detail: verified
         ? 'At least one account has verified Resend credentials.'
-        : 'No account has verified credentials.',
+        : restrictedSendingKey
+          ? 'Resend authenticated the stored key with sending-only access, so '
+            + 'the domain check could not run. The sending credential is valid; '
+            + 'external verification of the sending domain is required.'
+          : 'No account has verified credentials.',
     },
+
     {
       key: 'identity',
       label: 'Active sender identity present',
