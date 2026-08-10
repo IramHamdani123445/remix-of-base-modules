@@ -121914,6 +121914,12 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_sender_address_facts: {
+        Args: {
+          p_row: Database["public"]["Tables"]["omni_comms_sender_identity"]["Row"]
+        }
+        Returns: Json
+      }
       omni_comms_priv_set_runtime_environment: {
         Args: { p_environment: string }
         Returns: Json
@@ -122100,6 +122106,30 @@ export type Database = {
           p_department_id?: string
           p_organization_id: string
           p_template_version_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_sender_address_activate: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_sender_address_delete: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_sender_address_summary: {
+        Args: {
+          p_department_id?: string
+          p_include_reference?: boolean
+          p_organization_id: string
         }
         Returns: Json
       }

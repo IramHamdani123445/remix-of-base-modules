@@ -66,6 +66,8 @@ import {
 import { DeferredCapabilityCard, Field, SelectField, toastError } from './channelFormPrimitives';
 import { isReferenceSenderIdentity, visibleRecords } from './channelReferenceData';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
+import { EmailSenderAddressesPanel } from './senders/EmailSenderAddressesPanel';
+
 import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
 import {
   DrawerFacts,
@@ -132,6 +134,19 @@ export const ChannelIdentitiesTab: React.FC<{
     );
   }
 
+  // Email uses the dedicated operator-facing "Sender Addresses" screen.
+  if (definition.code === 'email') {
+    return (
+      <EmailSenderAddressesPanel
+        client={client}
+        orgId={orgId}
+        departmentId={departmentId}
+        departmentName={departmentName}
+        onChanged={onChanged}
+      />
+    );
+  }
+
   return (
     <GenericIdentitiesPanel
       channel={definition.code as OmniCommsIdentityChannel}
@@ -144,6 +159,7 @@ export const ChannelIdentitiesTab: React.FC<{
     />
   );
 };
+
 
 const GenericIdentitiesPanel: React.FC<{
   channel: OmniCommsIdentityChannel;
