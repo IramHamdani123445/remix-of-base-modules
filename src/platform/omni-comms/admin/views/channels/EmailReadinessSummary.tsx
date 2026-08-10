@@ -83,7 +83,9 @@ export const EmailReadinessSummary: React.FC<EmailReadinessSummaryProps> = ({
         (grouped.deliverySetup.readyCount / grouped.deliverySetup.totalCount) * 100,
       )
       : 0;
-  const targetTab = nextBlocker ? tabForReadinessCheck(nextBlocker.key) : null;
+  const targetTab = nextBlocker
+    ? tabForReadinessCheck(nextBlocker.navigationKey ?? nextBlocker.key)
+    : null;
 
   const headline = pilotSuspended
     ? 'Delivery is suspended'

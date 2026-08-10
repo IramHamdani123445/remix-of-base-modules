@@ -97,8 +97,13 @@ const NEXT_ACTIONS: Record<string, string> = {
     'Register an active event-callback endpoint with a signing secret reference.',
   technical_test:
     'Run the zero-send configuration preflight for the selected binding.',
+  configuration_preflight:
+    'Run the zero-send configuration preflight for the selected binding.',
   provider_delivery_test:
     'Run an approved technical test delivery to an approved test address.',
+  callback_receiver:
+    'Wait for a signature-verified provider callback for the approved test '
+    + 'delivery. Callback evidence is never fabricated.',
   callback_evidence:
     'Wait for or re-run an approved test delivery so a signature-verified '
     + 'callback is recorded.',
