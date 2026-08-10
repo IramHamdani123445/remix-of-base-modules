@@ -70,6 +70,8 @@ import {
   type OmniCommsEndpointType,
 } from '@/platform/omni-comms/application/channelEndpointTypes';
 import { DeferredCapabilityCard, Field, SelectField, toastError } from './channelFormPrimitives';
+import { SendingDomainVerificationSection } from './SendingDomainVerificationSection';
+
 import { visibleRecords } from './channelReferenceData';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
 import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
