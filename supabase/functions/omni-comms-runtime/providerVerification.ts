@@ -217,13 +217,28 @@ export function parseResendDomains(payload: unknown): ResendDomainRecord[] {
 export async function probeResendDomains(
   apiKey: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<{ resultCode: VerificationResultCode; domains: ResendDomainRecord[] }> {
+): Promise<{
+  resultCode: VerificationResultCode;
+  domains: ResendDomainRecord[];
+  /** Bounded diagnostics — HTTP status and provider error NAME only. */
+  httpStatus: number | null;
+  providerErrorCode: string | null;
+}> {
   const res = await resendDomainsRequest(apiKey, fetchImpl);
-  if (!res) return { resultCode: "provider_unavailable", domains: [] };
+  if (!res) {
+    return {
+      resultCode: "provider_unavailable",
+      domains: [],
+      httpStatus: null,
+      providerErrorCode: null,
+    };
+  }
   const resultCode = classifyResendResponse(res);
   return {
     resultCode,
     domains: resultCode === "verified" ? parseResendDomains(res.body) : [],
+    httpStatus: res.httpStatus,
+    providerErrorCode: res.providerErrorCode,
   };
 }
 
@@ -400,6 +415,8 @@ export async function runProviderDomainStatus(
       ok: probe.resultCode === "verified",
       code: probe.resultCode,
       domains: probe.domains,
+      httpStatus: probe.httpStatus,
+      providerErrorCode: probe.providerErrorCode,
       emailsSent: 0,
       deliveryAttemptsCreated: 0,
       dispatchJobsCreated: 0,
