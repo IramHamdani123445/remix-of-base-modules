@@ -526,22 +526,8 @@ export function projectEmailReadiness(
       state: yn(counts.activeEventCallbacks > 0),
       detail: `${counts.activeEventCallbacks} active event callback(s) with a signing secret reference.`,
     },
-    {
-      key: 'callback_receiver',
-      label: 'Callback receiver route',
-      state: callbackVerified
-        ? 'met'
-        : (delivery?.events.length ?? 0) > 0
-          ? 'unmet'
-          : 'not_implemented',
-      detail: callbackVerified
-        ? `${delivery?.events.filter((e) => e.signature_verified).length} signature-verified `
-          + 'provider callback event(s) recorded against the current configuration.'
-        : (delivery?.events.length ?? 0) > 0
-          ? 'Callback evidence exists but is stale or unverified — it does not '
-            + 'prove the current configuration.'
-          : `${EMAIL_CALLBACK_RECEIVER_PENDING} — no verified provider callback has been received yet.`,
-    } as EmailReadinessCheck,
+    // Test & Verify, in dependency order: configuration must pass, then the
+    // controlled provider delivery test, then the signed provider callback.
     {
       key: 'configuration_preflight',
       label: 'Current configuration preflight passed',
@@ -554,10 +540,18 @@ export function projectEmailReadiness(
         ? `${CONFIGURATION_PREFLIGHT_PENDING} — no Test Centre result supplied.`
         : testPassed
           ? CONFIGURATION_PREFLIGHT_CURRENT
-          : testStale
-            ? CONFIGURATION_PREFLIGHT_STALE
-            : `${CONFIGURATION_PREFLIGHT_PENDING} — run a configuration preflight `
-              + 'for the selected binding in the Test Centre.',
+          : !testingAllowed
+            ? EMAIL_POLICY_TESTING_DISABLED_DETAIL
+            : testStale
+              ? CONFIGURATION_PREFLIGHT_STALE
+              : `${CONFIGURATION_PREFLIGHT_PENDING} — run a configuration preflight `
+                + 'for the selected binding in the Test Centre.',
+      // The policy gate is never weakened and is never switched on by the
+      // preflight button; the operator is sent to the Sending rules screen.
+      nextAction: testPassed || testingAllowed
+        ? undefined
+        : EMAIL_POLICY_TESTING_DISABLED_ACTION,
+      navigationKey: testPassed || testingAllowed ? undefined : 'policy_state',
     } as EmailReadinessCheck,
     {
       key: 'provider_delivery_test',
@@ -581,6 +575,22 @@ export function projectEmailReadiness(
               : delivery.status === 'pending' || delivery.status === 'dispatching'
                 ? 'A provider test delivery is still in progress.'
                 : PROVIDER_DELIVERY_TEST_FAILED,
+    } as EmailReadinessCheck,
+    {
+      key: 'callback_receiver',
+      label: 'Callback receiver route',
+      state: callbackVerified
+        ? 'met'
+        : (delivery?.events.length ?? 0) > 0
+          ? 'unmet'
+          : 'not_implemented',
+      detail: callbackVerified
+        ? `${delivery?.events.filter((e) => e.signature_verified).length} signature-verified `
+          + 'provider callback event(s) recorded against the current configuration.'
+        : (delivery?.events.length ?? 0) > 0
+          ? 'Callback evidence exists but is stale or unverified — it does not '
+            + 'prove the current configuration.'
+          : `${EMAIL_CALLBACK_RECEIVER_PENDING} — no verified provider callback has been received yet.`,
     } as EmailReadinessCheck,
   ];
 
