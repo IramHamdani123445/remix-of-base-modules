@@ -20,7 +20,7 @@ import {
   DOMAIN_VERIFICATION_SOURCE_LABELS,
   DOMAIN_VERIFICATION_STATUS_LABELS,
 } from '@/platform/omni-comms/application/domainVerificationService';
-import { OMNI_COMMS_OBJECTS } from '@/platform/omni-comms/registry/objectRegistry';
+import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 
 const read = (p: string) => readFileSync(p, 'utf8');
 const SERVICE = 'src/platform/omni-comms/application/domainVerificationService.ts';
@@ -211,7 +211,7 @@ describe('surface boundaries', () => {
   });
 
   it('registers the new object in the Omni-Comms object registry', () => {
-    const entry = OMNI_COMMS_OBJECTS.find((o) => o.name === 'omni_comms_domain_verification');
+    const entry = OMNI_COMMS_OBJECT_REGISTRY.find((o) => o.name === 'omni_comms_domain_verification');
     expect(entry).toBeDefined();
     expect(entry?.writeAuthority).toBe('admin_rpc');
   });
