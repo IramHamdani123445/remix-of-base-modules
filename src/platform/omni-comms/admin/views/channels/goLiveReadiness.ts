@@ -36,7 +36,10 @@ export interface GoLiveReadinessItem {
   readonly nextAction: string;
   /** Short factual supporting detail taken from the underlying check. */
   readonly detail: string;
+  /** Where the operator must go to clear this blocker (defaults to `key`). */
+  readonly navigationKey?: string;
 }
+
 
 export interface GoLiveReadinessProjection {
   readonly items: readonly GoLiveReadinessItem[];
