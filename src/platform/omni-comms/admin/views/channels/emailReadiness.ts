@@ -333,8 +333,13 @@ export function projectEmailReadiness(
       state: yn(verified),
       detail: verified
         ? 'At least one account has verified Resend credentials.'
-        : 'No account has verified credentials.',
+        : restrictedSendingKey
+          ? 'Resend authenticated the stored key with sending-only access, so '
+            + 'the domain check could not run. The sending credential is valid; '
+            + 'external verification of the sending domain is required.'
+          : 'No account has verified credentials.',
     },
+
     {
       key: 'identity',
       label: 'Active sender identity present',
