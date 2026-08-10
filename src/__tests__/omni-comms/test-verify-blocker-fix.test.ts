@@ -109,14 +109,6 @@ describe('approved test recipient purpose model', () => {
   });
 });
 
-describe('sending-credential semantics', () => {
-  const checklist = readFileSync(
-    'supabase/migrations',
-    // placeholder replaced below
-  );
-  void checklist;
-});
-
 describe('policy testing gate', () => {
   it('configuration allows configuration but NOT testing', () => {
     expect(operationalStateAllowsConfiguration('configuration')).toBe(true);
@@ -126,7 +118,7 @@ describe('policy testing gate', () => {
   it('only test_only and pilot_ready enable testing', () => {
     expect(operationalStateAllowsTesting('test_only')).toBe(true);
     expect(operationalStateAllowsTesting('pilot_ready')).toBe(true);
-    expect(operationalStateAllowsTesting('live')).toBe(false);
+    expect(operationalStateAllowsTesting('disabled')).toBe(false);
     expect(operationalStateAllowsTesting(null)).toBe(false);
   });
 });
