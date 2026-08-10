@@ -121718,6 +121718,10 @@ export type Database = {
         Args: { p_secret_ref: string }
         Returns: string
       }
+      omni_comms_priv_resolve_webhook_signing_secret: {
+        Args: { p_adapter_key?: string }
+        Returns: string
+      }
       omni_comms_priv_runtime_certification: { Args: never; Returns: Json }
       omni_comms_priv_runtime_environment: { Args: never; Returns: string }
       omni_comms_priv_runtime_health_posture: {
