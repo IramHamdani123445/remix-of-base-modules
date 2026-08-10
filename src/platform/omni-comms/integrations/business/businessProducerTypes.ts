@@ -9,8 +9,16 @@
 
 import type { OmniCommsChannel } from '../../sendCommunication';
 
-/** Modes a business producer may request in Build 4A. `queued` is refused. */
-export const BUSINESS_PRODUCER_MODES = ['dry_run', 'shadow'] as const;
+/**
+ * Modes a business producer may request.
+ *
+ * Step 2 (controlled production go-live) admits `queued`: the runtime
+ * resolves, renders and persists a HELD dispatch job. A held job is not
+ * runnable — it only becomes eligible for provider dispatch when Release
+ * Control separately authorises it. Requesting `queued` therefore still
+ * contacts no provider and sends no email.
+ */
+export const BUSINESS_PRODUCER_MODES = ['dry_run', 'shadow', 'queued'] as const;
 export type BusinessProducerMode = (typeof BUSINESS_PRODUCER_MODES)[number];
 
 /** Idempotency key prefix for every business producer emission. */

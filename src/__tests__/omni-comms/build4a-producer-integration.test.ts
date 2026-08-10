@@ -64,16 +64,15 @@ beforeEach(() => {
   });
 });
 
-describe('Build 4A — producer modes', () => {
-  it('only exposes provider-free modes', () => {
-    expect([...BUSINESS_PRODUCER_MODES]).toEqual(['dry_run', 'shadow']);
-    expect(BUSINESS_PRODUCER_MODES as readonly string[]).not.toContain('queued');
+describe('Producer modes', () => {
+  it('exposes exactly the bounded mode vocabulary', () => {
+    expect([...BUSINESS_PRODUCER_MODES]).toEqual(['dry_run', 'shadow', 'queued']);
   });
 
-  it('refuses a queued emission before it reaches the façade', async () => {
+  it('refuses an unknown mode before it reaches the façade', async () => {
     const res = await emitBusinessCommunication({
       ...baseEmission(),
-      mode: 'queued' as never,
+      mode: 'live' as never,
     });
     expect(res.outcome).toBe('blocked');
     expect(res.blockers).toContain('producer_mode_not_available');
@@ -142,7 +141,7 @@ describe('Build 4A — emission validation and outcomes', () => {
 });
 
 describe('Build 4A — employer registration pilot', () => {
-  it('emits in shadow mode only, through the façade, with caller context', async () => {
+  it('emits in the declared pilot mode, through the façade, with caller context', async () => {
     await emitEmployerRegistrationApplicationSubmitted({
       organizationId: '69afc88b-da5c-4f41-a1e7-199e1ee1d416',
       reference: 'ER-00042',
@@ -152,7 +151,7 @@ describe('Build 4A — employer registration pilot', () => {
     });
     expect(sendMock).toHaveBeenCalledTimes(1);
     const arg = sendMock.mock.calls[0][0];
-    expect(arg.mode).toBe('shadow');
+    expect(arg.mode).toBe('queued');
     expect(arg.eventCode).toBe(EMPLOYER_APPLICATION_SUBMITTED_EVENT_CODE);
     expect(arg.eventCode).not.toBe('REGISTRATION.EMPLOYER.REGISTERED');
     expect(arg.payload).toEqual({
