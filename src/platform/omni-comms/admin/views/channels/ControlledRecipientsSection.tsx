@@ -36,6 +36,7 @@ import {
   upsertTestRecipient,
   type TestRecipientSummary,
 } from '@/platform/omni-comms/application/channelProviderConfigurationService';
+import { TEST_VERIFY_RECIPIENT_PURPOSE } from '@/platform/omni-comms/application/testRecipientPurpose';
 import { toastError } from './channelFormPrimitives';
 
 export interface ControlledRecipientsSectionProps {
@@ -84,7 +85,7 @@ export const ControlledRecipientsSection: React.FC<
         channel,
         label: trimmedLabel,
         address: trimmedAddress,
-        purpose: 'technical_test',
+        purpose: TEST_VERIFY_RECIPIENT_PURPOSE,
       });
       toast.success('Approved test recipient saved.');
       setLabel('');

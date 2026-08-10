@@ -25,6 +25,7 @@ import type {
 } from '@/platform/omni-comms/application/channelPolicyTypes';
 import {
   operationalStateAllowsConfiguration,
+  operationalStateAllowsTesting,
 } from '@/platform/omni-comms/application/channelPolicyTypes';
 import type {
   ChannelTestCentreSummary,
@@ -143,7 +144,18 @@ export interface EmailReadinessCheck {
   readonly label: string;
   readonly state: EmailReadinessCheckState;
   readonly detail: string;
+  /** Overrides the generic next-action sentence for this check when present. */
+  readonly nextAction?: string;
+  /** Overrides where the operator is sent to clear this specific blocker. */
+  readonly navigationKey?: string;
 }
+
+/** Shown when the policy exists but testing is not switched on. */
+export const EMAIL_POLICY_TESTING_DISABLED_DETAIL =
+  'Email policy is configured, but testing is not enabled.';
+
+export const EMAIL_POLICY_TESTING_DISABLED_ACTION =
+  'Change Email policy operational state to Test only.';
 
 /**
  * C7 — read-only controlled business dispatch diagnostics, projected by the
@@ -258,6 +270,16 @@ export function projectEmailReadiness(
     && policySummary.effective_policy.data_origin !== 'reference_seed'
       ? policySummary.effective_policy
       : null;
+  /** Test & Verify gate — kept strictly separate from the configuration gate. */
+  const testingAllowed = operationalStateAllowsTesting(
+    effectivePolicy?.operational_state,
+  );
+  /**
+   * Only report the policy gate as the preflight blocker when a genuine policy
+   * exists but does not enable testing. Absence of a policy is already the
+   * `policy` check's job and must not be restated here.
+   */
+  const testingBlockedByPolicy = effectivePolicy !== null && !testingAllowed;
   const verified = part.accounts.some((a) => a.verification_status === 'verified');
   /**
    * Resend authenticated the key but restricts it to sending-only access, so
@@ -515,22 +537,8 @@ export function projectEmailReadiness(
       state: yn(counts.activeEventCallbacks > 0),
       detail: `${counts.activeEventCallbacks} active event callback(s) with a signing secret reference.`,
     },
-    {
-      key: 'callback_receiver',
-      label: 'Callback receiver route',
-      state: callbackVerified
-        ? 'met'
-        : (delivery?.events.length ?? 0) > 0
-          ? 'unmet'
-          : 'not_implemented',
-      detail: callbackVerified
-        ? `${delivery?.events.filter((e) => e.signature_verified).length} signature-verified `
-          + 'provider callback event(s) recorded against the current configuration.'
-        : (delivery?.events.length ?? 0) > 0
-          ? 'Callback evidence exists but is stale or unverified — it does not '
-            + 'prove the current configuration.'
-          : `${EMAIL_CALLBACK_RECEIVER_PENDING} — no verified provider callback has been received yet.`,
-    } as EmailReadinessCheck,
+    // Test & Verify, in dependency order: configuration must pass, then the
+    // controlled provider delivery test, then the signed provider callback.
     {
       key: 'configuration_preflight',
       label: 'Current configuration preflight passed',
@@ -545,8 +553,17 @@ export function projectEmailReadiness(
           ? CONFIGURATION_PREFLIGHT_CURRENT
           : testStale
             ? CONFIGURATION_PREFLIGHT_STALE
-            : `${CONFIGURATION_PREFLIGHT_PENDING} — run a configuration preflight `
-              + 'for the selected binding in the Test Centre.',
+            : testingBlockedByPolicy
+              ? EMAIL_POLICY_TESTING_DISABLED_DETAIL
+              : `${CONFIGURATION_PREFLIGHT_PENDING} — run a configuration preflight `
+                + 'for the selected binding in the Test Centre.',
+      // The policy gate is never weakened and is never switched on by the
+      // preflight button; the operator is sent to the Sending rules screen.
+      nextAction: testPassed || !testingBlockedByPolicy
+        ? undefined
+        : EMAIL_POLICY_TESTING_DISABLED_ACTION,
+      navigationKey:
+        testPassed || !testingBlockedByPolicy ? undefined : 'policy_state',
     } as EmailReadinessCheck,
     {
       key: 'provider_delivery_test',
@@ -570,6 +587,22 @@ export function projectEmailReadiness(
               : delivery.status === 'pending' || delivery.status === 'dispatching'
                 ? 'A provider test delivery is still in progress.'
                 : PROVIDER_DELIVERY_TEST_FAILED,
+    } as EmailReadinessCheck,
+    {
+      key: 'callback_receiver',
+      label: 'Callback receiver route',
+      state: callbackVerified
+        ? 'met'
+        : (delivery?.events.length ?? 0) > 0
+          ? 'unmet'
+          : 'not_implemented',
+      detail: callbackVerified
+        ? `${delivery?.events.filter((e) => e.signature_verified).length} signature-verified `
+          + 'provider callback event(s) recorded against the current configuration.'
+        : (delivery?.events.length ?? 0) > 0
+          ? 'Callback evidence exists but is stale or unverified — it does not '
+            + 'prove the current configuration.'
+          : `${EMAIL_CALLBACK_RECEIVER_PENDING} — no verified provider callback has been received yet.`,
     } as EmailReadinessCheck,
   ];
 

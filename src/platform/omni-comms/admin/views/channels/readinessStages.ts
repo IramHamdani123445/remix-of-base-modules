@@ -35,11 +35,17 @@ export const DELIVERY_SETUP_CHECK_KEYS = [
   'event_callback',
 ] as const;
 
-/** Test & Verify — proof that the setup works, without reaching a real person. */
+/**
+ * Test & Verify — proof that the setup works, without reaching a real person.
+ *
+ * Order is the operator's true dependency order: configuration must pass, then
+ * a controlled provider test delivery can be attempted, and only then can a
+ * signature-verified provider callback prove the receiver.
+ */
 export const TEST_VERIFY_CHECK_KEYS = [
-  'callback_receiver',
   'configuration_preflight',
   'provider_delivery_test',
+  'callback_receiver',
 ] as const;
 
 /** Go Live — controlled business delivery governance and evidence. */
