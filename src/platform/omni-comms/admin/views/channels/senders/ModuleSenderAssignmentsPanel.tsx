@@ -290,7 +290,8 @@ export const ModuleSenderAssignmentsPanel: React.FC<{
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium">
                 Bootstrap {preview.applied ? 'result' : 'preview'} — {preview.created} created,{' '}
-                {preview.existing} existing, {preview.blocked} blocked
+                {preview.existing} existing, {preview.blocked} blocked,{' '}
+                {preview.not_required ?? 0} not required
               </p>
               {!preview.applied && canManage && (
                 <Button size="sm" disabled={busy} onClick={() => void runBootstrap(true)}>
@@ -300,12 +301,15 @@ export const ModuleSenderAssignmentsPanel: React.FC<{
             </div>
             <ul className="text-xs text-muted-foreground space-y-1">
               {preview.plan.map((p) => (
-                <li key={`${p.caller_module_code}-${p.sender_code}`}>
-                  {p.caller_module_code} → {p.sender_code}: {p.status}
+                <li key={`${p.caller_module_code}-${p.profile_role}-${p.sender_code ?? 'none'}`}>
+                  {p.caller_module_code} · {p.profile_role}
+                  {p.is_default ? ' (default)' : ''} → {p.sender_code ?? 'no business sender'}:{' '}
+                  {p.status}
                   {p.detail ? ` (${p.detail})` : ''}
                 </li>
               ))}
             </ul>
+
           </div>
         )}
       </CardContent>

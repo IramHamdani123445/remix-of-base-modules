@@ -68,6 +68,8 @@ import { isReferenceSenderIdentity, visibleRecords } from './channelReferenceDat
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
 import { EmailSenderAddressesPanel } from './senders/EmailSenderAddressesPanel';
 import { ModuleSenderAssignmentsPanel } from './senders/ModuleSenderAssignmentsPanel';
+import { SenderCatalogueBootstrapPanel } from './senders/SenderCatalogueBootstrapPanel';
+
 
 
 import { useOmniCommsResourceParam } from '../../hooks/useOmniCommsResourceParam';
@@ -148,7 +150,14 @@ export const ChannelIdentitiesTab: React.FC<{
           departmentName={departmentName}
           onChanged={onChanged}
         />
+        <SenderCatalogueBootstrapPanel
+          client={client}
+          orgId={orgId}
+          channel="email"
+          onChanged={onChanged}
+        />
         <ModuleSenderAssignmentsPanel client={client} orgId={orgId} channel="email" />
+
       </div>
     );
   }

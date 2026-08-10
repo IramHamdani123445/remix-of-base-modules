@@ -115,8 +115,11 @@ export interface ModuleSenderResolution {
 
 export interface ModuleSenderBootstrapEntry {
   caller_module_code: string;
-  sender_code: string;
-  status: 'created' | 'will_create' | 'existing' | 'blocked';
+  /** Multi-role catalogue: a module may hold several role-scoped profiles. */
+  profile_role: ModuleSenderProfileRole;
+  is_default: boolean;
+  sender_code: string | null;
+  status: 'created' | 'will_create' | 'existing' | 'blocked' | 'not_required';
   detail: string | null;
   assignment_id: string | null;
   sender_identity_id: string | null;
@@ -130,9 +133,12 @@ export interface ModuleSenderBootstrapResult {
   created: number;
   existing: number;
   blocked: number;
+  /** Technical callers that legitimately need no business sender. */
+  not_required: number;
   plan: ModuleSenderBootstrapEntry[];
   generated_at: string;
 }
+
 
 /** Coverage label for the module dashboard. */
 export type ModuleCoverageStatus =
