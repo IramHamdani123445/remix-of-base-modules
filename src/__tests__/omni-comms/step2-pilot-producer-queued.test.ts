@@ -144,11 +144,11 @@ describe('Step 2 — happy path', () => {
   it('sends only the declared payload vocabulary — no incidental business data', async () => {
     await businessAction();
     const sent = sendMock.mock.calls[0][0];
-    expect(Object.keys(sent.payload).sort()).toEqual([
+    expect(Object.keys(sent.payload)).toEqual([
       'reference',
+      'subjectName',
       'submissionStatus',
       'submittedAt',
-      'subjectName',
     ]);
   });
 });

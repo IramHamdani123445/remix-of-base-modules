@@ -181,7 +181,7 @@ describe('Build 4A correction — application submitted event', () => {
     });
     const arg = sendMock.mock.calls[0][0];
     expect(arg.eventCode).toBe(EMPLOYER_APPLICATION_SUBMITTED_EVENT_CODE);
-    expect(arg.mode).toBe('shadow');
+    expect(arg.mode).toBe('queued');
     expect(arg.payload).toEqual(EMPLOYER_APPLICATION_SUBMITTED_SAMPLE);
   });
 
