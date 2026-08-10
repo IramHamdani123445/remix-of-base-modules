@@ -13,8 +13,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import {
   callOmniCommsRpc,
+  OmniCommsRpcError,
   type OmniCommsRpcClient,
 } from './omniCommsRpcErrors';
+import {
+  isTestRecipientPurpose,
+  type TestRecipientPurpose,
+} from './testRecipientPurpose';
 
 export type ProviderSecretPurpose = 'api_key' | 'webhook_signing';
 
@@ -123,7 +128,8 @@ export interface UpsertTestRecipientInput {
   channel: string;
   label: string;
   address: string;
-  purpose: string;
+  /** Bounded vocabulary — mirrors the database CHECK constraint exactly. */
+  purpose: TestRecipientPurpose;
   notes?: string | null;
   correlationId?: string | null;
 }
@@ -132,6 +138,13 @@ export function upsertTestRecipient(
   client: OmniCommsRpcClient,
   input: UpsertTestRecipientInput,
 ): Promise<string> {
+  // Bounded before transport: an out-of-vocabulary purpose can never reach the
+  // database, so an operator can never be shown a raw CHECK-violation dump.
+  if (!isTestRecipientPurpose(input.purpose)) {
+    return Promise.reject(
+      new OmniCommsRpcError('OC422', 'invalid_test_recipient_purpose'),
+    );
+  }
   return callOmniCommsRpc<string>(client, 'omni_comms_test_recipient_upsert', {
     p_id: input.id ?? null,
     p_expected_updated_at: input.expectedUpdatedAt ?? null,
