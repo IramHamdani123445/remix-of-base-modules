@@ -43,6 +43,7 @@ import {
   type SendCommunicationResult,
 } from "./responseContract.ts";
 import { runProviderDomainStatus, runProviderVerification } from "./providerVerification.ts";
+import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
 
 
 const corsHeaders = {
@@ -160,6 +161,25 @@ function mapRpcErrorToCode(raw: {
   return "runtime_persistence_failed";
 }
 
+/**
+ * Credential lookup used by configuration-only provider probes.
+ *
+ * A UI-managed credential in the encrypted vault takes precedence; a
+ * deployment-managed Edge Function Secret with the same bounded reference
+ * name remains supported so an existing configuration is unaffected. The
+ * value is used inside the probe only — it is never returned or logged.
+ */
+function managedSecretGetter(svc: {
+  rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+}): (name: string) => Promise<string | undefined> {
+  const resolver = createVaultSecretResolver(svc);
+  return async (name: string) => {
+    const managed = await resolver(name);
+    if (managed && managed.trim() !== "") return managed;
+    return Deno.env.get(name);
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -211,6 +231,66 @@ Deno.serve(async (req: Request) => {
   }
   const userId = claimsData.claims.sub as string;
 
+  // 1b-i. Provider credential WRITE (UI-managed, vault-backed).
+  // The browser sends the credential VALUE exactly once, over TLS, and never
+  // receives it back. The value is written straight into the encrypted vault
+  // by a service-role-only RPC that itself enforces omni_comms.configure,
+  // omni_comms.manage_credentials and organisation access. No provider is
+  // contacted and no email is sent by this action.
+  if (new URL(req.url).pathname.endsWith("/provider-secret")) {
+    let sBody: Record<string, unknown>;
+    try { sBody = await req.json(); } catch { sBody = {}; }
+    const secretValue = typeof sBody.secretValue === "string" ? sBody.secretValue : "";
+    const purpose = typeof sBody.purpose === "string" ? sBody.purpose : "";
+    const organizationId = String(sBody.organizationId ?? "");
+    const providerAccountId = String(sBody.providerAccountId ?? "");
+    if (!organizationId || !providerAccountId || !purpose || secretValue.trim() === "") {
+      return json({ ok: false, code: "invalid_input" }, 400);
+    }
+    const svcWrite = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data, error } = await svcWrite.rpc(
+      "omni_comms_priv_store_managed_secret",
+      {
+        p_actor_id: userId,
+        p_organization_id: organizationId,
+        p_provider_account_id: providerAccountId,
+        p_purpose: purpose,
+        p_secret_value: secretValue,
+        p_access_classification:
+          typeof sBody.accessClassification === "string" ? sBody.accessClassification : null,
+        p_correlation_id:
+          typeof sBody.correlationId === "string" ? sBody.correlationId : null,
+      },
+    );
+    if (error) {
+      // The credential value is never echoed, and never reaches a log line.
+      console.log(`[${BUILD_TAG}] provider_secret_write_failed`);
+      return json({ ok: false, code: "credential_write_failed" }, 500);
+    }
+    const row = (data ?? {}) as Record<string, unknown>;
+    if (row.allowed !== true) {
+      const code = typeof row.code === "string" ? row.code : "permission_denied";
+      const status = code === "authentication_required"
+        ? 401
+        : code === "not_found"
+          ? 404
+          : code === "invalid_input" || code === "invalid_secret_value"
+            ? 400
+            : 403;
+      return json({ ok: false, code }, status);
+    }
+    return json({
+      ok: true,
+      code: "ok",
+      purpose: row.purpose ?? purpose,
+      storageMode: row.storageMode ?? "vault",
+      configured: true,
+      lastRotatedAt: row.lastRotatedAt ?? null,
+      verificationReset: row.verificationReset === true,
+      emailsSent: 0,
+    });
+  }
+
   // 1c. Bounded provider-account credential verification (Step 1).
   // Configuration-only: contacts Resend with a read-only probe, sends no
   // email, and creates no message / delivery attempt / dispatch job.
@@ -229,7 +309,7 @@ Deno.serve(async (req: Request) => {
         admin: svc as unknown as {
           rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
         },
-        getSecret: (name) => Deno.env.get(name),
+        getSecret: managedSecretGetter(svc),
       },
     );
     return json(result.body, result.status);
@@ -252,7 +332,7 @@ Deno.serve(async (req: Request) => {
         admin: svc as unknown as {
           rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
         },
-        getSecret: (name) => Deno.env.get(name),
+        getSecret: managedSecretGetter(svc),
       },
     );
     return json(result.body, result.status);

@@ -37,7 +37,13 @@ export interface ResendSendInput {
   readonly html?: string | null;
   /** Deterministic per-logical-send key. The SAME key is used on every retry. */
   readonly idempotencyKey: string;
+  /**
+   * Optional server-only resolver for UI-managed (vault-backed) credentials.
+   * When omitted, only a deployment-managed Edge Function Secret is used.
+   */
+  readonly secretResolver?: ((ref: string) => Promise<string | null>) | null;
 }
+
 
 export interface ResendSendResult {
   readonly status: ResendOutcomeStatus;
@@ -153,6 +159,45 @@ export function resolveSecret(
 
 
 /**
+ * Vault-aware credential resolution.
+ *
+ * A credential configured from the Omni-Comms Admin UI lives in the encrypted
+ * database vault and is resolved through the supplied server-only resolver.
+ * A deployment-managed Edge Function Secret with the same bounded reference
+ * name remains supported as a fallback, so an existing configuration keeps
+ * working unchanged until it is migrated.
+ *
+ * The credential VALUE is returned to the calling adapter only. It is never
+ * logged, echoed, persisted or returned to a browser.
+ */
+export async function resolveSecretWithVault(
+  secretRef: string,
+  resolver?: ((ref: string) => Promise<string | null>) | null,
+): Promise<ResolvedSecret> {
+  if (!OMNI_COMMS_SECRET_REF_PATTERN.test(secretRef ?? "")) {
+    return {
+      ok: false,
+      errorCode: "secret_reference_invalid",
+      detail: "The configured provider credential is unavailable.",
+    };
+  }
+  if (resolver) {
+    let managed: string | null = null;
+    try {
+      managed = await resolver(secretRef);
+    } catch {
+      managed = null;
+    }
+    if (typeof managed === "string" && managed.trim() !== "") {
+      return { ok: true, apiKey: managed };
+    }
+  }
+  return resolveSecret(secretRef);
+}
+
+
+
+/**
  * Sends one Email through Resend. Never throws: every path returns a bounded,
  * classified outcome so the caller can always write evidence.
  */
@@ -160,7 +205,10 @@ export async function sendResendEmail(
   input: ResendSendInput,
 ): Promise<ResendSendResult> {
   const started = Date.now();
-  const secret: ResolvedSecret = resolveSecret(input.secretRef);
+  const secret: ResolvedSecret = await resolveSecretWithVault(
+    input.secretRef,
+    input.secretResolver ?? null,
+  );
   if (secret.ok === false) {
     const failure = secret;
     return {

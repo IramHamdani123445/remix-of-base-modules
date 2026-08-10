@@ -31,6 +31,7 @@ import {
   canonicalProviderPayloadHash,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
+import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -238,6 +239,9 @@ Deno.serve(async (req) => {
       ...providerPayload,
       // Deterministic: identical on every safe retry of this message.
       idempotencyKey: String(claim.provider_idempotency_key ?? ""),
+      // UI-managed (vault-backed) credential resolution, with the legacy
+      // deployment secret retained as a fallback.
+      secretResolver: createVaultSecretResolver(service),
     });
 
     const completion = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
