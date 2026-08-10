@@ -391,6 +391,7 @@ export const ChannelPoliciesTab: React.FC<{
   const effective = summary?.effective_policy ?? null;
   const orgPolicy = summary?.organization_policy ?? null;
   const deptPolicy = summary?.department_policy ?? null;
+  const resolution = resolveEffectivePolicy(orgPolicy, deptPolicy);
 
   const save = async (
     target: 'organisation' | 'department',
