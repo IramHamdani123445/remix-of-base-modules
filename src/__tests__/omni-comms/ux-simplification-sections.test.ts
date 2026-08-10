@@ -156,7 +156,10 @@ describe('workspace composition', () => {
 describe('readiness summary offers one next action', () => {
   it('renders a single primary action bound to the next blocker', () => {
     const src = read(SUMMARY);
-    expect(src).toContain('Next action');
+    // The action is now stage-scoped: "Current <stage> blocker".
+    expect(src).toContain('blocker');
+    expect(src).toContain('omni-comms-readiness-next-action');
+
     expect(src).toContain('tabForReadinessCheck');
     expect(src).toContain('omni-comms-readiness-fix-action');
     // The verdict is never derived locally.
