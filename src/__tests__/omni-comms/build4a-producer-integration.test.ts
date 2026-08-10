@@ -141,7 +141,7 @@ describe('Build 4A — emission validation and outcomes', () => {
 });
 
 describe('Build 4A — employer registration pilot', () => {
-  it('emits in shadow mode only, through the façade, with caller context', async () => {
+  it('emits in the declared pilot mode, through the façade, with caller context', async () => {
     await emitEmployerRegistrationApplicationSubmitted({
       organizationId: '69afc88b-da5c-4f41-a1e7-199e1ee1d416',
       reference: 'ER-00042',
