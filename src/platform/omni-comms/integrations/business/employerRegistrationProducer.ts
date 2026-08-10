@@ -1,12 +1,13 @@
 /**
- * Build 4A — Pilot business producer: Employer Registration APPLICATION
- * SUBMITTED acknowledgement.
+ * Build 4A — Business producer: Employer Registration APPLICATION SUBMITTED
+ * acknowledgement.
  *
- * The ONE wired pilot action. Step 2 (controlled production go-live) raises
- * it in `queued` mode: the runtime resolves the recipient, renders the
- * published Email template version and persists a HELD dispatch job. The job
- * is not runnable — only Release Control can later make it eligible — so no
- * provider is contacted and no email leaves the platform.
+ * DECOMMISSIONED AS THE CONTROLLED PRODUCTION PILOT. The queued Email pilot
+ * has been switched to Benefits claim registration
+ * (`benefitsClaimSubmittedProducer.ts`). This producer is back to `shadow`
+ * mode: the runtime resolves and evaluates the emission but persists no
+ * queued dispatch job, so it creates no held Email work and contacts no
+ * provider. Its producer-event binding no longer authorises `queued`.
  *
  * IMPORTANT — semantics. Submitting an employer registration places the
  * record in `Pending`. It is NOT a completed registration. This producer
@@ -39,11 +40,12 @@ export const EMPLOYER_APPLICATION_SUBMITTED_EVENT_CODE =
 export const EMPLOYER_REGISTERED_EVENT_CODE = 'REGISTRATION.EMPLOYER.REGISTERED';
 
 /**
- * Pilot emission mode. `queued` produces a HELD (non-runnable) Email dispatch
- * job. Release Control, not this producer, decides eligibility for dispatch.
+ * Emission mode. `shadow` evaluates the emission without persisting any
+ * dispatch job, so this producer creates no held Email work. The queued
+ * controlled-production pilot now belongs to Benefits claim registration.
  */
 export const EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE: BusinessProducerMode =
-  'queued';
+  'shadow';
 
 /** Deterministic correlation-id prefix joining the business flow to the request. */
 export const EMPLOYER_APPLICATION_SUBMITTED_CORRELATION_PREFIX =
