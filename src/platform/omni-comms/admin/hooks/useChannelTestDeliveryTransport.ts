@@ -23,9 +23,27 @@ export function useChannelTestDeliveryTransport(): ChannelTestDeliveryTransport 
           OMNI_COMMS_TEST_DELIVERY_FUNCTION,
           { body },
         );
+        if (res.error) {
+          // supabase-js discards the response body on a non-2xx status, which
+          // hides the controlled OC### code the function returned. Recover it
+          // from the attached Response so the operator sees the real reason.
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const ctx = (res.error as any)?.context;
+          if (ctx && typeof ctx.json === 'function') {
+            try {
+              const parsed = await ctx.clone().json();
+              if (parsed && typeof parsed.error === 'string') {
+                return { data: parsed, error: null };
+              }
+            } catch {
+              // fall through to the generic error below
+            }
+          }
+        }
         return { data: res.data ?? null, error: res.error ?? null };
       },
     }),
     [],
   );
 }
+
