@@ -205,7 +205,10 @@ export async function sendResendEmail(
   input: ResendSendInput,
 ): Promise<ResendSendResult> {
   const started = Date.now();
-  const secret: ResolvedSecret = resolveSecret(input.secretRef);
+  const secret: ResolvedSecret = await resolveSecretWithVault(
+    input.secretRef,
+    input.secretResolver ?? null,
+  );
   if (secret.ok === false) {
     const failure = secret;
     return {
