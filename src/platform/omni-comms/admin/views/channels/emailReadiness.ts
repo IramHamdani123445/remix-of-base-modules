@@ -259,6 +259,21 @@ export function projectEmailReadiness(
       ? policySummary.effective_policy
       : null;
   const verified = part.accounts.some((a) => a.verification_status === 'verified');
+  /**
+   * Resend authenticated the key but restricts it to sending-only access, so
+   * the domain-listing probe cannot complete. This is NOT an invalid or
+   * rejected credential and must never be reported as one: the sending
+   * credential is usable and only external (provider-side) confirmation of
+   * the sending domain remains outstanding.
+   */
+  const restrictedSendingKey =
+    !verified
+    && part.accounts.some(
+      (a) =>
+        (a as { verification_result_code?: string | null }).verification_result_code
+        === 'restricted_api_key',
+    );
+
 
   const domains = genuineActiveEmailEndpoints(summary?.endpoints, 'sending_domain');
   const callbacks = genuineActiveEmailEndpoints(summary?.endpoints, 'event_callback');
