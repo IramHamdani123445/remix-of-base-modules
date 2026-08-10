@@ -329,16 +329,24 @@ export function projectEmailReadiness(
     },
     {
       key: 'credentials',
-      label: 'Credential verification status',
-      state: yn(verified),
+      label: 'Credential ready for sending',
+      /**
+       * Sending readiness — NOT provider-management capability. A key the
+       * provider authenticated with sending-only access is a VALID sending
+       * credential; only a missing, invalid or rejected credential fails.
+       */
+      state: yn(verified || restrictedSendingKey),
       detail: verified
         ? 'At least one account has verified Resend credentials.'
         : restrictedSendingKey
-          ? 'Resend authenticated the stored key with sending-only access, so '
-            + 'the domain check could not run. The sending credential is valid; '
-            + 'external verification of the sending domain is required.'
-          : 'No account has verified credentials.',
+          ? 'Credential: ready for sending. Access: sending only. '
+            + 'Administrative/domain API access: restricted. Resend '
+            + 'authenticated the stored key, so no credential replacement is '
+            + 'required; the domain listing probe simply cannot run with a '
+            + 'sending-only key.'
+          : 'No account has a usable sending credential.',
     },
+
 
     {
       key: 'identity',

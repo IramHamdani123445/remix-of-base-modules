@@ -77,8 +77,8 @@ const NEXT_ACTIONS: Record<string, string> = {
   adapter: 'Install and activate the Resend email adapter for this environment.',
   account: 'Create an organisation provider account for the email adapter.',
   credentials:
-    'Run credential verification for the provider account. The key itself is '
-    + 'never shown or entered here; only its secret reference name is stored.',
+    'Open the provider account to review or verify its sending credential.',
+
   identity: 'Create and activate an email sender identity.',
   binding: 'Bind an active sender identity to an active provider account.',
   binding_verification:

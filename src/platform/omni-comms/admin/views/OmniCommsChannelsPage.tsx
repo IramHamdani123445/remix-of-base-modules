@@ -338,8 +338,16 @@ export const OmniCommsChannelsPage: React.FC = () => {
           readiness={goLiveReadiness}
           loading={loading}
           onGoToTab={setTab}
+          activeStage={
+            activeSection === 'delivery-setup'
+            || activeSection === 'test-verify'
+            || activeSection === 'go-live'
+              ? activeSection
+              : null
+          }
         />
       ) : null}
+
 
       {/*
         UX Simplification — the ten-destination rail is replaced by five

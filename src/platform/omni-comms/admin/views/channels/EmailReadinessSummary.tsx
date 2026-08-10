@@ -21,6 +21,10 @@ import {
   type GoLiveReadinessProjection,
 } from './goLiveReadiness';
 import {
+  groupEmailReadinessByStage,
+  type ReadinessStage,
+} from './readinessStages';
+import {
   CHANNEL_SECTION_TAB_LABELS,
   tabForReadinessCheck,
 } from '../../navigation/channelWorkspaceSections';
@@ -30,12 +34,19 @@ export interface EmailReadinessSummaryProps {
   /** Navigate to the surface that clears the current blocker. */
   onGoToTab: (tab: string) => void;
   loading?: boolean;
+  /**
+   * The stage the operator is currently working on. When it is supplied and
+   * still incomplete, its own blocker is offered as the next action so an
+   * operator is never sent to a later stage mid-task.
+   */
+  activeStage?: ReadinessStage | null;
 }
 
 export const EmailReadinessSummary: React.FC<EmailReadinessSummaryProps> = ({
   readiness,
   onGoToTab,
   loading,
+  activeStage,
 }) => {
   if (!readiness) {
     return (
@@ -52,9 +63,26 @@ export const EmailReadinessSummary: React.FC<EmailReadinessSummaryProps> = ({
     );
   }
 
-  const { nextBlocker, readyCount, totalCount, allReady, pilotSuspended } =
-    readiness;
-  const percent = totalCount > 0 ? Math.round((readyCount / totalCount) * 100) : 0;
+  const { pilotSuspended } = readiness;
+  const grouped = groupEmailReadinessByStage(readiness);
+  const allReady = grouped.allReady;
+
+  const activeGroup =
+    activeStage
+      ? grouped.groups.find((g) => g.stage === activeStage) ?? null
+      : null;
+  const focusGroup =
+    activeGroup && activeGroup.blocker
+      ? activeGroup
+      : grouped.groups.find((g) => g.blocker !== null) ?? null;
+  const nextBlocker = focusGroup?.blocker ?? null;
+
+  const percent =
+    grouped.deliverySetup.totalCount > 0
+      ? Math.round(
+        (grouped.deliverySetup.readyCount / grouped.deliverySetup.totalCount) * 100,
+      )
+      : 0;
   const targetTab = nextBlocker ? tabForReadinessCheck(nextBlocker.key) : null;
 
   const headline = pilotSuspended
@@ -63,7 +91,7 @@ export const EmailReadinessSummary: React.FC<EmailReadinessSummaryProps> = ({
       ? readiness.liveDeliveryAvailable
         ? 'Ready to send'
         : 'Setup complete · live delivery still switched off'
-      : 'Not ready to send yet';
+      : 'Not ready to send';
 
   const Icon = pilotSuspended
     ? PauseCircle
@@ -88,20 +116,43 @@ export const EmailReadinessSummary: React.FC<EmailReadinessSummaryProps> = ({
             variant={allReady && !pilotSuspended ? 'secondary' : 'destructive'}
             data-testid="omni-comms-readiness-summary-count"
           >
-            {readyCount} of {totalCount} checks passed
+            Delivery Setup {grouped.deliverySetup.readyCount} of{' '}
+            {grouped.deliverySetup.totalCount} ready
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Progress value={percent} aria-label="Readiness progress" />
+        <div
+          className="grid gap-2 sm:grid-cols-3"
+          data-testid="omni-comms-readiness-stage-counts"
+        >
+          {grouped.groups.map((group) => (
+            <div
+              key={group.stage}
+              className={`rounded-lg border p-3 ${
+                focusGroup?.stage === group.stage ? 'border-primary/50 bg-muted/40' : ''
+              }`}
+              data-testid={`omni-comms-readiness-stage-${group.stage}`}
+            >
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </p>
+              <p className="mt-1 text-sm font-semibold">
+                {group.readyCount} / {group.totalCount} {group.noun}
+              </p>
+            </div>
+          ))}
+        </div>
 
-        {nextBlocker ? (
+        <Progress value={percent} aria-label="Delivery Setup progress" />
+
+        {nextBlocker && focusGroup ? (
           <div
             className="rounded-lg border bg-muted/40 p-4"
             data-testid="omni-comms-readiness-next-action"
           >
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Next action
+              Current {focusGroup.label} blocker
             </p>
             <p className="mt-1 text-sm font-medium">{nextBlocker.nextAction}</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -126,9 +177,17 @@ export const EmailReadinessSummary: React.FC<EmailReadinessSummaryProps> = ({
             approved and active release.
           </p>
         )}
+
+        <p className="text-xs text-muted-foreground">
+          {readiness.liveDeliveryAvailable
+            ? 'Live delivery is available for this scope.'
+            : 'Live delivery disabled — an informational safety state, not a '
+              + 'Delivery Setup requirement.'}
+        </p>
       </CardContent>
     </Card>
   );
 };
 
 export default EmailReadinessSummary;
+
