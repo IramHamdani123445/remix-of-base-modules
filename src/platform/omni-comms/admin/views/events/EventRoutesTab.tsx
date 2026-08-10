@@ -417,7 +417,17 @@ const RouteEditorDialog: React.FC<{
                 {senders.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            {moduleDefault && (
+              <p className="text-xs text-muted-foreground mt-1" data-testid="oc-route-module-default">
+                {moduleDefault.senderIdentityId
+                  ? `Inherited from ${moduleDefault.moduleCode} module default${
+                      moduleDefault.allowEventOverride ? " — override allowed" : " — override not allowed"
+                    }`
+                  : `${moduleDefault.moduleCode} has no default sender assigned`}
+              </p>
+            )}
           </div>
+
           <div>
             <Label>Sender resolution policy</Label>
             <Select value={senderPolicy} onValueChange={(v) => setSenderPolicy(v as SenderResolutionPolicy)}>
