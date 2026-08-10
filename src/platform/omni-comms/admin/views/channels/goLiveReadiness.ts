@@ -164,8 +164,11 @@ export function projectEmailGoLiveReadiness(
         status === 'SUSPENDED'
           ? 'The controlled pilot is suspended. Review the dispatch diagnostics, '
             + 'resolve the cause, then propose a new controlled pilot.'
-          : nextActionFor(check, status),
+          : status === 'READY'
+            ? ''
+            : check.nextAction ?? nextActionFor(check, status),
       detail: check.detail,
+      navigationKey: check.navigationKey,
     };
   });
 
