@@ -355,6 +355,22 @@ const GenericEndpointsPanel: React.FC<{
         </CardContent>
       </Card>
 
+      {channel === 'email' ? (
+        <SendingDomainVerificationSection
+          client={client}
+          orgId={orgId}
+          endpoints={genuine
+            .filter((e) => e.endpoint_type === 'sending_domain')
+            .map((e) => ({ id: e.id, code: e.code, display_name: e.display_name }))}
+          providerAccountId={
+            genuine.find((e) => e.endpoint_type === 'sending_domain')?.provider_account_id ?? null
+          }
+          onChanged={refreshAll}
+        />
+      ) : null}
+
+
+
       <ResourceDetailsDrawer
         open={detailRow !== null}
         onOpenChange={(open) => { if (!open) clearResource(); }}
