@@ -42,7 +42,7 @@ import {
   type SendCommunicationRecipientResult,
   type SendCommunicationResult,
 } from "./responseContract.ts";
-import { runProviderVerification } from "./providerVerification.ts";
+import { runProviderDomainStatus, runProviderVerification } from "./providerVerification.ts";
 
 
 const corsHeaders = {
