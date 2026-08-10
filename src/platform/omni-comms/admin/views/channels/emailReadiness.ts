@@ -170,7 +170,12 @@ export interface EmailDispatchDiagnostics {
   readonly blocker: string | null;
   /** Always false in C7 — live delivery is not available. */
   readonly live_delivery_available: boolean;
+  /** Active, release-permitted producer/event bindings that allow `queued`. */
+  readonly queued_producer_bindings?: number;
+  /** Effective Release Control state for the scope, when one exists. */
+  readonly release_state?: string | null;
 }
+
 
 
 

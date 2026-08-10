@@ -35,7 +35,7 @@ export const SetupProgressSummary: React.FC<SetupProgressSummaryProps> = ({
             : "Not ready for a dry run"}
         </Badge>
         <Badge variant="secondary" data-testid="omni-comms-setup-live-badge">
-          Live send: not implemented
+          Live send: not enabled
         </Badge>
         <span className="text-xs text-muted-foreground">
           Evidence generated {new Date(plan.generatedAt).toLocaleString()}
@@ -60,8 +60,10 @@ export const SetupProgressSummary: React.FC<SetupProgressSummaryProps> = ({
         <Alert data-testid="omni-comms-setup-complete">
           <AlertTitle>Configuration path complete</AlertTitle>
           <AlertDescription className="text-sm">
-            Every configuration step for this pilot path is satisfied. Live
-            provider dispatch is still not implemented in this build.
+            Every configuration step for this pilot path is satisfied.
+            Controlled business Email dispatch is implemented; provider delivery
+            occurs only when Release Control authorises it. Unrestricted live
+            delivery is not enabled.
           </AlertDescription>
         </Alert>
       )}

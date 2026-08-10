@@ -204,7 +204,7 @@ const STEP_META: Record<SetupStepId, StepMeta> = {
   runtime: {
     title: 'Runtime and certification',
     purpose:
-      'Runtime objects must be present. Live provider dispatch is not implemented in this build.',
+      'Runtime objects must be present. Controlled business Email dispatch is implemented; unrestricted live delivery is not enabled.',
     target: { route: HEALTH, label: 'Open Health' },
   },
 };

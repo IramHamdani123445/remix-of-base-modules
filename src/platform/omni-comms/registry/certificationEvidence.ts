@@ -43,7 +43,7 @@ export const OMNI_COMMS_CERTIFICATION_EVIDENCE: OmniCommsCertificationEvidence =
   sqlVerifierResult: null,
   certifiedAt: null,
   summary:
-    'Privileged certification has not been executed against the deployed runtime. The runtime is implemented, live delivery is disabled and no provider dispatch exists.',
+    'Privileged certification has not been executed against the deployed runtime. The runtime is implemented, unrestricted live delivery is disabled and provider dispatch remains governed by Release Control.',
 };
 
 /** Ordered evidence fields rendered by the Certification Evidence view. */

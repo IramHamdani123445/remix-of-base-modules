@@ -295,7 +295,7 @@ export const ChannelReleaseControlTab: React.FC<{
           {dispatchCheck && (
             <Alert className="mt-4">
               <Info className="h-4 w-4" />
-              <AlertTitle>Business dispatch is not implemented</AlertTitle>
+              <AlertTitle>Business dispatch is governed by Release Control</AlertTitle>
               <AlertDescription>{dispatchCheck.detail}</AlertDescription>
             </Alert>
           )}

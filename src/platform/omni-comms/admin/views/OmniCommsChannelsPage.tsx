@@ -67,6 +67,10 @@ import {
 } from "./channels/channelUiRegistry";
 
 import { projectEmailReadiness } from "./channels/emailReadiness";
+import { projectDispatchDiagnostics } from "./channels/dispatchDiagnosticsProjection";
+import { projectEmailGoLiveReadiness } from "./channels/goLiveReadiness";
+import { getDispatchDiagnostics } from "@/platform/omni-comms/application/dispatchDiagnosticsService";
+import type { DispatchDiagnosticsRow } from "@/platform/omni-comms/application/dispatchDiagnosticsService";
 import { projectChannelReadiness } from "./channels/channelReadiness";
 import { getChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/application/channelTestDeliveryService";
 import type { ChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/application/channelTestDeliveryTypes";
@@ -102,6 +106,9 @@ export const OmniCommsChannelsPage: React.FC = () => {
     useState<ChannelTestDeliveryDiagnostics | null>(null);
   // C6 — genuine Release Control governance (EMAIL ONLY). Reading it sends nothing.
   const [releaseSummary, setReleaseSummary] = useState<ChannelReleaseControlSummary | null>(null);
+  // C7 — server-projected controlled business dispatch diagnostics. Read-only:
+  // loading it contacts no provider and sends nothing.
+  const [dispatchRow, setDispatchRow] = useState<DispatchDiagnosticsRow | null>(null);
   const [loading, setLoading] = useState(false);
 
   // CG1 — generic, channel-aware configuration summaries.
@@ -137,7 +144,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [config, policy, test, deliveries, release] = await Promise.all([
+      const [config, policy, test, deliveries, release, dispatch] = await Promise.all([
         getEmailConfigSummary(client, orgId),
         getChannelPolicySummary(client, {
           organizationId: orgId,
@@ -154,12 +161,17 @@ export const OmniCommsChannelsPage: React.FC = () => {
           departmentId: departmentId ?? null,
           channel: "email",
         }).catch(() => null),
+        getDispatchDiagnostics(client, {
+          organizationId: orgId,
+          departmentId: departmentId ?? null,
+        }).catch(() => null),
       ]);
       setSummary(config);
       setEmailPolicy(policy);
       setTestCentre(test);
       setDeliveryDiagnostics(deliveries);
       setReleaseSummary(release);
+      setDispatchRow(dispatch);
     } catch (e) {
       toastError(e, "Failed to load email configuration");
     } finally {
@@ -216,9 +228,19 @@ export const OmniCommsChannelsPage: React.FC = () => {
     if (showCatalogue) void refreshCatalogue();
   }, [refreshCatalogue, showCatalogue]);
 
+  const dispatchDiagnostics = useMemo(
+    () => projectDispatchDiagnostics(dispatchRow),
+    [dispatchRow],
+  );
+
   const emailReadiness = useMemo(
-    () => projectEmailReadiness(summary, emailPolicy, testCentre, deliveryDiagnostics, releaseSummary),
-    [summary, emailPolicy, testCentre, deliveryDiagnostics, releaseSummary],
+    () => projectEmailReadiness(summary, emailPolicy, testCentre, deliveryDiagnostics, releaseSummary, dispatchDiagnostics),
+    [summary, emailPolicy, testCentre, deliveryDiagnostics, releaseSummary, dispatchDiagnostics],
+  );
+
+  const goLiveReadiness = useMemo(
+    () => projectEmailGoLiveReadiness(emailReadiness, dispatchDiagnostics),
+    [emailReadiness, dispatchDiagnostics],
   );
 
   const channelReadiness = useMemo(
@@ -329,6 +351,8 @@ export const OmniCommsChannelsPage: React.FC = () => {
             channelReadiness={channelReadiness}
             configuration={channelSummary}
             summary={isEmail ? summary : null}
+            goLive={isEmail ? goLiveReadiness : null}
+            dispatchDiagnosticsUnavailable={isEmail ? dispatchRow === null : false}
           />
         </TabsContent>
         {applicable("providers") ? (
