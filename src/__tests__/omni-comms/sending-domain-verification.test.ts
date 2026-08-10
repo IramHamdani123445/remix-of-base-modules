@@ -261,7 +261,7 @@ describe('verification request handler', () => {
         fetchImpl: dohResponder({
           'send.example.org|16': ['"v=spf1 include:amazonses.com ~all"'],
           'send.example.org|15': ['10 feedback-smtp.eu-west-1.amazonses.com.'],
-          'resend._domainkey.example.org|16': ['"p=AAA"'],
+          'resend._domainkey.example.org|16': ['"p=MIGfMA0GCS"'],
         }),
       },
     );
