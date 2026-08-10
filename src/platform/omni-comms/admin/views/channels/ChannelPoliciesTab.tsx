@@ -449,11 +449,25 @@ export const ChannelPoliciesTab: React.FC<{
               {isDepartmentScope && !orgPolicy ? NO_BASELINE_NOTICE : 'No policy configured for this scope.'}
             </p>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Detail label="Operational state" value={OPERATIONAL_STATE_LABEL[effective.operational_state]} />
-              <Detail label="Source scope" value={policyScopeLabel(effective)} />
-              <Detail label="Per-minute limit" value={nstr(effective.per_minute_limit) || '—'} />
-              <Detail label="Retry profile" value={RETRY_PROFILE_LABEL[effective.retry_profile]} />
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Detail label="Operational state" value={OPERATIONAL_STATE_LABEL[effective.operational_state]} />
+                <Detail label="Source scope" value={policyScopeLabel(effective)} />
+                <Detail label="Per-minute limit" value={nstr(effective.per_minute_limit) || '—'} />
+                <Detail label="Retry profile" value={RETRY_PROFILE_LABEL[effective.retry_profile]} />
+              </div>
+              {resolution.overrides_baseline ? (
+                <p className="text-sm font-medium" data-testid="omni-comms-effective-override-notice">
+                  {`${departmentName ?? summary?.department_name ?? 'Department'} department override is effective.`}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground" data-testid="omni-comms-effective-baseline-notice">
+                  Organisation baseline is effective for this department.
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground" data-testid="omni-comms-effective-policy-id">
+                Technical details — effective policy ID: {effective.id}
+              </p>
             </div>
           )}
           {!isDepartmentScope && (summary?.department_override_count ?? 0) > 0 ? (
