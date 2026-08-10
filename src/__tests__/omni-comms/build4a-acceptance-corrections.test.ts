@@ -181,7 +181,7 @@ describe('Build 4A correction — application submitted event', () => {
     });
     const arg = sendMock.mock.calls[0][0];
     expect(arg.eventCode).toBe(EMPLOYER_APPLICATION_SUBMITTED_EVENT_CODE);
-    expect(arg.mode).toBe('queued');
+    expect(arg.mode).toBe('shadow');
     expect(arg.payload).toEqual(EMPLOYER_APPLICATION_SUBMITTED_SAMPLE);
   });
 
@@ -347,12 +347,12 @@ describe('Build 4A correction — safety invariants hold', () => {
     }
   });
 
-  it('keeps the pilot on the declared queued pilot mode constant', () => {
+  it('keeps the producer on the declared (non-queued) pilot mode constant', () => {
     const producer = read(
       'src/platform/omni-comms/integrations/business/employerRegistrationProducer.ts',
     );
     expect(producer).toContain('EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE');
-    expect(producer).toContain("EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE: BusinessProducerMode =\n  'queued'");
+    expect(producer).toContain("EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE: BusinessProducerMode =\n  'shadow'");
     expect(producer).toContain('mode: EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE');
   });
 

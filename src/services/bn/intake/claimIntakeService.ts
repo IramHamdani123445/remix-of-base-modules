@@ -25,6 +25,9 @@ import {
   BN_WORKFLOW_MODULES,
   logBnWorkflowEvent,
 } from '@/services/bn/bnWorkflowIntegrationService';
+import { resolveOrganizationContext } from '@/lib/org/organizationContextResolver';
+import { emitBenefitsClaimSubmitted } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
+import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
 
 const db = supabase as any;
 
@@ -49,11 +52,104 @@ export interface SubmitClaimApplicationInput {
   workbasketId?: string | null;
 }
 
+/** Observable, non-fatal outcome of the claimant acknowledgement emission. */
+export interface ClaimIntakeCommunicationOutcome {
+  outcome: BusinessProducerResult['outcome'] | 'skipped';
+  eventCode: string | null;
+  requestId: string | null;
+  blockers: string[];
+  /** Short, user-safe sentence describing what happened. */
+  summary: string;
+}
+
 export interface SubmitClaimApplicationResult {
   claimId: string;
   claimNumber: string;
   workflowInstanceId: string | null;
   workflowEngine: 'CENTRAL' | 'BN_FALLBACK';
+  /** Claimant acknowledgement outcome — evidence only, never fatal. */
+  communication: ClaimIntakeCommunicationOutcome;
+}
+
+const CLAIM_COMMUNICATION_SUMMARY: Record<string, string> = {
+  accepted:
+    'Claimant acknowledgement queued. It is held pending release authorisation — nothing has been sent.',
+  replayed:
+    'Claimant acknowledgement already queued for this claim — no duplicate was created.',
+  blocked: 'Claimant acknowledgement not prepared.',
+  unavailable: 'Claimant acknowledgement could not be prepared right now.',
+  skipped: 'Claimant acknowledgement not applicable for this claim.',
+};
+
+/**
+ * Controlled production pilot — raise the Benefits claim-registration
+ * acknowledgement through the single Omni-Comms façade in QUEUED mode. The
+ * runtime persists a HELD dispatch job that only Release Control can make
+ * eligible, so no provider is contacted and no email leaves the platform.
+ *
+ * Fail-closed and total: it never blocks or fails the claim registration,
+ * never contacts a provider and never writes to a communication table.
+ */
+async function emitClaimRegisteredAcknowledgement(args: {
+  claimId: string;
+  claimNumber: string;
+  productCode: string;
+  formPayload: Record<string, any>;
+}): Promise<ClaimIntakeCommunicationOutcome> {
+  const skipped: ClaimIntakeCommunicationOutcome = {
+    outcome: 'skipped',
+    eventCode: null,
+    requestId: null,
+    blockers: [],
+    summary: CLAIM_COMMUNICATION_SUMMARY.skipped,
+  };
+
+  try {
+    // ONE deterministic recipient: the claimant on the registered claim.
+    const { data: person } = await db
+      .from('bn_claim_person_snapshot')
+      .select('full_name, email')
+      .eq('claim_id', args.claimId)
+      .maybeSingle();
+
+    const contactEmail: string | null =
+      (args.formPayload?.contact_email as string | null) ?? person?.email ?? null;
+    const subjectName: string | null =
+      person?.full_name ?? (args.formPayload?.claimant_name as string | null) ?? null;
+    if (!contactEmail || !subjectName) return skipped;
+
+    const ctx = await resolveOrganizationContext({ moduleCode: 'BENEFITS' });
+    const organizationId: string | undefined = ctx?.organization?.id;
+    if (!organizationId) return skipped;
+
+    const res = await emitBenefitsClaimSubmitted({
+      organizationId,
+      departmentId: ctx?.department?.department_id ?? null,
+      claimId: args.claimId,
+      reference: args.claimNumber,
+      subjectName,
+      claimType: args.productCode,
+      contactEmail,
+    });
+
+    return {
+      outcome: res.outcome,
+      eventCode: res.eventCode || null,
+      requestId: res.requestId,
+      blockers: res.blockers ?? [],
+      summary:
+        CLAIM_COMMUNICATION_SUMMARY[res.outcome] ??
+        CLAIM_COMMUNICATION_SUMMARY.unavailable,
+    };
+  } catch {
+    return {
+      outcome: 'unavailable',
+      eventCode: null,
+      requestId: null,
+      blockers: ['runtime_unavailable'],
+      summary: CLAIM_COMMUNICATION_SUMMARY.unavailable,
+    };
+  }
 }
 
 const CHANNEL_TO_CONFIG: Record<ApplicationChannel, string> = {
@@ -225,10 +321,21 @@ export async function submitClaimApplication(
     console.warn('[claimIntake] Submission audit failed:', auditErr);
   }
 
+  // ─── Omni-Comms claimant acknowledgement (controlled pilot) ────────
+  // Single façade call, queued mode → HELD dispatch job. Never fatal.
+  const communication = await emitClaimRegisteredAcknowledgement({
+    claimId,
+    claimNumber,
+    productCode: input.productCode,
+    formPayload: input.formPayload ?? {},
+  });
+
   return {
     claimId,
     claimNumber,
     workflowInstanceId,
     workflowEngine,
+    communication,
   };
 }
+

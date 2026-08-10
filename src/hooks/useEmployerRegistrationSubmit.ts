@@ -20,22 +20,23 @@ export interface CommunicationOutcome {
 
 const COMMUNICATION_SUMMARY: Record<string, string> = {
   accepted:
-    'Acknowledgement queued. It is held pending release authorisation — nothing has been sent.',
+    'Acknowledgement evaluated in shadow mode — nothing was queued and nothing has been sent.',
   replayed:
-    'Acknowledgement already queued for this application — no duplicate was created.',
+    'Acknowledgement already evaluated for this application — no duplicate was created.',
   blocked: 'Acknowledgement not prepared.',
   unavailable: 'Acknowledgement could not be prepared right now.',
   skipped: 'Acknowledgement not applicable for this organisation.',
 };
 
 /**
- * Controlled production pilot — raise the employer-registration APPLICATION
- * SUBMITTED acknowledgement through the single Omni-Comms facade in QUEUED
- * mode. The runtime persists a HELD dispatch job that only Release Control
- * can make eligible, so no provider is contacted. Fail-closed: this
- * never blocks or fails the business submission, never contacts a provider
- * and never writes to a comms table. The outcome is returned so the caller
- * can surface it — it is observed, not fire-and-forget.
+ * Raise the employer-registration APPLICATION SUBMITTED acknowledgement
+ * through the single Omni-Comms facade in SHADOW mode. Shadow evaluates the
+ * emission without persisting a dispatch job, so nothing is queued and no
+ * provider is contacted. (The controlled production Email pilot is now
+ * Benefits claim registration.) Fail-closed: this never blocks or fails the
+ * business submission and never writes to a comms table. The outcome is
+ * returned so the caller can surface it — it is observed, not
+ * fire-and-forget.
  */
 const emitOmniCommsRegistrationEvent = async (
   regno: string,

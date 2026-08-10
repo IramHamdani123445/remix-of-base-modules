@@ -151,7 +151,7 @@ describe('Build 4A — employer registration pilot', () => {
     });
     expect(sendMock).toHaveBeenCalledTimes(1);
     const arg = sendMock.mock.calls[0][0];
-    expect(arg.mode).toBe('queued');
+    expect(arg.mode).toBe('shadow');
     expect(arg.eventCode).toBe(EMPLOYER_APPLICATION_SUBMITTED_EVENT_CODE);
     expect(arg.eventCode).not.toBe('REGISTRATION.EMPLOYER.REGISTERED');
     expect(arg.payload).toEqual({
