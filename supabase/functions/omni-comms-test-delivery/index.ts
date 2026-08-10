@@ -27,9 +27,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   OMNI_COMMS_SECRET_REF_PATTERN as SECRET_REF_PATTERN,
-  resolveSecret,
+  resolveSecretWithVault,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
+import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -199,7 +200,10 @@ Deno.serve(async (req) => {
     return json({ error: "OC409", detail: "secret_reference_invalid", delivery }, 409);
   }
 
-  const credential = resolveSecret(secretRef);
+  // UI-managed (vault-backed) credentials take precedence; a deployment
+  // managed Edge Function Secret with the same reference remains supported.
+  const secretResolver = createVaultSecretResolver(serviceClient);
+  const credential = await resolveSecretWithVault(secretRef, secretResolver);
   if (!credential.ok) {
     const delivery = await complete("failed", "credential_missing", {
       errorCode: credential.errorCode,
@@ -228,6 +232,7 @@ Deno.serve(async (req) => {
     // Persistent per-delivery key: a bounded retry of the SAME delivery can
     // never produce a second provider send.
     idempotencyKey: providerIdempotencyKey,
+    secretResolver,
   });
 
   if (outcome.status === "accepted") {
