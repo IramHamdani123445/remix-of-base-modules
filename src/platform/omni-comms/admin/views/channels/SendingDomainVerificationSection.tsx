@@ -111,7 +111,7 @@ export const SendingDomainVerificationSection: React.FC<
     try {
       setSummary(await getDomainVerificationSummary(client, orgId));
     } catch (err) {
-      toastError(err);
+      toastError(err, 'Could not load sending domains.');
     } finally {
       setLoading(false);
     }
@@ -157,7 +157,7 @@ export const SendingDomainVerificationSection: React.FC<
       await load();
       onChanged?.();
     } catch (err) {
-      toastError(err);
+      toastError(err, 'Could not save the sending domain.');
     } finally {
       setSaving(false);
     }
@@ -179,7 +179,7 @@ export const SendingDomainVerificationSection: React.FC<
       await load();
       onChanged?.();
     } catch (err) {
-      toastError(err);
+      toastError(err, 'The DNS check could not be completed.');
     } finally {
       setChecking(null);
     }
