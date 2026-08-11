@@ -60,6 +60,29 @@ async function resolveSigningSecret(
   return LEGACY_SIGNING_SECRET;
 }
 
+/**
+ * Records a bounded rejected-callback evidence row. Never throws: rejection
+ * evidence must never change the response the provider receives.
+ */
+async function recordRejection(
+  client: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  providerAccountId: string,
+  providerEventId: string,
+  reason: string,
+): Promise<void> {
+  try {
+    await client.rpc("omni_comms_priv_webhook_record_rejection", {
+      p_provider_code: "resend_email",
+      p_provider_event_id: providerEventId || "",
+      p_provider_account_id: providerAccountId || null,
+      p_reason: reason,
+      p_payload_digest: null,
+    });
+  } catch {
+    // evidence recording is best-effort only
+  }
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -74,7 +97,10 @@ Deno.serve(async (req) => {
   const signingClient = createClient(SUPABASE_URL, SERVICE_ROLE);
   const providerAccountId = new URL(req.url).searchParams.get("account")?.trim() ?? "";
   const signingSecret = await resolveSigningSecret(signingClient, providerAccountId);
-  if (!signingSecret) return json({ error: "webhook_secret_missing" }, 503);
+  if (!signingSecret) {
+    await recordRejection(signingClient, providerAccountId, "", "webhook_secret_missing");
+    return json({ error: "webhook_secret_missing" }, 503);
+  }
 
   const svixId = req.headers.get("svix-id") ?? "";
   const svixTs = req.headers.get("svix-timestamp") ?? "";
@@ -88,7 +114,13 @@ Deno.serve(async (req) => {
     svixSig,
     rawBody,
   );
-  if (!verified) return json({ error: "invalid_signature" }, 401);
+  if (!verified) {
+    // Rejected callbacks are recorded as bounded evidence so the admin screen
+    // can warn that the saved signing secret does not match the provider.
+    // Only the reason and the account are stored — never the body or secret.
+    await recordRejection(signingClient, providerAccountId, svixId, "signature_mismatch");
+    return json({ error: "invalid_signature" }, 401);
+  }
 
   let evt: Record<string, unknown>;
   try {
