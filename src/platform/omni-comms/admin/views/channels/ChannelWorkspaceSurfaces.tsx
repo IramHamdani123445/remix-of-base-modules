@@ -25,6 +25,7 @@ import { ChannelReleaseControlTab } from "./ChannelReleaseControlTab";
 import { ChannelTestCentreTab } from "./ChannelTestCentreTab";
 import { ChannelDiagnosticsTab } from "./ChannelDiagnosticsTab";
 import { ProviderCredentialsSection } from "./ProviderCredentialsSection";
+import { ProviderWebhookSection } from "./ProviderWebhookSection";
 import { ControlledRecipientsSection } from "./ControlledRecipientsSection";
 import type { ChannelUiDefinition, ChannelWorkspaceTab } from "./channelUiRegistry";
 import type { EmailReadinessProjection } from "./emailReadiness";
@@ -108,6 +109,15 @@ export const ChannelWorkspaceSurfaces: React.FC<ChannelWorkspaceSurfacesProps> =
           <ProviderCredentialsSection
             client={client} orgId={orgId} onChanged={onChanged}
           />
+          {/*
+            Callback registration is self-service: the operator copies the
+            endpoint URL and saves the signing secret without leaving the UI.
+          */}
+          {isEmail ? (
+            <ProviderWebhookSection
+              client={client} orgId={orgId} onChanged={onChanged}
+            />
+          ) : null}
         </TabsContent>
       ) : null}
 
