@@ -50,7 +50,9 @@ import {
 } from '@/platform/omni-comms/application/channelProviderAccountService';
 import {
   credentialCompleteness,
+  credentialRestrictedButUsable,
   credentialsComplete,
+
   NO_PROVIDER_ADAPTER_MESSAGE,
   OMNI_COMMS_ACCOUNT_ENVIRONMENTS,
   SECRET_REFERENCE_HELP,
