@@ -15,6 +15,7 @@ export const OMNI_COMMS_ERROR_CODES = [
   'OC412', // invalid_state (lifecycle transition rejected)
   'OC413', // concurrent_update (optimistic concurrency)
   'OC422', // validation_error (generic; DETAIL slug carries specifics)
+  'OC429', // rate_limited (controlled delivery pacing / volume guard)
   'OC450', // audit_write_failed
   'OC500', // unexpected_error
 ] as const;

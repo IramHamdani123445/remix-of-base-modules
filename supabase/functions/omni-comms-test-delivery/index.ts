@@ -157,6 +157,10 @@ Deno.serve(async (req) => {
       .from("omni_comms_provider_account_secret_ref")
       .select("secret_ref, storage_mode")
       .eq("provider_account_id", row.provider_account_id)
+      // Accounts can hold multiple independent credentials (for example the
+      // Resend API key and the webhook signing secret). Delivery-status reads
+      // must always resolve the sending credential, never an arbitrary row.
+      .eq("purpose", "api_key")
       .maybeSingle();
     if (!ref?.secret_ref) {
       return json({ ok: false, errorCode: "credential_missing", lastEvent: null });
