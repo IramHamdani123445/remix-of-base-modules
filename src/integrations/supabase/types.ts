@@ -122372,6 +122372,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      omni_comms_provider_credential_source: {
+        Args: { p_provider_account_id: string }
+        Returns: Json
+      }
       omni_comms_provider_secret_configuration: {
         Args: { p_organization_id: string }
         Returns: Json

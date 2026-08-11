@@ -137,13 +137,19 @@ describe('C7 final closure — secret-reference sanitisation', () => {
     expect(result).toMatchObject({ errorCode: 'secret_reference_invalid' });
   });
 
-  it('7b. only the three bounded credential codes exist', () => {
+  it('7b. only the four bounded credential codes exist', () => {
     const codes = [...ADAPTER.matchAll(/errorCode: "(credential_[a-z_]+|secret_[a-z_]+)"/g)]
       .map((m) => m[1]);
     expect(new Set(codes)).toEqual(
-      new Set(['secret_reference_invalid', 'credential_missing', 'credential_resolution_failed']),
+      new Set([
+        'secret_reference_invalid',
+        'credential_missing',
+        'credential_resolution_failed',
+        'credential_store_unavailable',
+      ]),
     );
   });
+
 
   it('7c. the adapter never interpolates the reference into a message', () => {
     expect(ADAPTER).not.toMatch(/\$\{secretRef\}/);
