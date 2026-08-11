@@ -127,7 +127,9 @@ export const ProviderCredentialsSection: React.FC<
   }, [target, value, orgId, closeDialog, load, onChanged]);
 
   const canManage = config?.canManageCredentials === true;
-  const rows = config?.secrets ?? [];
+  // Sending credentials only. The delivery-callback signing secret is managed
+  // in its own webhook card so the two are never confused.
+  const rows = (config?.secrets ?? []).filter((r) => r.purpose === 'api_key');
 
   return (
     <Card data-testid="omni-comms-provider-credentials">
