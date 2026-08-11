@@ -126,14 +126,29 @@ Deno.serve(async (req) => {
     const deliveryId = typeof body.deliveryId === "string" ? body.deliveryId.trim() : "";
     if (!deliveryId) return fail("OC422", "invalid_input", 400);
 
-    // RLS on the evidence ledger decides whether this operator may look.
-    const { data: row, error: rowError } = await userClient
+    // The evidence ledger is service-role only, so the caller's right to see
+    // this delivery is proved through the governed diagnostics RPC instead.
+    const { data: row } = await serviceClient
       .from("omni_comms_channel_test_delivery")
-      .select("id, provider_message_id, provider_account_id, status")
+      .select(
+        "id, provider_message_id, provider_account_id, status, organization_id, department_id, channel, binding_id",
+      )
       .eq("id", deliveryId)
       .maybeSingle();
-    if (rowError) return fail("OC403", "permission_denied", 403);
     if (!row) return fail("OC404", "delivery_not_found", 404);
+
+    const { error: authzError } = await userClient.rpc(
+      "omni_comms_channel_test_delivery_diagnostics",
+      {
+        p_organization_id: row.organization_id,
+        p_department_id: row.department_id,
+        p_channel: row.channel,
+        p_binding_id: row.binding_id,
+        p_limit: 1,
+      },
+    );
+    if (authzError) return fail("OC403", "permission_denied", 403);
+
     if (!row.provider_message_id) {
       return json({ ok: false, errorCode: "no_provider_message", lastEvent: null });
     }
