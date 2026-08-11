@@ -122365,6 +122365,13 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_provider_credential_send_ready: {
+        Args: {
+          p_verification_result_code: string
+          p_verification_status: string
+        }
+        Returns: boolean
+      }
       omni_comms_provider_secret_configuration: {
         Args: { p_organization_id: string }
         Returns: Json

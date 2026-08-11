@@ -50,7 +50,9 @@ import {
 } from '@/platform/omni-comms/application/channelProviderAccountService';
 import {
   credentialCompleteness,
+  credentialRestrictedButUsable,
   credentialsComplete,
+
   NO_PROVIDER_ADAPTER_MESSAGE,
   OMNI_COMMS_ACCOUNT_ENVIRONMENTS,
   SECRET_REFERENCE_HELP,
@@ -596,6 +598,16 @@ const AccountRow: React.FC<{
           <Badge variant="outline" className="gap-1">
             <CheckCircle2 className="h-3 w-3" /> verified
           </Badge>
+        ) : credentialRestrictedButUsable(account) ? (
+          <div className="space-y-1">
+            <Badge variant="outline" className="gap-1">
+              <CheckCircle2 className="h-3 w-3" /> ready to send
+            </Badge>
+            <p className="text-xs text-muted-foreground">
+              Sending-only key — accepted for sending. Full verification needs a
+              Resend key with Full access.
+            </p>
+          </div>
         ) : account.verification_status === 'failed' ? (
           <Badge variant="destructive" className="gap-1">
             <AlertCircle className="h-3 w-3" /> failed
@@ -603,6 +615,7 @@ const AccountRow: React.FC<{
         ) : (
           <Badge variant="outline">{account.verification_status}</Badge>
         )}
+
       </TableCell>
       <TableCell><Badge>{account.status}</Badge></TableCell>
       <TableCell className="text-xs">
