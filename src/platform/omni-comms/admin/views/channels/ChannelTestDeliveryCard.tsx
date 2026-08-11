@@ -69,7 +69,11 @@ export const TEST_DELIVERY_MESSAGES: Record<string, string> = {
   max_deliveries_reached:
     'The approved delivery volume for this window has been used. Save a new approval window.',
   min_interval_not_elapsed:
-    'The minimum spacing between test deliveries has not elapsed yet. Try again shortly.',
+    'The minimum spacing between test deliveries has not elapsed yet. Wait for the '
+    + 'configured interval, then use New delivery and run a fresh preflight if requested.',
+  delivery_rate_limited:
+    'The controlled test-delivery limit was reached. Wait for the configured interval, '
+    + 'or save a new approval window if its delivery allowance has been used.',
   test_delivery_identity_immutable:
     'A delivery record already exists for this attempt and its evidence cannot be '
     + 'altered. Start a new technical test message instead of retrying this one.',
@@ -391,7 +395,9 @@ export const ChannelTestDeliveryCard: React.FC<{
       onChanged?.();
     } catch (e) {
       const detail = e instanceof OmniCommsRpcError ? e.detail ?? '' : '';
-      const friendly = TEST_DELIVERY_MESSAGES[detail];
+      const friendly = e instanceof OmniCommsRpcError && e.code === 'OC429'
+        ? TEST_DELIVERY_MESSAGES[detail] ?? TEST_DELIVERY_MESSAGES.delivery_rate_limited
+        : TEST_DELIVERY_MESSAGES[detail];
       if (friendly) {
         toast.error(friendly);
       } else {

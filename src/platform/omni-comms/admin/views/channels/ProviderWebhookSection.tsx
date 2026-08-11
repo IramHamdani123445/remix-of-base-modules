@@ -55,13 +55,19 @@ export const OMNI_COMMS_RESEND_WEBHOOK_EVENTS = [
   'email.complained',
 ] as const;
 
-export function buildOmniCommsWebhookUrl(baseUrl?: string | null): string {
+export function buildOmniCommsWebhookUrl(
+  baseUrl?: string | null,
+  providerAccountId?: string | null,
+): string {
   const raw =
     baseUrl
     ?? ((import.meta as unknown as { env?: Record<string, string> }).env
       ?.VITE_SUPABASE_URL ?? '');
   if (!raw) return '';
-  return `${raw.replace(/\/$/, '')}/functions/v1/${OMNI_COMMS_RESEND_WEBHOOK_FUNCTION}`;
+  const endpoint = `${raw.replace(/\/$/, '')}/functions/v1/${OMNI_COMMS_RESEND_WEBHOOK_FUNCTION}`;
+  return providerAccountId
+    ? `${endpoint}?account=${encodeURIComponent(providerAccountId)}`
+    : endpoint;
 }
 
 export interface ProviderWebhookSectionProps {
@@ -84,8 +90,6 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
   const [value, setValue] = React.useState('');
   const [saving, setSaving] = React.useState(false);
 
-  const webhookUrl = React.useMemo(() => buildOmniCommsWebhookUrl(), []);
-
   const load = React.useCallback(async () => {
     if (!orgId) return;
     setLoading(true);
@@ -107,7 +111,7 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
   );
   const canManage = config?.canManageCredentials === true;
 
-  const copyUrl = React.useCallback(async () => {
+  const copyUrl = React.useCallback(async (webhookUrl: string) => {
     if (!webhookUrl) return;
     try {
       await navigator.clipboard.writeText(webhookUrl);
@@ -117,7 +121,7 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
     } catch {
       toast.error('Copy failed — select the URL and copy it manually.');
     }
-  }, [webhookUrl]);
+  }, []);
 
   const closeDialog = React.useCallback(() => {
     setValue('');
@@ -191,28 +195,6 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
 
       <CardContent className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="omni-comms-webhook-url">Endpoint URL</Label>
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              id="omni-comms-webhook-url"
-              readOnly
-              value={webhookUrl}
-              onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 font-mono text-xs"
-              data-testid="omni-comms-webhook-url"
-            />
-            <Button variant="outline" size="sm" onClick={() => void copyUrl()}>
-              {copied ? (
-                <Check className="mr-2 h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Copy className="mr-2 h-4 w-4" aria-hidden="true" />
-              )}
-              Copy
-            </Button>
-          </div>
-        </div>
-
-        <div className="space-y-2">
           <p className="text-sm font-medium">Events to subscribe</p>
           <div className="flex flex-wrap gap-2">
             {OMNI_COMMS_RESEND_WEBHOOK_EVENTS.map((event) => (
@@ -259,6 +241,26 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
                       : 'Saved'
                     : 'Callback signatures cannot be verified until this is saved.'}
                 </p>
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <Input
+                    readOnly
+                    aria-label={`${row.providerAccountName} webhook URL`}
+                    value={buildOmniCommsWebhookUrl(undefined, row.providerAccountId)}
+                    onFocus={(e) => e.currentTarget.select()}
+                    className="min-w-0 flex-1 font-mono text-xs"
+                    data-testid="omni-comms-webhook-url"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void copyUrl(
+                      buildOmniCommsWebhookUrl(undefined, row.providerAccountId),
+                    )}
+                  >
+                    {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+                    <span className="sr-only">Copy webhook URL</span>
+                  </Button>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={row.configured ? 'secondary' : 'destructive'}>

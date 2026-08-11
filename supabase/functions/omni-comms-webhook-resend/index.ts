@@ -43,11 +43,13 @@ const LEGACY_SIGNING_SECRET =
  */
 async function resolveSigningSecret(
   client: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  providerAccountId: string,
 ): Promise<string> {
+  if (!providerAccountId) return LEGACY_SIGNING_SECRET;
   try {
     const { data, error } = await client.rpc(
       "omni_comms_priv_resolve_webhook_signing_secret",
-      { p_adapter_key: "resend" },
+      { p_adapter_key: providerAccountId },
     );
     if (!error && typeof data === "string" && data.trim() !== "") {
       return data.trim();
@@ -70,7 +72,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!SUPABASE_URL || !SERVICE_ROLE) return json({ error: "configuration_error" }, 503);
   const signingClient = createClient(SUPABASE_URL, SERVICE_ROLE);
-  const signingSecret = await resolveSigningSecret(signingClient);
+  const providerAccountId = new URL(req.url).searchParams.get("account")?.trim() ?? "";
+  const signingSecret = await resolveSigningSecret(signingClient, providerAccountId);
   if (!signingSecret) return json({ error: "webhook_secret_missing" }, 503);
 
   const svixId = req.headers.get("svix-id") ?? "";

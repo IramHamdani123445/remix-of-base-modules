@@ -151,10 +151,11 @@ export async function runChannelTestDelivery(
     const detail = payload && typeof payload.detail === 'string'
       ? payload.detail
       : error?.message ?? 'test_delivery_failed';
+    const controlledCode = /^OC\d{3}$/.test(code) ? code : 'OC500';
     throw new OmniCommsRpcError(
-      /^OC\d{3}$/.test(code) ? (code as never) : 'OC500',
+      controlledCode as ConstructorParameters<typeof OmniCommsRpcError>[0],
       detail,
-      `${code}: ${detail}`,
+      `${controlledCode}: ${detail}`,
     );
   }
 
