@@ -135,6 +135,36 @@ export function verificationImplemented(adapterKey: string): boolean {
   return OMNI_COMMS_VERIFIABLE_ADAPTERS.includes(adapterKey);
 }
 
+/**
+ * Canonical client mirror of the database predicate
+ * `public.omni_comms_provider_credential_send_ready`.
+ *
+ * A Resend key created with "Sending access" authenticates successfully but
+ * cannot read the domains endpoint, so the probe can never return `verified`.
+ * The credential is genuine and usable for sending, therefore both the send
+ * gate and this projection treat it as send-ready. Any other pending or failed
+ * outcome is NOT send-ready.
+ */
+export function credentialSendReady(a: {
+  verification_status?: string | null;
+  verification_result_code?: string | null;
+}): boolean {
+  if (a.verification_status === 'verified') return true;
+  return (
+    a.verification_status === 'pending'
+    && a.verification_result_code === 'restricted_api_key'
+  );
+}
+
+/** True only for the sending-only ("restricted") accepted credential case. */
+export function credentialRestrictedButUsable(a: {
+  verification_status?: string | null;
+  verification_result_code?: string | null;
+}): boolean {
+  return a.verification_status !== 'verified' && credentialSendReady(a);
+}
+
+
 export const VERIFICATION_NOT_IMPLEMENTED_MESSAGE =
   'Credential verification not implemented for this provider';
 
