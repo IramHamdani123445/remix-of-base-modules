@@ -421,3 +421,112 @@ export async function canonicalProviderPayloadHash(input: {
   });
   return await sha256Hex(canonical);
 }
+
+/**
+ * Post-acceptance delivery probe.
+ *
+ * Reads the provider's own record for an already-accepted message so the
+ * operator can see whether the provider actually DELIVERED it (or bounced it)
+ * after returning HTTP 200. Read-only: it never sends and never mutates.
+ * Sending-only credentials cannot read this endpoint; that is reported as a
+ * bounded, non-fatal `restricted_api_key` outcome.
+ */
+export interface ResendStatusResult {
+  readonly ok: boolean;
+  readonly providerStatusCode: number | null;
+  readonly lastEvent: string | null;
+  readonly createdAt: string | null;
+  readonly errorCode: string | null;
+  readonly errorDetail: string | null;
+}
+
+export async function fetchResendEmailStatus(input: {
+  readonly secretRef: string;
+  readonly storageMode?: string | null;
+  readonly secretResolver?: ((ref: string) => Promise<string | null>) | null;
+  readonly providerMessageId: string;
+}): Promise<ResendStatusResult> {
+  const secret = await resolveSecretStrict(
+    input.secretRef,
+    normalizeStorageMode(input.storageMode),
+    input.secretResolver ?? null,
+  );
+  if (secret.ok === false) {
+    return {
+      ok: false,
+      providerStatusCode: null,
+      lastEvent: null,
+      createdAt: null,
+      errorCode: secret.errorCode,
+      errorDetail: secret.detail,
+    };
+  }
+  const id = boundedProviderMessageId(input.providerMessageId);
+  if (!id) {
+    return {
+      ok: false,
+      providerStatusCode: null,
+      lastEvent: null,
+      createdAt: null,
+      errorCode: "provider_message_id_invalid",
+      errorDetail: "This delivery has no usable provider message reference.",
+    };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RESEND_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${RESEND_ENDPOINT}/${id}`, {
+      method: "GET",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${secret.apiKey}`,
+        "User-Agent": "Lovable-OmniComms/1.0",
+        Accept: "application/json",
+      },
+    });
+    let payload: unknown = null;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = null;
+    }
+    if (res.ok) {
+      const r = (payload ?? {}) as Record<string, unknown>;
+      return {
+        ok: true,
+        providerStatusCode: res.status,
+        lastEvent: boundedProviderCode(r.last_event),
+        createdAt: typeof r.created_at === "string" ? r.created_at : null,
+        errorCode: null,
+        errorDetail: null,
+      };
+    }
+    const code = res.status === 401 || res.status === 403
+      ? "restricted_api_key"
+      : res.status === 404
+        ? "provider_message_not_found"
+        : "provider_status_unavailable";
+    return {
+      ok: false,
+      providerStatusCode: res.status,
+      lastEvent: null,
+      createdAt: null,
+      errorCode: code,
+      errorDetail: code === "restricted_api_key"
+        ? "This sending-only credential cannot read delivery status from the provider."
+        : "The provider did not return a delivery status for this message.",
+    };
+  } catch {
+    return {
+      ok: false,
+      providerStatusCode: null,
+      lastEvent: null,
+      createdAt: null,
+      errorCode: "provider_unreachable",
+      errorDetail: "The provider status endpoint could not be reached.",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
