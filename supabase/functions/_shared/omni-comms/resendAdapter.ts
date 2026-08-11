@@ -159,19 +159,31 @@ export function resolveSecret(
 
 
 /**
- * Vault-aware credential resolution.
+ * Explicitly selected credential store for one provider account.
  *
- * A credential configured from the Omni-Comms Admin UI lives in the encrypted
- * database vault and is resolved through the supplied server-only resolver.
- * A deployment-managed Edge Function Secret with the same bounded reference
- * name remains supported as a fallback, so an existing configuration keeps
- * working unchanged until it is migrated.
+ * There is exactly ONE active source per credential. Silent precedence
+ * between stores is forbidden: a credential configured in the Admin UI is
+ * read only from the encrypted vault, and a deployment-managed credential is
+ * read only from Edge Function Secrets. This makes it impossible for one
+ * store to shadow the other and send with an unintended key.
+ */
+export type OmniCommsCredentialStorageMode = "vault" | "edge_env";
+
+export function normalizeStorageMode(
+  value: unknown,
+): OmniCommsCredentialStorageMode {
+  return value === "vault" ? "vault" : "edge_env";
+}
+
+/**
+ * Strict, single-source credential resolution.
  *
  * The credential VALUE is returned to the calling adapter only. It is never
  * logged, echoed, persisted or returned to a browser.
  */
-export async function resolveSecretWithVault(
+export async function resolveSecretStrict(
   secretRef: string,
+  storageMode: OmniCommsCredentialStorageMode,
   resolver?: ((ref: string) => Promise<string | null>) | null,
 ): Promise<ResolvedSecret> {
   if (!OMNI_COMMS_SECRET_REF_PATTERN.test(secretRef ?? "")) {
@@ -181,7 +193,15 @@ export async function resolveSecretWithVault(
       detail: "The configured provider credential is unavailable.",
     };
   }
-  if (resolver) {
+
+  if (storageMode === "vault") {
+    if (!resolver) {
+      return {
+        ok: false,
+        errorCode: "credential_store_unavailable",
+        detail: "The configured provider credential is unavailable.",
+      };
+    }
     let managed: string | null = null;
     try {
       managed = await resolver(secretRef);
@@ -191,9 +211,18 @@ export async function resolveSecretWithVault(
     if (typeof managed === "string" && managed.trim() !== "") {
       return { ok: true, apiKey: managed };
     }
+    // No fallback: a vault-managed credential must never be silently
+    // substituted by a deployment secret of the same name.
+    return {
+      ok: false,
+      errorCode: "credential_missing",
+      detail: "The configured provider credential is unavailable.",
+    };
   }
+
   return resolveSecret(secretRef);
 }
+
 
 
 
