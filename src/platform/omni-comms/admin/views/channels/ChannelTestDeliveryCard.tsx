@@ -91,6 +91,39 @@ export const TEST_DELIVERY_MESSAGES: Record<string, string> = {
     + 'credential in Provider Configuration.',
 };
 
+/**
+ * Plain-English meaning of the provider's own post-acceptance outcome. The
+ * provider accepting a message (HTTP 200) is NOT proof that the mailbox
+ * received it — these events are what decides that.
+ */
+export const PROVIDER_EVENT_GUIDANCE: Record<string, string> = {
+  delivered: 'The provider delivered the message to the recipient mail server.',
+  sent: 'The provider has sent the message and is waiting for the recipient mail '
+    + 'server to accept it. If it never becomes "delivered", the recipient server '
+    + 'is holding or rejecting it.',
+  delivery_delayed: 'The recipient mail server is deferring the message. The '
+    + 'provider will keep retrying.',
+  bounced: 'The recipient mail server rejected the message. Check the address and '
+    + 'the sending domain reputation.',
+  complained: 'The recipient marked the message as spam.',
+  queued: 'The provider has queued the message but has not sent it yet.',
+  failed: 'The provider could not send the message.',
+};
+
+export const PROVIDER_STATUS_ERROR_GUIDANCE: Record<string, string> = {
+  restricted_api_key:
+    'This sending-only credential can send but cannot read delivery status. '
+    + 'Delivery outcomes will arrive through the provider webhook instead, or use '
+    + 'a full-access key if you want status on demand.',
+  provider_message_not_found:
+    'The provider no longer has a record for this message reference.',
+  credential_missing:
+    'No credential is available for this provider account.',
+  provider_unreachable:
+    'The provider status endpoint could not be reached. Try again shortly.',
+};
+
+
 
 
 
@@ -238,6 +271,9 @@ export const ChannelTestDeliveryCard: React.FC<{
   const [diagnostics, setDiagnostics] = useState<ChannelTestDeliveryDiagnostics | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [probing, setProbing] = useState(false);
+  const [providerStatus, setProviderStatus] =
+    useState<ChannelTestDeliveryProviderStatus | null>(null);
   const [saving, setSaving] = useState(false);
   const [recipientsText, setRecipientsText] = useState('');
   const [approvalEnabled, setApprovalEnabled] = useState(false);
