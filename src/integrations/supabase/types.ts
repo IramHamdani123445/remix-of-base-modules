@@ -120522,6 +120522,10 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_channel_callback_health: {
+        Args: { p_organization_id: string }
+        Returns: Json
+      }
       omni_comms_channel_endpoint_set_lifecycle: {
         Args: {
           p_action: string
@@ -122278,6 +122282,16 @@ export type Database = {
       omni_comms_priv_verify_department_ownership: {
         Args: { p_department_id: string; p_organization_id: string }
         Returns: boolean
+      }
+      omni_comms_priv_webhook_record_rejection: {
+        Args: {
+          p_payload_digest: string
+          p_provider_account_id: string
+          p_provider_code: string
+          p_provider_event_id: string
+          p_reason: string
+        }
+        Returns: Json
       }
       omni_comms_priv_write_audit: {
         Args: {
