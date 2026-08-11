@@ -404,6 +404,27 @@ export const ChannelTestDeliveryCard: React.FC<{
     }
   }, [transport, run, target, idempotencyKey, subject, bodyText, refresh, onChanged]);
 
+  const onCheckProviderStatus = useCallback(async () => {
+    if (!current?.id) return;
+    setProbing(true);
+    try {
+      const res = await getChannelTestDeliveryProviderStatus(transport, current.id);
+      setProviderStatus(res);
+      if (res.ok && res.lastEvent) {
+        toast.success(PROVIDER_EVENT_GUIDANCE[res.lastEvent] ?? `Provider outcome: ${res.lastEvent}`);
+      } else {
+        toast.message(
+          PROVIDER_STATUS_ERROR_GUIDANCE[res.errorCode ?? ''] ?? res.errorDetail
+            ?? 'The provider did not return a delivery outcome.',
+        );
+      }
+    } catch (e) {
+      toastError(e, 'Provider delivery status could not be read');
+    } finally {
+      setProbing(false);
+    }
+  }, [transport, current?.id]);
+
   const retryable = current ? isDeliveryRetryable(current) : false;
 
 
