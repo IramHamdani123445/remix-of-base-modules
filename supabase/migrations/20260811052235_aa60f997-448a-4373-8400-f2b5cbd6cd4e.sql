@@ -1,0 +1,2 @@
+ALTER TABLE public.omni_comms_channel_test_delivery
+  DROP CONSTRAINT IF EXISTS omni_comms_channel_test_delivery_status_check;
