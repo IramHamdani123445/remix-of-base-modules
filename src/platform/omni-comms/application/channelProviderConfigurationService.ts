@@ -109,6 +109,52 @@ export function getProviderSecretConfiguration(
   );
 }
 
+/** Observed health of inbound provider callbacks for one provider account. */
+export type CallbackHealthState = 'healthy' | 'rejecting' | 'never_received';
+
+export interface CallbackHealthRow {
+  providerAccountId: string;
+  providerAccountCode: string;
+  providerAccountName: string;
+  acceptedCount: number;
+  rejectedCount: number;
+  lastAcceptedAt: string | null;
+  lastRejectedAt: string | null;
+  lastRejectionReason: string | null;
+  state: CallbackHealthState;
+}
+
+export interface CallbackHealthSummary {
+  organizationId: string;
+  accounts: CallbackHealthRow[];
+  generatedAt: string;
+}
+
+/**
+ * Read-only callback evidence projection. Never sends, never mutates and never
+ * exposes secrets — only counts, timestamps and a bounded rejection reason.
+ */
+export function getCallbackHealth(
+  client: OmniCommsRpcClient,
+  organizationId: string,
+): Promise<CallbackHealthSummary> {
+  return callOmniCommsRpc<CallbackHealthSummary>(
+    client,
+    'omni_comms_channel_callback_health',
+    { p_organization_id: organizationId },
+  );
+}
+
+/** Operator-facing explanation for an observed callback health state. */
+export const CALLBACK_HEALTH_GUIDANCE: Record<CallbackHealthState, string> = {
+  healthy:
+    'Signed provider callbacks are arriving and passing signature verification.',
+  rejecting:
+    'Callbacks are arriving but the signature does not match the saved signing secret. The secret saved here is different from the one the provider is signing with — replace it with the secret shown for THIS webhook endpoint in the provider console.',
+  never_received:
+    'No provider callback has ever reached this endpoint. The webhook is most likely not registered, or the registered URL is missing its ?account= parameter. Copy the URL below exactly as shown.',
+};
+
 export function getTestRecipientSummary(
   client: OmniCommsRpcClient,
   organizationId: string,
