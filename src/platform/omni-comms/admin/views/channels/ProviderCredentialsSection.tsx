@@ -127,7 +127,9 @@ export const ProviderCredentialsSection: React.FC<
   }, [target, value, orgId, closeDialog, load, onChanged]);
 
   const canManage = config?.canManageCredentials === true;
-  const rows = config?.secrets ?? [];
+  // Sending credentials only. The delivery-callback signing secret is managed
+  // in its own webhook card so the two are never confused.
+  const rows = (config?.secrets ?? []).filter((r) => r.purpose === 'api_key');
 
   return (
     <Card data-testid="omni-comms-provider-credentials">
@@ -136,12 +138,14 @@ export const ProviderCredentialsSection: React.FC<
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
               <KeyRound className="h-4 w-4" aria-hidden="true" />
-              Credentials
+              Sending credentials
             </CardTitle>
             <CardDescription>
-              Credentials are stored encrypted and can never be read back — only
-              replaced.
+              The provider API key used to send messages. Stored encrypted and
+              never readable back — only replaced. The delivery-callback signing
+              secret is managed separately in the webhook card below.
             </CardDescription>
+
           </div>
           <Button
             variant="outline"
