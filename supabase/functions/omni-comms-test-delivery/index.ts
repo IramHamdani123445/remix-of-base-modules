@@ -108,7 +108,7 @@ Deno.serve(async (req) => {
   const rawSubject = typeof body.subject === "string" ? body.subject : "";
   const rawBody = typeof body.bodyText === "string" ? body.bodyText : "";
 
-  if (!testRunId || !target || !idempotencyKey) {
+  if (body.mode !== "status" && (!testRunId || !target || !idempotencyKey)) {
     return fail("OC422", "invalid_input", 400);
   }
   if (rawSubject.length > MAX_SUBJECT || rawBody.length > MAX_BODY) {
