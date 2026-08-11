@@ -12,7 +12,7 @@
  *   - No provider SDK import, no send behaviour, no direct table writes.
  */
 import React from 'react';
-import { Check, Copy, Loader2, RefreshCcw, Webhook } from 'lucide-react';
+import { AlertTriangle, Check, Copy, Loader2, RefreshCcw, Webhook } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,9 +35,12 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import type { OmniCommsRpcClient } from '@/platform/omni-comms/application/omniCommsRpcErrors';
 import {
+  CALLBACK_HEALTH_GUIDANCE,
   PROVIDER_SECRET_WRITE_MESSAGES,
+  getCallbackHealth,
   getProviderSecretConfiguration,
   writeProviderSecret,
+  type CallbackHealthRow,
   type ProviderSecretConfiguration,
   type ProviderSecretStatusRow,
 } from '@/platform/omni-comms/application/channelProviderConfigurationService';
@@ -84,6 +87,9 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
   const [config, setConfig] = React.useState<ProviderSecretConfiguration | null>(
     null,
   );
+  const [healthRows, setHealthRows] = React.useState<CallbackHealthRow[] | null>(
+    null,
+  );
   const [loading, setLoading] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
   const [target, setTarget] = React.useState<ProviderSecretStatusRow | null>(null);
@@ -94,7 +100,12 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
     if (!orgId) return;
     setLoading(true);
     try {
-      setConfig(await getProviderSecretConfiguration(client, orgId));
+      const [secretConfig, health] = await Promise.all([
+        getProviderSecretConfiguration(client, orgId),
+        getCallbackHealth(client, orgId).catch(() => null),
+      ]);
+      setConfig(secretConfig);
+      setHealthRows(health?.accounts ?? null);
     } catch (e) {
       toastError(e, 'Failed to load webhook status');
     } finally {
