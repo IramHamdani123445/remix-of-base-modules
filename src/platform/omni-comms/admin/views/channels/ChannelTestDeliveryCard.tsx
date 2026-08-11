@@ -68,7 +68,27 @@ export const TEST_DELIVERY_MESSAGES: Record<string, string> = {
     'The approved delivery volume for this window has been used. Save a new approval window.',
   min_interval_not_elapsed:
     'The minimum spacing between test deliveries has not elapsed yet. Try again shortly.',
+  test_delivery_identity_immutable:
+    'A delivery record already exists for this attempt and its evidence cannot be '
+    + 'altered. Start a new technical test message instead of retrying this one.',
+  idempotency_payload_mismatch:
+    'This test reference was already used with different content. Start a new '
+    + 'technical test message.',
+  provider_account_not_verified:
+    'The provider account is not usable for sending. A sending-only credential is '
+    + 'accepted, but the credential must be present and accepted by the provider.',
+  credential_missing:
+    'The provider credential is not available in the credential store selected for '
+    + 'this account. Re-enter it in Provider Configuration, or switch the account to '
+    + 'the other credential store.',
+  credential_store_unavailable:
+    'The selected credential store could not be reached. Re-save the credential in '
+    + 'Provider Configuration and try again.',
+  secret_reference_invalid:
+    'The credential reference name for this account is not permitted. Re-save the '
+    + 'credential in Provider Configuration.',
 };
+
 
 
 
