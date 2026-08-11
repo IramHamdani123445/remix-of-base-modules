@@ -32,6 +32,47 @@ export interface ChannelTestDeliveryTransport {
 
 export const OMNI_COMMS_TEST_DELIVERY_FUNCTION = 'omni-comms-test-delivery';
 
+/** Read-only provider outcome for an already-accepted test delivery. */
+export interface ChannelTestDeliveryProviderStatus {
+  readonly ok: boolean;
+  readonly lastEvent: string | null;
+  readonly createdAt: string | null;
+  readonly providerStatusCode: number | null;
+  readonly errorCode: string | null;
+  readonly errorDetail: string | null;
+}
+
+/**
+ * Asks the provider what happened to a message it already accepted. This never
+ * sends, never retries and never writes to the evidence ledger.
+ */
+export async function getChannelTestDeliveryProviderStatus(
+  transport: ChannelTestDeliveryTransport,
+  deliveryId: string,
+): Promise<ChannelTestDeliveryProviderStatus> {
+  const { data, error } = await transport.invoke({ mode: 'status', deliveryId });
+  const payload = (data ?? null) as Record<string, unknown> | null;
+  if (error && !payload) {
+    return {
+      ok: false,
+      lastEvent: null,
+      createdAt: null,
+      providerStatusCode: null,
+      errorCode: 'provider_status_unavailable',
+      errorDetail: error.message ?? 'The provider status could not be read.',
+    };
+  }
+  return {
+    ok: payload?.ok === true,
+    lastEvent: typeof payload?.lastEvent === 'string' ? payload.lastEvent : null,
+    createdAt: typeof payload?.createdAt === 'string' ? payload.createdAt : null,
+    providerStatusCode:
+      typeof payload?.providerStatusCode === 'number' ? payload.providerStatusCode : null,
+    errorCode: typeof payload?.errorCode === 'string' ? payload.errorCode : null,
+    errorDetail: typeof payload?.errorDetail === 'string' ? payload.errorDetail : null,
+  };
+}
+
 export function getChannelTestDeliveryDiagnostics(
   client: OmniCommsRpcClient,
   organizationId: string,
