@@ -26,8 +26,10 @@ import { toast } from 'sonner';
 import type { OmniCommsRpcClient } from '@/platform/omni-comms/application/omniCommsRpcErrors';
 import {
   getChannelTestDeliveryDiagnostics,
+  getChannelTestDeliveryProviderStatus,
   runChannelTestDelivery,
   setChannelTestDeliveryApproval,
+  type ChannelTestDeliveryProviderStatus,
   type ChannelTestDeliveryTransport,
 } from '@/platform/omni-comms/application/channelTestDeliveryService';
 import {
@@ -88,6 +90,39 @@ export const TEST_DELIVERY_MESSAGES: Record<string, string> = {
     'The credential reference name for this account is not permitted. Re-save the '
     + 'credential in Provider Configuration.',
 };
+
+/**
+ * Plain-English meaning of the provider's own post-acceptance outcome. The
+ * provider accepting a message (HTTP 200) is NOT proof that the mailbox
+ * received it — these events are what decides that.
+ */
+export const PROVIDER_EVENT_GUIDANCE: Record<string, string> = {
+  delivered: 'The provider delivered the message to the recipient mail server.',
+  sent: 'The provider has sent the message and is waiting for the recipient mail '
+    + 'server to accept it. If it never becomes "delivered", the recipient server '
+    + 'is holding or rejecting it.',
+  delivery_delayed: 'The recipient mail server is deferring the message. The '
+    + 'provider will keep retrying.',
+  bounced: 'The recipient mail server rejected the message. Check the address and '
+    + 'the sending domain reputation.',
+  complained: 'The recipient marked the message as spam.',
+  queued: 'The provider has queued the message but has not sent it yet.',
+  failed: 'The provider could not send the message.',
+};
+
+export const PROVIDER_STATUS_ERROR_GUIDANCE: Record<string, string> = {
+  restricted_api_key:
+    'This sending-only credential can send but cannot read delivery status. '
+    + 'Delivery outcomes will arrive through the provider webhook instead, or use '
+    + 'a full-access key if you want status on demand.',
+  provider_message_not_found:
+    'The provider no longer has a record for this message reference.',
+  credential_missing:
+    'No credential is available for this provider account.',
+  provider_unreachable:
+    'The provider status endpoint could not be reached. Try again shortly.',
+};
+
 
 
 
@@ -236,6 +271,9 @@ export const ChannelTestDeliveryCard: React.FC<{
   const [diagnostics, setDiagnostics] = useState<ChannelTestDeliveryDiagnostics | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [probing, setProbing] = useState(false);
+  const [providerStatus, setProviderStatus] =
+    useState<ChannelTestDeliveryProviderStatus | null>(null);
   const [saving, setSaving] = useState(false);
   const [recipientsText, setRecipientsText] = useState('');
   const [approvalEnabled, setApprovalEnabled] = useState(false);
@@ -366,6 +404,27 @@ export const ChannelTestDeliveryCard: React.FC<{
     }
   }, [transport, run, target, idempotencyKey, subject, bodyText, refresh, onChanged]);
 
+  const onCheckProviderStatus = useCallback(async () => {
+    if (!current?.id) return;
+    setProbing(true);
+    try {
+      const res = await getChannelTestDeliveryProviderStatus(transport, current.id);
+      setProviderStatus(res);
+      if (res.ok && res.lastEvent) {
+        toast.success(PROVIDER_EVENT_GUIDANCE[res.lastEvent] ?? `Provider outcome: ${res.lastEvent}`);
+      } else {
+        toast.message(
+          PROVIDER_STATUS_ERROR_GUIDANCE[res.errorCode ?? ''] ?? res.errorDetail
+            ?? 'The provider did not return a delivery outcome.',
+        );
+      }
+    } catch (e) {
+      toastError(e, 'Provider delivery status could not be read');
+    } finally {
+      setProbing(false);
+    }
+  }, [transport, current?.id]);
+
   const retryable = current ? isDeliveryRetryable(current) : false;
 
 
@@ -494,7 +553,35 @@ export const ChannelTestDeliveryCard: React.FC<{
           <Button variant="outline" onClick={() => void refresh()} disabled={loading}>
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => void onCheckProviderStatus()}
+            disabled={!current?.provider_message_id || probing}
+            data-testid="omni-comms-test-delivery-provider-status"
+          >
+            {probing ? 'Checking provider…' : 'Check provider delivery status'}
+          </Button>
         </div>
+
+        {providerStatus ? (
+          <Alert data-testid="omni-comms-test-delivery-provider-status-result">
+            <MailCheck className="h-4 w-4" />
+            <AlertTitle>
+              {providerStatus.ok && providerStatus.lastEvent
+                ? `Provider outcome: ${providerStatus.lastEvent}`
+                : 'Provider outcome unavailable'}
+            </AlertTitle>
+            <AlertDescription>
+              {providerStatus.ok && providerStatus.lastEvent
+                ? PROVIDER_EVENT_GUIDANCE[providerStatus.lastEvent]
+                  ?? 'The provider reported this outcome for the message.'
+                : PROVIDER_STATUS_ERROR_GUIDANCE[providerStatus.errorCode ?? '']
+                  ?? providerStatus.errorDetail
+                  ?? 'The provider did not return a delivery outcome.'}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
 
         {current ? (
           <DeliveryEvidence delivery={current} />
