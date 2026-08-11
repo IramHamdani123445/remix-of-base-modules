@@ -27,6 +27,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   OMNI_COMMS_SECRET_REF_PATTERN as SECRET_REF_PATTERN,
+  fetchResendEmailStatus,
   normalizeStorageMode,
   resolveSecretStrict,
   sendResendEmail,
