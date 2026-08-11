@@ -73,6 +73,10 @@ describe('Principle 4 — one explicitly selected credential store', () => {
     expect(TEST_FN).toContain('storageMode,');
     expect(DISPATCH_FN).toContain('claim.credential_storage_mode');
   });
+
+  it('uses the API key, not the webhook secret, for delivery-status checks', () => {
+    expect(TEST_FN).toContain('.eq("purpose", "api_key")');
+  });
 });
 
 describe('Controlled test delivery — evidence identity and operator guidance', () => {
