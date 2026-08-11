@@ -27,7 +27,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   OMNI_COMMS_SECRET_REF_PATTERN as SECRET_REF_PATTERN,
-  resolveSecretWithVault,
+  normalizeStorageMode,
+  resolveSecretStrict,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
@@ -146,6 +147,8 @@ Deno.serve(async (req) => {
   }
 
   const secretRef = typeof plan.secret_ref === "string" ? plan.secret_ref : "";
+  // Exactly one explicitly selected credential store. No silent precedence.
+  const storageMode = normalizeStorageMode(plan.credential_storage_mode);
   const fromAddress = typeof plan.from_address === "string" ? plan.from_address : "";
   const fromName = typeof plan.from_name === "string" ? plan.from_name : "";
   const replyTo = typeof plan.reply_to_address === "string" ? plan.reply_to_address : "";
@@ -200,10 +203,10 @@ Deno.serve(async (req) => {
     return json({ error: "OC409", detail: "secret_reference_invalid", delivery }, 409);
   }
 
-  // UI-managed (vault-backed) credentials take precedence; a deployment
-  // managed Edge Function Secret with the same reference remains supported.
+  // Strict single-source resolution: the account's selected credential store
+  // decides where the value comes from, so one store can never shadow another.
   const secretResolver = createVaultSecretResolver(serviceClient);
-  const credential = await resolveSecretWithVault(secretRef, secretResolver);
+  const credential = await resolveSecretStrict(secretRef, storageMode, secretResolver);
   if (!credential.ok) {
     const delivery = await complete("failed", "credential_missing", {
       errorCode: credential.errorCode,
@@ -233,6 +236,7 @@ Deno.serve(async (req) => {
     // never produce a second provider send.
     idempotencyKey: providerIdempotencyKey,
     secretResolver,
+    storageMode,
   });
 
   if (outcome.status === "accepted") {

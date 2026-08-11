@@ -239,9 +239,12 @@ Deno.serve(async (req) => {
       ...providerPayload,
       // Deterministic: identical on every safe retry of this message.
       idempotencyKey: String(claim.provider_idempotency_key ?? ""),
-      // UI-managed (vault-backed) credential resolution, with the legacy
-      // deployment secret retained as a fallback.
+      // Strict single-source credential resolution: the account's explicitly
+      // selected credential store decides where the value is read from.
       secretResolver: createVaultSecretResolver(service),
+      storageMode: typeof claim.credential_storage_mode === "string"
+        ? claim.credential_storage_mode
+        : "edge_env",
     });
 
     const completion = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
