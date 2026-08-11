@@ -38,11 +38,19 @@ export interface ResendSendInput {
   /** Deterministic per-logical-send key. The SAME key is used on every retry. */
   readonly idempotencyKey: string;
   /**
-   * Optional server-only resolver for UI-managed (vault-backed) credentials.
-   * When omitted, only a deployment-managed Edge Function Secret is used.
+   * Server-only resolver for UI-managed (vault-backed) credentials. It is
+   * consulted ONLY when the account's explicitly selected storage mode is
+   * `vault`.
    */
   readonly secretResolver?: ((ref: string) => Promise<string | null>) | null;
+  /**
+   * Explicitly selected credential store for this provider account. Defaults
+   * to the deployment-managed Edge Function Secret. There is no silent
+   * precedence between stores.
+   */
+  readonly storageMode?: string | null;
 }
+
 
 
 export interface ResendSendResult {
