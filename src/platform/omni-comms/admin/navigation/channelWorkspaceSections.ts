@@ -191,8 +191,10 @@ export const READINESS_CHECK_TAB: Readonly<Record<string, OmniCommsGenericTab>> 
     sending_domain: 'endpoints',
     sending_domain_verification: 'endpoints',
     event_callback: 'endpoints',
-    callback_receiver: 'endpoints',
-    callback_evidence: 'endpoints',
+    // Delivery callback URLs and signing secrets are managed alongside the
+    // provider account, not on the sending-domain endpoint screen.
+    callback_receiver: 'accounts',
+    callback_evidence: 'accounts',
     binding: 'bindings',
     binding_verification: 'bindings',
     policy: 'policies',
