@@ -553,7 +553,35 @@ export const ChannelTestDeliveryCard: React.FC<{
           <Button variant="outline" onClick={() => void refresh()} disabled={loading}>
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => void onCheckProviderStatus()}
+            disabled={!current?.provider_message_id || probing}
+            data-testid="omni-comms-test-delivery-provider-status"
+          >
+            {probing ? 'Checking provider…' : 'Check provider delivery status'}
+          </Button>
         </div>
+
+        {providerStatus ? (
+          <Alert data-testid="omni-comms-test-delivery-provider-status-result">
+            <MailCheck className="h-4 w-4" />
+            <AlertTitle>
+              {providerStatus.ok && providerStatus.lastEvent
+                ? `Provider outcome: ${providerStatus.lastEvent}`
+                : 'Provider outcome unavailable'}
+            </AlertTitle>
+            <AlertDescription>
+              {providerStatus.ok && providerStatus.lastEvent
+                ? PROVIDER_EVENT_GUIDANCE[providerStatus.lastEvent]
+                  ?? 'The provider reported this outcome for the message.'
+                : PROVIDER_STATUS_ERROR_GUIDANCE[providerStatus.errorCode ?? '']
+                  ?? providerStatus.errorDetail
+                  ?? 'The provider did not return a delivery outcome.'}
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
 
         {current ? (
           <DeliveryEvidence delivery={current} />
