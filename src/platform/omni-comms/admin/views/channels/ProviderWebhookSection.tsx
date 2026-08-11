@@ -224,7 +224,11 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
             </p>
           ) : null}
 
-          {signingRows.map((row) => (
+          {signingRows.map((row) => {
+            const health = (healthRows ?? []).find(
+              (h) => h.providerAccountId === row.providerAccountId,
+            );
+            return (
             <div
               key={row.providerAccountId}
               className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4"
@@ -241,6 +245,46 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
                       : 'Saved'
                     : 'Callback signatures cannot be verified until this is saved.'}
                 </p>
+                {health ? (
+                  <div
+                    className={`flex items-start gap-2 rounded-md border p-2 text-xs ${
+                      health.state === 'healthy'
+                        ? 'border-border text-muted-foreground'
+                        : 'border-destructive/40 bg-destructive/5 text-destructive'
+                    }`}
+                    data-testid="omni-comms-webhook-health"
+                    data-state={health.state}
+                    role={health.state === 'healthy' ? undefined : 'alert'}
+                  >
+                    {health.state === 'healthy' ? (
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    ) : (
+                      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                    )}
+                    <span className="min-w-0">
+                      <span className="font-medium">
+                        {health.state === 'healthy'
+                          ? 'Callbacks verified'
+                          : health.state === 'rejecting'
+                            ? 'Signing secret does not match the provider'
+                            : 'No callback received yet'}
+                      </span>{' '}
+                      {CALLBACK_HEALTH_GUIDANCE[health.state]}
+                      <span className="mt-1 block opacity-80">
+                        {`Accepted ${health.acceptedCount} · Rejected ${health.rejectedCount}`}
+                        {health.lastAcceptedAt
+                          ? ` · Last accepted ${new Date(health.lastAcceptedAt).toLocaleString()}`
+                          : ''}
+                        {health.lastRejectedAt
+                          ? ` · Last rejected ${new Date(health.lastRejectedAt).toLocaleString()}`
+                          : ''}
+                        {health.lastRejectionReason
+                          ? ` · Reason: ${health.lastRejectionReason}`
+                          : ''}
+                      </span>
+                    </span>
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap items-center gap-2 pt-2">
                   <Input
                     readOnly
