@@ -120,6 +120,50 @@ Deno.serve(async (req) => {
   });
   const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+  // 0. Read-only post-acceptance probe: asks the provider what happened to an
+  //    already-accepted message. It never sends and never writes evidence.
+  if (body.mode === "status") {
+    const deliveryId = typeof body.deliveryId === "string" ? body.deliveryId.trim() : "";
+    if (!deliveryId) return fail("OC422", "invalid_input", 400);
+
+    // RLS on the evidence ledger decides whether this operator may look.
+    const { data: row, error: rowError } = await userClient
+      .from("omni_comms_channel_test_delivery")
+      .select("id, provider_message_id, provider_account_id, status")
+      .eq("id", deliveryId)
+      .maybeSingle();
+    if (rowError) return fail("OC403", "permission_denied", 403);
+    if (!row) return fail("OC404", "delivery_not_found", 404);
+    if (!row.provider_message_id) {
+      return json({ ok: false, errorCode: "no_provider_message", lastEvent: null });
+    }
+
+    const { data: ref } = await serviceClient
+      .from("omni_comms_provider_account_secret_ref")
+      .select("secret_ref, storage_mode")
+      .eq("provider_account_id", row.provider_account_id)
+      .maybeSingle();
+    if (!ref?.secret_ref) {
+      return json({ ok: false, errorCode: "credential_missing", lastEvent: null });
+    }
+
+    const probe = await fetchResendEmailStatus({
+      secretRef: ref.secret_ref,
+      storageMode: ref.storage_mode,
+      secretResolver: createVaultSecretResolver(serviceClient),
+      providerMessageId: row.provider_message_id,
+    });
+    return json({
+      ok: probe.ok,
+      lastEvent: probe.lastEvent,
+      createdAt: probe.createdAt,
+      providerStatusCode: probe.providerStatusCode,
+      errorCode: probe.errorCode,
+      errorDetail: probe.errorDetail,
+    });
+  }
+
+
   // 1. Authorise + atomically claim. All policy decisions are made in the
   //    database, including that the content matches the passed preflight.
   const prepared = await userClient.rpc("omni_comms_channel_test_delivery_prepare", {
