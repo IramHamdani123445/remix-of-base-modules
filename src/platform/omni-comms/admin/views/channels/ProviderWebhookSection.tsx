@@ -329,7 +329,8 @@ export const ProviderWebhookSection: React.FC<ProviderWebhookSectionProps> = ({
                 </Button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </CardContent>
 
