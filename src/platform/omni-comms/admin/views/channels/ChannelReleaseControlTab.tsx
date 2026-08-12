@@ -438,6 +438,16 @@ export const ChannelReleaseControlTab: React.FC<{
 
   const approveActivate = () => {
     if (!transport || !release) return;
+    if (expired) {
+      toast.error(
+        'The pilot window has expired. Cancel this proposal, save a new future window, and propose it again before approval.',
+      );
+      return;
+    }
+    if (blockers.length > 0) {
+      toast.error(`Approval is blocked by: ${blockers.map((item) => item.code).join(', ')}.`);
+      return;
+    }
     void run('Controlled pilot activated', async () => {
       const res = await transport.invoke(buildApproveActivateBody({
         releaseControlId: release.id,
@@ -822,13 +832,20 @@ export const ChannelReleaseControlTab: React.FC<{
         </CardHeader>
         <CardContent className="space-y-3">
           {proposalActive ? (
-            <Alert>
+            <Alert variant={expired || blockers.length > 0 ? 'destructive' : 'default'}>
               <Info className="h-4 w-4" />
-              <AlertTitle>Proposal awaiting approval</AlertTitle>
+              <AlertTitle>
+                {expired ? 'Pilot window expired' : blockers.length > 0
+                  ? 'Proposal blocked by prerequisites' : 'Proposal awaiting approval'}
+              </AlertTitle>
               <AlertDescription>
                 Proposed state {release?.proposed_state}; expires {release?.proposal_expires_at}.
                 {sameActorAsProposer
                   && ' You proposed this transition, so you cannot approve it.'}
+                {expired
+                  && ' The proposer must cancel this proposal, save a new future pilot window, and propose it again.'}
+                {!expired && blockers.length > 0
+                  && ` Resolve: ${blockers.map((item) => item.code).join(', ')}.`}
               </AlertDescription>
             </Alert>
           ) : (
@@ -863,7 +880,10 @@ export const ChannelReleaseControlTab: React.FC<{
                 />
                 <Button
                   onClick={approveActivate}
-                  disabled={!canApprove || busy || sameActorAsProposer || !transport}
+                  disabled={
+                    !canApprove || busy || sameActorAsProposer || !transport
+                    || expired || blockers.length > 0
+                  }
                 >
                   Approve and activate
                 </Button>
