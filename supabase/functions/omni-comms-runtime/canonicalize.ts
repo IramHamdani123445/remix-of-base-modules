@@ -45,6 +45,20 @@ export class CanonicalizationError extends Error {
 const MAX_PAYLOAD_BYTES = 262144;
 const MAX_JSON_DEPTH = 20;
 const MAX_RECIPIENTS = 500;
+/**
+ * Canonical persisted recipient vocabulary. Mirrors the
+ * `omni_comms_recipient_recipient_type_check` constraint exactly, so a
+ * recipient that could never be stored is refused BEFORE any request row is
+ * created instead of failing later as an opaque persistence error.
+ */
+const APPROVED_RECIPIENT_TYPES = new Set([
+  "user",
+  "contact",
+  "group",
+  "external",
+  "system",
+  "synthetic_test",
+]);
 const APPROVED_CHANNELS = new Set([
   "email", "sms", "whatsapp", "push", "in_app", "print",
 ]);
@@ -87,6 +101,9 @@ function canonicalizeRecipient(r: any): CanonicalRecipient {
   const type = trimOrNull(r.recipientType, 64);
   if (!type) {
     throw new CanonicalizationError("invalid_input", "recipient_type_required");
+  }
+  if (!APPROVED_RECIPIENT_TYPES.has(type)) {
+    throw new CanonicalizationError("recipient_type_invalid", `unknown_${type}`);
   }
   const email = trimOrNull(r.email, 320);
   const phone = trimOrNull(r.phone, 64);
