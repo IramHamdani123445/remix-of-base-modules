@@ -142,6 +142,34 @@ function blocked(
   );
 }
 
+/**
+ * Compensating write for an aborted request.
+ *
+ * A request that was accepted but then failed BEFORE any recipient was
+ * persisted must not permanently poison its idempotency key. Marking it
+ * failed lets a corrected retry of the same business fact proceed. It never
+ * touches a request that already produced a recipient, message or job, and
+ * it never contacts a provider.
+ */
+async function abandonAbortedRequest(
+  admin: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
+  userId: string,
+  requestId: string,
+  organizationId: string,
+  reason: string,
+): Promise<void> {
+  try {
+    await admin.rpc("omni_comms_priv_abandon_request", {
+      p_actor_id: userId,
+      p_request_id: requestId,
+      p_organization_id: organizationId,
+      p_reason: reason,
+    });
+  } catch {
+    // Best-effort only: the caller already has a bounded refusal.
+  }
+}
+
 function mapRpcErrorToCode(raw: {
   message?: string;
   details?: string;
@@ -690,7 +718,9 @@ Deno.serve(async (req: Request) => {
   );
   if (finErr) {
     console.log(`[${BUILD_TAG}] finalize_error code=${(finErr as { code?: string }).code ?? "?"} msg=${(finErr as { message?: string }).message ?? "?"}`);
-    return blocked(input, mapRpcErrorToCode(finErr));
+    const finCode = mapRpcErrorToCode(finErr);
+    await abandonAbortedRequest(admin, userId, row.request_id, canonical.organizationId, finCode);
+    return blocked(input, finCode);
   }
 
   // 6a. Canonical persisted recipient projection. Fresh responses MUST carry
@@ -703,7 +733,12 @@ Deno.serve(async (req: Request) => {
     row.request_id,
     canonical.organizationId,
   );
-  if (persistedRecipients === null) return blocked(input, "runtime_persistence_failed");
+  if (persistedRecipients === null) {
+    await abandonAbortedRequest(
+      admin, userId, row.request_id, canonical.organizationId, "runtime_persistence_failed",
+    );
+    return blocked(input, "runtime_persistence_failed");
+  }
 
   // 6. Slice 2c-iii rendering stage — only for requests that reached
   //    `processing`. Never contacts a provider and never creates a runnable job.
