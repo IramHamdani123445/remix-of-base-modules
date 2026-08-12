@@ -1,15 +1,18 @@
 /**
  * Omni-Comms C6 — trusted Release Control Edge boundary.
  *
- * The ONLY purpose of this function is second-person approval and activation
- * of a controlled pilot, using the deployed revision that only the server can
- * observe.
+ * Purpose:
+ *   - second-person approval and activation of a controlled pilot, using the
+ *     deployed revision that only the server can observe;
+ *   - trusted confirmation of the authoritative runtime environment;
+ *   - a bounded read of the deployment identity (runtime + dispatcher).
  *
  * Hard boundaries (permanent):
  *   - Sends no Email. Contacts no provider. Imports no provider SDK.
  *   - Reads no provider credential.
  *   - Performs no runtime delivery write (no request, message, dispatch job,
  *     delivery attempt or message event).
+ *   - Never enables live delivery and never certifies a commit automatically.
  *   - Returns only bounded release-control projections.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2';
