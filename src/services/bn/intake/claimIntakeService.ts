@@ -27,6 +27,7 @@ import {
 } from '@/services/bn/bnWorkflowIntegrationService';
 import { resolveOrganizationContext } from '@/lib/org/organizationContextResolver';
 import { emitBenefitsClaimSubmitted } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
+import { resolveProductCommunication } from '@/platform/omni-comms/application/productCommunicationService';
 import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
 
 const db = supabase as any;
@@ -121,6 +122,29 @@ export async function emitClaimRegisteredAcknowledgement(args: {
     const ctx = await resolveOrganizationContext({ moduleCode: 'BENEFITS' });
     const organizationId: string | undefined = ctx?.organization?.id;
     if (!organizationId) return skipped;
+
+    // Product Definition gate: the Hub decides whether this product raises the
+    // acknowledgement obligation at all. Fail-closed, never blocks the claim.
+    const { data: claimRow } = await db
+      .from('bn_claim')
+      .select('product_id')
+      .eq('id', args.claimId)
+      .maybeSingle();
+    const productId = (claimRow as { product_id?: string } | null)?.product_id ?? null;
+    if (!productId) return skipped;
+
+    const resolution = await resolveProductCommunication(
+      organizationId,
+      productId,
+      'BENEFITS.CLAIM.SUBMITTED',
+      'email',
+    );
+    if (!resolution.enabled) {
+      return {
+        ...skipped,
+        blockers: [resolution.reason ?? 'product_communication_disabled'],
+      };
+    }
 
     const res = await emitBenefitsClaimSubmitted({
       organizationId,

@@ -404,6 +404,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     status: 'AVAILABLE',
     introductionStory: 'Benefits Live — Product Definition communications',
   },
+  {
+    name: 'omni_comms_product_communication_audit',
+    category: 'events_and_content',
+    epic: 5,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Append-only change ledger for per-product communication configuration. Every enable, disable, template, sender, recipient-source or mode change is recorded with the acting operator, the before and after values and the reason. Written only by the configuration RPC; never writable from a browser.',
+    status: 'AVAILABLE',
+    introductionStory: 'Benefits Live — Product Definition communications',
+  },
 
 ] as const;
 
