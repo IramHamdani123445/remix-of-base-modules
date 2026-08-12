@@ -155,6 +155,12 @@ export interface ChannelReleaseControlSummary {
   readonly history: readonly ReleaseHistoryEntry[];
   readonly capabilities: {
     readonly can_configure: boolean;
+    /**
+     * Operator rights on this scope, independent of whether a proposal exists.
+     * Gates environment confirmation, deployment certification, suspension and
+     * the final controlled release. NEVER gates second-person approval.
+     */
+    readonly can_operate?: boolean;
     readonly can_approve: boolean;
     readonly can_suspend: boolean;
   };
