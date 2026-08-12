@@ -273,6 +273,110 @@ export const ChannelReleaseControlTab: React.FC<{
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
           <div>
+            <CardTitle>Deployment &amp; certification</CardTitle>
+            <CardDescription>
+              The environment and both deployed revisions are resolved server-side.
+              Nothing on this card can be typed by an administrator.
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline" size="sm"
+            onClick={() => void loadDeployment()} disabled={deploymentLoading}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Detail
+              label="Environment"
+              value={
+                deployment?.environment === 'production' ? 'Production'
+                  : deployment?.environment === 'non_production' ? 'Non-production'
+                    : 'Unknown'
+              }
+            />
+            <Detail
+              label="Certification"
+              value={deployment?.certification?.certification_state ?? 'Unknown'}
+            />
+            <Detail
+              label="Runtime revision"
+              value={deployment?.runtime_revision?.slice(0, 12) ?? '—'}
+            />
+            <Detail
+              label="Dispatcher revision"
+              value={deployment?.dispatcher_revision?.slice(0, 12) ?? '—'}
+            />
+            <Detail
+              label="Certified revision"
+              value={deployment?.certification?.certified_commit?.slice(0, 12) ?? '—'}
+            />
+            <Detail
+              label="Revision match"
+              value={
+                deployment?.certification?.certified_commit
+                && deployment?.release_identity
+                && deployment.certification.certified_commit.toLowerCase()
+                  === deployment.release_identity.toLowerCase()
+                  ? 'Yes' : 'No'
+              }
+            />
+            <Detail
+              label="Workflow evidence"
+              value={deployment?.certification?.workflow_run_id ?? '—'}
+            />
+          </div>
+
+          {deployment?.deployment_revision_mismatch && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>deployment_revision_mismatch</AlertTitle>
+              <AlertDescription>
+                The runtime and the dispatcher report different deployed revisions, so a
+                single compatible release identity cannot be proven. Certification is
+                refused until both report the same revision.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {deployment && deployment.environment !== 'production'
+            && deployment.environment !== 'non_production' && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Deployment environment unresolved</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>
+                  The protected runtime environment is unknown, so deployment
+                  certification and the release prerequisites fail closed. Confirming
+                  production records an audit event and writes the protected record.
+                  It never enables delivery, never certifies a commit and never
+                  contacts a provider. Non-production can only be established from
+                  trusted deployment metadata — it cannot be selected here.
+                </p>
+                <Button
+                  size="sm" variant="outline" disabled={busy || !canApprove}
+                  onClick={confirmProduction}
+                >
+                  Confirm production environment
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Technical details — runtime {deployment?.runtime_revision ?? 'unavailable'};
+            dispatcher {deployment?.dispatcher_revision ?? 'unavailable'}; certified{' '}
+            {deployment?.certification?.certified_commit ?? 'none'}. Certification facts
+            originate from the trusted certification workflow only.
+          </p>
+        </CardContent>
+      </Card>
+
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
             <CardTitle className="flex items-center gap-2">
               Release state
               <Badge variant={governanceActive ? 'default' : 'secondary'}>
