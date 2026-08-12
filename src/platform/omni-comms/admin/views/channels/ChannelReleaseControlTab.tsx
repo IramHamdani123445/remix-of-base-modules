@@ -149,6 +149,8 @@ export const ChannelReleaseControlTab: React.FC<{
   const [preSend, setPreSend] = useState<ControlledSendResult | null>(null);
   const [heldReview, setHeldReview] = useState<HeldJobReview | null>(null);
   const [liveOps, setLiveOps] = useState<LiveOperationsSummary | null>(null);
+  const [delivery, setDelivery] = useState<DeliveryToggleSnapshot | null>(null);
+
 
   // Masked value -> one-way hash, so a pilot rule can be configured without a
   // raw recipient ever existing in the browser.
