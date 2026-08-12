@@ -322,5 +322,74 @@ export interface HeldPilotCandidate {
   } | null;
 }
 
+/**
+ * Bounded review of every held (never-attempted) Email job in the caller's own
+ * tenant scope. Read-only, masked recipients only.
+ */
+export function buildHeldJobReviewBody(
+  organizationId: string,
+  departmentId?: string | null,
+) {
+  return {
+    action: 'held_job_review' as const,
+    organizationId,
+    ...(departmentId ? { departmentId } : {}),
+  };
+}
+
+/**
+ * Retire exactly ONE obsolete held Email job. Nothing is deleted and no
+ * provider is contacted: the trusted boundary refuses the request when the job
+ * was ever attempted or a provider was ever called.
+ */
+export function buildRetireHeldJobBody(
+  organizationId: string,
+  jobId: string,
+  options?: { departmentId?: string | null; reason?: string },
+) {
+  return {
+    action: 'retire_held_job' as const,
+    organizationId,
+    jobId,
+    ...(options?.departmentId ? { departmentId: options.departmentId } : {}),
+    ...(options?.reason ? { reason: options.reason } : {}),
+  };
+}
+
+export interface HeldJobReviewEntry {
+  job_id: string;
+  message_id: string;
+  request_id: string;
+  created_at: string;
+  status: string;
+  hold_reason: string | null;
+  attempt_count: number;
+  event_code: string | null;
+  caller_module_code: string | null;
+  mode: string | null;
+  entity_type: string | null;
+  entity_id: string | null;
+  claim_reference: string | null;
+  release_state_at_decision: string | null;
+  /** Masked only. A raw recipient never crosses the trusted boundary. */
+  recipient_masked: string | null;
+  provider_contacted: boolean;
+  retirable: boolean;
+}
+
+export interface HeldJobReview {
+  held_job_count: number;
+  jobs: HeldJobReviewEntry[];
+}
+
+export interface RetireHeldJobResult {
+  retired: boolean;
+  job_id: string | null;
+  message_id: string | null;
+  reason: string | null;
+  live_delivery_enabled: boolean;
+}
+
+
 
 

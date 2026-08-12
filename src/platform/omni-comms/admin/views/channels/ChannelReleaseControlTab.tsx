@@ -34,9 +34,13 @@ import {
   buildControlledSendBody,
   buildDeploymentStatusBody,
   buildHeldPilotCandidateBody,
+  buildHeldJobReviewBody,
+  buildRetireHeldJobBody,
   type ControlledSendResult,
   type DeploymentStatus,
+  type HeldJobReview,
   type HeldPilotCandidate,
+
 } from '@/platform/omni-comms/application/channelReleaseControlService';
 
 import {
@@ -136,6 +140,8 @@ export const ChannelReleaseControlTab: React.FC<{
   const [candidate, setCandidate] = useState<HeldPilotCandidate | null>(null);
   const [dispatchResult, setDispatchResult] = useState<string | null>(null);
   const [preSend, setPreSend] = useState<ControlledSendResult | null>(null);
+  const [heldReview, setHeldReview] = useState<HeldJobReview | null>(null);
+
   // Masked value -> one-way hash, so a pilot rule can be configured without a
   // raw recipient ever existing in the browser.
   const [recipientHashes, setRecipientHashes] = useState<Record<string, string>>({});
@@ -259,6 +265,46 @@ export const ChannelReleaseControlTab: React.FC<{
   }, [transport, supported, orgId, departmentId]);
 
   useEffect(() => { void loadCandidate(); }, [loadCandidate]);
+
+  /**
+   * Bounded, read-only review of every held (never-attempted) business
+   * message. Masked recipients only; mutates nothing.
+   */
+  const loadHeldReview = useCallback(async () => {
+    if (!transport || !supported || !orgId) return;
+    try {
+      const res = await transport.invoke(
+        buildHeldJobReviewBody(orgId, departmentId ?? null),
+      );
+      if (res.error) return;
+      setHeldReview(res.data as HeldJobReview);
+    } catch {
+      setHeldReview(null);
+    }
+  }, [transport, supported, orgId, departmentId]);
+
+  useEffect(() => { void loadHeldReview(); }, [loadHeldReview]);
+
+  /**
+   * Retire one obsolete held message. Nothing is deleted and no provider is
+   * contacted: the trusted boundary refuses any job that was ever attempted.
+   */
+  const retireHeldJob = useCallback((jobId: string) => {
+    if (!transport || !orgId) return;
+    void run('Obsolete held message retired', async () => {
+      const res = await transport.invoke(
+        buildRetireHeldJobBody(orgId, jobId, {
+          departmentId: departmentId ?? null,
+          reason: 'superseded_pre_production_pilot_job',
+        }),
+      );
+      if (res.error) throw new Error(res.error.message ?? 'Retirement refused');
+      await loadHeldReview();
+      await loadCandidate();
+    });
+  }, [transport, orgId, departmentId, run, loadHeldReview, loadCandidate]);
+
+
 
   /** Read-only module enablement truth. Changes nothing. */
   useEffect(() => {
@@ -885,6 +931,65 @@ export const ChannelReleaseControlTab: React.FC<{
           </p>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Held business messages</CardTitle>
+          <CardDescription>
+            Unsent messages waiting on Release Control. The controlled release requires
+            exactly one, so any superseded message must be retired first. Retiring
+            cancels the message only — nothing is deleted, no provider is contacted and
+            the full history is kept with an immutable cancellation event.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(heldReview?.held_job_count ?? 0) > 1 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>{heldReview?.held_job_count} held messages</AlertTitle>
+              <AlertDescription>
+                The controlled release will refuse to run until exactly one held message
+                remains. Retire the superseded ones below.
+              </AlertDescription>
+            </Alert>
+          )}
+          {(heldReview?.jobs ?? []).length === 0 && (
+            <p className="text-sm text-muted-foreground">No held business messages.</p>
+          )}
+          {(heldReview?.jobs ?? []).map((job) => (
+            <div
+              key={job.job_id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm"
+            >
+              <div className="space-y-1">
+                <p className="font-medium">
+                  {job.caller_module_code ?? '—'} · {job.event_code ?? '—'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Job {job.job_id.slice(0, 8)} · reference {job.claim_reference ?? '—'} ·{' '}
+                  {new Date(job.created_at).toLocaleString()} · recipient{' '}
+                  {job.recipient_masked ?? '—'} · attempts {job.attempt_count}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={job.provider_contacted ? 'destructive' : 'secondary'}>
+                  {job.provider_contacted ? 'Provider contacted' : 'Never attempted'}
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!canOperate || busy || !job.retirable}
+                  onClick={() => retireHeldJob(job.job_id)}
+                >
+                  Retire
+                </Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+
 
       <Card>
         <CardHeader>
