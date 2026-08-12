@@ -33,8 +33,8 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
   const errors: string[] = [];
 
   // Objects
-  if (OMNI_COMMS_OBJECT_REGISTRY.length !== 40) {
-    errors.push(`Object registry must contain 40 entries, found ${OMNI_COMMS_OBJECT_REGISTRY.length}.`);
+  if (OMNI_COMMS_OBJECT_REGISTRY.length !== 41) {
+    errors.push(`Object registry must contain 41 entries, found ${OMNI_COMMS_OBJECT_REGISTRY.length}.`);
   }
   const seenObjects = new Set<string>();
   for (const o of OMNI_COMMS_OBJECT_REGISTRY) {

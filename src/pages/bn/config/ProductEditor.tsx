@@ -32,6 +32,8 @@ import { VersionHistoryTab } from '@/components/bn/config/VersionHistoryTab';
 import { PreviewTab } from '@/components/bn/config/PreviewTab';
 import { ChannelsTab } from '@/components/bn/config/ChannelsTab';
 import { CommunicationsTab } from '@/components/bn/config/CommunicationsTab';
+import { ProductOmniCommsPanel } from '@/components/bn/config/ProductOmniCommsPanel';
+import { resolveOrganizationContext } from '@/lib/org/organizationContextResolver';
 import { ReadOnlyVersionBanner } from '@/components/bn/smart';
 import { VisualBuilderTab } from '@/components/bn/config/VisualBuilderTab';
 import { ConflictDetectionPanel } from '@/components/bn/config/ConflictDetectionPanel';
@@ -63,6 +65,20 @@ export default function ProductEditor() {
     branch: 'GENERAL', payment_type: 'PERIODIC', country_code: '', status: 'DRAFT', sort_order: 0,
   });
   const [selectedVersionId, setSelectedVersionId] = useState<string | undefined>();
+  const [omniCommsOrganizationId, setOmniCommsOrganizationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const ctx = await resolveOrganizationContext({ moduleCode: 'BENEFITS' });
+        if (!cancelled) setOmniCommsOrganizationId(ctx?.organization?.id ?? null);
+      } catch {
+        if (!cancelled) setOmniCommsOrganizationId(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Reset form and version when product id changes
   useEffect(() => {
@@ -488,8 +504,9 @@ export default function ProductEditor() {
           <ChannelsTab productId={isNew ? undefined : id} versionId={selectedVersionId} isReadOnly={!isEditableVersion} versionStatus={activeVersion?.status} />
         </TabsContent>
 
-        <TabsContent value="communications" className="mt-6">
+        <TabsContent value="communications" className="mt-6 space-y-6">
           <CommunicationsTab versionId={selectedVersionId} isReadOnly={!isEditableVersion} versionStatus={activeVersion?.status} />
+          <ProductOmniCommsPanel organizationId={omniCommsOrganizationId} productId={isNew ? null : id} />
         </TabsContent>
 
         <TabsContent value="interactions" className="mt-6">

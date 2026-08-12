@@ -126,7 +126,7 @@ describe('Omni-Comms Health page — Readiness', () => {
       ...M.plannedObjects.channelsSendersPreferences,
       ...M.plannedObjects.runtime,
     ];
-    expect(all).toHaveLength(40);
+    expect(all).toHaveLength(41);
     for (const entry of all) {
       expect(screen.getAllByText(entry.name).length).toBeGreaterThan(0);
     }
@@ -144,7 +144,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     const notCreated = all.filter(
       (o) => o.status === 'Registered in architecture catalogue — Not yet created',
     );
-    expect(notCreated.length + available.length).toBe(40);
+    expect(notCreated.length + available.length).toBe(41);
   });
 
   it('shows available edge functions as Available', () => {

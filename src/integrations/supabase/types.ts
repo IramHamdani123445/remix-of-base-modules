@@ -95535,6 +95535,51 @@ export type Database = {
           },
         ]
       }
+      omni_comms_product_communication_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          after_state: Json | null
+          before_state: Json | null
+          channel: string
+          created_at: string
+          event_code: string
+          id: string
+          organization_id: string
+          product_id: string
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          channel: string
+          created_at?: string
+          event_code: string
+          id?: string
+          organization_id: string
+          product_id: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          after_state?: Json | null
+          before_state?: Json | null
+          channel?: string
+          created_at?: string
+          event_code?: string
+          id?: string
+          organization_id?: string
+          product_id?: string
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omni_comms_product_communication_config: {
         Row: {
           business_trigger: string
@@ -122301,6 +122346,16 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      omni_comms_priv_product_communication_effective: {
+        Args: {
+          p_channel: string
+          p_event_code: string
+          p_organization_id: string
+          p_sender_override: string
+          p_template_override: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_provider_account_verification_context: {
         Args: {
           p_actor_id: string
@@ -122473,6 +122528,7 @@ export type Database = {
         Args: { p_nonce: string }
         Returns: boolean
       }
+      omni_comms_priv_scheduler_health: { Args: never; Returns: Json }
       omni_comms_priv_scheduler_issue_ticket: { Args: never; Returns: string }
       omni_comms_priv_scope_permitted: {
         Args: {
@@ -122661,8 +122717,38 @@ export type Database = {
         }
         Returns: undefined
       }
+      omni_comms_product_communication_read: {
+        Args: { p_organization_id: string; p_product_id: string }
+        Returns: Json
+      }
+      omni_comms_product_communication_resolve: {
+        Args: {
+          p_channel?: string
+          p_event_code?: string
+          p_organization_id: string
+          p_product_id: string
+        }
+        Returns: Json
+      }
       omni_comms_product_communication_summary: {
         Args: { p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_product_communication_update: {
+        Args: {
+          p_channel?: string
+          p_clear_sender_override?: boolean
+          p_clear_template_override?: boolean
+          p_delivery_mode?: string
+          p_event_code: string
+          p_is_enabled?: boolean
+          p_organization_id: string
+          p_product_id: string
+          p_reason?: string
+          p_recipient_source?: string
+          p_sender_override?: string
+          p_template_override?: string
+        }
         Returns: Json
       }
       omni_comms_provider_account_activate: {
