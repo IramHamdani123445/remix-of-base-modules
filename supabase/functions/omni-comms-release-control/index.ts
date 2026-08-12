@@ -438,6 +438,9 @@ Deno.serve(async (req) => {
       },
       live_delivery_enabled: false,
     }, dispatchRes.ok ? 200 : 409);
+  }
+
+
 
   /**
    * `delivery_request` — the single operator action behind the plain
