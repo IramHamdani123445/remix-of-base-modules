@@ -95967,6 +95967,9 @@ export type Database = {
           certified_at: string | null
           certified_commit: string | null
           created_at: string
+          observed_at: string | null
+          observed_dispatcher_revision: string | null
+          observed_runtime_revision: string | null
           singleton: boolean
           updated_at: string
           workflow_run_id: string | null
@@ -95976,6 +95979,9 @@ export type Database = {
           certified_at?: string | null
           certified_commit?: string | null
           created_at?: string
+          observed_at?: string | null
+          observed_dispatcher_revision?: string | null
+          observed_runtime_revision?: string | null
           singleton?: boolean
           updated_at?: string
           workflow_run_id?: string | null
@@ -95985,30 +95991,12 @@ export type Database = {
           certified_at?: string | null
           certified_commit?: string | null
           created_at?: string
+          observed_at?: string | null
+          observed_dispatcher_revision?: string | null
+          observed_runtime_revision?: string | null
           singleton?: boolean
           updated_at?: string
           workflow_run_id?: string | null
-        }
-        Relationships: []
-      }
-      omni_comms_runtime_deployment: {
-        Row: {
-          dispatcher_revision: string | null
-          observed_at: string
-          runtime_revision: string | null
-          singleton: boolean
-        }
-        Insert: {
-          dispatcher_revision?: string | null
-          observed_at?: string
-          runtime_revision?: string | null
-          singleton?: boolean
-        }
-        Update: {
-          dispatcher_revision?: string | null
-          observed_at?: string
-          runtime_revision?: string | null
-          singleton?: boolean
         }
         Relationships: []
       }
