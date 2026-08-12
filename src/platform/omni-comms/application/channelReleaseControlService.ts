@@ -225,3 +225,38 @@ export function buildConfirmEnvironmentBody(input: {
   };
 }
 
+/**
+ * Trusted deployment certification request. The browser supplies NOTHING: the
+ * Edge boundary resolves both deployed revisions server-side, requires an
+ * exact full 40-character match and refuses while the environment is unknown.
+ * Certification enables no delivery and contacts no provider.
+ */
+export function buildCertifyDeploymentBody() {
+  return { action: 'certify_deployment' as const };
+}
+
+/**
+ * Bounded, read-only request for the single held business message so the
+ * controlled pilot can be prefilled from real governing facts instead of being
+ * retyped. It claims nothing and creates no delivery.
+ */
+export function buildHeldPilotCandidateBody(organizationId: string) {
+  return { action: 'held_pilot_candidate' as const, organizationId };
+}
+
+export interface HeldPilotCandidate {
+  held_job_count: number;
+  candidate: {
+    job_id: string;
+    hold_reason: string | null;
+    mode: string | null;
+    attempt_count: number;
+    is_runnable: boolean;
+    event_code: string | null;
+    caller_module_code: string | null;
+    department_id: string | null;
+    recipient: string | null;
+  } | null;
+}
+
+
