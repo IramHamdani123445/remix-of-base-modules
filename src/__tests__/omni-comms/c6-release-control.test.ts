@@ -251,6 +251,16 @@ describe('C6 — governance predicates', () => {
     expect(isReleaseExpired(release({ release_expires_at: '2000-01-01T00:00:00Z' }))).toBe(true);
     expect(isReleaseExpired(release())).toBe(false);
   });
+
+  it('keeps an active proposal distinct from an expired pilot window', () => {
+    const r = release({
+      proposed_state: 'controlled_pilot',
+      proposal_expires_at: '2999-01-01T00:00:00Z',
+      release_expires_at: '2000-01-01T00:00:00Z',
+    });
+    expect(isProposalActive(r)).toBe(true);
+    expect(isReleaseExpired(r)).toBe(true);
+  });
 });
 
 describe('C6 — prerequisite evaluation', () => {
