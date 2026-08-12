@@ -44,8 +44,13 @@ export const BENEFITS_CLAIM_ENTITY_TYPE = 'bn_claim';
  * Stable business identity of the emission. Registration is a
  * once-per-claim fact, so the version is a constant: repeating the business
  * action resolves to the SAME logical communication.
+ *
+ * v2 supersedes v1: v1 emissions were blocked at rendering because the
+ * runtime renderer treated the canonical `content_body` body slot as an
+ * asset slot. Bumping the version is the governed way to re-emit a corrected
+ * communication without mutating an immutable blocked record.
  */
-export const BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION = 'claim-submitted-v1';
+export const BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION = 'claim-submitted-v2';
 
 /** Deterministic correlation-id prefix joining the business flow to the request. */
 export const BENEFITS_CLAIM_SUBMITTED_CORRELATION_PREFIX =

@@ -15,7 +15,9 @@ export interface LayoutRenderInput {
 }
 
 const SLOT_TOKEN_RE = /\{\{\s*slot:([A-Za-z0-9_\-.]+)\s*\}\}/g;
-const CONTENT_TOKEN_RE = /\{\{\s*content\s*\}\}/g;
+// The body may be addressed either as {{content}} or, in the canonical
+// layout vocabulary shared with the manifest composer, as {{content_body}}.
+const CONTENT_TOKEN_RE = /\{\{\s*content(?:_body)?\s*\}\}/g;
 
 export function renderLayout(input: LayoutRenderInput): string {
   if (!input.layout) return input.bodyHtml;
