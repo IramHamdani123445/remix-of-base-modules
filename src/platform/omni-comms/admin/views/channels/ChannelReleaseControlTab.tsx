@@ -1235,7 +1235,10 @@ export const ChannelReleaseControlTab: React.FC<{
           </ul>
         </CardContent>
       </Card>
+        </div>
+      </details>
     </div>
+
   );
 };
 
