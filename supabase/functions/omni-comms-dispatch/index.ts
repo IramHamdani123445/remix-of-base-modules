@@ -89,6 +89,15 @@ Deno.serve(async (req) => {
     return json({ error: "OC401", detail: "authentication_required" }, 401);
   }
 
+  // ── Trusted internal dispatch ticket ────────────────────────────────────
+  // Release Control (and ONLY Release Control) may bind a tick to one exact
+  // approved release and one exact already-authorised job. The ticket is
+  // recognised solely by the service-role credential, which a browser can
+  // never hold. Every public caller keeps the strict two-key allow-list.
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const isInternalTicket = authHeader.slice(7).trim() === SERVICE_ROLE
+    && req.headers.get("x-omni-comms-dispatch-ticket") === "release-control";
+
   // ── Bounded, non-sensitive input ONLY ───────────────────────────────────
   // Strict ALLOW-LIST: exactly two optional keys are accepted. Anything else
   // — including unknown keys — is refused. A caller can never influence WHAT
@@ -102,7 +111,11 @@ Deno.serve(async (req) => {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     return json({ error: "OC422", detail: "dispatch_input_invalid" }, 400);
   }
-  const ALLOWED_INPUT_KEYS = new Set(["batchLimit", "correlationId"]);
+  const ALLOWED_INPUT_KEYS = new Set(
+    isInternalTicket
+      ? ["batchLimit", "correlationId", "releaseControlId", "expectedJobId", "scopes"]
+      : ["batchLimit", "correlationId"],
+  );
   const rejected = Object.keys(raw).filter((k) => !ALLOWED_INPUT_KEYS.has(k));
   if (rejected.length > 0) {
     return json(
@@ -133,40 +146,70 @@ Deno.serve(async (req) => {
     return json({ error: "OC422", detail: "correlation_id_invalid" }, 400);
   }
 
-  const batchLimit = typeof raw.batchLimit === "number" && Number.isInteger(raw.batchLimit)
-    ? raw.batchLimit
-    : 1;
+  const releaseControlId = isInternalTicket && typeof raw.releaseControlId === "string"
+    ? raw.releaseControlId
+    : null;
+  const expectedJobId = isInternalTicket && typeof raw.expectedJobId === "string"
+    ? raw.expectedJobId
+    : null;
+  if (isInternalTicket) {
+    if (!releaseControlId || !UUID.test(releaseControlId)
+      || !expectedJobId || !UUID.test(expectedJobId)) {
+      return json({ error: "OC422", detail: "internal_dispatch_ticket_invalid" }, 400);
+    }
+    if (raw.batchLimit !== undefined && raw.batchLimit !== 1) {
+      return json({ error: "OC422", detail: "internal_dispatch_ticket_invalid" }, 400);
+    }
+  }
+
+  const batchLimit = isInternalTicket
+    ? 1
+    : (typeof raw.batchLimit === "number" && Number.isInteger(raw.batchLimit)
+      ? raw.batchLimit
+      : 1);
 
   const correlationId = typeof raw.correlationId === "string" ? raw.correlationId : null;
+
 
   // ── Operator authorisation ──────────────────────────────────────────────
   // Returns the capability decision AND the tenant scopes the actor may
   // operate. The scope set is derived server-side from the actor's own
   // assignments; it is never supplied by the caller.
-  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const auth = await userClient.rpc("omni_comms_dispatch_tick_authorize");
-  if (auth.error) {
-    // Bounded browser-facing detail only. The raw database error may embed
-    // identifiers or values and is never returned or logged.
-    console.error(
-      `omni-comms-dispatch authorization_failed correlation=${correlationId ?? "none"}`,
-    );
-    return json({ error: "OC403", detail: "authorization_failed" }, 403);
-  }
+  //
+  // The internal Release Control ticket has ALREADY proven the actor, the
+  // tenant scope, the exact approved release and the exact authorised job
+  // server-side, so it carries its own server-derived scope instead.
+  let scopes: unknown[] = [];
+  if (isInternalTicket) {
+    scopes = Array.isArray(raw.scopes) ? (raw.scopes as unknown[]) : [];
+    if (scopes.length !== 1) {
+      return json({ error: "OC422", detail: "internal_dispatch_ticket_invalid" }, 400);
+    }
+  } else {
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const auth = await userClient.rpc("omni_comms_dispatch_tick_authorize");
+    if (auth.error) {
+      // Bounded browser-facing detail only. The raw database error may embed
+      // identifiers or values and is never returned or logged.
+      console.error(
+        `omni-comms-dispatch authorization_failed correlation=${correlationId ?? "none"}`,
+      );
+      return json({ error: "OC403", detail: "authorization_failed" }, 403);
+    }
 
-  const authz = (auth.data ?? {}) as Record<string, unknown>;
-  if (authz.allowed !== true) {
-    const denied = BOUNDED_CODE.test(String(authz.code ?? ""))
-      ? String(authz.code)
-      : "permission_denied";
-    return json({ error: "OC403", detail: denied }, 403);
-
-  }
-  const scopes = Array.isArray(authz.scopes) ? authz.scopes : [];
-  if (scopes.length === 0) {
-    return json({ error: "OC403", detail: "no_operable_scope" }, 403);
+    const authz = (auth.data ?? {}) as Record<string, unknown>;
+    if (authz.allowed !== true) {
+      const denied = BOUNDED_CODE.test(String(authz.code ?? ""))
+        ? String(authz.code)
+        : "permission_denied";
+      return json({ error: "OC403", detail: denied }, 403);
+    }
+    scopes = Array.isArray(authz.scopes) ? authz.scopes : [];
+    if (scopes.length === 0) {
+      return json({ error: "OC403", detail: "no_operable_scope" }, 403);
+    }
   }
 
   const service = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -175,6 +218,9 @@ Deno.serve(async (req) => {
   await service.rpc("omni_comms_priv_dispatch_reclaim_expired_leases");
 
   // ── The claim transaction is the concurrency authority ──────────────────
+  // When a Release Control ticket is present the claim is additionally bound
+  // to that exact release and that exact job, so no other eligible job can
+  // ever be substituted between preflight and claim.
   const claimed = await service.rpc("omni_comms_priv_dispatch_claim_email", {
     p_worker: "omni-comms-dispatch",
     p_batch_limit: batchLimit,
@@ -182,7 +228,10 @@ Deno.serve(async (req) => {
     p_deployed_revision: DEPLOYED_REVISION,
     p_scopes: scopes,
     p_execution_context: "operator",
+    p_release_control_id: releaseControlId,
+    p_expected_job_id: expectedJobId,
   });
+
   if (claimed.error) {
     console.error(
       `omni-comms-dispatch dispatch_claim_failed correlation=${correlationId ?? "none"}`,

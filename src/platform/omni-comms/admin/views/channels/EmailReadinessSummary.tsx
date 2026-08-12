@@ -118,7 +118,7 @@ export const EmailReadinessSummary: React.FC<EmailReadinessSummaryProps> = ({
             variant={allReady && !pilotSuspended ? 'secondary' : 'destructive'}
             data-testid="omni-comms-readiness-summary-count"
           >
-            Delivery Setup {grouped.deliverySetup.readyCount} of{' '}
+            Production readiness evidence — Delivery Setup {grouped.deliverySetup.readyCount} of{' '}
             {grouped.deliverySetup.totalCount} ready
           </Badge>
         </div>
