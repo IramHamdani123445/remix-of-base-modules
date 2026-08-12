@@ -36,7 +36,7 @@ import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-correlation-id, x-omni-comms-dispatch-ticket, x-omni-comms-scheduler-token",
+    "authorization, x-client-info, apikey, content-type, x-correlation-id, x-omni-comms-dispatch-ticket, x-omni-comms-scheduler-nonce",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -44,7 +44,6 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const DEPLOYED_REVISION = Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "";
-const SCHEDULER_TOKEN = Deno.env.get("OMNI_COMMS_SCHEDULER_TOKEN") ?? "";
 
 /** The dispatcher can only ever drain the Email channel. */
 const DISPATCHABLE_CHANNEL = "email";
@@ -103,11 +102,9 @@ Deno.serve(async (req) => {
   // credential (a browser can never hold it) plus the scheduler ticket header.
   // It selects nothing: the database claim transaction chooses the eligible
   // jobs that an approved LIVE release has already authorised.
-  const schedulerTokenValid = SCHEDULER_TOKEN.length >= 16
-    && req.headers.get("x-omni-comms-scheduler-token") === SCHEDULER_TOKEN;
-  const isSchedulerTick = !isInternalTicket
-    && req.headers.get("x-omni-comms-dispatch-ticket") === "scheduler"
-    && (isServiceCaller || schedulerTokenValid);
+  const schedulerNonce = (req.headers.get("x-omni-comms-scheduler-nonce") ?? "").trim();
+  const schedulerRequested = !isInternalTicket
+    && req.headers.get("x-omni-comms-dispatch-ticket") === "scheduler";
 
   // ── Bounded, non-sensitive input ONLY ───────────────────────────────────
   // Strict ALLOW-LIST: exactly two optional keys are accepted. Anything else
@@ -177,7 +174,7 @@ Deno.serve(async (req) => {
     ? 1
     : (typeof raw.batchLimit === "number" && Number.isInteger(raw.batchLimit)
       ? raw.batchLimit
-      : (isSchedulerTick ? 5 : 1));
+      : (schedulerRequested ? 5 : 1));
 
   const correlationId = typeof raw.correlationId === "string" ? raw.correlationId : null;
 
@@ -190,6 +187,26 @@ Deno.serve(async (req) => {
   // The internal Release Control ticket has ALREADY proven the actor, the
   // tenant scope, the exact approved release and the exact authorised job
   // server-side, so it carries its own server-derived scope instead.
+  const service = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+  // A scheduler tick is authentic only when it presents a single-use, unexpired
+  // ticket that the database scheduler minted. A browser can never mint one.
+  let isSchedulerTick = false;
+  if (schedulerRequested) {
+    if (isServiceCaller) {
+      isSchedulerTick = true;
+    } else if (/^[0-9a-f]{64}$/.test(schedulerNonce)) {
+      const consumed = await service.rpc(
+        "omni_comms_priv_scheduler_consume_ticket",
+        { p_nonce: schedulerNonce },
+      );
+      isSchedulerTick = !consumed.error && consumed.data === true;
+    }
+    if (!isSchedulerTick) {
+      return json({ error: "OC403", detail: "scheduler_ticket_invalid" }, 403);
+    }
+  }
+
   let scopes: unknown[] = [];
   if (isInternalTicket) {
     scopes = Array.isArray(raw.scopes) ? (raw.scopes as unknown[]) : [];
@@ -226,8 +243,6 @@ Deno.serve(async (req) => {
       return json({ error: "OC403", detail: "no_operable_scope" }, 403);
     }
   }
-
-  const service = createClient(SUPABASE_URL, SERVICE_ROLE);
 
   // ── Reclaim any expired lease before claiming new work ──────────────────
   await service.rpc("omni_comms_priv_dispatch_reclaim_expired_leases");
