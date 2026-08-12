@@ -24,7 +24,7 @@ const migrationFile = fs
   .find((f) =>
     fs
       .readFileSync(path.join(migrationsDir, f), 'utf8')
-      .includes('CREATE TABLE IF NOT EXISTS public.omni_comms_runtime_environment'),
+      .includes('CREATE TABLE IF NOT EXISTS public.omni_comms_runtime_environment ('),
   );
 
 const sql = migrationFile
@@ -184,7 +184,7 @@ describe('registry catalogue', () => {
   });
 
   it('keeps the registry ceiling consistent and valid', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(36);
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(37);
     expect(validateOmniCommsRegistries().errors).toEqual([]);
   });
 });
