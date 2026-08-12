@@ -22,6 +22,7 @@ import { emitBusinessCommunication } from './emitBusinessCommunication';
 import type {
   BusinessProducerMode,
   BusinessProducerResult,
+  OmniCommsRecipientType,
 } from './businessProducerTypes';
 
 /** Registered caller module code (see omni_comms_caller_module_registry). */
@@ -50,8 +51,16 @@ export const BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION = 'claim-submitted-v1';
 export const BENEFITS_CLAIM_SUBMITTED_CORRELATION_PREFIX =
   'benefits-claim-registered';
 
-/** Single deterministic recipient type for the pilot. */
-export const BENEFITS_CLAIM_SUBMITTED_RECIPIENT_TYPE = 'claimant';
+/**
+ * Single deterministic recipient type for the pilot.
+ *
+ * The claimant is a person outside the organisation, so the CANONICAL
+ * persisted vocabulary value is `external`. The business meaning
+ * (claimant of this claim) is carried by `recipientReference` and the
+ * payload — never by inventing an unsupported recipient type.
+ */
+export const BENEFITS_CLAIM_SUBMITTED_RECIPIENT_TYPE: OmniCommsRecipientType =
+  'external';
 
 /**
  * Canonical payload vocabulary. Identical in the published event contract,

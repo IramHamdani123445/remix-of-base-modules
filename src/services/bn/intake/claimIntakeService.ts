@@ -90,7 +90,7 @@ const CLAIM_COMMUNICATION_SUMMARY: Record<string, string> = {
  * Fail-closed and total: it never blocks or fails the claim registration,
  * never contacts a provider and never writes to a communication table.
  */
-async function emitClaimRegisteredAcknowledgement(args: {
+export async function emitClaimRegisteredAcknowledgement(args: {
   claimId: string;
   claimNumber: string;
   productCode: string;

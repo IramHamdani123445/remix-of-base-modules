@@ -13,6 +13,7 @@ export const OMNI_COMMS_RUNTIME_ERROR_CODES = [
   'department_organization_mismatch',
   'recipients_required',
   'recipient_limit_exceeded',
+  'recipient_type_invalid',
   'payload_invalid',
   'payload_too_large',
   'mode_invalid',

@@ -121231,6 +121231,15 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_abandon_request: {
+        Args: {
+          p_actor_id: string
+          p_organization_id: string
+          p_reason: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_admin_dry_run_guard: {
         Args: {
           p_actor_id: string

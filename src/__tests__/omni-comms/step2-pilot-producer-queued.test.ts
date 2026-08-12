@@ -62,7 +62,7 @@ const queuedRuntimeResult = (replayed: boolean) => ({
   createdAt: '2026-08-10T09:00:01.000Z',
   producerEventBindingId: '8c0f7e05-11a3-4c0a-a01c-66217c986356',
   recipients: [
-    { recipientId: 'rcp-1', recipientType: 'employer', eligibility: 'eligible' },
+    { recipientId: 'rcp-1', recipientType: 'external', eligibility: 'eligible' },
   ],
   messages: [
     {
@@ -105,7 +105,7 @@ describe('Step 2 — happy path', () => {
     expect(sent.requestedChannels).toEqual(['email']);
     expect(sent.recipients).toHaveLength(1);
     expect(sent.recipients[0]).toMatchObject({
-      recipientType: 'employer',
+      recipientType: 'external',
       recipientReference: 'ER-004512',
       email: 'employer@example.test',
     });
@@ -215,7 +215,7 @@ describe('Step 2 — unauthorized producer', () => {
       entityVersion: 'v1',
       mode: 'queued',
       requestedChannels: ['email'],
-      recipients: [{ recipientType: 'employer', email: 'x@y.test' }],
+      recipients: [{ recipientType: 'external', email: 'x@y.test' }],
       payload: { reference: 'ER-9' },
     });
     expect(res.outcome).toBe('blocked');

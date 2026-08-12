@@ -24,7 +24,16 @@ import { emitBusinessCommunication } from './emitBusinessCommunication';
 import type {
   BusinessProducerMode,
   BusinessProducerResult,
+  OmniCommsRecipientType,
 } from './businessProducerTypes';
+
+/**
+ * Canonical persisted recipient type for the employer contact. The employer
+ * is outside the organisation, so the persisted vocabulary value is
+ * `external`; the business meaning travels in `recipientReference`.
+ */
+export const EMPLOYER_REGISTRATION_RECIPIENT_TYPE: OmniCommsRecipientType =
+  'external';
 
 /** Registered caller module code. */
 export const EMPLOYER_REGISTRATION_MODULE_CODE = 'EMPLOYER_REGISTRATION';
@@ -130,7 +139,7 @@ export async function emitEmployerRegistrationApplicationSubmitted(
       buildEmployerRegistrationApplicationSubmittedCorrelationId(input.reference),
     recipients: [
       {
-        recipientType: 'employer',
+        recipientType: EMPLOYER_REGISTRATION_RECIPIENT_TYPE,
         recipientReference: input.reference,
         displayName: input.subjectName,
         email: input.contactEmail ?? null,
