@@ -36,7 +36,7 @@ import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-correlation-id",
+    "authorization, x-client-info, apikey, content-type, x-correlation-id, x-omni-comms-dispatch-ticket, x-omni-comms-scheduler-token",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -44,6 +44,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const DEPLOYED_REVISION = Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "";
+const SCHEDULER_TOKEN = Deno.env.get("OMNI_COMMS_SCHEDULER_TOKEN") ?? "";
 
 /** The dispatcher can only ever drain the Email channel. */
 const DISPATCHABLE_CHANNEL = "email";
@@ -95,8 +96,18 @@ Deno.serve(async (req) => {
   // recognised solely by the service-role credential, which a browser can
   // never hold. Every public caller keeps the strict two-key allow-list.
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const isInternalTicket = authHeader.slice(7).trim() === SERVICE_ROLE
+  const isServiceCaller = authHeader.slice(7).trim() === SERVICE_ROLE;
+  const isInternalTicket = isServiceCaller
     && req.headers.get("x-omni-comms-dispatch-ticket") === "release-control";
+  // Automatic production scheduler tick. Recognised solely by the service-role
+  // credential (a browser can never hold it) plus the scheduler ticket header.
+  // It selects nothing: the database claim transaction chooses the eligible
+  // jobs that an approved LIVE release has already authorised.
+  const schedulerTokenValid = SCHEDULER_TOKEN.length >= 16
+    && req.headers.get("x-omni-comms-scheduler-token") === SCHEDULER_TOKEN;
+  const isSchedulerTick = !isInternalTicket
+    && req.headers.get("x-omni-comms-dispatch-ticket") === "scheduler"
+    && (isServiceCaller || schedulerTokenValid);
 
   // ── Bounded, non-sensitive input ONLY ───────────────────────────────────
   // Strict ALLOW-LIST: exactly two optional keys are accepted. Anything else
@@ -166,7 +177,7 @@ Deno.serve(async (req) => {
     ? 1
     : (typeof raw.batchLimit === "number" && Number.isInteger(raw.batchLimit)
       ? raw.batchLimit
-      : 1);
+      : (isSchedulerTick ? 5 : 1));
 
   const correlationId = typeof raw.correlationId === "string" ? raw.correlationId : null;
 
@@ -185,6 +196,10 @@ Deno.serve(async (req) => {
     if (scopes.length !== 1) {
       return json({ error: "OC422", detail: "internal_dispatch_ticket_invalid" }, 400);
     }
+  } else if (isSchedulerTick) {
+    // The scheduler holds no operator identity and supplies no scope; the
+    // claim transaction resolves eligibility from the approved LIVE release.
+    scopes = [];
   } else {
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
@@ -221,16 +236,23 @@ Deno.serve(async (req) => {
   // When a Release Control ticket is present the claim is additionally bound
   // to that exact release and that exact job, so no other eligible job can
   // ever be substituted between preflight and claim.
-  const claimed = await service.rpc("omni_comms_priv_dispatch_claim_email", {
-    p_worker: "omni-comms-dispatch",
-    p_batch_limit: batchLimit,
-    p_correlation_id: correlationId,
-    p_deployed_revision: DEPLOYED_REVISION,
-    p_scopes: scopes,
-    p_execution_context: "operator",
-    p_release_control_id: releaseControlId,
-    p_expected_job_id: expectedJobId,
-  });
+  const claimed = isSchedulerTick
+    ? await service.rpc("omni_comms_priv_dispatch_scheduler_tick", {
+      p_worker: "omni-comms-scheduler",
+      p_batch_limit: batchLimit,
+      p_deployed_revision: DEPLOYED_REVISION,
+      p_correlation_id: correlationId,
+    })
+    : await service.rpc("omni_comms_priv_dispatch_claim_email", {
+      p_worker: "omni-comms-dispatch",
+      p_batch_limit: batchLimit,
+      p_correlation_id: correlationId,
+      p_deployed_revision: DEPLOYED_REVISION,
+      p_scopes: scopes,
+      p_execution_context: "operator",
+      p_release_control_id: releaseControlId,
+      p_expected_job_id: expectedJobId,
+    });
 
   if (claimed.error) {
     console.error(
