@@ -266,6 +266,46 @@ export const ChannelReleaseControlTab: React.FC<{
 
   useEffect(() => { void loadCandidate(); }, [loadCandidate]);
 
+  /**
+   * Bounded, read-only review of every held (never-attempted) business
+   * message. Masked recipients only; mutates nothing.
+   */
+  const loadHeldReview = useCallback(async () => {
+    if (!transport || !supported || !orgId) return;
+    try {
+      const res = await transport.invoke(
+        buildHeldJobReviewBody(orgId, departmentId ?? null),
+      );
+      if (res.error) return;
+      setHeldReview(res.data as HeldJobReview);
+    } catch {
+      setHeldReview(null);
+    }
+  }, [transport, supported, orgId, departmentId]);
+
+  useEffect(() => { void loadHeldReview(); }, [loadHeldReview]);
+
+  /**
+   * Retire one obsolete held message. Nothing is deleted and no provider is
+   * contacted: the trusted boundary refuses any job that was ever attempted.
+   */
+  const retireHeldJob = useCallback((jobId: string) => {
+    if (!transport || !orgId) return;
+    void run('Obsolete held message retired', async () => {
+      const res = await transport.invoke(
+        buildRetireHeldJobBody(orgId, jobId, {
+          departmentId: departmentId ?? null,
+          reason: 'superseded_pre_production_pilot_job',
+        }),
+      );
+      if (res.error) throw new Error(res.error.message ?? 'Retirement refused');
+      await loadHeldReview();
+      await loadCandidate();
+    });
+  }, [transport, orgId, departmentId, run, loadHeldReview, loadCandidate]);
+
+
+
   /** Read-only module enablement truth. Changes nothing. */
   useEffect(() => {
     if (!client || !orgId || !supported) return;
