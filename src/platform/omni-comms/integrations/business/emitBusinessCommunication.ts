@@ -23,6 +23,7 @@ import { sendCommunication } from '../../sendCommunication';
 import {
   BUSINESS_PRODUCER_IDEMPOTENCY_PREFIX,
   BUSINESS_PRODUCER_MODES,
+  OMNI_COMMS_RECIPIENT_TYPES,
   type BusinessProducerEmission,
   type BusinessProducerResult,
 } from './businessProducerTypes';
@@ -106,6 +107,19 @@ export function validateProducerEmission(input: BusinessProducerEmission): strin
   if (!input.entityVersion?.trim()) blockers.push('entity_version_required');
   if (!Array.isArray(input.recipients) || input.recipients.length === 0) {
     blockers.push('recipients_required');
+  } else if (
+    input.recipients.some(
+      (r) =>
+        !r ||
+        !(OMNI_COMMS_RECIPIENT_TYPES as readonly string[]).includes(
+          String(r.recipientType),
+        ),
+    )
+  ) {
+    // A recipient type outside the canonical persisted vocabulary can never
+    // be stored, so it must fail as a bounded blocker here rather than as an
+    // opaque persistence failure inside the runtime.
+    blockers.push('recipient_type_invalid');
   }
   if (
     !input.payload ||
