@@ -174,6 +174,38 @@ export const ChannelReleaseControlTab: React.FC<{
     }
   }, [refresh, onChanged]);
 
+  /** Bounded, read-only deployment identity probe. Mutates nothing. */
+  const loadDeployment = useCallback(async () => {
+    if (!transport || !supported) return;
+    setDeploymentLoading(true);
+    try {
+      const res = await transport.invoke(buildDeploymentStatusBody());
+      if (res.error) throw new Error(res.error.message ?? 'Deployment status unavailable');
+      setDeployment(res.data as DeploymentStatus);
+    } catch (e) {
+      toastError(e, 'Could not read the deployment identity.');
+    } finally {
+      setDeploymentLoading(false);
+    }
+  }, [transport, supported]);
+
+  useEffect(() => { void loadDeployment(); }, [loadDeployment]);
+
+  const confirmProduction = useCallback(() => {
+    if (!transport) return;
+    void run('Production environment confirmed', async () => {
+      const res = await transport.invoke(
+        buildConfirmEnvironmentBody({
+          environment: 'production',
+          reason: 'Administrator confirmed this deployment is the production runtime.',
+        }),
+      );
+      if (res.error) throw new Error(res.error.message ?? 'Environment confirmation failed');
+      await loadDeployment();
+    });
+  }, [transport, run, loadDeployment]);
+
+
   if (!supported) {
     return (
       <DeferredCapabilityCard
