@@ -512,7 +512,7 @@ export const ChannelReleaseControlTab: React.FC<{
                   trusted deployment metadata — it cannot be selected here.
                 </p>
                 <Button
-                  size="sm" variant="outline" disabled={busy || !canApprove}
+                  size="sm" variant="outline" disabled={busy || !canOperate}
                   onClick={confirmProduction}
                 >
                   Confirm production environment
@@ -528,7 +528,7 @@ export const ChannelReleaseControlTab: React.FC<{
             && (deployment.environment === 'production'
               || deployment.environment === 'non_production') && (
             <div className="flex flex-wrap items-center gap-2 rounded-md border p-3">
-              <Button size="sm" disabled={busy || !canApprove} onClick={certifyDeployment}>
+              <Button size="sm" disabled={busy || !canOperate} onClick={certifyDeployment}>
                 Certify this deployment
               </Button>
               <span className="text-xs text-muted-foreground">
@@ -835,12 +835,12 @@ export const ChannelReleaseControlTab: React.FC<{
             )}
             <Input
               className="max-w-xs" placeholder="Suspension reason"
-              value={suspendReason} disabled={!canApprove || busy}
+              value={suspendReason} disabled={!canOperate || busy}
               onChange={(e) => setSuspendReason(e.target.value)}
             />
             <Button
               variant="destructive"
-              disabled={!canApprove || busy || !release || !suspendReason.trim()}
+              disabled={!canOperate || busy || !release || !suspendReason.trim()}
               onClick={() => release && void run('Release suspended', () =>
                 suspendChannelRelease(client!, {
                   id: release.id,
@@ -966,7 +966,7 @@ export const ChannelReleaseControlTab: React.FC<{
 
           <Button
             variant="destructive"
-            disabled={busy || !canApprove || !workflow.readyForControlledSend || preSend?.ok !== true}
+            disabled={busy || !canOperate || !workflow.readyForControlledSend || preSend?.ok !== true}
             onClick={releaseOneMessage}
           >
             Release one controlled message
