@@ -105,7 +105,7 @@ describe('Step 2 — happy path', () => {
     expect(sent.requestedChannels).toEqual(['email']);
     expect(sent.recipients).toHaveLength(1);
     expect(sent.recipients[0]).toMatchObject({
-      recipientType: 'employer',
+      recipientType: 'external',
       recipientReference: 'ER-004512',
       email: 'employer@example.test',
     });
@@ -215,7 +215,7 @@ describe('Step 2 — unauthorized producer', () => {
       entityVersion: 'v1',
       mode: 'queued',
       requestedChannels: ['email'],
-      recipients: [{ recipientType: 'employer', email: 'x@y.test' }],
+      recipients: [{ recipientType: 'external', email: 'x@y.test' }],
       payload: { reference: 'ER-9' },
     });
     expect(res.outcome).toBe('blocked');

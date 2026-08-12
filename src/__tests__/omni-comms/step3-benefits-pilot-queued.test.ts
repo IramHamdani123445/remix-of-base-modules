@@ -115,7 +115,7 @@ describe('Step 3 — happy path', () => {
     expect(sent.requestedChannels).toEqual(['email']);
     expect(sent.recipients).toHaveLength(1);
     expect(sent.recipients[0]).toMatchObject({
-      recipientType: 'claimant',
+      recipientType: 'external',
       recipientReference: 'CLM-2026-000123',
       email: 'claimant@example.test',
     });
@@ -225,7 +225,7 @@ describe('Step 3 — refusals never break claim registration', () => {
       entityVersion: BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION,
       mode: 'queued',
       requestedChannels: ['email'],
-      recipients: [{ recipientType: 'claimant', email: 'x@y.test' }],
+      recipients: [{ recipientType: 'external', email: 'x@y.test' }],
       payload: { reference: 'CLM-1' },
     });
     expect(res.outcome).toBe('blocked');
