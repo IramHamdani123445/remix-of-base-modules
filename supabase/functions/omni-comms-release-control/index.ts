@@ -441,7 +441,14 @@ Deno.serve(async (req) => {
   }
 
 
-  if (body.action !== 'approve_activate') return json({ error: 'unsupported_action' }, 400);
+  // `approve_activate_live` promotes the release to genuine production LIVE.
+  // It is a second-person decision: the database refuses it when the approver
+  // is the proposer, when the fingerprint moved, or when any prerequisite
+  // fails. This boundary contacts no provider and sends nothing itself.
+  const isLiveApproval = body.action === 'approve_activate_live';
+  if (body.action !== 'approve_activate' && !isLiveApproval) {
+    return json({ error: 'unsupported_action' }, 400);
+  }
 
 
   const releaseControlId = typeof body.releaseControlId === 'string' ? body.releaseControlId : '';
@@ -471,7 +478,9 @@ Deno.serve(async (req) => {
   );
 
   const { data, error } = await service.rpc(
-    'omni_comms_priv_channel_release_approve_activate',
+    isLiveApproval
+      ? 'omni_comms_priv_channel_release_approve_live'
+      : 'omni_comms_priv_channel_release_approve_activate',
     {
       p_actor_id: actorId,
       p_release_control_id: releaseControlId,

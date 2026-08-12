@@ -93825,7 +93825,7 @@ export type Database = {
           id: string
           max_messages_per_day: number
           max_messages_per_hour: number
-          max_messages_total: number
+          max_messages_total: number | null
           max_recipients_per_request: number
           organization_id: string
           permitted_caller_modules: string[]
@@ -93865,7 +93865,7 @@ export type Database = {
           id?: string
           max_messages_per_day?: number
           max_messages_per_hour?: number
-          max_messages_total?: number
+          max_messages_total?: number | null
           max_recipients_per_request?: number
           organization_id: string
           permitted_caller_modules?: string[]
@@ -93905,7 +93905,7 @@ export type Database = {
           id?: string
           max_messages_per_day?: number
           max_messages_per_hour?: number
-          max_messages_total?: number
+          max_messages_total?: number | null
           max_recipients_per_request?: number
           organization_id?: string
           permitted_caller_modules?: string[]
@@ -95535,6 +95535,77 @@ export type Database = {
           },
         ]
       }
+      omni_comms_product_communication_config: {
+        Row: {
+          business_trigger: string
+          channel: string
+          created_at: string
+          created_by: string | null
+          data_origin: string
+          delivery_mode: string
+          event_code: string
+          id: string
+          is_enabled: boolean
+          module_code: string
+          organization_id: string
+          product_id: string
+          production_status: string
+          recipient_source: string
+          sender_profile_code: string | null
+          template_family_code: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          business_trigger?: string
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          delivery_mode?: string
+          event_code: string
+          id?: string
+          is_enabled?: boolean
+          module_code?: string
+          organization_id: string
+          product_id: string
+          production_status?: string
+          recipient_source?: string
+          sender_profile_code?: string | null
+          template_family_code?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          business_trigger?: string
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          delivery_mode?: string
+          event_code?: string
+          id?: string
+          is_enabled?: boolean
+          module_code?: string
+          organization_id?: string
+          product_id?: string
+          production_status?: string
+          recipient_source?: string
+          sender_profile_code?: string | null
+          template_family_code?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_product_communication_config_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "bn_product"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_provider: {
         Row: {
           activated_at: string | null
@@ -96051,6 +96122,45 @@ export type Database = {
           occurred_at?: string
           reason?: string | null
           to_environment?: string
+        }
+        Relationships: []
+      }
+      omni_comms_scheduler_run: {
+        Row: {
+          blocker: string | null
+          channel: string
+          claimed_jobs: number
+          created_at: string
+          detail: Json
+          execution_context: string
+          id: string
+          scanned_jobs: number
+          updated_at: string
+          worker: string
+        }
+        Insert: {
+          blocker?: string | null
+          channel?: string
+          claimed_jobs?: number
+          created_at?: string
+          detail?: Json
+          execution_context?: string
+          id?: string
+          scanned_jobs?: number
+          updated_at?: string
+          worker: string
+        }
+        Update: {
+          blocker?: string | null
+          channel?: string
+          claimed_jobs?: number
+          created_at?: string
+          detail?: Json
+          execution_context?: string
+          id?: string
+          scanned_jobs?: number
+          updated_at?: string
+          worker?: string
         }
         Relationships: []
       }
@@ -120731,6 +120841,15 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_channel_release_control_propose_live: {
+        Args: {
+          p_correlation_id?: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       omni_comms_channel_release_control_propose_pilot: {
         Args: {
           p_correlation_id?: string
@@ -121171,6 +121290,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_live_operations_summary: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
       omni_comms_module_sender_profile_bootstrap: {
         Args: {
           p_apply?: boolean
@@ -121494,6 +121617,18 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_channel_release_approve_live: {
+        Args: {
+          p_actor_id: string
+          p_approval_note: string
+          p_correlation_id: string
+          p_deployed_revision: string
+          p_expected_fingerprint: string
+          p_expected_updated_at: string
+          p_release_control_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_channel_release_decision: {
         Args: {
           p_caller_module_code: string
@@ -121531,7 +121666,7 @@ export type Database = {
           id: string
           max_messages_per_day: number
           max_messages_per_hour: number
-          max_messages_total: number
+          max_messages_total: number | null
           max_recipients_per_request: number
           organization_id: string
           permitted_caller_modules: string[]
@@ -122490,6 +122625,10 @@ export type Database = {
           p_reason: string
         }
         Returns: undefined
+      }
+      omni_comms_product_communication_summary: {
+        Args: { p_organization_id: string }
+        Returns: Json
       }
       omni_comms_provider_account_activate: {
         Args: {

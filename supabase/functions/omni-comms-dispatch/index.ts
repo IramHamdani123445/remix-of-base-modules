@@ -36,7 +36,7 @@ import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-correlation-id",
+    "authorization, x-client-info, apikey, content-type, x-correlation-id, x-omni-comms-dispatch-ticket, x-omni-comms-scheduler-nonce",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -95,8 +95,16 @@ Deno.serve(async (req) => {
   // recognised solely by the service-role credential, which a browser can
   // never hold. Every public caller keeps the strict two-key allow-list.
   const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const isInternalTicket = authHeader.slice(7).trim() === SERVICE_ROLE
+  const isServiceCaller = authHeader.slice(7).trim() === SERVICE_ROLE;
+  const isInternalTicket = isServiceCaller
     && req.headers.get("x-omni-comms-dispatch-ticket") === "release-control";
+  // Automatic production scheduler tick. Recognised solely by the service-role
+  // credential (a browser can never hold it) plus the scheduler ticket header.
+  // It selects nothing: the database claim transaction chooses the eligible
+  // jobs that an approved LIVE release has already authorised.
+  const schedulerNonce = (req.headers.get("x-omni-comms-scheduler-nonce") ?? "").trim();
+  const schedulerRequested = !isInternalTicket
+    && req.headers.get("x-omni-comms-dispatch-ticket") === "scheduler";
 
   // ── Bounded, non-sensitive input ONLY ───────────────────────────────────
   // Strict ALLOW-LIST: exactly two optional keys are accepted. Anything else
@@ -166,7 +174,7 @@ Deno.serve(async (req) => {
     ? 1
     : (typeof raw.batchLimit === "number" && Number.isInteger(raw.batchLimit)
       ? raw.batchLimit
-      : 1);
+      : (schedulerRequested ? 5 : 1));
 
   const correlationId = typeof raw.correlationId === "string" ? raw.correlationId : null;
 
@@ -179,12 +187,36 @@ Deno.serve(async (req) => {
   // The internal Release Control ticket has ALREADY proven the actor, the
   // tenant scope, the exact approved release and the exact authorised job
   // server-side, so it carries its own server-derived scope instead.
+  const service = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+  // A scheduler tick is authentic only when it presents a single-use, unexpired
+  // ticket that the database scheduler minted. A browser can never mint one.
+  let isSchedulerTick = false;
+  if (schedulerRequested) {
+    if (isServiceCaller) {
+      isSchedulerTick = true;
+    } else if (/^[0-9a-f]{64}$/.test(schedulerNonce)) {
+      const consumed = await service.rpc(
+        "omni_comms_priv_scheduler_consume_ticket",
+        { p_nonce: schedulerNonce },
+      );
+      isSchedulerTick = !consumed.error && consumed.data === true;
+    }
+    if (!isSchedulerTick) {
+      return json({ error: "OC403", detail: "scheduler_ticket_invalid" }, 403);
+    }
+  }
+
   let scopes: unknown[] = [];
   if (isInternalTicket) {
     scopes = Array.isArray(raw.scopes) ? (raw.scopes as unknown[]) : [];
     if (scopes.length !== 1) {
       return json({ error: "OC422", detail: "internal_dispatch_ticket_invalid" }, 400);
     }
+  } else if (isSchedulerTick) {
+    // The scheduler holds no operator identity and supplies no scope; the
+    // claim transaction resolves eligibility from the approved LIVE release.
+    scopes = [];
   } else {
     const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
@@ -212,8 +244,6 @@ Deno.serve(async (req) => {
     }
   }
 
-  const service = createClient(SUPABASE_URL, SERVICE_ROLE);
-
   // ── Reclaim any expired lease before claiming new work ──────────────────
   await service.rpc("omni_comms_priv_dispatch_reclaim_expired_leases");
 
@@ -221,16 +251,23 @@ Deno.serve(async (req) => {
   // When a Release Control ticket is present the claim is additionally bound
   // to that exact release and that exact job, so no other eligible job can
   // ever be substituted between preflight and claim.
-  const claimed = await service.rpc("omni_comms_priv_dispatch_claim_email", {
-    p_worker: "omni-comms-dispatch",
-    p_batch_limit: batchLimit,
-    p_correlation_id: correlationId,
-    p_deployed_revision: DEPLOYED_REVISION,
-    p_scopes: scopes,
-    p_execution_context: "operator",
-    p_release_control_id: releaseControlId,
-    p_expected_job_id: expectedJobId,
-  });
+  const claimed = isSchedulerTick
+    ? await service.rpc("omni_comms_priv_dispatch_scheduler_tick", {
+      p_worker: "omni-comms-scheduler",
+      p_batch_limit: batchLimit,
+      p_deployed_revision: DEPLOYED_REVISION,
+      p_correlation_id: correlationId,
+    })
+    : await service.rpc("omni_comms_priv_dispatch_claim_email", {
+      p_worker: "omni-comms-dispatch",
+      p_batch_limit: batchLimit,
+      p_correlation_id: correlationId,
+      p_deployed_revision: DEPLOYED_REVISION,
+      p_scopes: scopes,
+      p_execution_context: "operator",
+      p_release_control_id: releaseControlId,
+      p_expected_job_id: expectedJobId,
+    });
 
   if (claimed.error) {
     console.error(
