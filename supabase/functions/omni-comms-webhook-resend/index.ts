@@ -33,32 +33,49 @@ const LEGACY_SIGNING_SECRET =
   Deno.env.get("OMNI_COMMS_RESEND_WEBHOOK_SECRET") ?? "";
 
 /**
- * Resolves the Resend webhook signing secret.
+ * Resolves the Resend webhook signing secret for ONE provider account.
  *
- * A secret saved from the Omni-Comms Admin UI lives in the encrypted vault
- * and is read through a service-role-only RPC. The deployment-managed Edge
- * Function Secret remains supported as a fallback so an existing
- * configuration keeps verifying callbacks unchanged. The value is used only
- * for signature verification: it is never logged, persisted or returned.
+ * Resolution is strict: the account's configured storage source is the only
+ * source consulted. A vault-backed secret is read through a service-role-only
+ * RPC; a deployment-managed secret is read from the named Edge Function
+ * Secret. There is NO fallback to an unrelated global secret, because a
+ * silent fallback makes a real mismatch look like a healthy configuration.
+ *
+ * The legacy global secret is used only for a callback that carries no
+ * account parameter, so an existing registration keeps verifying unchanged.
+ * The value is never logged, persisted or returned.
  */
 async function resolveSigningSecret(
   client: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> },
   providerAccountId: string,
-): Promise<string> {
-  if (!providerAccountId) return LEGACY_SIGNING_SECRET;
+): Promise<{ secret: string; reason: string }> {
+  if (!providerAccountId) {
+    return LEGACY_SIGNING_SECRET
+      ? { secret: LEGACY_SIGNING_SECRET, reason: "" }
+      : { secret: "", reason: "webhook_account_missing" };
+  }
   try {
     const { data, error } = await client.rpc(
-      "omni_comms_priv_resolve_webhook_signing_secret",
-      { p_adapter_key: providerAccountId },
+      "omni_comms_priv_resolve_webhook_signing_source",
+      { p_provider_account_id: providerAccountId },
     );
-    if (!error && typeof data === "string" && data.trim() !== "") {
-      return data.trim();
+    if (error) return { secret: "", reason: "webhook_signing_secret_unavailable" };
+    const source = (data ?? {}) as Record<string, unknown>;
+    if (source.found === true && typeof source.value === "string" && source.value.trim() !== "") {
+      return { secret: source.value.trim(), reason: "" };
     }
+    if (source.storageMode === "edge_env") {
+      const envVar = typeof source.envVar === "string" ? source.envVar : "";
+      const fromEnv = envVar ? (Deno.env.get(envVar) ?? "").trim() : "";
+      if (fromEnv) return { secret: fromEnv, reason: "" };
+    }
+    const reason = typeof source.reason === "string" ? source.reason : "webhook_signing_secret_missing";
+    return { secret: "", reason };
   } catch {
-    // fall through to the deployment-managed secret
+    return { secret: "", reason: "webhook_signing_secret_unavailable" };
   }
-  return LEGACY_SIGNING_SECRET;
 }
+
 
 /**
  * Records a bounded rejected-callback evidence row. Never throws: rejection
@@ -96,11 +113,18 @@ Deno.serve(async (req) => {
   if (!SUPABASE_URL || !SERVICE_ROLE) return json({ error: "configuration_error" }, 503);
   const signingClient = createClient(SUPABASE_URL, SERVICE_ROLE);
   const providerAccountId = new URL(req.url).searchParams.get("account")?.trim() ?? "";
-  const signingSecret = await resolveSigningSecret(signingClient, providerAccountId);
+  const resolved = await resolveSigningSecret(signingClient, providerAccountId);
+  const signingSecret = resolved.secret;
   if (!signingSecret) {
-    await recordRejection(signingClient, providerAccountId, "", "webhook_secret_missing");
-    return json({ error: "webhook_secret_missing" }, 503);
+    await recordRejection(
+      signingClient,
+      providerAccountId,
+      "",
+      resolved.reason || "webhook_secret_missing",
+    );
+    return json({ error: resolved.reason || "webhook_secret_missing" }, 503);
   }
+
 
   const svixId = req.headers.get("svix-id") ?? "";
   const svixTs = req.headers.get("svix-timestamp") ?? "";
@@ -147,6 +171,10 @@ Deno.serve(async (req) => {
     provider_event: rawType,
     recipient_masked: maskEmail(to),
   };
+  // Attribution: callback evidence belongs to exactly one provider account so
+  // callback health can never be read across accounts.
+  if (providerAccountId) summary.provider_account_id = providerAccountId;
+
   if (typeof data.subject === "string") summary.subject_length = data.subject.length;
   const bounce = data.bounce as Record<string, unknown> | undefined;
   if (bounce && typeof bounce === "object") {
@@ -188,10 +216,15 @@ Deno.serve(async (req) => {
     return json({ error: "record_failed" }, 500);
   }
   const testRecord = (testResult ?? {}) as Record<string, unknown>;
+  // Contract tolerance: the matching RPC reports a hit as `matched` (current)
+  // or `recorded` (historic). Requiring only one of them silently pushed
+  // verified technical-test callbacks into business matching, where they were
+  // stored as unmatched evidence.
   const testMatched =
-    testRecord.recorded === true &&
+    (testRecord.matched === true || testRecord.recorded === true) &&
     testRecord.code !== "unmatched" &&
     testRecord.code !== "unmatched_ignored";
+
   if (testMatched) {
     return json({ accepted: true, scope: "channel_test", ...testRecord });
   }
