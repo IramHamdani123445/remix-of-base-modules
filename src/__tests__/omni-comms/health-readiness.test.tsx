@@ -126,7 +126,7 @@ describe('Omni-Comms Health page — Readiness', () => {
       ...M.plannedObjects.channelsSendersPreferences,
       ...M.plannedObjects.runtime,
     ];
-    expect(all).toHaveLength(37);
+    expect(all).toHaveLength(40);
     for (const entry of all) {
       expect(screen.getAllByText(entry.name).length).toBeGreaterThan(0);
     }
