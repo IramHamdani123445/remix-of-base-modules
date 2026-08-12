@@ -478,7 +478,9 @@ Deno.serve(async (req) => {
   );
 
   const { data, error } = await service.rpc(
-    'omni_comms_priv_channel_release_approve_activate',
+    isLiveApproval
+      ? 'omni_comms_priv_channel_release_approve_live'
+      : 'omni_comms_priv_channel_release_approve_activate',
     {
       p_actor_id: actorId,
       p_release_control_id: releaseControlId,
