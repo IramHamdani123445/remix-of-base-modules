@@ -145,7 +145,15 @@ export const ChannelReleaseControlTab: React.FC<{
   const release = summary?.release ?? null;
   const readOnlyReference = isReferenceRelease(release);
   const canConfigure = Boolean(summary?.capabilities.can_configure) && !readOnlyReference;
+  // Second-person approval only — true solely while an approvable proposal exists.
   const canApprove = Boolean(summary?.capabilities.can_approve) && !readOnlyReference;
+  // Operator rights on this scope. Governs the operator actions that exist
+  // BEFORE a proposal (environment confirmation, deployment certification) as
+  // well as suspension and the final controlled release. Falls back to the
+  // approval capability for older servers that do not project it yet.
+  const canOperate =
+    (summary?.capabilities.can_operate ?? summary?.capabilities.can_approve ?? false)
+    && !readOnlyReference;
   const blockers = useMemo(() => releaseBlockers(summary?.prerequisites), [summary]);
   const dispatchCheck = businessDispatchCheck(summary?.prerequisites);
   const proposalActive = isProposalActive(release);
@@ -504,7 +512,7 @@ export const ChannelReleaseControlTab: React.FC<{
                   trusted deployment metadata — it cannot be selected here.
                 </p>
                 <Button
-                  size="sm" variant="outline" disabled={busy || !canApprove}
+                  size="sm" variant="outline" disabled={busy || !canOperate}
                   onClick={confirmProduction}
                 >
                   Confirm production environment
@@ -520,7 +528,7 @@ export const ChannelReleaseControlTab: React.FC<{
             && (deployment.environment === 'production'
               || deployment.environment === 'non_production') && (
             <div className="flex flex-wrap items-center gap-2 rounded-md border p-3">
-              <Button size="sm" disabled={busy || !canApprove} onClick={certifyDeployment}>
+              <Button size="sm" disabled={busy || !canOperate} onClick={certifyDeployment}>
                 Certify this deployment
               </Button>
               <span className="text-xs text-muted-foreground">
@@ -827,12 +835,12 @@ export const ChannelReleaseControlTab: React.FC<{
             )}
             <Input
               className="max-w-xs" placeholder="Suspension reason"
-              value={suspendReason} disabled={!canApprove || busy}
+              value={suspendReason} disabled={!canOperate || busy}
               onChange={(e) => setSuspendReason(e.target.value)}
             />
             <Button
               variant="destructive"
-              disabled={!canApprove || busy || !release || !suspendReason.trim()}
+              disabled={!canOperate || busy || !release || !suspendReason.trim()}
               onClick={() => release && void run('Release suspended', () =>
                 suspendChannelRelease(client!, {
                   id: release.id,
@@ -958,7 +966,7 @@ export const ChannelReleaseControlTab: React.FC<{
 
           <Button
             variant="destructive"
-            disabled={busy || !canApprove || !workflow.readyForControlledSend || preSend?.ok !== true}
+            disabled={busy || !canOperate || !workflow.readyForControlledSend || preSend?.ok !== true}
             onClick={releaseOneMessage}
           >
             Release one controlled message

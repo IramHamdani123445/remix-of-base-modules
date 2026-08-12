@@ -61,7 +61,9 @@ export function buildModuleEnablementMatrix(
       status: 'not_integrated',
       modes: 'none',
       canSendBusinessEmail: false,
-      statement: 'Not integrated — cannot produce any Omni-Comms message',
+      statement:
+        'Not integrated — add an active producer binding on Producer Integrations '
+        + 'to let this module produce Omni-Comms messages',
     });
   }
 
