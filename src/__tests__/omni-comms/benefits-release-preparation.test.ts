@@ -29,8 +29,11 @@ function latestMigrationContaining(needle: string): string {
   throw new Error(`No migration contains ${needle}`);
 }
 
+// Pinned to the release-preparation migration itself (the only migration that
+// rewrites the prerequisite evaluator through the v_old/v_new replacement),
+// so later unrelated migrations touching sequence 10 cannot shadow it.
 const PREREQ_MIGRATION = latestMigrationContaining(
-  "'sequence',10,'code','provider_credentials_verified'",
+  'replace(v_src, v_old, v_new)',
 );
 
 describe('release readiness — sending-ready credentials', () => {

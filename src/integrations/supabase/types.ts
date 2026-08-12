@@ -96164,6 +96164,36 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_scheduler_ticket: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          issued_at: string
+          nonce: string
+          updated_at: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          nonce: string
+          updated_at?: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          nonce?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omni_comms_sender_identity: {
         Row: {
           activated_at: string | null
@@ -122439,6 +122469,11 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_scheduler_consume_ticket: {
+        Args: { p_nonce: string }
+        Returns: boolean
+      }
+      omni_comms_priv_scheduler_issue_ticket: { Args: never; Returns: string }
       omni_comms_priv_scope_permitted: {
         Args: {
           p_actor: string

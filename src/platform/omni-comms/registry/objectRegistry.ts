@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Approved logical object catalogue (28 logical groups: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, the two Channels C2 generic provider-account objects, the two Channels C3B channel-endpoint objects, and the two Channels C6 release-control objects).
+ * Omni-Comms — Approved logical object catalogue (31 logical groups: the 19 foundation objects, the caller-module authorisation registry, the runtime-environment configuration record, the two Channels C2 generic provider-account objects, the two Channels C3B channel-endpoint objects, and the two Channels C6 release-control objects).
  *
  * This is the CEILING for the new system. No object listed here has been
  * created. This file does not create tables, policies, functions, or types.
@@ -374,8 +374,39 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     status: 'AVAILABLE',
     introductionStory: 'Module Sender Profiles — module → sender assignment layer',
   },
+  {
+    name: 'omni_comms_scheduler_run',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Append-only evidence ledger of automatic dispatch scheduler ticks: when the scheduled boundary ran, how many live-authorised jobs were scanned and claimed, and the bounded blocker code when nothing was eligible. Records no recipient data and never calls a provider.',
+    status: 'AVAILABLE',
+    introductionStory: 'Benefits Live — automatic dispatch scheduler',
+  },
+  {
+    name: 'omni_comms_scheduler_ticket',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Single-use, short-expiry nonce minted by the database scheduler to authenticate a scheduled server-to-server invocation of the canonical Edge dispatcher. Consumed atomically; never mintable or readable from a browser.',
+    status: 'AVAILABLE',
+    introductionStory: 'Benefits Live — automatic dispatch scheduler',
+  },
+  {
+    name: 'omni_comms_product_communication_config',
+    category: 'events_and_content',
+    epic: 5,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Per business-product communication configuration for a registered Omni-Comms event: whether the channel obligation is enabled, and the template, sender profile, recipient source and delivery mode the producer must resolve. Configuration only — never enables delivery on its own.',
+    status: 'AVAILABLE',
+    introductionStory: 'Benefits Live — Product Definition communications',
+  },
 
 ] as const;
+
 
 
 export const OMNI_COMMS_OBJECT_COUNT = OMNI_COMMS_OBJECT_REGISTRY.length;

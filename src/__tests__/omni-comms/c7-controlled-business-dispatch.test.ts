@@ -240,8 +240,8 @@ describe('C7 — runtime and façade boundaries are unchanged', () => {
 });
 
 describe('C7 — registries', () => {
-  it('keeps the object count at 34', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(37);
+  it('keeps the object count at 40', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(40);
   });
 
   it('promotes the webhook event ledger to AVAILABLE', () => {
