@@ -182,3 +182,46 @@ export function buildApproveActivateBody(input: ApproveActivateInput) {
     correlationId: input.correlationId ?? null,
   };
 }
+
+/**
+ * Bounded, read-only deployment identity request. The revisions are resolved
+ * SERVER-SIDE only; the browser supplies nothing.
+ */
+export function buildDeploymentStatusBody() {
+  return { action: 'deployment_status' as const };
+}
+
+export interface DeploymentStatus {
+  environment: string | null;
+  runtime_revision: string | null;
+  dispatcher_revision: string | null;
+  release_identity: string | null;
+  deployment_revision_mismatch: boolean;
+  certification: {
+    certification_state?: string | null;
+    certified_commit?: string | null;
+    workflow_run_id?: string | null;
+    certified_at?: string | null;
+  } | null;
+}
+
+/**
+ * Trusted environment confirmation. The browser may only ever REQUEST a
+ * classification; the Edge boundary re-checks privileged capability, refuses a
+ * `non_production` claim unless trusted deployment metadata declares it, writes
+ * the protected singleton and records an audit event. It never certifies a
+ * commit and never enables delivery.
+ */
+export function buildConfirmEnvironmentBody(input: {
+  environment: 'production' | 'non_production';
+  reason?: string | null;
+  correlationId?: string | null;
+}) {
+  return {
+    action: 'confirm_environment' as const,
+    environment: input.environment,
+    reason: input.reason ?? null,
+    correlationId: input.correlationId ?? null,
+  };
+}
+
