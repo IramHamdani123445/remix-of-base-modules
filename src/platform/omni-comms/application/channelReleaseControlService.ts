@@ -239,9 +239,69 @@ export function buildCertifyDeploymentBody() {
  * Bounded, read-only request for the single held business message so the
  * controlled pilot can be prefilled from real governing facts instead of being
  * retyped. It claims nothing and creates no delivery.
+ *
+ * The scope is REVALIDATED server-side: naming an organisation (or department)
+ * the actor may not operate is refused, and the response carries a masked
+ * recipient plus a one-way hash only — never a raw address.
  */
-export function buildHeldPilotCandidateBody(organizationId: string) {
-  return { action: 'held_pilot_candidate' as const, organizationId };
+export function buildHeldPilotCandidateBody(
+  organizationId: string,
+  departmentId?: string | null,
+) {
+  return {
+    action: 'held_pilot_candidate' as const,
+    organizationId,
+    ...(departmentId ? { departmentId } : {}),
+  };
+}
+
+/**
+ * FINAL controlled business send request. The browser names ONLY the Release
+ * Control it is looking at; the trusted boundary revalidates the release,
+ * resolves EXACTLY ONE authorised held job and dispatches it. Passing
+ * `confirmOnly` renders the pre-send confirmation without dispatching.
+ */
+export function buildControlledSendBody(
+  releaseControlId: string,
+  options?: { confirmOnly?: boolean; correlationId?: string | null },
+) {
+  return {
+    action: 'release_one_controlled_message' as const,
+    releaseControlId,
+    ...(options?.confirmOnly ? { confirmOnly: true } : {}),
+    ...(options?.correlationId ? { correlationId: options.correlationId } : {}),
+  };
+}
+
+export interface ControlledSendConfirmation {
+  module: string | null;
+  event_code: string | null;
+  release_state: string | null;
+  held_authorized_messages: number;
+  recipient_masked: string | null;
+  attempts: number;
+  provider_calls: number;
+  remaining_total_allowance: number;
+  certification: string;
+  release_snapshot: string;
+  pilot_safety: string;
+  live_delivery_enabled: boolean;
+}
+
+export interface ControlledSendResult {
+  ok: boolean;
+  code: string;
+  confirmation: ControlledSendConfirmation | null;
+  dispatched: boolean;
+  live_delivery_enabled: boolean;
+  dispatch?: {
+    claimed_jobs: number;
+    blocker: string | null;
+    blockers: string[];
+    results: Record<string, unknown>[];
+    error: string | null;
+    detail: string | null;
+  };
 }
 
 export interface HeldPilotCandidate {
@@ -255,8 +315,12 @@ export interface HeldPilotCandidate {
     event_code: string | null;
     caller_module_code: string | null;
     department_id: string | null;
-    recipient: string | null;
+    /** Masked only. A raw recipient never crosses the trusted boundary. */
+    recipient_masked: string | null;
+    /** One-way hash used to configure the pilot recipient rule. */
+    recipient_hash: string | null;
   } | null;
 }
+
 
 

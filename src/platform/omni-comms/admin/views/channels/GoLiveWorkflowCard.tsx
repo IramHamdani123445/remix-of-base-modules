@@ -30,7 +30,9 @@ export const GoLiveWorkflowCard: React.FC<{ workflow: GoLiveWorkflow }> = ({ wor
     <CardHeader>
       <CardTitle className="flex items-center gap-2">
         Go-Live workflow
-        <Badge variant="secondary">{workflow.progressLabel}</Badge>
+        <Badge variant="secondary">
+          Operator workflow: {workflow.progressLabel} steps
+        </Badge>
       </CardTitle>
       <CardDescription>
         {workflow.currentStage
@@ -38,6 +40,8 @@ export const GoLiveWorkflowCard: React.FC<{ workflow: GoLiveWorkflow }> = ({ wor
           : 'Every governance step is complete.'}
         {' '}
         Steps are evaluated server-side; completing one here never relaxes a database gate.
+        This counter tracks the OPERATOR workflow only — it is not the production
+        readiness evidence counter shown on the readiness summary.
       </CardDescription>
     </CardHeader>
     <CardContent>

@@ -31,11 +31,14 @@ import {
   buildApproveActivateBody,
   buildCertifyDeploymentBody,
   buildConfirmEnvironmentBody,
+  buildControlledSendBody,
   buildDeploymentStatusBody,
   buildHeldPilotCandidateBody,
+  type ControlledSendResult,
   type DeploymentStatus,
   type HeldPilotCandidate,
 } from '@/platform/omni-comms/application/channelReleaseControlService';
+
 import {
   applySingleMessagePilotPreset,
   SINGLE_MESSAGE_PILOT_LABEL,
@@ -56,7 +59,12 @@ import {
   type ReleaseCheckState,
 } from '@/platform/omni-comms/application/channelReleaseControlTypes';
 import type { ChannelReleaseControlTransport } from '@/platform/omni-comms/admin/hooks/useChannelReleaseControlTransport';
-import { useOmniCommsDispatchTransport } from '@/platform/omni-comms/admin/hooks/useOmniCommsDispatchTransport';
+import { listProducerEventBindings } from '@/platform/omni-comms/application/producerIntegrationsService';
+import {
+  buildModuleEnablementMatrix,
+  sendingModules,
+  type ModuleEnablementRow,
+} from './moduleEnablementMatrix';
 import { buildGoLiveWorkflow } from './goLiveWorkflow';
 import { GoLiveWorkflowCard } from './GoLiveWorkflowCard';
 import { DeferredCapabilityCard, Detail, toastError } from './channelFormPrimitives';
@@ -127,7 +135,12 @@ export const ChannelReleaseControlTab: React.FC<{
   const [deploymentLoading, setDeploymentLoading] = useState(false);
   const [candidate, setCandidate] = useState<HeldPilotCandidate | null>(null);
   const [dispatchResult, setDispatchResult] = useState<string | null>(null);
-  const dispatchTransport = useOmniCommsDispatchTransport();
+  const [preSend, setPreSend] = useState<ControlledSendResult | null>(null);
+  // Masked value -> one-way hash, so a pilot rule can be configured without a
+  // raw recipient ever existing in the browser.
+  const [recipientHashes, setRecipientHashes] = useState<Record<string, string>>({});
+  const [moduleRows, setModuleRows] = useState<ModuleEnablementRow[]>([]);
+
 
   const release = summary?.release ?? null;
   const readOnlyReference = isReferenceRelease(release);
@@ -219,19 +232,41 @@ export const ChannelReleaseControlTab: React.FC<{
     });
   }, [transport, run, loadDeployment]);
 
-  /** Bounded, read-only held-message probe. Claims nothing, sends nothing. */
+  /**
+   * Bounded, read-only held-message probe. Claims nothing, sends nothing.
+   * The server revalidates the tenant scope and returns a masked recipient
+   * plus a one-way hash only.
+   */
   const loadCandidate = useCallback(async () => {
     if (!transport || !supported || !orgId) return;
     try {
-      const res = await transport.invoke(buildHeldPilotCandidateBody(orgId));
+      const res = await transport.invoke(
+        buildHeldPilotCandidateBody(orgId, departmentId ?? null),
+      );
       if (res.error) return;
       setCandidate(res.data as HeldPilotCandidate);
     } catch {
       setCandidate(null);
     }
-  }, [transport, supported, orgId]);
+  }, [transport, supported, orgId, departmentId]);
 
   useEffect(() => { void loadCandidate(); }, [loadCandidate]);
+
+  /** Read-only module enablement truth. Changes nothing. */
+  useEffect(() => {
+    if (!client || !orgId || !supported) return;
+    void (async () => {
+      try {
+        const bindings = await listProducerEventBindings(client, {
+          organizationId: orgId,
+          departmentId: departmentId ?? null,
+        });
+        setModuleRows(buildModuleEnablementMatrix(bindings));
+      } catch {
+        setModuleRows(buildModuleEnablementMatrix([]));
+      }
+    })();
+  }, [client, orgId, departmentId, supported]);
 
   const certifyDeployment = useCallback(() => {
     if (!transport) return;
@@ -242,14 +277,39 @@ export const ChannelReleaseControlTab: React.FC<{
     });
   }, [transport, run, loadDeployment]);
 
+  /**
+   * Server-derived pre-send confirmation. Renders the exact facts of the one
+   * authorised message. `confirmOnly` dispatches nothing.
+   */
+  const confirmControlledSend = useCallback(async () => {
+    if (!transport || !release) return;
+    const res = await transport.invoke(
+      buildControlledSendBody(release.id, { confirmOnly: true }),
+    );
+    setPreSend((res.data as ControlledSendResult) ?? null);
+  }, [transport, release]);
+
+  useEffect(() => { void confirmControlledSend(); }, [confirmControlledSend]);
+
+  /**
+   * FINAL controlled business send. The browser names only this Release
+   * Control; the trusted boundary revalidates it and resolves the one exact
+   * authorised held job.
+   */
   const releaseOneMessage = useCallback(() => {
+    if (!transport || !release) return;
     void run('Controlled release requested', async () => {
-      const res = await dispatchTransport.releaseOneMessage();
+      const res = await transport.invoke(buildControlledSendBody(release.id));
       if (res.error) throw new Error(res.error.message ?? 'Controlled release failed');
-      setDispatchResult(JSON.stringify(res.data));
+      const result = res.data as ControlledSendResult;
+      setPreSend(result);
+      setDispatchResult(
+        `${result.code}: claimed ${result.dispatch?.claimed_jobs ?? 0}`
+        + `${result.dispatch?.blocker ? ` — ${result.dispatch.blocker}` : ''}`,
+      );
       await loadCandidate();
     });
-  }, [dispatchTransport, run, loadCandidate]);
+  }, [transport, release, run, loadCandidate]);
 
   const workflow = useMemo(
     () => buildGoLiveWorkflow({
@@ -269,15 +329,21 @@ export const ChannelReleaseControlTab: React.FC<{
   const prefillFromHeldMessage = useCallback(() => {
     const held = candidate?.candidate;
     if (!held) return;
+    // Only the masked value is ever shown; the hash configures the rule so no
+    // raw recipient is required in the browser.
+    if (held.recipient_masked && held.recipient_hash) {
+      setRecipientHashes({ [held.recipient_masked]: held.recipient_hash });
+    }
     setForm((f) => ({
       ...applySingleMessagePilotPreset(f),
       eventCodes: held.event_code ?? f.eventCodes,
       callerModules: held.caller_module_code ?? f.callerModules,
-      recipients: held.recipient ?? f.recipients,
+      recipients: held.recipient_masked ?? f.recipients,
       ...buildReleaseWindow(2),
     }));
     toast.success('Pilot prefilled from the held business message. Review, then save.');
   }, [candidate]);
+
 
 
   if (!supported) {
@@ -301,7 +367,12 @@ export const ChannelReleaseControlTab: React.FC<{
         permittedEventCodes: splitList(form.eventCodes),
         permittedCallerModules: splitList(form.callerModules),
         permittedModes: ['queued'],
-        recipientInput: splitList(form.recipients).map((target) => ({ target })),
+        // A masked value prefilled from the held message is submitted as
+        // masked + hash; a value typed by hand is normalised server-side.
+        recipientInput: splitList(form.recipients).map((value) =>
+          recipientHashes[value]
+            ? { target_masked: value, target_hash: recipientHashes[value] }
+            : { target: value }),
         maxRecipientsPerRequest: Number(form.perRequest),
         maxMessagesPerHour: Number(form.perHour),
         maxMessagesPerDay: Number(form.perDay),
@@ -777,6 +848,38 @@ export const ChannelReleaseControlTab: React.FC<{
 
       <Card>
         <CardHeader>
+          <CardTitle>Module enablement</CardTitle>
+          <CardDescription>
+            Read-only truth for every business module. Only a module with an ACTIVE
+            binding that permits the queued mode can produce a controlled business
+            Email; everything else is non-sending. Nothing here can be edited.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {moduleRows.map((row) => (
+            <div
+              key={`${row.moduleCode}:${row.eventCode}`}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-sm"
+            >
+              <div>
+                <p className="font-medium">{row.moduleCode}</p>
+                <p className="text-xs text-muted-foreground">
+                  {row.eventCode} — {row.statement}
+                </p>
+              </div>
+              <Badge variant={row.canSendBusinessEmail ? 'default' : 'secondary'}>
+                {row.canSendBusinessEmail ? 'Sending' : row.modes}
+              </Badge>
+            </div>
+          ))}
+          <p className="text-xs text-muted-foreground">
+            Authorised to send: {sendingModules(moduleRows).join(', ') || 'none'}.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Controlled business release</CardTitle>
           <CardDescription>
             The only action on this screen that contacts the Email provider. It asks the
@@ -802,6 +905,46 @@ export const ChannelReleaseControlTab: React.FC<{
             />
           </div>
 
+          {preSend?.confirmation && (
+            <div className="rounded-md border p-3">
+              <p className="mb-2 text-sm font-medium">Final pre-send confirmation</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Detail label="Module" value={preSend.confirmation.module ?? '—'} />
+                <Detail label="Event" value={preSend.confirmation.event_code ?? '—'} />
+                <Detail label="Release state" value={preSend.confirmation.release_state ?? '—'} />
+                <Detail
+                  label="Held authorised messages"
+                  value={String(preSend.confirmation.held_authorized_messages)}
+                />
+                <Detail
+                  label="Recipient (masked)"
+                  value={preSend.confirmation.recipient_masked ?? '—'}
+                />
+                <Detail label="Attempts" value={String(preSend.confirmation.attempts)} />
+                <Detail
+                  label="Provider calls so far"
+                  value={String(preSend.confirmation.provider_calls)}
+                />
+                <Detail
+                  label="Remaining total allowance"
+                  value={String(preSend.confirmation.remaining_total_allowance)}
+                />
+                <Detail label="Certification" value={preSend.confirmation.certification} />
+                <Detail label="Release snapshot" value={preSend.confirmation.release_snapshot} />
+                <Detail label="Pilot safety" value={preSend.confirmation.pilot_safety} />
+                <Detail label="Unrestricted live delivery" value="disabled" />
+              </div>
+            </div>
+          )}
+
+          {preSend && !preSend.ok && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Server refuses the controlled send</AlertTitle>
+              <AlertDescription>{preSend.code}</AlertDescription>
+            </Alert>
+          )}
+
           {!workflow.readyForControlledSend && (
             <Alert>
               <Info className="h-4 w-4" />
@@ -815,7 +958,7 @@ export const ChannelReleaseControlTab: React.FC<{
 
           <Button
             variant="destructive"
-            disabled={busy || !canApprove || !workflow.readyForControlledSend}
+            disabled={busy || !canApprove || !workflow.readyForControlledSend || preSend?.ok !== true}
             onClick={releaseOneMessage}
           >
             Release one controlled message

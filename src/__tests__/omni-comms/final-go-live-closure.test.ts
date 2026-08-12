@@ -13,6 +13,7 @@ import {
 } from '@/platform/omni-comms/application/releaseWindowPresets';
 import {
   buildCertifyDeploymentBody,
+  buildControlledSendBody,
   buildHeldPilotCandidateBody,
   type DeploymentStatus,
   type HeldPilotCandidate,
@@ -41,7 +42,8 @@ const candidate: HeldPilotCandidate = {
     event_code: 'BENEFITS.CLAIM.SUBMITTED',
     caller_module_code: 'BENEFITS',
     department_id: 'dept',
-    recipient: 'pilot@example.test',
+    recipient_masked: 'p***@example.test',
+    recipient_hash: 'f'.repeat(64),
   },
 };
 
@@ -186,6 +188,23 @@ describe('Trusted boundary request builders', () => {
     expect(buildHeldPilotCandidateBody('org-1')).toEqual({
       action: 'held_pilot_candidate',
       organizationId: 'org-1',
+    });
+    expect(buildHeldPilotCandidateBody('org-1', 'dept-1')).toEqual({
+      action: 'held_pilot_candidate',
+      organizationId: 'org-1',
+      departmentId: 'dept-1',
+    });
+  });
+
+  it('names only the release control for the final controlled send', () => {
+    expect(buildControlledSendBody('rel-1')).toEqual({
+      action: 'release_one_controlled_message',
+      releaseControlId: 'rel-1',
+    });
+    expect(buildControlledSendBody('rel-1', { confirmOnly: true })).toEqual({
+      action: 'release_one_controlled_message',
+      releaseControlId: 'rel-1',
+      confirmOnly: true,
     });
   });
 });

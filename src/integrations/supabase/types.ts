@@ -121324,6 +121324,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_certification_authority: {
+        Args: { p_actor: string }
+        Returns: Json
+      }
       omni_comms_priv_certification_posture: { Args: never; Returns: Json }
       omni_comms_priv_channel_account_lifecycle: {
         Args: {
@@ -121765,6 +121769,8 @@ export type Database = {
           p_correlation_id: string
           p_deployed_revision: string
           p_execution_context?: string
+          p_expected_job_id?: string
+          p_release_control_id?: string
           p_scopes?: Json
           p_worker: string
         }
@@ -121888,6 +121894,14 @@ export type Database = {
           p_request_blockers: string[]
           p_request_id: string
           p_resolution_snapshot: Json
+        }
+        Returns: Json
+      }
+      omni_comms_priv_held_pilot_candidate: {
+        Args: {
+          p_actor: string
+          p_department_id?: string
+          p_organization_id: string
         }
         Returns: Json
       }
@@ -122187,6 +122201,14 @@ export type Database = {
         Args: { p_schema: Json }
         Returns: undefined
       }
+      omni_comms_priv_release_controlled_send_preflight: {
+        Args: {
+          p_actor: string
+          p_deployed_revision?: string
+          p_release_control_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_release_decision_snapshot_bounded: {
         Args: { p_snapshot: Json }
         Returns: boolean
@@ -122240,6 +122262,14 @@ export type Database = {
           p_event_code: string
           p_organization_id: string
           p_requested_channels: string[]
+        }
+        Returns: Json
+      }
+      omni_comms_priv_scope_permitted: {
+        Args: {
+          p_actor: string
+          p_department_id: string
+          p_organization_id: string
         }
         Returns: Json
       }

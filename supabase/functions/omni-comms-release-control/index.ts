@@ -166,9 +166,22 @@ Deno.serve(async (req) => {
    * deployment enables no delivery, contacts no provider and sends nothing.
    */
   if (body.action === 'certify_deployment') {
-    const auth = await anon.rpc('omni_comms_dispatch_tick_authorize');
-    if (auth.error || (auth.data as Record<string, unknown> | null)?.allowed !== true) {
-      return json({ error: 'certification_not_permitted' }, 403);
+    // Certification mutates PROTECTED GLOBAL runtime state, so an operate-only
+    // departmental user may never perform it. Authority is decided server-side.
+    const svcAuth = serviceClient();
+    const { data: authority } = await svcAuth.rpc('omni_comms_priv_certification_authority', {
+      p_actor: actorId,
+    });
+    if ((authority as Record<string, unknown> | null)?.allowed !== true) {
+      return json(
+        {
+          error: 'certification_authority_required',
+          detail:
+            'Deployment certification changes protected global runtime state and '
+            + 'requires a platform administrator.',
+        },
+        403,
+      );
     }
 
     const runtimeRevision = deployedRevision();
@@ -233,67 +246,124 @@ Deno.serve(async (req) => {
   /**
    * Bounded, read-only prefill source for the controlled pilot.
    *
-   * Returns the governing facts of the single held business job so the
-   * administrator never has to retype an event code, module code or recipient.
-   * It claims nothing, mutates nothing and creates no delivery.
+   * The SERVER decides whether the requested tenant scope is one this actor
+   * may actually see, and the projection carries a masked recipient plus a
+   * one-way hash only — never a raw address. It claims nothing, mutates
+   * nothing and creates no delivery.
    */
   if (body.action === 'held_pilot_candidate') {
-    const auth = await anon.rpc('omni_comms_dispatch_tick_authorize');
-    if (auth.error || (auth.data as Record<string, unknown> | null)?.allowed !== true) {
-      return json({ error: 'not_permitted' }, 403);
-    }
     const organizationId = typeof body.organizationId === 'string' ? body.organizationId : '';
     if (!organizationId) return json({ error: 'invalid_body' }, 400);
+    const departmentId = typeof body.departmentId === 'string' && body.departmentId
+      ? body.departmentId
+      : null;
 
     const svc = serviceClient();
-    const { data: jobs, error: jobError } = await svc
-      .from('omni_comms_dispatch_job')
-      .select(
-        'id, status, hold_reason, mode, attempt_count, is_runnable, created_at, '
-        + 'organization_id, '
-        + 'omni_comms_request!inner(caller_module_code, event_definition_id), '
-        + 'omni_comms_message!inner(department_id, destination_snapshot)',
-      )
-      .eq('organization_id', organizationId)
-      .eq('status', 'held')
-      .order('created_at', { ascending: true })
-      .limit(5);
-    if (jobError) return json({ error: 'held_candidate_unavailable' }, 400);
-
-    const rows = (jobs ?? []) as Record<string, unknown>[];
-    if (rows.length !== 1) {
-      return json({ candidate: null, held_job_count: rows.length });
-    }
-    const row = rows[0];
-    const request = (row.omni_comms_request ?? {}) as Record<string, unknown>;
-    const message = (row.omni_comms_message ?? {}) as Record<string, unknown>;
-    const destination = (message.destination_snapshot ?? {}) as Record<string, unknown>;
-
-    let eventCode: string | null = null;
-    if (typeof request.event_definition_id === 'string') {
-      const { data: ev } = await svc
-        .from('omni_comms_event_definition')
-        .select('code')
-        .eq('id', request.event_definition_id)
-        .maybeSingle();
-      eventCode = typeof ev?.code === 'string' ? ev.code : null;
-    }
-
-    return json({
-      held_job_count: 1,
-      candidate: {
-        job_id: row.id,
-        hold_reason: row.hold_reason ?? null,
-        mode: row.mode ?? null,
-        attempt_count: row.attempt_count ?? 0,
-        is_runnable: row.is_runnable === true,
-        event_code: eventCode,
-        caller_module_code: request.caller_module_code ?? null,
-        department_id: message.department_id ?? null,
-        recipient: typeof destination.email === 'string' ? destination.email : null,
+    const { data, error: candidateError } = await svc.rpc(
+      'omni_comms_priv_held_pilot_candidate',
+      {
+        p_actor: actorId,
+        p_organization_id: organizationId,
+        p_department_id: departmentId,
       },
+    );
+    if (candidateError) return json({ error: 'held_candidate_unavailable' }, 400);
+    const result = (data ?? {}) as Record<string, unknown>;
+    if (result.allowed !== true) {
+      return json({ error: String(result.code ?? 'held_candidate_scope_not_permitted') }, 403);
+    }
+    return json({
+      held_job_count: result.held_job_count ?? 0,
+      candidate: result.candidate ?? null,
     });
   }
+
+  /**
+   * FINAL controlled business send.
+   *
+   * The browser names ONLY the Release Control it is looking at. The server
+   * revalidates the entire release, resolves EXACTLY ONE authorised held job,
+   * and hands the dispatcher a trusted internal ticket bound to that exact
+   * release and job. The browser never selects a job, a recipient, a message
+   * or a provider.
+   */
+  if (body.action === 'release_one_controlled_message') {
+    const auth = await anon.rpc('omni_comms_dispatch_tick_authorize');
+    if (auth.error || (auth.data as Record<string, unknown> | null)?.allowed !== true) {
+      return json({ error: 'controlled_send_not_permitted' }, 403);
+    }
+    const releaseId = typeof body.releaseControlId === 'string' ? body.releaseControlId : '';
+    if (!releaseId) return json({ error: 'invalid_body' }, 400);
+
+    const revision = deployedRevision();
+    if (!revision) {
+      return json({ error: 'deployed_revision_unavailable' }, 409);
+    }
+
+    const svc = serviceClient();
+    const { data: pre, error: preError } = await svc.rpc(
+      'omni_comms_priv_release_controlled_send_preflight',
+      {
+        p_actor: actorId,
+        p_release_control_id: releaseId,
+        p_deployed_revision: revision,
+      },
+    );
+    if (preError) return json({ error: 'controlled_send_preflight_failed' }, 400);
+    const preflight = (pre ?? {}) as Record<string, unknown>;
+
+    // A confirmation-only probe never dispatches; it renders the final
+    // pre-send confirmation card from server-derived facts.
+    if (body.confirmOnly === true || preflight.ok !== true) {
+      return json({
+        ok: preflight.ok === true,
+        code: preflight.code ?? 'controlled_send_blocked',
+        confirmation: preflight.confirmation ?? null,
+        live_delivery_enabled: false,
+        dispatched: false,
+      }, preflight.ok === true ? 200 : 409);
+    }
+
+    const dispatchRes = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/functions/v1/omni-comms-dispatch`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'Content-Type': 'application/json',
+          'x-omni-comms-dispatch-ticket': 'release-control',
+        },
+        body: JSON.stringify({
+          batchLimit: 1,
+          correlationId: typeof body.correlationId === 'string' ? body.correlationId : null,
+          releaseControlId: preflight.release_control_id,
+          expectedJobId: preflight.job_id,
+          scopes: [{
+            organization_id: preflight.organization_id,
+            department_id: preflight.department_id ?? null,
+          }],
+        }),
+      },
+    );
+    const dispatch = await dispatchRes.json().catch(() => ({}));
+
+    return json({
+      ok: dispatchRes.ok,
+      code: 'controlled_release_dispatched',
+      confirmation: preflight.confirmation ?? null,
+      dispatched: true,
+      dispatch: {
+        claimed_jobs: dispatch?.claimed_jobs ?? 0,
+        blocker: dispatch?.blocker ?? null,
+        blockers: dispatch?.blockers ?? [],
+        results: dispatch?.results ?? [],
+        error: dispatch?.error ?? null,
+        detail: dispatch?.detail ?? null,
+      },
+      live_delivery_enabled: false,
+    }, dispatchRes.ok ? 200 : 409);
+  }
+
 
   if (body.action !== 'approve_activate') return json({ error: 'unsupported_action' }, 400);
 
