@@ -59,8 +59,16 @@ export function parseLayoutSlots(layout: LayoutSnapshot): LayoutSlotDefinition[]
   return defs.sort((a, b) => (a.order - b.order) || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
 }
 
+/**
+ * Canonical body slot. `content_body` is NOT an asset slot: it carries the
+ * rendered template body, exactly as the layout-version guard and the shared
+ * manifest composer already treat it. It therefore never requires an asset
+ * and is never satisfied from the asset manifest.
+ */
+export const BODY_SLOT_CODE = "content_body";
+
 export function renderSlots(input: SlotRenderInput): SlotRenderResult {
-  const defs = parseLayoutSlots(input.layout);
+  const defs = parseLayoutSlots(input.layout).filter((d) => d.code !== BODY_SLOT_CODE);
 
   const bySlot = new Map<string, SlotRenderInput["assets"][number]>();
   for (const asset of input.assets) {
