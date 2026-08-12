@@ -31,8 +31,26 @@ export type BusinessProducerOutcome =
   | 'blocked'
   | 'unavailable';
 
+/**
+ * Canonical persisted recipient vocabulary.
+ *
+ * This list mirrors the `omni_comms_recipient_recipient_type_check`
+ * constraint exactly. A producer that invents its own business word (e.g.
+ * `claimant`, `employer`) cannot be persisted, so the business meaning of a
+ * recipient belongs in `recipientReference` / payload — never in this field.
+ */
+export const OMNI_COMMS_RECIPIENT_TYPES = [
+  'user',
+  'contact',
+  'group',
+  'external',
+  'system',
+  'synthetic_test',
+] as const;
+export type OmniCommsRecipientType = (typeof OMNI_COMMS_RECIPIENT_TYPES)[number];
+
 export interface BusinessProducerRecipient {
-  recipientType: string;
+  recipientType: OmniCommsRecipientType;
   recipientReference?: string | null;
   displayName?: string | null;
   locale?: string | null;
