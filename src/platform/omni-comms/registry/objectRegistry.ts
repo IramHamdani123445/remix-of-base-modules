@@ -264,6 +264,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Gate 3 — Path 2 runtime environment record',
   },
   {
+    name: 'omni_comms_runtime_environment_event',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Append-only audit of trusted runtime-environment confirmations (who confirmed, from/to classification, reason and bounded evidence). It enables no delivery and certifies no commit.',
+    status: 'AVAILABLE',
+    introductionStory: 'Production Release Control — environment authority',
+  },
+  {
     name: 'omni_comms_runtime_certification',
     category: 'runtime',
     epic: 6,
