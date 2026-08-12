@@ -11,7 +11,7 @@
  *   - Never decides readiness in the browser, never contacts a provider,
  *     never bypasses the two-person live approval.
  */
-import type { OmniCommsRpcClient } from '@/platform/omni-comms/infrastructure/rpcClient';
+import type { OmniCommsRpcClient } from './omniCommsRpcErrors';
 
 export type DeliveryToggleState =
   | 'on'
