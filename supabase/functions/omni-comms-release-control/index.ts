@@ -157,7 +157,146 @@ Deno.serve(async (req) => {
     return json({ environment: data, live_delivery_enabled: false });
   }
 
+  /**
+   * Trusted deployment certification.
+   *
+   * The browser supplies NOTHING. Both revisions are resolved server-side and
+   * must be identical full 40-character SHAs. The database refuses the record
+   * unless the runtime environment is already resolved. Certifying a
+   * deployment enables no delivery, contacts no provider and sends nothing.
+   */
+  if (body.action === 'certify_deployment') {
+    const auth = await anon.rpc('omni_comms_dispatch_tick_authorize');
+    if (auth.error || (auth.data as Record<string, unknown> | null)?.allowed !== true) {
+      return json({ error: 'certification_not_permitted' }, 403);
+    }
+
+    const runtimeRevision = deployedRevision();
+    let dispatcherRevision: string | null = null;
+    try {
+      const res = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/functions/v1/omni-comms-dispatch/health`,
+        { headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}` } },
+      );
+      if (res.ok) {
+        const health = await res.json();
+        const raw = String(health?.revision ?? '').trim().toLowerCase();
+        dispatcherRevision = /^[0-9a-f]{40}$/.test(raw) ? raw : null;
+      }
+    } catch {
+      dispatcherRevision = null;
+    }
+
+    if (!runtimeRevision || !dispatcherRevision) {
+      return json(
+        {
+          error: 'deployed_revision_unavailable',
+          detail:
+            'A full 40-character deployed revision could not be read from both the '
+            + 'runtime and the dispatcher, so a release identity cannot be proven.',
+        },
+        409,
+      );
+    }
+    if (runtimeRevision !== dispatcherRevision) {
+      return json(
+        {
+          error: 'deployment_revision_mismatch',
+          detail:
+            'The runtime and the dispatcher report different deployed revisions. '
+            + 'Certification is refused until both report the same revision.',
+        },
+        409,
+      );
+    }
+
+    const svc = serviceClient();
+    const { data, error: certError } = await svc.rpc(
+      'omni_comms_priv_record_runtime_certification',
+      {
+        p_certification_state: 'certified',
+        p_certified_commit: runtimeRevision,
+        p_workflow_run_id: `release-control-edge:${actorId}:${new Date().toISOString()}`,
+        p_certified_at: new Date().toISOString(),
+        p_deployed_revision: dispatcherRevision,
+      },
+    );
+    if (certError) return json({ error: certError.message ?? 'certification_failed' }, 400);
+    return json({
+      certification: data,
+      runtime_revision: runtimeRevision,
+      dispatcher_revision: dispatcherRevision,
+      live_delivery_enabled: false,
+    });
+  }
+
+  /**
+   * Bounded, read-only prefill source for the controlled pilot.
+   *
+   * Returns the governing facts of the single held business job so the
+   * administrator never has to retype an event code, module code or recipient.
+   * It claims nothing, mutates nothing and creates no delivery.
+   */
+  if (body.action === 'held_pilot_candidate') {
+    const auth = await anon.rpc('omni_comms_dispatch_tick_authorize');
+    if (auth.error || (auth.data as Record<string, unknown> | null)?.allowed !== true) {
+      return json({ error: 'not_permitted' }, 403);
+    }
+    const organizationId = typeof body.organizationId === 'string' ? body.organizationId : '';
+    if (!organizationId) return json({ error: 'invalid_body' }, 400);
+
+    const svc = serviceClient();
+    const { data: jobs, error: jobError } = await svc
+      .from('omni_comms_dispatch_job')
+      .select(
+        'id, status, hold_reason, mode, attempt_count, is_runnable, created_at, '
+        + 'organization_id, '
+        + 'omni_comms_request!inner(caller_module_code, event_definition_id), '
+        + 'omni_comms_message!inner(department_id, destination_snapshot)',
+      )
+      .eq('organization_id', organizationId)
+      .eq('status', 'held')
+      .order('created_at', { ascending: true })
+      .limit(5);
+    if (jobError) return json({ error: 'held_candidate_unavailable' }, 400);
+
+    const rows = (jobs ?? []) as Record<string, unknown>[];
+    if (rows.length !== 1) {
+      return json({ candidate: null, held_job_count: rows.length });
+    }
+    const row = rows[0];
+    const request = (row.omni_comms_request ?? {}) as Record<string, unknown>;
+    const message = (row.omni_comms_message ?? {}) as Record<string, unknown>;
+    const destination = (message.destination_snapshot ?? {}) as Record<string, unknown>;
+
+    let eventCode: string | null = null;
+    if (typeof request.event_definition_id === 'string') {
+      const { data: ev } = await svc
+        .from('omni_comms_event_definition')
+        .select('code')
+        .eq('id', request.event_definition_id)
+        .maybeSingle();
+      eventCode = typeof ev?.code === 'string' ? ev.code : null;
+    }
+
+    return json({
+      held_job_count: 1,
+      candidate: {
+        job_id: row.id,
+        hold_reason: row.hold_reason ?? null,
+        mode: row.mode ?? null,
+        attempt_count: row.attempt_count ?? 0,
+        is_runnable: row.is_runnable === true,
+        event_code: eventCode,
+        caller_module_code: request.caller_module_code ?? null,
+        department_id: message.department_id ?? null,
+        recipient: typeof destination.email === 'string' ? destination.email : null,
+      },
+    });
+  }
+
   if (body.action !== 'approve_activate') return json({ error: 'unsupported_action' }, 400);
+
 
   const releaseControlId = typeof body.releaseControlId === 'string' ? body.releaseControlId : '';
   const expectedUpdatedAt = typeof body.expectedUpdatedAt === 'string' ? body.expectedUpdatedAt : '';

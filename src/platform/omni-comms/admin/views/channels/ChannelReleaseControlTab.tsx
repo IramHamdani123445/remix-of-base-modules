@@ -29,14 +29,21 @@ import {
   suspendChannelRelease,
   upsertChannelReleaseConfiguration,
   buildApproveActivateBody,
+  buildCertifyDeploymentBody,
   buildConfirmEnvironmentBody,
   buildDeploymentStatusBody,
+  buildHeldPilotCandidateBody,
   type DeploymentStatus,
+  type HeldPilotCandidate,
 } from '@/platform/omni-comms/application/channelReleaseControlService';
 import {
   applySingleMessagePilotPreset,
   SINGLE_MESSAGE_PILOT_LABEL,
 } from '@/platform/omni-comms/application/releasePilotPresets';
+import {
+  buildReleaseWindow,
+  RELEASE_WINDOW_PRESETS,
+} from '@/platform/omni-comms/application/releaseWindowPresets';
 import {
   businessDispatchCheck,
   isControlledPilotGovernanceActive,
@@ -49,14 +56,18 @@ import {
   type ReleaseCheckState,
 } from '@/platform/omni-comms/application/channelReleaseControlTypes';
 import type { ChannelReleaseControlTransport } from '@/platform/omni-comms/admin/hooks/useChannelReleaseControlTransport';
+import { useOmniCommsDispatchTransport } from '@/platform/omni-comms/admin/hooks/useOmniCommsDispatchTransport';
+import { buildGoLiveWorkflow } from './goLiveWorkflow';
+import { GoLiveWorkflowCard } from './GoLiveWorkflowCard';
 import { DeferredCapabilityCard, Detail, toastError } from './channelFormPrimitives';
 import type { ChannelUiDefinition } from './channelUiRegistry';
 
 const SAFETY_NOTICE =
-  'Release Control governs whether business communications are ALLOWED. It does '
-  + 'not send anything. No provider is contacted from this screen, live delivery '
-  + 'stays disabled, and any job created under a controlled pilot remains held '
-  + 'and non-runnable until business dispatch is implemented.';
+  'Release Control governs whether business communications are ALLOWED. Configuring, '
+  + 'proposing and approving a pilot sends nothing and contacts no provider. '
+  + 'Unrestricted live delivery stays disabled at all times. Only the final '
+  + '"Release one controlled message" action asks the canonical dispatcher to release '
+  + 'the already-authorised held message — exactly one, inside the approved pilot limits.';
 
 const CHECK_TONE: Record<ReleaseCheckState, string> = {
   passed: 'text-emerald-600',
@@ -114,6 +125,9 @@ export const ChannelReleaseControlTab: React.FC<{
   const [suspendReason, setSuspendReason] = useState('');
   const [deployment, setDeployment] = useState<DeploymentStatus | null>(null);
   const [deploymentLoading, setDeploymentLoading] = useState(false);
+  const [candidate, setCandidate] = useState<HeldPilotCandidate | null>(null);
+  const [dispatchResult, setDispatchResult] = useState<string | null>(null);
+  const dispatchTransport = useOmniCommsDispatchTransport();
 
   const release = summary?.release ?? null;
   const readOnlyReference = isReferenceRelease(release);
@@ -205,6 +219,66 @@ export const ChannelReleaseControlTab: React.FC<{
     });
   }, [transport, run, loadDeployment]);
 
+  /** Bounded, read-only held-message probe. Claims nothing, sends nothing. */
+  const loadCandidate = useCallback(async () => {
+    if (!transport || !supported || !orgId) return;
+    try {
+      const res = await transport.invoke(buildHeldPilotCandidateBody(orgId));
+      if (res.error) return;
+      setCandidate(res.data as HeldPilotCandidate);
+    } catch {
+      setCandidate(null);
+    }
+  }, [transport, supported, orgId]);
+
+  useEffect(() => { void loadCandidate(); }, [loadCandidate]);
+
+  const certifyDeployment = useCallback(() => {
+    if (!transport) return;
+    void run('Deployment certified', async () => {
+      const res = await transport.invoke(buildCertifyDeploymentBody());
+      if (res.error) throw new Error(res.error.message ?? 'Certification failed');
+      await loadDeployment();
+    });
+  }, [transport, run, loadDeployment]);
+
+  const releaseOneMessage = useCallback(() => {
+    void run('Controlled release requested', async () => {
+      const res = await dispatchTransport.releaseOneMessage();
+      if (res.error) throw new Error(res.error.message ?? 'Controlled release failed');
+      setDispatchResult(JSON.stringify(res.data));
+      await loadCandidate();
+    });
+  }, [dispatchTransport, run, loadCandidate]);
+
+  const workflow = useMemo(
+    () => buildGoLiveWorkflow({
+      summary,
+      deployment,
+      candidate,
+      blockers: blockers.map((b) => b.code),
+      proposalActive,
+      sameActorAsProposer,
+      canConfigure,
+      canApprove,
+    }),
+    [summary, deployment, candidate, blockers, proposalActive, sameActorAsProposer,
+      canConfigure, canApprove],
+  );
+
+  const prefillFromHeldMessage = useCallback(() => {
+    const held = candidate?.candidate;
+    if (!held) return;
+    setForm((f) => ({
+      ...applySingleMessagePilotPreset(f),
+      eventCodes: held.event_code ?? f.eventCodes,
+      callerModules: held.caller_module_code ?? f.callerModules,
+      recipients: held.recipient ?? f.recipients,
+      ...buildReleaseWindow(2),
+    }));
+    toast.success('Pilot prefilled from the held business message. Review, then save.');
+  }, [candidate]);
+
 
   if (!supported) {
     return (
@@ -255,9 +329,13 @@ export const ChannelReleaseControlTab: React.FC<{
     <div className="space-y-4">
       <Alert>
         <ShieldCheck className="h-4 w-4" />
-        <AlertTitle>Governance only — nothing is sent from this screen</AlertTitle>
+        <AlertTitle>Governance first — only the final step contacts the provider</AlertTitle>
         <AlertDescription>{SAFETY_NOTICE}</AlertDescription>
       </Alert>
+
+      <GoLiveWorkflowCard workflow={workflow} />
+
+
 
       {readOnlyReference && (
         <Alert variant="destructive">
@@ -364,12 +442,31 @@ export const ChannelReleaseControlTab: React.FC<{
             </Alert>
           )}
 
+          {deployment
+            && deployment.certification?.certification_state !== 'certified'
+            && !deployment.deployment_revision_mismatch
+            && Boolean(deployment.release_identity)
+            && (deployment.environment === 'production'
+              || deployment.environment === 'non_production') && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border p-3">
+              <Button size="sm" disabled={busy || !canApprove} onClick={certifyDeployment}>
+                Certify this deployment
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                The Edge boundary re-reads both deployed revisions server-side and records
+                the certification only on an exact full 40-character match. It enables no
+                delivery and contacts no provider.
+              </span>
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground">
             Technical details — runtime {deployment?.runtime_revision ?? 'unavailable'};
             dispatcher {deployment?.dispatcher_revision ?? 'unavailable'}; certified{' '}
             {deployment?.certification?.certified_commit ?? 'none'}. Certification facts
             originate from the trusted certification workflow only.
           </p>
+
         </CardContent>
       </Card>
 
@@ -457,6 +554,25 @@ export const ChannelReleaseControlTab: React.FC<{
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          {candidate?.candidate && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border p-3">
+              <Button
+                type="button" size="sm"
+                disabled={!canConfigure || busy}
+                onClick={prefillFromHeldMessage}
+              >
+                Configure from held business message
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Uses the governing facts of held message{' '}
+                {String(candidate.candidate.job_id).slice(0, 8)} —{' '}
+                {candidate.candidate.event_code ?? 'unknown event'} from{' '}
+                {candidate.candidate.caller_module_code ?? 'unknown module'} — and applies the
+                single-message preset with a 2-hour window. Nothing is saved until you choose
+                Save configuration.
+              </span>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2 rounded-md border p-3">
             <Button
               type="button" size="sm" variant="secondary"
@@ -465,11 +581,23 @@ export const ChannelReleaseControlTab: React.FC<{
             >
               {SINGLE_MESSAGE_PILOT_LABEL}
             </Button>
+            {RELEASE_WINDOW_PRESETS.map((preset) => (
+              <Button
+                key={preset.id} type="button" size="sm" variant="outline"
+                title={preset.description}
+                disabled={!canConfigure || busy}
+                onClick={() => setForm((f) => ({ ...f, ...buildReleaseWindow(preset.hours) }))}
+              >
+                {preset.label}
+              </Button>
+            ))}
             <span className="text-xs text-muted-foreground">
-              Sets 1 recipient per request, 1 per hour, 1 per day and 1 in total. The
+              The single-message preset sets 1 recipient per request, 1 per hour, 1 per day and
+              1 in total. A window preset starts the pilot now and closes it automatically. All
               values stay visible below and must be reviewed before proposal.
             </span>
           </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
 
             <div>
@@ -646,6 +774,61 @@ export const ChannelReleaseControlTab: React.FC<{
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Controlled business release</CardTitle>
+          <CardDescription>
+            The only action on this screen that contacts the Email provider. It asks the
+            canonical dispatcher to release at most ONE already-authorised held message.
+            It creates nothing, chooses no template and can never exceed the approved
+            pilot limits — every check is re-evaluated server-side.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Detail
+              label="Held business messages"
+              value={String(candidate?.held_job_count ?? 0)}
+            />
+            <Detail
+              label="Held message"
+              value={candidate?.candidate?.job_id?.slice(0, 8) ?? '—'}
+            />
+            <Detail label="Hold reason" value={candidate?.candidate?.hold_reason ?? '—'} />
+            <Detail
+              label="Attempts so far"
+              value={String(candidate?.candidate?.attempt_count ?? 0)}
+            />
+          </div>
+
+          {!workflow.readyForControlledSend && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Not releasable yet</AlertTitle>
+              <AlertDescription>
+                {workflow.currentStage?.nextAction
+                  ?? 'Complete the Go-Live workflow steps above first.'}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <Button
+            variant="destructive"
+            disabled={busy || !canApprove || !workflow.readyForControlledSend}
+            onClick={releaseOneMessage}
+          >
+            Release one controlled message
+          </Button>
+
+          {dispatchResult && (
+            <p className="break-all text-xs text-muted-foreground">
+              Technical details — dispatcher response {dispatchResult}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader>
