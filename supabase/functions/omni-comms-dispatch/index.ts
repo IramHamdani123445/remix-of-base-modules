@@ -66,6 +66,19 @@ function json(body: unknown, status = 200): Response {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Non-mutating deployment identity probe. Reports the deployed revision only;
+  // it claims no job, contacts no provider and sends nothing.
+  if (req.method === "GET" && new URL(req.url).pathname.endsWith("/health")) {
+    const rev = DEPLOYED_REVISION.trim().toLowerCase();
+    return json({
+      function: "omni-comms-dispatch",
+      available: true,
+      revision: /^[0-9a-f]{40}$/.test(rev) ? rev : null,
+      revisionVerified: /^[0-9a-f]{40}$/.test(rev),
+    });
+  }
+
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SERVICE_ROLE) {
     return json({ error: "configuration_error" }, 503);

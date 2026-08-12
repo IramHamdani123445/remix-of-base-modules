@@ -44,13 +44,22 @@ export const OMNI_COMMS_PRODUCTION_HOSTS: readonly string[] = [
   'social-wellspring-app.lovable.app',
 ];
 
+/**
+ * Browser host inspection may only ever ESCALATE to `production`.
+ *
+ * A browser must NOT be able to classify its own deployment as
+ * `non_production`, because that classification unlocks the non-production
+ * safe-test tooling. Non-production can only be established by the protected
+ * database singleton, confirmed through the trusted Release Control Edge
+ * boundary from trusted deployment metadata.
+ */
 export function detectOmniCommsEnvironment(
   hostname?: string | null,
 ): OmniCommsEnvironment {
   const host = (hostname ?? '').trim().toLowerCase();
   if (!host) return 'unknown';
   if (OMNI_COMMS_PRODUCTION_HOSTS.includes(host)) return 'production';
-  return 'non_production';
+  return 'unknown';
 }
 
 export function currentOmniCommsEnvironment(): OmniCommsEnvironment {

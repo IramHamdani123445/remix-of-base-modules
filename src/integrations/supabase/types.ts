@@ -96012,6 +96012,39 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_runtime_environment_event: {
+        Row: {
+          actor_id: string | null
+          correlation_id: string | null
+          evidence: Json
+          from_environment: string | null
+          id: string
+          occurred_at: string
+          reason: string | null
+          to_environment: string
+        }
+        Insert: {
+          actor_id?: string | null
+          correlation_id?: string | null
+          evidence?: Json
+          from_environment?: string | null
+          id?: string
+          occurred_at?: string
+          reason?: string | null
+          to_environment: string
+        }
+        Update: {
+          actor_id?: string | null
+          correlation_id?: string | null
+          evidence?: Json
+          from_environment?: string | null
+          id?: string
+          occurred_at?: string
+          reason?: string | null
+          to_environment?: string
+        }
+        Relationships: []
+      }
       omni_comms_sender_identity: {
         Row: {
           activated_at: string | null
@@ -121702,6 +121735,16 @@ export type Database = {
           p_version_number: number
         }
         Returns: string
+      }
+      omni_comms_priv_confirm_runtime_environment: {
+        Args: {
+          p_actor_id: string
+          p_correlation_id?: string
+          p_environment: string
+          p_evidence?: Json
+          p_reason?: string
+        }
+        Returns: Json
       }
       omni_comms_priv_dispatch_attempt_complete: {
         Args: {

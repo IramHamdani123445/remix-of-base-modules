@@ -29,7 +29,14 @@ import {
   suspendChannelRelease,
   upsertChannelReleaseConfiguration,
   buildApproveActivateBody,
+  buildConfirmEnvironmentBody,
+  buildDeploymentStatusBody,
+  type DeploymentStatus,
 } from '@/platform/omni-comms/application/channelReleaseControlService';
+import {
+  applySingleMessagePilotPreset,
+  SINGLE_MESSAGE_PILOT_LABEL,
+} from '@/platform/omni-comms/application/releasePilotPresets';
 import {
   businessDispatchCheck,
   isControlledPilotGovernanceActive,
@@ -105,6 +112,8 @@ export const ChannelReleaseControlTab: React.FC<{
   const [proposalReason, setProposalReason] = useState('');
   const [approvalNote, setApprovalNote] = useState('');
   const [suspendReason, setSuspendReason] = useState('');
+  const [deployment, setDeployment] = useState<DeploymentStatus | null>(null);
+  const [deploymentLoading, setDeploymentLoading] = useState(false);
 
   const release = summary?.release ?? null;
   const readOnlyReference = isReferenceRelease(release);
@@ -164,6 +173,38 @@ export const ChannelReleaseControlTab: React.FC<{
       setBusy(false);
     }
   }, [refresh, onChanged]);
+
+  /** Bounded, read-only deployment identity probe. Mutates nothing. */
+  const loadDeployment = useCallback(async () => {
+    if (!transport || !supported) return;
+    setDeploymentLoading(true);
+    try {
+      const res = await transport.invoke(buildDeploymentStatusBody());
+      if (res.error) throw new Error(res.error.message ?? 'Deployment status unavailable');
+      setDeployment(res.data as DeploymentStatus);
+    } catch (e) {
+      toastError(e, 'Could not read the deployment identity.');
+    } finally {
+      setDeploymentLoading(false);
+    }
+  }, [transport, supported]);
+
+  useEffect(() => { void loadDeployment(); }, [loadDeployment]);
+
+  const confirmProduction = useCallback(() => {
+    if (!transport) return;
+    void run('Production environment confirmed', async () => {
+      const res = await transport.invoke(
+        buildConfirmEnvironmentBody({
+          environment: 'production',
+          reason: 'Administrator confirmed this deployment is the production runtime.',
+        }),
+      );
+      if (res.error) throw new Error(res.error.message ?? 'Environment confirmation failed');
+      await loadDeployment();
+    });
+  }, [transport, run, loadDeployment]);
+
 
   if (!supported) {
     return (
@@ -228,6 +269,110 @@ export const ChannelReleaseControlTab: React.FC<{
           </AlertDescription>
         </Alert>
       )}
+
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div>
+            <CardTitle>Deployment &amp; certification</CardTitle>
+            <CardDescription>
+              The environment and both deployed revisions are resolved server-side.
+              Nothing on this card can be typed by an administrator.
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline" size="sm"
+            onClick={() => void loadDeployment()} disabled={deploymentLoading}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Detail
+              label="Environment"
+              value={
+                deployment?.environment === 'production' ? 'Production'
+                  : deployment?.environment === 'non_production' ? 'Non-production'
+                    : 'Unknown'
+              }
+            />
+            <Detail
+              label="Certification"
+              value={deployment?.certification?.certification_state ?? 'Unknown'}
+            />
+            <Detail
+              label="Runtime revision"
+              value={deployment?.runtime_revision?.slice(0, 12) ?? '—'}
+            />
+            <Detail
+              label="Dispatcher revision"
+              value={deployment?.dispatcher_revision?.slice(0, 12) ?? '—'}
+            />
+            <Detail
+              label="Certified revision"
+              value={deployment?.certification?.certified_commit?.slice(0, 12) ?? '—'}
+            />
+            <Detail
+              label="Revision match"
+              value={
+                deployment?.certification?.certified_commit
+                && deployment?.release_identity
+                && deployment.certification.certified_commit.toLowerCase()
+                  === deployment.release_identity.toLowerCase()
+                  ? 'Yes' : 'No'
+              }
+            />
+            <Detail
+              label="Workflow evidence"
+              value={deployment?.certification?.workflow_run_id ?? '—'}
+            />
+          </div>
+
+          {deployment?.deployment_revision_mismatch && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>deployment_revision_mismatch</AlertTitle>
+              <AlertDescription>
+                The runtime and the dispatcher report different deployed revisions, so a
+                single compatible release identity cannot be proven. Certification is
+                refused until both report the same revision.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {deployment && deployment.environment !== 'production'
+            && deployment.environment !== 'non_production' && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Deployment environment unresolved</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>
+                  The protected runtime environment is unknown, so deployment
+                  certification and the release prerequisites fail closed. Confirming
+                  production records an audit event and writes the protected record.
+                  It never enables delivery, never certifies a commit and never
+                  contacts a provider. Non-production can only be established from
+                  trusted deployment metadata — it cannot be selected here.
+                </p>
+                <Button
+                  size="sm" variant="outline" disabled={busy || !canApprove}
+                  onClick={confirmProduction}
+                >
+                  Confirm production environment
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Technical details — runtime {deployment?.runtime_revision ?? 'unavailable'};
+            dispatcher {deployment?.dispatcher_revision ?? 'unavailable'}; certified{' '}
+            {deployment?.certification?.certified_commit ?? 'none'}. Certification facts
+            originate from the trusted certification workflow only.
+          </p>
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-4">
@@ -312,7 +457,21 @@ export const ChannelReleaseControlTab: React.FC<{
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-md border p-3">
+            <Button
+              type="button" size="sm" variant="secondary"
+              disabled={!canConfigure || busy}
+              onClick={() => setForm((f) => applySingleMessagePilotPreset(f))}
+            >
+              {SINGLE_MESSAGE_PILOT_LABEL}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Sets 1 recipient per request, 1 per hour, 1 per day and 1 in total. The
+              values stay visible below and must be reviewed before proposal.
+            </span>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
+
             <div>
               <Label>Permitted event codes (one per line)</Label>
               <Textarea
