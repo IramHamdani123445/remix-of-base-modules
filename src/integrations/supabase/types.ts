@@ -95967,6 +95967,9 @@ export type Database = {
           certified_at: string | null
           certified_commit: string | null
           created_at: string
+          observed_at: string | null
+          observed_dispatcher_revision: string | null
+          observed_runtime_revision: string | null
           singleton: boolean
           updated_at: string
           workflow_run_id: string | null
@@ -95976,6 +95979,9 @@ export type Database = {
           certified_at?: string | null
           certified_commit?: string | null
           created_at?: string
+          observed_at?: string | null
+          observed_dispatcher_revision?: string | null
+          observed_runtime_revision?: string | null
           singleton?: boolean
           updated_at?: string
           workflow_run_id?: string | null
@@ -95985,6 +95991,9 @@ export type Database = {
           certified_at?: string | null
           certified_commit?: string | null
           created_at?: string
+          observed_at?: string | null
+          observed_dispatcher_revision?: string | null
+          observed_runtime_revision?: string | null
           singleton?: boolean
           updated_at?: string
           workflow_run_id?: string | null
@@ -121324,6 +121333,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_business_dispatch_installed: {
+        Args: never
+        Returns: boolean
+      }
       omni_comms_priv_certification_authority: {
         Args: { p_actor: string }
         Returns: Json
@@ -122072,6 +122085,10 @@ export type Database = {
         Args: { p_reason: string; p_required: boolean }
         Returns: string
       }
+      omni_comms_priv_observed_deployed_revision: {
+        Args: never
+        Returns: string
+      }
       omni_comms_priv_peb_load: {
         Args: { p_id: string }
         Returns: {
@@ -122173,6 +122190,10 @@ export type Database = {
           p_deployed_revision?: string
           p_workflow_run_id?: string
         }
+        Returns: Json
+      }
+      omni_comms_priv_record_runtime_deployment: {
+        Args: { p_dispatcher_revision: string; p_runtime_revision: string }
         Returns: Json
       }
       omni_comms_priv_recover_request: {
