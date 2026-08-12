@@ -39,7 +39,7 @@ const baseEmission = (): BusinessProducerEmission => ({
   entityId: 'ER-00001',
   entityVersion: 'application-submitted-v1',
   mode: 'shadow',
-  recipients: [{ recipientType: 'employer', email: 'a@b.test' }],
+  recipients: [{ recipientType: 'external', email: 'a@b.test' }],
   payload: {
     reference: 'ER-00001',
     subjectName: 'Acme Ltd',

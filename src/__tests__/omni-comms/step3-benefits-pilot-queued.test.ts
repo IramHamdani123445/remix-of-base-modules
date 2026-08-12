@@ -67,7 +67,7 @@ const queuedRuntimeResult = (replayed: boolean) => ({
   createdAt: '2026-08-10T09:00:01.000Z',
   producerEventBindingId: 'b1d21f7e-0000-4000-8000-000000000001',
   recipients: [
-    { recipientId: 'rcp-1', recipientType: 'claimant', eligibility: 'eligible' },
+    { recipientId: 'rcp-1', recipientType: 'external', eligibility: 'eligible' },
   ],
   messages: [
     {

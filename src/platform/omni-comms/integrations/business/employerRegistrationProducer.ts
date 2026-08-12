@@ -130,7 +130,7 @@ export async function emitEmployerRegistrationApplicationSubmitted(
       buildEmployerRegistrationApplicationSubmittedCorrelationId(input.reference),
     recipients: [
       {
-        recipientType: 'employer',
+        recipientType: EMPLOYER_REGISTRATION_RECIPIENT_TYPE,
         recipientReference: input.reference,
         displayName: input.subjectName,
         email: input.contactEmail ?? null,
