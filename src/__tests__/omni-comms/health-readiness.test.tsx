@@ -118,7 +118,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     expect(M.permanentRoutes).toHaveLength(7);
   });
 
-  it('lists all 34 logical objects with accurate physical-schema status', () => {
+  it('lists all 40 logical objects with accurate physical-schema status', () => {
     permState.hasView = true;
     renderHealthAt();
     const all = [
