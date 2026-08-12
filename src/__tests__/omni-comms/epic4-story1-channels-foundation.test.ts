@@ -4,7 +4,7 @@ import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objec
 import { OMNI_COMMS_READINESS_MANIFEST as readinessManifest } from '@/platform/omni-comms/registry/readinessManifest';
 
 describe('Epic 4 — Story 1: Provider/Sender/Channel foundation', () => {
-  it('object registry preserves 34 entries', () => {
+  it('object registry preserves 40 entries', () => {
     expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(37);
   });
 

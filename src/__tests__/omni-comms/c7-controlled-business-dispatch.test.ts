@@ -240,7 +240,7 @@ describe('C7 — runtime and façade boundaries are unchanged', () => {
 });
 
 describe('C7 — registries', () => {
-  it('keeps the object count at 34', () => {
+  it('keeps the object count at 40', () => {
     expect(OMNI_COMMS_OBJECT_COUNT).toBe(37);
   });
 
