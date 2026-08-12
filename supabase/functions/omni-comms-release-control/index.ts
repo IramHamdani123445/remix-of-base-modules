@@ -93,6 +93,13 @@ Deno.serve(async (req) => {
     }
 
     const svc = serviceClient();
+    // Record the SERVER-observed deployment identity so database-side
+    // prerequisite checks can compare it with the certified commit. The
+    // browser supplies nothing here.
+    await svc.rpc('omni_comms_priv_record_runtime_deployment', {
+      p_runtime_revision: runtimeRevision,
+      p_dispatcher_revision: dispatcherRevision,
+    });
     const { data: cert } = await svc.rpc('omni_comms_priv_runtime_certification');
     const { data: env } = await svc.rpc('omni_comms_priv_runtime_environment');
 
@@ -480,5 +487,15 @@ Deno.serve(async (req) => {
     return json({ error: error.message ?? 'release_activation_failed' }, 400);
   }
 
-  return json({ release: data, deployed_revision: revision, business_dispatch_implemented: false });
+  // Never hard-code dispatch readiness: the database reports whether the
+  // canonical controlled business dispatcher is actually installed.
+  const { data: dispatchInstalled } = await service.rpc(
+    'omni_comms_priv_business_dispatch_installed',
+  );
+
+  return json({
+    release: data,
+    deployed_revision: revision,
+    business_dispatch_implemented: dispatchInstalled === true,
+  });
 });

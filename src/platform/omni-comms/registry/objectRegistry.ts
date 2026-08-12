@@ -284,6 +284,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Gate 3 — Protected certification record',
   },
   {
+    name: 'omni_comms_runtime_deployment',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Singleton server-observed deployment identity (runtime and dispatcher full-SHA revisions plus observation timestamp) written only by the trusted Release Control boundary, so database prerequisites can compare the deployed revision with the certified commit without trusting the browser.',
+    status: 'AVAILABLE',
+    introductionStory: 'Benefits production proof — deployed revision truth',
+  },
+  {
     name: 'omni_comms_producer_event_binding',
     category: 'runtime',
     epic: 6,
