@@ -112,6 +112,8 @@ export const ChannelReleaseControlTab: React.FC<{
   const [proposalReason, setProposalReason] = useState('');
   const [approvalNote, setApprovalNote] = useState('');
   const [suspendReason, setSuspendReason] = useState('');
+  const [deployment, setDeployment] = useState<DeploymentStatus | null>(null);
+  const [deploymentLoading, setDeploymentLoading] = useState(false);
 
   const release = summary?.release ?? null;
   const readOnlyReference = isReferenceRelease(release);
