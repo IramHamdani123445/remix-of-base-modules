@@ -457,7 +457,21 @@ export const ChannelReleaseControlTab: React.FC<{
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-md border p-3">
+            <Button
+              type="button" size="sm" variant="secondary"
+              disabled={!canConfigure || busy}
+              onClick={() => setForm((f) => applySingleMessagePilotPreset(f))}
+            >
+              {SINGLE_MESSAGE_PILOT_LABEL}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Sets 1 recipient per request, 1 per hour, 1 per day and 1 in total. The
+              values stay visible below and must be reviewed before proposal.
+            </span>
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
+
             <div>
               <Label>Permitted event codes (one per line)</Label>
               <Textarea
