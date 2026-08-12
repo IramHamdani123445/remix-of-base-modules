@@ -208,7 +208,14 @@ export function normalizeMessageResult(
   if (!inVocabulary(m.status, OMNI_COMMS_MESSAGE_STATUSES)) return null;
 
   const renderedChecksum = nullableStr(m.renderedChecksum);
-  if (renderedChecksum !== null && !/^[0-9a-f]{64}$/i.test(renderedChecksum)) return null;
+  // The runtime persists checksums in the canonical `sha256:<hex>` form; a
+  // bare digest is also accepted for older rows.
+  if (
+    renderedChecksum !== null &&
+    !/^(?:sha256:)?[0-9a-f]{64}$/i.test(renderedChecksum)
+  ) {
+    return null;
+  }
 
   if (m.blockers !== undefined && !Array.isArray(m.blockers)) return null;
   const blockers = strArray(m.blockers);
