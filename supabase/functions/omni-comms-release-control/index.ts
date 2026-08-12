@@ -279,6 +279,75 @@ Deno.serve(async (req) => {
   }
 
   /**
+   * Bounded review of the held (never-attempted) Email jobs in the caller's
+   * own tenant scope. Masked recipients only; mutates nothing.
+   */
+  if (body.action === 'held_job_review') {
+    const organizationId = typeof body.organizationId === 'string' ? body.organizationId : '';
+    if (!organizationId) return json({ error: 'invalid_body' }, 400);
+    const departmentId = typeof body.departmentId === 'string' && body.departmentId
+      ? body.departmentId
+      : null;
+
+    const svc = serviceClient();
+    const { data, error: reviewError } = await svc.rpc('omni_comms_priv_held_job_review', {
+      p_actor: actorId,
+      p_organization_id: organizationId,
+      p_department_id: departmentId,
+    });
+    if (reviewError) return json({ error: 'held_review_unavailable' }, 400);
+    const result = (data ?? {}) as Record<string, unknown>;
+    if (result.allowed !== true) {
+      return json({ error: String(result.code ?? 'held_review_scope_not_permitted') }, 403);
+    }
+    return json({
+      held_job_count: result.held_job_count ?? 0,
+      jobs: result.jobs ?? [],
+    });
+  }
+
+  /**
+   * Retire exactly ONE obsolete held Email job that was never attempted and
+   * for which no provider was ever contacted. Nothing is deleted: the request,
+   * message and history remain, and an immutable cancellation event is
+   * appended. No provider is contacted here.
+   */
+  if (body.action === 'retire_held_job') {
+    const organizationId = typeof body.organizationId === 'string' ? body.organizationId : '';
+    const jobId = typeof body.jobId === 'string' ? body.jobId : '';
+    if (!organizationId || !jobId) return json({ error: 'invalid_body' }, 400);
+    const departmentId = typeof body.departmentId === 'string' && body.departmentId
+      ? body.departmentId
+      : null;
+    const reason = typeof body.reason === 'string' && body.reason.trim()
+      ? body.reason.trim()
+      : 'superseded_pre_production_pilot_job';
+
+    const svc = serviceClient();
+    const { data, error: retireError } = await svc.rpc('omni_comms_priv_retire_held_job', {
+      p_actor: actorId,
+      p_organization_id: organizationId,
+      p_department_id: departmentId,
+      p_job_id: jobId,
+      p_reason: reason,
+    });
+    if (retireError) return json({ error: 'held_retire_unavailable' }, 400);
+    const result = (data ?? {}) as Record<string, unknown>;
+    if (result.ok !== true) {
+      return json({ error: String(result.code ?? 'held_retire_refused') }, 409);
+    }
+    return json({
+      retired: true,
+      job_id: result.job_id ?? null,
+      message_id: result.message_id ?? null,
+      reason: result.reason ?? reason,
+      live_delivery_enabled: false,
+    });
+  }
+
+
+
+  /**
    * FINAL controlled business send.
    *
    * The browser names ONLY the Release Control it is looking at. The server

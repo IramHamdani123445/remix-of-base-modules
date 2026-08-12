@@ -121897,6 +121897,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_held_job_review: {
+        Args: {
+          p_actor: string
+          p_department_id?: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_held_pilot_candidate: {
         Args: {
           p_actor: string
@@ -122247,6 +122255,16 @@ export type Database = {
       }
       omni_comms_priv_resolve_webhook_signing_source: {
         Args: { p_provider_account_id: string }
+        Returns: Json
+      }
+      omni_comms_priv_retire_held_job: {
+        Args: {
+          p_actor: string
+          p_department_id: string
+          p_job_id: string
+          p_organization_id: string
+          p_reason?: string
+        }
         Returns: Json
       }
       omni_comms_priv_runtime_certification: { Args: never; Returns: Json }

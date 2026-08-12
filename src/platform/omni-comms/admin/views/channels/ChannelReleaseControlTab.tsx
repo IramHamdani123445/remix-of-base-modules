@@ -34,9 +34,13 @@ import {
   buildControlledSendBody,
   buildDeploymentStatusBody,
   buildHeldPilotCandidateBody,
+  buildHeldJobReviewBody,
+  buildRetireHeldJobBody,
   type ControlledSendResult,
   type DeploymentStatus,
+  type HeldJobReview,
   type HeldPilotCandidate,
+
 } from '@/platform/omni-comms/application/channelReleaseControlService';
 
 import {
@@ -136,6 +140,8 @@ export const ChannelReleaseControlTab: React.FC<{
   const [candidate, setCandidate] = useState<HeldPilotCandidate | null>(null);
   const [dispatchResult, setDispatchResult] = useState<string | null>(null);
   const [preSend, setPreSend] = useState<ControlledSendResult | null>(null);
+  const [heldReview, setHeldReview] = useState<HeldJobReview | null>(null);
+
   // Masked value -> one-way hash, so a pilot rule can be configured without a
   // raw recipient ever existing in the browser.
   const [recipientHashes, setRecipientHashes] = useState<Record<string, string>>({});
