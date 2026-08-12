@@ -121403,6 +121403,12 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_channel_policy_material_json: {
+        Args: {
+          p_row: Database["public"]["Tables"]["omni_comms_channel_setting"]["Row"]
+        }
+        Returns: Json
+      }
       omni_comms_priv_channel_policy_upsert: {
         Args: {
           p_actor_id: string
@@ -122152,6 +122158,10 @@ export type Database = {
       omni_comms_priv_resolve_webhook_signing_secret: {
         Args: { p_adapter_key?: string }
         Returns: string
+      }
+      omni_comms_priv_resolve_webhook_signing_source: {
+        Args: { p_provider_account_id: string }
+        Returns: Json
       }
       omni_comms_priv_runtime_certification: { Args: never; Returns: Json }
       omni_comms_priv_runtime_environment: { Args: never; Returns: string }
