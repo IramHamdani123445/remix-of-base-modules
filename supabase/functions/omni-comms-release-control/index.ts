@@ -65,6 +65,98 @@ Deno.serve(async (req) => {
     return json({ error: 'invalid_body' }, 400);
   }
 
+  const serviceClient = () =>
+    createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
+  /**
+   * Bounded deployment identity. The revisions are read server-side only; the
+   * browser cannot supply or influence them.
+   */
+  if (body.action === 'deployment_status') {
+    const runtimeRevision = deployedRevision();
+    let dispatcherRevision: string | null = null;
+    try {
+      const res = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/functions/v1/omni-comms-dispatch/health`,
+        { headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}` } },
+      );
+      if (res.ok) {
+        const health = await res.json();
+        const raw = String(health?.revision ?? '').trim().toLowerCase();
+        dispatcherRevision = /^[0-9a-f]{40}$/.test(raw) ? raw : null;
+      }
+    } catch {
+      dispatcherRevision = null;
+    }
+
+    const svc = serviceClient();
+    const { data: cert } = await svc.rpc('omni_comms_priv_runtime_certification');
+    const { data: env } = await svc.rpc('omni_comms_priv_runtime_environment');
+
+    const revisionMismatch =
+      runtimeRevision !== null && dispatcherRevision !== null
+      && runtimeRevision !== dispatcherRevision;
+
+    return json({
+      environment: env ?? 'unknown',
+      runtime_revision: runtimeRevision,
+      dispatcher_revision: dispatcherRevision,
+      release_identity: revisionMismatch ? null : (runtimeRevision ?? dispatcherRevision),
+      deployment_revision_mismatch: revisionMismatch,
+      certification: cert ?? null,
+    });
+  }
+
+  /**
+   * Trusted confirmation of the authoritative runtime environment.
+   *
+   * A browser cannot classify itself: `non_production` is accepted only when
+   * trusted deployment metadata already declares it. Confirming the
+   * environment never enables delivery, never certifies a commit and never
+   * contacts a provider.
+   */
+  if (body.action === 'confirm_environment') {
+    const requested = String(body.environment ?? '').trim().toLowerCase();
+    if (requested !== 'production' && requested !== 'non_production') {
+      return json({ error: 'invalid_environment' }, 400);
+    }
+    const deploymentHint = (Deno.env.get('OMNI_COMMS_ENVIRONMENT_HINT') ?? '')
+      .trim()
+      .toLowerCase();
+    if (requested === 'non_production' && deploymentHint !== 'non_production') {
+      return json(
+        {
+          error: 'non_production_classification_unverified',
+          detail:
+            'Trusted deployment metadata does not declare this deployment as '
+            + 'non-production, so it cannot be classified as non-production.',
+        },
+        409,
+      );
+    }
+
+    const svc = serviceClient();
+    const { data, error: envError } = await svc.rpc(
+      'omni_comms_priv_confirm_runtime_environment',
+      {
+        p_actor_id: actorId,
+        p_environment: requested,
+        p_reason: typeof body.reason === 'string' ? body.reason : null,
+        p_evidence: {
+          source: 'release_control_edge',
+          deployment_hint: deploymentHint || 'absent',
+          runtime_revision: deployedRevision(),
+        },
+        p_correlation_id: typeof body.correlationId === 'string' ? body.correlationId : null,
+      },
+    );
+    if (envError) return json({ error: envError.message ?? 'environment_confirmation_failed' }, 400);
+    return json({ environment: data, live_delivery_enabled: false });
+  }
+
   if (body.action !== 'approve_activate') return json({ error: 'unsupported_action' }, 400);
 
   const releaseControlId = typeof body.releaseControlId === 'string' ? body.releaseControlId : '';
