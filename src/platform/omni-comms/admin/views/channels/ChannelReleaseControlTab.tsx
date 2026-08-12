@@ -934,6 +934,65 @@ export const ChannelReleaseControlTab: React.FC<{
 
       <Card>
         <CardHeader>
+          <CardTitle>Held business messages</CardTitle>
+          <CardDescription>
+            Unsent messages waiting on Release Control. The controlled release requires
+            exactly one, so any superseded message must be retired first. Retiring
+            cancels the message only — nothing is deleted, no provider is contacted and
+            the full history is kept with an immutable cancellation event.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {(heldReview?.held_job_count ?? 0) > 1 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>{heldReview?.held_job_count} held messages</AlertTitle>
+              <AlertDescription>
+                The controlled release will refuse to run until exactly one held message
+                remains. Retire the superseded ones below.
+              </AlertDescription>
+            </Alert>
+          )}
+          {(heldReview?.jobs ?? []).length === 0 && (
+            <p className="text-sm text-muted-foreground">No held business messages.</p>
+          )}
+          {(heldReview?.jobs ?? []).map((job) => (
+            <div
+              key={job.job_id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3 text-sm"
+            >
+              <div className="space-y-1">
+                <p className="font-medium">
+                  {job.caller_module_code ?? '—'} · {job.event_code ?? '—'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Job {job.job_id.slice(0, 8)} · reference {job.claim_reference ?? '—'} ·{' '}
+                  {new Date(job.created_at).toLocaleString()} · recipient{' '}
+                  {job.recipient_masked ?? '—'} · attempts {job.attempt_count}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={job.provider_contacted ? 'destructive' : 'secondary'}>
+                  {job.provider_contacted ? 'Provider contacted' : 'Never attempted'}
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!canOperate || busy || !job.retirable}
+                  onClick={() => retireHeldJob(job.job_id)}
+                >
+                  Retire
+                </Button>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+
+
+      <Card>
+        <CardHeader>
           <CardTitle>Controlled business release</CardTitle>
           <CardDescription>
             The only action on this screen that contacts the Email provider. It asks the
