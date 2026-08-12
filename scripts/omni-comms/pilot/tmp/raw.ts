@@ -1,0 +1,5 @@
+import { supabase } from '../../../../src/integrations/supabase/client';
+const body={eventCode:'BENEFITS.CLAIM.SUBMITTED',organizationId:'69afc88b-da5c-4f41-a1e7-199e1ee1d416',departmentId:'c28f40f8-00db-4766-b211-5bda5dd641a9',mode:'queued',idempotencyKey:'omni-producer:fbdbb4cdf9f5c942e73a1a14de8e29a660e14ab194fd99c99f7c36698b8f644b',correlationId:'benefits-claim-registered:e41b2d52-dfa9-4db6-b4b4-c07c2d2ca43e',requestedChannels:['email'],payload:{reference:'BN-20260812-63845',subjectName:'Olivia Daniels',claimType:'SKN-EI-MED'},recipients:[{recipientType:'external',recipientReference:'BN-20260812-63845',displayName:'Olivia Daniels',email:process.env.PILOT_CONTACT_EMAIL}],callerContext:{moduleCode:'BENEFITS',entityType:'bn_claim',entityId:'e41b2d52-dfa9-4db6-b4b4-c07c2d2ca43e'}};
+const { data, error } = await (supabase as any).functions.invoke('omni-comms-runtime',{body});
+console.log('DATA',JSON.stringify(data));
+if(error){try{console.log('BODY',await (error as any).context.text());}catch{console.log('ERR',error);} }
