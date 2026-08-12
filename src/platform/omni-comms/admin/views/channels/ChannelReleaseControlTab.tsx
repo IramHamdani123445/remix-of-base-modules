@@ -145,7 +145,15 @@ export const ChannelReleaseControlTab: React.FC<{
   const release = summary?.release ?? null;
   const readOnlyReference = isReferenceRelease(release);
   const canConfigure = Boolean(summary?.capabilities.can_configure) && !readOnlyReference;
+  // Second-person approval only — true solely while an approvable proposal exists.
   const canApprove = Boolean(summary?.capabilities.can_approve) && !readOnlyReference;
+  // Operator rights on this scope. Governs the operator actions that exist
+  // BEFORE a proposal (environment confirmation, deployment certification) as
+  // well as suspension and the final controlled release. Falls back to the
+  // approval capability for older servers that do not project it yet.
+  const canOperate =
+    (summary?.capabilities.can_operate ?? summary?.capabilities.can_approve ?? false)
+    && !readOnlyReference;
   const blockers = useMemo(() => releaseBlockers(summary?.prerequisites), [summary]);
   const dispatchCheck = businessDispatchCheck(summary?.prerequisites);
   const proposalActive = isProposalActive(release);
