@@ -203,6 +203,16 @@ export const ChannelReleaseControlTab: React.FC<{
       } catch {
         setLiveOps(null);
       }
+      try {
+        setDelivery(await getDeliveryToggleSnapshot(client, {
+          organizationId: orgId,
+          departmentId: departmentId ?? null,
+          channel: 'email',
+        }));
+      } catch {
+        setDelivery(null);
+      }
+
       const r = next.release;
       if (r) {
         setForm({
