@@ -541,7 +541,7 @@ export const ChannelReleaseControlTab: React.FC<{
   return (
     <div className="space-y-4">
       <DeliveryToggleCard
-        title={`${definition.label} delivery`}
+        title={`${definition.name} delivery`}
         snapshot={delivery}
         busy={busy || loading}
         onEnable={() => requestDelivery('enable')}
