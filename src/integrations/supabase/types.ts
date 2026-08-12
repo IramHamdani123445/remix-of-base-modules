@@ -121365,6 +121365,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_live_delivery_state: {
+        Args: {
+          p_channel?: string
+          p_department_id?: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       omni_comms_live_operations_summary: {
         Args: { p_department_id?: string; p_organization_id: string }
         Returns: Json
@@ -122156,6 +122164,32 @@ export type Database = {
           p_pinned_layout_version_id: string
         }
         Returns: boolean
+      }
+      omni_comms_priv_live_delivery_auto_remediable: {
+        Args: never
+        Returns: string[]
+      }
+      omni_comms_priv_live_delivery_indicators: {
+        Args: {
+          p_channel: string
+          p_department_id: string
+          p_deployed_revision: string
+          p_organization_id: string
+          p_release_control_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_live_delivery_request: {
+        Args: {
+          p_actor: string
+          p_channel: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_deployed_revision: string
+          p_intent: string
+          p_organization_id: string
+        }
+        Returns: Json
       }
       omni_comms_priv_load_persisted_messages: {
         Args: {
