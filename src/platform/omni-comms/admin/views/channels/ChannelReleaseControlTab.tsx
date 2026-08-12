@@ -72,6 +72,13 @@ import {
 import { buildGoLiveWorkflow } from './goLiveWorkflow';
 import { GoLiveWorkflowCard } from './GoLiveWorkflowCard';
 import { LiveOperationsCard } from './LiveOperationsCard';
+import { DeliveryToggleCard } from './DeliveryToggleCard';
+import {
+  buildDeliveryRequestBody,
+  getDeliveryToggleSnapshot,
+  type DeliveryToggleSnapshot,
+} from '@/platform/omni-comms/application/deliveryToggleService';
+
 import {
   buildApproveActivateLiveBody,
   getLiveOperationsSummary,
@@ -149,6 +156,8 @@ export const ChannelReleaseControlTab: React.FC<{
   const [preSend, setPreSend] = useState<ControlledSendResult | null>(null);
   const [heldReview, setHeldReview] = useState<HeldJobReview | null>(null);
   const [liveOps, setLiveOps] = useState<LiveOperationsSummary | null>(null);
+  const [delivery, setDelivery] = useState<DeliveryToggleSnapshot | null>(null);
+
 
   // Masked value -> one-way hash, so a pilot rule can be configured without a
   // raw recipient ever existing in the browser.
@@ -194,6 +203,16 @@ export const ChannelReleaseControlTab: React.FC<{
       } catch {
         setLiveOps(null);
       }
+      try {
+        setDelivery(await getDeliveryToggleSnapshot(client, {
+          organizationId: orgId,
+          departmentId: departmentId ?? null,
+          channel: 'email',
+        }));
+      } catch {
+        setDelivery(null);
+      }
+
       const r = next.release;
       if (r) {
         setForm({
@@ -500,8 +519,40 @@ export const ChannelReleaseControlTab: React.FC<{
     });
   };
 
+  // The plain switch. The browser sends scope and intent only; the trusted
+  // Edge boundary performs the preflight, the proposal or the second-person
+  // approval, and refuses to let one person do both.
+  const requestDelivery = (intent: 'enable' | 'disable') => {
+    if (!transport || !orgId) return;
+    void run(
+      intent === 'enable' ? 'Automatic delivery request recorded' : 'Automatic delivery turned off',
+      async () => {
+        const res = await transport.invoke(buildDeliveryRequestBody({
+          organizationId: orgId,
+          departmentId: departmentId ?? null,
+          channel: 'email',
+          intent,
+        }));
+        if (res.error) throw new Error(res.error.message ?? 'Delivery request failed');
+      },
+    );
+  };
+
   return (
     <div className="space-y-4">
+      <DeliveryToggleCard
+        title={`${definition.name} delivery`}
+        snapshot={delivery}
+        busy={busy || loading}
+        onEnable={() => requestDelivery('enable')}
+        onDisable={() => requestDelivery('disable')}
+      />
+
+      <details className="rounded-md border p-3">
+        <summary className="cursor-pointer text-sm font-medium">
+          Advanced — technical governance and evidence
+        </summary>
+        <div className="mt-4 space-y-4">
       <Alert>
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Governance first — only the final step contacts the provider</AlertTitle>
@@ -520,6 +571,8 @@ export const ChannelReleaseControlTab: React.FC<{
         onProposeLive={proposeLive}
         onApproveLive={approveLive}
       />
+
+
 
 
 
@@ -1182,7 +1235,10 @@ export const ChannelReleaseControlTab: React.FC<{
           </ul>
         </CardContent>
       </Card>
+        </div>
+      </details>
     </div>
+
   );
 };
 

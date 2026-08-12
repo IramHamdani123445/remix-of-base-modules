@@ -441,6 +441,113 @@ Deno.serve(async (req) => {
   }
 
 
+
+  /**
+   * `delivery_request` — the single operator action behind the plain
+   * "Automatic Email delivery" switch.
+   *
+   * The browser supplies ONLY the tenant scope, the channel and the intent.
+   * Every technical fact (deployed revision, certification, prerequisites,
+   * proposer identity) is resolved server-side. Two-person approval is
+   * preserved: the database refuses to let a proposer approve their own live
+   * proposal, so this boundary can never collapse the control. It contacts no
+   * provider and sends nothing.
+   */
+  if (body.action === 'delivery_request') {
+    const intent = body.intent === 'disable' ? 'disable' : 'enable';
+    const organizationId = typeof body.organizationId === 'string' ? body.organizationId : '';
+    const departmentId = typeof body.departmentId === 'string' ? body.departmentId : null;
+    const channel = typeof body.channel === 'string' && body.channel ? body.channel : 'email';
+    if (!organizationId) return json({ error: 'invalid_body' }, 400);
+
+    const svc = serviceClient();
+    const runtimeRevision = deployedRevision();
+    let dispatcherRevision: string | null = null;
+    try {
+      const res = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/functions/v1/omni-comms-dispatch/health`,
+        { headers: { Authorization: `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}` } },
+      );
+      if (res.ok) {
+        const health = await res.json();
+        const raw = String(health?.revision ?? '').trim().toLowerCase();
+        dispatcherRevision = /^[0-9a-f]{40}$/.test(raw) ? raw : null;
+      }
+    } catch {
+      dispatcherRevision = null;
+    }
+    await svc.rpc('omni_comms_priv_record_runtime_deployment', {
+      p_runtime_revision: runtimeRevision,
+      p_dispatcher_revision: dispatcherRevision,
+    });
+
+    if (intent === 'enable') {
+      if (!runtimeRevision || !dispatcherRevision || runtimeRevision !== dispatcherRevision) {
+        return json({
+          state: 'action_required',
+          blockers: ['deployed_revision_unavailable'],
+        }, 409);
+      }
+      // Self-healing certification: only when the SERVER-observed revisions
+      // agree and this actor genuinely holds certification authority.
+      const { data: cert } = await svc.rpc('omni_comms_priv_runtime_certification');
+      const certified = (cert as Record<string, unknown> | null);
+      const certCurrent = certified?.certification_state === 'certified'
+        && certified?.certified_commit === runtimeRevision;
+      if (!certCurrent) {
+        const { data: authority } = await svc.rpc('omni_comms_priv_certification_authority', {
+          p_actor: actorId,
+        });
+        if ((authority as Record<string, unknown> | null)?.allowed === true) {
+          await svc.rpc('omni_comms_priv_record_runtime_certification', {
+            p_certification_state: 'certified',
+            p_certified_commit: runtimeRevision,
+            p_workflow_run_id: `delivery-request:${actorId}:${new Date().toISOString()}`,
+            p_certified_at: new Date().toISOString(),
+            p_deployed_revision: dispatcherRevision,
+          });
+        }
+      }
+    }
+
+    const { data: plan, error: planError } = await svc.rpc(
+      'omni_comms_priv_live_delivery_request',
+      {
+        p_actor: actorId,
+        p_organization_id: organizationId,
+        p_department_id: departmentId,
+        p_channel: channel,
+        p_deployed_revision: runtimeRevision,
+        p_intent: intent,
+        p_correlation_id: typeof body.correlationId === 'string' ? body.correlationId : null,
+      },
+    );
+    if (planError) return json({ error: planError.message ?? 'delivery_request_failed' }, 400);
+
+    const result = (plan ?? {}) as Record<string, unknown>;
+    if (result.state !== 'approve_ready') return json(result);
+
+    const { data: approved, error: approveError } = await svc.rpc(
+      'omni_comms_priv_channel_release_approve_live',
+      {
+        p_actor_id: actorId,
+        p_release_control_id: result.release_control_id,
+        p_expected_updated_at: result.expected_updated_at,
+        p_expected_fingerprint: result.expected_fingerprint,
+        p_deployed_revision: runtimeRevision,
+        p_approval_note: 'Second-person approval of automatic production delivery.',
+        p_correlation_id: typeof body.correlationId === 'string' ? body.correlationId : null,
+      },
+    );
+    if (approveError) {
+      return json({ error: approveError.message ?? 'live_approval_failed' }, 400);
+    }
+    return json({ state: 'on', release: approved, blockers: [] });
+  }
+
+
+
+
   // `approve_activate_live` promotes the release to genuine production LIVE.
   // It is a second-person decision: the database refuses it when the approver
   // is the proposer, when the fingerprint moved, or when any prerequisite
