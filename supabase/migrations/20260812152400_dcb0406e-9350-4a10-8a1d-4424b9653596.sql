@@ -1,12 +1,6 @@
-CREATE TABLE IF NOT EXISTS public.omni_comms_runtime_deployment (
-  singleton boolean PRIMARY KEY DEFAULT true CHECK (singleton),
-  runtime_revision text,
-  dispatcher_revision text,
-  observed_at timestamptz NOT NULL DEFAULT now()
-);
-
-GRANT ALL ON public.omni_comms_runtime_deployment TO service_role;
-ALTER TABLE public.omni_comms_runtime_deployment ENABLE ROW LEVEL SECURITY;
+-- (withdrawn) the transient omni_comms_runtime_deployment table was replaced
+-- by observation columns on omni_comms_runtime_certification in the next
+-- migration; no new registry object is introduced here.
 
 CREATE OR REPLACE FUNCTION public.omni_comms_priv_record_runtime_deployment(
   p_runtime_revision text,
