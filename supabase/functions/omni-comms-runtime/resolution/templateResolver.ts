@@ -71,21 +71,50 @@ export function resolveTemplateForRoute(
       const forLocale = versions.filter((v) => v.locale === loc);
       if (forLocale.length === 0) continue;
       if (forLocale.length > 1) return unresolved("template_ambiguous", layer.scope, family.id);
-      const v = forLocale[0];
-      return {
-        familyId: family.id,
-        familyScope: layer.scope,
-        versionId: v.id,
-        versionNumber: v.version_number,
-        checksum: v.checksum,
-        layoutSelectionMode: v.layout_selection_mode,
-        layoutId: v.layout_id,
-        pinnedLayoutVersionId: v.pinned_layout_version_id,
-        blockers: [],
-      };
+      return build(family.id, layer.scope, forLocale[0]);
+    }
+
+    // Deterministic language-level fallback: a language-only candidate (e.g.
+    // `en`) may be served by a regional published version (e.g. `en-US`) only
+    // when EXACTLY one regional variant of that language exists. Anything
+    // ambiguous stays unresolved rather than picking arbitrarily.
+    for (const loc of localeFallbacks) {
+      if (loc.includes("-")) continue;
+      const prefix = `${loc}-`;
+      const sameLanguage = versions.filter((v) =>
+        typeof v.locale === "string" && v.locale.toLowerCase().startsWith(prefix.toLowerCase())
+      );
+      if (sameLanguage.length === 0) continue;
+      if (sameLanguage.length > 1) return unresolved("template_ambiguous", layer.scope, family.id);
+      return build(family.id, layer.scope, sameLanguage[0]);
     }
   }
   return null;
+}
+
+function build(
+  familyId: string,
+  scope: ResolvedTemplate["familyScope"],
+  v: {
+    id: string;
+    version_number: number;
+    checksum: string;
+    layout_selection_mode: string | null;
+    layout_id: string | null;
+    pinned_layout_version_id: string | null;
+  },
+): ResolvedTemplate {
+  return {
+    familyId,
+    familyScope: scope,
+    versionId: v.id,
+    versionNumber: v.version_number,
+    checksum: v.checksum,
+    layoutSelectionMode: v.layout_selection_mode,
+    layoutId: v.layout_id,
+    pinnedLayoutVersionId: v.pinned_layout_version_id,
+    blockers: [],
+  };
 }
 
 function unresolved(

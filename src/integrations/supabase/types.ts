@@ -122110,6 +122110,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_recover_request: {
+        Args: { p_new_fingerprint: string; p_request_id: string }
+        Returns: undefined
+      }
       omni_comms_priv_reference_seed_assert_safe: {
         Args: { p_organization_id: string }
         Returns: undefined
@@ -122142,6 +122146,14 @@ export type Database = {
       }
       omni_comms_priv_release_decision_snapshot_bounded: {
         Args: { p_snapshot: Json }
+        Returns: boolean
+      }
+      omni_comms_priv_request_never_dispatched: {
+        Args: { p_request_id: string }
+        Returns: boolean
+      }
+      omni_comms_priv_request_never_materialised: {
+        Args: { p_request_id: string }
         Returns: boolean
       }
       omni_comms_priv_require_capability: {
