@@ -71,6 +71,13 @@ import {
 } from './moduleEnablementMatrix';
 import { buildGoLiveWorkflow } from './goLiveWorkflow';
 import { GoLiveWorkflowCard } from './GoLiveWorkflowCard';
+import { LiveOperationsCard } from './LiveOperationsCard';
+import {
+  buildApproveActivateLiveBody,
+  getLiveOperationsSummary,
+  proposeProductionLive,
+  type LiveOperationsSummary,
+} from '@/platform/omni-comms/application/liveOperationsService';
 import { DeferredCapabilityCard, Detail, toastError } from './channelFormPrimitives';
 import type { ChannelUiDefinition } from './channelUiRegistry';
 
@@ -141,6 +148,7 @@ export const ChannelReleaseControlTab: React.FC<{
   const [dispatchResult, setDispatchResult] = useState<string | null>(null);
   const [preSend, setPreSend] = useState<ControlledSendResult | null>(null);
   const [heldReview, setHeldReview] = useState<HeldJobReview | null>(null);
+  const [liveOps, setLiveOps] = useState<LiveOperationsSummary | null>(null);
 
   // Masked value -> one-way hash, so a pilot rule can be configured without a
   // raw recipient ever existing in the browser.
@@ -178,6 +186,14 @@ export const ChannelReleaseControlTab: React.FC<{
         channel: 'email',
       });
       setSummary(next);
+      try {
+        setLiveOps(await getLiveOperationsSummary(client, {
+          organizationId: orgId,
+          departmentId: departmentId ?? null,
+        }));
+      } catch {
+        setLiveOps(null);
+      }
       const r = next.release;
       if (r) {
         setForm({
@@ -460,6 +476,30 @@ export const ChannelReleaseControlTab: React.FC<{
     });
   };
 
+  const proposeLive = () => {
+    if (!client || !release) return;
+    void run('Production live proposed', () => proposeProductionLive(client, {
+      id: release.id,
+      expectedUpdatedAt: release.updated_at,
+      reason: proposalReason
+        || 'Promote Benefits Email to production live under governed quotas.',
+    }));
+  };
+
+  const approveLive = () => {
+    if (!transport || !release) return;
+    void run('Production live activated', async () => {
+      const res = await transport.invoke(buildApproveActivateLiveBody({
+        releaseControlId: release.id,
+        expectedUpdatedAt: release.updated_at,
+        expectedFingerprint: release.release_fingerprint,
+        approvalNote: approvalNote || null,
+      }));
+      if (res.error) throw new Error(res.error.message ?? 'Live activation failed');
+      setApprovalNote('');
+    });
+  };
+
   return (
     <div className="space-y-4">
       <Alert>
@@ -469,6 +509,17 @@ export const ChannelReleaseControlTab: React.FC<{
       </Alert>
 
       <GoLiveWorkflowCard workflow={workflow} />
+
+      <LiveOperationsCard
+        live={liveOps}
+        busy={busy || loading}
+        canPropose={canConfigure && Boolean(release) && release?.proposed_state !== 'live'}
+        canApproveLive={
+          canOperate && release?.proposed_state === 'live' && !sameActorAsProposer
+        }
+        onProposeLive={proposeLive}
+        onApproveLive={approveLive}
+      />
 
 
 
