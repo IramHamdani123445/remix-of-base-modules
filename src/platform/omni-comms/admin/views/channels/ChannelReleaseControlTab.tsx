@@ -519,8 +519,40 @@ export const ChannelReleaseControlTab: React.FC<{
     });
   };
 
+  // The plain switch. The browser sends scope and intent only; the trusted
+  // Edge boundary performs the preflight, the proposal or the second-person
+  // approval, and refuses to let one person do both.
+  const requestDelivery = (intent: 'enable' | 'disable') => {
+    if (!transport || !orgId) return;
+    void run(
+      intent === 'enable' ? 'Automatic delivery request recorded' : 'Automatic delivery turned off',
+      async () => {
+        const res = await transport.invoke(buildDeliveryRequestBody({
+          organizationId: orgId,
+          departmentId: departmentId ?? null,
+          channel: 'email',
+          intent,
+        }));
+        if (res.error) throw new Error(res.error.message ?? 'Delivery request failed');
+      },
+    );
+  };
+
   return (
     <div className="space-y-4">
+      <DeliveryToggleCard
+        title={`${definition.label} delivery`}
+        snapshot={delivery}
+        busy={busy || loading}
+        onEnable={() => requestDelivery('enable')}
+        onDisable={() => requestDelivery('disable')}
+      />
+
+      <details className="rounded-md border p-3">
+        <summary className="cursor-pointer text-sm font-medium">
+          Advanced — technical governance and evidence
+        </summary>
+        <div className="mt-4 space-y-4">
       <Alert>
         <ShieldCheck className="h-4 w-4" />
         <AlertTitle>Governance first — only the final step contacts the provider</AlertTitle>
@@ -539,6 +571,8 @@ export const ChannelReleaseControlTab: React.FC<{
         onProposeLive={proposeLive}
         onApproveLive={approveLive}
       />
+
+
 
 
 
