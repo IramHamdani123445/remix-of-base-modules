@@ -61,11 +61,16 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 const OMNI_COMMS_DEFAULT_CALLER_MODULE = "OMNI_COMMS_DIRECT";
 const BUILD_TAG = "omni-comms-runtime@2c-iii-auth";
 // Source revision this deployment was built from. Set as a function secret at
-// deploy time (OMNI_COMMS_EDGE_REVISION=<git sha>). Certification binds the
-// harness run to this value; when absent, shortened or malformed the
-// deployment is UNVERIFIED and can never be treated as certified.
+// deploy time. `OMNI_COMMS_DEPLOYED_REVISION` is the SINGLE platform-wide
+// deployment identity — the dispatcher and the release-control boundary read
+// exactly the same secret, so all three surfaces report one revision and the
+// certification comparison can never disagree with itself. The historic
+// `OMNI_COMMS_EDGE_REVISION` remains a fallback only. When absent, shortened
+// or malformed the deployment is UNVERIFIED and is never treated as certified.
 const OMNI_COMMS_REVISION_PATTERN = /^[0-9a-fA-F]{40}$/;
 const DEPLOYED_REVISION = (() => {
+  const platform = (Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "").trim();
+  if (platform !== "") return platform;
   const raw = (Deno.env.get("OMNI_COMMS_EDGE_REVISION") ?? "").trim();
   return raw === "" ? null : raw;
 })();
