@@ -122604,6 +122604,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_reconcile_business_event_handoff: {
+        Args: { p_id: string }
+        Returns: Json
+      }
       omni_comms_priv_record_binding_verification: {
         Args: {
           p_actor_id: string
