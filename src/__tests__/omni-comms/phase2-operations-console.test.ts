@@ -239,7 +239,7 @@ describe('Phase 2 — empty and error states', () => {
   it('requires an organisation selection before reading records', () => {
     const src = read(PAGE);
     expect(src).toContain('Select an organisation');
-    expect(src).toContain('useOmniCommsTenant');
+    expect(src).toContain('useOmniCommsScope');
   });
 
   it('offers retry affordances on failure', () => {

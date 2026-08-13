@@ -23,7 +23,7 @@ const SECTION = readFileSync(
 const ACTIVITY = readFileSync(
   join(
     process.cwd(),
-    'src/platform/omni-comms/admin/views/channels/simple/SimpleActivitySurface.tsx',
+    'src/platform/omni-comms/admin/views/OmniCommsOperationsPage.tsx',
   ),
   'utf8',
 );
@@ -60,8 +60,8 @@ describe('claimed is not sent', () => {
     expect(SECTION).not.toContain('Jobs sent in last run');
   });
 
-  it('renders the refresh warning on the Activity surface', () => {
+  it('renders the refresh warning on the canonical Activity & Automation page', () => {
     expect(ACTIVITY).toContain('omni-comms-automation-refresh-warning');
-    expect(ACTIVITY).toContain('automationRefreshError');
+    expect(ACTIVITY).toContain('automation.refreshError');
   });
 });
