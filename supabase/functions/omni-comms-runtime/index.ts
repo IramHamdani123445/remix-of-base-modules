@@ -679,6 +679,8 @@ Deno.serve(async (req: Request) => {
       payload: canonical.payload,
       recipients: inputRecipients,
       mode: canonical.mode,
+      productId: canonical.businessContext.productId ?? null,
+      productOverrides: Array.isArray(productOverrideData) ? productOverrideData : [],
     });
   } catch (err) {
     const code = err instanceof RuntimeResolutionError ? err.code : "runtime_persistence_failed";
