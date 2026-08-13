@@ -10,7 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { businessEventLabel } from '@/platform/omni-comms/domain/businessEventLabels';
+import type { AutomationStatus } from '@/platform/omni-comms/application/automationStatusService';
+import { AutomationSection } from './AutomationSection';
 import { ChannelActivitySummary, formatMoment } from './ChannelActivitySummary';
+
 
 export type SimpleActivityOutcome =
   | 'delivered'
