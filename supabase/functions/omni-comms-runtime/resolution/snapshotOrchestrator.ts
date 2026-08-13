@@ -53,6 +53,15 @@ export function validateSnapshotShape(s: unknown): AggregateSnapshot {
   return snap as unknown as AggregateSnapshot;
 }
 
+export interface ProductCommunicationOverride {
+  channel: string | null;
+  is_enabled: boolean | null;
+  template_family_code: string | null;
+  sender_profile_code: string | null;
+  recipient_source: string | null;
+  delivery_mode: string | null;
+}
+
 export interface OrchestrationInput {
   snapshot: AggregateSnapshot;
   organizationId: string;
@@ -61,6 +70,62 @@ export interface OrchestrationInput {
   payload: unknown;
   recipients: RecipientInput[];
   mode: "dry_run" | "shadow" | "queued";
+  /** Immutable business product context. Null when the event has no product. */
+  productId?: string | null;
+  /** Authoritative product-level overrides for THIS organisation + event. */
+  productOverrides?: ProductCommunicationOverride[];
+}
+
+/**
+ * Per-property inheritance:
+ *   organisation event/channel default -> department override -> product override.
+ * Each property inherits SEPARATELY; an absent product property inherits the
+ * already-resolved organisation/department value.
+ */
+export function applyProductOverrides(
+  snap: AggregateSnapshot,
+  routes: ReturnType<typeof resolveRoutes>,
+  overrides: ProductCommunicationOverride[],
+): { routes: ReturnType<typeof resolveRoutes>; provenance: Record<string, string> } {
+  const provenance: Record<string, string> = {};
+  if (!overrides || overrides.length === 0) return { routes, provenance };
+
+  const out: ReturnType<typeof resolveRoutes> = [];
+  for (const route of routes) {
+    const ov = overrides.find(
+      (o) => String(o.channel ?? "").toLowerCase() === route.channel.toLowerCase(),
+    );
+    if (!ov) {
+      out.push(route);
+      continue;
+    }
+    if (ov.is_enabled === false) {
+      provenance[`${route.channel}.enabled_source`] = "product_override";
+      continue; // Product turned this channel OFF for this product.
+    }
+    const next = { ...route };
+    if (ov.is_enabled === true) provenance[`${route.channel}.enabled_source`] = "product_override";
+    if (ov.template_family_code) {
+      const fam = snap.template_families.find(
+        (f) => f.code === ov.template_family_code && f.status === "active",
+      );
+      if (fam) {
+        next.templateFamilyId = fam.id;
+        provenance[`${route.channel}.template_source`] = "product_override";
+      }
+    }
+    if (ov.sender_profile_code) {
+      const sender = snap.senders.find(
+        (s) => s.code === ov.sender_profile_code && s.status === "active",
+      );
+      if (sender) {
+        next.senderIdentityId = sender.id;
+        provenance[`${route.channel}.sender_source`] = "product_override";
+      }
+    }
+    out.push(next);
+  }
+  return { routes: out, provenance };
 }
 
 export async function orchestrateResolution(
@@ -80,14 +145,24 @@ export async function orchestrateResolution(
     input.departmentId,
     input.requestedChannels,
   );
+  const { routes: effectiveRoutes, provenance: productProvenance } = applyProductOverrides(
+    input.snapshot,
+    winningRoutes,
+    input.productOverrides ?? [],
+  );
   if (winningRoutes.length === 0) requestBlockers.push("event_route_missing");
+  else if (effectiveRoutes.length === 0) {
+    // Product configuration truthfully says no channel applies. This is a
+    // terminal business/policy outcome, not a recoverable configuration gap.
+    requestBlockers.push("no_communication_configured");
+  }
 
   // Normalize + dedupe recipients.
   const normalized = await normalizeRecipients(input.recipients);
   if (normalized.length === 0) requestBlockers.push("recipient_input_invalid");
 
   const recipientResolutions: RuntimeRecipientResolution[] = normalized.map((r) =>
-    resolveRecipient(input.snapshot, r, winningRoutes, event.eventDefinitionId, input.organizationId, input.departmentId, input.mode)
+    resolveRecipient(input.snapshot, r, effectiveRoutes, event.eventDefinitionId, input.organizationId, input.departmentId, input.mode)
   );
 
   return {
@@ -100,6 +175,13 @@ export async function orchestrateResolution(
     requestedChannels: input.requestedChannels,
     recipients: recipientResolutions,
     blockers: requestBlockers,
+    resolutionProvenance: {
+      resolver_version: "plan.v2",
+      product_id: input.productId ?? null,
+      product_override_applied: Object.keys(productProvenance).length > 0,
+      department_override_applied: winningRoutes.some((r) => r.inheritedFrom === "department"),
+      ...productProvenance,
+    },
   };
 }
 
