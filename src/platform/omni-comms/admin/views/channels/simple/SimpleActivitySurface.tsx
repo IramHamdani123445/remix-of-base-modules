@@ -45,6 +45,10 @@ export interface SimpleActivitySurfaceProps {
   lastDeliveredAt: string | null;
   rows: readonly SimpleActivityRow[];
   technicalDetails: React.ReactNode;
+  /** Automation ownership: Activity is where operators watch the workers. */
+  automationStatus?: AutomationStatus | null;
+  automationLoading?: boolean;
+  onRefreshAutomation?: () => void;
 }
 
 export const SimpleActivitySurface: React.FC<SimpleActivitySurfaceProps> = ({
@@ -56,8 +60,19 @@ export const SimpleActivitySurface: React.FC<SimpleActivitySurfaceProps> = ({
   lastDeliveredAt,
   rows,
   technicalDetails,
+  automationStatus = null,
+  automationLoading = false,
+  onRefreshAutomation,
 }) => (
   <div className="space-y-6" data-testid="omni-comms-simple-activity">
+    {onRefreshAutomation ? (
+      <AutomationSection
+        status={automationStatus}
+        loading={automationLoading}
+        onRefresh={onRefreshAutomation}
+      />
+    ) : null}
+
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Delivery activity</CardTitle>
