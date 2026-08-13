@@ -241,7 +241,7 @@ describe('C7 — runtime and façade boundaries are unchanged', () => {
 
 describe('C7 — registries', () => {
   it('keeps the object count at 40', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(41);
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(42);
   });
 
   it('promotes the webhook event ledger to AVAILABLE', () => {
@@ -253,7 +253,7 @@ describe('C7 — registries', () => {
   });
 
   it('keeps the integration count at 9 and marks the dispatcher available', () => {
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY.length).toBe(9);
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY.length).toBe(10);
     const row = OMNI_COMMS_INTEGRATION_REGISTRY.find(
       (i) => i.name === 'omni-comms-dispatch',
     );

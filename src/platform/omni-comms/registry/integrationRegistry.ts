@@ -38,6 +38,14 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     purpose: 'Trusted server boundary for approved technical test delivery: authorises via RPC, dispatches through the shared Resend adapter using an Edge secret, and records the outcome. Cannot send business communications.',
     status: 'Available',
   },
+  {
+    name: 'omni-comms-business-event-ingest',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Automatic worker that drains the durable business-event outbox into the canonical runtime. Callable only with the service-role credential plus a single-use, purpose-bound scheduler ticket; it contacts no provider and sends nothing.',
+    status: 'Available',
+  },
+
   // Provider (1) — Omni-Comms-owned
   {
     name: 'resend',

@@ -251,15 +251,31 @@ Deno.serve(async (req: Request) => {
   if (!authHeader?.startsWith("Bearer ")) {
     return blocked(null, "authentication_required", 401);
   }
-  const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
-  const token = authHeader.replace("Bearer ", "");
-  const { data: claimsData, error: claimsError } = await anon.auth.getClaims(token);
-  if (claimsError || !claimsData?.claims?.sub) {
-    return blocked(null, "authentication_required", 401);
+  // Trusted system ingest. Recognised ONLY by the service-role credential —
+  // which a browser can never hold — plus the ingest header. It carries no
+  // operator identity: the emission is authorised by the ACTIVE producer-event
+  // binding alone, through the system authorizer below.
+  const SYSTEM_ACTOR_ID = "00000000-0000-0000-0000-000000000001";
+  const bearer = authHeader.slice(7).trim();
+  const isSystemIngest = SUPABASE_SERVICE_ROLE_KEY !== "" &&
+    bearer === SUPABASE_SERVICE_ROLE_KEY &&
+    req.headers.get("x-omni-comms-system-actor") === "business-event-ingest";
+
+  let userId: string;
+  if (isSystemIngest) {
+    userId = SYSTEM_ACTOR_ID;
+  } else {
+    const anon = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await anon.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      return blocked(null, "authentication_required", 401);
+    }
+    userId = claimsData.claims.sub as string;
   }
-  const userId = claimsData.claims.sub as string;
+
 
   // 1b-i. Provider credential WRITE (UI-managed, vault-backed).
   // The browser sends the credential VALUE exactly once, over TLS, and never
@@ -445,17 +461,24 @@ Deno.serve(async (req: Request) => {
   // Build 4A: the producer-aware authorizer performs the full actor check AND
   // proves an ACTIVE producer-event binding authorises this caller module to
   // produce this event in this mode. Default is denial.
-  const { data: authzData, error: authzError } = await admin.rpc(
-    "omni_comms_priv_authorize_producer_event",
-    {
-      p_actor_id: userId,
+  const { data: authzData, error: authzError } = isSystemIngest
+    ? await admin.rpc("omni_comms_priv_authorize_system_producer_event", {
       p_organization_id: canonical.organizationId,
-      p_department_id: canonical.departmentId,
       p_caller_module_code: callerModule,
       p_event_code: canonical.eventCode,
       p_mode: canonical.mode,
-    },
-  );
+    })
+    : await admin.rpc(
+      "omni_comms_priv_authorize_producer_event",
+      {
+        p_actor_id: userId,
+        p_organization_id: canonical.organizationId,
+        p_department_id: canonical.departmentId,
+        p_caller_module_code: callerModule,
+        p_event_code: canonical.eventCode,
+        p_mode: canonical.mode,
+      },
+    );
   if (authzError) {
     console.log(`[${BUILD_TAG}] authorize_rpc_error`);
     return blocked(input, mapRpcErrorToCode(authzError), 403);
@@ -471,6 +494,7 @@ Deno.serve(async (req: Request) => {
     const httpStatus = code === "authentication_required" ? 401 : 403;
     return blocked(input, code, httpStatus);
   }
+
 
   // The producer binding that authorised this emission is TRUSTED runtime
   // state derived from the authorizer. A browser-supplied binding is never

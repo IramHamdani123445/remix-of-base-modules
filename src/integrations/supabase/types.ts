@@ -93644,6 +93644,81 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_business_event_outbox: {
+        Row: {
+          attempt_count: number
+          blocker_code: string | null
+          claimed_at: string | null
+          correlation_id: string | null
+          created_at: string
+          department_context_id: string | null
+          entity_id: string
+          entity_type: string
+          event_code: string
+          id: string
+          idempotency_key: string
+          module_code: string
+          next_attempt_at: string
+          occurrence: string
+          organization_id: string
+          payload_snapshot: Json
+          processed_at: string | null
+          product_id: string | null
+          recipient_facts: Json
+          request_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          blocker_code?: string | null
+          claimed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          department_context_id?: string | null
+          entity_id: string
+          entity_type: string
+          event_code: string
+          id?: string
+          idempotency_key: string
+          module_code: string
+          next_attempt_at?: string
+          occurrence?: string
+          organization_id: string
+          payload_snapshot?: Json
+          processed_at?: string | null
+          product_id?: string | null
+          recipient_facts?: Json
+          request_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          blocker_code?: string | null
+          claimed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          department_context_id?: string | null
+          entity_id?: string
+          entity_type?: string
+          event_code?: string
+          id?: string
+          idempotency_key?: string
+          module_code?: string
+          next_attempt_at?: string
+          occurrence?: string
+          organization_id?: string
+          payload_snapshot?: Json
+          processed_at?: string | null
+          product_id?: string | null
+          recipient_facts?: Json
+          request_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omni_comms_caller_module_registry: {
         Row: {
           created_at: string
@@ -96223,6 +96298,7 @@ export type Database = {
           id: string
           issued_at: string
           nonce: string
+          purpose: string
           updated_at: string
         }
         Insert: {
@@ -96232,6 +96308,7 @@ export type Database = {
           id?: string
           issued_at?: string
           nonce: string
+          purpose?: string
           updated_at?: string
         }
         Update: {
@@ -96241,6 +96318,7 @@ export type Database = {
           id?: string
           issued_at?: string
           nonce?: string
+          purpose?: string
           updated_at?: string
         }
         Relationships: []
@@ -116666,6 +116744,8 @@ export type Database = {
         Returns: {
           claim_id: string
           claim_number: string
+          communication_event_id: string
+          communication_event_status: string
           workflow_instance_id: string
         }[]
       }
@@ -121553,6 +121633,22 @@ export type Database = {
         Args: never
         Returns: boolean
       }
+      omni_comms_priv_business_event_health: { Args: never; Returns: Json }
+      omni_comms_priv_business_event_key: {
+        Args: {
+          p_entity_id: string
+          p_entity_type: string
+          p_event_code: string
+          p_module_code: string
+          p_occurrence: string
+          p_organization_id: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_business_organization: {
+        Args: { p_module_code: string }
+        Returns: string
+      }
       omni_comms_priv_certification_authority: {
         Args: { p_actor: string }
         Returns: Json
@@ -121963,6 +122059,48 @@ export type Database = {
         Args: { p_text: string }
         Returns: string
       }
+      omni_comms_priv_claim_business_events: {
+        Args: { p_limit: number }
+        Returns: {
+          attempt_count: number
+          blocker_code: string | null
+          claimed_at: string | null
+          correlation_id: string | null
+          created_at: string
+          department_context_id: string | null
+          entity_id: string
+          entity_type: string
+          event_code: string
+          id: string
+          idempotency_key: string
+          module_code: string
+          next_attempt_at: string
+          occurrence: string
+          organization_id: string
+          payload_snapshot: Json
+          processed_at: string | null
+          product_id: string | null
+          recipient_facts: Json
+          request_id: string | null
+          status: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "omni_comms_business_event_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      omni_comms_priv_complete_business_event: {
+        Args: {
+          p_blocker_code: string
+          p_id: string
+          p_request_id: string
+          p_status: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_compute_checksum: {
         Args: {
           p_event_code: string
@@ -122113,6 +122251,22 @@ export type Database = {
       omni_comms_priv_endpoint_requires_account: {
         Args: { p_channel: string; p_config: Json; p_endpoint_type: string }
         Returns: boolean
+      }
+      omni_comms_priv_enqueue_business_event: {
+        Args: {
+          p_correlation_id: string
+          p_department_context_id: string
+          p_entity_id: string
+          p_entity_type: string
+          p_event_code: string
+          p_module_code: string
+          p_occurrence: string
+          p_organization_id: string
+          p_payload: Json
+          p_product_id: string
+          p_recipient_facts: Json
+        }
+        Returns: Json
       }
       omni_comms_priv_escape_ilike: {
         Args: { p_input: string }
@@ -122568,11 +122722,19 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_scheduler_consume_purpose_ticket: {
+        Args: { p_nonce: string; p_purpose: string }
+        Returns: boolean
+      }
       omni_comms_priv_scheduler_consume_ticket: {
         Args: { p_nonce: string }
         Returns: boolean
       }
       omni_comms_priv_scheduler_health: { Args: never; Returns: Json }
+      omni_comms_priv_scheduler_issue_purpose_ticket: {
+        Args: { p_purpose: string }
+        Returns: string
+      }
       omni_comms_priv_scheduler_issue_ticket: { Args: never; Returns: string }
       omni_comms_priv_scope_permitted: {
         Args: {
