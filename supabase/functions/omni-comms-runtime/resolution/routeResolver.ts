@@ -23,13 +23,21 @@ export function resolveRoutes(
   departmentId: string | null,
   requestedChannels: string[],
 ): WinningRoute[] {
+  // Department is OPTIONAL context. When the producer carries no department,
+  // the organisation's configuration — including routes that were configured
+  // under a department — is the applicable configuration. When a department
+  // IS known, only that department's routes plus organisation-level routes
+  // apply, and the department route wins.
   const active = snap.routes.filter(
     (r) =>
       r.is_enabled &&
       r.lifecycle_state === "active" &&
       r.organization_id === organizationId &&
-      (r.department_id === null || r.department_id === departmentId),
+      (r.department_id === null ||
+        departmentId === null ||
+        r.department_id === departmentId),
   );
+
 
   const byChannel = new Map<string, typeof active>();
   for (const r of active) {

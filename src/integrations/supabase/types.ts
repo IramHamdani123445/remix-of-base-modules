@@ -122272,6 +122272,15 @@ export type Database = {
         Returns: Json
       }
       omni_comms_priv_dry_run_gate_state: { Args: never; Returns: string }
+      omni_comms_priv_effective_channels: {
+        Args: {
+          p_department_id: string
+          p_event_code: string
+          p_organization_id: string
+          p_product_id?: string
+        }
+        Returns: string[]
+      }
       omni_comms_priv_email_provider_id: { Args: never; Returns: string }
       omni_comms_priv_endpoint_requires_account: {
         Args: { p_channel: string; p_config: Json; p_endpoint_type: string }
@@ -122704,6 +122713,10 @@ export type Database = {
       omni_comms_priv_request_never_materialised: {
         Args: { p_request_id: string }
         Returns: boolean
+      }
+      omni_comms_priv_requeue_business_event: {
+        Args: { p_id: string }
+        Returns: Json
       }
       omni_comms_priv_require_capability: {
         Args: { p_action: string }
