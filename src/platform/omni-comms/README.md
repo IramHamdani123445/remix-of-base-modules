@@ -1,26 +1,34 @@
 # Omnichannel Communications (Omni-Comms)
 
-This is the parallel replacement system for **Communication Hub — Legacy**. It
-is being built in isolation. Nothing here may import from, read from, or write
-to Legacy.
+Omni-Comms is the organisation's central communications platform. It owns the
+whole path from a recorded business fact to a delivered message: business-event
+capture, policy resolution, recipient resolution, template rendering, provider
+transport, delivery evidence and operator governance.
+
+It has no dependency on any other communication implementation in this
+repository: no imports, no shared tables, no shared templates, no shared
+queues, no shared providers, no runtime calls. The only place other
+communication namespaces are named is the architecture-guard denylist, whose
+sole purpose is to prove that no dependency exists.
 
 ## Permanent architecture rules
 
-1. **Parallel replacement.** Omni-Comms is the successor to the Legacy
-   Communication Hub. Both run side-by-side; per-event migration is manual and
-   explicitly authorised.
-2. **No Legacy imports.** Code under `src/platform/omni-comms/**` must not
-   import from `src/platform/communication-hub/**`, `src/pages/admin/communicationHub/**`,
-   Legacy comm modules, or any `comm_hub_*` / `communication_*` / `core_template*`
-   / `notification_*` service module.
-3. **No Legacy communication-table reads or writes.** Direct access to
+1. **Central platform.** Omni-Comms is the single communications authority for
+   the modules wired to it. Business modules record business facts; Omni-Comms
+   decides everything else.
+2. **No foreign communication imports.** Code under
+   `src/platform/omni-comms/**` must not import from
+   `src/platform/communication-hub/**`, `src/pages/admin/communicationHub/**`,
+   module-local communication adapters, or any `comm_hub_*` / `communication_*`
+   / `core_template*` / `notification_*` service module.
+3. **No foreign communication-table reads or writes.** Direct access to
    `notification_queue`, `notification_logs`, `communication_request`,
    `communication_message`, `bn_communication_log`, `ce_audit_communications`,
-   `ce_notice_delivery_log`, or any Legacy comm table is prohibited.
-4. **Single public façade.** The only future public sending entry point is
-   `sendCommunication()` exported from
-   `src/platform/omni-comms/sendCommunication.ts`. It does not yet exist —
-   business modules must not call anything from Omni-Comms until it does.
+   `ce_notice_delivery_log` or any other foreign communication table is
+   prohibited.
+4. **Single public façade.** The only public sending entry point is
+   `sendCommunication()`. Business modules never select a channel, template,
+   sender, provider, binding or delivery mode.
 5. **Providers only in adapters.** Resend, Twilio, Meta/WhatsApp, Firebase,
    SendGrid, nodemailer and any other provider SDK may be imported only from
    `src/platform/omni-comms/adapters/providers/**` or from a server-side
@@ -32,14 +40,15 @@ to Legacy.
    view, function, policy, trigger, type) must appear on the approved
    Omni-Comms object catalogue **before** it is created. Unlisted names cannot
    be created.
-8. **Single-source-of-truth per event.** One business event may never be live
-   in both Legacy and Omni-Comms at the same time. Cutover is per-event.
-9. **Legacy remains operational.** Legacy Hub stays fully functional until an
-   explicit, authorised event migration is completed. Omni-Comms tasks must
-   never rename, redirect, disable, quarantine, or modify Legacy behaviour.
-10. **No automated production cutover.** No CI process, Lovable automation, or
-    Omni-Comms code path may automatically switch a business event from
-    Legacy to Omni-Comms. Production cutover is always a human, gated decision.
+8. **Server-authoritative policy.** Channel, template, sender, provider and
+   delivery eligibility are resolved by one server contract. Application code
+   is a projection of that contract, never a second opinion.
+9. **Governed automatic delivery.** Automatic provider delivery is an
+   operational gate enforced in the database claim path, separate from
+   communication policy and from business-event processing.
+10. **No automated production escalation.** No CI process or code path may
+    place an event into live provider delivery. That is always a human, gated,
+    two-person decision.
 
 ## Boundaries
 

@@ -32,7 +32,7 @@ describe('Omni-Comms admin UI redesign', () => {
 
   it('posture model replaces the binary status badge', () => {
     const src = read(POSTURE);
-    for (const facet of ['runtime', 'certification', 'delivery', 'legacy']) {
+    for (const facet of ['runtime', 'certification', 'delivery']) {
       expect(src.toLowerCase()).toContain(facet);
     }
   });

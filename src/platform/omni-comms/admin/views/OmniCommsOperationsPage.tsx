@@ -6,8 +6,14 @@
  * This is the normal destination reached from the main Omni-Comms menu. It
  * answers, in this order:
  *   1. Are the automatic workers healthy? (Automation, at the very top)
- *   2. What business communications happened, and what became of them?
+ *   2. What business events happened, and what became of them?
  *   3. (Technical details) the full request register for support engineers.
+ *
+ * Activity is BUSINESS-EVENT-FIRST. Every row is a business fact the
+ * organisation recorded, visible from the moment it was recorded — before any
+ * communication request, message, dispatch job, provider attempt or delivery
+ * evidence exists. The internal request register is technical evidence, not
+ * the activity model.
  *
  * Scope is the top-level organisation workspace. Department is NEVER used to
  * narrow this page — it only appears as historical evidence inside a record.
@@ -16,6 +22,7 @@
  * scheduler now" or dispatch action exists on this surface: production
  * delivery is automatic.
  */
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
@@ -55,14 +62,39 @@ import {
   type RequestStatus,
 } from "@/platform/omni-comms/application/operationsService";
 import {
-  ACTIVITY_FILTERS,
-  activityStatusLabel,
-  matchesActivityFilter,
   needsAttentionCount,
-  type ActivityFilterId,
 } from "@/platform/omni-comms/application/activityStatusLabels";
+import {
+  BUSINESS_EVENT_PAGE_SIZE_DEFAULT,
+  businessEventStatusLabel,
+  businessEventStatusTone,
+  listBusinessEventActivity,
+  type BusinessEventActivityPage,
+} from "@/platform/omni-comms/application/businessEventActivityService";
+import { businessEventLabel } from "@/platform/omni-comms/domain/businessEventLabels";
 import OperationsSummaryCards from "./operations/OperationsSummaryCards";
 import RequestDetailPanel from "./operations/RequestDetailPanel";
+import BusinessEventDetailPanel from "./operations/BusinessEventDetailPanel";
+
+/** Normal-operator filter chips, expressed in business-event vocabulary. */
+const EVENT_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "waiting", label: "Waiting" },
+  { id: "sending", label: "Sending" },
+  { id: "delivered", label: "Delivered" },
+  { id: "needs_attention", label: "Needs attention" },
+] as const;
+
+type EventFilterId = (typeof EVENT_FILTERS)[number]["id"];
+
+const EVENT_FILTER_STATUSES: Record<EventFilterId, readonly string[] | null> = {
+  all: null,
+  waiting: ["event_recorded", "preparing_communication", "waiting_to_send", "retrying"],
+  sending: ["sending", "provider_accepted"],
+  delivered: ["delivered"],
+  needs_attention: ["needs_configuration", "needs_review", "failed"],
+};
+
 
 const ALL = "__all__";
 
@@ -111,12 +143,13 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   const [summary, setSummary] = useState<OpsSummary | null>(null);
   const [page, setPage] = useState<OpsRequestPage | null>(null);
+  const [events, setEvents] = useState<BusinessEventActivityPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const automation = useAutomationStatus(organizationId, true);
 
-  const [activityFilter, setActivityFilter] = useState<ActivityFilterId>("all");
+  const [activityFilter, setActivityFilter] = useState<EventFilterId>("all");
   const [mode, setMode] = useState<string>(ALL);
   const [status, setStatus] = useState<string>(ALL);
   const [range, setRange] = useState<RangeId>("30d");
@@ -148,6 +181,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
   };
 
   const selectedRequestId = searchParams.get("request");
+  const selectedEventId = searchParams.get("businessEvent");
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -165,7 +199,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [s, p] = await Promise.all([
+      const [s, p, ev] = await Promise.all([
         getOpsSummary(client, { organizationId, departmentId: null }),
         listOpsRequests(client, {
           organizationId,
@@ -178,12 +212,21 @@ export const OmniCommsOperationsPage: React.FC = () => {
           limit: OPS_PAGE_SIZE_DEFAULT,
           offset,
         }),
+        listBusinessEventActivity(client, {
+          organizationId,
+          moduleCode: callerModule === ALL ? null : callerModule,
+          search: debouncedSearch.length > 0 ? debouncedSearch : null,
+          limit: BUSINESS_EVENT_PAGE_SIZE_DEFAULT,
+          offset,
+        }),
       ]);
       setSummary(s);
       setPage(p);
+      setEvents(ev);
     } catch (e: unknown) {
       setSummary(null);
       setPage(null);
+      setEvents(null);
       setError(e instanceof Error ? e.message : "Unable to load activity data");
     } finally {
       setLoading(false);
@@ -210,17 +253,33 @@ export const OmniCommsOperationsPage: React.FC = () => {
     setSearchParams(next, { replace: true });
   };
 
-  const rows = useMemo(
-    () => (page?.items ?? []).filter((r) => matchesActivityFilter(r, activityFilter)),
-    [page, activityFilter],
-  );
+  const openBusinessEvent = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("businessEvent", id);
+    setSearchParams(next, { replace: false });
+  };
+
+  const closeBusinessEvent = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("businessEvent");
+    setSearchParams(next, { replace: true });
+  };
+
+  const rows = useMemo(() => {
+    const allowed = EVENT_FILTER_STATUSES[activityFilter];
+    const items = events?.items ?? [];
+    return allowed === null ? items : items.filter((r) => allowed.includes(r.status));
+  }, [events, activityFilter]);
+
+
 
   const pageInfo = useMemo(() => {
-    if (!page) return null;
-    const from = page.total === 0 ? 0 : page.offset + 1;
-    const to = Math.min(page.offset + page.limit, page.total);
-    return { from, to, total: page.total };
-  }, [page]);
+    if (!events) return null;
+    const from = events.total === 0 ? 0 : events.offset + 1;
+    const to = Math.min(events.offset + events.limit, events.total);
+    return { from, to, total: events.total };
+  }, [events]);
+
 
   const attention = useMemo(
     () =>
@@ -308,14 +367,15 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Communication activity</CardTitle>
+          <CardTitle className="text-base">Business activity</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div
             className="flex flex-wrap items-center gap-2"
             data-testid="omni-comms-activity-filters"
           >
-            {ACTIVITY_FILTERS.map((f) => (
+            {EVENT_FILTERS.map((f) => (
+
               <Button
                 key={f.id}
                 size="sm"
@@ -399,27 +459,29 @@ export const OmniCommsOperationsPage: React.FC = () => {
               actionLabel="Retry"
               onAction={() => void load()}
             />
-          ) : loading && !page ? (
+          ) : loading && !events ? (
             <OmniCommsEmptyState variant="loading" title="Loading activity…" />
           ) : rows.length === 0 ? (
             <OmniCommsEmptyState
-              title="No communication activity"
-              description="No business communication matches the current filters for this organisation."
+              title="No business activity"
+              description="No recorded business event matches the current filters for this organisation."
             />
           ) : (
             <>
               <Table data-testid="omni-comms-ops-request-table">
                 <caption className="caption-bottom pt-3 text-left text-xs text-muted-foreground">
                   Timestamps are shown in {zone === "utc" ? "UTC" : "your local time"}.
-                  Select a row to open the full business timeline.
+                  Every row is a business event the organisation recorded. Select
+                  a row to open its full timeline.
                 </caption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Time</TableHead>
                     <TableHead>Module</TableHead>
-                    <TableHead>Event</TableHead>
+                    <TableHead>Business event</TableHead>
+                    <TableHead>Business record</TableHead>
                     <TableHead className="text-right">Recipients</TableHead>
-                    <TableHead>Channel</TableHead>
+                    <TableHead>Channels</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
@@ -430,26 +492,33 @@ export const OmniCommsOperationsPage: React.FC = () => {
                       key={r.id}
                       role="button"
                       tabIndex={0}
-                      aria-label={`Open request ${r.event_code ?? r.id}`}
+                      aria-label={`Open business event ${r.event_code}`}
                       className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() => openRequest(r.id)}
+                      onClick={() => openBusinessEvent(r.id)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          openRequest(r.id);
+                          openBusinessEvent(r.id);
                         }
                       }}
-                      data-testid={`omni-comms-ops-request-row-${r.id}`}
+                      data-testid={`omni-comms-ops-event-row-${r.id}`}
                     >
                       <TableCell className="text-xs whitespace-nowrap">
-                        {ts(r.created_at, zone)}
+                        {ts(r.occurred_at, zone)}
                       </TableCell>
-                      <TableCell className="text-xs">{r.caller_module_code}</TableCell>
-                      <TableCell className="text-xs">{r.event_code ?? "—"}</TableCell>
-                      <TableCell className="text-xs text-right">{r.recipient_count}</TableCell>
-                      <TableCell className="text-xs">Email</TableCell>
+                      <TableCell className="text-xs">{r.module_code}</TableCell>
                       <TableCell className="text-xs">
-                        <Badge variant="outline">{activityStatusLabel(r)}</Badge>
+                        {businessEventLabel(r.event_code)}
+                      </TableCell>
+                      <TableCell className="text-xs">{r.entity_id ?? "—"}</TableCell>
+                      <TableCell className="text-xs text-right">{r.recipient_count}</TableCell>
+                      <TableCell className="text-xs">
+                        {r.channels.length > 0 ? r.channels.join(", ") : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        <Badge variant={businessEventStatusTone(r.status)}>
+                          {businessEventStatusLabel(r.status)}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
@@ -457,10 +526,10 @@ export const OmniCommsOperationsPage: React.FC = () => {
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
-                            openRequest(r.id);
+                            openBusinessEvent(r.id);
                           }}
-                          data-testid={`omni-comms-ops-request-view-${r.id}`}
-                          aria-label={`View request ${r.event_code ?? r.id}`}
+                          data-testid={`omni-comms-ops-event-view-${r.id}`}
+                          aria-label={`View business event ${r.event_code}`}
                         >
                           View
                         </Button>
@@ -481,15 +550,19 @@ export const OmniCommsOperationsPage: React.FC = () => {
                     size="sm"
                     variant="outline"
                     disabled={offset === 0 || loading}
-                    onClick={() => setOffset(Math.max(0, offset - OPS_PAGE_SIZE_DEFAULT))}
+                    onClick={() =>
+                      setOffset(Math.max(0, offset - BUSINESS_EVENT_PAGE_SIZE_DEFAULT))
+                    }
                   >
                     Previous
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={loading || !page || page.offset + page.limit >= page.total}
-                    onClick={() => setOffset(offset + OPS_PAGE_SIZE_DEFAULT)}
+                    disabled={
+                      loading || !events || events.offset + events.limit >= events.total
+                    }
+                    onClick={() => setOffset(offset + BUSINESS_EVENT_PAGE_SIZE_DEFAULT)}
                   >
                     Next
                   </Button>
@@ -497,6 +570,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
               </div>
             </>
           )}
+
         </CardContent>
       </Card>
 
@@ -561,16 +635,65 @@ export const OmniCommsOperationsPage: React.FC = () => {
             Request register: correlation identifiers, idempotency keys, modes
             and raw statuses are available in each request record.
           </p>
+
+          {(page?.items ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No communication requests match the technical filters.
+            </p>
+          ) : (
+            <Table data-testid="omni-comms-ops-request-register">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Mode</TableHead>
+                  <TableHead>Raw status</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(page?.items ?? []).map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {ts(r.created_at, zone)}
+                    </TableCell>
+                    <TableCell className="text-xs">{r.event_code ?? "—"}</TableCell>
+                    <TableCell className="text-xs">{r.mode}</TableCell>
+                    <TableCell className="text-xs">{r.status}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openRequest(r.id)}
+                        data-testid={`omni-comms-ops-request-view-${r.id}`}
+                        aria-label={`View request ${r.event_code ?? r.id}`}
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </details>
 
       {organizationId ? (
-        <RequestDetailPanel
-          requestId={selectedRequestId}
-          organizationId={organizationId}
-          onClose={closeRequest}
-        />
+        <>
+          <BusinessEventDetailPanel
+            eventId={selectedEventId}
+            organizationId={organizationId}
+            onClose={closeBusinessEvent}
+          />
+          <RequestDetailPanel
+            requestId={selectedRequestId}
+            organizationId={organizationId}
+            onClose={closeRequest}
+          />
+        </>
       ) : null}
+
     </div>
   );
 };

@@ -17,22 +17,12 @@
 export const OMNI_COMMS_POSTURE_STATEMENTS = {
   runtimeImplemented: 'Runtime implemented',
   certificationPending: 'Privileged certification pending',
-  liveDeliveryDisabled: 'Live delivery disabled',
-  noProviderDispatch: 'Controlled dispatch only',
-  legacyActive: 'Legacy remains active',
+  liveDeliveryDisabled: 'Automatic delivery not running',
+  noProviderDispatch: 'Delivery governed by Release Control',
 } as const;
 
 export type OmniCommsPostureStatement =
   (typeof OMNI_COMMS_POSTURE_STATEMENTS)[keyof typeof OMNI_COMMS_POSTURE_STATEMENTS];
-
-/** Ordered list used by the module header and the dashboard cards. */
-export const OMNI_COMMS_PENDING_POSTURE_LINES: readonly OmniCommsPostureStatement[] = [
-  OMNI_COMMS_POSTURE_STATEMENTS.runtimeImplemented,
-  OMNI_COMMS_POSTURE_STATEMENTS.certificationPending,
-  OMNI_COMMS_POSTURE_STATEMENTS.liveDeliveryDisabled,
-  OMNI_COMMS_POSTURE_STATEMENTS.noProviderDispatch,
-  OMNI_COMMS_POSTURE_STATEMENTS.legacyActive,
-] as const;
 
 // ── Environment ───────────────────────────────────────────────────────────
 
@@ -108,8 +98,7 @@ export type PostureFacetId =
   | 'runtime_implementation'
   | 'privileged_certification'
   | 'delivery_availability'
-  | 'environment'
-  | 'legacy_coexistence';
+  | 'environment';
 
 export interface PostureFacet {
   id: PostureFacetId;
@@ -203,14 +192,6 @@ export function buildPostureFacets(input: PostureInput): PostureFacet[] {
       detail:
         'Non-production tooling and the safe dry test are only offered outside production.',
     },
-    {
-      id: 'legacy_coexistence',
-      label: 'Legacy',
-      value: OMNI_COMMS_POSTURE_STATEMENTS.legacyActive,
-      tone: 'neutral',
-      detail:
-        'Communication Hub — Legacy continues to run unchanged. No cutover has taken place.',
-    },
   ];
 }
 
@@ -232,7 +213,6 @@ export function buildHeaderPosture(input: {
         'runtime_implementation',
         'privileged_certification',
         'delivery_availability',
-        'legacy_coexistence',
       ] as PostureFacetId[]
     ).includes(f.id),
   );
