@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.omni_comms_priv_business_event_status(text, text, uuid) TO supabase_read_only_user;

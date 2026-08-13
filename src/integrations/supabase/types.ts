@@ -120814,6 +120814,22 @@ export type Database = {
         Args: { p_apply?: boolean; p_organization_code?: string }
         Returns: Json
       }
+      omni_comms_business_event_activity_detail: {
+        Args: { p_event_id: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_business_event_activity_list: {
+        Args: {
+          p_event_code?: string
+          p_limit?: number
+          p_module_code?: string
+          p_offset?: number
+          p_organization_id: string
+          p_search?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       omni_comms_business_event_outbox_health: { Args: never; Returns: Json }
       omni_comms_channel_binding_set_lifecycle: {
         Args: {
@@ -121666,6 +121682,14 @@ export type Database = {
           p_module_code: string
           p_occurrence: string
           p_organization_id: string
+        }
+        Returns: string
+      }
+      omni_comms_priv_business_event_status: {
+        Args: {
+          p_outbox_status: string
+          p_request_id: string
+          p_result_code: string
         }
         Returns: string
       }

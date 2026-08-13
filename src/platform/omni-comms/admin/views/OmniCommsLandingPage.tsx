@@ -13,7 +13,7 @@
  */
 import React from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, Info, LayoutDashboard, Loader2, RefreshCw } from "lucide-react";
+import { ArrowRight, LayoutDashboard, Loader2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +30,6 @@ import { useOmniCommsCertificationPosture } from "../hooks/useOmniCommsCertifica
 import {
   buildPostureFacets,
   isNonProduction,
-  OMNI_COMMS_PENDING_POSTURE_LINES,
 } from "../posture/omniCommsPosture";
 import {
   OmniCommsPostureBadgeList,
@@ -133,11 +132,6 @@ const DashboardView: React.FC = () => {
           <p className="text-sm text-muted-foreground" data-testid="omni-comms-dashboard-certification-reason">
             {certification.reason}
           </p>
-          <ul className="grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
-            {OMNI_COMMS_PENDING_POSTURE_LINES.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
         </CardContent>
       </Card>
 
@@ -255,15 +249,6 @@ const DashboardView: React.FC = () => {
           </ul>
         </CardContent>
       </Card>
-
-      <Alert>
-        <Info className="h-4 w-4" aria-hidden="true" />
-        <AlertTitle>Legacy remains active</AlertTitle>
-        <AlertDescription>
-          Communication Hub — Legacy continues to operate unchanged. No cutover,
-          redirect or deprecation has been applied.
-        </AlertDescription>
-      </Alert>
 
       {!isNonProduction(environment) ? (
         <OmniCommsInlineWarning>
