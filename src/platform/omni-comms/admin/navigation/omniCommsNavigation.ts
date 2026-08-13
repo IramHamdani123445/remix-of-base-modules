@@ -40,7 +40,11 @@ export const OMNI_COMMS_OVERVIEW_VIEW_ALIASES: Readonly<Record<string, OmniComms
   'safe_test': 'safe-test',
   overview: 'dashboard',
   'reference_data': 'reference-data',
+  'control_center': 'control-center',
+  controls: 'control-center',
+  gates: 'control-center',
 };
+
 
 export function resolveOverviewView(raw: string | null | undefined): OmniCommsOverviewView {
   const v = (raw ?? '').trim().toLowerCase();
