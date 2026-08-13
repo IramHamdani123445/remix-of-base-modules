@@ -65,7 +65,7 @@ describe('normal navigation', () => {
       'Overview',
       'Providers',
       'Communications',
-      'Activity',
+      'Activity & Automation',
     ]);
     expect(omniCommsNavItems('production')).toHaveLength(4);
     expect(omniCommsNavItems('non_production')).toHaveLength(4);

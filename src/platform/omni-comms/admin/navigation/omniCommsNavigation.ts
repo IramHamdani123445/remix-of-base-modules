@@ -106,10 +106,11 @@ export const OMNI_COMMS_NAV_ITEMS: readonly OmniCommsNavItem[] = [
   },
   {
     id: 'activity',
-    label: 'Activity',
+    label: 'Activity & Automation',
     href: '/admin/omnichannel-communications/operations',
     route: '/admin/omnichannel-communications/operations',
-    description: 'What was actually sent, and what happened to it.',
+    description:
+      'Automatic processing, queued communications and delivery outcomes.',
   },
 ] as const;
 

@@ -169,7 +169,7 @@ describe('UI Phase 1 — breadcrumbs', () => {
       pathname: '/admin/omnichannel-communications/operations',
     });
     // `operations` is an unadvertised deep link owned by the Activity surface.
-    expect(crumbs[crumbs.length - 1].label).toBe('Activity');
+    expect(crumbs[crumbs.length - 1].label).toBe('Activity & Automation');
   });
 
   it('adds channel and workspace context inside a channel workspace', () => {

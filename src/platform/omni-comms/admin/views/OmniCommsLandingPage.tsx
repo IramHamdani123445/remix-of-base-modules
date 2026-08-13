@@ -50,6 +50,7 @@ import {
   type SetupError,
   type SetupPlan,
 } from "../../application/setupReadinessService";
+import OmniCommsAutomationOverviewCard from "./OmniCommsAutomationOverviewCard";
 import SetupWizardPanel from "./setup/SetupWizardPanel";
 import ControlledDryRunPanel from "./dryrun/ControlledDryRunPanel";
 import ReferenceSeedPanel from "./seed/ReferenceSeedPanel";
@@ -139,6 +140,8 @@ const DashboardView: React.FC = () => {
           </ul>
         </CardContent>
       </Card>
+
+      <OmniCommsAutomationOverviewCard organizationId={organizationId} />
 
       <Card data-testid="omni-comms-dashboard-next-action">
         <CardHeader className="flex flex-row items-start justify-between gap-4">

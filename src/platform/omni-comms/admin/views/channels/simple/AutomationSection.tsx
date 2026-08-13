@@ -129,7 +129,15 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
               label: 'Events waiting to process',
               value: (
                 <span data-testid="omni-comms-events-waiting">
-                  {events.pending_events + events.retry_events}
+                  {events.pending_events}
+                </span>
+              ),
+            },
+            {
+              label: 'Retrying',
+              value: (
+                <span data-testid="omni-comms-events-retrying">
+                  {events.retry_events}
                 </span>
               ),
             },
@@ -141,6 +149,7 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
                 </span>
               ),
             },
+            { label: 'Oldest waiting', value: formatMoment(events.oldest_pending_at) },
           ]}
         />
 
@@ -170,6 +179,7 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
                 <span data-testid="omni-comms-emails-retrying">{delivery.retry_wait_jobs}</span>
               ),
             },
+            { label: 'Oldest waiting', value: formatMoment(delivery.oldest_waiting_at) },
           ]}
         />
 
@@ -180,14 +190,21 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
           healthy={callbacks.healthy}
           blocker={callbacks.healthy ? null : 'No delivery callbacks received yet.'}
           rows={[
+            {
+              label: 'Callback configuration',
+              value: callbacks.callback_endpoint_ready ? 'Ready' : 'Not configured',
+            },
             { label: 'Last callback', value: formatMoment(callbacks.last_callback_at) },
             {
               label: 'Last delivered',
               value: formatMoment(callbacks.last_delivered_callback_at),
             },
+            { label: 'Last bounce', value: formatMoment(callbacks.last_bounce_at) },
+            { label: 'Last complaint', value: formatMoment(callbacks.last_complaint_at) },
           ]}
         />
       </div>
+
 
       <Card>
         <CardHeader className="pb-2">
@@ -201,6 +218,13 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
             <p className="text-sm text-muted-foreground">No automation runs recorded yet.</p>
           ) : (
             <div className="divide-y" data-testid="omni-comms-automation-runs">
+              <div className="grid grid-cols-5 gap-2 py-2 text-xs font-medium text-muted-foreground">
+                <span>Time</span>
+                <span>Process</span>
+                <span className="text-right">Found</span>
+                <span className="text-right">Handled</span>
+                <span>Result</span>
+              </div>
               {runs.map((run) => (
                 <div
                   key={`${run.stage}-${run.at}`}
@@ -209,10 +233,9 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
                   <span className="text-muted-foreground">
                     {new Date(run.at).toLocaleTimeString()}
                   </span>
-                  <span className="col-span-2">{AUTOMATION_STAGE_LABEL[run.stage]}</span>
-                  <span className="text-muted-foreground">
-                    {run.found} found · {run.handled} handled
-                  </span>
+                  <span>{AUTOMATION_STAGE_LABEL[run.stage]}</span>
+                  <span className="text-right tabular-nums">{run.found}</span>
+                  <span className="text-right tabular-nums">{run.handled}</span>
                   <span className={run.result === 'success' ? '' : 'text-destructive'}>
                     {runResultLabel(run)}
                   </span>
@@ -221,6 +244,7 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
             </div>
           )}
         </CardContent>
+
       </Card>
     </div>
   );
