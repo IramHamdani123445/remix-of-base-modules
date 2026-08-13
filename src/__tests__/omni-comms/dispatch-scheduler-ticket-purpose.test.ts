@@ -74,7 +74,8 @@ describe('worker purpose boundaries', () => {
   });
 
   it('ingest worker consumes tickets with its own purpose', () => {
-    expect(INGEST).toMatch(/p_purpose:\s*["']business_event_ingest["']/);
+    expect(INGEST).toMatch(/p_purpose:\s*SCHEDULER_PURPOSE/);
+    expect(INGEST).toMatch(/SCHEDULER_PURPOSE\s*=\s*["']business_event_ingest["']/);
   });
 
   it('dispatcher rejects a tick when the ticket is not consumed', () => {
