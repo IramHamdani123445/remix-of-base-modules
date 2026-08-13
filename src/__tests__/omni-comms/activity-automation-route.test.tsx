@@ -141,11 +141,11 @@ describe('Activity & Automation route', () => {
   it('renders the page title and the automation dashboard cards', async () => {
     renderRoute();
     expect((await screen.findAllByText('Activity & Automation')).length).toBeGreaterThan(0);
-    expect(await screen.findByText('Automation')).toBeTruthy();
-    expect(await screen.findByText('Business event processing')).toBeTruthy();
-    expect(await screen.findByText('Email delivery')).toBeTruthy();
-    expect(await screen.findByText('Delivery callbacks')).toBeTruthy();
-    expect(await screen.findByText('Communication activity')).toBeTruthy();
+    expect((await screen.findAllByText('Automation')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Business event processing')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Email delivery')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Delivery callbacks')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Communication activity')).length).toBeGreaterThan(0);
   });
 
   it('shows both queues separately and never calls claimed jobs "sent"', async () => {
