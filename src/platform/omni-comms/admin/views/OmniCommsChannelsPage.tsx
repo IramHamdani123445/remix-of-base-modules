@@ -63,7 +63,6 @@ import {
   type ChannelWorkspaceTab,
 } from "./channels/channelUiRegistry";
 
-
 import { projectEmailReadiness } from "./channels/emailReadiness";
 import { projectDispatchDiagnostics } from "./channels/dispatchDiagnosticsProjection";
 import { projectEmailGoLiveReadiness } from "./channels/goLiveReadiness";
@@ -73,6 +72,18 @@ import { projectChannelReadiness } from "./channels/channelReadiness";
 import { getChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/application/channelTestDeliveryService";
 import type { ChannelTestDeliveryDiagnostics } from "@/platform/omni-comms/application/channelTestDeliveryTypes";
 import { toastError } from "./channels/channelFormPrimitives";
+
+/*
+ * UX Simplification — a normal administrator sees Overview / Settings /
+ * Activity. The five-stage workspace stays mounted underneath: Settings opens
+ * the same detailed surfaces, and Technical details exposes the governance and
+ * evidence tabs. Every legacy `?tab=` deep link therefore still resolves.
+ */
+import {
+  getDeliveryToggleSnapshot,
+  type DeliveryToggleSnapshot,
+} from "@/platform/omni-comms/application/deliveryToggleService";
+import { ChannelSimpleWorkspace } from "./channels/simple/ChannelSimpleWorkspace";
 
 /**
  * Channels whose counts are read for the catalogue cards. Every channel the
@@ -88,8 +99,6 @@ export const OmniCommsChannelsPage: React.FC = () => {
   const deliveryTransport = useChannelTestDeliveryTransport();
   const releaseTransport = useChannelReleaseControlTransport();
   const { organizationId: orgId, organizationName, departmentId, departmentName } = useOmniCommsTenant();
-
-
 
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   // C4B — the shared Email readiness projection resolves policy state from the
@@ -107,6 +116,9 @@ export const OmniCommsChannelsPage: React.FC = () => {
   // loading it contacts no provider and sends nothing.
   const [dispatchRow, setDispatchRow] = useState<DispatchDiagnosticsRow | null>(null);
   const [loading, setLoading] = useState(false);
+  // The single operator switch. Server-owned verdict; reading it sends nothing.
+  const [deliveryToggle, setDeliveryToggle] = useState<DeliveryToggleSnapshot | null>(null);
+  const [toggleBusy, setToggleBusy] = useState(false);
 
   // CG1 — generic, channel-aware configuration summaries.
   const [channelSummary, setChannelSummary] = useState<ChannelConfigurationSummary | null>(null);
@@ -141,7 +153,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [config, policy, test, deliveries, release, dispatch] = await Promise.all([
+      const [config, policy, test, deliveries, release, dispatch, toggle] = await Promise.all([
         getEmailConfigSummary(client, orgId),
         getChannelPolicySummary(client, {
           organizationId: orgId,
@@ -162,6 +174,11 @@ export const OmniCommsChannelsPage: React.FC = () => {
           organizationId: orgId,
           departmentId: departmentId ?? null,
         }).catch(() => null),
+        getDeliveryToggleSnapshot(client, {
+          organizationId: orgId,
+          departmentId: departmentId ?? null,
+          channel: "email",
+        }).catch(() => null),
       ]);
       setSummary(config);
       setEmailPolicy(policy);
@@ -169,6 +186,7 @@ export const OmniCommsChannelsPage: React.FC = () => {
       setDeliveryDiagnostics(deliveries);
       setReleaseSummary(release);
       setDispatchRow(dispatch);
+      setDeliveryToggle(toggle);
     } catch (e) {
       toastError(e, "Failed to load email configuration");
     } finally {
@@ -316,6 +334,38 @@ export const OmniCommsChannelsPage: React.FC = () => {
   const sectionDefinition = getSectionDefinition(activeSection);
   const sectionSteps = sectionDefinition.tabs.filter(applicable);
 
+  /*
+   * UX Simplification — Email uses the three-area operator experience, kept in
+   * its own component so this file stays a coordinator.
+   */
+  if (isEmail) {
+    return (
+      <ChannelSimpleWorkspace
+        definition={definition}
+        client={client}
+        orgId={orgId}
+        departmentId={departmentId ?? null}
+        departmentName={departmentName ?? null}
+        organizationName={organizationName ?? null}
+        tab={tab}
+        setTab={setTab}
+        applicable={applicable}
+        loading={loading}
+        summary={summary}
+        channelSummary={channelSummary}
+        readiness={readiness}
+        channelReadiness={channelReadiness}
+        goLiveReadiness={goLiveReadiness}
+        dispatchRow={dispatchRow}
+        deliveryTransport={deliveryTransport} releaseTransport={releaseTransport}
+        testCentre={testCentre} deliveryDiagnostics={deliveryDiagnostics}
+        deliveryToggle={deliveryToggle} toggleBusy={toggleBusy} setToggleBusy={setToggleBusy}
+        refresh={refresh} refreshChannel={refreshChannel}
+        refreshTestCentre={refreshTestCentre} clearChannel={clearChannel}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6" data-testid="omni-comms-channels-page">
       <ChannelWorkspaceHeader
@@ -347,7 +397,6 @@ export const OmniCommsChannelsPage: React.FC = () => {
           }
         />
       ) : null}
-
 
       {/*
         UX Simplification — the ten-destination rail is replaced by five
@@ -403,5 +452,4 @@ export const OmniCommsChannelsPage: React.FC = () => {
 };
 
 export default OmniCommsChannelsPage;
-
 
