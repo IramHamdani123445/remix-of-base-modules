@@ -145,7 +145,7 @@ describe('Activity & Automation route', () => {
     expect((await screen.findAllByText('Business event processing')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Email delivery')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Delivery callbacks')).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText('Communication activity')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Business activity')).length).toBeGreaterThan(0);
   });
 
   it('shows both queues separately and never calls claimed jobs "sent"', async () => {
