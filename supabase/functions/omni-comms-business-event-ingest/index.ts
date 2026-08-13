@@ -194,16 +194,25 @@ Deno.serve(async (req) => {
   // ticks that legitimately find zero work — so operators can prove the
   // automatic worker is alive. No recipient data and no payload content is
   // ever written to the run ledger.
+  let runEvidenceError: string | null = null;
   const recordRun = async (
     metrics: Record<string, number | string>,
     blocker: string | null,
-  ) => {
-    await service.rpc("omni_comms_priv_record_ingest_run", {
+  ): Promise<boolean> => {
+    const { error } = await service.rpc("omni_comms_priv_record_ingest_run", {
       p_worker: "omni-comms-business-event-ingest",
       p_metrics: { ...metrics, duration_ms: Date.now() - startedAt },
       p_blocker: blocker,
-    }).catch(() => undefined);
+    });
+    if (error) {
+      // A worker that cannot prove it ran is a defect, not a silent success.
+      runEvidenceError = error.message ?? "run_evidence_failed";
+      console.error("omni-comms ingest run evidence failed:", runEvidenceError);
+      return false;
+    }
+    return true;
   };
+
 
   // "Scanned" is the eligible backlog the tick could see, independent of the
   // bounded batch it claimed.
@@ -292,7 +301,7 @@ Deno.serve(async (req) => {
   }
 
   // A tick that executed successfully and found nothing to do is HEALTHY.
-  await recordRun({
+  const recorded = await recordRun({
     events_scanned: scanned,
     events_claimed: rows.length,
     events_processed: processed,
@@ -303,6 +312,14 @@ Deno.serve(async (req) => {
     result_code: "ok",
   }, null);
 
+  if (!recorded) {
+    return json({
+      error: "OC500",
+      detail: "run_evidence_failed",
+      reason: runEvidenceError,
+    }, 500);
+  }
+
   return json({
 
     function: "omni-comms-business-event-ingest",
@@ -312,5 +329,6 @@ Deno.serve(async (req) => {
     retried,
     noCommunication,
   });
+
 
 });
