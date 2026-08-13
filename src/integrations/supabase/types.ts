@@ -93666,6 +93666,7 @@ export type Database = {
           product_id: string | null
           recipient_facts: Json
           request_id: string | null
+          result_code: string | null
           status: string
           updated_at: string
         }
@@ -93690,6 +93691,7 @@ export type Database = {
           product_id?: string | null
           recipient_facts?: Json
           request_id?: string | null
+          result_code?: string | null
           status?: string
           updated_at?: string
         }
@@ -93714,6 +93716,7 @@ export type Database = {
           product_id?: string | null
           recipient_facts?: Json
           request_id?: string | null
+          result_code?: string | null
           status?: string
           updated_at?: string
         }
@@ -120800,6 +120803,7 @@ export type Database = {
         Args: { p_apply?: boolean; p_organization_code?: string }
         Returns: Json
       }
+      omni_comms_business_event_outbox_health: { Args: never; Returns: Json }
       omni_comms_channel_binding_set_lifecycle: {
         Args: {
           p_action: string
@@ -121613,6 +121617,15 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_authorize_system_producer_event: {
+        Args: {
+          p_caller_module_code: string
+          p_event_code: string
+          p_mode: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_binding_endpoint_requirement: {
         Args: { p_channel: string }
         Returns: string
@@ -122082,6 +122095,7 @@ export type Database = {
           product_id: string | null
           recipient_facts: Json
           request_id: string | null
+          result_code: string | null
           status: string
           updated_at: string
         }[]
@@ -122726,16 +122740,17 @@ export type Database = {
         Args: { p_nonce: string; p_purpose: string }
         Returns: boolean
       }
-      omni_comms_priv_scheduler_consume_ticket: {
-        Args: { p_nonce: string }
-        Returns: boolean
-      }
+      omni_comms_priv_scheduler_consume_ticket:
+        | { Args: { p_nonce: string }; Returns: boolean }
+        | { Args: { p_nonce: string; p_purpose?: string }; Returns: boolean }
       omni_comms_priv_scheduler_health: { Args: never; Returns: Json }
       omni_comms_priv_scheduler_issue_purpose_ticket: {
         Args: { p_purpose: string }
         Returns: string
       }
-      omni_comms_priv_scheduler_issue_ticket: { Args: never; Returns: string }
+      omni_comms_priv_scheduler_issue_ticket:
+        | { Args: never; Returns: string }
+        | { Args: { p_purpose?: string }; Returns: string }
       omni_comms_priv_scope_permitted: {
         Args: {
           p_actor: string

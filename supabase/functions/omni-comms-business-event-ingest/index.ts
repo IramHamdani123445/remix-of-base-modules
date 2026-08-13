@@ -82,7 +82,13 @@ export function buildRecipients(row: OutboxRow): Array<Record<string, unknown>> 
   }));
 }
 
-/** The canonical runtime request. Identical in shape to the browser façade. */
+/**
+ * The canonical runtime request. Identical in shape to the browser façade.
+ *
+ * NO channel is requested. Which channels a business event uses is a
+ * CONFIGURATION decision owned by the server-authoritative effective plan —
+ * never by the worker, never by the business module and never by a template.
+ */
 export function buildRuntimeRequest(row: OutboxRow): Record<string, unknown> {
   const recipients = buildRecipients(row);
   return {
@@ -92,7 +98,6 @@ export function buildRuntimeRequest(row: OutboxRow): Record<string, unknown> {
     mode: "queued",
     idempotencyKey: row.idempotency_key,
     correlationId: row.correlation_id,
-    requestedChannels: ["email"],
     payload: row.payload_snapshot ?? {},
     recipients,
     resolutionContext: {
@@ -109,6 +114,18 @@ export function buildRuntimeRequest(row: OutboxRow): Record<string, unknown> {
   };
 }
 
+/**
+ * Terminal "nothing to send" outcomes. Communication being switched OFF is a
+ * legitimate configured answer, not a failure and not something to retry.
+ */
+const NO_COMMUNICATION_BLOCKERS = new Set([
+  "no_communication_configured",
+  "no_channel_configured",
+  "communication_disabled",
+  "channel_delivery_off",
+]);
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -118,16 +135,19 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!SUPABASE_URL || !SERVICE_ROLE) return json({ error: "configuration_error" }, 503);
 
+  // Trust model. The scheduler runs inside the database and holds NO secret:
+  // it presents the publishable key plus a single-use, purpose-bound ticket
+  // minted by the database itself. The ticket — consumed below — is the proof
+  // of caller identity. A service-role bearer is deliberately NOT required,
+  // and would be a secret the scheduler must never carry.
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) {
     return json({ error: "OC401", detail: "authentication_required" }, 401);
   }
-  if (authHeader.slice(7).trim() !== SERVICE_ROLE) {
-    return json({ error: "OC403", detail: "ingest_caller_not_permitted" }, 403);
-  }
   if (req.headers.get("x-omni-comms-ingest-ticket") !== "scheduler") {
     return json({ error: "OC403", detail: "ingest_ticket_required" }, 403);
   }
+
 
   let raw: Record<string, unknown> = {};
   try {
@@ -178,10 +198,13 @@ Deno.serve(async (req) => {
 
   let processed = 0;
   let blocked = 0;
-  let needsReview = 0;
+  let retried = 0;
+  let noCommunication = 0;
 
   for (const row of rows) {
-    let status = "blocked";
+    // A transient failure is the SAFE default: nothing is ever discarded and
+    // nothing is ever declared blocked on evidence the worker does not have.
+    let status = "retry";
     let requestId: string | null = null;
     let blockerCode = "runtime_unavailable";
 
@@ -200,21 +223,26 @@ Deno.serve(async (req) => {
       });
       const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       requestId = str(body.requestId);
+      const blockers = (Array.isArray(body.blockers) ? body.blockers : [])
+        .map((b) => str(b))
+        .filter((b): b is string => b !== null);
 
       if (res.ok && (body.status === "accepted" || body.status === "queued")) {
         status = "processed";
         blockerCode = "";
-      } else if (res.status >= 500) {
-        // Transient: leave it recoverable so the next tick retries.
-        status = "needs_review";
+      } else if (blockers.some((b) => NO_COMMUNICATION_BLOCKERS.has(b))) {
+        // Configured OFF is a truthful terminal answer, never a retry.
+        status = "no_communication_configured";
+        blockerCode = blockers.find((b) => NO_COMMUNICATION_BLOCKERS.has(b)) ?? "";
+      } else if (res.status >= 500 || res.status === 429) {
+        status = "retry";
         blockerCode = "runtime_unavailable";
       } else {
         status = "blocked";
-        const blockers = Array.isArray(body.blockers) ? body.blockers : [];
-        blockerCode = str(blockers[0]) ?? str(body.detail) ?? "runtime_blocked";
+        blockerCode = blockers[0] ?? str(body.detail) ?? "runtime_blocked";
       }
     } catch {
-      status = "needs_review";
+      status = "retry";
       blockerCode = "runtime_unavailable";
     }
 
@@ -227,7 +255,8 @@ Deno.serve(async (req) => {
 
     if (status === "processed") processed += 1;
     else if (status === "blocked") blocked += 1;
-    else needsReview += 1;
+    else if (status === "no_communication_configured") noCommunication += 1;
+    else retried += 1;
   }
 
   return json({
@@ -235,6 +264,8 @@ Deno.serve(async (req) => {
     claimed: rows.length,
     processed,
     blocked,
-    needsReview,
+    retried,
+    noCommunication,
   });
+
 });

@@ -25,14 +25,7 @@ import {
   BN_WORKFLOW_MODULES,
   logBnWorkflowEvent,
 } from '@/services/bn/bnWorkflowIntegrationService';
-import { emitConfiguredBusinessEvent } from '@/platform/omni-comms/integrations/business/emitConfiguredBusinessEvent';
-import {
-  BENEFITS_CLAIM_ENTITY_TYPE,
-  BENEFITS_CLAIM_INTAKE_MODULE_CODE,
-  BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION,
-  BENEFITS_CLAIM_SUBMITTED_EVENT_CODE,
-  buildBenefitsClaimSubmittedCorrelationId,
-} from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
+import { BENEFITS_CLAIM_SUBMITTED_EVENT_CODE } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
 import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
 
 const db = supabase as any;
@@ -124,106 +117,16 @@ export function mapDurableCommunicationEvidence(
 
 
 /**
- * Benefits reference implementation of the final Omni-Comms module contract.
+ * NOTE — there is deliberately NO post-commit producer here.
  *
- * Benefits supplies FACTS ONLY: the business event, the claim identity, the
- * product context, the claimant recipient facts and the event data. It does
- * not resolve the organisation, choose a department, choose a channel, choose
- * a template or sender, pick a delivery mode, or know that a provider exists.
- * Omni-Comms resolves everything else from communication configuration.
- *
- * Fail-closed and total: it never blocks or fails the claim registration,
- * never contacts a provider and never writes to a communication table.
+ * The claimant acknowledgement obligation is recorded by the SAME database
+ * transaction that registers the claim (`bn_submit_claim_application` →
+ * `omni_comms_priv_enqueue_business_event`). The browser therefore cannot
+ * emit, resolve, render, queue or send anything, and a claim can never exist
+ * without its communication obligation. This service only REPORTS the durable
+ * evidence the transaction produced.
  */
-export async function emitClaimRegisteredAcknowledgement(args: {
-  claimId: string;
-  claimNumber: string;
-  productCode: string;
-  formPayload: Record<string, any>;
-}): Promise<ClaimIntakeCommunicationOutcome> {
-  const skipped: ClaimIntakeCommunicationOutcome = {
-    outcome: 'skipped',
-    eventCode: null,
-    requestId: null,
-    blockers: [],
-    summary: CLAIM_COMMUNICATION_SUMMARY.skipped,
-  };
 
-  try {
-    // ONE deterministic recipient: the claimant on the registered claim.
-    const { data: person } = await db
-      .from('bn_claim_person_snapshot')
-      .select('full_name, email')
-      .eq('claim_id', args.claimId)
-      .maybeSingle();
-
-    const contactEmail: string | null =
-      (args.formPayload?.contact_email as string | null) ?? person?.email ?? null;
-    const subjectName: string | null =
-      person?.full_name ?? (args.formPayload?.claimant_name as string | null) ?? null;
-    if (!contactEmail || !subjectName) return skipped;
-
-    // Product is BUSINESS context, not a communication decision. The Hub
-    // decides whether this product raises the obligation.
-    const { data: claimRow } = await db
-      .from('bn_claim')
-      .select('product_id')
-      .eq('id', args.claimId)
-      .maybeSingle();
-    const productId = (claimRow as { product_id?: string } | null)?.product_id ?? null;
-    if (!productId) return skipped;
-
-    const res = await emitConfiguredBusinessEvent({
-      eventCode: BENEFITS_CLAIM_SUBMITTED_EVENT_CODE,
-      moduleCode: BENEFITS_CLAIM_INTAKE_MODULE_CODE,
-      entity: {
-        type: BENEFITS_CLAIM_ENTITY_TYPE,
-        id: args.claimId,
-        occurrence: BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION,
-      },
-      context: { productId },
-      recipients: {
-        claimant: {
-          reference: args.claimNumber,
-          displayName: subjectName,
-          email: contactEmail,
-        },
-      },
-      data: {
-        reference: args.claimNumber,
-        subjectName,
-        claimType: args.productCode,
-      },
-      correlationId: buildBenefitsClaimSubmittedCorrelationId(args.claimId),
-    });
-
-    if (res.outcome === 'skipped') {
-      return {
-        ...skipped,
-        blockers: res.skippedReason ? [res.skippedReason] : [],
-      };
-    }
-
-    return {
-      outcome: res.outcome,
-      eventCode: res.eventCode || null,
-      requestId: res.requestId,
-      blockers: res.blockers ?? [],
-      summary:
-        CLAIM_COMMUNICATION_SUMMARY[res.outcome] ??
-        CLAIM_COMMUNICATION_SUMMARY.unavailable,
-    };
-
-  } catch {
-    return {
-      outcome: 'unavailable',
-      eventCode: null,
-      requestId: null,
-      blockers: ['runtime_unavailable'],
-      summary: CLAIM_COMMUNICATION_SUMMARY.unavailable,
-    };
-  }
-}
 
 const CHANNEL_TO_CONFIG: Record<ApplicationChannel, string> = {
   PUBLIC_ONLINE: 'ONLINE',
