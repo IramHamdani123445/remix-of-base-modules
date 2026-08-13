@@ -82,7 +82,13 @@ export function buildRecipients(row: OutboxRow): Array<Record<string, unknown>> 
   }));
 }
 
-/** The canonical runtime request. Identical in shape to the browser façade. */
+/**
+ * The canonical runtime request. Identical in shape to the browser façade.
+ *
+ * NO channel is requested. Which channels a business event uses is a
+ * CONFIGURATION decision owned by the server-authoritative effective plan —
+ * never by the worker, never by the business module and never by a template.
+ */
 export function buildRuntimeRequest(row: OutboxRow): Record<string, unknown> {
   const recipients = buildRecipients(row);
   return {
@@ -92,7 +98,6 @@ export function buildRuntimeRequest(row: OutboxRow): Record<string, unknown> {
     mode: "queued",
     idempotencyKey: row.idempotency_key,
     correlationId: row.correlation_id,
-    requestedChannels: ["email"],
     payload: row.payload_snapshot ?? {},
     recipients,
     resolutionContext: {
@@ -108,6 +113,18 @@ export function buildRuntimeRequest(row: OutboxRow): Record<string, unknown> {
     },
   };
 }
+
+/**
+ * Terminal "nothing to send" outcomes. Communication being switched OFF is a
+ * legitimate configured answer, not a failure and not something to retry.
+ */
+const NO_COMMUNICATION_BLOCKERS = new Set([
+  "no_communication_configured",
+  "no_channel_configured",
+  "communication_disabled",
+  "channel_delivery_off",
+]);
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
