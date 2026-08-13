@@ -265,9 +265,11 @@ describe('Step 3 — provider safety and boundaries', () => {
     expect(producer).toContain("from './emitBusinessCommunication'");
 
     const service = read('src/services/bn/intake/claimIntakeService.ts');
-    // The service now states business facts only; the platform helper owns
-    // event policy, channel selection and idempotency.
-    expect(service).toContain('emitConfiguredBusinessEvent');
-    expect(service).not.toMatch(/omni_comms_[a-z_]+/);
+    // The obligation is now recorded by the claim transaction itself, so the
+    // browser service emits nothing at all — it only reports durable evidence.
+    expect(service).not.toContain('emitConfiguredBusinessEvent(');
+    expect(service).not.toContain('emitBusinessCommunication(');
+    expect(service).toContain('communication_event_status');
   });
 });
+
