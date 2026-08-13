@@ -120,7 +120,7 @@ export const SimpleTestDeliveryCard: React.FC<SimpleTestDeliveryCardProps> = ({
         target,
         payload: {
           subject: `${channelLabel} configuration test`,
-          bodyText: 'This is a configuration test message from the Communication Hub.',
+          body: 'This is a configuration test message from the Communication Hub.',
         },
         idempotencyKey: key,
       });
