@@ -357,17 +357,11 @@ export const OmniCommsChannelsPage: React.FC = () => {
         channelReadiness={channelReadiness}
         goLiveReadiness={goLiveReadiness}
         dispatchRow={dispatchRow}
-        deliveryTransport={deliveryTransport}
-        releaseTransport={releaseTransport}
-        testCentre={testCentre}
-        deliveryDiagnostics={deliveryDiagnostics}
-        deliveryToggle={deliveryToggle}
-        toggleBusy={toggleBusy}
-        setToggleBusy={setToggleBusy}
-        refresh={refresh}
-        refreshChannel={refreshChannel}
-        refreshTestCentre={refreshTestCentre}
-        clearChannel={clearChannel}
+        deliveryTransport={deliveryTransport} releaseTransport={releaseTransport}
+        testCentre={testCentre} deliveryDiagnostics={deliveryDiagnostics}
+        deliveryToggle={deliveryToggle} toggleBusy={toggleBusy} setToggleBusy={setToggleBusy}
+        refresh={refresh} refreshChannel={refreshChannel}
+        refreshTestCentre={refreshTestCentre} clearChannel={clearChannel}
       />
     );
   }
