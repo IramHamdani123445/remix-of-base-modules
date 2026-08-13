@@ -121545,6 +121545,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_business_context_valid: {
+        Args: { p_ctx: Json }
+        Returns: boolean
+      }
       omni_comms_priv_business_dispatch_installed: {
         Args: never
         Returns: boolean
@@ -122578,46 +122582,26 @@ export type Database = {
         }
         Returns: Json
       }
-      omni_comms_priv_send_communication:
-        | {
-            Args: {
-              p_actor_id: string
-              p_caller_entity_id: string
-              p_caller_entity_type: string
-              p_caller_module_code: string
-              p_correlation_id: string
-              p_department_id: string
-              p_event_code: string
-              p_idempotency_key: string
-              p_mode: string
-              p_organization_id: string
-              p_payload: Json
-              p_producer_event_binding_id?: string
-              p_request_fingerprint: string
-              p_requested_channels: string[]
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_actor_id: string
-              p_business_context_snapshot?: Json
-              p_caller_entity_id: string
-              p_caller_entity_type: string
-              p_caller_module_code: string
-              p_correlation_id: string
-              p_department_id: string
-              p_event_code: string
-              p_idempotency_key: string
-              p_mode: string
-              p_organization_id: string
-              p_payload: Json
-              p_producer_event_binding_id?: string
-              p_request_fingerprint: string
-              p_requested_channels: string[]
-            }
-            Returns: Json
-          }
+      omni_comms_priv_send_communication: {
+        Args: {
+          p_actor_id: string
+          p_business_context_snapshot?: Json
+          p_caller_entity_id: string
+          p_caller_entity_type: string
+          p_caller_module_code: string
+          p_correlation_id: string
+          p_department_id: string
+          p_event_code: string
+          p_idempotency_key: string
+          p_mode: string
+          p_organization_id: string
+          p_payload: Json
+          p_producer_event_binding_id?: string
+          p_request_fingerprint: string
+          p_requested_channels: string[]
+        }
+        Returns: Json
+      }
       omni_comms_priv_sender_address_facts: {
         Args: {
           p_row: Database["public"]["Tables"]["omni_comms_sender_identity"]["Row"]
