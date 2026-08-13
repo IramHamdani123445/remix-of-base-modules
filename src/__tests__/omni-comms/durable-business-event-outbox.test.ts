@@ -106,9 +106,14 @@ describe('ingest worker boundaries', () => {
 
   it('treats transient failures as retries and configured-off as terminal', () => {
     expect(worker).toContain('"retry"');
-    expect(worker).toContain('no_communication_configured');
-    expect(worker).toContain('NO_COMMUNICATION_BLOCKERS');
+    const classifier = readFileSync(
+      'supabase/functions/_shared/omniCommsIngestClassification.ts',
+      'utf8',
+    );
+    expect(classifier).toContain('no_communication_configured');
+    expect(classifier).toContain('NO_COMMUNICATION_BLOCKERS');
   });
+
 });
 
 describe('atomic claim + business event', () => {
