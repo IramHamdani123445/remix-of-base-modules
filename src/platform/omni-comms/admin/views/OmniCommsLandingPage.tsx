@@ -52,6 +52,8 @@ import {
 import OmniCommsAutomationOverviewCard from "./OmniCommsAutomationOverviewCard";
 import SetupWizardPanel from "./setup/SetupWizardPanel";
 import ControlledDryRunPanel from "./dryrun/ControlledDryRunPanel";
+import OmniCommsControlCenter from "./control/OmniCommsControlCenter";
+
 import ReferenceSeedPanel from "./seed/ReferenceSeedPanel";
 
 
