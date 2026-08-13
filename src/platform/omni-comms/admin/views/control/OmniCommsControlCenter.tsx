@@ -33,6 +33,7 @@ import { useChannelTestDeliveryTransport } from '../../hooks/useChannelTestDeliv
 import { useOmniCommsGateApprovals } from '../../hooks/useOmniCommsGateApprovals';
 import { tabForHealthIndicator } from '../../navigation/channelSimpleSections';
 import {
+  buildDeliveryCancelBody,
   buildDeliveryRequestBody,
   getDeliveryToggleSnapshot,
   type DeliveryToggleSnapshot,
@@ -59,6 +60,13 @@ import {
 import { toastError } from '../channels/channelFormPrimitives';
 import OmniCommsAutomationOverviewCard from '../OmniCommsAutomationOverviewCard';
 import GateApprovalQueueCard from './GateApprovalQueueCard';
+import DeliveryStatusPanel from './DeliveryStatusPanel';
+import TestDeliveryTraceCard from './TestDeliveryTraceCard';
+import GateAuditHistoryCard from './GateAuditHistoryCard';
+import { getChannelReleaseControlSummary } from '@/platform/omni-comms/application/channelReleaseControlService';
+import type { ReleaseHistoryEntry } from '@/platform/omni-comms/application/channelReleaseControlTypes';
+import type { ChannelTestDelivery } from '@/platform/omni-comms/application/channelTestDeliveryTypes';
+import { useAutomationStatus } from '../../hooks/useAutomationStatus';
 
 const CHANNEL = 'email';
 const CHANNEL_LABEL = 'Email';
@@ -79,6 +87,9 @@ export const OmniCommsControlCenter: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [busyRequestId, setBusyRequestId] = React.useState<string | null>(null);
+  const [testDeliveries, setTestDeliveries] = React.useState<readonly ChannelTestDelivery[]>([]);
+  const [history, setHistory] = React.useState<readonly ReleaseHistoryEntry[]>([]);
+  const automation = useAutomationStatus(organizationId, Boolean(organizationId));
 
   const approvals = useOmniCommsGateApprovals(organizationId);
 
@@ -89,7 +100,7 @@ export const OmniCommsControlCenter: React.FC = () => {
     }
     setLoading(true);
     try {
-      const [toggle, testCentre, diagnostics] = await Promise.all([
+      const [toggle, testCentre, diagnostics, releaseSummary] = await Promise.all([
         getDeliveryToggleSnapshot(client, {
           organizationId,
           departmentId: departmentId ?? null,
@@ -100,6 +111,12 @@ export const OmniCommsControlCenter: React.FC = () => {
         getChannelTestDeliveryDiagnostics(
           client, organizationId, CHANNEL, departmentId ?? null, null, 5,
         ).catch(() => null),
+        getChannelReleaseControlSummary(client, {
+          organizationId,
+          departmentId: departmentId ?? null,
+          channel: 'email',
+          historyLimit: 25,
+        }).catch(() => null),
       ]);
       setSnapshot(toggle);
       setBindingId(
@@ -109,6 +126,8 @@ export const OmniCommsControlCenter: React.FC = () => {
       setCanTest(
         (diagnostics as { can_execute?: boolean } | null)?.can_execute === true,
       );
+      setTestDeliveries(diagnostics?.deliveries ?? []);
+      setHistory(releaseSummary?.history ?? []);
     } finally {
       setLoading(false);
     }
@@ -195,7 +214,19 @@ export const OmniCommsControlCenter: React.FC = () => {
     void (async () => {
       try {
         await withdrawGateRequest(request.id, 'Withdrawn from the Control Center.');
-        await approvals.refresh();
+        // The workflow record alone does not clear the server-side release
+        // proposal; without this the switch stays stuck awaiting approval.
+        if ((request.intent ?? 'enable') === 'enable' && organizationId) {
+          const res = await releaseTransport.invoke(
+            buildDeliveryCancelBody({
+              organizationId,
+              departmentId: departmentId ?? null,
+              channel: CHANNEL,
+            }),
+          );
+          if (res.error) throw new Error(res.error.message ?? 'delivery_cancel_failed');
+        }
+        await Promise.all([load(), approvals.refresh()]);
       } catch (e) {
         toastError(e, 'The request could not be withdrawn');
       } finally {
@@ -287,6 +318,12 @@ export const OmniCommsControlCenter: React.FC = () => {
         </CardContent>
       </Card>
 
+      <DeliveryStatusPanel
+        snapshot={snapshot}
+        automation={automation.status}
+        pendingApprovals={approvals.open.length}
+      />
+
       <GateApprovalQueueCard
         open={approvals.open}
         recent={approvals.recent}
@@ -309,7 +346,19 @@ export const OmniCommsControlCenter: React.FC = () => {
         canExecute={canTest}
       />
 
+      <TestDeliveryTraceCard
+        deliveries={testDeliveries}
+        loading={loading}
+        onRefresh={() => void load()}
+      />
+
       <OmniCommsAutomationOverviewCard organizationId={organizationId} />
+
+      <GateAuditHistoryCard
+        history={history}
+        requests={[...approvals.open, ...approvals.recent]}
+        loading={loading}
+      />
 
       <Card>
         <CardHeader>
