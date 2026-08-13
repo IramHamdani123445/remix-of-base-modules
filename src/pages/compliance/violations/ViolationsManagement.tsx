@@ -80,6 +80,12 @@ function ViolationsManagementInner() {
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
   const [splitTarget, setSplitTarget] = useState<any>(null);
 
+  /*
+   * The employer scope (regno) MUST be part of the server query. It used to be
+   * applied client-side to the current page only, so on a large violation set
+   * page 1 rarely contained the employer's rows and freshly auto-generated
+   * violations looked missing from All Violations.
+   */
   const filterParams = useMemo(() => ({
     status: filters.status,
     priority: filters.priority,
@@ -90,7 +96,8 @@ function ViolationsManagementInner() {
     assignedOfficer: filters.assignedOfficer,
     search: debouncedSearch || undefined,
     month: filters.month || undefined,
-  }), [filters.status, filters.priority, filters.fund, filters.violationTypeId, filters.severity, filters.source, filters.assignedOfficer, filters.month, debouncedSearch]);
+    employerId: regno || undefined,
+  }), [filters.status, filters.priority, filters.fund, filters.violationTypeId, filters.severity, filters.source, filters.assignedOfficer, filters.month, debouncedSearch, regno]);
 
   const filterKey = JSON.stringify(filterParams);
 
@@ -106,8 +113,8 @@ function ViolationsManagementInner() {
     staleTime: 30_000,
   });
 
-  const allRows = pageData?.rows ?? [];
-  const violations = regno ? allRows.filter((v: any) => v.employer_id === regno) : allRows;
+  const violations = pageData?.rows ?? [];
+
   const totalCount = pageData?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
