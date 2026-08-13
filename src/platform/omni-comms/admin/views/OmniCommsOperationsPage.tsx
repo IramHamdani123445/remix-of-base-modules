@@ -1,13 +1,20 @@
 /**
- * Omni-Comms Operations console — read-only.
+ * Omni-Comms — ACTIVITY & AUTOMATION (the canonical operations surface).
  *
- * Route: /admin/omnichannel-communications/operations (existing permanent
- * route; the request detail view is a panel driven by `?request=<id>` so the
- * permanent route count stays at exactly seven).
+ * Route: /admin/omnichannel-communications/operations
  *
- * Everything on this page is an observation of real database records read
- * through `omni_comms_ops_*` SECURITY DEFINER RPCs. There is no retry, resend,
- * cancel, suppress or dispatch action anywhere in this surface.
+ * This is the normal destination reached from the main Omni-Comms menu. It
+ * answers, in this order:
+ *   1. Are the automatic workers healthy? (Automation, at the very top)
+ *   2. What business communications happened, and what became of them?
+ *   3. (Technical details) the full request register for support engineers.
+ *
+ * Scope is the top-level organisation workspace. Department is NEVER used to
+ * narrow this page — it only appears as historical evidence inside a record.
+ *
+ * Everything here is observational. No retry, resend, cancel, suppress, "run
+ * scheduler now" or dispatch action exists on this surface: production
+ * delivery is automatic.
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -32,8 +39,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import OmniCommsEmptyState from "../components/OmniCommsEmptyState";
-import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
+import { useOmniCommsScope } from "../../context/OmniCommsScopeContext";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
+import { useAutomationStatus } from "../hooks/useAutomationStatus";
+import AutomationSection from "./channels/simple/AutomationSection";
 import {
   getOpsSummary,
   listOpsRequests,
@@ -45,7 +54,13 @@ import {
   type RequestMode,
   type RequestStatus,
 } from "@/platform/omni-comms/application/operationsService";
-import OperationsPosture from "./operations/OperationsPosture";
+import {
+  ACTIVITY_FILTERS,
+  activityStatusLabel,
+  matchesActivityFilter,
+  needsAttentionCount,
+  type ActivityFilterId,
+} from "@/platform/omni-comms/application/activityStatusLabels";
 import OperationsSummaryCards from "./operations/OperationsSummaryCards";
 import RequestDetailPanel from "./operations/RequestDetailPanel";
 
@@ -88,20 +103,9 @@ function ts(v: string | null, zone: "local" | "utc"): string {
   }
 }
 
-/** Plain-language outcome for a request row. Never invents delivery. */
-function outcomeOf(mode: string, status: string): string {
-  if (status === "blocked") return "Blocked before any message was created";
-  if (status === "failed") return "Failed during processing";
-  if (mode === "dry_run") return "Validated only — nothing was sent";
-  if (mode === "shadow") return "Rendered and held — nothing was sent";
-  if (status === "held") return "Held — awaiting controlled dispatch authorisation";
-  if (status === "completed") return "Processed — provider dispatch only when Release Control allows it";
-  return "In progress";
-}
-
-
 export const OmniCommsOperationsPage: React.FC = () => {
-  const { organizationId, departmentId, loading: tenantLoading } = useOmniCommsTenant();
+  // Top-level organisation workspace only. departmentId is deliberately NULL.
+  const { organizationId, loading: tenantLoading } = useOmniCommsScope();
   const client = useOmniCommsRpcClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -110,19 +114,27 @@ export const OmniCommsOperationsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const automation = useAutomationStatus(organizationId, true);
+
+  const [activityFilter, setActivityFilter] = useState<ActivityFilterId>("all");
   const [mode, setMode] = useState<string>(ALL);
   const [status, setStatus] = useState<string>(ALL);
   const [range, setRange] = useState<RangeId>("30d");
   const [zone, setZone] = useState<"local" | "utc">("local");
-  const [callerModule, setCallerModule] = useState<string>(ALL);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [callerModule, setCallerModule] = useState<string>(
+    searchParams.get("module") ?? ALL,
+  );
+  const [search, setSearch] = useState(searchParams.get("event") ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState(
+    searchParams.get("event") ?? "",
+  );
   const [offset, setOffset] = useState(0);
 
   const filtersActive =
     mode !== ALL ||
     status !== ALL ||
     callerModule !== ALL ||
+    activityFilter !== "all" ||
     range !== "30d" ||
     search.trim().length > 0;
 
@@ -130,6 +142,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
     setMode(ALL);
     setStatus(ALL);
     setCallerModule(ALL);
+    setActivityFilter("all");
     setRange("30d");
     setSearch("");
   };
@@ -153,10 +166,10 @@ export const OmniCommsOperationsPage: React.FC = () => {
     setError(null);
     try {
       const [s, p] = await Promise.all([
-        getOpsSummary(client, { organizationId, departmentId }),
+        getOpsSummary(client, { organizationId, departmentId: null }),
         listOpsRequests(client, {
           organizationId,
-          departmentId,
+          departmentId: null,
           mode: mode === ALL ? null : (mode as RequestMode),
           status: status === ALL ? null : (status as RequestStatus),
           dateFrom,
@@ -171,11 +184,11 @@ export const OmniCommsOperationsPage: React.FC = () => {
     } catch (e: unknown) {
       setSummary(null);
       setPage(null);
-      setError(e instanceof Error ? e.message : "Unable to load operations data");
+      setError(e instanceof Error ? e.message : "Unable to load activity data");
     } finally {
       setLoading(false);
     }
-  }, [client, organizationId, departmentId, mode, status, callerModule, dateFrom, debouncedSearch, offset]);
+  }, [client, organizationId, mode, status, callerModule, dateFrom, debouncedSearch, offset]);
 
   useEffect(() => {
     void load();
@@ -183,8 +196,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   useEffect(() => {
     setOffset(0);
-  }, [mode, status, callerModule, dateFrom, debouncedSearch, organizationId, departmentId]);
-
+  }, [mode, status, callerModule, dateFrom, debouncedSearch, organizationId]);
 
   const openRequest = (id: string) => {
     const next = new URLSearchParams(searchParams);
@@ -198,6 +210,11 @@ export const OmniCommsOperationsPage: React.FC = () => {
     setSearchParams(next, { replace: true });
   };
 
+  const rows = useMemo(
+    () => (page?.items ?? []).filter((r) => matchesActivityFilter(r, activityFilter)),
+    [page, activityFilter],
+  );
+
   const pageInfo = useMemo(() => {
     if (!page) return null;
     const from = page.total === 0 ? 0 : page.offset + 1;
@@ -205,31 +222,50 @@ export const OmniCommsOperationsPage: React.FC = () => {
     return { from, to, total: page.total };
   }, [page]);
 
+  const attention = useMemo(
+    () =>
+      needsAttentionCount({
+        blockedRequests: summary?.blocked_requests ?? 0,
+        failedRequests: summary?.failed_requests ?? 0,
+        needsReviewEvents:
+          automation.status?.business_event_processor.needs_review_events ?? 0,
+        outcomeUnknown:
+          automation.status?.delivery_processor.last_outcome_unknown_at != null,
+        staleWorker:
+          automation.status != null &&
+          (!automation.status.business_event_processor.healthy ||
+            !automation.status.delivery_processor.healthy),
+        callbackProblem: automation.status?.callback_receiver.healthy === false,
+      }),
+    [summary, automation.status],
+  );
+
   if (!tenantLoading && !organizationId) {
     return (
       <OmniCommsEmptyState
         title="Select an organisation"
-        description="Operations records are scoped to a single organisation. Choose one in the module header to view runtime activity."
+        description="Activity is scoped to a single organisation. Choose one in the module header to view automation and communication activity."
       />
     );
   }
 
   return (
     <div className="space-y-6" data-testid="omni-comms-operations-page">
-
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Operations</h1>
+          <h1 className="text-2xl font-semibold">Activity &amp; Automation</h1>
           <p className="text-sm text-muted-foreground max-w-3xl">
-            Read-only console over Omnichannel Communications runtime records.
-            Retry, resend, cancel, suppress and provider dispatch are not
-            implemented in this build.
+            See automatic processing, queued communications and delivery
+            outcomes.
           </p>
         </div>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => void load()}
+          onClick={() => {
+            void load();
+            automation.refresh();
+          }}
           disabled={loading}
           data-testid="omni-comms-ops-refresh"
         >
@@ -238,64 +274,79 @@ export const OmniCommsOperationsPage: React.FC = () => {
         </Button>
       </div>
 
-      <OperationsPosture />
+      {automation.refreshError ? (
+        <p
+          className="text-sm text-muted-foreground"
+          data-testid="omni-comms-automation-refresh-warning"
+        >
+          {automation.refreshError}
+        </p>
+      ) : null}
 
-      <OperationsSummaryCards summary={summary} loading={loading && !summary} />
+      <AutomationSection
+        status={automation.status}
+        loading={automation.loading}
+        onRefresh={automation.refresh}
+      />
+
+      <Card data-testid="omni-comms-needs-attention">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Needs attention</p>
+            <p className="text-2xl font-semibold tabular-nums">{attention}</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setActivityFilter("needs_attention")}
+            data-testid="omni-comms-needs-attention-filter"
+          >
+            Show items needing attention
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Request register</CardTitle>
+          <CardTitle className="text-base">Communication activity</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            data-testid="omni-comms-activity-filters"
+          >
+            {ACTIVITY_FILTERS.map((f) => (
+              <Button
+                key={f.id}
+                size="sm"
+                variant={activityFilter === f.id ? "default" : "outline"}
+                onClick={() => setActivityFilter(f.id)}
+                data-testid={`omni-comms-activity-filter-${f.id}`}
+              >
+                {f.label}
+              </Button>
+            ))}
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
             <Input
-              placeholder="Search event, module, correlation or idempotency key"
+              placeholder="Search event or module"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="max-w-sm"
-              aria-label="Search requests"
+              aria-label="Search activity"
               data-testid="omni-comms-ops-search"
             />
-            <Select value={mode} onValueChange={setMode}>
-              <SelectTrigger
-                className="w-[160px]"
-                aria-label="Filter by mode"
-                data-testid="omni-comms-ops-mode-filter"
-              >
-                <SelectValue placeholder="Mode" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All modes</SelectItem>
-                {OPS_REQUEST_MODES.map((m) => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger
-                className="w-[200px]"
-                aria-label="Filter by status"
-                data-testid="omni-comms-ops-status-filter"
-              >
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All statuses</SelectItem>
-                {OPS_REQUEST_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={callerModule} onValueChange={setCallerModule}>
               <SelectTrigger
                 className="w-[220px]"
-                aria-label="Filter by caller module"
+                aria-label="Filter by module"
                 data-testid="omni-comms-ops-caller-filter"
               >
-                <SelectValue placeholder="Caller module" />
+                <SelectValue placeholder="Module" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>All caller modules</SelectItem>
+                <SelectItem value={ALL}>All modules</SelectItem>
                 {OPS_CALLER_MODULES.map((m) => (
                   <SelectItem key={m} value={m}>{m}</SelectItem>
                 ))}
@@ -307,7 +358,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
                 aria-label="Filter by time range"
                 data-testid="omni-comms-ops-range-filter"
               >
-                <SelectValue placeholder="Time range" />
+                <SelectValue placeholder="Date" />
               </SelectTrigger>
               <SelectContent>
                 {RANGES.map((r) => (
@@ -340,62 +391,41 @@ export const OmniCommsOperationsPage: React.FC = () => {
             ) : null}
           </div>
 
-          <p
-            className="text-xs text-muted-foreground"
-            data-testid="omni-comms-ops-active-filters"
-          >
-            {filtersActive
-              ? `Filtered by ${[
-                  mode !== ALL ? `mode ${mode}` : null,
-                  status !== ALL ? `status ${status}` : null,
-                  `time range ${RANGES.find((r) => r.id === range)?.label.toLowerCase()}`,
-                  search.trim() ? `search "${search.trim()}"` : null,
-                ]
-                  .filter(Boolean)
-                  .join(", ")}.`
-              : "No filters applied beyond the default last 30 days."}
-          </p>
-
-
           {error ? (
             <OmniCommsEmptyState
               variant="error"
-              title="Operations data unavailable"
+              title="Activity data unavailable"
               description={error}
               actionLabel="Retry"
               onAction={() => void load()}
             />
           ) : loading && !page ? (
-            <OmniCommsEmptyState variant="loading" title="Loading requests…" />
-          ) : !page || page.items.length === 0 ? (
+            <OmniCommsEmptyState variant="loading" title="Loading activity…" />
+          ) : rows.length === 0 ? (
             <OmniCommsEmptyState
-              title="No communication requests"
-              description="Nothing has been submitted through the send façade for this organisation yet, or no record matches the current filters."
+              title="No communication activity"
+              description="No business communication matches the current filters for this organisation."
             />
           ) : (
             <>
               <Table data-testid="omni-comms-ops-request-table">
                 <caption className="caption-bottom pt-3 text-left text-xs text-muted-foreground">
                   Timestamps are shown in {zone === "utc" ? "UTC" : "your local time"}.
-                  Select a row, or choose View, to open the full request
-                  timeline. This console never retries, resends or dispatches.
+                  Select a row to open the full business timeline.
                 </caption>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Event</TableHead>
+                    <TableHead>Time</TableHead>
                     <TableHead>Module</TableHead>
-                    <TableHead>Mode</TableHead>
-                    <TableHead>Outcome</TableHead>
+                    <TableHead>Event</TableHead>
                     <TableHead className="text-right">Recipients</TableHead>
-                    <TableHead className="text-right">Messages</TableHead>
-                    <TableHead className="text-right">Held jobs</TableHead>
-                    <TableHead className="text-right">Blockers</TableHead>
+                    <TableHead>Channel</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {page.items.map((r) => (
+                  {rows.map((r) => (
                     <TableRow
                       key={r.id}
                       role="button"
@@ -414,21 +444,13 @@ export const OmniCommsOperationsPage: React.FC = () => {
                       <TableCell className="text-xs whitespace-nowrap">
                         {ts(r.created_at, zone)}
                       </TableCell>
-                      <TableCell className="text-xs">{r.event_code ?? "—"}</TableCell>
                       <TableCell className="text-xs">{r.caller_module_code}</TableCell>
-                      <TableCell className="text-xs">
-                        <Badge variant="outline">{r.mode}</Badge>
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        <span className="block font-medium">{r.status}</span>
-                        <span className="text-muted-foreground">
-                          {outcomeOf(r.mode, r.status)}
-                        </span>
-                      </TableCell>
+                      <TableCell className="text-xs">{r.event_code ?? "—"}</TableCell>
                       <TableCell className="text-xs text-right">{r.recipient_count}</TableCell>
-                      <TableCell className="text-xs text-right">{r.message_count}</TableCell>
-                      <TableCell className="text-xs text-right">{r.held_job_count}</TableCell>
-                      <TableCell className="text-xs text-right">{r.blocker_count}</TableCell>
+                      <TableCell className="text-xs">Email</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge variant="outline">{activityStatusLabel(r)}</Badge>
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button
                           size="sm"
@@ -447,7 +469,6 @@ export const OmniCommsOperationsPage: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
-
 
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
@@ -478,6 +499,70 @@ export const OmniCommsOperationsPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/*
+        Technical details — the support-engineer register. Kept, but BELOW the
+        business-friendly activity view.
+      */}
+      <details data-testid="omni-comms-ops-technical-details">
+        <summary className="cursor-pointer text-sm font-medium">
+          Technical details
+        </summary>
+        <div className="space-y-4 pt-4">
+          <OperationsSummaryCards summary={summary} loading={loading && !summary} />
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={mode} onValueChange={setMode}>
+              <SelectTrigger
+                className="w-[160px]"
+                aria-label="Filter by mode"
+                data-testid="omni-comms-ops-mode-filter"
+              >
+                <SelectValue placeholder="Mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All modes</SelectItem>
+                {OPS_REQUEST_MODES.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger
+                className="w-[200px]"
+                aria-label="Filter by technical status"
+                data-testid="omni-comms-ops-status-filter"
+              >
+                <SelectValue placeholder="Technical status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>All statuses</SelectItem>
+                {OPS_REQUEST_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p
+            className="text-xs text-muted-foreground"
+            data-testid="omni-comms-ops-active-filters"
+          >
+            {filtersActive
+              ? `Filtered by ${[
+                  mode !== ALL ? `mode ${mode}` : null,
+                  status !== ALL ? `status ${status}` : null,
+                  `time range ${RANGES.find((r) => r.id === range)?.label.toLowerCase()}`,
+                  search.trim() ? `search "${search.trim()}"` : null,
+                ]
+                  .filter(Boolean)
+                  .join(", ")}.`
+              : "No filters applied beyond the default last 30 days."}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Request register: correlation identifiers, idempotency keys, modes
+            and raw statuses are available in each request record.
+          </p>
+        </div>
+      </details>
 
       {organizationId ? (
         <RequestDetailPanel
