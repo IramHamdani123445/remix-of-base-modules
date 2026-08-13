@@ -97,6 +97,16 @@ export const OMNI_COMMS_NAV_ITEMS: readonly OmniCommsNavItem[] = [
     description: 'What communication capabilities work right now.',
   },
   {
+    id: 'control-center',
+    label: 'Control Center',
+    href: `${OMNI_COMMS_OVERVIEW_ROUTE}?view=control-center`,
+    route: OMNI_COMMS_OVERVIEW_ROUTE,
+    view: 'control-center',
+    description:
+      'Every delivery gate, the test send and the approval queue, in one place.',
+  },
+
+  {
     id: 'providers',
     label: 'Providers',
     href: '/admin/omnichannel-communications/channels',
