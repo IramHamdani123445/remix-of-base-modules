@@ -16,12 +16,13 @@ DECLARE
   v_msg text;
 BEGIN
   -- Two ACTIVE organisations. A is created FIRST on purpose.
-  INSERT INTO public.core_organization (id, status, created_at)
-  VALUES (gen_random_uuid(), 'ACTIVE', now() - interval '10 days')
+  INSERT INTO public.core_organization (id, org_code, legal_name, status, created_at)
+  VALUES (gen_random_uuid(), 'TENANCY_PROBE_A', 'Tenancy Probe A',
+          'ACTIVE', now() - interval '10 days')
   RETURNING id INTO organization_a;
 
-  INSERT INTO public.core_organization (id, status, created_at)
-  VALUES (gen_random_uuid(), 'ACTIVE', now())
+  INSERT INTO public.core_organization (id, org_code, legal_name, status, created_at)
+  VALUES (gen_random_uuid(), 'TENANCY_PROBE_B', 'Tenancy Probe B', 'ACTIVE', now())
   RETURNING id INTO organization_b;
 
   -- ================= Case 1: no ownership at all -> fail closed ==========
