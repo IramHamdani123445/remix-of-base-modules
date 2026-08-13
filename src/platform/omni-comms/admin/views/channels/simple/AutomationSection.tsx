@@ -155,7 +155,9 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
             { label: 'Last run', value: formatMoment(delivery.last_run_at) },
             { label: 'Last successful', value: formatMoment(delivery.last_success_at) },
             { label: 'Jobs found in last run', value: delivery.last_run_found ?? 0 },
-            { label: 'Jobs sent in last run', value: delivery.last_run_handled ?? 0 },
+            // "Claimed" is NOT "sent": claiming only picks a job up. Provider
+            // acceptance and delivery are proven by attempt/callback evidence.
+            { label: 'Jobs picked up in last run', value: delivery.last_run_handled ?? 0 },
             {
               label: 'Emails waiting to send',
               value: (
