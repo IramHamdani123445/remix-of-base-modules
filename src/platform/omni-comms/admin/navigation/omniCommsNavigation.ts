@@ -25,11 +25,13 @@ export const OMNI_COMMS_OVERVIEW_ROUTE = '/admin/omnichannel-communications';
  */
 export const OMNI_COMMS_OVERVIEW_VIEWS = [
   'dashboard',
+  'control-center',
   'setup',
   'safe-test',
   'reference-data',
 ] as const;
 export type OmniCommsOverviewView = (typeof OMNI_COMMS_OVERVIEW_VIEWS)[number];
+
 
 /** Historic deep links that must keep resolving to their current surface. */
 export const OMNI_COMMS_OVERVIEW_VIEW_ALIASES: Readonly<Record<string, OmniCommsOverviewView>> = {
