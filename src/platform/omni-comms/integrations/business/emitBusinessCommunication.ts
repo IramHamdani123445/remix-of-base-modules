@@ -8,9 +8,10 @@
  *  - Delegates to the single canonical façade `sendCommunication()`.
  *  - Never imports a provider SDK, never contacts a provider, never writes to
  *    any Omni-Comms or Legacy communication table.
- *  - `queued` mode is permitted from Step 2 onward, but it only ever yields a
- *    HELD (non-runnable) dispatch job: eligibility for provider dispatch is
- *    decided by Release Control, never by a business caller.
+ *  - `queued` is the production mode. The resulting dispatch job runs under
+ *    the governed delivery state of the channel: automatically when delivery
+ *    is ON, and held until delivery is turned ON otherwise. A business caller
+ *    never authorises, releases or dispatches anything itself.
  *  - Deterministic, collision-resistant idempotency key: SHA-256 over the
  *    COMPLETE canonical identity string. No component is ever truncated, so
  *    two distinct business facts can never collapse onto one key.
@@ -155,7 +156,9 @@ export async function emitBusinessCommunication(
   let idempotencyKey: string | null = null;
 
   try {
-    idempotencyKey = await buildProducerIdempotencyKey(input);
+    idempotencyKey =
+      input.idempotencyKeyOverride?.trim() ||
+      (await buildProducerIdempotencyKey(input));
 
     const result = await sendCommunication({
       eventCode: input.eventCode.trim(),
@@ -166,8 +169,15 @@ export async function emitBusinessCommunication(
       correlationId: input.correlationId ?? null,
       requestedChannels: input.requestedChannels,
       payload: input.payload,
+      resolutionContext: input.resolutionContext
+        ? {
+            productId: input.resolutionContext.productId ?? null,
+            recipientRoles: input.resolutionContext.recipientRoles ?? [],
+          }
+        : undefined,
       recipients: input.recipients.map((r) => ({
         recipientType: r.recipientType,
+        recipientRole: r.recipientRole ?? null,
         recipientReference: r.recipientReference ?? null,
         displayName: r.displayName ?? null,
         locale: r.locale ?? null,
