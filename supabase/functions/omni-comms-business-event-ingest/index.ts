@@ -198,10 +198,13 @@ Deno.serve(async (req) => {
 
   let processed = 0;
   let blocked = 0;
-  let needsReview = 0;
+  let retried = 0;
+  let noCommunication = 0;
 
   for (const row of rows) {
-    let status = "blocked";
+    // A transient failure is the SAFE default: nothing is ever discarded and
+    // nothing is ever declared blocked on evidence the worker does not have.
+    let status = "retry";
     let requestId: string | null = null;
     let blockerCode = "runtime_unavailable";
 
@@ -220,21 +223,26 @@ Deno.serve(async (req) => {
       });
       const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       requestId = str(body.requestId);
+      const blockers = (Array.isArray(body.blockers) ? body.blockers : [])
+        .map((b) => str(b))
+        .filter((b): b is string => b !== null);
 
       if (res.ok && (body.status === "accepted" || body.status === "queued")) {
         status = "processed";
         blockerCode = "";
-      } else if (res.status >= 500) {
-        // Transient: leave it recoverable so the next tick retries.
-        status = "needs_review";
+      } else if (blockers.some((b) => NO_COMMUNICATION_BLOCKERS.has(b))) {
+        // Configured OFF is a truthful terminal answer, never a retry.
+        status = "no_communication_configured";
+        blockerCode = blockers.find((b) => NO_COMMUNICATION_BLOCKERS.has(b)) ?? "";
+      } else if (res.status >= 500 || res.status === 429) {
+        status = "retry";
         blockerCode = "runtime_unavailable";
       } else {
         status = "blocked";
-        const blockers = Array.isArray(body.blockers) ? body.blockers : [];
-        blockerCode = str(blockers[0]) ?? str(body.detail) ?? "runtime_blocked";
+        blockerCode = blockers[0] ?? str(body.detail) ?? "runtime_blocked";
       }
     } catch {
-      status = "needs_review";
+      status = "retry";
       blockerCode = "runtime_unavailable";
     }
 
@@ -247,7 +255,8 @@ Deno.serve(async (req) => {
 
     if (status === "processed") processed += 1;
     else if (status === "blocked") blocked += 1;
-    else needsReview += 1;
+    else if (status === "no_communication_configured") noCommunication += 1;
+    else retried += 1;
   }
 
   return json({
@@ -255,6 +264,8 @@ Deno.serve(async (req) => {
     claimed: rows.length,
     processed,
     blocked,
-    needsReview,
+    retried,
+    noCommunication,
   });
+
 });
