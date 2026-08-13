@@ -295,7 +295,12 @@ export const OmniCommsLandingPage: React.FC = () => {
           <DashboardView />
         </TabsContent>
 
+        <TabsContent value="control-center" className="mt-4">
+          <OmniCommsControlCenter />
+        </TabsContent>
+
         <TabsContent value="setup" className="mt-4">
+
           <SetupWizardPanel />
         </TabsContent>
 
