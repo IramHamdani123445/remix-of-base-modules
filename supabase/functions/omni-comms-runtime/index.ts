@@ -627,9 +627,25 @@ Deno.serve(async (req: Request) => {
       p_requested_channels: canonical.requestedChannels ?? null,
     },
   );
+
+  // Product business context is a RESOLUTION input, not merely evidence.
+  // The authoritative product communication overrides are read from the same
+  // trusted server surface and applied by the single resolution authority.
+  const { data: productOverrideData, error: productOverrideErr } = await admin.rpc(
+    "omni_comms_priv_product_communication_overrides",
+    {
+      p_organization_id: canonical.organizationId,
+      p_product_id: canonical.businessContext.productId,
+      p_event_code: canonical.eventCode,
+    },
+  );
   if (snapErr) {
     console.log(`[${BUILD_TAG}] snapshot_rpc_error`);
     return finalizeBlocked(admin, userId, row, canonical, mapRpcErrorToCode(snapErr));
+  }
+  if (productOverrideErr) {
+    console.log(`[${BUILD_TAG}] product_override_rpc_error`);
+    return finalizeBlocked(admin, userId, row, canonical, "product_configuration_unresolved");
   }
 
   let snapshot;
@@ -663,6 +679,8 @@ Deno.serve(async (req: Request) => {
       payload: canonical.payload,
       recipients: inputRecipients,
       mode: canonical.mode,
+      productId: canonical.businessContext.productId ?? null,
+      productOverrides: Array.isArray(productOverrideData) ? productOverrideData : [],
     });
   } catch (err) {
     const code = err instanceof RuntimeResolutionError ? err.code : "runtime_persistence_failed";
