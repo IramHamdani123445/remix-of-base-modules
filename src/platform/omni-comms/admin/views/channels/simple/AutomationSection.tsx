@@ -218,6 +218,13 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
             <p className="text-sm text-muted-foreground">No automation runs recorded yet.</p>
           ) : (
             <div className="divide-y" data-testid="omni-comms-automation-runs">
+              <div className="grid grid-cols-5 gap-2 py-2 text-xs font-medium text-muted-foreground">
+                <span>Time</span>
+                <span>Process</span>
+                <span className="text-right">Found</span>
+                <span className="text-right">Handled</span>
+                <span>Result</span>
+              </div>
               {runs.map((run) => (
                 <div
                   key={`${run.stage}-${run.at}`}
@@ -226,10 +233,9 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
                   <span className="text-muted-foreground">
                     {new Date(run.at).toLocaleTimeString()}
                   </span>
-                  <span className="col-span-2">{AUTOMATION_STAGE_LABEL[run.stage]}</span>
-                  <span className="text-muted-foreground">
-                    {run.found} found · {run.handled} handled
-                  </span>
+                  <span>{AUTOMATION_STAGE_LABEL[run.stage]}</span>
+                  <span className="text-right tabular-nums">{run.found}</span>
+                  <span className="text-right tabular-nums">{run.handled}</span>
                   <span className={run.result === 'success' ? '' : 'text-destructive'}>
                     {runResultLabel(run)}
                   </span>
@@ -238,6 +244,7 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
             </div>
           )}
         </CardContent>
+
       </Card>
     </div>
   );
