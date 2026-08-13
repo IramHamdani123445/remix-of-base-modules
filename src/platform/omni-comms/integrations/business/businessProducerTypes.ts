@@ -12,11 +12,11 @@ import type { OmniCommsChannel } from '../../sendCommunication';
 /**
  * Modes a business producer may request.
  *
- * Step 2 (controlled production go-live) admits `queued`: the runtime
- * resolves, renders and persists a HELD dispatch job. A held job is not
- * runnable — it only becomes eligible for provider dispatch when Release
- * Control separately authorises it. Requesting `queued` therefore still
- * contacts no provider and sends no email.
+ * `queued` is the production mode: the runtime resolves, renders and
+ * persists a dispatch job. Whether that job runs is decided by the governed
+ * delivery state of the channel — when delivery is ON the scheduler dispatches
+ * it automatically; when delivery is OFF the job waits. A business caller
+ * never authorises, releases or dispatches anything itself.
  */
 export const BUSINESS_PRODUCER_MODES = ['dry_run', 'shadow', 'queued'] as const;
 export type BusinessProducerMode = (typeof BUSINESS_PRODUCER_MODES)[number];
@@ -51,6 +51,13 @@ export type OmniCommsRecipientType = (typeof OMNI_COMMS_RECIPIENT_TYPES)[number]
 
 export interface BusinessProducerRecipient {
   recipientType: OmniCommsRecipientType;
+  /**
+   * First-class SEMANTIC business role (`claimant`, `employer_contact`,
+   * `case_owner`, …). A business role is NOT a persistence type: it is carried
+   * alongside `recipientType`, never inside it, and communication policy — not
+   * a template and not a provider — decides which role receives a channel.
+   */
+  recipientRole?: string | null;
   recipientReference?: string | null;
   displayName?: string | null;
   locale?: string | null;
@@ -75,6 +82,21 @@ export interface BusinessProducerEmission {
   mode: BusinessProducerMode;
   requestedChannels?: OmniCommsChannel[];
   correlationId?: string | null;
+  /**
+   * Trusted business resolution context. Used ONLY for configuration
+   * resolution (product policy). It is never provider metadata and never
+   * reaches a provider payload.
+   */
+  resolutionContext?: {
+    productId?: string | null;
+    recipientRoles?: string[];
+  };
+  /**
+   * Pre-computed idempotency key. Supplied only by the configured-event
+   * helper, which owns v2 business identity. Legacy producers leave this
+   * unset and keep their v1 key.
+   */
+  idempotencyKeyOverride?: string | null;
 }
 
 export interface BusinessProducerResult {

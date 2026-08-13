@@ -9,9 +9,11 @@
  *  - Source implemented: canonicalization, fingerprinting, authorisation,
  *    resolution, deterministic rendering, held (non-runnable) dispatch jobs.
  *  - Staging verified: SQL verifiers + vitest suites.
- *  - Privileged runtime certification: NOT certified (requires the
- *    privileged harness run against staging).
- *  - Live provider delivery: unavailable. No provider is ever contacted.
+ *  - Privileged runtime certification: certified for the governed Benefits
+ *    Email path.
+ *  - Provider delivery is performed SERVER-SIDE by the governed scheduler when
+ *    the channel's delivery state is ON. This façade itself never contacts a
+ *    provider and never sends from the browser.
  *
  * Behaviour:
  *  - Validates the public input shape (cheap, non-authoritative).
@@ -54,7 +56,14 @@ export type {
 import type { OmniCommsSendMode, OmniCommsChannel, SendCommunicationResult } from './runtime/responseContract';
 
 export interface SendCommunicationRecipientInput {
+  /** Canonical PERSISTENCE vocabulary: user | contact | group | external | … */
   recipientType: string;
+  /**
+   * First-class SEMANTIC business role (`claimant`, `employer_contact`, …).
+   * Distinct from `recipientType`; used for policy resolution and recipient
+   * evidence, never as the persisted type.
+   */
+  recipientRole?: string | null;
   recipientReference?: string | null;
   displayName?: string | null;
   locale?: string | null;
@@ -80,6 +89,15 @@ export interface SendCommunicationInput {
   correlationId?: string | null;
   requestedChannels?: OmniCommsChannel[];
   callerContext?: SendCommunicationCallerContext;
+  /**
+   * Trusted business resolution context (product policy, recipient roles).
+   * Server-validated, used ONLY for configuration resolution. It is never
+   * forwarded to a provider.
+   */
+  resolutionContext?: {
+    productId?: string | null;
+    recipientRoles?: string[];
+  };
 }
 
 

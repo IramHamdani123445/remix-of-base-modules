@@ -28,7 +28,19 @@
  */
 import { emitBusinessCommunication } from './emitBusinessCommunication';
 import { resolveBusinessCommunicationScope } from './businessScopeResolver';
-import { resolveProductCommunication } from '../../application/productCommunicationService';
+import { resolveEffectiveCommunicationPlan } from '../../application/effectiveCommunicationPlan';
+import { buildConfiguredEventIdempotencyKey } from './configuredEventIdentity';
+import type { OmniCommsChannel as FacadeChannel } from '../../sendCommunication';
+
+/** Channels the public façade accepts today. */
+const FACADE_CHANNELS: FacadeChannel[] = [
+  'email',
+  'sms',
+  'whatsapp',
+  'push',
+  'in_app',
+  'print',
+];
 import {
   OMNI_COMMS_RECIPIENT_TYPES,
   type BusinessProducerOutcome,
@@ -102,10 +114,14 @@ export interface ConfiguredBusinessEventResult
   departmentSource: 'explicit' | 'module_context' | 'none';
   /** Set when the Hub decided this obligation does not apply. */
   skippedReason: string | null;
+  /** Channels the authoritative effective plan turned on. */
+  enabledChannels: string[];
+  /** Enabled channels with a real delivery adapter. */
+  runnableChannels: string[];
+  /** Effective template/sender chosen by the plan, for module-side logging. */
+  effectiveTemplate: string | null;
+  effectiveSender: string | null;
 }
-
-/** Channels a product gate is evaluated for. Configuration decides the rest. */
-const PRODUCT_GATED_CHANNELS = ['email'] as const;
 
 function deriveModuleCode(eventCode: string): string {
   return String(eventCode ?? '').split('.')[0]?.trim().toUpperCase() ?? '';
@@ -146,6 +162,10 @@ function blocked(
     departmentId: scope.departmentId,
     departmentSource: scope.departmentSource,
     skippedReason,
+    enabledChannels: [],
+    runnableChannels: [],
+    effectiveTemplate: null,
+    effectiveSender: null,
   };
 }
 
@@ -185,43 +205,44 @@ export async function emitConfiguredBusinessEvent(
     return blocked(eventCode, ['organization_unresolved'], scope);
   }
 
-  // Product override gate. The Hub — never the business module — decides
-  // whether a product raises this obligation. Fail-closed and non-fatal.
+  // ONE authoritative resolution. The plan — not the business module and not
+  // a hard-coded channel list — decides which channels carry an obligation,
+  // which template and sender apply and which recipient role is addressed.
   const productId = input.context?.productId?.trim() || null;
-  if (productId) {
-    let anyEnabled = false;
-    let lastReason: string | null = null;
-    for (const channel of PRODUCT_GATED_CHANNELS) {
-      try {
-        const resolution = await resolveProductCommunication(
-          scope.organizationId,
-          productId,
-          eventCode,
-          channel,
-        );
-        if (resolution?.enabled) {
-          anyEnabled = true;
-          break;
-        }
-        lastReason = resolution?.reason ?? 'product_communication_disabled';
-      } catch {
-        lastReason = 'product_communication_unresolved';
-      }
-    }
-    if (!anyEnabled) {
-      const reason = lastReason ?? 'product_communication_disabled';
-      return {
-        ...blocked(eventCode, [reason], scope),
-        outcome: 'skipped',
-        skippedReason: reason,
-      };
-    }
+  const plan = await resolveEffectiveCommunicationPlan({
+    organizationId: scope.organizationId,
+    moduleCode,
+    eventCode,
+    productId,
+    // Department is resolution CONTEXT only, never a delivery instruction.
+    departmentId: scope.departmentId,
+    recipientRoles: roles,
+  });
+
+  if (plan.enabledChannels.length === 0) {
+    const reason = plan.blockers[0] ?? 'no_channel_enabled';
+    return {
+      ...blocked(eventCode, [reason], scope),
+      outcome: 'skipped',
+      skippedReason: reason,
+    };
+  }
+  if (plan.runnableChannels.length === 0) {
+    const reason = 'channel_delivery_not_implemented';
+    return {
+      ...blocked(eventCode, [reason], scope),
+      outcome: 'skipped',
+      skippedReason: reason,
+    };
   }
 
   const recipients = roles.map((role) => {
     const r = input.recipients[role] ?? {};
     return {
       recipientType: toRecipientType(r.audience),
+      // Semantic business role stays first class; it is never squeezed into
+      // the canonical persistence vocabulary.
+      recipientRole: role,
       recipientReference: r.reference ?? role,
       displayName: r.displayName ?? null,
       locale: r.locale ?? null,
@@ -230,18 +251,38 @@ export async function emitConfiguredBusinessEvent(
     };
   });
 
+  const entityType = input.entity.type?.trim() || deriveEntityType(eventCode);
+  const occurrence = input.entity.occurrence?.trim() || 'default';
+
+  // v2 business identity: configuration changes never mint a new obligation.
+  const idempotencyKeyOverride = await buildConfiguredEventIdempotencyKey({
+    organizationId: scope.organizationId,
+    moduleCode,
+    eventCode,
+    entityType,
+    entityId: String(input.entity.id),
+    occurrence,
+  });
+
+  const primary = plan.channels.find((c) => c.channel === plan.runnableChannels[0]) ?? null;
+
   const result = await emitBusinessCommunication({
     moduleCode,
     eventCode,
     organizationId: scope.organizationId,
     departmentId: scope.departmentId,
-    entityType: input.entity.type?.trim() || deriveEntityType(eventCode),
+    entityType,
     entityId: String(input.entity.id),
     // Deterministic occurrence identity — callers never handcraft a key.
-    entityVersion: input.entity.occurrence?.trim() || 'default',
+    entityVersion: occurrence,
     // Production business communications are always queued.
     mode: 'queued',
-    // NO requestedChannels: communication configuration decides the channels.
+    idempotencyKeyOverride,
+    // Channels come from the authoritative plan, never from the caller.
+    requestedChannels: plan.runnableChannels.filter(
+      (c): c is FacadeChannel => FACADE_CHANNELS.includes(c as FacadeChannel),
+    ),
+    resolutionContext: { productId, recipientRoles: roles },
     correlationId:
       input.correlationId?.trim() ||
       `${eventCode.toLowerCase()}:${String(input.entity.id).trim()}`,
@@ -255,5 +296,9 @@ export async function emitConfiguredBusinessEvent(
     departmentId: scope.departmentId,
     departmentSource: scope.departmentSource,
     skippedReason: null,
+    enabledChannels: [...plan.enabledChannels],
+    runnableChannels: [...plan.runnableChannels],
+    effectiveTemplate: primary?.templateRef ?? null,
+    effectiveSender: primary?.senderRef ?? null,
   };
 }

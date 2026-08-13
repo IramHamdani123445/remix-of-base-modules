@@ -40,7 +40,12 @@ import React, {
 import { supabase } from "@/integrations/supabase/client";
 
 const SESSION_ORG_KEY = "omni_comms.tenant.org_id";
-const SESSION_DEPT_KEY = "omni_comms.tenant.department_id";
+/**
+ * Legacy key. Department is NO LONGER persistent UI state: a department that
+ * survives navigation is a hidden global scope and silently narrows every
+ * subsequent screen. The key is removed on mount and never written again.
+ */
+const LEGACY_SESSION_DEPT_KEY = "omni_comms.tenant.department_id";
 
 export interface OmniCommsOrganizationOption {
   id: string;
@@ -57,8 +62,17 @@ export interface OmniCommsDepartmentOption {
 export interface OmniCommsTenantContextValue {
   organizationId: string | null;
   organizationName: string | null;
+  /**
+   * Non-null ONLY while an explicit department override context is active
+   * (an override editor or a technical-evidence surface). Normal screens
+   * always read `null` and therefore always operate at organisation scope.
+   */
   departmentId: string | null;
   departmentName: string | null;
+  /** True while an operator has explicitly opened a department override. */
+  departmentOverrideActive: boolean;
+  /** Ends the override context and returns to organisation scope. */
+  clearDepartmentOverride: () => void;
   availableOrganizations: OmniCommsOrganizationOption[];
   availableDepartments: OmniCommsDepartmentOption[];
   loading: boolean;
@@ -105,9 +119,9 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
   const [organizationId, setOrgIdState] = useState<string | null>(() =>
     readSession(SESSION_ORG_KEY),
   );
-  const [departmentId, setDeptIdState] = useState<string | null>(() =>
-    readSession(SESSION_DEPT_KEY),
-  );
+  // Department override lives in memory for the lifetime of the surface that
+  // opened it. It is intentionally NOT restored from storage.
+  const [departmentId, setDeptIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -138,7 +152,6 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
         setOrgIdState(null);
         writeSession(SESSION_ORG_KEY, null);
         setDeptIdState(null);
-        writeSession(SESSION_DEPT_KEY, null);
       } else if (!organizationId && active.length === 1) {
         // Single authorised organisation: select it so administration screens
         // are not gated behind a selector with only one possible answer.
@@ -183,7 +196,6 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
       // Reset department if it no longer belongs to the selected org.
       if (departmentId && !mapped.some((d) => d.id === departmentId)) {
         setDeptIdState(null);
-        writeSession(SESSION_DEPT_KEY, null);
       }
     } catch {
       setDepts([]);
@@ -191,6 +203,8 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
   }, [departmentId]);
 
   useEffect(() => {
+    // Purge any hidden department scope persisted by earlier builds.
+    writeSession(LEGACY_SESSION_DEPT_KEY, null);
     void loadOrganizations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -203,14 +217,17 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
   const setOrganizationId = useCallback((id: string | null) => {
     setOrgIdState(id);
     writeSession(SESSION_ORG_KEY, id);
-    // Changing org invalidates department selection.
+    // Changing org invalidates any active department override.
     setDeptIdState(null);
-    writeSession(SESSION_DEPT_KEY, null);
   }, []);
 
+  /** Only an explicit override editor may call this. Never persisted. */
   const setDepartmentId = useCallback((id: string | null) => {
     setDeptIdState(id);
-    writeSession(SESSION_DEPT_KEY, id);
+  }, []);
+
+  const clearDepartmentOverride = useCallback(() => {
+    setDeptIdState(null);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -226,6 +243,8 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
       organizationName: org?.name ?? null,
       departmentId,
       departmentName: dept?.name ?? null,
+      departmentOverrideActive: departmentId != null,
+      clearDepartmentOverride,
       availableOrganizations: orgs,
       availableDepartments: depts,
       loading,
@@ -243,6 +262,7 @@ export const OmniCommsTenantProvider: React.FC<{ children: React.ReactNode }> = 
     error,
     setOrganizationId,
     setDepartmentId,
+    clearDepartmentOverride,
     refresh,
   ]);
 
@@ -266,5 +286,5 @@ export function useOmniCommsTenant(): OmniCommsTenantContextValue {
 /** Test-only helper. Not exported from a public barrel. */
 export const __OMNI_COMMS_TENANT_INTERNAL__ = {
   SESSION_ORG_KEY,
-  SESSION_DEPT_KEY,
+  LEGACY_SESSION_DEPT_KEY,
 };
