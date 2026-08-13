@@ -14,9 +14,10 @@
 //     dispatch job; the governed dispatcher decides delivery.
 //   * A caller can never choose WHAT is ingested. The only accepted input is
 //     a bounded batch limit; the database claim transaction selects the rows.
-//   * It is callable only by the automatic scheduler: the service-role
-//     credential (never held by a browser) plus a single-use, purpose-bound
-//     scheduler ticket minted by the database.
+//   * It is callable only by the automatic scheduler: trust comes from a
+//     single-use, purpose-bound scheduler ticket minted by the database and
+//     presented with the anon key. No service-role bearer is required or
+//     accepted as proof of scheduler identity.
 //   * Every failure is recorded as a bounded code on the outbox row. Nothing
 //     is ever lost and nothing is ever double-sent: the runtime is idempotent
 //     on the outbox's deterministic idempotency key.
