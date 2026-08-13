@@ -160,7 +160,7 @@ describe('UI Phase 1 — breadcrumbs', () => {
     expect(crumbs.map((c) => c.label)).toEqual([
       'Admin',
       'Omnichannel Communications',
-      'Dashboard',
+      'Overview',
     ]);
   });
 
@@ -168,7 +168,8 @@ describe('UI Phase 1 — breadcrumbs', () => {
     const crumbs = buildOmniCommsBreadcrumbs({
       pathname: '/admin/omnichannel-communications/operations',
     });
-    expect(crumbs[crumbs.length - 1].label).toBe('Operations');
+    // `operations` is an unadvertised deep link owned by the Activity surface.
+    expect(crumbs[crumbs.length - 1].label).toBe('Activity');
   });
 
   it('adds channel and workspace context inside a channel workspace', () => {
@@ -181,7 +182,7 @@ describe('UI Phase 1 — breadcrumbs', () => {
     expect(crumbs.map((c) => c.label)).toEqual([
       'Admin',
       'Omnichannel Communications',
-      'Channels',
+      'Providers',
       'Email',
       'Delivery Setup',
       'Sender addresses',

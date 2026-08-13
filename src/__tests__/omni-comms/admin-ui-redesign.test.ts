@@ -37,12 +37,23 @@ describe('Omni-Comms admin UI redesign', () => {
     }
   });
 
-  it('navigation is centralised and matches the 7 permanent routes', () => {
+  it('navigation is centralised and every permanent route has an owner', async () => {
     const src = read(NAV);
+    const navModule = await import(
+      '@/platform/omni-comms/admin/navigation/omniCommsNavigation'
+    );
+    const advertised = new Set(
+      navModule.OMNI_COMMS_NAV_ITEMS.map((i: { href: string }) => i.href.split('?')[0]),
+    );
     for (const entry of OMNI_COMMS_ROUTE_REGISTRY) {
-      expect(src, `nav must reference ${entry.path}`).toContain(entry.path);
+      // A route is either advertised in the four-item nav, or it is an
+      // unadvertised deep link that resolves to the surface that owns it.
+      const owned =
+        advertised.has(entry.path) ||
+        Boolean(navModule.resolveActiveNavItem(entry.path, null));
+      expect(owned, `nav must own ${entry.path}`).toBe(true);
     }
-    expect(src).toMatch(/Planned|planned/);
+    expect(src).toMatch(/unadvertised/i);
   });
 
   it('safe test surface uses staged, plain-language wording', () => {
@@ -87,21 +98,21 @@ describe('Omni-Comms admin UI acceptance corrections', () => {
     expect(nav.resolveOverviewView(null)).toBe('dashboard');
   });
 
-  it('reference data highlights Setup in the module navigation', async () => {
+  it('reference data and safe test resolve to the Overview surface', async () => {
     const nav = await import('@/platform/omni-comms/admin/navigation/omniCommsNavigation');
     const active = nav.resolveActiveNavItem(
       '/admin/omnichannel-communications',
       'reference-data',
     );
-    expect(active.id).toBe('setup');
+    expect(active.id).toBe('overview');
     expect(
       nav.resolveActiveNavItem('/admin/omnichannel-communications', 'dry-run').id,
-    ).toBe('safe-test');
+    ).toBe('overview');
   });
 
-  it('Safe test is withheld from navigation in production', async () => {
+  it('Safe test is never advertised in navigation, in any environment', async () => {
     const nav = await import('@/platform/omni-comms/admin/navigation/omniCommsNavigation');
-    expect(nav.omniCommsNavItems('non_production').map((i) => i.id)).toContain('safe-test');
+    expect(nav.omniCommsNavItems('non_production').map((i) => i.id)).not.toContain('safe-test');
     expect(nav.omniCommsNavItems('production').map((i) => i.id)).not.toContain('safe-test');
     expect(nav.omniCommsNavItems('unknown').map((i) => i.id)).not.toContain('safe-test');
   });
