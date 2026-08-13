@@ -122466,6 +122466,16 @@ export type Database = {
         Args: never
         Returns: string[]
       }
+      omni_comms_priv_live_delivery_cancel_request: {
+        Args: {
+          p_actor: string
+          p_channel: string
+          p_correlation_id?: string
+          p_department_id: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_live_delivery_indicators: {
         Args: {
           p_channel: string

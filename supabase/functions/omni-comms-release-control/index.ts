@@ -443,6 +443,34 @@ Deno.serve(async (req) => {
 
 
   /**
+   * `delivery_cancel_request` — withdraw a pending "turn delivery on" request.
+   *
+   * This can only CLEAR a proposal. It can never activate delivery, so it is
+   * safe for the same operator who raised the request. The database records
+   * the withdrawal in the release history.
+   */
+  if (body.action === 'delivery_cancel_request') {
+    const organizationId = typeof body.organizationId === 'string' ? body.organizationId : '';
+    const departmentId = typeof body.departmentId === 'string' ? body.departmentId : null;
+    const channel = typeof body.channel === 'string' && body.channel ? body.channel : 'email';
+    if (!organizationId) return json({ error: 'invalid_body' }, 400);
+
+    const { data, error } = await serviceClient().rpc(
+      'omni_comms_priv_live_delivery_cancel_request',
+      {
+        p_actor: actorId,
+        p_organization_id: organizationId,
+        p_department_id: departmentId,
+        p_channel: channel,
+        p_correlation_id: typeof body.correlationId === 'string' ? body.correlationId : null,
+      },
+    );
+    if (error) return json({ error: error.message ?? 'delivery_cancel_failed' }, 400);
+    return json(data ?? { cancelled: false });
+  }
+
+
+  /**
    * `delivery_request` — the single operator action behind the plain
    * "Automatic Email delivery" switch.
    *

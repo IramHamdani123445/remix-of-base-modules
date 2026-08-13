@@ -184,3 +184,19 @@ export const buildDeliveryRequestBody = (params: {
   channel: params.channel ?? 'email',
   intent: params.intent,
 });
+
+/**
+ * Body for withdrawing a pending "turn delivery on" request. This can only
+ * CLEAR a proposal — it can never enable delivery, so the operator who raised
+ * the request may withdraw it themselves.
+ */
+export const buildDeliveryCancelBody = (params: {
+  organizationId: string;
+  departmentId?: string | null;
+  channel?: string;
+}) => ({
+  action: 'delivery_cancel_request' as const,
+  organizationId: params.organizationId,
+  departmentId: params.departmentId ?? null,
+  channel: params.channel ?? 'email',
+});
