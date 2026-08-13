@@ -16,7 +16,9 @@ import {
 } from '@/platform/omni-comms/application/emailJourneyService';
 
 function clientWith(data: unknown) {
-  const rpc = vi.fn(async () => ({ data, error: null }));
+  const rpc = vi.fn(
+    async (_fn: string, _args?: Record<string, unknown>) => ({ data, error: null }),
+  );
   return { client: { rpc }, rpc };
 }
 
@@ -51,8 +53,8 @@ describe('Email journey read model', () => {
     const { client, rpc } = clientWith({ initiated: 0 });
     await getEmailJourneySummary(client, FILTERS);
 
-    const args = rpc.mock.calls[0][1] as Record<string, unknown>;
-    expect(rpc.mock.calls[0][0]).toBe('omni_comms_email_journey_summary');
+    const [fn, args] = rpc.mock.calls[0] as [string, Record<string, unknown>];
+    expect(fn).toBe('omni_comms_email_journey_summary');
     expect(args.p_organization_id).toBe('org-1');
     expect(args.p_module_code).toBe('BENEFITS');
     expect(args.p_stage).toBe('delivered');
@@ -73,8 +75,8 @@ describe('Email journey read model', () => {
   });
 
   it('surfaces controlled RPC errors instead of raw database text', async () => {
-    const rpc = vi.fn(async () => ({
-      data: null,
+    const rpc = vi.fn(async (_fn: string, _args?: Record<string, unknown>) => ({
+      data: null as unknown,
       error: { message: 'OC403 permission_denied', details: 'omni_comms.view' },
     }));
     await expect(
