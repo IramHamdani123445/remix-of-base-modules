@@ -23,6 +23,10 @@
 //     on the outbox's deterministic idempotency key.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  classifyRuntimeOutcome,
+  type IngestClassification,
+} from "../_shared/omniCommsIngestClassification.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -115,16 +119,11 @@ export function buildRuntimeRequest(row: OutboxRow): Record<string, unknown> {
   };
 }
 
-/**
- * Terminal "nothing to send" outcomes. Communication being switched OFF is a
- * legitimate configured answer, not a failure and not something to retry.
- */
-const NO_COMMUNICATION_BLOCKERS = new Set([
-  "no_communication_configured",
-  "no_channel_configured",
-  "communication_disabled",
-  "channel_delivery_off",
-]);
+// Handoff classification is shared, dependency-free grammar so the worker and
+// the test-runner execute exactly the same rules. See
+// `_shared/omniCommsIngestClassification.ts` for the ownership model.
+
+
 
 
 Deno.serve(async (req) => {
@@ -245,9 +244,11 @@ Deno.serve(async (req) => {
   for (const row of rows) {
     // A transient failure is the SAFE default: nothing is ever discarded and
     // nothing is ever declared blocked on evidence the worker does not have.
-    let status = "retry";
+    let classification: IngestClassification = {
+      status: "retry",
+      blockerCode: "runtime_unavailable",
+    };
     let requestId: string | null = null;
-    let blockerCode = "runtime_unavailable";
 
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/omni-comms-runtime`, {
@@ -268,30 +269,25 @@ Deno.serve(async (req) => {
         .map((b) => str(b))
         .filter((b): b is string => b !== null);
 
-      if (res.ok && (body.status === "accepted" || body.status === "queued")) {
-        status = "processed";
-        blockerCode = "";
-      } else if (blockers.some((b) => NO_COMMUNICATION_BLOCKERS.has(b))) {
-        // Configured OFF is a truthful terminal answer, never a retry.
-        status = "no_communication_configured";
-        blockerCode = blockers.find((b) => NO_COMMUNICATION_BLOCKERS.has(b)) ?? "";
-      } else if (res.status >= 500 || res.status === 429) {
-        status = "retry";
-        blockerCode = "runtime_unavailable";
-      } else {
-        status = "blocked";
-        blockerCode = blockers[0] ?? str(body.detail) ?? "runtime_blocked";
-      }
+      classification = classifyRuntimeOutcome({
+        ok: res.ok,
+        httpStatus: res.status,
+        status: str(body.status),
+        requestId,
+        blockers,
+        detail: str(body.detail),
+      });
     } catch {
-      status = "retry";
-      blockerCode = "runtime_unavailable";
+      classification = { status: "retry", blockerCode: "runtime_unavailable" };
     }
 
+    const status = classification.status;
     await service.rpc("omni_comms_priv_complete_business_event", {
       p_id: row.id,
       p_status: status,
       p_request_id: requestId,
-      p_blocker_code: blockerCode === "" ? null : blockerCode,
+      p_blocker_code: classification.blockerCode,
+
     });
 
     if (status === "processed") processed += 1;
