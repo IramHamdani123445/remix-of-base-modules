@@ -235,6 +235,28 @@ export const OmniCommsControlCenter: React.FC = () => {
     })();
   };
 
+  const onCancelProposal = () => {
+    if (!organizationId) return;
+    setBusy(true);
+    void (async () => {
+      try {
+        const res = await releaseTransport.invoke(
+          buildDeliveryCancelBody({
+            organizationId,
+            departmentId: departmentId ?? null,
+            channel: CHANNEL,
+          }),
+        );
+        if (res.error) throw new Error(res.error.message ?? 'delivery_cancel_failed');
+        await Promise.all([load(), approvals.refresh()]);
+      } catch (e) {
+        toastError(e, 'The pending request could not be withdrawn');
+      } finally {
+        setBusy(false);
+      }
+    })();
+  };
+
   const indicatorByKey = new Map(
     (snapshot?.indicators ?? []).map((i) => [i.key, i.ready] as const),
   );
@@ -279,6 +301,30 @@ export const OmniCommsControlCenter: React.FC = () => {
             busy={busy}
             onChange={onToggleDelivery}
           />
+
+          {snapshot?.state === 'awaiting_approval' ? (
+            <Alert data-testid="omni-comms-pending-proposal">
+              <ShieldAlert className="h-4 w-4" />
+              <AlertTitle>A request to turn delivery on is waiting</AlertTitle>
+              <AlertDescription className="mt-2 space-y-2">
+                <p>
+                  {snapshot.awaitingSelfApproval
+                    ? 'You raised this request, so a different administrator must confirm it. '
+                      + 'Withdraw it if you want to use the switch again yourself.'
+                    : 'Turn the switch on to confirm this request as the second approver.'}
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={onCancelProposal}
+                  data-testid="omni-comms-withdraw-proposal"
+                >
+                  Withdraw request
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
           {loading && !snapshot ? (
             <Skeleton className="h-40 w-full" />
