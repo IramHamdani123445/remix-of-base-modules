@@ -561,16 +561,8 @@ export const ChannelReleaseControlTab: React.FC<{
 
       <GoLiveWorkflowCard workflow={workflow} />
 
-      <LiveOperationsCard
-        live={liveOps}
-        busy={busy || loading}
-        canPropose={canConfigure && Boolean(release) && release?.proposed_state !== 'live'}
-        canApproveLive={
-          canOperate && release?.proposed_state === 'live' && !sameActorAsProposer
-        }
-        onProposeLive={proposeLive}
-        onApproveLive={approveLive}
-      />
+      <LiveOperationsCard live={liveOps} />
+
 
 
 
