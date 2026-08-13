@@ -75,6 +75,8 @@ import { businessEventLabel } from "@/platform/omni-comms/domain/businessEventLa
 import OperationsSummaryCards from "./operations/OperationsSummaryCards";
 import RequestDetailPanel from "./operations/RequestDetailPanel";
 import BusinessEventDetailPanel from "./operations/BusinessEventDetailPanel";
+import EmailJourneySection from "./operations/EmailJourneySection";
+import EmailJourneyDetailPanel from "./operations/EmailJourneyDetailPanel";
 
 /** Normal-operator filter chips, expressed in business-event vocabulary. */
 const EVENT_FILTERS = [
@@ -182,6 +184,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
   const selectedRequestId = searchParams.get("request");
   const selectedEventId = searchParams.get("businessEvent");
+  const selectedEmailId = searchParams.get("email");
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 350);
@@ -262,6 +265,18 @@ export const OmniCommsOperationsPage: React.FC = () => {
   const closeBusinessEvent = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("businessEvent");
+    setSearchParams(next, { replace: true });
+  };
+
+  const openEmail = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("email", id);
+    setSearchParams(next, { replace: false });
+  };
+
+  const closeEmail = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("email");
     setSearchParams(next, { replace: true });
   };
 
@@ -574,6 +589,8 @@ export const OmniCommsOperationsPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      <EmailJourneySection organizationId={organizationId} onOpenEmail={openEmail} />
+
       {/*
         Technical details — the support-engineer register. Kept, but BELOW the
         business-friendly activity view.
@@ -685,6 +702,11 @@ export const OmniCommsOperationsPage: React.FC = () => {
             eventId={selectedEventId}
             organizationId={organizationId}
             onClose={closeBusinessEvent}
+          />
+          <EmailJourneyDetailPanel
+            messageId={selectedEmailId}
+            organizationId={organizationId}
+            onClose={closeEmail}
           />
           <RequestDetailPanel
             requestId={selectedRequestId}

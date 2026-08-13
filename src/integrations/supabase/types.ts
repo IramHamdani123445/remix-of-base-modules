@@ -121222,6 +121222,38 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: Json
       }
+      omni_comms_email_journey_detail: {
+        Args: { p_message_id: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_email_journey_list: {
+        Args: {
+          p_event_code?: string
+          p_from?: string
+          p_limit?: number
+          p_module_code?: string
+          p_offset?: number
+          p_organization_id: string
+          p_product_id?: string
+          p_search?: string
+          p_stage?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      omni_comms_email_journey_summary: {
+        Args: {
+          p_event_code?: string
+          p_from?: string
+          p_module_code?: string
+          p_organization_id: string
+          p_product_id?: string
+          p_search?: string
+          p_stage?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       omni_comms_email_provider_activate: {
         Args: {
           p_correlation_id?: string
@@ -122304,6 +122336,49 @@ export type Database = {
           p_product_id?: string
         }
         Returns: string[]
+      }
+      omni_comms_priv_email_journey_rows: {
+        Args: {
+          p_event_code?: string
+          p_from?: string
+          p_module_code?: string
+          p_organization_id: string
+          p_product_id?: string
+          p_search?: string
+          p_stage?: string
+          p_to?: string
+        }
+        Returns: {
+          attempt_count: number
+          business_event_id: string
+          business_reference: string
+          callback_at: string
+          current_stage: string
+          delivered_at: string
+          end_to_end_duration_ms: number
+          entity_id: string
+          entity_type: string
+          event_code: string
+          event_recorded_at: string
+          last_action: string
+          last_failure_at: string
+          masked_recipient: string
+          message_id: string
+          message_prepared_at: string
+          module_code: string
+          next_attempt_at: string
+          organization_id: string
+          picked_up_at: string
+          product_id: string
+          provider_accepted_at: string
+          provider_name: string
+          queued_at: string
+          recipient_role: string
+          request_id: string
+          sender_display: string
+          template_name: string
+          template_version: number
+        }[]
       }
       omni_comms_priv_email_provider_id: { Args: never; Returns: string }
       omni_comms_priv_endpoint_requires_account: {
