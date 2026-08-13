@@ -255,6 +255,8 @@ export interface RuntimeResolutionResult {
   requestedChannels: string[];
   recipients: RuntimeRecipientResolution[];
   blockers: string[];
+  /** Per-property provenance of the effective communication plan. */
+  resolutionProvenance?: Record<string, unknown>;
 }
 
 /** Bounded, PII-safe projection returned to the outer caller. */
