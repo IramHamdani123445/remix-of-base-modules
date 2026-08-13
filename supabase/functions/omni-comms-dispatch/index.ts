@@ -198,7 +198,8 @@ Deno.serve(async (req) => {
     } else if (/^[0-9a-f]{64}$/.test(schedulerNonce)) {
       const consumed = await service.rpc(
         "omni_comms_priv_scheduler_consume_ticket",
-        { p_nonce: schedulerNonce },
+        // The purpose boundary is security-sensitive: never rely on a default.
+        { p_nonce: schedulerNonce, p_purpose: "dispatch" },
       );
       isSchedulerTick = !consumed.error && consumed.data === true;
     }

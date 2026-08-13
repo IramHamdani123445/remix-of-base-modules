@@ -238,6 +238,7 @@ export const ChannelSimpleWorkspace: React.FC<ChannelSimpleWorkspaceProps> = ({
           rows={activityRows}
           automationStatus={automation.status}
           automationLoading={automation.loading}
+          automationRefreshError={automation.refreshError}
           onRefreshAutomation={automation.refresh}
           technicalDetails={technicalDetails}
         />

@@ -51,6 +51,8 @@ export interface SimpleActivitySurfaceProps {
   /** Automation ownership: Activity is where operators watch the workers. */
   automationStatus?: AutomationStatus | null;
   automationLoading?: boolean;
+  /** Bounded, non-technical warning when the last status refresh failed. */
+  automationRefreshError?: string | null;
   onRefreshAutomation?: () => void;
 }
 
@@ -65,15 +67,26 @@ export const SimpleActivitySurface: React.FC<SimpleActivitySurfaceProps> = ({
   technicalDetails,
   automationStatus = null,
   automationLoading = false,
+  automationRefreshError = null,
   onRefreshAutomation,
 }) => (
   <div className="space-y-6" data-testid="omni-comms-simple-activity">
     {onRefreshAutomation ? (
-      <AutomationSection
-        status={automationStatus}
-        loading={automationLoading}
-        onRefresh={onRefreshAutomation}
-      />
+      <>
+        {automationRefreshError ? (
+          <p
+            className="text-sm text-muted-foreground"
+            data-testid="omni-comms-automation-refresh-warning"
+          >
+            {automationRefreshError}
+          </p>
+        ) : null}
+        <AutomationSection
+          status={automationStatus}
+          loading={automationLoading}
+          onRefresh={onRefreshAutomation}
+        />
+      </>
     ) : null}
 
     <Card>
