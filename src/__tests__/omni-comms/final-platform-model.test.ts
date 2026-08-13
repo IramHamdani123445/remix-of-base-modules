@@ -199,9 +199,11 @@ describe('module API — business modules provide facts only', () => {
 describe('Benefits reference implementation', () => {
   const intake = read('src/services/bn/intake/claimIntakeService.ts');
 
-  it('uses the configured-event helper', () => {
-    expect(intake).toContain('emitConfiguredBusinessEvent');
+  it('records the obligation in the claim transaction, not from the browser', () => {
+    expect(intake).not.toContain('emitConfiguredBusinessEvent(');
+    expect(intake).toContain('communication_event_id');
   });
+
 
   it('no longer resolves organisation context or product policy itself', () => {
     expect(intake).not.toContain('resolveOrganizationContext');
