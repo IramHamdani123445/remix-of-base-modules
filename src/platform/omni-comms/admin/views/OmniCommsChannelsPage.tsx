@@ -81,29 +81,10 @@ import { toastError } from "./channels/channelFormPrimitives";
  * evidence tabs. Every legacy `?tab=` deep link therefore still resolves.
  */
 import {
-  buildDeliveryRequestBody,
   getDeliveryToggleSnapshot,
   type DeliveryToggleSnapshot,
 } from "@/platform/omni-comms/application/deliveryToggleService";
-import {
-  CHANNEL_SETTINGS_TABS,
-  CHANNEL_TECHNICAL_TABS,
-  landingTabForSimpleSection,
-  simpleSectionForTab,
-  type ChannelSimpleSection,
-} from "../navigation/channelSimpleSections";
-import { ChannelSimpleNav } from "./channels/simple/ChannelSimpleNav";
-import { SimpleOverviewSurface } from "./channels/simple/SimpleOverviewSurface";
-import {
-  SimpleSettingsSurface,
-  type SimpleSettingsCard,
-} from "./channels/simple/SimpleSettingsSurface";
-import {
-  SimpleActivitySurface,
-  type SimpleActivityRow,
-} from "./channels/simple/SimpleActivitySurface";
-import { SimpleTestDeliveryCard } from "./channels/simple/SimpleTestDeliveryCard";
-import { TechnicalDetailsPanel } from "./channels/simple/TechnicalDetailsPanel";
+import { ChannelSimpleWorkspace } from "./channels/simple/ChannelSimpleWorkspace";
 
 
 /**
@@ -358,171 +339,40 @@ export const OmniCommsChannelsPage: React.FC = () => {
   const sectionSteps = sectionDefinition.tabs.filter(applicable);
 
   /*
-   * UX Simplification — Email uses the three-area operator experience. The
-   * detailed surfaces are still mounted, just reached from a Settings card or
-   * the Technical details drawer, so `?tab=` deep links behave identically.
+   * UX Simplification — Email uses the three-area operator experience, kept in
+   * its own component so this file stays a coordinator.
    */
   if (isEmail) {
-    const simpleSection = simpleSectionForTab(tab);
-    const goToSection = (section: ChannelSimpleSection) => setTab(landingTabForSimpleSection(section));
-
-    const surfaceFor = (t: ChannelWorkspaceTab) => (
-      <ChannelWorkspaceSurfaces
+    return (
+      <ChannelSimpleWorkspace
         definition={definition}
         client={client}
         orgId={orgId}
-        departmentId={departmentId}
-        departmentName={departmentName}
-        tab={t}
-        onSelectTab={setTab}
-        isEmail
+        departmentId={departmentId ?? null}
+        departmentName={departmentName ?? null}
+        organizationName={organizationName ?? null}
+        tab={tab}
+        setTab={setTab}
+        applicable={applicable}
+        loading={loading}
         summary={summary}
         channelSummary={channelSummary}
         readiness={readiness}
         channelReadiness={channelReadiness}
         goLiveReadiness={goLiveReadiness}
-        dispatchDiagnosticsUnavailable={dispatchRow === null}
+        dispatchRow={dispatchRow}
         deliveryTransport={deliveryTransport}
         releaseTransport={releaseTransport}
-        onRefreshEmail={refresh}
-        onRefreshChannel={refreshChannel}
-        onRefreshTestCentre={refreshTestCentre}
+        testCentre={testCentre}
+        deliveryDiagnostics={deliveryDiagnostics}
+        deliveryToggle={deliveryToggle}
+        toggleBusy={toggleBusy}
+        setToggleBusy={setToggleBusy}
+        refresh={refresh}
+        refreshChannel={refreshChannel}
+        refreshTestCentre={refreshTestCentre}
+        clearChannel={clearChannel}
       />
-    );
-
-    const technicalDetails = (
-      <TechnicalDetailsPanel>
-        {CHANNEL_TECHNICAL_TABS.filter(applicable).map((t) => (
-          <div key={t}>{surfaceFor(t as ChannelWorkspaceTab)}</div>
-        ))}
-      </TechnicalDetailsPanel>
-    );
-
-    const indicatorReady = (key: string) =>
-      (deliveryToggle?.indicators ?? []).find((i) => i.key === key)?.ready === true;
-
-    const SETTINGS_INDICATOR: Record<string, string> = {
-      accounts: 'provider',
-      identities: 'sender_domain',
-      endpoints: 'sender_domain',
-      bindings: 'events_templates',
-      policies: 'safety',
-      providers: 'provider',
-    };
-
-    const settingsCards: SimpleSettingsCard[] = CHANNEL_SETTINGS_TABS
-      .filter((t) => applicable(t as ChannelWorkspaceTab))
-      .map((t) => {
-        const ready = indicatorReady(SETTINGS_INDICATOR[t] ?? '');
-        return {
-          tab: t,
-          value: ready ? 'Configured' : 'Not configured yet',
-          status: ready ? 'Ready' : 'Needs attention',
-          ready,
-        };
-      });
-
-    const activityRows: SimpleActivityRow[] = (deliveryDiagnostics?.deliveries ?? [])
-      .slice(0, 20)
-      .map((d) => ({
-        id: d.id,
-        eventCode: null,
-        recipient: d.target_masked,
-        outcome:
-          d.status === 'accepted' ? 'accepted'
-            : d.status === 'failed' ? 'failed'
-              : 'waiting',
-        occurredAt: d.completed_at ?? d.requested_at,
-      }));
-
-    const requestDelivery = (next: boolean) => {
-      if (!releaseTransport) return;
-      setToggleBusy(true);
-      void (async () => {
-        try {
-          const res = await releaseTransport.invoke(buildDeliveryRequestBody({
-            organizationId: orgId,
-            departmentId: departmentId ?? null,
-            channel: 'email',
-            intent: next ? 'enable' : 'disable',
-          }));
-          if (res.error) throw new Error(res.error.message ?? 'Delivery request failed');
-          await refresh();
-        } catch (e) {
-          toastError(e, 'The delivery switch could not be changed');
-        } finally {
-          setToggleBusy(false);
-        }
-      })();
-    };
-
-    return (
-      <div className="space-y-6" data-testid="omni-comms-channels-page">
-        <ChannelWorkspaceHeader
-          definition={definition}
-          organizationName={organizationName}
-          departmentName={departmentName}
-          loading={loading}
-          readiness={readiness}
-          channelReadiness={channelReadiness}
-          onBack={clearChannel}
-          onRefresh={() => void refresh()}
-        />
-
-        <ChannelSimpleNav activeSection={simpleSection} onSelectSection={goToSection} />
-
-        {simpleSection === 'overview' ? (
-          <SimpleOverviewSurface
-            channelLabel={definition.name}
-            moduleLabel={departmentName ?? organizationName ?? null}
-            snapshot={deliveryToggle}
-            loading={loading}
-            busy={toggleBusy}
-            onToggleDelivery={requestDelivery}
-            onFix={(t) => setTab(t as ChannelWorkspaceTab)}
-            testCard={
-              <SimpleTestDeliveryCard
-                client={client}
-                transport={deliveryTransport}
-                organizationId={orgId}
-                departmentId={departmentId ?? null}
-                channel="email"
-                channelLabel={definition.name}
-                bindingId={testCentre?.selected_binding_id ?? null}
-                canExecute={deliveryDiagnostics?.can_execute !== false}
-              />
-            }
-            technicalDetails={technicalDetails}
-          />
-        ) : null}
-
-        {simpleSection === 'settings' ? (
-          <SimpleSettingsSurface
-            cards={settingsCards}
-            manageTab={CHANNEL_SETTINGS_TABS.includes(tab) ? tab : null}
-            onManage={(t) => setTab(t as ChannelWorkspaceTab)}
-            onCloseManage={() => setTab(landingTabForSimpleSection('settings') as ChannelWorkspaceTab)}
-            manageSurface={
-              CHANNEL_SETTINGS_TABS.includes(tab) ? surfaceFor(tab) : null
-            }
-            onManageEvents={() => setTab('bindings')}
-            technicalDetails={technicalDetails}
-          />
-        ) : null}
-
-        {simpleSection === 'activity' ? (
-          <SimpleActivitySurface
-            loading={loading}
-            healthy={deliveryToggle?.evidence.schedulerHealthy === true}
-            queueDepth={deliveryToggle?.evidence.queueDepth ?? null}
-            schedulerLastRunAt={deliveryToggle?.evidence.schedulerLastRunAt ?? null}
-            lastAcceptedAt={deliveryToggle?.evidence.lastAcceptedAt ?? null}
-            lastDeliveredAt={deliveryToggle?.evidence.lastDeliveredAt ?? null}
-            rows={activityRows}
-            technicalDetails={technicalDetails}
-          />
-        ) : null}
-      </div>
     );
   }
 
