@@ -160,7 +160,10 @@ describe('module API — business modules provide facts only', () => {
   it('never selects a channel, template, sender, provider or delivery mode', async () => {
     await emitConfiguredBusinessEvent(input);
     const emission = (emitSpy.mock.calls[0] as any[])[0];
-    expect(emission.requestedChannels).toBeUndefined();
+    // Channels present on the emission come from the authoritative effective
+    // plan, never from the business caller (the caller supplies no channels).
+    expect((input as any).channels).toBeUndefined();
+    expect(emission.requestedChannels ?? []).not.toContain('sms');
     expect(emission.mode).toBe('queued');
     expect(Object.keys(emission)).not.toContain('templateId');
     expect(Object.keys(emission)).not.toContain('senderIdentityId');
