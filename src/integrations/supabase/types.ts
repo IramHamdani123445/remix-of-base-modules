@@ -96257,7 +96257,7 @@ export type Database = {
       omni_comms_scheduler_run: {
         Row: {
           blocker: string | null
-          channel: string
+          channel: string | null
           claimed_jobs: number
           created_at: string
           detail: Json
@@ -96270,7 +96270,7 @@ export type Database = {
         }
         Insert: {
           blocker?: string | null
-          channel?: string
+          channel?: string | null
           claimed_jobs?: number
           created_at?: string
           detail?: Json
@@ -96283,7 +96283,7 @@ export type Database = {
         }
         Update: {
           blocker?: string | null
-          channel?: string
+          channel?: string | null
           claimed_jobs?: number
           created_at?: string
           detail?: Json
@@ -122771,9 +122771,10 @@ export type Database = {
         Args: { p_purpose: string }
         Returns: string
       }
-      omni_comms_priv_scheduler_issue_ticket:
-        | { Args: never; Returns: string }
-        | { Args: { p_purpose?: string }; Returns: string }
+      omni_comms_priv_scheduler_issue_ticket: {
+        Args: { p_purpose?: string }
+        Returns: string
+      }
       omni_comms_priv_scope_permitted: {
         Args: {
           p_actor: string

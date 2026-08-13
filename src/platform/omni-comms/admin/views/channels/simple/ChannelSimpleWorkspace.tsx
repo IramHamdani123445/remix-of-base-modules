@@ -31,6 +31,8 @@ import { SimpleSettingsSurface, type SimpleSettingsCard } from './SimpleSettings
 import { SimpleActivitySurface, type SimpleActivityRow } from './SimpleActivitySurface';
 import { SimpleTestDeliveryCard } from './SimpleTestDeliveryCard';
 import { TechnicalDetailsPanel } from './TechnicalDetailsPanel';
+import { useAutomationStatus } from '../../../hooks/useAutomationStatus';
+
 
 type SurfaceProps = React.ComponentProps<typeof ChannelWorkspaceSurfaces>;
 
@@ -77,7 +79,9 @@ export const ChannelSimpleWorkspace: React.FC<ChannelSimpleWorkspaceProps> = ({
   clearChannel,
 }) => {
   const simpleSection = simpleSectionForTab(tab);
+  const automation = useAutomationStatus(orgId, simpleSection === 'activity');
   const goToSection = (section: ChannelSimpleSection) => setTab(landingTabForSimpleSection(section));
+
 
   const surfaceFor = (t: ChannelWorkspaceTab) => (
     <ChannelWorkspaceSurfaces
@@ -232,9 +236,13 @@ export const ChannelSimpleWorkspace: React.FC<ChannelSimpleWorkspaceProps> = ({
           lastAcceptedAt={deliveryToggle?.evidence.lastAcceptedAt ?? null}
           lastDeliveredAt={deliveryToggle?.evidence.lastDeliveredAt ?? null}
           rows={activityRows}
+          automationStatus={automation.status}
+          automationLoading={automation.loading}
+          onRefreshAutomation={automation.refresh}
           technicalDetails={technicalDetails}
         />
       ) : null}
+
     </div>
   );
 };
