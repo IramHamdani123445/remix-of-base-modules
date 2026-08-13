@@ -23,6 +23,10 @@
 //     on the outbox's deterministic idempotency key.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  classifyRuntimeOutcome,
+  type IngestClassification,
+} from "../_shared/omniCommsIngestClassification.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
