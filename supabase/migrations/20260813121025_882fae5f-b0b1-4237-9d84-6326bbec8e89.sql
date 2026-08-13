@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.omni_comms_automation_status(uuid) TO authenticated, service_role, anon, postgres;
