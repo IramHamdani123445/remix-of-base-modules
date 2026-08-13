@@ -103,6 +103,13 @@ export interface ConfiguredBusinessEventResult
   departmentSource: 'explicit' | 'module_context' | 'none';
   /** Set when the Hub decided this obligation does not apply. */
   skippedReason: string | null;
+  /** Channels the authoritative effective plan turned on. */
+  enabledChannels: string[];
+  /** Enabled channels with a real delivery adapter. */
+  runnableChannels: string[];
+  /** Effective template/sender chosen by the plan, for module-side logging. */
+  effectiveTemplate: string | null;
+  effectiveSender: string | null;
 }
 
 function deriveModuleCode(eventCode: string): string {
@@ -144,6 +151,10 @@ function blocked(
     departmentId: scope.departmentId,
     departmentSource: scope.departmentSource,
     skippedReason,
+    enabledChannels: [],
+    runnableChannels: [],
+    effectiveTemplate: null,
+    effectiveSender: null,
   };
 }
 
@@ -242,6 +253,8 @@ export async function emitConfiguredBusinessEvent(
     occurrence,
   });
 
+  const primary = plan.channels.find((c) => c.channel === plan.runnableChannels[0]) ?? null;
+
   const result = await emitBusinessCommunication({
     moduleCode,
     eventCode,
@@ -270,5 +283,9 @@ export async function emitConfiguredBusinessEvent(
     departmentId: scope.departmentId,
     departmentSource: scope.departmentSource,
     skippedReason: null,
+    enabledChannels: [...plan.enabledChannels],
+    runnableChannels: [...plan.runnableChannels],
+    effectiveTemplate: primary?.templateRef ?? null,
+    effectiveSender: primary?.senderRef ?? null,
   };
 }
