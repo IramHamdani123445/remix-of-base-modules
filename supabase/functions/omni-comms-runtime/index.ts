@@ -643,6 +643,10 @@ Deno.serve(async (req: Request) => {
     console.log(`[${BUILD_TAG}] snapshot_rpc_error`);
     return finalizeBlocked(admin, userId, row, canonical, mapRpcErrorToCode(snapErr));
   }
+  if (productOverrideErr) {
+    console.log(`[${BUILD_TAG}] product_override_rpc_error`);
+    return finalizeBlocked(admin, userId, row, canonical, "product_configuration_unresolved");
+  }
 
   let snapshot;
   try {
