@@ -129,7 +129,15 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
               label: 'Events waiting to process',
               value: (
                 <span data-testid="omni-comms-events-waiting">
-                  {events.pending_events + events.retry_events}
+                  {events.pending_events}
+                </span>
+              ),
+            },
+            {
+              label: 'Retrying',
+              value: (
+                <span data-testid="omni-comms-events-retrying">
+                  {events.retry_events}
                 </span>
               ),
             },
@@ -141,6 +149,7 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
                 </span>
               ),
             },
+            { label: 'Oldest waiting', value: formatMoment(events.oldest_pending_at) },
           ]}
         />
 
@@ -170,6 +179,7 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
                 <span data-testid="omni-comms-emails-retrying">{delivery.retry_wait_jobs}</span>
               ),
             },
+            { label: 'Oldest waiting', value: formatMoment(delivery.oldest_waiting_at) },
           ]}
         />
 
@@ -180,14 +190,21 @@ export const AutomationSection: React.FC<AutomationSectionProps> = ({
           healthy={callbacks.healthy}
           blocker={callbacks.healthy ? null : 'No delivery callbacks received yet.'}
           rows={[
+            {
+              label: 'Callback configuration',
+              value: callbacks.callback_endpoint_ready ? 'Ready' : 'Not configured',
+            },
             { label: 'Last callback', value: formatMoment(callbacks.last_callback_at) },
             {
               label: 'Last delivered',
               value: formatMoment(callbacks.last_delivered_callback_at),
             },
+            { label: 'Last bounce', value: formatMoment(callbacks.last_bounce_at) },
+            { label: 'Last complaint', value: formatMoment(callbacks.last_complaint_at) },
           ]}
         />
       </div>
+
 
       <Card>
         <CardHeader className="pb-2">
