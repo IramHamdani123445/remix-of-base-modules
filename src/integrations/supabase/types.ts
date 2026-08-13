@@ -121659,7 +121659,7 @@ export type Database = {
         Returns: string
       }
       omni_comms_priv_business_organization: {
-        Args: { p_module_code: string }
+        Args: { p_module_code: string; p_product_id?: string }
         Returns: string
       }
       omni_comms_priv_certification_authority: {
@@ -122565,6 +122565,14 @@ export type Database = {
           p_organization_id: string
           p_sender_override: string
           p_template_override: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_product_communication_overrides: {
+        Args: {
+          p_event_code: string
+          p_organization_id: string
+          p_product_id: string
         }
         Returns: Json
       }
