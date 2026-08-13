@@ -63,7 +63,6 @@ import {
   type ChannelWorkspaceTab,
 } from "./channels/channelUiRegistry";
 
-
 import { projectEmailReadiness } from "./channels/emailReadiness";
 import { projectDispatchDiagnostics } from "./channels/dispatchDiagnosticsProjection";
 import { projectEmailGoLiveReadiness } from "./channels/goLiveReadiness";
@@ -86,7 +85,6 @@ import {
 } from "@/platform/omni-comms/application/deliveryToggleService";
 import { ChannelSimpleWorkspace } from "./channels/simple/ChannelSimpleWorkspace";
 
-
 /**
  * Channels whose counts are read for the catalogue cards. Every channel the
  * shared schema can represent is counted through the SAME generic contracts —
@@ -101,8 +99,6 @@ export const OmniCommsChannelsPage: React.FC = () => {
   const deliveryTransport = useChannelTestDeliveryTransport();
   const releaseTransport = useChannelReleaseControlTransport();
   const { organizationId: orgId, organizationName, departmentId, departmentName } = useOmniCommsTenant();
-
-
 
   const [summary, setSummary] = useState<EmailConfigSummary | null>(null);
   // C4B — the shared Email readiness projection resolves policy state from the
@@ -376,7 +372,6 @@ export const OmniCommsChannelsPage: React.FC = () => {
     );
   }
 
-
   return (
     <div className="space-y-6" data-testid="omni-comms-channels-page">
       <ChannelWorkspaceHeader
@@ -408,7 +403,6 @@ export const OmniCommsChannelsPage: React.FC = () => {
           }
         />
       ) : null}
-
 
       {/*
         UX Simplification — the ten-destination rail is replaced by five
@@ -464,5 +458,4 @@ export const OmniCommsChannelsPage: React.FC = () => {
 };
 
 export default OmniCommsChannelsPage;
-
 
