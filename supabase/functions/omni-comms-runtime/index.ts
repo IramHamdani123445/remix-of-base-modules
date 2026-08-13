@@ -522,6 +522,11 @@ Deno.serve(async (req: Request) => {
       p_payload: canonical.payload,
       p_requested_channels: canonical.requestedChannels,
       p_producer_event_binding_id: producerEventBindingId,
+      // Business-meaning only. Server-validated, size-bounded, immutable.
+      p_business_context_snapshot: {
+        product_id: canonical.businessContext.productId,
+        recipient_roles: canonical.businessContext.recipientRoles,
+      },
     },
   );
 
@@ -651,6 +656,8 @@ Deno.serve(async (req: Request) => {
     const status = recipientEligibilityStatus(r);
     return {
       recipient_type: r.recipientType,
+      recipient_role:
+        canonical.recipients[r.inputIndex]?.recipientRole ?? null,
       recipient_reference: r.recipientReference,
       display_name: r.displayName,
       locale: r.normalizedLocale,
