@@ -128,6 +128,21 @@ describe('C7 closure — truthful release governance surface', () => {
     expect(MIGRATION).toContain("'business_dispatch_enabled', (v_allowed");
   });
 
+  it('checks the current release-bound dispatcher signature', () => {
+    const liveDecisionMigration = read(
+      'supabase/migrations/20260812182404_1de0bb4c-bc9c-4277-b18a-895c8af9b03b.sql',
+    );
+    const signatureCorrection = read(
+      'supabase/migrations/20260813160708_c6cca936-a98d-4874-9b9e-9f4894b9b47b.sql',
+    );
+    expect(liveDecisionMigration).toContain(
+      'omni_comms_priv_dispatch_claim_email(text,integer,text,text,jsonb,text)',
+    );
+    expect(signatureCorrection).toContain(
+      'omni_comms_priv_dispatch_claim_email(text,integer,text,text,jsonb,text,uuid,uuid)',
+    );
+  });
+
   it('still recognises the legacy C6 check code in the UI adapter', () => {
     expect(RELEASE_TYPES).toContain('business_dispatch_dispatcher_installed');
     expect(RELEASE_TYPES).toContain('business_dispatch_not_implemented_c6');
