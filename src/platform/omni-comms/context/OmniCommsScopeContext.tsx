@@ -53,7 +53,9 @@ export function useOmniCommsDepartmentOverrideContext() {
   return {
     departmentId: tenant.departmentId,
     departmentName: tenant.departmentName,
+    overrideActive: tenant.departmentOverrideActive,
     availableDepartments: tenant.availableDepartments,
     setDepartmentId: tenant.setDepartmentId,
+    clearDepartmentOverride: tenant.clearDepartmentOverride,
   };
 }
