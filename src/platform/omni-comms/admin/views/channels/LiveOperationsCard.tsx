@@ -15,12 +15,7 @@ import type { LiveOperationsSummary } from '@/platform/omni-comms/application/li
 
 export const LiveOperationsCard: React.FC<{
   live: LiveOperationsSummary | null;
-  busy?: boolean;
-  canPropose: boolean;
-  canApproveLive: boolean;
-  onProposeLive: () => void;
-  onApproveLive: () => void;
-}> = ({ live, busy, canPropose, canApproveLive, onProposeLive, onApproveLive }) => {
+}> = ({ live }) => {
   const checks = live?.readiness.checks ?? [];
   const ready = live?.readiness.ready_count ?? 0;
   const evidence = live?.delivery_evidence;
