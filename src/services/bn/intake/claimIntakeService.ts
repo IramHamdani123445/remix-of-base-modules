@@ -28,8 +28,6 @@ import {
 import { BENEFITS_CLAIM_SUBMITTED_EVENT_CODE } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
 import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
 
-import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
-
 const db = supabase as any;
 
 export type ApplicationChannel =
