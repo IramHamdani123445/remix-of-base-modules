@@ -94,25 +94,15 @@ export const LiveOperationsCard: React.FC<{
           </div>
         </div>
 
-        {!live?.live && (
-          <Alert>
-            <AlertTitle>Two people are required to go live</AlertTitle>
-            <AlertDescription>
-              One administrator proposes production live; a different administrator
-              approves it. Approval attaches the live authorisation to every safe held
-              Benefits message and the automatic dispatcher takes over from there.
-            </AlertDescription>
-          </Alert>
-        )}
+        <Alert>
+          <AlertTitle>This panel is read-only evidence</AlertTitle>
+          <AlertDescription>
+            Automatic sending is switched on or off with the single delivery switch
+            above. Two different administrators are required: one turns it on, a
+            second confirms it.
+          </AlertDescription>
+        </Alert>
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" disabled={!canPropose || busy} onClick={onProposeLive}>
-            Propose production live
-          </Button>
-          <Button disabled={!canApproveLive || busy} onClick={onApproveLive}>
-            Approve and go live
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
