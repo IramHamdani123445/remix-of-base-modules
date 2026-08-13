@@ -265,7 +265,9 @@ describe('Step 3 — provider safety and boundaries', () => {
     expect(producer).toContain("from './emitBusinessCommunication'");
 
     const service = read('src/services/bn/intake/claimIntakeService.ts');
-    expect(service).toContain('emitBenefitsClaimSubmitted');
+    // The service now states business facts only; the platform helper owns
+    // event policy, channel selection and idempotency.
+    expect(service).toContain('emitConfiguredBusinessEvent');
     expect(service).not.toMatch(/omni_comms_[a-z_]+/);
   });
 });

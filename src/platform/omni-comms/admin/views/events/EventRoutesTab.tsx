@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { useOmniCommsRpcClient } from "../../hooks/useOmniCommsRpcClient";
 import { useOmniCommsTenant } from "@/platform/omni-comms/context/OmniCommsTenantContext";
-import { OmniCommsTenantSelector } from "../../components/OmniCommsTenantSelector";
+import { OmniCommsScopeSelector } from "../../components/OmniCommsScopeSelector";
 import { OmniCommsEmptyState } from "../../components/OmniCommsEmptyState";
 import * as routeSvc from "@/platform/omni-comms/application/eventRouteService";
 import type {
@@ -129,7 +129,7 @@ export const EventRoutesTab: React.FC<EventRoutesTabProps> = ({ canConfigure, fr
   if (!organizationId) {
     return (
       <div className="space-y-4" data-testid="oc-routes-tab">
-        <Card><CardContent className="pt-4"><OmniCommsTenantSelector /></CardContent></Card>
+        <Card><CardContent className="pt-4"><OmniCommsScopeSelector /></CardContent></Card>
         <OmniCommsEmptyState
           title="Select an organisation"
           description="Event routes are scoped to an organisation and optionally a department. Choose an organisation above to view or create routes."
@@ -140,7 +140,7 @@ export const EventRoutesTab: React.FC<EventRoutesTabProps> = ({ canConfigure, fr
 
   return (
     <div className="space-y-4" data-testid="oc-routes-tab">
-      <Card><CardContent className="pt-4"><OmniCommsTenantSelector /></CardContent></Card>
+      <Card><CardContent className="pt-4"><OmniCommsScopeSelector /></CardContent></Card>
 
       <div className="flex flex-wrap gap-2 items-center">
         <Select value={lifecycleFilter || "all"} onValueChange={(v) => setLifecycleFilter(v === "all" ? "" : v)}>
