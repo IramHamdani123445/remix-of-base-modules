@@ -414,8 +414,19 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     status: 'AVAILABLE',
     introductionStory: 'Benefits Live — Product Definition communications',
   },
+  {
+    name: 'omni_comms_business_event_outbox',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Durable business-event outbox. A business module records its communication obligation inside its own database transaction, so the obligation can never be lost when the browser closes or the network fails. The ingest worker drains it server-side into the canonical runtime; a browser can never write to it.',
+    status: 'AVAILABLE',
+    introductionStory: 'Benefits Live — durable business integration',
+  },
 
 ] as const;
+
 
 
 

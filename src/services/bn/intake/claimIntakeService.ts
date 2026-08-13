@@ -79,13 +79,49 @@ export interface SubmitClaimApplicationResult {
 
 const CLAIM_COMMUNICATION_SUMMARY: Record<string, string> = {
   accepted:
-    'Claimant acknowledgement queued. It is held pending release authorisation — nothing has been sent.',
+    'Claimant acknowledgement recorded with the claim. It will be prepared automatically by Communications.',
   replayed:
-    'Claimant acknowledgement already queued for this claim — no duplicate was created.',
+    'Claimant acknowledgement already recorded for this claim — no duplicate was created.',
   blocked: 'Claimant acknowledgement not prepared.',
   unavailable: 'Claimant acknowledgement could not be prepared right now.',
   skipped: 'Claimant acknowledgement not applicable for this claim.',
 };
+
+/**
+ * Durable evidence projection.
+ *
+ * The claim transaction itself recorded the communication obligation, so the
+ * only thing left to report is WHAT was recorded. Nothing is emitted, resolved
+ * or sent here.
+ */
+export function mapDurableCommunicationEvidence(
+  eventId: string | null,
+  eventStatus: string | null,
+): ClaimIntakeCommunicationOutcome {
+  const status = (eventStatus ?? '').trim().toLowerCase();
+  if (!eventId) {
+    return {
+      outcome: status === 'needs_review' ? 'unavailable' : 'skipped',
+      eventCode: BENEFITS_CLAIM_SUBMITTED_EVENT_CODE,
+      requestId: null,
+      blockers: status ? [status] : [],
+      summary:
+        CLAIM_COMMUNICATION_SUMMARY[
+          status === 'needs_review' ? 'unavailable' : 'skipped'
+        ],
+    };
+  }
+  const outcome: ClaimIntakeCommunicationOutcome['outcome'] =
+    status === 'blocked' || status === 'needs_review' ? 'blocked' : 'accepted';
+  return {
+    outcome,
+    eventCode: BENEFITS_CLAIM_SUBMITTED_EVENT_CODE,
+    requestId: null,
+    blockers: outcome === 'blocked' ? [status] : [],
+    summary: CLAIM_COMMUNICATION_SUMMARY[outcome],
+  };
+}
+
 
 /**
  * Benefits reference implementation of the final Omni-Comms module contract.
@@ -358,14 +394,15 @@ export async function submitClaimApplication(
     console.warn('[claimIntake] Submission audit failed:', auditErr);
   }
 
-  // ─── Omni-Comms claimant acknowledgement (controlled pilot) ────────
-  // Single façade call, queued mode → HELD dispatch job. Never fatal.
-  const communication = await emitClaimRegisteredAcknowledgement({
-    claimId,
-    claimNumber,
-    productCode: input.productCode,
-    formPayload: input.formPayload ?? {},
-  });
+  // ─── Omni-Comms claimant acknowledgement (durable outbox) ─────────
+  // The obligation was already recorded INSIDE the claim transaction by
+  // `bn_submit_claim_application`. The browser neither emits nor sends: the
+  // ingest worker drains the outbox server-side. This is evidence only.
+  const communication: ClaimIntakeCommunicationOutcome = mapDurableCommunicationEvidence(
+    row?.communication_event_id ?? null,
+    row?.communication_event_status ?? null,
+  );
+
 
   return {
     claimId,
