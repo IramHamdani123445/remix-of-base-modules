@@ -495,29 +495,10 @@ export const ChannelReleaseControlTab: React.FC<{
     });
   };
 
-  const proposeLive = () => {
-    if (!client || !release) return;
-    void run('Production live proposed', () => proposeProductionLive(client, {
-      id: release.id,
-      expectedUpdatedAt: release.updated_at,
-      reason: proposalReason
-        || 'Promote Benefits Email to production live under governed quotas.',
-    }));
-  };
+  /* Live is governed exclusively by the single delivery switch (DeliveryToggleCard).
+     The legacy propose/approve live actions were removed to avoid a second,
+     conflicting path that failed with release_transition_not_allowed once live. */
 
-  const approveLive = () => {
-    if (!transport || !release) return;
-    void run('Production live activated', async () => {
-      const res = await transport.invoke(buildApproveActivateLiveBody({
-        releaseControlId: release.id,
-        expectedUpdatedAt: release.updated_at,
-        expectedFingerprint: release.release_fingerprint,
-        approvalNote: approvalNote || null,
-      }));
-      if (res.error) throw new Error(res.error.message ?? 'Live activation failed');
-      setApprovalNote('');
-    });
-  };
 
   // The plain switch. The browser sends scope and intent only; the trusted
   // Edge boundary performs the preflight, the proposal or the second-person
