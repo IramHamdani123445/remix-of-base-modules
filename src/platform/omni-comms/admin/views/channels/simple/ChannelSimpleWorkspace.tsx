@@ -162,6 +162,11 @@ export const ChannelSimpleWorkspace: React.FC<ChannelSimpleWorkspaceProps> = ({
           intent: next ? 'enable' : 'disable',
         }));
         if (res.error) throw new Error(res.error.message ?? 'Delivery request failed');
+        const outcome = res.data as { state?: string; blockers?: string[] } | null;
+        if (outcome?.state === 'action_required') {
+          const blocker = outcome.blockers?.[0] ?? 'delivery_not_ready';
+          throw new Error(`Delivery cannot be enabled yet: ${blocker}`);
+        }
         await refresh();
       } catch (e) {
         toastError(e, 'The delivery switch could not be changed');

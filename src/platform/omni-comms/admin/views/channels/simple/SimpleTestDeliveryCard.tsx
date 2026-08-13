@@ -49,6 +49,23 @@ export const SIMPLE_TEST_RESULT_LABEL: Record<SimpleTestState, string> = {
   failed: 'Failed',
 };
 
+const describeTestProblem = (error: unknown): string => {
+  const detail = error instanceof Error ? error.message : '';
+  if (detail.includes('invalid_idempotency_key')) {
+    return 'The test request could not be validated. Refresh the page and try again.';
+  }
+  if (detail.includes('permission_denied')) {
+    return 'Your current role does not allow test delivery.';
+  }
+  if (detail.includes('credential_missing')) {
+    return 'The Email provider credential is not available. Open Settings to repair it.';
+  }
+  if (detail.includes('from_address_missing')) {
+    return 'The sender address is missing. Open Settings to select a sender.';
+  }
+  return 'The test message could not be sent. Open Technical details for the full evidence.';
+};
+
 const maskRecipient = (value: string): string => {
   const at = value.indexOf('@');
   if (at <= 0) return '***';
@@ -91,7 +108,10 @@ export const SimpleTestDeliveryCard: React.FC<SimpleTestDeliveryCardProps> = ({
     try {
       // The zero-send configuration preflight authorises the attempt. Its
       // internal identifiers stay inside this function and are never rendered.
-      const key = `simple-test/${organizationId}/${Date.now()}`;
+      // The database contract permits letters, numbers, dot, underscore,
+      // colon and hyphen only. Keep this key valid while retaining tenant and
+      // attempt uniqueness.
+      const key = `simple-test:${organizationId}:${Date.now()}`;
       const preflight = await runChannelTestPreflight(client, {
         organizationId,
         departmentId,
@@ -100,7 +120,7 @@ export const SimpleTestDeliveryCard: React.FC<SimpleTestDeliveryCardProps> = ({
         target,
         payload: {
           subject: `${channelLabel} configuration test`,
-          bodyText: 'This is a configuration test message from the Communication Hub.',
+          body: 'This is a configuration test message from the Communication Hub.',
         },
         idempotencyKey: key,
       });
@@ -139,11 +159,7 @@ export const SimpleTestDeliveryCard: React.FC<SimpleTestDeliveryCardProps> = ({
       } else setState('delivery_pending');
     } catch (e) {
       setState('failed');
-      setProblem(
-        e instanceof Error && e.message
-          ? 'The test message could not be sent. Open Technical details for the full evidence.'
-          : 'The test message could not be sent.',
-      );
+      setProblem(describeTestProblem(e));
     }
   }, [
     recipient, bindingId, organizationId, departmentId, channel, channelLabel, client, transport,
