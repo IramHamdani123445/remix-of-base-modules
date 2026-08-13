@@ -52,6 +52,8 @@ import {
 import OmniCommsAutomationOverviewCard from "./OmniCommsAutomationOverviewCard";
 import SetupWizardPanel from "./setup/SetupWizardPanel";
 import ControlledDryRunPanel from "./dryrun/ControlledDryRunPanel";
+import OmniCommsControlCenter from "./control/OmniCommsControlCenter";
+
 import ReferenceSeedPanel from "./seed/ReferenceSeedPanel";
 
 
@@ -293,7 +295,12 @@ export const OmniCommsLandingPage: React.FC = () => {
           <DashboardView />
         </TabsContent>
 
+        <TabsContent value="control-center" className="mt-4">
+          <OmniCommsControlCenter />
+        </TabsContent>
+
         <TabsContent value="setup" className="mt-4">
+
           <SetupWizardPanel />
         </TabsContent>
 

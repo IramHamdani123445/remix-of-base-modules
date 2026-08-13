@@ -60,16 +60,18 @@ import { emitConfiguredBusinessEvent } from '@/platform/omni-comms/integrations/
 import { __resetBusinessScopeCache } from '@/platform/omni-comms/integrations/business/businessScopeResolver';
 
 describe('normal navigation', () => {
-  it('advertises exactly four operator destinations', () => {
+  it('advertises exactly five operator destinations', () => {
     expect(OMNI_COMMS_NAV_ITEMS.map((i) => i.label)).toEqual([
       'Overview',
+      'Control Center',
       'Providers',
       'Communications',
       'Activity & Automation',
     ]);
-    expect(omniCommsNavItems('production')).toHaveLength(4);
-    expect(omniCommsNavItems('non_production')).toHaveLength(4);
+    expect(omniCommsNavItems('production')).toHaveLength(5);
+    expect(omniCommsNavItems('non_production')).toHaveLength(5);
   });
+
 
   it('advertises no planned or lifecycle destinations', () => {
     expect(OMNI_COMMS_PLANNED_NAV_ITEMS).toHaveLength(0);

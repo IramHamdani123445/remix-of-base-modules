@@ -1,0 +1,184 @@
+/**
+ * Omni-Comms — delivery gate approvals carried by the CENTRAL workflow engine.
+ *
+ * The Omnichannel Communications Hub does NOT own a private approval store.
+ * Every request to turn a delivery gate on or off is recorded as an instance
+ * of the central workflow definition `OMNI_COMMS_GATE_APPROVAL`
+ * (module `OMNI_COMMS`), so the request appears in the same enterprise
+ * workflow catalogue, inbox and audit trail as every other approval.
+ *
+ * Boundaries:
+ *   - This module records and reads INTENT only. It never enables delivery.
+ *     The authoritative gate decision stays with the trusted Release Control
+ *     Edge boundary and its server-side two-person rule.
+ *   - No provider is contacted and nothing is sent from here.
+ */
+import { supabase } from '@/integrations/supabase/client';
+import {
+  approveWorkflow,
+  getWorkflowInstanceForEntity,
+  rejectWorkflow,
+  startWorkflow,
+  withdrawWorkflow,
+} from '@/platform/workflow/workflowService';
+import type { WorkflowInstance } from '@/platform/workflow/workflowTypes';
+
+export const OMNI_COMMS_GATE_WORKFLOW_CODE = 'OMNI_COMMS_GATE_APPROVAL';
+export const OMNI_COMMS_GATE_MODULE_CODE = 'OMNI_COMMS';
+export const OMNI_COMMS_GATE_ENTITY_TYPE = 'omni_comms_gate_request';
+
+/** Statuses that still need somebody to act. */
+export const OMNI_COMMS_GATE_OPEN_STATUSES = [
+  'DRAFT',
+  'SUBMITTED',
+  'IN_PROGRESS',
+  'PENDING_REVIEW',
+  'PENDING_APPROVAL',
+  'ESCALATED',
+] as const;
+
+export type GateIntent = 'enable' | 'disable';
+
+export interface GateRequestScope {
+  organizationId: string;
+  departmentId: string | null;
+  channel: string;
+  /** `channel_delivery` today; business-event gates use their event code. */
+  gate: string;
+}
+
+export interface GateApprovalRequest {
+  id: string;
+  entityId: string;
+  displayName: string | null;
+  status: string;
+  intent: GateIntent | null;
+  channel: string;
+  gate: string;
+  requestedBy: string | null;
+  requestedAt: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+/** Stable, scope-unique key for one gate. */
+export const gateEntityId = (scope: GateRequestScope): string =>
+  [
+    scope.organizationId,
+    scope.departmentId ?? 'org',
+    scope.channel,
+    scope.gate,
+  ].join(':');
+
+const toRequest = (row: WorkflowInstance): GateApprovalRequest => {
+  const meta = (row.metadata ?? {}) as Record<string, unknown>;
+  const intent = meta.intent === 'enable' || meta.intent === 'disable'
+    ? (meta.intent as GateIntent)
+    : null;
+  return {
+    id: row.id,
+    entityId: row.entity_id,
+    displayName: row.entity_display_name ?? null,
+    status: row.status,
+    intent,
+    channel: typeof meta.channel === 'string' ? meta.channel : 'email',
+    gate: typeof meta.gate === 'string' ? meta.gate : 'channel_delivery',
+    requestedBy: row.submitted_by ?? null,
+    requestedAt: row.submitted_at ?? row.created_at ?? null,
+    metadata: row.metadata ?? null,
+  };
+};
+
+export const gateRequestTitle = (
+  scope: GateRequestScope,
+  intent: GateIntent,
+): string =>
+  `${intent === 'enable' ? 'Turn on' : 'Turn off'} automatic ${scope.channel} delivery`;
+
+/**
+ * Record an operator's intent in the central workflow. Re-recording the same
+ * open request is a no-op, so pressing the switch twice never creates a
+ * duplicate queue item.
+ */
+export async function recordGateRequest(
+  scope: GateRequestScope,
+  intent: GateIntent,
+): Promise<GateApprovalRequest> {
+  const entityId = gateEntityId(scope);
+  const existing = await getWorkflowInstanceForEntity(
+    OMNI_COMMS_GATE_MODULE_CODE,
+    OMNI_COMMS_GATE_ENTITY_TYPE,
+    entityId,
+    OMNI_COMMS_GATE_WORKFLOW_CODE,
+  ).catch(() => null);
+
+  if (existing && (OMNI_COMMS_GATE_OPEN_STATUSES as readonly string[]).includes(existing.status)) {
+    return toRequest(existing);
+  }
+
+  const created = await startWorkflow({
+    workflow_code: OMNI_COMMS_GATE_WORKFLOW_CODE,
+    module_code: OMNI_COMMS_GATE_MODULE_CODE,
+    entity_type: OMNI_COMMS_GATE_ENTITY_TYPE,
+    entity_id: entityId,
+    entity_display_name: gateRequestTitle(scope, intent),
+    priority: 'HIGH',
+    metadata: {
+      intent,
+      channel: scope.channel,
+      gate: scope.gate,
+      organization_id: scope.organizationId,
+      department_id: scope.departmentId,
+    },
+  });
+  return toRequest(created);
+}
+
+/** Open gate requests for an organisation, newest first. */
+export async function listOpenGateRequests(
+  organizationId: string,
+): Promise<GateApprovalRequest[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const { data, error } = await db
+    .from('core_workflow_instance')
+    .select('*')
+    .eq('module_code', OMNI_COMMS_GATE_MODULE_CODE)
+    .eq('entity_type', OMNI_COMMS_GATE_ENTITY_TYPE)
+    .in('status', OMNI_COMMS_GATE_OPEN_STATUSES as unknown as string[])
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return ((data ?? []) as WorkflowInstance[])
+    .filter((row) => row.entity_id.startsWith(`${organizationId}:`))
+    .map(toRequest);
+}
+
+/** Recently closed requests, so the operator can see what happened. */
+export async function listRecentGateDecisions(
+  organizationId: string,
+): Promise<GateApprovalRequest[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = supabase as any;
+  const { data, error } = await db
+    .from('core_workflow_instance')
+    .select('*')
+    .eq('module_code', OMNI_COMMS_GATE_MODULE_CODE)
+    .eq('entity_type', OMNI_COMMS_GATE_ENTITY_TYPE)
+    .not('status', 'in', `(${OMNI_COMMS_GATE_OPEN_STATUSES.join(',')})`)
+    .order('updated_at', { ascending: false })
+    .limit(10);
+  if (error) throw error;
+  return ((data ?? []) as WorkflowInstance[])
+    .filter((row) => row.entity_id.startsWith(`${organizationId}:`))
+    .map(toRequest);
+}
+
+/** Close a request as approved. The gate itself is changed by the server. */
+export const approveGateRequest = (id: string, comments?: string) =>
+  approveWorkflow(id, undefined, comments);
+
+export const rejectGateRequest = (id: string, reason: string) =>
+  rejectWorkflow(id, undefined, reason);
+
+export const withdrawGateRequest = (id: string, reason?: string) =>
+  withdrawWorkflow(id, reason);

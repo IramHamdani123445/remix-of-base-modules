@@ -25,11 +25,13 @@ export const OMNI_COMMS_OVERVIEW_ROUTE = '/admin/omnichannel-communications';
  */
 export const OMNI_COMMS_OVERVIEW_VIEWS = [
   'dashboard',
+  'control-center',
   'setup',
   'safe-test',
   'reference-data',
 ] as const;
 export type OmniCommsOverviewView = (typeof OMNI_COMMS_OVERVIEW_VIEWS)[number];
+
 
 /** Historic deep links that must keep resolving to their current surface. */
 export const OMNI_COMMS_OVERVIEW_VIEW_ALIASES: Readonly<Record<string, OmniCommsOverviewView>> = {
@@ -38,7 +40,11 @@ export const OMNI_COMMS_OVERVIEW_VIEW_ALIASES: Readonly<Record<string, OmniComms
   'safe_test': 'safe-test',
   overview: 'dashboard',
   'reference_data': 'reference-data',
+  'control_center': 'control-center',
+  controls: 'control-center',
+  gates: 'control-center',
 };
+
 
 export function resolveOverviewView(raw: string | null | undefined): OmniCommsOverviewView {
   const v = (raw ?? '').trim().toLowerCase();
@@ -90,6 +96,16 @@ export const OMNI_COMMS_NAV_ITEMS: readonly OmniCommsNavItem[] = [
     view: 'dashboard',
     description: 'What communication capabilities work right now.',
   },
+  {
+    id: 'control-center',
+    label: 'Control Center',
+    href: `${OMNI_COMMS_OVERVIEW_ROUTE}?view=control-center`,
+    route: OMNI_COMMS_OVERVIEW_ROUTE,
+    view: 'control-center',
+    description:
+      'Every delivery gate, the test send and the approval queue, in one place.',
+  },
+
   {
     id: 'providers',
     label: 'Providers',
