@@ -27,6 +27,12 @@ import type {
 
 export interface CanonicalRecipient {
   recipientType: string;
+  /**
+   * First-class SEMANTIC business role (claimant, employer_contact, ...).
+   * Distinct from the persistence recipientType. Survives the trusted
+   * boundary and is persisted immutably on omni_comms_recipient.
+   */
+  recipientRole: string | null;
   recipientReference: string | null;
   displayName: string | null;
   locale: string | null;
@@ -50,6 +56,16 @@ export interface CanonicalRequest {
   recipients: CanonicalRecipient[];
   payload: Record<string, unknown>;
   callerContext: CanonicalCallerContext;
+  /**
+   * Immutable business resolution context (product, offered recipient roles).
+   * Business meaning only — never configuration decisions, never secrets.
+   */
+  businessContext: CanonicalBusinessContext;
+}
+
+export interface CanonicalBusinessContext {
+  productId: string | null;
+  recipientRoles: string[];
 }
 
 export class CanonicalizationError extends Error {
@@ -103,6 +119,18 @@ function normalizeUuidOrNull(v: unknown, field: string): string | null {
   return v.toLowerCase();
 }
 
+const ROLE_RE = /^[a-z][a-z0-9_]{0,63}$/;
+
+function canonicalizeRole(v: unknown): string | null {
+  const t = trimOrNull(v, 64);
+  if (t === null) return null;
+  const lower = t.toLowerCase();
+  if (!ROLE_RE.test(lower)) {
+    throw new CanonicalizationError('invalid_input', 'recipient_role_invalid');
+  }
+  return lower;
+}
+
 function canonicalizeRecipient(
   r: SendCommunicationRecipientInput,
 ): CanonicalRecipient {
@@ -118,6 +146,7 @@ function canonicalizeRecipient(
   const push = trimOrNull(r.pushDestination, 500);
   return {
     recipientType: type,
+    recipientRole: canonicalizeRole(r.recipientRole ?? null),
     recipientReference: trimOrNull(r.recipientReference, 128),
     displayName: trimOrNull(r.displayName, 200),
     locale: trimOrNull(r.locale, 32),
@@ -234,6 +263,20 @@ export function canonicalizeRequest(
     entityId: trimOrNull(ctx.entityId ?? null, 128),
   };
 
+  const rc = (input as { resolutionContext?: { productId?: string | null; recipientRoles?: string[] } })
+    .resolutionContext ?? {};
+  const roles = Array.isArray(rc.recipientRoles) ? rc.recipientRoles : [];
+  const normalizedRoles = Array.from(
+    new Set(roles.map((x) => canonicalizeRole(x)).filter((x): x is string => x !== null)),
+  ).sort();
+  if (normalizedRoles.length > 16) {
+    throw new CanonicalizationError('invalid_input', 'recipient_roles_too_many');
+  }
+  const businessContext: CanonicalBusinessContext = {
+    productId: normalizeUuidOrNull(rc.productId ?? null, 'product_id'),
+    recipientRoles: normalizedRoles,
+  };
+
   const canonical: CanonicalRequest = {
     eventCode,
     organizationId,
@@ -243,6 +286,7 @@ export function canonicalizeRequest(
     recipients,
     payload,
     callerContext,
+    businessContext,
   };
 
   // Enforce payload byte bound against the canonical form (matches DB).
@@ -269,8 +313,30 @@ export function canonicalJsonString(c: CanonicalRequest): string {
     mode: c.mode,
     organizationId: c.organizationId,
     payload: c.payload,
-    recipients: c.recipients,
+    recipients: c.recipients.map((r) => {
+      // Legacy fingerprint continuity: the role key is present in the hashed
+      // form ONLY when a role was actually supplied, so pre-v2 requests keep
+      // their original fingerprint and replay safely.
+      const base: Record<string, unknown> = {
+        recipientType: r.recipientType,
+        recipientReference: r.recipientReference,
+        displayName: r.displayName,
+        locale: r.locale,
+        email: r.email,
+        phone: r.phone,
+        pushDestination: r.pushDestination,
+      };
+      if (r.recipientRole) base.recipientRole = r.recipientRole;
+      return base;
+    }),
     requestedChannels: c.requestedChannels,
-  };
+  } as Record<string, unknown>;
+  const bc = c.businessContext;
+  if (bc && (bc.productId || (bc.recipientRoles?.length ?? 0) > 0)) {
+    (stable as Record<string, unknown>).businessContext = {
+      productId: bc.productId ?? null,
+      recipientRoles: bc.recipientRoles ?? [],
+    };
+  }
   return JSON.stringify(stable);
 }
