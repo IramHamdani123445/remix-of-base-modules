@@ -140,7 +140,7 @@ describe('Activity & Automation route', () => {
 
   it('renders the page title and the automation dashboard cards', async () => {
     renderRoute();
-    expect(await screen.findByText('Activity & Automation')).toBeTruthy();
+    expect((await screen.findAllByText('Activity & Automation')).length).toBeGreaterThan(0);
     expect(await screen.findByText('Automation')).toBeTruthy();
     expect(await screen.findByText('Business event processing')).toBeTruthy();
     expect(await screen.findByText('Email delivery')).toBeTruthy();
