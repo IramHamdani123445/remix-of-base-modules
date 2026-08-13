@@ -1,17 +1,21 @@
 /**
- * Omni-Comms — the normal Activity area.
+ * Omni-Comms — the channel-local Activity area.
  *
  * A business feed: what was sent, for which business moment, to whom (masked),
  * and what happened. Plus the operational summary. No fingerprints, no
  * correlation identifiers, no release vocabulary on this surface.
+ *
+ * This surface does NOT own the automation dashboard. There is exactly ONE
+ * normal automation dashboard, on Activity & Automation
+ * (/admin/omnichannel-communications/operations); here we only link to it.
  */
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { businessEventLabel } from '@/platform/omni-comms/domain/businessEventLabels';
-import type { AutomationStatus } from '@/platform/omni-comms/application/automationStatusService';
-import { AutomationSection } from './AutomationSection';
 import { ChannelActivitySummary, formatMoment } from './ChannelActivitySummary';
 
 
@@ -29,6 +33,8 @@ export const ACTIVITY_OUTCOME_LABEL: Record<SimpleActivityOutcome, string> = {
   failed: 'Failed',
   held: 'Held',
 };
+
+export const OMNI_COMMS_ACTIVITY_ROUTE = '/admin/omnichannel-communications/operations';
 
 export interface SimpleActivityRow {
   readonly id: string;
@@ -48,12 +54,6 @@ export interface SimpleActivitySurfaceProps {
   lastDeliveredAt: string | null;
   rows: readonly SimpleActivityRow[];
   technicalDetails: React.ReactNode;
-  /** Automation ownership: Activity is where operators watch the workers. */
-  automationStatus?: AutomationStatus | null;
-  automationLoading?: boolean;
-  /** Bounded, non-technical warning when the last status refresh failed. */
-  automationRefreshError?: string | null;
-  onRefreshAutomation?: () => void;
 }
 
 export const SimpleActivitySurface: React.FC<SimpleActivitySurfaceProps> = ({
@@ -65,29 +65,22 @@ export const SimpleActivitySurface: React.FC<SimpleActivitySurfaceProps> = ({
   lastDeliveredAt,
   rows,
   technicalDetails,
-  automationStatus = null,
-  automationLoading = false,
-  automationRefreshError = null,
-  onRefreshAutomation,
 }) => (
   <div className="space-y-6" data-testid="omni-comms-simple-activity">
-    {onRefreshAutomation ? (
-      <>
-        {automationRefreshError ? (
-          <p
-            className="text-sm text-muted-foreground"
-            data-testid="omni-comms-automation-refresh-warning"
-          >
-            {automationRefreshError}
+    <Card data-testid="omni-comms-channel-automation-link">
+      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div>
+          <p className="text-sm font-medium">Automatic Email delivery</p>
+          <p className="text-sm text-muted-foreground">
+            Automation is tracked in one place for the whole module.
           </p>
-        ) : null}
-        <AutomationSection
-          status={automationStatus}
-          loading={automationLoading}
-          onRefresh={onRefreshAutomation}
-        />
-      </>
-    ) : null}
+        </div>
+        <Button asChild size="sm" variant="outline">
+          <Link to={OMNI_COMMS_ACTIVITY_ROUTE}>View delivery activity</Link>
+        </Button>
+      </CardContent>
+    </Card>
+
 
     <Card>
       <CardHeader>
