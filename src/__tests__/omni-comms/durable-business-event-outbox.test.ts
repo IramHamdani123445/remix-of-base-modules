@@ -77,10 +77,13 @@ describe('ingest worker boundaries', () => {
     'utf8',
   );
 
-  it('requires the service-role credential and a purpose-bound ticket', () => {
-    expect(worker).toContain('ingest_caller_not_permitted');
+  it('is trusted by a purpose-bound single-use ticket, not a bearer secret', () => {
     expect(worker).toContain('business_event_ingest');
     expect(worker).toContain('omni_comms_priv_scheduler_consume_ticket');
+    expect(worker).toContain('ingest_ticket_required');
+    // The scheduler holds no secret, so a service-role bearer is never required.
+    expect(worker).not.toContain('ingest_caller_not_permitted');
+    expect(worker).not.toContain('authHeader.slice(7).trim() !== SERVICE_ROLE');
   });
 
   it('never imports a provider SDK and never sends', () => {
@@ -95,4 +98,25 @@ describe('ingest worker boundaries', () => {
     expect(worker).toContain('"queued"');
     expect(worker).toContain('/functions/v1/omni-comms-runtime');
   });
+
+  it('never chooses a channel — configuration owns that decision', () => {
+    expect(worker).not.toContain('requestedChannels');
+    expect(worker).not.toMatch(/\["email"\]/);
+  });
+
+  it('treats transient failures as retries and configured-off as terminal', () => {
+    expect(worker).toContain('"retry"');
+    expect(worker).toContain('no_communication_configured');
+    expect(worker).toContain('NO_COMMUNICATION_BLOCKERS');
+  });
 });
+
+describe('atomic claim + business event', () => {
+  const intake = readFileSync('src/services/bn/intake/claimIntakeService.ts', 'utf8');
+
+  it('keeps the browser out of emission entirely', () => {
+    expect(intake).not.toContain('emitConfiguredBusinessEvent(');
+    expect(intake).not.toContain('emitBenefitsClaimSubmitted(');
+  });
+});
+
