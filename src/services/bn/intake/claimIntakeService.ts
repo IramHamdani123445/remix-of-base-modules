@@ -25,14 +25,9 @@ import {
   BN_WORKFLOW_MODULES,
   logBnWorkflowEvent,
 } from '@/services/bn/bnWorkflowIntegrationService';
-import { emitConfiguredBusinessEvent } from '@/platform/omni-comms/integrations/business/emitConfiguredBusinessEvent';
-import {
-  BENEFITS_CLAIM_ENTITY_TYPE,
-  BENEFITS_CLAIM_INTAKE_MODULE_CODE,
-  BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION,
-  BENEFITS_CLAIM_SUBMITTED_EVENT_CODE,
-  buildBenefitsClaimSubmittedCorrelationId,
-} from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
+import { BENEFITS_CLAIM_SUBMITTED_EVENT_CODE } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
+import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
+
 import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
 
 const db = supabase as any;
