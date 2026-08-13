@@ -143,7 +143,7 @@ function ViolationsManagementInner() {
         ]}
         actions={
           <div className="flex items-center gap-2">
-            <RunDetectionNowButton />
+            <RunDetectionNowButton employerId={regno} />
             <ComplianceHelpButton screenKey="violations" />
           </div>
         }

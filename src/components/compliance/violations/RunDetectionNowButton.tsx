@@ -21,7 +21,7 @@ import { isComplianceDbFlagEnabled } from '@/lib/compliance/featureToggles';
  * Automation Jobs admin screen, so admins can fire the scan from where
  * they look (All Violations) without hunting for the admin route.
  */
-export function RunDetectionNowButton() {
+export function RunDetectionNowButton({ employerId }: { employerId?: string | null } = {}) {
   const [open, setOpen] = useState(false);
   const runJob = useRunComplianceJob();
   const queryClient = useQueryClient();
@@ -32,7 +32,18 @@ export function RunDetectionNowButton() {
 
   const handleRun = async (dryRun: boolean) => {
     try {
-      await runJob.mutateAsync({ jobCode: 'JOB-VIOLATION-SCAN', dryRun });
+      await runJob.mutateAsync({
+        jobCode: 'JOB-VIOLATION-SCAN',
+        dryRun,
+        // A tenant-wide scan is processed in chained slices and can stop part
+        // way through, which left late-sorting employers (e.g. newly created
+        // ones) without any violations even though the rule simulator matched
+        // them. When the screen is scoped to an employer, scan just that
+        // employer so detection always reaches them, and bypass the per-day
+        // idempotency key so the scoped run is never skipped.
+        force: employerId ? true : undefined,
+        params: employerId ? { employer_id: employerId } : undefined,
+      });
       queryClient.invalidateQueries({ queryKey: ['ce_violations_page'] });
       queryClient.invalidateQueries({ queryKey: ['ce_violations_counts'] });
       queryClient.invalidateQueries({ queryKey: ['ce_violations_rule_detected'] });
@@ -51,17 +62,20 @@ export function RunDetectionNowButton() {
         className="gap-2"
       >
         <ScanSearch className="h-4 w-4" />
-        Run Detection Now
+        {employerId ? 'Run Detection for this Employer' : 'Run Detection Now'}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Run violation detection</DialogTitle>
+            <DialogTitle>
+              {employerId ? `Run violation detection for ${employerId}` : 'Run violation detection'}
+            </DialogTitle>
             <DialogDescription>
               This runs the same detection rules that the scheduled scan uses
               (<code className="text-xs">JOB-VIOLATION-SCAN</code>) and creates
               new auto-generated violations for any rules that match.
+              {employerId ? ' Only this employer is scanned, so it finishes in seconds.' : ''}
               <br /><br />
               Choose <strong>Dry Run</strong> to preview how many would be
               created without writing anything, or <strong>Run Now</strong> to
