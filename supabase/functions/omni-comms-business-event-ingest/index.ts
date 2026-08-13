@@ -356,7 +356,6 @@ Deno.serve(async (req) => {
       p_request_id: requestId,
       p_blocker_code: classification.blockerCode,
 
-      p_blocker_code: blockerCode === "" ? null : blockerCode,
     });
 
     if (status === "processed") processed += 1;
