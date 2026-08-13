@@ -113,12 +113,12 @@ export function useRunComplianceJob() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ jobCode, dryRun, force }: { jobCode: string; dryRun: boolean; force?: boolean }) => {
+    mutationFn: async ({ jobCode, dryRun, force, params }: { jobCode: string; dryRun: boolean; force?: boolean; params?: Record<string, unknown> }) => {
       if (!isComplianceDbFlagEnabled('compliance.risk.automation_jobs')) {
         throw new Error('Automation Jobs is disabled in Setup → Feature Toggles.');
       }
       const { data, error } = await supabase.functions.invoke('run-compliance-job', {
-        body: { job_code: jobCode, dry_run: dryRun, force: force ?? false },
+        body: { job_code: jobCode, dry_run: dryRun, force: force ?? false, ...(params ?? {}) },
       });
       if (error) throw error;
       if (data?.ok === false) throw new Error(data.error || 'Job execution failed');
