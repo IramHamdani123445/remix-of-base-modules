@@ -135,16 +135,19 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!SUPABASE_URL || !SERVICE_ROLE) return json({ error: "configuration_error" }, 503);
 
+  // Trust model. The scheduler runs inside the database and holds NO secret:
+  // it presents the publishable key plus a single-use, purpose-bound ticket
+  // minted by the database itself. The ticket — consumed below — is the proof
+  // of caller identity. A service-role bearer is deliberately NOT required,
+  // and would be a secret the scheduler must never carry.
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) {
     return json({ error: "OC401", detail: "authentication_required" }, 401);
   }
-  if (authHeader.slice(7).trim() !== SERVICE_ROLE) {
-    return json({ error: "OC403", detail: "ingest_caller_not_permitted" }, 403);
-  }
   if (req.headers.get("x-omni-comms-ingest-ticket") !== "scheduler") {
     return json({ error: "OC403", detail: "ingest_ticket_required" }, 403);
   }
+
 
   let raw: Record<string, unknown> = {};
   try {
