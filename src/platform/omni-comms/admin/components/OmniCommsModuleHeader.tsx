@@ -13,7 +13,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { Radio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { OmniCommsTenantSelector } from './OmniCommsTenantSelector';
+import { OmniCommsScopeSelector } from './OmniCommsScopeSelector';
 import { OmniCommsPostureBadgeList } from './OmniCommsPostureBadge';
 import {
   buildHeaderPosture,
@@ -27,12 +27,12 @@ import {
 import { mergeOmniCommsHref } from '../navigation/searchParamMerge';
 
 import { useOmniCommsCertificationPosture } from '../hooks/useOmniCommsCertificationPosture';
-import { useOmniCommsTenant } from '../../context/OmniCommsTenantContext';
+import { useOmniCommsScope } from '../../context/OmniCommsScopeContext';
 
 export const OmniCommsModuleHeader: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { organizationName, departmentName } = useOmniCommsTenant();
+  const { organizationName } = useOmniCommsScope();
 
   // Certification wording is derived ONCE, from the shared hook, so the
   // header, the Dashboard, Operations, Health and Safe test can never
@@ -76,8 +76,7 @@ export const OmniCommsModuleHeader: React.FC = () => {
                 className="text-xs text-muted-foreground"
                 data-testid="omni-comms-active-scope"
               >
-                {organizationName ?? 'No organisation selected'}
-                {departmentName ? ` · ${departmentName}` : ' · All departments'}
+                {organizationName ?? 'Resolving workspace…'}
               </p>
             </div>
           </div>
@@ -94,7 +93,7 @@ export const OmniCommsModuleHeader: React.FC = () => {
           </div>
         </div>
 
-        <OmniCommsTenantSelector />
+        <OmniCommsScopeSelector />
 
         <nav aria-label="Omnichannel Communications sections">
           <ul className="flex flex-wrap items-center gap-1">

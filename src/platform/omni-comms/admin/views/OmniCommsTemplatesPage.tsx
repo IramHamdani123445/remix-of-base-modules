@@ -46,7 +46,7 @@ import {
   type ActiveDepartmentOption,
 } from "@/platform/organization/organizationService";
 import { useOmniCommsTenant } from "@/platform/omni-comms/context/OmniCommsTenantContext";
-import { OmniCommsTenantSelector } from "../components/OmniCommsTenantSelector";
+import { OmniCommsScopeSelector } from "../components/OmniCommsScopeSelector";
 import { useModulePermissions } from "@/hooks/useNavigationMenu";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -916,7 +916,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
 
       <Card>
         <CardContent className="pt-4">
-          <OmniCommsTenantSelector />
+          <OmniCommsScopeSelector />
           {!organizationId && (
             <p className="mt-2 text-xs text-muted-foreground">
               Select an organisation to enable scope resolution, assembly and

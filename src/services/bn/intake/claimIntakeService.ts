@@ -25,9 +25,14 @@ import {
   BN_WORKFLOW_MODULES,
   logBnWorkflowEvent,
 } from '@/services/bn/bnWorkflowIntegrationService';
-import { resolveOrganizationContext } from '@/lib/org/organizationContextResolver';
-import { emitBenefitsClaimSubmitted } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
-import { resolveProductCommunication } from '@/platform/omni-comms/application/productCommunicationService';
+import { emitConfiguredBusinessEvent } from '@/platform/omni-comms/integrations/business/emitConfiguredBusinessEvent';
+import {
+  BENEFITS_CLAIM_ENTITY_TYPE,
+  BENEFITS_CLAIM_INTAKE_MODULE_CODE,
+  BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION,
+  BENEFITS_CLAIM_SUBMITTED_EVENT_CODE,
+  buildBenefitsClaimSubmittedCorrelationId,
+} from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
 import type { BusinessProducerResult } from '@/platform/omni-comms/integrations/business/businessProducerTypes';
 
 const db = supabase as any;
@@ -83,10 +88,13 @@ const CLAIM_COMMUNICATION_SUMMARY: Record<string, string> = {
 };
 
 /**
- * Controlled production pilot — raise the Benefits claim-registration
- * acknowledgement through the single Omni-Comms façade in QUEUED mode. The
- * runtime persists a HELD dispatch job that only Release Control can make
- * eligible, so no provider is contacted and no email leaves the platform.
+ * Benefits reference implementation of the final Omni-Comms module contract.
+ *
+ * Benefits supplies FACTS ONLY: the business event, the claim identity, the
+ * product context, the claimant recipient facts and the event data. It does
+ * not resolve the organisation, choose a department, choose a channel, choose
+ * a template or sender, pick a delivery mode, or know that a provider exists.
+ * Omni-Comms resolves everything else from communication configuration.
  *
  * Fail-closed and total: it never blocks or fails the claim registration,
  * never contacts a provider and never writes to a communication table.
@@ -119,12 +127,8 @@ export async function emitClaimRegisteredAcknowledgement(args: {
       person?.full_name ?? (args.formPayload?.claimant_name as string | null) ?? null;
     if (!contactEmail || !subjectName) return skipped;
 
-    const ctx = await resolveOrganizationContext({ moduleCode: 'BENEFITS' });
-    const organizationId: string | undefined = ctx?.organization?.id;
-    if (!organizationId) return skipped;
-
-    // Product Definition gate: the Hub decides whether this product raises the
-    // acknowledgement obligation at all. Fail-closed, never blocks the claim.
+    // Product is BUSINESS context, not a communication decision. The Hub
+    // decides whether this product raises the obligation.
     const { data: claimRow } = await db
       .from('bn_claim')
       .select('product_id')
@@ -133,28 +137,36 @@ export async function emitClaimRegisteredAcknowledgement(args: {
     const productId = (claimRow as { product_id?: string } | null)?.product_id ?? null;
     if (!productId) return skipped;
 
-    const resolution = await resolveProductCommunication(
-      organizationId,
-      productId,
-      'BENEFITS.CLAIM.SUBMITTED',
-      'email',
-    );
-    if (!resolution.enabled) {
+    const res = await emitConfiguredBusinessEvent({
+      eventCode: BENEFITS_CLAIM_SUBMITTED_EVENT_CODE,
+      moduleCode: BENEFITS_CLAIM_INTAKE_MODULE_CODE,
+      entity: {
+        type: BENEFITS_CLAIM_ENTITY_TYPE,
+        id: args.claimId,
+        occurrence: BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION,
+      },
+      context: { productId },
+      recipients: {
+        claimant: {
+          reference: args.claimNumber,
+          displayName: subjectName,
+          email: contactEmail,
+        },
+      },
+      data: {
+        reference: args.claimNumber,
+        subjectName,
+        claimType: args.productCode,
+      },
+      correlationId: buildBenefitsClaimSubmittedCorrelationId(args.claimId),
+    });
+
+    if (res.outcome === 'skipped') {
       return {
         ...skipped,
-        blockers: [resolution.reason ?? 'product_communication_disabled'],
+        blockers: res.skippedReason ? [res.skippedReason] : [],
       };
     }
-
-    const res = await emitBenefitsClaimSubmitted({
-      organizationId,
-      departmentId: ctx?.department?.department_id ?? null,
-      claimId: args.claimId,
-      reference: args.claimNumber,
-      subjectName,
-      claimType: args.productCode,
-      contactEmail,
-    });
 
     return {
       outcome: res.outcome,
@@ -165,6 +177,7 @@ export async function emitClaimRegisteredAcknowledgement(args: {
         CLAIM_COMMUNICATION_SUMMARY[res.outcome] ??
         CLAIM_COMMUNICATION_SUMMARY.unavailable,
     };
+
   } catch {
     return {
       outcome: 'unavailable',

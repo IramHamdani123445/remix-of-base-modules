@@ -70,68 +70,58 @@ export interface OmniCommsNavItem {
   description: string;
 }
 
+/**
+ * FINAL normal product navigation — exactly four operator destinations.
+ *
+ * Overview · Providers · Communications · Activity
+ *
+ * Every other historic surface (Setup, Safe Test, Events, Templates,
+ * Channels, Health, Delivery Setup, Test & Verify, Go Live, Accounts,
+ * Identities, Endpoints, Bindings, Policies, Release Control) remains
+ * reachable by deep link and from Technical details, but is never advertised
+ * as normal navigation.
+ */
 export const OMNI_COMMS_NAV_ITEMS: readonly OmniCommsNavItem[] = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
+    id: 'overview',
+    label: 'Overview',
     href: OMNI_COMMS_OVERVIEW_ROUTE,
     route: OMNI_COMMS_OVERVIEW_ROUTE,
     view: 'dashboard',
-    description: 'Current posture, next required action and safe actions.',
+    description: 'What communication capabilities work right now.',
   },
   {
-    id: 'setup',
-    label: 'Setup',
-    href: `${OMNI_COMMS_OVERVIEW_ROUTE}?view=setup`,
-    route: OMNI_COMMS_OVERVIEW_ROUTE,
-    view: 'setup',
-    description: 'Setup Readiness for one organisation, event, channel and locale.',
-  },
-  {
-    id: 'safe-test',
-    label: 'Safe Test',
-    href: `${OMNI_COMMS_OVERVIEW_ROUTE}?view=safe-test`,
-    route: OMNI_COMMS_OVERVIEW_ROUTE,
-    view: 'safe-test',
-    nonProductionOnly: true,
-    description: 'One governed dry test with a synthetic recipient. Nothing is sent.',
-  },
-  {
-    id: 'operations',
-    label: 'Operations',
-    href: '/admin/omnichannel-communications/operations',
-    route: '/admin/omnichannel-communications/operations',
-    description: 'Read-only register of runtime requests and messages.',
-  },
-  {
-    id: 'events',
-    label: 'Events',
-    href: '/admin/omnichannel-communications/events',
-    route: '/admin/omnichannel-communications/events',
-    description: 'Event definitions, contracts and routes.',
-  },
-  {
-    id: 'templates',
-    label: 'Templates',
-    href: '/admin/omnichannel-communications/templates',
-    route: '/admin/omnichannel-communications/templates',
-    description: 'Template families, versions, layouts and shared assets.',
-  },
-  {
-    id: 'channels',
-    label: 'Channels',
+    id: 'providers',
+    label: 'Providers',
     href: '/admin/omnichannel-communications/channels',
     route: '/admin/omnichannel-communications/channels',
-    description: 'Providers, accounts, sender identities and channel settings.',
+    description: 'Transport connections for every channel.',
   },
   {
-    id: 'health',
-    label: 'Health',
-    href: '/admin/omnichannel-communications/health',
-    route: '/admin/omnichannel-communications/health',
-    description: 'Operational health, certification evidence and engineering detail.',
+    id: 'communications',
+    label: 'Communications',
+    href: '/admin/omnichannel-communications/events',
+    route: '/admin/omnichannel-communications/events',
+    description: 'Business communications by module, event and channel.',
+  },
+  {
+    id: 'activity',
+    label: 'Activity',
+    href: '/admin/omnichannel-communications/operations',
+    route: '/admin/omnichannel-communications/operations',
+    description: 'What was actually sent, and what happened to it.',
   },
 ] as const;
+
+/**
+ * Historic technical routes that stay functional but are not advertised.
+ * Each maps to the normal surface that now owns it, so active-state never
+ * falls back to Overview by accident.
+ */
+export const OMNI_COMMS_UNADVERTISED_ROUTE_OWNERS: Readonly<Record<string, string>> = {
+  '/admin/omnichannel-communications/templates': 'communications',
+  '/admin/omnichannel-communications/health': 'overview',
+};
 
 /**
  * Planned destinations. Rendered as a disabled label with no navigable route
@@ -144,14 +134,7 @@ export interface OmniCommsPlannedNavItem {
   route: string;
 }
 
-export const OMNI_COMMS_PLANNED_NAV_ITEMS: readonly OmniCommsPlannedNavItem[] = [
-  {
-    id: 'preferences',
-    label: 'Preferences',
-    plannedLabel: 'Planned',
-    route: '/admin/omnichannel-communications/preferences',
-  },
-] as const;
+export const OMNI_COMMS_PLANNED_NAV_ITEMS: readonly OmniCommsPlannedNavItem[] = [] as const;
 
 /**
  * Navigation items available in an environment. Non-production-only
@@ -168,7 +151,9 @@ export function omniCommsNavItems(
 
 /** Views that highlight another navigation item rather than one of their own. */
 const VIEW_NAV_ALIAS: Readonly<Record<string, string>> = {
-  'reference-data': 'setup',
+  'reference-data': 'overview',
+  setup: 'overview',
+  'safe-test': 'overview',
 };
 
 /** Resolve the active navigation item for a pathname + `?view=` pair. */
@@ -189,8 +174,12 @@ export function resolveActiveNavItem(
       OMNI_COMMS_NAV_ITEMS.find((i) => i.view === view) ?? OMNI_COMMS_NAV_ITEMS[0]
     );
   }
+  const owner = OMNI_COMMS_UNADVERTISED_ROUTE_OWNERS[path];
+  if (owner) {
+    return OMNI_COMMS_NAV_ITEMS.find((i) => i.id === owner) ?? OMNI_COMMS_NAV_ITEMS[0];
+  }
   return (
-    OMNI_COMMS_NAV_ITEMS.find((i) => i.route === path && !i.view) ??
+    OMNI_COMMS_NAV_ITEMS.find((i) => path.startsWith(i.route) && !i.view) ??
     OMNI_COMMS_NAV_ITEMS[0]
   );
 }
