@@ -188,14 +188,45 @@ Deno.serve(async (req) => {
     return json({ error: "OC403", detail: "scheduler_ticket_invalid" }, 403);
   }
 
+  const startedAt = Date.now();
+
+  // Bounded, safe run evidence. EVERY scheduled tick is recorded — including
+  // ticks that legitimately find zero work — so operators can prove the
+  // automatic worker is alive. No recipient data and no payload content is
+  // ever written to the run ledger.
+  const recordRun = async (
+    metrics: Record<string, number | string>,
+    blocker: string | null,
+  ) => {
+    await service.rpc("omni_comms_priv_record_ingest_run", {
+      p_worker: "omni-comms-business-event-ingest",
+      p_metrics: { ...metrics, duration_ms: Date.now() - startedAt },
+      p_blocker: blocker,
+    }).catch(() => undefined);
+  };
+
+  // "Scanned" is the eligible backlog the tick could see, independent of the
+  // bounded batch it claimed.
+  let scanned = 0;
+  const { count: eligible } = await service
+    .from("omni_comms_business_event_outbox")
+    .select("id", { count: "exact", head: true })
+    .in("status", ["pending", "retry"]);
+  scanned = typeof eligible === "number" ? eligible : 0;
+
   const { data: claimed, error: claimErr } = await service.rpc(
     "omni_comms_priv_claim_business_events",
     { p_limit: batchLimit },
   );
   if (claimErr) {
+    await recordRun(
+      { events_scanned: scanned, events_claimed: 0, result_code: "claim_failed" },
+      "business_event_claim_failed",
+    );
     return json({ error: "OC500", detail: "business_event_claim_failed" }, 500);
   }
   const rows = (claimed ?? []) as OutboxRow[];
+
 
   let processed = 0;
   let blocked = 0;
@@ -260,7 +291,20 @@ Deno.serve(async (req) => {
     else retried += 1;
   }
 
+  // A tick that executed successfully and found nothing to do is HEALTHY.
+  await recordRun({
+    events_scanned: scanned,
+    events_claimed: rows.length,
+    events_processed: processed,
+    events_no_communication: noCommunication,
+    events_retried: retried,
+    events_blocked: blocked,
+    events_needs_review: blocked,
+    result_code: "ok",
+  }, null);
+
   return json({
+
     function: "omni-comms-business-event-ingest",
     claimed: rows.length,
     processed,

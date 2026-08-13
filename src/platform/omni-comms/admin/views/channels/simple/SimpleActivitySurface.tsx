@@ -10,7 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { businessEventLabel } from '@/platform/omni-comms/domain/businessEventLabels';
+import type { AutomationStatus } from '@/platform/omni-comms/application/automationStatusService';
+import { AutomationSection } from './AutomationSection';
 import { ChannelActivitySummary, formatMoment } from './ChannelActivitySummary';
+
 
 export type SimpleActivityOutcome =
   | 'delivered'
@@ -45,6 +48,10 @@ export interface SimpleActivitySurfaceProps {
   lastDeliveredAt: string | null;
   rows: readonly SimpleActivityRow[];
   technicalDetails: React.ReactNode;
+  /** Automation ownership: Activity is where operators watch the workers. */
+  automationStatus?: AutomationStatus | null;
+  automationLoading?: boolean;
+  onRefreshAutomation?: () => void;
 }
 
 export const SimpleActivitySurface: React.FC<SimpleActivitySurfaceProps> = ({
@@ -56,8 +63,19 @@ export const SimpleActivitySurface: React.FC<SimpleActivitySurfaceProps> = ({
   lastDeliveredAt,
   rows,
   technicalDetails,
+  automationStatus = null,
+  automationLoading = false,
+  onRefreshAutomation,
 }) => (
   <div className="space-y-6" data-testid="omni-comms-simple-activity">
+    {onRefreshAutomation ? (
+      <AutomationSection
+        status={automationStatus}
+        loading={automationLoading}
+        onRefresh={onRefreshAutomation}
+      />
+    ) : null}
+
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Delivery activity</CardTitle>

@@ -96263,6 +96263,7 @@ export type Database = {
           detail: Json
           execution_context: string
           id: string
+          pipeline_stage: string
           scanned_jobs: number
           updated_at: string
           worker: string
@@ -96275,6 +96276,7 @@ export type Database = {
           detail?: Json
           execution_context?: string
           id?: string
+          pipeline_stage?: string
           scanned_jobs?: number
           updated_at?: string
           worker: string
@@ -96287,6 +96289,7 @@ export type Database = {
           detail?: Json
           execution_context?: string
           id?: string
+          pipeline_stage?: string
           scanned_jobs?: number
           updated_at?: string
           worker?: string
@@ -120766,6 +120769,14 @@ export type Database = {
         Args: { p_stage: string }
         Returns: string
       }
+      omni_comms_automation_cron_evidence: {
+        Args: { p_jobname: string }
+        Returns: string
+      }
+      omni_comms_automation_status: {
+        Args: { p_organization_id?: string }
+        Returns: Json
+      }
       omni_comms_binding_activate: {
         Args: {
           p_correlation_id?: string
@@ -122608,6 +122619,10 @@ export type Database = {
           p_result_code: string
         }
         Returns: Json
+      }
+      omni_comms_priv_record_ingest_run: {
+        Args: { p_blocker?: string; p_metrics: Json; p_worker: string }
+        Returns: string
       }
       omni_comms_priv_record_provider_verification: {
         Args: {
