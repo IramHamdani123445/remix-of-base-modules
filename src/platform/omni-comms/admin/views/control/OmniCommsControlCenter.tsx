@@ -41,14 +41,17 @@ import {
 import { getChannelTestCentreSummary } from '@/platform/omni-comms/application/channelTestCentreService';
 import { getChannelTestDeliveryDiagnostics } from '@/platform/omni-comms/application/channelTestDeliveryService';
 import {
-  approveGateRequest,
+  approveGateRequestWithTask,
+  recordGatePause,
   recordGateRequest,
-  rejectGateRequest,
-  withdrawGateRequest,
+  rejectGateRequestWithTask,
+  withdrawGateRequestWithTask,
   type GateApprovalRequest,
   type GateIntent,
 } from '@/platform/omni-comms/application/gateApprovalWorkflowService';
 import { notifyGateApprovalEvent } from '@/platform/notifications/gateApprovalNotifications';
+import PauseDeliveryDialog from './PauseDeliveryDialog';
+
 import { ChannelDeliverySwitch } from '../channels/simple/ChannelDeliverySwitch';
 import { ReadOnlyHealthSwitch } from '../channels/simple/ReadOnlyHealthSwitch';
 import { BusinessEventDeliverySwitch } from '../channels/simple/BusinessEventDeliverySwitch';
