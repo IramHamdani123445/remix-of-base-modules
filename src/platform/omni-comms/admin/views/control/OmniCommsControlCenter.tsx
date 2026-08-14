@@ -91,6 +91,8 @@ export const OmniCommsControlCenter: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [busyRequestId, setBusyRequestId] = React.useState<string | null>(null);
+  const [pauseOpen, setPauseOpen] = React.useState(false);
+
   const [testDeliveries, setTestDeliveries] = React.useState<readonly ChannelTestDelivery[]>([]);
   const [history, setHistory] = React.useState<readonly ReleaseHistoryEntry[]>([]);
   const automation = useAutomationStatus(organizationId, Boolean(organizationId));
