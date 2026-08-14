@@ -70,6 +70,7 @@ export const EmailJourneyDetailPanel: React.FC<EmailJourneyDetailPanelProps> = (
   const [detail, setDetail] = useState<EmailJourneyDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [contentOpen, setContentOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!messageId) return;
