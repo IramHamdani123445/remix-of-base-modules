@@ -272,6 +272,13 @@ export const EmailJourneyDetailPanel: React.FC<EmailJourneyDetailPanelProps> = (
           )}
 
         </ScrollArea>
+        </ScrollArea>
+        <MessageContentDialog
+          messageId={messageId}
+          organizationId={organizationId}
+          open={contentOpen && Boolean(messageId)}
+          onOpenChange={setContentOpen}
+        />
       </SheetContent>
     </Sheet>
   );
