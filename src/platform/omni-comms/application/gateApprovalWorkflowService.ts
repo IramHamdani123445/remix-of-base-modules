@@ -20,6 +20,7 @@ import {
   rejectWorkflow,
   startWorkflow,
   withdrawWorkflow,
+  completeWorkflow,
 } from '@/platform/workflow/workflowService';
 import type { WorkflowInstance } from '@/platform/workflow/workflowTypes';
 
@@ -291,3 +292,35 @@ export const rejectGateRequest = (id: string, reason: string) =>
 
 export const withdrawGateRequest = (id: string, reason?: string) =>
   withdrawWorkflow(id, reason);
+
+/**
+ * Record an IMMEDIATE pause (turning automatic delivery off).
+ *
+ * Pausing is a safety action: it never needs a second person, but it always
+ * needs a reason and is always written to the central workflow trail.
+ */
+export async function recordGatePause(
+  scope: GateRequestScope,
+  reason: string,
+): Promise<GateApprovalRequest> {
+  const request = await recordGateRequest(scope, 'disable');
+  await closeGateApprovalTasks(request.id, 'APPROVED', reason);
+  await completeWorkflow(request.id);
+  return request;
+}
+
+/** Approve a gate request and close its central task in one step. */
+export async function approveGateRequestWithTask(id: string, comments?: string) {
+  await closeGateApprovalTasks(id, 'APPROVED', comments);
+  return approveGateRequest(id, comments);
+}
+
+export async function rejectGateRequestWithTask(id: string, reason: string) {
+  await closeGateApprovalTasks(id, 'REJECTED', reason);
+  return rejectGateRequest(id, reason);
+}
+
+export async function withdrawGateRequestWithTask(id: string, reason?: string) {
+  await closeGateApprovalTasks(id, 'WITHDRAWN', reason);
+  return withdrawGateRequest(id, reason);
+}
