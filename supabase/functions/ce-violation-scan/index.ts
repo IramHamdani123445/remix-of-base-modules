@@ -111,17 +111,19 @@ async function fetchAllRows(
   supabase: any,
   table: string,
   filterCol?: string,
-  filterVal?: string
+  filterVal?: string,
+  columns = "*"
 ): Promise<any[]> {
   const PAGE_SIZE = 1000;
   let allRows: any[] = [];
   let from = 0;
 
   while (true) {
-    let query = supabase.from(table).select("*").range(from, from + PAGE_SIZE - 1);
+    let query = supabase.from(table).select(columns).range(from, from + PAGE_SIZE - 1);
     if (filterCol && filterVal) {
       query = query.eq(filterCol, filterVal);
     }
+
     const { data, error } = await query;
     if (error) throw error;
     if (!data || data.length === 0) break;
