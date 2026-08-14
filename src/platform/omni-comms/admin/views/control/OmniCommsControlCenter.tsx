@@ -161,29 +161,78 @@ export const OmniCommsControlCenter: React.FC = () => {
     [releaseTransport, organizationId, departmentId],
   );
 
+  const gateScope = React.useMemo(
+    () => ({
+      organizationId: organizationId as string,
+      departmentId: departmentId ?? null,
+      channel: CHANNEL,
+      gate: 'channel_delivery',
+    }),
+    [organizationId, departmentId],
+  );
+
+  /** Turning delivery ON: always a two-person request, recorded centrally. */
+  const requestEnable = React.useCallback(async () => {
+    // Record the intent in the central workflow FIRST, so the request and its
+    // approval task exist before the server is asked to act. A failure here is
+    // surfaced — a gate change must never look recorded when it is not.
+    const recorded = await recordGateRequest(gateScope, 'enable');
+    void notifyGateApprovalEvent({
+      event: 'requested',
+      subject: recorded.displayName ?? `Turn on automatic ${CHANNEL_LABEL} delivery`,
+      workflowInstanceId: recorded.id,
+    });
+    const outcome = await applyDeliveryIntent('enable');
+    // The server activated it straight away (second person moved the switch):
+    // close the central request and its task in the same action.
+    if ((outcome as { state?: string } | null)?.state === 'on') {
+      await approveGateRequestWithTask(recorded.id, 'Confirmed by the second approver.');
+      void notifyGateApprovalEvent({
+        event: 'approved',
+        subject: recorded.displayName ?? 'Delivery gate change',
+        workflowInstanceId: recorded.id,
+      });
+    }
+  }, [gateScope, applyDeliveryIntent]);
+
+  /** Turning delivery OFF: immediate, reason mandatory, no approval. */
+  const pauseDelivery = React.useCallback(
+    async (reason: string) => {
+      await applyDeliveryIntent('disable');
+      await recordGatePause(gateScope, reason);
+    },
+    [gateScope, applyDeliveryIntent],
+  );
+
   const onToggleDelivery = (next: boolean) => {
     if (!organizationId) return;
-    const intent: GateIntent = next ? 'enable' : 'disable';
+    if (!next) {
+      setPauseOpen(true);
+      return;
+    }
     setBusy(true);
     void (async () => {
       try {
-        // Record the intent in the central workflow FIRST, so the request is
-        // visible in the queue even when a second person is still required.
-        const recorded = await recordGateRequest(
-          { organizationId, departmentId: departmentId ?? null, channel: CHANNEL, gate: 'channel_delivery' },
-          intent,
-        ).catch(() => null);
-        void notifyGateApprovalEvent({
-          event: 'requested',
-          subject: recorded?.displayName ??
-            `${intent === 'enable' ? 'Turn on' : 'Turn off'} automatic ${CHANNEL_LABEL} delivery`,
-          workflowInstanceId: recorded?.id ?? null,
-        });
-        await applyDeliveryIntent(intent);
+        await requestEnable();
         await Promise.all([load(), approvals.refresh()]);
       } catch (e) {
         toastError(e, 'The delivery switch could not be changed');
         await approvals.refresh();
+      } finally {
+        setBusy(false);
+      }
+    })();
+  };
+
+  const onConfirmPause = (reason: string) => {
+    setBusy(true);
+    void (async () => {
+      try {
+        await pauseDelivery(reason);
+        setPauseOpen(false);
+        await Promise.all([load(), approvals.refresh()]);
+      } catch (e) {
+        toastError(e, 'Automatic delivery could not be turned off');
       } finally {
         setBusy(false);
       }
@@ -195,7 +244,7 @@ export const OmniCommsControlCenter: React.FC = () => {
     void (async () => {
       try {
         await applyDeliveryIntent(request.intent ?? 'enable');
-        await approveGateRequest(request.id, 'Approved from the Control Center.');
+        await approveGateRequestWithTask(request.id, 'Approved from the Control Center.');
         void notifyGateApprovalEvent({
           event: 'approved',
           subject: request.displayName ?? 'Delivery gate change',
@@ -214,7 +263,7 @@ export const OmniCommsControlCenter: React.FC = () => {
     setBusyRequestId(request.id);
     void (async () => {
       try {
-        await rejectGateRequest(request.id, reason);
+        await rejectGateRequestWithTask(request.id, reason);
         void notifyGateApprovalEvent({
           event: 'rejected',
           subject: request.displayName ?? 'Delivery gate change',
@@ -235,7 +284,8 @@ export const OmniCommsControlCenter: React.FC = () => {
     setBusyRequestId(request.id);
     void (async () => {
       try {
-        await withdrawGateRequest(request.id, 'Withdrawn from the Control Center.');
+        await withdrawGateRequestWithTask(request.id, 'Withdrawn from the Control Center.');
+
         // The workflow record alone does not clear the server-side release
         // proposal; without this the switch stays stuck awaiting approval.
         if ((request.intent ?? 'enable') === 'enable' && organizationId) {
