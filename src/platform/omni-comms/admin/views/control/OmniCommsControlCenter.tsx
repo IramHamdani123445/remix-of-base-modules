@@ -48,6 +48,7 @@ import {
   type GateApprovalRequest,
   type GateIntent,
 } from '@/platform/omni-comms/application/gateApprovalWorkflowService';
+import { notifyGateApprovalEvent } from '@/platform/notifications/gateApprovalNotifications';
 import { ChannelDeliverySwitch } from '../channels/simple/ChannelDeliverySwitch';
 import { ReadOnlyHealthSwitch } from '../channels/simple/ReadOnlyHealthSwitch';
 import { BusinessEventDeliverySwitch } from '../channels/simple/BusinessEventDeliverySwitch';
@@ -165,10 +166,16 @@ export const OmniCommsControlCenter: React.FC = () => {
       try {
         // Record the intent in the central workflow FIRST, so the request is
         // visible in the queue even when a second person is still required.
-        await recordGateRequest(
+        const recorded = await recordGateRequest(
           { organizationId, departmentId: departmentId ?? null, channel: CHANNEL, gate: 'channel_delivery' },
           intent,
         ).catch(() => null);
+        void notifyGateApprovalEvent({
+          event: 'requested',
+          subject: recorded?.displayName ??
+            `${intent === 'enable' ? 'Turn on' : 'Turn off'} automatic ${CHANNEL_LABEL} delivery`,
+          workflowInstanceId: recorded?.id ?? null,
+        });
         await applyDeliveryIntent(intent);
         await Promise.all([load(), approvals.refresh()]);
       } catch (e) {
@@ -186,6 +193,11 @@ export const OmniCommsControlCenter: React.FC = () => {
       try {
         await applyDeliveryIntent(request.intent ?? 'enable');
         await approveGateRequest(request.id, 'Approved from the Control Center.');
+        void notifyGateApprovalEvent({
+          event: 'approved',
+          subject: request.displayName ?? 'Delivery gate change',
+          workflowInstanceId: request.id,
+        });
         await Promise.all([load(), approvals.refresh()]);
       } catch (e) {
         toastError(e, 'The gate change could not be approved');
@@ -200,6 +212,12 @@ export const OmniCommsControlCenter: React.FC = () => {
     void (async () => {
       try {
         await rejectGateRequest(request.id, reason);
+        void notifyGateApprovalEvent({
+          event: 'rejected',
+          subject: request.displayName ?? 'Delivery gate change',
+          comment: reason,
+          workflowInstanceId: request.id,
+        });
         await approvals.refresh();
       } catch (e) {
         toastError(e, 'The gate change could not be rejected');
@@ -208,6 +226,7 @@ export const OmniCommsControlCenter: React.FC = () => {
       }
     })();
   };
+
 
   const onWithdraw = (request: GateApprovalRequest) => {
     setBusyRequestId(request.id);
