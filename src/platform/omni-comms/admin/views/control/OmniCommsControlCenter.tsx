@@ -48,6 +48,7 @@ import {
   type GateApprovalRequest,
   type GateIntent,
 } from '@/platform/omni-comms/application/gateApprovalWorkflowService';
+import { notifyGateApprovalEvent } from '@/platform/notifications/gateApprovalNotifications';
 import { ChannelDeliverySwitch } from '../channels/simple/ChannelDeliverySwitch';
 import { ReadOnlyHealthSwitch } from '../channels/simple/ReadOnlyHealthSwitch';
 import { BusinessEventDeliverySwitch } from '../channels/simple/BusinessEventDeliverySwitch';
