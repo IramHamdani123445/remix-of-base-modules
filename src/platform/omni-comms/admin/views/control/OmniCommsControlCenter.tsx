@@ -376,6 +376,15 @@ export const OmniCommsControlCenter: React.FC = () => {
             onChange={onToggleDelivery}
           />
 
+          <PauseDeliveryDialog
+            open={pauseOpen}
+            channelLabel={CHANNEL_LABEL}
+            busy={busy}
+            onCancel={() => setPauseOpen(false)}
+            onConfirm={onConfirmPause}
+          />
+
+
           {snapshot?.state === 'awaiting_approval' ? (
             <Alert data-testid="omni-comms-pending-proposal">
               <ShieldAlert className="h-4 w-4" />
