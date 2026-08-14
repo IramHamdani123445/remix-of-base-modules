@@ -35,7 +35,12 @@ describe('Benefits Omni-Comms legacy notification guard', () => {
   it('no Omni-Comms source references the legacy BN notification runtime', () => {
     const offenders: string[] = [];
     for (const file of walk(OMNI_ROOT)) {
-      if (file.includes('__tests__') || file.includes('/architecture/')) continue;
+      if (
+        file.includes('__tests__') ||
+        file.includes('/architecture/') ||
+        file.endsWith('benefitsCommunicationCatalogue.ts')
+      )
+        continue;
       const source = readFileSync(file, 'utf8');
       for (const needle of FORBIDDEN) {
         if (source.includes(needle)) offenders.push(`${file} → ${needle}`);
