@@ -505,13 +505,23 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       arrangementMap.get(key)!.push(a);
     }
 
-    // Load existing unresolved violations for dedupe (paginated)
-    const existingViolations = await fetchAllRows(supabase, "ce_violations");
+    // Load existing unresolved violations for dedupe (paginated).
+    // Only the dedupe key columns are fetched, and the set is scoped to the
+    // employer when the scan is employer-scoped — loading every column of the
+    // whole violation table blew the edge-function memory limit.
+    const existingViolations = await fetchAllRows(
+      supabase,
+      "ce_violations",
+      employerFilter ? "employer_id" : undefined,
+      employerFilter || undefined,
+      "employer_id, violation_type_id, period_from, status, is_deleted",
+    );
     const unresolvedViolations = existingViolations.filter(
       (v: any) =>
         ["OPEN", "IN_PROGRESS", "ESCALATED", "UNDER_REVIEW"].includes(v.status) &&
         v.is_deleted === false
     );
+
 
     // Period is persisted as 'YYYY-MM'; normalise every key to that form so
     // detection keys ('YYYY-MM-01') and stored keys always compare equal.
