@@ -239,6 +239,26 @@ export const EmailJourneyDetailPanel: React.FC<EmailJourneyDetailPanelProps> = (
                 )}
               </section>
 
+              <section
+                className="space-y-2"
+                data-testid="omni-comms-email-journey-evidence"
+              >
+                <h3 className="text-sm font-medium">Record copy (evidence)</h3>
+                <p className="text-xs text-muted-foreground">
+                  The exact content that was sent is archived with a content
+                  fingerprint, so it can be produced later as a record of what
+                  the recipient received.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setContentOpen(true)}
+                  data-testid="omni-comms-email-journey-evidence-open"
+                >
+                  View archived copy
+                </Button>
+              </section>
+
               <details className="text-xs text-muted-foreground">
                 <summary className="cursor-pointer">Technical details</summary>
                 <pre className="mt-2 overflow-x-auto whitespace-pre-wrap">
@@ -247,6 +267,7 @@ export const EmailJourneyDetailPanel: React.FC<EmailJourneyDetailPanelProps> = (
               </details>
             </div>
           )}
+
         </ScrollArea>
       </SheetContent>
     </Sheet>
