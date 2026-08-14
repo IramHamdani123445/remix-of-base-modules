@@ -37203,6 +37203,90 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_detection_event_queue: {
+        Row: {
+          attempts: number
+          created_at: string
+          detection_run_id: string | null
+          employer_id: string
+          error_message: string | null
+          event_code: string
+          id: string
+          processed_at: string | null
+          requested_at: string
+          source_table: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          detection_run_id?: string | null
+          employer_id: string
+          error_message?: string | null
+          event_code: string
+          id?: string
+          processed_at?: string | null
+          requested_at?: string
+          source_table?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          detection_run_id?: string | null
+          employer_id?: string
+          error_message?: string | null
+          event_code?: string
+          id?: string
+          processed_at?: string | null
+          requested_at?: string
+          source_table?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ce_detection_event_triggers: {
+        Row: {
+          created_at: string
+          debounce_minutes: number
+          description: string | null
+          event_code: string
+          id: string
+          is_enabled: boolean
+          parameters: Json
+          qualifying_statuses: string[]
+          target_job_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          debounce_minutes?: number
+          description?: string | null
+          event_code: string
+          id?: string
+          is_enabled?: boolean
+          parameters?: Json
+          qualifying_statuses?: string[]
+          target_job_code?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          debounce_minutes?: number
+          description?: string | null
+          event_code?: string
+          id?: string
+          is_enabled?: boolean
+          parameters?: Json
+          qualifying_statuses?: string[]
+          target_job_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ce_detection_rules: {
         Row: {
           auto_create_violation: boolean | null

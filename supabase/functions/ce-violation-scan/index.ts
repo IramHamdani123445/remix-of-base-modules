@@ -111,17 +111,19 @@ async function fetchAllRows(
   supabase: any,
   table: string,
   filterCol?: string,
-  filterVal?: string
+  filterVal?: string,
+  columns = "*"
 ): Promise<any[]> {
   const PAGE_SIZE = 1000;
   let allRows: any[] = [];
   let from = 0;
 
   while (true) {
-    let query = supabase.from(table).select("*").range(from, from + PAGE_SIZE - 1);
+    let query = supabase.from(table).select(columns).range(from, from + PAGE_SIZE - 1);
     if (filterCol && filterVal) {
       query = query.eq(filterCol, filterVal);
     }
+
     const { data, error } = await query;
     if (error) throw error;
     if (!data || data.length === 0) break;
@@ -505,13 +507,23 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       arrangementMap.get(key)!.push(a);
     }
 
-    // Load existing unresolved violations for dedupe (paginated)
-    const existingViolations = await fetchAllRows(supabase, "ce_violations");
+    // Load existing unresolved violations for dedupe (paginated).
+    // Only the dedupe key columns are fetched, and the set is scoped to the
+    // employer when the scan is employer-scoped — loading every column of the
+    // whole violation table blew the edge-function memory limit.
+    const existingViolations = await fetchAllRows(
+      supabase,
+      "ce_violations",
+      employerFilter ? "employer_id" : undefined,
+      employerFilter || undefined,
+      "employer_id, violation_type_id, period_from, status, is_deleted",
+    );
     const unresolvedViolations = existingViolations.filter(
       (v: any) =>
         ["OPEN", "IN_PROGRESS", "ESCALATED", "UNDER_REVIEW"].includes(v.status) &&
         v.is_deleted === false
     );
+
 
     // Period is persisted as 'YYYY-MM'; normalise every key to that form so
     // detection keys ('YYYY-MM-01') and stored keys always compare equal.
