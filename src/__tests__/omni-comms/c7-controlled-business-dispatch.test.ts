@@ -252,8 +252,8 @@ describe('C7 — registries', () => {
     expect(row?.writeAuthority).toBe('service_role_only');
   });
 
-  it('keeps the integration count at 9 and marks the dispatcher available', () => {
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY.length).toBe(10);
+  it('keeps the integration count at 11 and marks the dispatcher available', () => {
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY.length).toBe(11);
     const row = OMNI_COMMS_INTEGRATION_REGISTRY.find(
       (i) => i.name === 'omni-comms-dispatch',
     );
