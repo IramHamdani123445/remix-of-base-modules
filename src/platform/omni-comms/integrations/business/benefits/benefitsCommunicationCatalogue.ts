@@ -18,7 +18,7 @@
  * DECISION VOCABULARY (see §5 of the closure brief): the executable Benefits
  * decision vocabulary uses DISALLOW / DISALLOWED (bn workflow statuses,
  * determinationService DISALLOW_READY, approvalConsoleService DISALLOW,
- * legacy bn.claim.disallowed). Therefore the canonical future event code is
+ * historical bn.claim.disallowed status). Therefore the canonical event code is
  * BENEFITS.CLAIM.DISALLOWED. The pre-existing BENEFITS.CLAIM.REJECTED
  * definition is retained ONLY as historical/compatibility metadata and must
  * never be an active live route — enforced by the catalogue tests.
