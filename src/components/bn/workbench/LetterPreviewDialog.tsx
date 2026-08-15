@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -11,9 +11,8 @@ import { BnEmptyState } from '@/components/bn/shared';
 import { formatAuditTimestamp } from '@/lib/culture/culture';
 import { downloadLetterPdf } from '@/services/bn/communication/letterGenerator';
 import { ensureBnLetterSnapshot } from '@/services/bn/communication/bnLetterRenderer';
-import { updateLetterStatus } from '@/services/bn/communication/bnCommunicationAdapter';
 import { useUserCode } from '@/hooks/useUserCode';
-import { Download, Printer, CheckCircle2, MailCheck, FileCheck2 } from 'lucide-react';
+import { Download, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 
 const db = supabase as any;
@@ -21,7 +20,6 @@ const db = supabase as any;
 interface Props { letterId: string | null; open: boolean; onOpenChange: (o: boolean) => void; }
 
 export const LetterPreviewDialog: React.FC<Props> = ({ letterId, open, onOpenChange }) => {
-  const qc = useQueryClient();
   const { userCode } = useUserCode();
   const { data, isLoading } = useQuery({
     queryKey: ['bn-letter-detail', letterId],
@@ -46,11 +44,6 @@ export const LetterPreviewDialog: React.FC<Props> = ({ letterId, open, onOpenCha
   const merge = letter?.merge_context || {};
   const printableHtml = data?.rendered?.printableHtml || '';
 
-  const refresh = () => {
-    qc.invalidateQueries({ queryKey: ['bn-letter-detail', letterId] });
-    qc.invalidateQueries({ queryKey: ['bn', 'claim-communications'] });
-  };
-
   const handlePrint = () => {
     if (!printableHtml) return;
     const win = window.open('', '_blank', 'width=900,height=900');
@@ -65,14 +58,6 @@ export const LetterPreviewDialog: React.FC<Props> = ({ letterId, open, onOpenCha
   const handleDownload = async () => {
     try { await downloadLetterPdf(letterId!, userCode || 'SYSTEM'); }
     catch (e: any) { toast.error(e?.message || 'Could not download PDF'); }
-  };
-
-  const handleStatus = async (status: string) => {
-    try {
-      await updateLetterStatus(letterId!, status, userCode || 'SYSTEM');
-      toast.success(`Letter marked ${status.replace(/_/g, ' ').toLowerCase()}`);
-      refresh();
-    } catch (e: any) { toast.error(e?.message || 'Could not update letter'); }
   };
 
   const events: Array<{ label: string; at?: string | null; by?: string | null }> = letter ? [
@@ -112,15 +97,7 @@ export const LetterPreviewDialog: React.FC<Props> = ({ letterId, open, onOpenCha
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={handlePrint}><Printer className="h-3.5 w-3.5 mr-1.5" />Print</Button>
                 <Button size="sm" variant="outline" onClick={handleDownload}><Download className="h-3.5 w-3.5 mr-1.5" />Download PDF</Button>
-                {['GENERATED', 'PENDING_APPROVAL'].includes(letter.status) && (
-                  <Button size="sm" variant="outline" onClick={() => handleStatus('APPROVED_TO_PRINT')}><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Approve to Print</Button>
-                )}
-                {letter.status === 'APPROVED_TO_PRINT' && (
-                  <Button size="sm" variant="outline" onClick={() => handleStatus('PRINTED')}><FileCheck2 className="h-3.5 w-3.5 mr-1.5" />Mark Printed</Button>
-                )}
-                {letter.status === 'PRINTED' && (
-                  <Button size="sm" variant="outline" onClick={() => handleStatus('DISPATCHED')}><MailCheck className="h-3.5 w-3.5 mr-1.5" />Mark Dispatched</Button>
-                )}
+                <span className="text-xs text-muted-foreground italic">Archived evidence — read only</span>
               </div>
             </div>
 

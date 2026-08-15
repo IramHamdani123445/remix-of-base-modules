@@ -21,7 +21,8 @@ import {
   type BusinessEventActivityRow,
 } from '@/platform/omni-comms/application/businessEventActivityService';
 import type { OmniCommsRpcClient } from '@/platform/omni-comms/application/eventCatalogueService';
-import { buildBnMergeContext, resolveRecipient, type BnCommContext } from './bnCommunicationAdapter';
+import { buildBnMergeContext, resolveRecipient } from './bnCommunicationAdapter';
+import type { BnCommContext } from './bnCommunicationTypes';
 import { resolveBnOmniEvent } from './bnOmniCommsEventMap';
 
 export const BN_CLAIM_ENTITY_TYPE = 'bn_claim';

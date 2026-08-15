@@ -5,8 +5,8 @@ import {
   retryCommunication,
   generateLetterFromBlocked,
   markCommunicationManuallyDispatched,
-  type BnCommContext,
 } from '@/services/bn/communication/bnCommunicationAdapter';
+import type { BnCommContext } from '@/services/bn/communication/bnCommunicationTypes';
 
 export function useBnClaimCommunicationHistory(claimId: string | undefined) {
   return useQuery({

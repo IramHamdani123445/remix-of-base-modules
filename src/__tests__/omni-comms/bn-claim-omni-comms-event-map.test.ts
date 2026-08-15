@@ -24,6 +24,7 @@ describe('Benefits claim legacy → Omni-Comms event mapping', () => {
     expect(supportedLegacyEventCodes()).toContain('bn.claim.submitted');
     expect(supportedLegacyEventCodes()).toContain('bn.evidence.requested');
     expect(supportedLegacyEventCodes()).toContain('bn.life_certificate.due');
+    expect(resolveBnOmniEvent('bn.eligibility.failed').supported).toBe(false);
   });
 
   it('accepts an already-canonical code', () => {

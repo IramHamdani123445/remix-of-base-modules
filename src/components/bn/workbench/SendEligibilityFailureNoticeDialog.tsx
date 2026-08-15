@@ -74,7 +74,7 @@ export function SendEligibilityFailureNoticeDialog({
   const handleDispatch = async () => {
     try {
       const res = await trigger.mutateAsync({
-        eventCode: EVENT_CODE,
+        eventCode: 'BENEFITS.CLAIM.DISALLOWED',
         claimId,
         ctx: {
           productVersionId: productVersionId || undefined,
