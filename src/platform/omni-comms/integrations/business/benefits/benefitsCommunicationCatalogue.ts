@@ -9,9 +9,9 @@
  *  - whether Email is a valid channel and its default policy.
  *
  * It contains NO runtime transport code, imports no Supabase client, no React,
- * no provider SDK and NOTHING from the legacy BN notification runtime
- * (bnNotificationIntegrationService, bnCommunicationAdapter, notification_*,
- * send-notification). Legacy assets were read for discovery only.
+ * no provider SDK and nothing from any superseded communication runtime. Facts
+ * are taken from current Benefits business source only.
+
  *
  * Canonical event naming: BENEFITS.<DOMAIN>.<BUSINESS_EVENT> (uppercase dotted).
  *
