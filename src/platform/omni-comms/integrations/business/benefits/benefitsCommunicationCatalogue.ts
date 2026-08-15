@@ -933,7 +933,117 @@ export const BENEFITS_COMMUNICATION_CATALOGUE: readonly BenefitsCommunicationEnt
       producer: null,
     }),
   ),
+
+  // ------------------------------- APPEALS (remaining source transitions)
+  ...(
+    [
+      ['BN_APPEAL_REGISTER_RECEIVED_APPEAL', 'REGISTERED'],
+      ['BN_APPEAL_START_CASE_PREPARATION', 'CASE_PREPARATION'],
+      ['BN_APPEAL_RECOMMEND_OUTCOME', 'RECOMMENDATION_MADE'],
+      ['BN_APPEAL_RETURN_RECOMMENDATION', 'RECOMMENDATION_RETURNED'],
+      ['BN_APPEAL_RECORD_HEARING_OUTCOME', 'HEARING_HELD'],
+      ['BN_APPEAL_MARK_PARTIALLY_IMPLEMENTED', 'PARTIALLY_IMPLEMENTED'],
+      ['BN_APPEAL_CANCEL', 'CANCELLED'],
+      ['BN_APPEAL_REOPEN', 'REOPENED'],
+    ] as const
+  ).map(([command, state]) =>
+    e({
+      domain: 'APPEAL',
+      command,
+      sourceState: '*',
+      targetState: state,
+      classification: 'INTERNAL_ONLY',
+      eventCode: `BENEFITS.APPEAL.${state}`,
+      recipientRoles: ['assigned_officer'],
+      emailApplicable: false,
+      emailPolicy: 'INTERNAL_EMAIL_DEFAULT_OFF',
+      templateFamily: null,
+      productSpecific: false,
+      producer: null,
+    }),
+  ),
+  ...(
+    [
+      ['BN_APPEAL_ASSIGN', 'ASSIGNED'],
+      ['BN_APPEAL_ATTACH_EVIDENCE', 'EVIDENCE_ATTACHED'],
+    ] as const
+  ).map(([command, state]) =>
+    e({
+      domain: 'APPEAL',
+      command,
+      sourceState: '*',
+      targetState: state,
+      classification: 'NO_COMMUNICATION_REQUIRED',
+      eventCode: null,
+      recipientRoles: [],
+      emailApplicable: false,
+      emailPolicy: 'AUDIT_ONLY',
+      templateFamily: null,
+      productSpecific: false,
+      producer: null,
+      reason:
+        'Internal case-handling housekeeping with no external or operational communication meaning; the appeal audit trail is the record of the action.',
+    }),
+  ),
+
+  // ----------------------------- MORTALITY (remaining source transitions)
+  ...(
+    [
+      ['BN_MORTALITY_MATCH_PERSON', 'MATCHED'],
+      ['BN_MORTALITY_RESOLVE_CONFLICT', 'CONFLICT_RESOLVED'],
+      ['BN_MORTALITY_RELEASE_HOLD', 'HOLD_RELEASED'],
+      ['BN_MORTALITY_PREPARE_IMPACT', 'IMPACT_REVIEW'],
+      ['BN_MORTALITY_SUBMIT_IMPACT', 'APPROVAL_PENDING'],
+      ['BN_MORTALITY_RETURN_IMPACT', 'IMPACT_RETURNED'],
+      ['BN_MORTALITY_APPROVE_IMPACT', 'IMPACT_APPROVED'],
+      ['BN_MORTALITY_COMPLETE_FOLLOWON', 'FOLLOW_ON_COMPLETED'],
+      ['BN_MORTALITY_CREATE_PAD_OVERPAYMENT', 'PAD_OVERPAYMENT_CREATED'],
+      ['BN_MORTALITY_REVERSE_CONFIRMATION', 'CONFIRMATION_REVERSED'],
+      ['BN_MORTALITY_CANCEL', 'CANCELLED'],
+    ] as const
+  ).map(([command, state]) =>
+    e({
+      domain: 'MORTALITY',
+      command,
+      sourceState: '*',
+      targetState: state,
+      classification: 'INTERNAL_ONLY',
+      eventCode: `BENEFITS.MORTALITY.${state}`,
+      recipientRoles: ['assigned_officer'],
+      emailApplicable: false,
+      emailPolicy: 'INTERNAL_EMAIL_DEFAULT_OFF',
+      templateFamily: null,
+      productSpecific: false,
+      producer: null,
+    }),
+  ),
+  ...(
+    [
+      ['BN_MORTALITY_DRAFT_SAVE', 'DRAFT'],
+      ['BN_MORTALITY_ASSIGN', 'ASSIGNED'],
+      ['BN_MORTALITY_ATTACH_EVIDENCE', 'EVIDENCE_ATTACHED'],
+      ['BN_MORTALITY_MARK_DUPLICATE', 'DUPLICATE'],
+    ] as const
+  ).map(([command, state]) =>
+    e({
+      domain: 'MORTALITY',
+      command,
+      sourceState: '*',
+      targetState: state,
+      classification: 'NO_COMMUNICATION_REQUIRED',
+      eventCode: null,
+      recipientRoles: [],
+      emailApplicable: false,
+      emailPolicy: 'AUDIT_ONLY',
+      templateFamily: null,
+      productSpecific: false,
+      producer: null,
+      reason:
+        'Internal record-keeping on a mortality report that changes no external obligation; no living recipient has an interest in this step and the mortality audit trail records it.',
+    }),
+  ),
 ];
+
 
 /** Every distinct canonical event code in the catalogue. */
 export function benefitsCatalogueEventCodes(): string[] {
