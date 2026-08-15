@@ -272,21 +272,7 @@ const LogList: React.FC<LogListProps> = ({ rows, loading, onRetry, onGenerateLet
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span><Clock className="h-3 w-3 inline mr-1" />{formatTime(r.created_at)}</span>
-            {canRetry && (
-              <Button size="sm" variant="outline" onClick={() => onRetry(r.id)}>
-                <RefreshCw className="h-3 w-3 mr-1" /> Retry
-              </Button>
-            )}
-            {isBlocked && dm !== 'LETTER' && onGenerateLetter && (
-              <Button size="sm" variant="outline" onClick={() => onGenerateLetter(r.id)}>
-                <FileSignature className="h-3 w-3 mr-1" /> Generate Letter
-              </Button>
-            )}
-            {(isBlocked || r.status === 'FAILED') && onMarkDispatched && (
-              <Button size="sm" variant="outline" onClick={() => onMarkDispatched(r.id)}>
-                <MailCheck className="h-3 w-3 mr-1" /> Mark Dispatched
-              </Button>
-            )}
+            <span className="italic">Read-only history</span>
           </div>
         </div>
         );
