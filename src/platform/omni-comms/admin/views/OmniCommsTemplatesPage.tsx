@@ -1233,9 +1233,12 @@ export const OmniCommsTemplatesPage: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead><TableHead>Name</TableHead>
-                  <TableHead>Scope</TableHead><TableHead>Status</TableHead>
-                  <TableHead>Updated</TableHead><TableHead className="text-right">Actions</TableHead>
+                  <SortHead label="Code" sortKey="code" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <SortHead label="Name" sortKey="name" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <SortHead label="Scope" sortKey="scope_type" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <SortHead label="Status" sortKey="status" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <SortHead label="Updated" sortKey="updated_at" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1249,53 +1252,91 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                     No families found.
                   </TableCell></TableRow>
                 )}
-                {families.map((f) => (
+                {familyPageSlice.rows.map((f) => (
                   <TableRow key={f.id} data-testid={`family-row-${f.code}`}>
                     <TableCell className="font-mono text-xs">{f.code}</TableCell>
                     <TableCell>{f.name}</TableCell>
                     <TableCell><Badge variant="outline">{f.scope_type}</Badge></TableCell>
                     <TableCell><FamilyStatusBadge s={f.status} /></TableCell>
                     <TableCell className="text-xs">{new Date(f.updated_at).toLocaleString()}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button size="sm" variant="ghost" onClick={() => { setSelectedFamilyId(f.id); setTab("versions"); }}>
-                        Open
-                      </Button>
-                      <Button size="sm" variant="ghost" disabled={!canConfigure}
-                        onClick={async () => {
-                          try {
-                            const full = await svc.getTemplateFamily(client, f.id);
-                            setFamilyEditor({ open: true, mode: "edit", initial: full });
-                          } catch (e) { toastError(e); }
-                        }}>Edit</Button>
-                      {f.status === "draft" && (
-                        <Button size="sm" variant="ghost" disabled={!canConfigure}
-                          onClick={() => setReasonDialog({
-                            open: true, required: false,
-                            title: "Activate family", description: "Reason is optional.",
-                            submitLabel: "Activate",
-                            onSubmit: async (reason) => {
-                              await svc.activateTemplateFamily(client, { id: f.id, reason: reason || null });
-                              toast.success("Activated"); await reloadFamilies();
-                            },
-                          })}>Activate</Button>
-                      )}
-                      {f.status !== "retired" && (
-                        <Button size="sm" variant="ghost" disabled={!canConfigure}
-                          onClick={() => setReasonDialog({
-                            open: true, required: true,
-                            title: "Retire family", description: "Retirement is permanent; reason required.",
-                            submitLabel: "Retire",
-                            onSubmit: async (reason) => {
-                              await svc.retireTemplateFamily(client, { id: f.id, reason });
-                              toast.success("Retired"); await reloadFamilies();
-                            },
-                          })}>Retire</Button>
-                      )}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <IconAction
+                          label="Preview template"
+                          testId={`family-preview-${f.code}`}
+                          icon={<Eye className="h-4 w-4" />}
+                          onClick={() => setQuickPreviewFamily(f)}
+                        />
+                        <IconAction
+                          label="Open versions"
+                          testId={`family-open-${f.code}`}
+                          icon={<FolderOpen className="h-4 w-4" />}
+                          onClick={() => { setSelectedFamilyId(f.id); setTab("versions"); }}
+                        />
+                        <IconAction
+                          label="Edit family"
+                          testId={`family-edit-${f.code}`}
+                          icon={<Pencil className="h-4 w-4" />}
+                          disabled={!canConfigure}
+                          onClick={async () => {
+                            try {
+                              const full = await svc.getTemplateFamily(client, f.id);
+                              setFamilyEditor({ open: true, mode: "edit", initial: full });
+                            } catch (e) { toastError(e); }
+                          }}
+                        />
+                        {f.status === "draft" && (
+                          <IconAction
+                            label="Activate family"
+                            testId={`family-activate-${f.code}`}
+                            icon={<CheckCircle2 className="h-4 w-4" />}
+                            disabled={!canConfigure}
+                            onClick={() => setReasonDialog({
+                              open: true, required: false,
+                              title: "Activate family", description: "Reason is optional.",
+                              submitLabel: "Activate",
+                              onSubmit: async (reason) => {
+                                await svc.activateTemplateFamily(client, { id: f.id, reason: reason || null });
+                                toast.success("Activated"); await reloadFamilies();
+                              },
+                            })}
+                          />
+                        )}
+                        {f.status !== "retired" && (
+                          <IconAction
+                            label="Retire family"
+                            testId={`family-retire-${f.code}`}
+                            tone="destructive"
+                            icon={<Archive className="h-4 w-4" />}
+                            disabled={!canConfigure}
+                            onClick={() => setReasonDialog({
+                              open: true, required: true,
+                              title: "Retire family", description: "Retirement is permanent; reason required.",
+                              submitLabel: "Retire",
+                              onSubmit: async (reason) => {
+                                await svc.retireTemplateFamily(client, { id: f.id, reason });
+                                toast.success("Retired"); await reloadFamilies();
+                              },
+                            })}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            <TablePager
+              testId="family-pager"
+              page={familyPageSlice.page}
+              pageCount={familyPageSlice.pageCount}
+              from={familyPageSlice.from}
+              to={familyPageSlice.to}
+              total={familyPageSlice.total}
+              pageSize={familyPageSize}
+              onPage={setFamilyPage}
+              onPageSize={setFamilyPageSize}
+            />
           </Card>
           <ScopeResolutionCard organizationId={organizationId} departments={departments} events={events} />
         </TabsContent>
