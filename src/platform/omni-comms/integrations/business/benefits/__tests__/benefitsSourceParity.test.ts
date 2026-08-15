@@ -34,8 +34,12 @@ describe('Benefits source parity', () => {
       if (row.sourceStatus !== 'PLANNED') {
         expect(row.sourceRef, row.command).toBeTruthy();
         expect(row.triggerOwner, row.command).not.toBe('NOT_IMPLEMENTED');
-        expect(row.emissionMechanism, row.command).not.toBe('NONE');
+        // A transition with no communication event legitimately emits nothing.
+        if (row.eventCode) {
+          expect(row.emissionMechanism, row.command).not.toBe('NONE');
+        }
       }
+
     }
   });
 
