@@ -342,7 +342,7 @@ describe('C6 — registries', () => {
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
     expect(result.counts.activeObjects).toBe(42);
-    expect(result.counts.integrations).toBe(10);
+    expect(result.counts.integrations).toBe(11);
   });
 });
 
