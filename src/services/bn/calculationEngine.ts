@@ -470,7 +470,39 @@ async function runFormulaEngine(
       }
       break;
     }
+    case 'REIMBURSEMENT':
+    case 'MEDICAL_REIMBURSEMENT':
+    case 'ACTUAL_COST': {
+      const reimbursement = await computeClaimReimbursement(input.claimId, input.claimDate);
+      rawResult = reimbursement.total;
+      paymentTypeOverride = 'ONE_OFF';
+      for (const line of reimbursement.lines) {
+        addStep(
+          `Expense ${line.procedureCode ?? 'UNCODED'} (${line.jurisdiction})`,
+          line.note,
+          { claimed: line.claimedAmount, approved: line.approvedAmount },
+          line.payableAmount,
+        );
+      }
+      addStep(
+        'Total reimbursable medical expenses',
+        `sum(${reimbursement.expenseCount} line(s))`,
+        { expense_lines: reimbursement.expenseCount },
+        rawResult,
+      );
+      addTrace('FORMULA', 'REIMBURSEMENT_RESOLVED', 'Medical reimbursement resolved', {
+        inputs: { expenseLines: reimbursement.expenseCount, total: reimbursement.total },
+        severity: reimbursement.blockingReason ? 'ERROR' : 'INFO',
+        message: reimbursement.blockingReason
+          ? reimbursement.blockingReason === 'NO_MEDICAL_EXPENSE_LINES_CAPTURED'
+            ? 'No medical expense lines captured on this claim — capture receipts on the Calculation tab before approval.'
+            : 'All captured expense lines resolved to zero under the medical policy library.'
+          : `Reimbursable total ${reimbursement.total.toFixed(2)} from ${reimbursement.expenseCount} line(s)`,
+      });
+      break;
+    }
   }
+
 
   // Apply min/max caps
   let afterMinMax = rawResult;
