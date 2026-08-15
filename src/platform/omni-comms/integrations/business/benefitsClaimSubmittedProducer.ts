@@ -19,6 +19,8 @@
  */
 
 import { emitBusinessCommunication } from './emitBusinessCommunication';
+import { buildBenefitsPayload } from './benefits/templates/benefitsTemplateRegistry';
+
 import type {
   BusinessProducerMode,
   BusinessProducerResult,
