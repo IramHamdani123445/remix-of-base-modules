@@ -12,7 +12,13 @@ import {
   useBnRetryCommunication,
   useBnGenerateLetterFromBlocked,
   useBnMarkManuallyDispatched,
+  useBnClaimOmniCommsActivity,
+  useBnTriggerOmniCommsCommunication,
 } from '@/hooks/bn/useBnClaimCommunication';
+import {
+  businessEventStatusLabel,
+  businessEventStatusTone,
+} from '@/platform/omni-comms/application/businessEventActivityTypes';
 import { useUserCode } from '@/hooks/useUserCode';
 import { toast } from 'sonner';
 
@@ -61,13 +67,15 @@ export const CommunicationTab: React.FC<Props> = ({ claimId, productVersionId })
     return () => { cancelled = true; };
   }, []);
   const { data, isLoading } = useBnClaimCommunicationHistory(claimId);
-  const trigger = useBnTriggerCommunication();
+  const trigger = useBnTriggerOmniCommsCommunication();
+  const omni = useBnClaimOmniCommsActivity(claimId);
   const updateLetter = useBnUpdateLetterStatus();
   const retry = useBnRetryCommunication();
   const genLetter = useBnGenerateLetterFromBlocked();
   const markDispatched = useBnMarkManuallyDispatched();
-  const [subTab, setSubTab] = useState('timeline');
+  const [subTab, setSubTab] = useState('omni');
 
+  const omniRows = omni.data?.rows || [];
   const logs = data?.logs || [];
   const letters = data?.letters || [];
 
@@ -87,7 +95,8 @@ export const CommunicationTab: React.FC<Props> = ({ claimId, productVersionId })
         claimId,
         ctx: { userCode, productVersionId, currentUserId: currentUserId || undefined, currentUserEmail, currentUserName: currentUserName || undefined },
       });
-      toast.success(`Dispatched ${r.dispatched}, skipped ${r.skipped}, failed ${r.failed}${r.blocked ? `, blocked ${r.blocked}` : ''}`);
+      if (r.outcome === 'accepted' || r.outcome === 'replayed') toast.success(r.message);
+      else toast.error(r.message);
     } catch (e: any) {
       toast.error(e?.message || 'Trigger failed');
     }
@@ -128,7 +137,7 @@ export const CommunicationTab: React.FC<Props> = ({ claimId, productVersionId })
           <div>
             <CardTitle>Claim Communications</CardTitle>
             <CardDescription>
-              Event-driven communications. Delivery methods and templates are configured in Product Catalog → Communications.
+              Raised through Omnichannel Communications. Templates, branding, channel and delivery are decided centrally by the Communication Hub.
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -147,7 +156,8 @@ export const CommunicationTab: React.FC<Props> = ({ claimId, productVersionId })
 
       <Tabs value={subTab} onValueChange={setSubTab}>
         <TabsList>
-          <TabsTrigger value="timeline">Timeline ({logs.length})</TabsTrigger>
+          <TabsTrigger value="omni">Omni-Comms ({omniRows.length})</TabsTrigger>
+          <TabsTrigger value="timeline">History (legacy) ({logs.length})</TabsTrigger>
           <TabsTrigger value="letters">Letters ({letters.length})</TabsTrigger>
           <TabsTrigger value="emails">Emails ({split.emails.length})</TabsTrigger>
           <TabsTrigger value="sms">SMS ({split.sms.length})</TabsTrigger>
@@ -155,6 +165,9 @@ export const CommunicationTab: React.FC<Props> = ({ claimId, productVersionId })
           <TabsTrigger value="failed" className="text-destructive">Failed ({split.failed.length})</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="omni" className="mt-4">
+          <OmniCommsList rows={omniRows} loading={omni.isLoading} />
+        </TabsContent>
         <TabsContent value="timeline" className="mt-4">
           <LogList rows={logs} loading={isLoading} onRetry={handleRetry} onGenerateLetter={handleGenerateLetter} onMarkDispatched={handleMarkDispatched} />
         </TabsContent>
@@ -174,6 +187,37 @@ export const CommunicationTab: React.FC<Props> = ({ claimId, productVersionId })
           <LogList rows={split.failed} loading={isLoading} onRetry={handleRetry} onGenerateLetter={handleGenerateLetter} onMarkDispatched={handleMarkDispatched} highlightFailed />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+};
+
+const OmniCommsList: React.FC<{ rows: any[]; loading?: boolean }> = ({ rows, loading }) => {
+  if (loading) return <p className="text-sm text-muted-foreground p-4">Loading…</p>;
+  if (!rows.length)
+    return (
+      <p className="text-sm text-muted-foreground p-4">
+        No Omnichannel communications raised for this claim yet.
+      </p>
+    );
+  return (
+    <div className="rounded-md border divide-y">
+      {rows.map((r) => (
+        <div key={r.id} className="p-3 flex flex-col md:flex-row md:items-center gap-3 text-sm">
+          <div className="flex items-center gap-2 min-w-[150px]">
+            <Mail className="h-3.5 w-3.5" />
+            <Badge variant={businessEventStatusTone(r.status)}>{businessEventStatusLabel(r.status)}</Badge>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium truncate">{r.event_code}</p>
+            <p className="text-xs text-muted-foreground">
+              {r.channels?.length ? r.channels.join(', ') : 'Channel resolved centrally'} •{' '}
+              {r.message_count} message{r.message_count === 1 ? '' : 's'} • {r.recipient_count} recipient
+              {r.recipient_count === 1 ? '' : 's'}
+            </p>
+          </div>
+          <div className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(r.occurred_at)}</div>
+        </div>
+      ))}
     </div>
   );
 };
