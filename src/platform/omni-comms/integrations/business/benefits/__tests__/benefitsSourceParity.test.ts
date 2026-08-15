@@ -64,6 +64,11 @@ describe('Benefits source parity', () => {
     expect(benefitsSourceParityReport().catalogueOnly).toEqual([]);
   });
 
+  it('classifies every authoritative source transition (no source gaps)', () => {
+    expect(benefitsSourceParityReport().sourceMissingFromCatalogue).toEqual([]);
+  });
+
+
   it('never reports a non-executable Benefits command as a missing live producer', () => {
     for (const row of BENEFITS_COMMUNICATION_CATALOGUE) {
       const state = resolveBenefitsProducerState(row);
