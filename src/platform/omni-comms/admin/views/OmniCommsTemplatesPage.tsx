@@ -66,8 +66,19 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Loader2, ShieldAlert, Plus, RefreshCw, Eye } from "lucide-react";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Loader2, ShieldAlert, Plus, RefreshCw, Eye, Pencil, CheckCircle2, Archive,
+  FolderOpen, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight,
+  ChevronsLeft, ChevronsRight, LayoutTemplate, Upload,
+} from "lucide-react";
 import { toast } from "sonner";
+import {
+  PAGE_SIZE_OPTIONS, buildSamplePayload, paginate, sortRows, toggleSort,
+  type SortState,
+} from "./templateTableUtils";
 import { OmniCommsAssemblyTab } from "./OmniCommsAssemblyTab";
 import { OmniCommsLayoutSelectionDialog } from "../components/OmniCommsLayoutSelectionDialog";
 import {
