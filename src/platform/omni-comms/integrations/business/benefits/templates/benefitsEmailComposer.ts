@@ -67,7 +67,7 @@ const CONTACT_LINE =
 const TOKEN_RE = /\{\{\s*payload\.([A-Za-z0-9_]+)\s*\}\}/g;
 
 /** Standard tokens present in every Benefits letter. */
-export const BENEFITS_BASE_TOKENS = ['recipientName', 'reference'] as const;
+export const BENEFITS_BASE_TOKENS = ['subjectName', 'reference'] as const;
 
 export function tokensInText(...parts: string[]): string[] {
   const found = new Set<string>();
@@ -151,7 +151,7 @@ export function composeBenefitsEmail(spec: BenefitsEmailSpec): ComposedBenefitsE
 <p style="margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;">${escKeepTokens(
     spec.preheader,
   )}</p>
-<p style="margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;">Dear {{payload.recipientName}},</p>
+<p style="margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;">Dear {{payload.subjectName}},</p>
 ${introHtml}
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin:18px 0;border-collapse:collapse;">
 <tbody>${detailRowsHtml}</tbody>
@@ -176,7 +176,7 @@ ${noticeHtml}
   const text = [
     spec.headline,
     '',
-    `Dear {{payload.recipientName}},`,
+    `Dear {{payload.subjectName}},`,
     '',
     ...spec.intro,
     '',
