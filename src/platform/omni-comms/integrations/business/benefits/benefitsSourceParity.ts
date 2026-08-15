@@ -114,7 +114,15 @@ export const BENEFITS_SOURCE_BOUNDARIES: Readonly<
   BN_CLAIM_REJECT_EVIDENCE: planned('Evidence rejection RPC not yet delivered.'),
 
   // ---------------------------------------------------------- CALCULATION
+  // ------------------------------------------- ELIGIBILITY / CALCULATION
+  BN_ELIGIBILITY_EVALUATE: {
+    status: 'EXECUTABLE',
+    triggerOwner: 'COMMAND_PIPELINE',
+    emissionMechanism: 'NONE',
+    sourceRef: 'src/services/bn/calculationEngine.ts (evaluateEligibility)',
+  },
   BN_CLAIM_CALCULATE: rpcBoundary('bn_calc_finalise_run_v1'),
+
 
   // -------------------------------------------------- DETERMINATION/AWARD
   BN_DETERMINATION_READY: planned('Determination readiness is a derived projection.'),
