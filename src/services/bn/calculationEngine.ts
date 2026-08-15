@@ -29,6 +29,7 @@ import type {
   BnCalcRun,
 } from '@/types/bnCalcEngine';
 import type { BnEligibilityRule, BnCalculationRule, BnTimelineRule } from '@/types/bn';
+import { computeClaimReimbursement } from './calc/reimbursementCalculator';
 
 const db = supabase as any;
 
@@ -405,6 +406,7 @@ async function runFormulaEngine(
   const steps: BnFormulaStep[] = [];
   let rawResult = 0;
   let stepNum = 0;
+  let paymentTypeOverride: string | null = null;
 
   const addStep = (desc: string, formula: string, inputs: Record<string, number>, result: number): BnFormulaStep => {
     stepNum++;
@@ -531,7 +533,7 @@ async function runFormulaEngine(
   }
 
   // Determine payment type outputs
-  const paymentType = config.paymentConstruction || 'WEEKLY';
+  const paymentType = paymentTypeOverride || config.paymentConstruction || 'WEEKLY';
   let finalWeekly = 0, finalMonthly = 0, finalLumpSum = 0, finalAnnual = 0;
 
   if (paymentType === 'ONE_OFF') {
