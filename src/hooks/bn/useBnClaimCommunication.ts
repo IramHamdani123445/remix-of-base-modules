@@ -66,3 +66,34 @@ export function useBnMarkManuallyDispatched() {
   });
 }
 
+
+// ── Omni-Comms cutover (canonical path) ────────────────────────────
+import {
+  triggerClaimCommunicationViaOmniComms,
+  listClaimOmniCommsActivity,
+} from '@/services/bn/communication/bnClaimOmniCommsService';
+import { useOmniCommsRpcClient } from '@/platform/omni-comms/admin/hooks/useOmniCommsRpcClient';
+
+/** Claim communications as governed by Omni-Comms (business-event Activity). */
+export function useBnClaimOmniCommsActivity(claimId: string | undefined) {
+  const client = useOmniCommsRpcClient();
+  return useQuery({
+    queryKey: ['bn', 'claim-omni-comms', claimId],
+    queryFn: () => listClaimOmniCommsActivity(client, claimId!),
+    enabled: !!claimId,
+    refetchInterval: 30_000,
+  });
+}
+
+/** Raise a claim communication through the single Omni-Comms façade. */
+export function useBnTriggerOmniCommsCommunication() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ eventCode, claimId, ctx }: { eventCode: string; claimId: string; ctx?: BnCommContext }) =>
+      triggerClaimCommunicationViaOmniComms(eventCode, claimId, ctx),
+    onSuccess: (_, { claimId }) => {
+      qc.invalidateQueries({ queryKey: ['bn', 'claim-omni-comms', claimId] });
+      qc.invalidateQueries({ queryKey: ['bn', 'claim-events', claimId] });
+    },
+  });
+}
