@@ -1467,8 +1467,12 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         onClose={() => setLayoutDialogVersion(null)}
         onSaved={async () => { await reloadVersions(selectedFamilyId); }}
       />
-
+      <QuickPreviewDialog
+        family={quickPreviewFamily}
+        onClose={() => setQuickPreviewFamily(null)}
+      />
     </div>
+    </TooltipProvider>
   );
 };
 
