@@ -1367,8 +1367,12 @@ export const OmniCommsTemplatesPage: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>#</TableHead><TableHead>Channel</TableHead><TableHead>Locale</TableHead>
-                  <TableHead>Status</TableHead><TableHead>Layout</TableHead><TableHead>Updated</TableHead>
+                  <SortHead label="#" sortKey="version_number" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
+                  <SortHead label="Channel" sortKey="channel" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
+                  <SortHead label="Locale" sortKey="locale" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
+                  <SortHead label="Status" sortKey="status" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
+                  <TableHead>Layout</TableHead>
+                  <SortHead label="Updated" sortKey="updated_at" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
