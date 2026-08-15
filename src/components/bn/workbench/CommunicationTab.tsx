@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,6 @@ import { Mail, FileText, Bell, Send, Clock, Eye } from 'lucide-react';
 import { LetterPreviewDialog } from './LetterPreviewDialog';
 import {
   useBnClaimCommunicationHistory,
-  useBnUpdateLetterStatus,
   useBnClaimOmniCommsActivity,
   useBnTriggerOmniCommsCommunication,
 } from '@/hooks/bn/useBnClaimCommunication';
@@ -39,7 +38,6 @@ export const CommunicationTab: React.FC<Props> = ({ claimId, productVersionId })
   const { data, isLoading } = useBnClaimCommunicationHistory(claimId);
   const trigger = useBnTriggerOmniCommsCommunication();
   const omni = useBnClaimOmniCommsActivity(claimId);
-  const updateLetter = useBnUpdateLetterStatus();
   const [subTab, setSubTab] = useState('omni');
 
   const omniRows = omni.data?.rows || [];
@@ -58,13 +56,6 @@ export const CommunicationTab: React.FC<Props> = ({ claimId, productVersionId })
     } catch (e: any) {
       toast.error(e?.message || 'Trigger failed');
     }
-  };
-
-  const handleLetterStatus = async (letterId: string, status: string) => {
-    try {
-      await updateLetter.mutateAsync({ letterId, newStatus: status, userCode });
-      toast.success(`Letter → ${status}`);
-    } catch (e: any) { toast.error(e?.message || 'Update failed'); }
   };
 
   return (
@@ -105,7 +96,7 @@ export const CommunicationTab: React.FC<Props> = ({ claimId, productVersionId })
           <LegacyArchive rows={logs} loading={isLoading} />
         </TabsContent>
         <TabsContent value="letters" className="mt-4">
-          <LetterList rows={letters} onUpdate={handleLetterStatus} />
+          <LetterList rows={letters} />
         </TabsContent>
       </Tabs>
     </div>
@@ -174,16 +165,7 @@ const LegacyArchive: React.FC<{ rows: any[]; loading?: boolean }> = ({ rows, loa
   );
 };
 
-const NEXT_STATUS: Record<string, { label: string; next: string }[]> = {
-  DRAFT: [{ label: 'Generate', next: 'GENERATED' }, { label: 'Cancel', next: 'CANCELLED' }],
-  GENERATED: [{ label: 'Send for Approval', next: 'PENDING_APPROVAL' }, { label: 'Approve to Print', next: 'APPROVED_TO_PRINT' }, { label: 'Cancel', next: 'CANCELLED' }],
-  PENDING_APPROVAL: [{ label: 'Approve to Print', next: 'APPROVED_TO_PRINT' }, { label: 'Cancel', next: 'CANCELLED' }],
-  APPROVED_TO_PRINT: [{ label: 'Mark Printed', next: 'PRINTED' }],
-  PRINTED: [{ label: 'Mark Dispatched', next: 'DISPATCHED' }],
-  DISPATCHED: [{ label: 'Mark Delivered', next: 'DELIVERED' }, { label: 'Mark Returned', next: 'RETURNED' }],
-};
-
-const LetterList: React.FC<{ rows: any[]; onUpdate: (id: string, next: string) => void }> = ({ rows, onUpdate }) => {
+const LetterList: React.FC<{ rows: any[] }> = ({ rows }) => {
   const [previewId, setPreviewId] = useState<string | null>(null);
   if (!rows.length) return <p className="text-sm text-muted-foreground p-4">No letters generated yet.</p>;
   return (
@@ -193,7 +175,7 @@ const LetterList: React.FC<{ rows: any[]; onUpdate: (id: string, next: string) =
           <div key={l.id} className="p-3 flex flex-col md:flex-row md:items-center gap-3 text-sm">
             <div className="flex items-center gap-2 min-w-[180px]">
               <FileText className="h-4 w-4" />
-              <Badge variant="outline" className={STATUS_TONE[l.status] || ''}>{l.status.replace(/_/g, ' ')}</Badge>
+              <Badge variant="outline">Historical {l.status.replace(/_/g, ' ')}</Badge>
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-mono text-xs text-muted-foreground">{l.event_code}</p>
@@ -205,12 +187,7 @@ const LetterList: React.FC<{ rows: any[]; onUpdate: (id: string, next: string) =
               <Button size="sm" variant="outline" onClick={() => setPreviewId(l.id)}>
                 <Eye className="h-3 w-3 mr-1" /> View
               </Button>
-              {(NEXT_STATUS[l.status] || []).map(s => (
-                <Button key={s.next} size="sm" variant="outline" onClick={() => onUpdate(l.id, s.next)}>
-                  {s.next === 'PRINTED' ? <Printer className="h-3 w-3 mr-1" /> : s.next === 'CANCELLED' ? <XCircle className="h-3 w-3 mr-1" /> : <CheckCircle2 className="h-3 w-3 mr-1" />}
-                  {s.label}
-                </Button>
-              ))}
+              <span className="italic">Archived — preview only</span>
             </div>
           </div>
         ))}

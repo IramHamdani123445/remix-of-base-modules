@@ -23,8 +23,6 @@ export const BN_LEGACY_TO_OMNI_EVENT: Readonly<Record<string, string | null>> = 
   'bn.life_certificate.due': 'BENEFITS.LIFE_CERTIFICATE.DUE',
   'bn.overpayment.created': 'BENEFITS.OVERPAYMENT.NOTICE.ISSUED',
   'bn.payment.issued': 'BENEFITS.PAYMENT.ISSUED',
-  'bn.calculation.completed': 'BENEFITS.CLAIM.CALCULATION.COMPLETED',
-  'bn.decision.pending': 'BENEFITS.CLAIM.DECISION.PENDING',
 
   // Recorded gaps — no published Benefits Email template exists yet.
   'bn.claim.intake.started': null,
@@ -34,6 +32,8 @@ export const BN_LEGACY_TO_OMNI_EVENT: Readonly<Record<string, string | null>> = 
   'bn.eligibility.passed': null,
   'bn.identity.verified': null,
   'bn.payment.ready': null,
+  'bn.calculation.completed': null,
+  'bn.decision.pending': null,
 };
 
 export interface BnOmniEventResolution {
