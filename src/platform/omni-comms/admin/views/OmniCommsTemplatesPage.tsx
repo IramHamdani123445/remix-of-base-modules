@@ -984,6 +984,22 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const [reasonDialog, setReasonDialog] = React.useState<ReasonDialogState>(CLOSED_REASON);
   const [layoutDialogVersion, setLayoutDialogVersion] =
     React.useState<TemplateVersionGetResult | null>(null);
+  const [quickPreviewFamily, setQuickPreviewFamily] =
+    React.useState<TemplateFamilyListItem | null>(null);
+
+  // Table presentation state — sorting and paging for both tables.
+  type FamilySortKey = "code" | "name" | "scope_type" | "status" | "updated_at";
+  const [familySort, setFamilySort] =
+    React.useState<SortState<FamilySortKey>>({ key: "updated_at", direction: "desc" });
+  const [familyPage, setFamilyPage] = React.useState(1);
+  const [familyPageSize, setFamilyPageSize] = React.useState(25);
+
+  type VersionSortKey = "version_number" | "channel" | "locale" | "status" | "updated_at";
+  const [versionSort, setVersionSort] =
+    React.useState<SortState<VersionSortKey>>({ key: "version_number", direction: "desc" });
+  const [versionPage, setVersionPage] = React.useState(1);
+  const [versionPageSize, setVersionPageSize] = React.useState(25);
+
 
   // ── Load the event catalogue once ──
   React.useEffect(() => {
