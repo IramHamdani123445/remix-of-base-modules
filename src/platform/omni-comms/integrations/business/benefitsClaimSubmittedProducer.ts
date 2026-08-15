@@ -68,14 +68,13 @@ export const BENEFITS_CLAIM_SUBMITTED_RECIPIENT_TYPE: OmniCommsRecipientType =
   'external';
 
 /**
- * Canonical payload vocabulary. Identical in the published event contract,
- * the published Email template version and every test.
+ * Canonical payload vocabulary. Sourced from the SINGLE Benefits template
+ * registry, so the producer, the published event contract and the published
+ * Email template version can never drift apart. Values the intake
+ * transaction does not know are filled with an explicit placeholder rather
+ * than left missing (a missing token fails rendering).
  */
-export interface BenefitsClaimSubmittedPayload {
-  reference: string;
-  subjectName: string;
-  claimType: string;
-}
+export type BenefitsClaimSubmittedPayload = Record<string, string>;
 
 export interface BenefitsClaimSubmittedInput {
   organizationId: string;
@@ -88,6 +87,10 @@ export interface BenefitsClaimSubmittedInput {
   subjectName: string;
   /** Benefit/claim type wording, e.g. the product code or product name. */
   claimType: string;
+  /** Date the claim was received, already formatted for the claimant. */
+  submittedOn?: string | null;
+  /** Plain-language intake status, e.g. "Awaiting assessment". */
+  claimStatus?: string | null;
   contactEmail?: string | null;
   correlationId?: string | null;
 }
@@ -95,12 +98,15 @@ export interface BenefitsClaimSubmittedInput {
 export function buildBenefitsClaimSubmittedPayload(
   input: BenefitsClaimSubmittedInput,
 ): BenefitsClaimSubmittedPayload {
-  return {
+  return buildBenefitsPayload(BENEFITS_CLAIM_SUBMITTED_EVENT_CODE, {
     reference: input.reference,
     subjectName: input.subjectName,
     claimType: input.claimType,
-  };
+    submittedOn: input.submittedOn,
+    claimStatus: input.claimStatus,
+  });
 }
+
 
 /**
  * Deterministic correlation identifier. Derived from the durable claim
