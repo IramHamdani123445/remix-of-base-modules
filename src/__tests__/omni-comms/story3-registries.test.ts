@@ -46,8 +46,8 @@ describe('Omni-Comms Story 3 — registry counts', () => {
   it('has exactly 7 permanent routes', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
   });
-  it('has exactly 10 registered integrations', () => {
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(10);
+  it('has exactly 11 registered integrations', () => {
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(11);
   });
   it('has exactly 5 reserved queues', () => {
     expect(OMNI_COMMS_QUEUE_REGISTRY).toHaveLength(5);
@@ -63,7 +63,7 @@ describe('Omni-Comms Story 3 — registry validation', () => {
       activeObjects: 42,
       deferredObjects: 2,
       routes: 7,
-      integrations: 10,
+      integrations: 11,
       queues: 5,
     });
   });
