@@ -1,25 +1,28 @@
 /**
- * Workflow → BN Communication bridge.
- * Called after a successful claim action transition so configured
- * communications fire automatically.
+ * Workflow → Omni-Comms bridge.
+ * Called after a successful claim action transition so catalogued Benefits
+ * communications are raised through the single governed façade.
  */
-import { triggerClaimCommunication, type BnCommContext } from './bnCommunicationAdapter';
+import {
+  triggerClaimCommunicationViaOmniComms,
+} from './bnClaimOmniCommsService';
+import type { BnCommContext } from './bnCommunicationTypes';
 
 const ACTION_EVENT_MAP: Record<string, string | string[]> = {
   SUBMIT: 'bn.claim.submitted',
-  START_REVIEW: 'bn.claim.intake.started',
-  VERIFY_IDENTITY: 'bn.identity.verified',
+  START_REVIEW: [],
+  VERIFY_IDENTITY: [],
   REQUEST_EVIDENCE: 'bn.evidence.requested',
   REQUEST_INFO: 'bn.evidence.requested',
   RECEIVE_EVIDENCE: 'bn.evidence.received',
-  CHECK_ELIGIBILITY: 'bn.eligibility.passed', // refined below based on result
-  RUN_CALCULATION: 'bn.calculation.completed',
-  SUBMIT_DECISION: 'bn.decision.pending',
+  CHECK_ELIGIBILITY: [],
+  RUN_CALCULATION: [],
+  SUBMIT_DECISION: [],
   APPROVE: 'bn.claim.approved',
   DENY: 'bn.claim.denied',
   DISALLOW: 'bn.claim.disallowed',
-  SUSPEND: 'bn.claim.suspended',
-  REOPEN: 'bn.claim.reopened',
+  SUSPEND: [],
+  REOPEN: [],
   WITHDRAW: 'bn.claim.withdrawn',
   CLOSE: [], // no comm by default
 };
@@ -39,11 +42,6 @@ export async function onWorkflowActionExecuted(ctx: WorkflowActionContext) {
   let mapped = ACTION_EVENT_MAP[ctx.actionCode];
   if (mapped === undefined) return { dispatched: 0, skipped: 0, failed: 0, events: [] };
 
-  // Eligibility outcome refines event
-  if (ctx.actionCode === 'CHECK_ELIGIBILITY' && ctx.sideEffect && ctx.sideEffect.overallResult === false) {
-    mapped = 'bn.eligibility.failed';
-  }
-
   const events = Array.isArray(mapped) ? mapped : [mapped];
   const results: any[] = [];
   for (const eventCode of events) {
@@ -57,7 +55,11 @@ export async function onWorkflowActionExecuted(ctx: WorkflowActionContext) {
         userCode: ctx.userCode,
         extra: ctx.sideEffect,
       };
-      const r = await triggerClaimCommunication(eventCode, ctx.claimId, commCtx);
+      const r = await triggerClaimCommunicationViaOmniComms(
+        eventCode,
+        ctx.claimId,
+        commCtx,
+      );
       results.push(r);
     } catch (err: any) {
       results.push({ eventCode, error: err?.message });

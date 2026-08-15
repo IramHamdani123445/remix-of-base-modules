@@ -61,7 +61,11 @@ export class ClaimWorkbenchTabBoundary extends React.Component<Props, State> {
         </Card>
       );
     }
-    return <React.Fragment key={this.state.resetKey}>{this.props.children}</React.Fragment>;
+    return (
+      <div key={this.state.resetKey} className="contents">
+        {this.props.children}
+      </div>
+    );
   }
 }
 

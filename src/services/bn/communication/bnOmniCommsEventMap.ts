@@ -25,15 +25,15 @@ export const BN_LEGACY_TO_OMNI_EVENT: Readonly<Record<string, string | null>> = 
   'bn.payment.issued': 'BENEFITS.PAYMENT.ISSUED',
 
   // Recorded gaps — no published Benefits Email template exists yet.
-  'bn.calculation.completed': null,
   'bn.claim.intake.started': null,
   'bn.claim.reopened': null,
   'bn.claim.suspended': null,
-  'bn.decision.pending': null,
   'bn.eligibility.failed': null,
   'bn.eligibility.passed': null,
   'bn.identity.verified': null,
   'bn.payment.ready': null,
+  'bn.calculation.completed': null,
+  'bn.decision.pending': null,
 };
 
 export interface BnOmniEventResolution {

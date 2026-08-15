@@ -18,6 +18,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { bnDocumentTypeFor } from '@/services/reference/referenceNumberService';
 import { ensureBnLetterSnapshot, mergePlaceholders } from './bnLetterRenderer';
+import type { BnCommContext } from './bnCommunicationTypes';
+export type { BnCommContext } from './bnCommunicationTypes';
 
 const db = supabase as any;
 
@@ -25,19 +27,6 @@ export type BnChannel = 'EMAIL' | 'SMS' | 'LETTER' | 'IN_APP' | 'INTERNAL_EMAIL'
 export type BnRecipientType =
   | 'CLAIMANT' | 'PAYEE' | 'EMPLOYER' | 'ASSIGNED_OFFICER'
   | 'SUPERVISOR' | 'FINANCE' | 'MEDICAL_BOARD' | 'AUDITOR';
-
-export interface BnCommContext {
-  productVersionId?: string;
-  workflowStepId?: string;
-  reasonCode?: string;
-  reasonDescription?: string;
-  appealDeadline?: string;
-  userCode?: string;
-  currentUserId?: string;
-  currentUserEmail?: string;
-  currentUserName?: string;
-  extra?: Record<string, any>;
-}
 
 export interface BnCommDispatchResult {
   eventCode: string;
