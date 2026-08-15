@@ -31,6 +31,7 @@ import {
   emitBenefitsClaimSubmitted,
 } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
 import { EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE } from '@/platform/omni-comms/integrations/business/employerRegistrationProducer';
+import { benefitsTemplateEntry } from '@/platform/omni-comms/integrations/business/benefits/templates/benefitsTemplateRegistry';
 
 const sendMock = vi.fn();
 vi.mock('@/platform/omni-comms/sendCommunication', () => ({
