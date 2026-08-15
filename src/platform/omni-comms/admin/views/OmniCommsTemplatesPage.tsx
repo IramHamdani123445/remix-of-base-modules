@@ -1157,6 +1157,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
 
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-4" data-testid="omni-comms-templates-page">
       <div className="flex items-center justify-between">
         <div>
