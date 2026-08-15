@@ -1091,6 +1091,22 @@ export const OmniCommsTemplatesPage: React.FC = () => {
 
   const nextVersionNumber = versions.reduce((m, v) => Math.max(m, v.version_number), 0) + 1;
 
+  // Sorting + paging are applied to the loaded, filtered result set.
+  const familyPageSlice = paginate(
+    sortRows(families, familySort, (row, key) =>
+      key === "updated_at" ? Date.parse(row.updated_at) : (row[key] as string)),
+    familyPage,
+    familyPageSize,
+  );
+  const versionPageSlice = paginate(
+    sortRows(versions, versionSort, (row, key) =>
+      key === "updated_at" ? Date.parse(row.updated_at)
+        : key === "version_number" ? row.version_number
+        : (row[key] as string)),
+    versionPage,
+    versionPageSize,
+  );
+
   const openPublishDialog = async (versionId: string) => {
     try {
       const v = await svc.getTemplateVersion(client, versionId);
