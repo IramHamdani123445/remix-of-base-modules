@@ -1,9 +1,12 @@
 /**
- * Workflow → BN Communication bridge.
- * Called after a successful claim action transition so configured
- * communications fire automatically.
+ * Workflow → Omni-Comms bridge.
+ * Called after a successful claim action transition so catalogued Benefits
+ * communications are raised through the single governed façade.
  */
-import { triggerClaimCommunication, type BnCommContext } from './bnCommunicationAdapter';
+import {
+  triggerClaimCommunicationViaOmniComms,
+} from './bnClaimOmniCommsService';
+import type { BnCommContext } from './bnCommunicationAdapter';
 
 const ACTION_EVENT_MAP: Record<string, string | string[]> = {
   SUBMIT: 'bn.claim.submitted',
@@ -57,7 +60,11 @@ export async function onWorkflowActionExecuted(ctx: WorkflowActionContext) {
         userCode: ctx.userCode,
         extra: ctx.sideEffect,
       };
-      const r = await triggerClaimCommunication(eventCode, ctx.claimId, commCtx);
+      const r = await triggerClaimCommunicationViaOmniComms(
+        eventCode,
+        ctx.claimId,
+        commCtx,
+      );
       results.push(r);
     } catch (err: any) {
       results.push({ eventCode, error: err?.message });
