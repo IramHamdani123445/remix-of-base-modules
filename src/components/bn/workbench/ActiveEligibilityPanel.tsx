@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Play, RefreshCw, CheckCircle2, XCircle, AlertCircle, ShieldAlert, Send } from 'lucide-react';
+import { Play, RefreshCw, CheckCircle2, XCircle, AlertCircle, ShieldAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { runClaimEligibility } from '@/services/bn/claimActionRunner';
@@ -18,7 +18,6 @@ import { formatDateForDisplay } from '@/lib/format-config';
 import { BnEmptyState } from '@/components/bn/shared/BnEmptyState';
 import { OverrideEligibilityDialog } from './OverrideEligibilityDialog';
 import { EligibilityOverridesPanel } from './EligibilityOverridesPanel';
-import { SendEligibilityFailureNoticeDialog } from './SendEligibilityFailureNoticeDialog';
 import { usePolicy } from '@/hooks/bn/usePolicy';
 
 
@@ -73,7 +72,6 @@ export const ActiveEligibilityPanel: React.FC<Props> = ({
   );
 
   const [overrideRule, setOverrideRule] = useState<any | null>(null);
-  const [noticeOpen, setNoticeOpen] = useState(false);
 
   const handleRun = async () => {
     if (!userCode) {
@@ -140,12 +138,6 @@ export const ActiveEligibilityPanel: React.FC<Props> = ({
               </Badge>
             </CardTitle>
             <div className="flex items-center gap-2">
-              {!passed && (
-                <Button size="sm" variant="default" onClick={() => setNoticeOpen(true)} className="gap-1">
-                  <Send className="h-3.5 w-3.5" />
-                  Send Eligibility Failure Notice
-                </Button>
-              )}
               <Button size="sm" variant="outline" onClick={handleRun} disabled={running} className="gap-1">
                 <RefreshCw className={`h-3.5 w-3.5 ${running ? 'animate-spin' : ''}`} />
                 Re-run
@@ -265,15 +257,6 @@ export const ActiveEligibilityPanel: React.FC<Props> = ({
         />
       )}
 
-      <SendEligibilityFailureNoticeDialog
-        open={noticeOpen}
-        onOpenChange={setNoticeOpen}
-        claimId={claimId}
-        productVersionId={productVersionId}
-        userCode={userCode}
-        failedRules={rules.filter((r: any) => !r.passed)}
-        eligibilitySnapshot={latest}
-      />
     </div>
   );
 };
