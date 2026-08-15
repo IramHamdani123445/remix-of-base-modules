@@ -224,8 +224,11 @@ export async function orchestrateApproval(
     const amt = lump > 0 ? lump : (weekly > 0 ? weekly : monthly);
 
     if (amt <= 0) {
-      throw new Error('No calculated amount available. Run calculation before approval.');
+      throw new Error(
+        'No payable amount was produced by the latest calculation. For medical expense (reimbursement) claims, capture the expense receipt lines on the Calculation tab, then re-run the calculation before approving.',
+      );
     }
+
     const { data: pi, error: piErr } = await db
       .from('bn_payment_instruction')
       .insert({
