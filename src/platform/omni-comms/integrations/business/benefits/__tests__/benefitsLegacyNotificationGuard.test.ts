@@ -65,7 +65,8 @@ describe('Benefits Omni-Comms legacy notification guard', () => {
         "from('bn_communication_log')",
         "from('in_app_notifications')",
         'send-notification',
-        'bnCommunicationAdapter',
+        "from './bnCommunicationAdapter'",
+        "from '@/services/bn/communication/bnCommunicationAdapter'",
       ]) {
         if (source.includes(needle)) offenders.push(`${file} → ${needle}`);
       }
