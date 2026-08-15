@@ -1387,7 +1387,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                     No versions yet.
                   </TableCell></TableRow>
                 )}
-                {versions.map((v) => {
+                {versionPageSlice.rows.map((v) => {
                   const layout = describeLayoutSelection(v);
                   const layoutReady = isLayoutSelectionApprovable(v);
                   return (
@@ -1407,54 +1407,85 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-xs">{new Date(v.updated_at).toLocaleString()}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button size="sm" variant="ghost"
-                        onClick={async () => {
-                          try {
-                            const full = await svc.getTemplateVersion(client, v.id);
-                            setSelectedVersion(full); setTab("preview");
-                          } catch (e) { toastError(e); }
-                        }}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {v.status === "draft" && (
-                        <Button size="sm" variant="outline" disabled={!canAuthor}
-                          data-testid={`configure-layout-btn-${v.id}`}
-                          onClick={() => openLayoutDialog(v.id)}>
-                          Configure Layout
-                        </Button>
-                      )}
-                      {v.status === "approved" && (
-                        <Button size="sm" disabled={!canApprove}
-                          data-testid={`publish-btn-${v.id}`}
-                          onClick={() => openPublishDialog(v.id)}>Publish</Button>
-                      )}
-                      {v.status === "draft" && (
-                        <Button size="sm" variant="ghost"
-                          disabled={!canApprove || !layoutReady}
-                          data-testid={`approve-btn-${v.id}`}
-                          title={layoutReady ? undefined : LAYOUT_REQUIRED_MESSAGE}
-                          onClick={() => startApproval(v.id)}>Approve</Button>
-                      )}
-                      {(v.status === "approved" || v.status === "published") && (
-                        <Button size="sm" variant="ghost" disabled={!canApprove}
-                          onClick={() => setReasonDialog({
-                            open: true, required: true,
-                            title: "Retire version",
-                            description: "Retirement is permanent; reason required.",
-                            submitLabel: "Retire",
-                            onSubmit: async (reason) => {
-                              await svc.retireTemplateVersion(client, { id: v.id, reason });
-                              toast.success("Retired"); await reloadVersions(selectedFamilyId);
-                            },
-                          })}>Retire</Button>
-                      )}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <IconAction
+                          label="Preview rendered output"
+                          testId={`version-preview-${v.id}`}
+                          icon={<Eye className="h-4 w-4" />}
+                          onClick={async () => {
+                            try {
+                              const full = await svc.getTemplateVersion(client, v.id);
+                              setSelectedVersion(full); setTab("preview");
+                            } catch (e) { toastError(e); }
+                          }}
+                        />
+                        {v.status === "draft" && (
+                          <IconAction
+                            label="Configure layout"
+                            variant="outline"
+                            testId={`configure-layout-btn-${v.id}`}
+                            icon={<LayoutTemplate className="h-4 w-4" />}
+                            disabled={!canAuthor}
+                            onClick={() => openLayoutDialog(v.id)}
+                          />
+                        )}
+                        {v.status === "draft" && (
+                          <IconAction
+                            label={layoutReady ? "Approve version" : LAYOUT_REQUIRED_MESSAGE}
+                            testId={`approve-btn-${v.id}`}
+                            icon={<CheckCircle2 className="h-4 w-4" />}
+                            disabled={!canApprove || !layoutReady}
+                            onClick={() => startApproval(v.id)}
+                          />
+                        )}
+                        {v.status === "approved" && (
+                          <IconAction
+                            label="Publish version"
+                            variant="default"
+                            testId={`publish-btn-${v.id}`}
+                            icon={<Upload className="h-4 w-4" />}
+                            disabled={!canApprove}
+                            onClick={() => openPublishDialog(v.id)}
+                          />
+                        )}
+                        {(v.status === "approved" || v.status === "published") && (
+                          <IconAction
+                            label="Retire version"
+                            tone="destructive"
+                            testId={`retire-version-btn-${v.id}`}
+                            icon={<Archive className="h-4 w-4" />}
+                            disabled={!canApprove}
+                            onClick={() => setReasonDialog({
+                              open: true, required: true,
+                              title: "Retire version",
+                              description: "Retirement is permanent; reason required.",
+                              submitLabel: "Retire",
+                              onSubmit: async (reason) => {
+                                await svc.retireTemplateVersion(client, { id: v.id, reason });
+                                toast.success("Retired"); await reloadVersions(selectedFamilyId);
+                              },
+                            })}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
+            <TablePager
+              testId="version-pager"
+              page={versionPageSlice.page}
+              pageCount={versionPageSlice.pageCount}
+              from={versionPageSlice.from}
+              to={versionPageSlice.to}
+              total={versionPageSlice.total}
+              pageSize={versionPageSize}
+              onPage={setVersionPage}
+              onPageSize={setVersionPageSize}
+            />
           </Card>
           {versions.some((v) => v.status === "draft" && !isLayoutSelectionApprovable(v)) && (
             <Alert variant="destructive" data-testid="layout-required-alert">
