@@ -121,7 +121,7 @@ serve(async (req) => {
             description: row.description,
             communication_class: row.communicationClass,
             default_priority: row.priority,
-            status: "active",
+            status: "draft",
             created_at: now(),
             created_by: SEED_ACTOR_ID,
             updated_at: now(),
@@ -131,6 +131,11 @@ serve(async (req) => {
           .single();
         if (error) throw new Error(`event_definition:${error.message}`);
         eventId = inserted!.id as string;
+        // Governance: rows are born as drafts and transition to active.
+        await admin
+          .from("omni_comms_event_definition")
+          .update({ status: "active", updated_at: now(), updated_by: SEED_ACTOR_ID })
+          .eq("id", eventId);
         summary.events_created += 1;
         changed = true;
       } else {
@@ -176,21 +181,34 @@ serve(async (req) => {
           .order("version_number", { ascending: false })
           .limit(1);
         const nextVersion = (maxContract?.[0]?.version_number ?? 0) + 1;
-        const { error } = await admin.from("omni_comms_event_contract").insert({
-          event_definition_id: eventId,
-          version_number: nextVersion,
-          json_schema: row.schema,
-          sample_payload: row.samplePayload,
-          status: "published",
-          checksum: row.schemaChecksum,
-          published_at: now(),
-          published_by: SEED_ACTOR_ID,
-          created_at: now(),
-          created_by: SEED_ACTOR_ID,
-          updated_at: now(),
-          updated_by: SEED_ACTOR_ID,
-        });
+        const { data: draftContract, error } = await admin
+          .from("omni_comms_event_contract")
+          .insert({
+            event_definition_id: eventId,
+            version_number: nextVersion,
+            json_schema: row.schema,
+            sample_payload: row.samplePayload,
+            status: "draft",
+            created_at: now(),
+            created_by: SEED_ACTOR_ID,
+            updated_at: now(),
+            updated_by: SEED_ACTOR_ID,
+          })
+          .select("id")
+          .single();
         if (error) throw new Error(`event_contract:${error.message}`);
+        const { error: pubErr } = await admin
+          .from("omni_comms_event_contract")
+          .update({
+            status: "published",
+            checksum: row.schemaChecksum,
+            published_at: now(),
+            published_by: SEED_ACTOR_ID,
+            updated_at: now(),
+            updated_by: SEED_ACTOR_ID,
+          })
+          .eq("id", draftContract!.id);
+        if (pubErr) throw new Error(`event_contract_publish:${pubErr.message}`);
         summary.contracts_published += 1;
         changed = true;
       }
@@ -215,9 +233,7 @@ serve(async (req) => {
             organization_id: SEED_ORG_ID,
             department_id: null,
             event_definition_id: eventId,
-            status: "active",
-            activated_at: now(),
-            activated_by: SEED_ACTOR_ID,
+            status: "draft",
             created_at: now(),
             created_by: SEED_ACTOR_ID,
             updated_at: now(),
@@ -227,6 +243,16 @@ serve(async (req) => {
           .single();
         if (error) throw new Error(`template_family:${error.message}`);
         familyId = inserted!.id as string;
+        await admin
+          .from("omni_comms_template_family")
+          .update({
+            status: "active",
+            activated_at: now(),
+            activated_by: SEED_ACTOR_ID,
+            updated_at: now(),
+            updated_by: SEED_ACTOR_ID,
+          })
+          .eq("id", familyId);
         summary.families_created += 1;
         changed = true;
       }
@@ -265,28 +291,50 @@ serve(async (req) => {
           .order("version_number", { ascending: false })
           .limit(1);
         const nextVersion = (maxVersion?.[0]?.version_number ?? 0) + 1;
-        const { error } = await admin.from("omni_comms_template_version").insert({
-          template_family_id: familyId,
-          version_number: nextVersion,
-          channel: "email",
-          locale: SEED_LOCALE,
-          content: row.content,
-          status: "published",
-          checksum: row.contentChecksum,
-          approved_at: now(),
-          approved_by: SEED_ACTOR_ID,
-          published_at: now(),
-          published_by: SEED_ACTOR_ID,
-          created_at: now(),
-          // created_by stays null so the independent-approver rule holds.
-          created_by: null,
-          updated_at: now(),
-          updated_by: SEED_ACTOR_ID,
-          layout_selection_mode: "pinned",
-          layout_id: SEED_EMAIL_LAYOUT_ID,
-          pinned_layout_version_id: SEED_EMAIL_LAYOUT_VERSION_ID,
-        });
+        const { data: draftVersion, error } = await admin
+          .from("omni_comms_template_version")
+          .insert({
+            template_family_id: familyId,
+            version_number: nextVersion,
+            channel: "email",
+            locale: SEED_LOCALE,
+            content: row.content,
+            status: "draft",
+            created_at: now(),
+            // created_by stays null so the independent-approver rule holds.
+            created_by: null,
+            updated_at: now(),
+            updated_by: SEED_ACTOR_ID,
+            layout_selection_mode: "pinned",
+            layout_id: SEED_EMAIL_LAYOUT_ID,
+            pinned_layout_version_id: SEED_EMAIL_LAYOUT_VERSION_ID,
+          })
+          .select("id")
+          .single();
         if (error) throw new Error(`template_version:${error.message}`);
+        const { error: apprErr } = await admin
+          .from("omni_comms_template_version")
+          .update({
+            status: "approved",
+            checksum: row.contentChecksum,
+            approved_at: now(),
+            approved_by: SEED_ACTOR_ID,
+            updated_at: now(),
+            updated_by: SEED_ACTOR_ID,
+          })
+          .eq("id", draftVersion!.id);
+        if (apprErr) throw new Error(`template_version_approve:${apprErr.message}`);
+        const { error: pubVerErr } = await admin
+          .from("omni_comms_template_version")
+          .update({
+            status: "published",
+            published_at: now(),
+            published_by: SEED_ACTOR_ID,
+            updated_at: now(),
+            updated_by: SEED_ACTOR_ID,
+          })
+          .eq("id", draftVersion!.id);
+        if (pubVerErr) throw new Error(`template_version_publish:${pubVerErr.message}`);
         summary.template_versions_published += 1;
         changed = true;
       }
@@ -302,7 +350,7 @@ serve(async (req) => {
         .maybeSingle();
 
       if (!existingRoute) {
-        const { error } = await admin.from("omni_comms_event_route").insert({
+        const routeInsert = {
           organization_id: SEED_ORG_ID,
           department_id: SEED_DEPT_ID,
           event_definition_id: eventId,
@@ -314,15 +362,29 @@ serve(async (req) => {
           sender_identity_id: SEED_EMAIL_SENDER_IDENTITY_ID,
           sender_resolution_policy: "explicit",
           preference_policy: "honour",
-          lifecycle_state: "active",
+          lifecycle_state: "draft",
           created_at: now(),
           created_by: SEED_ACTOR_ID,
           updated_at: now(),
           updated_by: SEED_ACTOR_ID,
-          activated_at: now(),
-          activated_by: SEED_ACTOR_ID,
-        });
+        };
+        const { data: draftRoute, error } = await admin
+          .from("omni_comms_event_route")
+          .insert(routeInsert)
+          .select("id")
+          .single();
         if (error) throw new Error(`event_route:${error.message}`);
+        const { error: routeActErr } = await admin
+          .from("omni_comms_event_route")
+          .update({
+            lifecycle_state: "active",
+            activated_at: now(),
+            activated_by: SEED_ACTOR_ID,
+            updated_at: now(),
+            updated_by: SEED_ACTOR_ID,
+          })
+          .eq("id", draftRoute!.id);
+        if (routeActErr) throw new Error(`event_route_activate:${routeActErr.message}`);
         summary.routes_created += 1;
         changed = true;
       } else {
@@ -350,7 +412,7 @@ serve(async (req) => {
         .maybeSingle();
 
       if (!existingBinding) {
-        const { error } = await admin
+        const { data: draftBinding, error } = await admin
           .from("omni_comms_producer_event_binding")
           .insert({
             organization_id: SEED_ORG_ID,
@@ -358,16 +420,27 @@ serve(async (req) => {
             caller_module_code: "BENEFITS",
             event_definition_id: eventId,
             allowed_modes: ["queued"],
-            status: "active",
+            status: "draft",
             integration_reference: "emitBenefitsCommunication",
             created_at: now(),
             created_by: SEED_ACTOR_ID,
             updated_at: now(),
             updated_by: SEED_ACTOR_ID,
+          })
+          .select("id")
+          .single();
+        if (error) throw new Error(`producer_binding:${error.message}`);
+        const { error: bindActErr } = await admin
+          .from("omni_comms_producer_event_binding")
+          .update({
+            status: "active",
             activated_at: now(),
             activated_by: SEED_ACTOR_ID,
-          });
-        if (error) throw new Error(`producer_binding:${error.message}`);
+            updated_at: now(),
+            updated_by: SEED_ACTOR_ID,
+          })
+          .eq("id", draftBinding!.id);
+        if (bindActErr) throw new Error(`producer_binding_activate:${bindActErr.message}`);
         summary.bindings_created += 1;
         changed = true;
       } else {
