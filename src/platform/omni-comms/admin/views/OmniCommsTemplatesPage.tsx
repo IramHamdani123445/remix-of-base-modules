@@ -66,8 +66,19 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Loader2, ShieldAlert, Plus, RefreshCw, Eye } from "lucide-react";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Loader2, ShieldAlert, Plus, RefreshCw, Eye, Pencil, CheckCircle2, Archive,
+  FolderOpen, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight,
+  ChevronsLeft, ChevronsRight, LayoutTemplate, Upload,
+} from "lucide-react";
 import { toast } from "sonner";
+import {
+  PAGE_SIZE_OPTIONS, buildSamplePayload, paginate, sortRows, toggleSort,
+  type SortState,
+} from "./templateTableUtils";
 import { OmniCommsAssemblyTab } from "./OmniCommsAssemblyTab";
 import { OmniCommsLayoutSelectionDialog } from "../components/OmniCommsLayoutSelectionDialog";
 import {
@@ -542,6 +553,211 @@ function escapeHtmlForDisplay(s: string): string {
   }[c] as string));
 }
 
+// ─── Shared table primitives (icon actions, sorting, paging) ─────────────────
+const IconAction: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: "ghost" | "outline" | "default";
+  testId?: string;
+  tone?: "default" | "destructive";
+}> = ({ label, icon, onClick, disabled, variant = "ghost", testId, tone = "default" }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <span className="inline-flex">
+        <Button
+          size="icon"
+          variant={variant}
+          className={`h-8 w-8 ${tone === "destructive" ? "text-destructive hover:text-destructive" : ""}`}
+          disabled={disabled}
+          onClick={onClick}
+          aria-label={label}
+          data-testid={testId}
+        >
+          {icon}
+        </Button>
+      </span>
+    </TooltipTrigger>
+    <TooltipContent>{label}</TooltipContent>
+  </Tooltip>
+);
+
+function SortHead<K extends string>({
+  label, sortKey, sort, onSort, className,
+}: {
+  label: string; sortKey: K; sort: SortState<K>;
+  onSort: (key: K) => void; className?: string;
+}) {
+  const active = sort.key === sortKey;
+  const Icon = !active ? ArrowUpDown : sort.direction === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className="inline-flex items-center gap-1 hover:text-foreground"
+        aria-label={`Sort by ${label}`}
+        data-testid={`sort-${sortKey}`}
+      >
+        {label}
+        <Icon className={`h-3.5 w-3.5 ${active ? "text-foreground" : "text-muted-foreground"}`} />
+      </button>
+    </TableHead>
+  );
+}
+
+const TablePager: React.FC<{
+  page: number; pageCount: number; from: number; to: number; total: number;
+  pageSize: number;
+  onPage: (p: number) => void;
+  onPageSize: (s: number) => void;
+  testId?: string;
+}> = ({ page, pageCount, from, to, total, pageSize, onPage, onPageSize, testId }) => (
+  <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-t" data-testid={testId}>
+    <div className="text-xs text-muted-foreground">
+      {total === 0 ? "No rows" : `Showing ${from}–${to} of ${total}`}
+    </div>
+    <div className="flex items-center gap-2">
+      <Select value={String(pageSize)} onValueChange={(v) => { onPageSize(Number(v)); onPage(1); }}>
+        <SelectTrigger className="h-8 w-[110px]" aria-label="Rows per page">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {PAGE_SIZE_OPTIONS.map((s) => (
+            <SelectItem key={s} value={String(s)}>{s} / page</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <span className="text-xs text-muted-foreground">Page {page} of {pageCount}</span>
+      <Button size="icon" variant="outline" className="h-8 w-8" disabled={page <= 1} aria-label="First page" onClick={() => onPage(1)}>
+        <ChevronsLeft className="h-4 w-4" />
+      </Button>
+      <Button size="icon" variant="outline" className="h-8 w-8" disabled={page <= 1} aria-label="Previous page" onClick={() => onPage(page - 1)}>
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <Button size="icon" variant="outline" className="h-8 w-8" disabled={page >= pageCount} aria-label="Next page" onClick={() => onPage(page + 1)}>
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+      <Button size="icon" variant="outline" className="h-8 w-8" disabled={page >= pageCount} aria-label="Last page" onClick={() => onPage(pageCount)}>
+        <ChevronsRight className="h-4 w-4" />
+      </Button>
+    </div>
+  </div>
+);
+
+// ─── Quick preview dialog (see the letter without leaving the Library) ───────
+const QuickPreviewDialog: React.FC<{
+  family: TemplateFamilyListItem | null;
+  onClose: () => void;
+}> = ({ family, onClose }) => {
+  const client = useOmniCommsRpcClient();
+  const [loading, setLoading] = React.useState(false);
+  const [versionRows, setVersionRows] = React.useState<TemplateVersionListItem[]>([]);
+  const [current, setCurrent] = React.useState<TemplateVersionGetResult | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const loadVersion = React.useCallback(async (id: string) => {
+    setLoading(true); setError(null);
+    try { setCurrent(await svc.getTemplateVersion(client, id)); }
+    catch (e) { setError(friendly(e)); setCurrent(null); }
+    finally { setLoading(false); }
+  }, [client]);
+
+  React.useEffect(() => {
+    if (!family) { setVersionRows([]); setCurrent(null); setError(null); return; }
+    let cancelled = false;
+    (async () => {
+      setLoading(true); setError(null);
+      try {
+        const r = await svc.listTemplateVersions(client, { templateFamilyId: family.id, limit: 200 });
+        if (cancelled) return;
+        setVersionRows(r.items);
+        const rank = (s: TemplateVersionStatus) =>
+          s === "published" ? 0 : s === "approved" ? 1 : s === "draft" ? 2 : 3;
+        const best = [...r.items].sort(
+          (a, b) => rank(a.status) - rank(b.status) || b.version_number - a.version_number,
+        )[0];
+        if (best) await loadVersion(best.id);
+        else { setCurrent(null); setError("This family has no versions yet."); }
+      } catch (e) {
+        if (!cancelled) setError(friendly(e));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [family, client, loadVersion]);
+
+  const rendered = React.useMemo(() => {
+    if (!current) return null;
+    try {
+      const out = renderTemplate(current.channel, current.content, buildSamplePayload(current.content));
+      return { ok: true as const, fields: out.fields };
+    } catch (e) {
+      return { ok: false as const, error: (e as Error).message };
+    }
+  }, [current]);
+
+  const htmlKeys = current ? TEMPLATE_CHANNEL_KEYS[current.channel].html : [];
+
+  return (
+    <Dialog open={family !== null} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" data-testid="quick-preview-dialog">
+        <DialogHeader>
+          <DialogTitle className="font-mono text-base">{family?.code}</DialogTitle>
+          <DialogDescription>
+            {family?.name} — rendered with placeholder values. Nothing is sent or saved.
+          </DialogDescription>
+        </DialogHeader>
+
+        {versionRows.length > 1 && (
+          <Select
+            value={current?.id ?? ""}
+            onValueChange={(v) => { void loadVersion(v); }}
+          >
+            <SelectTrigger className="w-72" aria-label="Version">
+              <SelectValue placeholder="Select a version" />
+            </SelectTrigger>
+            <SelectContent>
+              {versionRows.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  v{v.version_number} · {v.channel} · {v.locale} · {v.status}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {loading && (
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin inline mr-2" />Loading template…
+          </div>
+        )}
+        {!loading && error && (
+          <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>
+        )}
+        {!loading && rendered?.ok === false && (
+          <Alert variant="destructive">
+            <AlertTitle>Template could not be rendered</AlertTitle>
+            <AlertDescription>{rendered.error}</AlertDescription>
+          </Alert>
+        )}
+        {!loading && rendered?.ok && Object.entries(rendered.fields).map(([field, value]) => (
+          <div key={field} className="space-y-1">
+            <div className="text-xs font-semibold uppercase text-muted-foreground">{field}</div>
+            {htmlKeys.includes(field) ? (
+              <OmniCommsSandboxedPreview html={value} title={`${field} preview`} testId={`quick-preview-${field}`} />
+            ) : (
+              <pre className="text-xs whitespace-pre-wrap break-words bg-muted p-2 rounded">{value}</pre>
+            )}
+          </div>
+        ))}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ─── Preview tab ─────────────────────────────────────────────────────────────
 const PreviewTab: React.FC<{
   version: TemplateVersionGetResult | null;
@@ -549,9 +765,16 @@ const PreviewTab: React.FC<{
 }> = ({ version, canViewSensitive }) => {
   // Synthetic payload lives ONLY in component state — never persisted,
   // never sent to telemetry, never placed in a query cache.
-  const [payloadText, setPayloadText] = React.useState('{\n  "name": "Alex"\n}');
+  const [payloadText, setPayloadText] = React.useState("{}");
   const [showSource, setShowSource] = React.useState(false);
   const [rendered, setRendered] = React.useState<{ ok: true; fields: Record<string, string> } | { ok: false; error: string } | null>(null);
+
+  // Seed the payload from the template's own tokens so the preview renders
+  // immediately instead of failing on the first unsupplied token.
+  React.useEffect(() => {
+    if (!version) return;
+    setPayloadText(JSON.stringify(buildSamplePayload(version.content), null, 2));
+  }, [version]);
 
   React.useEffect(() => {
     if (!version) { setRendered(null); return; }
@@ -563,6 +786,7 @@ const PreviewTab: React.FC<{
       setRendered({ ok: false, error: (e as Error).message });
     }
   }, [payloadText, version]);
+
 
   if (!version) {
     return (
@@ -760,6 +984,22 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const [reasonDialog, setReasonDialog] = React.useState<ReasonDialogState>(CLOSED_REASON);
   const [layoutDialogVersion, setLayoutDialogVersion] =
     React.useState<TemplateVersionGetResult | null>(null);
+  const [quickPreviewFamily, setQuickPreviewFamily] =
+    React.useState<TemplateFamilyListItem | null>(null);
+
+  // Table presentation state — sorting and paging for both tables.
+  type FamilySortKey = "code" | "name" | "scope_type" | "status" | "updated_at";
+  const [familySort, setFamilySort] =
+    React.useState<SortState<FamilySortKey>>({ key: "updated_at", direction: "desc" });
+  const [familyPage, setFamilyPage] = React.useState(1);
+  const [familyPageSize, setFamilyPageSize] = React.useState(25);
+
+  type VersionSortKey = "version_number" | "channel" | "locale" | "status" | "updated_at";
+  const [versionSort, setVersionSort] =
+    React.useState<SortState<VersionSortKey>>({ key: "version_number", direction: "desc" });
+  const [versionPage, setVersionPage] = React.useState(1);
+  const [versionPageSize, setVersionPageSize] = React.useState(25);
+
 
   // ── Load the event catalogue once ──
   React.useEffect(() => {
@@ -804,7 +1044,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         search: search || null,
         status: statusFilter === "all" ? null : statusFilter,
         scopeType: scopeFilter === "all" ? null : scopeFilter,
-        limit: 100,
+        limit: 500,
       });
       setFamilies(r.items);
     } catch (e) { toastError(e); }
@@ -850,6 +1090,22 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   }
 
   const nextVersionNumber = versions.reduce((m, v) => Math.max(m, v.version_number), 0) + 1;
+
+  // Sorting + paging are applied to the loaded, filtered result set.
+  const familyPageSlice = paginate(
+    sortRows(families, familySort, (row, key) =>
+      key === "updated_at" ? Date.parse(row.updated_at) : (row[key] as string)),
+    familyPage,
+    familyPageSize,
+  );
+  const versionPageSlice = paginate(
+    sortRows(versions, versionSort, (row, key) =>
+      key === "updated_at" ? Date.parse(row.updated_at)
+        : key === "version_number" ? row.version_number
+        : (row[key] as string)),
+    versionPage,
+    versionPageSize,
+  );
 
   const openPublishDialog = async (versionId: string) => {
     try {
@@ -901,6 +1157,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
 
 
   return (
+    <TooltipProvider delayDuration={200}>
     <div className="space-y-4" data-testid="omni-comms-templates-page">
       <div className="flex items-center justify-between">
         <div>
@@ -976,9 +1233,12 @@ export const OmniCommsTemplatesPage: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead><TableHead>Name</TableHead>
-                  <TableHead>Scope</TableHead><TableHead>Status</TableHead>
-                  <TableHead>Updated</TableHead><TableHead className="text-right">Actions</TableHead>
+                  <SortHead label="Code" sortKey="code" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <SortHead label="Name" sortKey="name" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <SortHead label="Scope" sortKey="scope_type" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <SortHead label="Status" sortKey="status" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <SortHead label="Updated" sortKey="updated_at" sort={familySort} onSort={(k) => { setFamilySort((s) => toggleSort(s, k)); setFamilyPage(1); }} />
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -992,53 +1252,91 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                     No families found.
                   </TableCell></TableRow>
                 )}
-                {families.map((f) => (
+                {familyPageSlice.rows.map((f) => (
                   <TableRow key={f.id} data-testid={`family-row-${f.code}`}>
                     <TableCell className="font-mono text-xs">{f.code}</TableCell>
                     <TableCell>{f.name}</TableCell>
                     <TableCell><Badge variant="outline">{f.scope_type}</Badge></TableCell>
                     <TableCell><FamilyStatusBadge s={f.status} /></TableCell>
                     <TableCell className="text-xs">{new Date(f.updated_at).toLocaleString()}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button size="sm" variant="ghost" onClick={() => { setSelectedFamilyId(f.id); setTab("versions"); }}>
-                        Open
-                      </Button>
-                      <Button size="sm" variant="ghost" disabled={!canConfigure}
-                        onClick={async () => {
-                          try {
-                            const full = await svc.getTemplateFamily(client, f.id);
-                            setFamilyEditor({ open: true, mode: "edit", initial: full });
-                          } catch (e) { toastError(e); }
-                        }}>Edit</Button>
-                      {f.status === "draft" && (
-                        <Button size="sm" variant="ghost" disabled={!canConfigure}
-                          onClick={() => setReasonDialog({
-                            open: true, required: false,
-                            title: "Activate family", description: "Reason is optional.",
-                            submitLabel: "Activate",
-                            onSubmit: async (reason) => {
-                              await svc.activateTemplateFamily(client, { id: f.id, reason: reason || null });
-                              toast.success("Activated"); await reloadFamilies();
-                            },
-                          })}>Activate</Button>
-                      )}
-                      {f.status !== "retired" && (
-                        <Button size="sm" variant="ghost" disabled={!canConfigure}
-                          onClick={() => setReasonDialog({
-                            open: true, required: true,
-                            title: "Retire family", description: "Retirement is permanent; reason required.",
-                            submitLabel: "Retire",
-                            onSubmit: async (reason) => {
-                              await svc.retireTemplateFamily(client, { id: f.id, reason });
-                              toast.success("Retired"); await reloadFamilies();
-                            },
-                          })}>Retire</Button>
-                      )}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <IconAction
+                          label="Preview template"
+                          testId={`family-preview-${f.code}`}
+                          icon={<Eye className="h-4 w-4" />}
+                          onClick={() => setQuickPreviewFamily(f)}
+                        />
+                        <IconAction
+                          label="Open versions"
+                          testId={`family-open-${f.code}`}
+                          icon={<FolderOpen className="h-4 w-4" />}
+                          onClick={() => { setSelectedFamilyId(f.id); setTab("versions"); }}
+                        />
+                        <IconAction
+                          label="Edit family"
+                          testId={`family-edit-${f.code}`}
+                          icon={<Pencil className="h-4 w-4" />}
+                          disabled={!canConfigure}
+                          onClick={async () => {
+                            try {
+                              const full = await svc.getTemplateFamily(client, f.id);
+                              setFamilyEditor({ open: true, mode: "edit", initial: full });
+                            } catch (e) { toastError(e); }
+                          }}
+                        />
+                        {f.status === "draft" && (
+                          <IconAction
+                            label="Activate family"
+                            testId={`family-activate-${f.code}`}
+                            icon={<CheckCircle2 className="h-4 w-4" />}
+                            disabled={!canConfigure}
+                            onClick={() => setReasonDialog({
+                              open: true, required: false,
+                              title: "Activate family", description: "Reason is optional.",
+                              submitLabel: "Activate",
+                              onSubmit: async (reason) => {
+                                await svc.activateTemplateFamily(client, { id: f.id, reason: reason || null });
+                                toast.success("Activated"); await reloadFamilies();
+                              },
+                            })}
+                          />
+                        )}
+                        {f.status !== "retired" && (
+                          <IconAction
+                            label="Retire family"
+                            testId={`family-retire-${f.code}`}
+                            tone="destructive"
+                            icon={<Archive className="h-4 w-4" />}
+                            disabled={!canConfigure}
+                            onClick={() => setReasonDialog({
+                              open: true, required: true,
+                              title: "Retire family", description: "Retirement is permanent; reason required.",
+                              submitLabel: "Retire",
+                              onSubmit: async (reason) => {
+                                await svc.retireTemplateFamily(client, { id: f.id, reason });
+                                toast.success("Retired"); await reloadFamilies();
+                              },
+                            })}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
+            <TablePager
+              testId="family-pager"
+              page={familyPageSlice.page}
+              pageCount={familyPageSlice.pageCount}
+              from={familyPageSlice.from}
+              to={familyPageSlice.to}
+              total={familyPageSlice.total}
+              pageSize={familyPageSize}
+              onPage={setFamilyPage}
+              onPageSize={setFamilyPageSize}
+            />
           </Card>
           <ScopeResolutionCard organizationId={organizationId} departments={departments} events={events} />
         </TabsContent>
@@ -1069,8 +1367,12 @@ export const OmniCommsTemplatesPage: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>#</TableHead><TableHead>Channel</TableHead><TableHead>Locale</TableHead>
-                  <TableHead>Status</TableHead><TableHead>Layout</TableHead><TableHead>Updated</TableHead>
+                  <SortHead label="#" sortKey="version_number" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
+                  <SortHead label="Channel" sortKey="channel" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
+                  <SortHead label="Locale" sortKey="locale" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
+                  <SortHead label="Status" sortKey="status" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
+                  <TableHead>Layout</TableHead>
+                  <SortHead label="Updated" sortKey="updated_at" sort={versionSort} onSort={(k) => { setVersionSort((s) => toggleSort(s, k)); setVersionPage(1); }} />
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1085,7 +1387,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                     No versions yet.
                   </TableCell></TableRow>
                 )}
-                {versions.map((v) => {
+                {versionPageSlice.rows.map((v) => {
                   const layout = describeLayoutSelection(v);
                   const layoutReady = isLayoutSelectionApprovable(v);
                   return (
@@ -1105,54 +1407,85 @@ export const OmniCommsTemplatesPage: React.FC = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-xs">{new Date(v.updated_at).toLocaleString()}</TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button size="sm" variant="ghost"
-                        onClick={async () => {
-                          try {
-                            const full = await svc.getTemplateVersion(client, v.id);
-                            setSelectedVersion(full); setTab("preview");
-                          } catch (e) { toastError(e); }
-                        }}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {v.status === "draft" && (
-                        <Button size="sm" variant="outline" disabled={!canAuthor}
-                          data-testid={`configure-layout-btn-${v.id}`}
-                          onClick={() => openLayoutDialog(v.id)}>
-                          Configure Layout
-                        </Button>
-                      )}
-                      {v.status === "approved" && (
-                        <Button size="sm" disabled={!canApprove}
-                          data-testid={`publish-btn-${v.id}`}
-                          onClick={() => openPublishDialog(v.id)}>Publish</Button>
-                      )}
-                      {v.status === "draft" && (
-                        <Button size="sm" variant="ghost"
-                          disabled={!canApprove || !layoutReady}
-                          data-testid={`approve-btn-${v.id}`}
-                          title={layoutReady ? undefined : LAYOUT_REQUIRED_MESSAGE}
-                          onClick={() => startApproval(v.id)}>Approve</Button>
-                      )}
-                      {(v.status === "approved" || v.status === "published") && (
-                        <Button size="sm" variant="ghost" disabled={!canApprove}
-                          onClick={() => setReasonDialog({
-                            open: true, required: true,
-                            title: "Retire version",
-                            description: "Retirement is permanent; reason required.",
-                            submitLabel: "Retire",
-                            onSubmit: async (reason) => {
-                              await svc.retireTemplateVersion(client, { id: v.id, reason });
-                              toast.success("Retired"); await reloadVersions(selectedFamilyId);
-                            },
-                          })}>Retire</Button>
-                      )}
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <IconAction
+                          label="Preview rendered output"
+                          testId={`version-preview-${v.id}`}
+                          icon={<Eye className="h-4 w-4" />}
+                          onClick={async () => {
+                            try {
+                              const full = await svc.getTemplateVersion(client, v.id);
+                              setSelectedVersion(full); setTab("preview");
+                            } catch (e) { toastError(e); }
+                          }}
+                        />
+                        {v.status === "draft" && (
+                          <IconAction
+                            label="Configure layout"
+                            variant="outline"
+                            testId={`configure-layout-btn-${v.id}`}
+                            icon={<LayoutTemplate className="h-4 w-4" />}
+                            disabled={!canAuthor}
+                            onClick={() => openLayoutDialog(v.id)}
+                          />
+                        )}
+                        {v.status === "draft" && (
+                          <IconAction
+                            label={layoutReady ? "Approve version" : LAYOUT_REQUIRED_MESSAGE}
+                            testId={`approve-btn-${v.id}`}
+                            icon={<CheckCircle2 className="h-4 w-4" />}
+                            disabled={!canApprove || !layoutReady}
+                            onClick={() => startApproval(v.id)}
+                          />
+                        )}
+                        {v.status === "approved" && (
+                          <IconAction
+                            label="Publish version"
+                            variant="default"
+                            testId={`publish-btn-${v.id}`}
+                            icon={<Upload className="h-4 w-4" />}
+                            disabled={!canApprove}
+                            onClick={() => openPublishDialog(v.id)}
+                          />
+                        )}
+                        {(v.status === "approved" || v.status === "published") && (
+                          <IconAction
+                            label="Retire version"
+                            tone="destructive"
+                            testId={`retire-version-btn-${v.id}`}
+                            icon={<Archive className="h-4 w-4" />}
+                            disabled={!canApprove}
+                            onClick={() => setReasonDialog({
+                              open: true, required: true,
+                              title: "Retire version",
+                              description: "Retirement is permanent; reason required.",
+                              submitLabel: "Retire",
+                              onSubmit: async (reason) => {
+                                await svc.retireTemplateVersion(client, { id: v.id, reason });
+                                toast.success("Retired"); await reloadVersions(selectedFamilyId);
+                              },
+                            })}
+                          />
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                   );
                 })}
               </TableBody>
             </Table>
+            <TablePager
+              testId="version-pager"
+              page={versionPageSlice.page}
+              pageCount={versionPageSlice.pageCount}
+              from={versionPageSlice.from}
+              to={versionPageSlice.to}
+              total={versionPageSlice.total}
+              pageSize={versionPageSize}
+              onPage={setVersionPage}
+              onPageSize={setVersionPageSize}
+            />
           </Card>
           {versions.some((v) => v.status === "draft" && !isLayoutSelectionApprovable(v)) && (
             <Alert variant="destructive" data-testid="layout-required-alert">
@@ -1210,8 +1543,12 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         onClose={() => setLayoutDialogVersion(null)}
         onSaved={async () => { await reloadVersions(selectedFamilyId); }}
       />
-
+      <QuickPreviewDialog
+        family={quickPreviewFamily}
+        onClose={() => setQuickPreviewFamily(null)}
+      />
     </div>
+    </TooltipProvider>
   );
 };
 

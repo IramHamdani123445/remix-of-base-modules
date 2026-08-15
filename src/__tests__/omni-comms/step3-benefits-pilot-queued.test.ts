@@ -31,6 +31,7 @@ import {
   emitBenefitsClaimSubmitted,
 } from '@/platform/omni-comms/integrations/business/benefitsClaimSubmittedProducer';
 import { EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE } from '@/platform/omni-comms/integrations/business/employerRegistrationProducer';
+import { benefitsTemplateEntry } from '@/platform/omni-comms/integrations/business/benefits/templates/benefitsTemplateRegistry';
 
 const sendMock = vi.fn();
 vi.mock('@/platform/omni-comms/sendCommunication', () => ({
@@ -130,14 +131,18 @@ describe('Step 3 — happy path', () => {
     expect(res.requestId).toBe('req-step3-1');
   });
 
-  it('sends only the published contract vocabulary — no incidental claim data', async () => {
+  it('sends exactly the template registry vocabulary — no incidental claim data', async () => {
     await businessAction();
     const sent = sendMock.mock.calls[0][0];
-    expect(Object.keys(sent.payload)).toEqual([
-      'reference',
-      'subjectName',
-      'claimType',
-    ]);
+    // The payload is derived from the SINGLE Benefits template registry, so
+    // producer, published contract and published template can never drift.
+    const expected = [
+      ...(benefitsTemplateEntry(BENEFITS_CLAIM_SUBMITTED_EVENT_CODE)?.tokens ?? []),
+    ].sort();
+    expect(Object.keys(sent.payload).sort()).toEqual(expected);
+    expect(sent.payload.reference).toBe('CLM-2026-000123');
+    expect(sent.payload.subjectName).toBe('Alicia Warner');
+    expect(sent.payload.claimType).toBe('SICKNESS');
   });
 
   it('carries the evidence chain: request, recipient, message, template version, held job', async () => {

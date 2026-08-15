@@ -45,6 +45,14 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     purpose: 'Automatic worker that drains the durable business-event outbox into the canonical runtime. Callable only with the service-role credential plus a single-use, purpose-bound scheduler ticket; it contacts no provider and sends nothing.',
     status: 'Available',
   },
+  {
+    name: 'omni-comms-benefits-seed',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Privileged administrative seeder that applies the canonical Benefits event/template catalogue (event definitions, published contracts, template families and versions, Email routes and producer bindings) through the governed draft-to-active lifecycle. Contacts no provider and sends nothing.',
+    status: 'Available',
+  },
+
 
   // Provider (1) — Omni-Comms-owned
   {
