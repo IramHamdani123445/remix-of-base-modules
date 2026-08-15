@@ -1044,7 +1044,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         search: search || null,
         status: statusFilter === "all" ? null : statusFilter,
         scopeType: scopeFilter === "all" ? null : scopeFilter,
-        limit: 100,
+        limit: 500,
       });
       setFamilies(r.items);
     } catch (e) { toastError(e); }
