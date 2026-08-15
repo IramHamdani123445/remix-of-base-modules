@@ -136,7 +136,7 @@ describe('Step 3 — happy path', () => {
     // The payload is derived from the SINGLE Benefits template registry, so
     // producer, published contract and published template can never drift.
     const expected = [
-      ...benefitsTemplateTokens(BENEFITS_CLAIM_SUBMITTED_EVENT_CODE),
+      ...(benefitsTemplateEntry(BENEFITS_CLAIM_SUBMITTED_EVENT_CODE)?.tokens ?? []),
     ].sort();
     expect(Object.keys(sent.payload).sort()).toEqual(expected);
     expect(sent.payload.reference).toBe('CLM-2026-000123');
