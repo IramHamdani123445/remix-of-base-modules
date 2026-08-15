@@ -1,0 +1,8367 @@
+-- Benefits → Omni-Comms email catalogue seed (generated).
+-- Source of truth: src/platform/omni-comms/integrations/business/benefits/templates/
+-- Idempotent: safe to re-run. Never edit by hand — regenerate instead.
+
+-- BENEFITS.CLAIM.SUBMITTED — Benefit claim received
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.CLAIM.SUBMITTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.CLAIM.SUBMITTED', 'BENEFITS', 'CLAIM', 'Benefit claim received',
+       'Acknowledges a benefit claim the moment it is submitted, so the claimant has written proof of lodgement.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit claim received', description = 'Acknowledges a benefit claim the moment it is submitted, so the claimant has written proof of lodgement.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '587865b4915c935af307a8eac0d07d0301d5575a2372fad5b87ad1cf7c858c01') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["claimStatus","claimType","reference","subjectName","submittedOn"],"properties":{"claimStatus":{"type":"string","minLength":1},"claimType":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submittedOn":{"type":"string","minLength":1}}}'::jsonb,
+       '{"claimStatus":"Awaiting assessment","claimType":"Sickness Benefit","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submittedOn":"12 August 2026"}'::jsonb, 'published', '587865b4915c935af307a8eac0d07d0301d5575a2372fad5b87ad1cf7c858c01',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_claim_submitted', 'Benefit claim received', 'Acknowledges a benefit claim the moment it is submitted, so the claimant has written proof of lodgement.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'fe310524f1a734f5bfeab7a197803173c6d8ffc4332492f285a54ae22b044f47') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"We have received your {{payload.claimType}} claim {{payload.reference}}","text":"Your benefit claim has been received\n\nDear {{payload.subjectName}},\n\nThank you for submitting your claim to the Social Security Board. This message confirms that your claim has been lodged and recorded on your record.\nYour claim will now be checked for completeness and assessed against the qualifying conditions for the benefit you applied for.\n\n  Claim reference: {{payload.reference}}\n  Benefit type: {{payload.claimType}}\n  Date received: {{payload.submittedOn}}\n  Current status: {{payload.claimStatus}}\n\nWhat happens next\n  1. An officer will review the documents supplied with your claim.\n  2. If anything further is needed, we will write to you and tell you exactly what to send and by when.\n  3. You will receive a written decision once the assessment is complete.\n\nYou do not need to do anything further at this stage.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your benefit claim has been received</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your claim has been lodged and is waiting to be assessed.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for submitting your claim to the Social Security Board. This message confirms that your claim has been lodged and recorded on your record.</p><p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your claim will now be checked for completeness and assessed against the qualifying conditions for the benefit you applied for.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Claim reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Benefit type</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.claimType}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Date received</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submittedOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Current status</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.claimStatus}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">An officer will review the documents supplied with your claim.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If anything further is needed, we will write to you and tell you exactly what to send and by when.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">You will receive a written decision once the assessment is complete.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">You do not need to do anything further at this stage.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'fe310524f1a734f5bfeab7a197803173c6d8ffc4332492f285a54ae22b044f47',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.CLAIM.WITHDRAWN — Benefit claim withdrawn
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.CLAIM.WITHDRAWN';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.CLAIM.WITHDRAWN', 'BENEFITS', 'CLAIM', 'Benefit claim withdrawn',
+       'Confirms that a claim has been withdrawn at the claimant’s request and that no decision will be issued.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit claim withdrawn', description = 'Confirms that a claim has been withdrawn at the claimant’s request and that no decision will be issued.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '81e2c1a65e6a6a7c5037e0af88f95f6b784ca2836c88984a9bb3a0d9ef1e2a26') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["claimType","reference","subjectName","withdrawalReason","withdrawnOn"],"properties":{"claimType":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"withdrawalReason":{"type":"string","minLength":1},"withdrawnOn":{"type":"string","minLength":1}}}'::jsonb,
+       '{"claimType":"Sickness Benefit","reference":"CLM-2026-000141","subjectName":"Alicia Warner","withdrawalReason":"Requested by the claimant","withdrawnOn":"18 August 2026"}'::jsonb, 'published', '81e2c1a65e6a6a7c5037e0af88f95f6b784ca2836c88984a9bb3a0d9ef1e2a26',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_claim_withdrawn', 'Benefit claim withdrawn', 'Confirms that a claim has been withdrawn at the claimant’s request and that no decision will be issued.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '6a02210c9ec7b16905ff0ca1eb425e97ed2f629857e270a17e39f8f02ab4582b') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your claim {{payload.reference}} has been withdrawn","text":"Your claim has been withdrawn\n\nDear {{payload.subjectName}},\n\nWe have recorded the withdrawal of your benefit claim. No assessment will continue and no decision will be issued on this claim.\n\n  Claim reference: {{payload.reference}}\n  Benefit type: {{payload.claimType}}\n  Withdrawn on: {{payload.withdrawnOn}}\n  Reason recorded: {{payload.withdrawalReason}}\n\nWithdrawing a claim does not affect any other claim or award you hold with the Board.\n\nWhat happens next\n  1. Your record will show this claim as withdrawn.\n  2. You may submit a new claim at any time if your circumstances qualify.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your claim has been withdrawn</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We have closed your claim at your request.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have recorded the withdrawal of your benefit claim. No assessment will continue and no decision will be issued on this claim.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Claim reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Benefit type</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.claimType}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Withdrawn on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.withdrawnOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason recorded</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.withdrawalReason}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Withdrawing a claim does not affect any other claim or award you hold with the Board.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Your record will show this claim as withdrawn.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">You may submit a new claim at any time if your circumstances qualify.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '6a02210c9ec7b16905ff0ca1eb425e97ed2f629857e270a17e39f8f02ab4582b',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.CLAIM.CORRECTION_COMPLETED — Benefit claim correction completed
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.CLAIM.CORRECTION_COMPLETED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.CLAIM.CORRECTION_COMPLETED', 'BENEFITS', 'CLAIM', 'Benefit claim correction completed',
+       'Tells the claimant that a correction to their claim record has been applied and what changed.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit claim correction completed', description = 'Tells the claimant that a correction to their claim record has been applied and what changed.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '55d58d8eb5b5bdfcc139fc57d62a880ee1a8585e650dc02e19d7a45d7fa5aa25') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["correctedOn","correctionReason","correctionSummary","reference","subjectName"],"properties":{"correctedOn":{"type":"string","minLength":1},"correctionReason":{"type":"string","minLength":1},"correctionSummary":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"correctedOn":"20 August 2026","correctionReason":"Supporting document supplied by the claimant","correctionSummary":"Date of birth corrected to 4 March 1961","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '55d58d8eb5b5bdfcc139fc57d62a880ee1a8585e650dc02e19d7a45d7fa5aa25',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_claim_correction_completed', 'Benefit claim correction completed', 'Tells the claimant that a correction to their claim record has been applied and what changed.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '51b1f00152e1462be50267a2f17e6313d8250e4d1648a3ef5bebf631f64058ed') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"A correction was applied to your claim {{payload.reference}}","text":"Correction applied to your claim\n\nDear {{payload.subjectName}},\n\nA correction has been completed on your benefit claim. We are writing so that you have a record of exactly what was changed.\n\n  Claim reference: {{payload.reference}}\n  Corrected on: {{payload.correctedOn}}\n  What changed: {{payload.correctionSummary}}\n  Reason for correction: {{payload.correctionReason}}\n\nWhat happens next\n  1. Check the corrected details above.\n  2. If any detail is still wrong, contact us and quote your claim reference.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Correction applied to your claim</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your claim record has been corrected.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A correction has been completed on your benefit claim. We are writing so that you have a record of exactly what was changed.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Claim reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Corrected on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.correctedOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">What changed</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.correctionSummary}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for correction</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.correctionReason}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Check the corrected details above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If any detail is still wrong, contact us and quote your claim reference.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '51b1f00152e1462be50267a2f17e6313d8250e4d1648a3ef5bebf631f64058ed',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.CLAIM.EVIDENCE_REQUESTED — Evidence requested for a claim
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.CLAIM.EVIDENCE_REQUESTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.CLAIM.EVIDENCE_REQUESTED', 'BENEFITS', 'CLAIM', 'Evidence requested for a claim',
+       'Formally requests outstanding documents needed before a claim can be decided, with a deadline.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Evidence requested for a claim', description = 'Formally requests outstanding documents needed before a claim can be decided, with a deadline.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '9298944f65097d670120de1615eac89e61a164a290ec82d21cda8dcf7580af15') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["dueDate","evidenceRequested","reference","subjectName","submissionChannel"],"properties":{"dueDate":{"type":"string","minLength":1},"evidenceRequested":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submissionChannel":{"type":"string","minLength":1}}}'::jsonb,
+       '{"dueDate":"5 September 2026","evidenceRequested":"Medical certificate covering 1–31 July 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submissionChannel":"In person at any Social Security office, or by post"}'::jsonb, 'published', '9298944f65097d670120de1615eac89e61a164a290ec82d21cda8dcf7580af15',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_claim_evidence_requested', 'Evidence requested for a claim', 'Formally requests outstanding documents needed before a claim can be decided, with a deadline.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'b08c18e7680db234fd634491c31eaa0ffcd86ff1146bec1ef46df623c225de66') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Action needed: documents for your claim {{payload.reference}}","text":"We need some documents from you\n\nDear {{payload.subjectName}},\n\nWe cannot complete the assessment of your claim until we receive the items listed below.\nPlease send everything together, and make sure the copies are clear and complete.\n\n  Claim reference: {{payload.reference}}\n  Documents required: {{payload.evidenceRequested}}\n  Send by: {{payload.dueDate}}\n  How to send: {{payload.submissionChannel}}\n\nIf we do not receive the documents by {{payload.dueDate}}, your claim may be decided on the information already held, which could result in it being disallowed.\n\nWhat happens next\n  1. Gather each item listed above.\n  2. Submit them using the method shown before the due date.\n  3. We will write to you again once the documents have been checked.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">We need some documents from you</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We need documents from you before your claim can be decided.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We cannot complete the assessment of your claim until we receive the items listed below.</p><p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Please send everything together, and make sure the copies are clear and complete.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Claim reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Documents required</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.evidenceRequested}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Send by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to send</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submissionChannel}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If we do not receive the documents by {{payload.dueDate}}, your claim may be decided on the information already held, which could result in it being disallowed.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Gather each item listed above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Submit them using the method shown before the due date.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will write to you again once the documents have been checked.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'b08c18e7680db234fd634491c31eaa0ffcd86ff1146bec1ef46df623c225de66',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.CLAIM.EVIDENCE_RECEIVED — Evidence received for a claim
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.CLAIM.EVIDENCE_RECEIVED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.CLAIM.EVIDENCE_RECEIVED', 'BENEFITS', 'CLAIM', 'Evidence received for a claim',
+       'Confirms receipt of documents supplied for a claim.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Evidence received for a claim', description = 'Confirms receipt of documents supplied for a claim.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'aebc38b54743de93242fc53494ba15cd9beb43ca584da178f1cea99c7d8e6cd3') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["evidenceReceived","receivedOn","reference","subjectName"],"properties":{"evidenceReceived":{"type":"string","minLength":1},"receivedOn":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"evidenceReceived":"Medical certificate dated 2 August 2026","receivedOn":"21 August 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'aebc38b54743de93242fc53494ba15cd9beb43ca584da178f1cea99c7d8e6cd3',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_claim_evidence_received', 'Evidence received for a claim', 'Confirms receipt of documents supplied for a claim.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '202b468124cacd4ed6490bfc99166855e80d41091036f4f67045cfb9c0fb9945') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"We have received your documents for claim {{payload.reference}}","text":"Your documents have been received\n\nDear {{payload.subjectName}},\n\nThank you. The documents you sent for your claim have been received and attached to your record.\n\n  Claim reference: {{payload.reference}}\n  Documents received: {{payload.evidenceReceived}}\n  Received on: {{payload.receivedOn}}\n\nWhat happens next\n  1. An officer will check that each document meets the requirement.\n  2. If anything is unclear or incomplete we will contact you.\n\nNo further action is needed from you right now.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your documents have been received</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your documents are with us and are being checked.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you. The documents you sent for your claim have been received and attached to your record.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Claim reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Documents received</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.evidenceReceived}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Received on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.receivedOn}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">An officer will check that each document meets the requirement.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If anything is unclear or incomplete we will contact you.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">No further action is needed from you right now.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '202b468124cacd4ed6490bfc99166855e80d41091036f4f67045cfb9c0fb9945',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.CLAIM.EVIDENCE_RESUBMISSION_REQUIRED — Evidence must be resubmitted
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.CLAIM.EVIDENCE_RESUBMISSION_REQUIRED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.CLAIM.EVIDENCE_RESUBMISSION_REQUIRED', 'BENEFITS', 'CLAIM', 'Evidence must be resubmitted',
+       'Explains why supplied evidence was not accepted and what must be sent again.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Evidence must be resubmitted', description = 'Explains why supplied evidence was not accepted and what must be sent again.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '634d9c17a3acaecb8a118f01cf6d764dca3d8cd26fe591434867af68c4eba2df') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["dueDate","evidenceRequested","reference","rejectionReason","subjectName"],"properties":{"dueDate":{"type":"string","minLength":1},"evidenceRequested":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"rejectionReason":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"dueDate":"5 September 2026","evidenceRequested":"Medical certificate covering 1–31 July 2026","reference":"CLM-2026-000141","rejectionReason":"The copy supplied was not legible","subjectName":"Alicia Warner"}'::jsonb, 'published', '634d9c17a3acaecb8a118f01cf6d764dca3d8cd26fe591434867af68c4eba2df',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_claim_evidence_resubmission_required', 'Evidence must be resubmitted', 'Explains why supplied evidence was not accepted and what must be sent again.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '962de0ae1b83abcf2758ad6cabd4f6359b0f270e1605903e909e26f6cba6634f') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Please resend documents for claim {{payload.reference}}","text":"We need you to send a document again\n\nDear {{payload.subjectName}},\n\nWe checked the documents you sent for your claim. Unfortunately one or more of them could not be accepted in the form supplied.\n\n  Claim reference: {{payload.reference}}\n  Item to resend: {{payload.evidenceRequested}}\n  Why it was not accepted: {{payload.rejectionReason}}\n  Resend by: {{payload.dueDate}}\n\nYour claim remains open while we wait, but it cannot be decided until the outstanding item is accepted.\n\nWhat happens next\n  1. Obtain a clear, complete copy of the item shown above.\n  2. Send it to us before the date shown.\n  3. We will confirm as soon as the replacement has been accepted.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">We need you to send a document again</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">One or more documents could not be accepted.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We checked the documents you sent for your claim. Unfortunately one or more of them could not be accepted in the form supplied.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Claim reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Item to resend</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.evidenceRequested}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Why it was not accepted</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.rejectionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Resend by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Your claim remains open while we wait, but it cannot be decided until the outstanding item is accepted.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Obtain a clear, complete copy of the item shown above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Send it to us before the date shown.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will confirm as soon as the replacement has been accepted.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '962de0ae1b83abcf2758ad6cabd4f6359b0f270e1605903e909e26f6cba6634f',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.CLAIM.APPROVED — Benefit claim approved
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.CLAIM.APPROVED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.CLAIM.APPROVED', 'BENEFITS', 'CLAIM', 'Benefit claim approved',
+       'Issues the formal decision that a claim has been approved, with the award terms.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit claim approved', description = 'Issues the formal decision that a claim has been approved, with the award terms.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '77088993bc2e11b78019da33892bcd85a43b27cfe7cb09556a954e575109fef3') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["awardSummary","benefitRate","claimType","decisionDate","effectiveFrom","reference","subjectName"],"properties":{"awardSummary":{"type":"string","minLength":1},"benefitRate":{"type":"string","minLength":1},"claimType":{"type":"string","minLength":1},"decisionDate":{"type":"string","minLength":1},"effectiveFrom":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"awardSummary":"Sickness Benefit payable for 13 weeks","benefitRate":"XCD 480.00 per week","claimType":"Sickness Benefit","decisionDate":"28 August 2026","effectiveFrom":"1 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '77088993bc2e11b78019da33892bcd85a43b27cfe7cb09556a954e575109fef3',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_claim_approved', 'Benefit claim approved', 'Issues the formal decision that a claim has been approved, with the award terms.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'a593a95d74dbb378705e3c97bf7e24a3559b4bb0ffa0b21e94fc4db72d2e6d23') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your claim {{payload.reference}} has been approved","text":"Your benefit claim has been approved\n\nDear {{payload.subjectName}},\n\nWe have completed the assessment of your claim and are pleased to tell you that it has been approved.\nThe terms of your award are set out below. Please check them carefully and keep this notice for your records.\n\n  Claim reference: {{payload.reference}}\n  Benefit type: {{payload.claimType}}\n  Decision date: {{payload.decisionDate}}\n  Award summary: {{payload.awardSummary}}\n  Weekly / monthly rate: {{payload.benefitRate}}\n  Effective from: {{payload.effectiveFrom}}\n\nIf you disagree with any part of this decision you may appeal. An appeal must normally be lodged within the statutory period stated in your decision notice.\n\nWhat happens next\n  1. Your award will be set up for payment under the schedule shown on your award notice.\n  2. Tell us immediately if any of your circumstances change, as this can affect your entitlement.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your benefit claim has been approved</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your benefit claim has been approved.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have completed the assessment of your claim and are pleased to tell you that it has been approved.</p><p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">The terms of your award are set out below. Please check them carefully and keep this notice for your records.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Claim reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Benefit type</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.claimType}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decision date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award summary</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.awardSummary}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Weekly / monthly rate</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.benefitRate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Effective from</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.effectiveFrom}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If you disagree with any part of this decision you may appeal. An appeal must normally be lodged within the statutory period stated in your decision notice.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Your award will be set up for payment under the schedule shown on your award notice.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Tell us immediately if any of your circumstances change, as this can affect your entitlement.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'a593a95d74dbb378705e3c97bf7e24a3559b4bb0ffa0b21e94fc4db72d2e6d23',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.CLAIM.DISALLOWED — Benefit claim disallowed
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.CLAIM.DISALLOWED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.CLAIM.DISALLOWED', 'BENEFITS', 'CLAIM', 'Benefit claim disallowed',
+       'Issues the formal decision that a claim has been disallowed, the reason, and appeal rights.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit claim disallowed', description = 'Issues the formal decision that a claim has been disallowed, the reason, and appeal rights.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'a21c54fa602c5d624154afc48315e1d4f784cffd21d12a46d8aa410126b879bc') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["claimType","decisionDate","decisionReason","legalBasis","reference","subjectName"],"properties":{"claimType":{"type":"string","minLength":1},"decisionDate":{"type":"string","minLength":1},"decisionReason":{"type":"string","minLength":1},"legalBasis":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"claimType":"Sickness Benefit","decisionDate":"28 August 2026","decisionReason":"The contribution condition for this benefit was not satisfied","legalBasis":"Social Security Act, contribution conditions","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'a21c54fa602c5d624154afc48315e1d4f784cffd21d12a46d8aa410126b879bc',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_claim_disallowed', 'Benefit claim disallowed', 'Issues the formal decision that a claim has been disallowed, the reason, and appeal rights.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '50afc914ad6f480fe9a354f8dd8d3919e06a3aa004c61e9987037cb5f9edf90f') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Decision on your claim {{payload.reference}}","text":"Decision on your benefit claim\n\nDear {{payload.subjectName}},\n\nWe have completed the assessment of your claim. After considering the information held, your claim has been disallowed.\nThe reason for this decision is set out below.\n\n  Claim reference: {{payload.reference}}\n  Benefit type: {{payload.claimType}}\n  Decision date: {{payload.decisionDate}}\n  Reason for the decision: {{payload.decisionReason}}\n  Legal provision applied: {{payload.legalBasis}}\n\nYou have the right to appeal this decision. Your appeal must be lodged in writing within the statutory period, quoting reference {{payload.reference}}.\n\nWhat happens next\n  1. Read the reason given above carefully.\n  2. If you have information that was not available when the decision was made, you may send it to us.\n  3. If you disagree with the decision, you may lodge an appeal.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Decision on your benefit claim</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A decision has been made on your benefit claim.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have completed the assessment of your claim. After considering the information held, your claim has been disallowed.</p><p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">The reason for this decision is set out below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Claim reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Benefit type</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.claimType}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decision date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for the decision</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Legal provision applied</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.legalBasis}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">You have the right to appeal this decision. Your appeal must be lodged in writing within the statutory period, quoting reference {{payload.reference}}.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Read the reason given above carefully.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If you have information that was not available when the decision was made, you may send it to us.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If you disagree with the decision, you may lodge an appeal.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '50afc914ad6f480fe9a354f8dd8d3919e06a3aa004c61e9987037cb5f9edf90f',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.AWARD.CREATED — Benefit award created
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.AWARD.CREATED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.AWARD.CREATED', 'BENEFITS', 'AWARD', 'Benefit award created',
+       'Notifies the beneficiary that an award has been established.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit award created', description = 'Notifies the beneficiary that an award has been established.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'f5acb9ba9bc1791861b5b2604ba8ba854beaf44ae5dbd3ab2170f59978d645d5') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["benefitRate","benefitType","effectiveFrom","paymentFrequency","paymentMethod","reference","subjectName"],"properties":{"benefitRate":{"type":"string","minLength":1},"benefitType":{"type":"string","minLength":1},"effectiveFrom":{"type":"string","minLength":1},"paymentFrequency":{"type":"string","minLength":1},"paymentMethod":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"benefitRate":"XCD 480.00 per week","benefitType":"Invalidity Pension","effectiveFrom":"1 September 2026","paymentFrequency":"Every two weeks","paymentMethod":"Direct bank transfer","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'f5acb9ba9bc1791861b5b2604ba8ba854beaf44ae5dbd3ab2170f59978d645d5',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_award_created', 'Benefit award created', 'Notifies the beneficiary that an award has been established.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '801c062670d9d6551ae3145861a0bbb4878a6e198913f25f6827b6a656f1c590') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your benefit award {{payload.reference}} has been set up","text":"Your benefit award has been set up\n\nDear {{payload.subjectName}},\n\nYour benefit award has been created. This notice sets out the rate, the period covered and how you will be paid.\n\n  Award reference: {{payload.reference}}\n  Benefit type: {{payload.benefitType}}\n  Rate: {{payload.benefitRate}}\n  Effective from: {{payload.effectiveFrom}}\n  Payment method: {{payload.paymentMethod}}\n  Payment frequency: {{payload.paymentFrequency}}\n\nPayments depend on you continuing to meet the conditions of the award. Failure to report a change may create an overpayment that must be repaid.\n\nWhat happens next\n  1. Check that your payment details are correct.\n  2. Keep this notice; you may need it when dealing with other agencies.\n  3. Report any change in your circumstances without delay.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your benefit award has been set up</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your award has been created and payments will follow the schedule shown.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your benefit award has been created. This notice sets out the rate, the period covered and how you will be paid.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Benefit type</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.benefitType}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Rate</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.benefitRate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Effective from</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.effectiveFrom}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Payment method</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentMethod}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Payment frequency</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentFrequency}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Payments depend on you continuing to meet the conditions of the award. Failure to report a change may create an overpayment that must be repaid.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Check that your payment details are correct.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Keep this notice; you may need it when dealing with other agencies.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Report any change in your circumstances without delay.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '801c062670d9d6551ae3145861a0bbb4878a6e198913f25f6827b6a656f1c590',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.AWARD.ADJUSTED — Benefit award adjusted
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.AWARD.ADJUSTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.AWARD.ADJUSTED', 'BENEFITS', 'AWARD', 'Benefit award adjusted',
+       'Explains an adjustment to an existing award and its effective date.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit award adjusted', description = 'Explains an adjustment to an existing award and its effective date.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '30448a4d1a50cb2f7fb9cde4f023c2550770305c46c554a323d036dd9ff2de4f') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["adjustmentReason","benefitRate","effectiveFrom","previousRate","reference","subjectName"],"properties":{"adjustmentReason":{"type":"string","minLength":1},"benefitRate":{"type":"string","minLength":1},"effectiveFrom":{"type":"string","minLength":1},"previousRate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"adjustmentReason":"Recalculation following corrected earnings","benefitRate":"XCD 480.00 per week","effectiveFrom":"1 September 2026","previousRate":"XCD 450.00 per week","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '30448a4d1a50cb2f7fb9cde4f023c2550770305c46c554a323d036dd9ff2de4f',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_award_adjusted', 'Benefit award adjusted', 'Explains an adjustment to an existing award and its effective date.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '3d6567d3c4f3ed395e65baceb692d2c304a4bcf248771f3bb5ade443df47a52e') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your benefit award {{payload.reference}} has changed","text":"Your benefit award has been adjusted\n\nDear {{payload.subjectName}},\n\nThe terms of your benefit award have been adjusted. The change and the date it takes effect are shown below.\n\n  Award reference: {{payload.reference}}\n  Previous rate: {{payload.previousRate}}\n  New rate: {{payload.benefitRate}}\n  Effective from: {{payload.effectiveFrom}}\n  Reason for the change: {{payload.adjustmentReason}}\n\nYou may appeal an adjustment you disagree with.\n\nWhat happens next\n  1. Check the new rate and effective date.\n  2. Your next payment will reflect the adjusted amount.\n  3. Contact us if you believe the adjustment is incorrect.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your benefit award has been adjusted</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">The rate or terms of your award have been adjusted.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">The terms of your benefit award have been adjusted. The change and the date it takes effect are shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Previous rate</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.previousRate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">New rate</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.benefitRate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Effective from</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.effectiveFrom}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for the change</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.adjustmentReason}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">You may appeal an adjustment you disagree with.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Check the new rate and effective date.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Your next payment will reflect the adjusted amount.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if you believe the adjustment is incorrect.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '3d6567d3c4f3ed395e65baceb692d2c304a4bcf248771f3bb5ade443df47a52e',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.AWARD.TERMINATED — Benefit award terminated
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.AWARD.TERMINATED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.AWARD.TERMINATED', 'BENEFITS', 'AWARD', 'Benefit award terminated',
+       'Notifies the beneficiary that an award has ended, with the reason.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit award terminated', description = 'Notifies the beneficiary that an award has ended, with the reason.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '8241c275f8a8e7364a2e4c9f6c24364d588439f4971290f8eac23a0d71c5a533') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["benefitType","finalPaymentSummary","reference","subjectName","terminationDate","terminationReason"],"properties":{"benefitType":{"type":"string","minLength":1},"finalPaymentSummary":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"terminationDate":{"type":"string","minLength":1},"terminationReason":{"type":"string","minLength":1}}}'::jsonb,
+       '{"benefitType":"Invalidity Pension","finalPaymentSummary":"One final payment of XCD 480.00","reference":"CLM-2026-000141","subjectName":"Alicia Warner","terminationDate":"31 August 2026","terminationReason":"Maximum benefit duration reached"}'::jsonb, 'published', '8241c275f8a8e7364a2e4c9f6c24364d588439f4971290f8eac23a0d71c5a533',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_award_terminated', 'Benefit award terminated', 'Notifies the beneficiary that an award has ended, with the reason.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '5b5fd5ec1a72e7ef91e6339cbda9373f9bf006dbaf7169837c5e52961dcf7c2b') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your benefit award {{payload.reference}} has ended","text":"Your benefit award has ended\n\nDear {{payload.subjectName}},\n\nYour benefit award has been terminated. No further payments will be made after the date shown below.\n\n  Award reference: {{payload.reference}}\n  Benefit type: {{payload.benefitType}}\n  Last day of entitlement: {{payload.terminationDate}}\n  Reason: {{payload.terminationReason}}\n  Final payment: {{payload.finalPaymentSummary}}\n\nYou have the right to appeal this decision within the statutory period.\n\nWhat happens next\n  1. Check whether any final payment is due to you.\n  2. If you believe you still qualify, contact us with supporting evidence.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your benefit award has ended</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your award has been terminated from the date shown.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your benefit award has been terminated. No further payments will be made after the date shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Benefit type</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.benefitType}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Last day of entitlement</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.terminationDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.terminationReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Final payment</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.finalPaymentSummary}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">You have the right to appeal this decision within the statutory period.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Check whether any final payment is due to you.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If you believe you still qualify, contact us with supporting evidence.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '5b5fd5ec1a72e7ef91e6339cbda9373f9bf006dbaf7169837c5e52961dcf7c2b',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.AWARD.UPRATED — Benefit award uprated
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.AWARD.UPRATED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.AWARD.UPRATED', 'BENEFITS', 'AWARD', 'Benefit award uprated',
+       'Notifies the beneficiary of a statutory uprating of their award.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit award uprated', description = 'Notifies the beneficiary of a statutory uprating of their award.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '50f1d02522bdf11c0b76b5dc665a712b2e61e32f5a3f27bdcfc1c6207585c928') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["benefitRate","effectiveFrom","previousRate","reference","subjectName","upratingCycle"],"properties":{"benefitRate":{"type":"string","minLength":1},"effectiveFrom":{"type":"string","minLength":1},"previousRate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"upratingCycle":{"type":"string","minLength":1}}}'::jsonb,
+       '{"benefitRate":"XCD 480.00 per week","effectiveFrom":"1 September 2026","previousRate":"XCD 450.00 per week","reference":"CLM-2026-000141","subjectName":"Alicia Warner","upratingCycle":"2026 annual uprating"}'::jsonb, 'published', '50f1d02522bdf11c0b76b5dc665a712b2e61e32f5a3f27bdcfc1c6207585c928',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_award_uprated', 'Benefit award uprated', 'Notifies the beneficiary of a statutory uprating of their award.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '9a7eb9f62e45a86322c06028b820a15c480dc1231687b99e1607512745da2c44') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your benefit rate is changing from {{payload.effectiveFrom}}","text":"Your benefit has been uprated\n\nDear {{payload.subjectName}},\n\nFollowing a review of benefit rates, your award has been uprated. Your new rate is shown below.\n\n  Award reference: {{payload.reference}}\n  Previous rate: {{payload.previousRate}}\n  New rate: {{payload.benefitRate}}\n  Effective from: {{payload.effectiveFrom}}\n  Uprating exercise: {{payload.upratingCycle}}\n\nWhat happens next\n  1. No action is needed from you.\n  2. Your payments will change automatically from the effective date.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your benefit has been uprated</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your award has been uprated.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Following a review of benefit rates, your award has been uprated. Your new rate is shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Previous rate</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.previousRate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">New rate</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.benefitRate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Effective from</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.effectiveFrom}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Uprating exercise</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.upratingCycle}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">No action is needed from you.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Your payments will change automatically from the effective date.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '9a7eb9f62e45a86322c06028b820a15c480dc1231687b99e1607512745da2c44',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.AWARD.SUSPENSION_EXECUTED — Benefit award suspended
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.AWARD.SUSPENSION_EXECUTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.AWARD.SUSPENSION_EXECUTED', 'BENEFITS', 'AWARD', 'Benefit award suspended',
+       'Notifies the beneficiary that payments have been suspended, why, and how to resolve it.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit award suspended', description = 'Notifies the beneficiary that payments have been suspended, why, and how to resolve it.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '22fb4771e7b0c5ddc9e7dc275ffc9aa310fb29d42a8fa081ddadf15cbcff6760') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["reference","resolutionRequirement","subjectName","suspensionFrom","suspensionReason"],"properties":{"reference":{"type":"string","minLength":1},"resolutionRequirement":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"suspensionFrom":{"type":"string","minLength":1},"suspensionReason":{"type":"string","minLength":1}}}'::jsonb,
+       '{"reference":"CLM-2026-000141","resolutionRequirement":"Return a completed and witnessed life certificate","subjectName":"Alicia Warner","suspensionFrom":"1 September 2026","suspensionReason":"Life certificate outstanding"}'::jsonb, 'published', '22fb4771e7b0c5ddc9e7dc275ffc9aa310fb29d42a8fa081ddadf15cbcff6760',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_award_suspension_executed', 'Benefit award suspended', 'Notifies the beneficiary that payments have been suspended, why, and how to resolve it.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'f1ab2e47a3a925aae849741ce5724c57c02a76ae4e253f2c6402361acad35548') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Important: payments on award {{payload.reference}} are suspended","text":"Your benefit payments have been suspended\n\nDear {{payload.subjectName}},\n\nPayments on your benefit award have been suspended. This means no further payment will be released until the matter below is resolved.\n\n  Award reference: {{payload.reference}}\n  Suspended from: {{payload.suspensionFrom}}\n  Reason: {{payload.suspensionReason}}\n  What is required to lift it: {{payload.resolutionRequirement}}\n\nA suspension is not a termination. If the requirement is met, payments can be reinstated, including any amount withheld while suspended.\n\nWhat happens next\n  1. Read the requirement shown above.\n  2. Provide what is needed as soon as possible so that payments can resume.\n  3. Contact us if you believe the suspension is a mistake.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your benefit payments have been suspended</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your benefit payments have been suspended.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Payments on your benefit award have been suspended. This means no further payment will be released until the matter below is resolved.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Suspended from</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.suspensionFrom}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.suspensionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">What is required to lift it</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.resolutionRequirement}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">A suspension is not a termination. If the requirement is met, payments can be reinstated, including any amount withheld while suspended.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Read the requirement shown above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Provide what is needed as soon as possible so that payments can resume.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if you believe the suspension is a mistake.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'f1ab2e47a3a925aae849741ce5724c57c02a76ae4e253f2c6402361acad35548',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.AWARD.REINSTATEMENT_EXECUTED — Benefit award reinstated
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.AWARD.REINSTATEMENT_EXECUTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.AWARD.REINSTATEMENT_EXECUTED', 'BENEFITS', 'AWARD', 'Benefit award reinstated',
+       'Confirms that a suspended award has been reinstated.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit award reinstated', description = 'Confirms that a suspended award has been reinstated.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'ba82c5f96032453c32a1274d760540a9416386b8a3ee65a369c91bca45a1269d') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["arrearsSchedule","reference","reinstatementFrom","subjectName","withheldAmount"],"properties":{"arrearsSchedule":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"reinstatementFrom":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"withheldAmount":{"type":"string","minLength":1}}}'::jsonb,
+       '{"arrearsSchedule":"With your next scheduled payment","reference":"CLM-2026-000141","reinstatementFrom":"15 September 2026","subjectName":"Alicia Warner","withheldAmount":"XCD 960.00"}'::jsonb, 'published', 'ba82c5f96032453c32a1274d760540a9416386b8a3ee65a369c91bca45a1269d',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_award_reinstatement_executed', 'Benefit award reinstated', 'Confirms that a suspended award has been reinstated.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '501787588f0461622b6db89f75a76e0f1a6001cbbe716681032b0dcd8a566802') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Good news: payments on award {{payload.reference}} have resumed","text":"Your benefit payments have resumed\n\nDear {{payload.subjectName}},\n\nThe matter that caused your payments to be suspended has been resolved and your award has been reinstated.\n\n  Award reference: {{payload.reference}}\n  Reinstated from: {{payload.reinstatementFrom}}\n  Amount held during suspension: {{payload.withheldAmount}}\n  When arrears will be paid: {{payload.arrearsSchedule}}\n\nWhat happens next\n  1. Your normal payment cycle resumes from the date shown.\n  2. Any amount withheld during the suspension will be released as shown above.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your benefit payments have resumed</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your benefit payments have been reinstated.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">The matter that caused your payments to be suspended has been resolved and your award has been reinstated.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reinstated from</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reinstatementFrom}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount held during suspension</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.withheldAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">When arrears will be paid</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.arrearsSchedule}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Your normal payment cycle resumes from the date shown.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Any amount withheld during the suspension will be released as shown above.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '501787588f0461622b6db89f75a76e0f1a6001cbbe716681032b0dcd8a566802',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.PAYMENT.SCHEDULE_CREATED — Payment schedule created
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.PAYMENT.SCHEDULE_CREATED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.PAYMENT.SCHEDULE_CREATED', 'BENEFITS', 'PAYMENT', 'Payment schedule created',
+       'Tells the payee when and how they will be paid.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Payment schedule created', description = 'Tells the payee when and how they will be paid.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '811f8983b3d09d56d8dca4f4669a52af914a222314201abbcec0246a9689c95b') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["firstPaymentDate","paymentAmount","paymentFrequency","paymentMethod","reference","subjectName"],"properties":{"firstPaymentDate":{"type":"string","minLength":1},"paymentAmount":{"type":"string","minLength":1},"paymentFrequency":{"type":"string","minLength":1},"paymentMethod":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"firstPaymentDate":"15 September 2026","paymentAmount":"XCD 480.00","paymentFrequency":"Every two weeks","paymentMethod":"Direct bank transfer","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '811f8983b3d09d56d8dca4f4669a52af914a222314201abbcec0246a9689c95b',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_payment_schedule_created', 'Payment schedule created', 'Tells the payee when and how they will be paid.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '96f1402ee9e5c313e419990164d8babe5d52ef9ec168a9584e9f44dac4eaf54c') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your payment schedule for award {{payload.reference}}","text":"Your payment schedule\n\nDear {{payload.subjectName}},\n\nA payment schedule has been created for your award. It sets out how much you will receive, how often, and by what method.\n\n  Award reference: {{payload.reference}}\n  Amount per payment: {{payload.paymentAmount}}\n  Frequency: {{payload.paymentFrequency}}\n  First payment date: {{payload.firstPaymentDate}}\n  Payment method: {{payload.paymentMethod}}\n\nWhat happens next\n  1. Check that the payment method and account details are correct.\n  2. Tell us at once if your bank details change.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your payment schedule</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Here is when and how you will be paid.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A payment schedule has been created for your award. It sets out how much you will receive, how often, and by what method.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount per payment</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Frequency</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentFrequency}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">First payment date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.firstPaymentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Payment method</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentMethod}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Check that the payment method and account details are correct.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Tell us at once if your bank details change.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '96f1402ee9e5c313e419990164d8babe5d52ef9ec168a9584e9f44dac4eaf54c',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.PAYMENT.ISSUED — Benefit payment issued
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.PAYMENT.ISSUED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.PAYMENT.ISSUED', 'BENEFITS', 'PAYMENT', 'Benefit payment issued',
+       'Confirms that a benefit payment has been released to the payee.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit payment issued', description = 'Confirms that a benefit payment has been released to the payee.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'd5b4fc1c9cc3bda24c2e19b7c699e87d9d685e363c789795476e8606bba28586') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["paymentAmount","paymentDate","paymentMethod","paymentPeriod","paymentReference","reference","subjectName"],"properties":{"paymentAmount":{"type":"string","minLength":1},"paymentDate":{"type":"string","minLength":1},"paymentMethod":{"type":"string","minLength":1},"paymentPeriod":{"type":"string","minLength":1},"paymentReference":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"paymentAmount":"XCD 480.00","paymentDate":"15 September 2026","paymentMethod":"Direct bank transfer","paymentPeriod":"1–14 September 2026","paymentReference":"PAY-2026-004512","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'd5b4fc1c9cc3bda24c2e19b7c699e87d9d685e363c789795476e8606bba28586',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_payment_issued', 'Benefit payment issued', 'Confirms that a benefit payment has been released to the payee.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '7deb1498070f96513921db8f84a6c715c180a5e8080191e10287c38b4fa6ff4f') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Payment of {{payload.paymentAmount}} has been issued","text":"A payment has been issued to you\n\nDear {{payload.subjectName}},\n\nA payment has been released against your benefit award. The details are below.\n\n  Award reference: {{payload.reference}}\n  Amount: {{payload.paymentAmount}}\n  Payment date: {{payload.paymentDate}}\n  Method: {{payload.paymentMethod}}\n  Period covered: {{payload.paymentPeriod}}\n  Payment reference: {{payload.paymentReference}}\n\nWhat happens next\n  1. Allow the normal clearing time for your payment method.\n  2. Contact us if the payment has not reached you within that time.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">A payment has been issued to you</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A benefit payment has been released to you.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A payment has been released against your benefit award. The details are below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Payment date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Method</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentMethod}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Period covered</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentPeriod}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Payment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentReference}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Allow the normal clearing time for your payment method.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if the payment has not reached you within that time.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '7deb1498070f96513921db8f84a6c715c180a5e8080191e10287c38b4fa6ff4f',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.PAYMENT.CANCELLED — Benefit payment cancelled
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.PAYMENT.CANCELLED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.PAYMENT.CANCELLED', 'BENEFITS', 'PAYMENT', 'Benefit payment cancelled',
+       'Notifies the payee that a scheduled or issued payment was cancelled.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit payment cancelled', description = 'Notifies the payee that a scheduled or issued payment was cancelled.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '0f916dc5e4c4d10e1d78681c62be0a467579bc98ed119038b7add6da69e46982') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["cancellationReason","paymentAmount","paymentDate","reference","subjectName"],"properties":{"cancellationReason":{"type":"string","minLength":1},"paymentAmount":{"type":"string","minLength":1},"paymentDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"cancellationReason":"Bank account details were rejected by the bank","paymentAmount":"XCD 480.00","paymentDate":"15 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '0f916dc5e4c4d10e1d78681c62be0a467579bc98ed119038b7add6da69e46982',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_payment_cancelled', 'Benefit payment cancelled', 'Notifies the payee that a scheduled or issued payment was cancelled.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '1c049c73d5155df1622663d5e34f10a0d1d0524870abd23880420b4a50ef6efc') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"A payment on award {{payload.reference}} has been cancelled","text":"A payment has been cancelled\n\nDear {{payload.subjectName}},\n\nA payment on your award has been cancelled. This means the amount shown will not reach you as originally planned.\n\n  Award reference: {{payload.reference}}\n  Amount: {{payload.paymentAmount}}\n  Original payment date: {{payload.paymentDate}}\n  Reason for cancellation: {{payload.cancellationReason}}\n\nWhat happens next\n  1. If the cancellation was caused by incorrect payment details, send us the corrected details.\n  2. Where the amount is still due, a replacement payment will be arranged.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">A payment has been cancelled</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A payment has been cancelled before reaching you.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A payment on your award has been cancelled. This means the amount shown will not reach you as originally planned.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Original payment date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for cancellation</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.cancellationReason}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If the cancellation was caused by incorrect payment details, send us the corrected details.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Where the amount is still due, a replacement payment will be arranged.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '1c049c73d5155df1622663d5e34f10a0d1d0524870abd23880420b4a50ef6efc',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.PAYMENT.REISSUED — Benefit payment reissued
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.PAYMENT.REISSUED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.PAYMENT.REISSUED', 'BENEFITS', 'PAYMENT', 'Benefit payment reissued',
+       'Confirms that a replacement payment has been issued.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Benefit payment reissued', description = 'Confirms that a replacement payment has been issued.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '45eaa15f8db0a91a874006d16a0e1fb6dd054bb15c6473d27dfe4c433c9ecb9e') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["paymentAmount","paymentDate","paymentMethod","reference","reissueReason","subjectName"],"properties":{"paymentAmount":{"type":"string","minLength":1},"paymentDate":{"type":"string","minLength":1},"paymentMethod":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"reissueReason":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"paymentAmount":"XCD 480.00","paymentDate":"15 September 2026","paymentMethod":"Direct bank transfer","reference":"CLM-2026-000141","reissueReason":"Original payment returned unpaid","subjectName":"Alicia Warner"}'::jsonb, 'published', '45eaa15f8db0a91a874006d16a0e1fb6dd054bb15c6473d27dfe4c433c9ecb9e',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_payment_reissued', 'Benefit payment reissued', 'Confirms that a replacement payment has been issued.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '5dc2fccb7ac87b7d325e5900c362f54ea0b86f7d045f956d2115f0bbf46eb2e3') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"A replacement payment has been issued for award {{payload.reference}}","text":"A replacement payment has been issued\n\nDear {{payload.subjectName}},\n\nA replacement payment has been issued to you following the earlier payment that did not complete.\n\n  Award reference: {{payload.reference}}\n  Amount: {{payload.paymentAmount}}\n  Reissued on: {{payload.paymentDate}}\n  Method: {{payload.paymentMethod}}\n  Reason for reissue: {{payload.reissueReason}}\n\nWhat happens next\n  1. Allow the normal clearing time for the replacement payment.\n  2. Tell us if it does not arrive within that time.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">A replacement payment has been issued</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your replacement payment is on its way.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A replacement payment has been issued to you following the earlier payment that did not complete.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reissued on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Method</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentMethod}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for reissue</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reissueReason}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Allow the normal clearing time for the replacement payment.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Tell us if it does not arrive within that time.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '5dc2fccb7ac87b7d325e5900c362f54ea0b86f7d045f956d2115f0bbf46eb2e3',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.PAYMENT.CORRECTION_COMPLETED — Payment correction completed
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.PAYMENT.CORRECTION_COMPLETED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.PAYMENT.CORRECTION_COMPLETED', 'BENEFITS', 'PAYMENT', 'Payment correction completed',
+       'Explains a correction applied to a payment record.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Payment correction completed', description = 'Explains a correction applied to a payment record.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'd7f4fb49e5c71a9162d5edb8f686c9ff11f1e985facb78d4440bc831dcfaa1ba') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["correctedOn","correctionSummary","paymentAmount","reference","subjectName"],"properties":{"correctedOn":{"type":"string","minLength":1},"correctionSummary":{"type":"string","minLength":1},"paymentAmount":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"correctedOn":"20 August 2026","correctionSummary":"Date of birth corrected to 4 March 1961","paymentAmount":"XCD 480.00","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'd7f4fb49e5c71a9162d5edb8f686c9ff11f1e985facb78d4440bc831dcfaa1ba',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_payment_correction_completed', 'Payment correction completed', 'Explains a correction applied to a payment record.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '72f84b2e774828ef4f67d8aee3912325fad6b8d83cc1a0a40fdfc9a198b744e1') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"A payment correction was applied to award {{payload.reference}}","text":"A payment correction has been applied\n\nDear {{payload.subjectName}},\n\nA correction has been completed on a payment linked to your award. The details of the correction are below.\n\n  Award reference: {{payload.reference}}\n  What changed: {{payload.correctionSummary}}\n  Corrected amount: {{payload.paymentAmount}}\n  Corrected on: {{payload.correctedOn}}\n\nWhat happens next\n  1. Check the corrected amount against your bank record.\n  2. Contact us if the corrected figure still looks wrong.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">A payment correction has been applied</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We corrected a payment on your record.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A correction has been completed on a payment linked to your award. The details of the correction are below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">What changed</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.correctionSummary}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Corrected amount</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Corrected on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.correctedOn}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Check the corrected amount against your bank record.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if the corrected figure still looks wrong.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '72f84b2e774828ef4f67d8aee3912325fad6b8d83cc1a0a40fdfc9a198b744e1',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.OBLIGATION_CREATED — Life certificate obligation created
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.OBLIGATION_CREATED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.OBLIGATION_CREATED', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate obligation created',
+       'Tells a pensioner that a life certificate is now required for the coming cycle.', 'legal_mandatory', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate obligation created', description = 'Tells a pensioner that a life certificate is now required for the coming cycle.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'da1918d0dd31f67066ad83757f558ad5ef65c5ed770e19083425ef6fcb3d6c46') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["certificationCycle","dueDate","reference","subjectName","submissionChannel"],"properties":{"certificationCycle":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submissionChannel":{"type":"string","minLength":1}}}'::jsonb,
+       '{"certificationCycle":"2026 annual certification","dueDate":"5 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submissionChannel":"In person at any Social Security office, or by post"}'::jsonb, 'published', 'da1918d0dd31f67066ad83757f558ad5ef65c5ed770e19083425ef6fcb3d6c46',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_obligation_created', 'Life certificate obligation created', 'Tells a pensioner that a life certificate is now required for the coming cycle.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '415dfd01a6f43220b925f1c562edb9a76f5c60a1d7d825e058f004e31691485a') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"A life certificate is required for award {{payload.reference}}","text":"A life certificate is now required\n\nDear {{payload.subjectName}},\n\nTo keep your pension in payment, the Board must confirm periodically that you continue to be eligible. A life certificate has been raised on your record for the cycle shown below.\n\n  Award reference: {{payload.reference}}\n  Certification cycle: {{payload.certificationCycle}}\n  Due date: {{payload.dueDate}}\n  How to certify: {{payload.submissionChannel}}\n\nIf the certificate is not received by the due date, your payments may be suspended until it is provided.\n\nWhat happens next\n  1. Have the certificate completed and witnessed as instructed.\n  2. Return it to us before the due date.\n  3. We will confirm in writing once it is verified.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">A life certificate is now required</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">You will need to complete a life certificate for this cycle.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">To keep your pension in payment, the Board must confirm periodically that you continue to be eligible. A life certificate has been raised on your record for the cycle shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Certification cycle</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.certificationCycle}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Due date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to certify</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submissionChannel}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If the certificate is not received by the due date, your payments may be suspended until it is provided.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Have the certificate completed and witnessed as instructed.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return it to us before the due date.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will confirm in writing once it is verified.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '415dfd01a6f43220b925f1c562edb9a76f5c60a1d7d825e058f004e31691485a',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.DUE — Life certificate due
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.DUE';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.DUE', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate due',
+       'Notifies the pensioner that the life certificate is now due.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate due', description = 'Notifies the pensioner that the life certificate is now due.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'da1918d0dd31f67066ad83757f558ad5ef65c5ed770e19083425ef6fcb3d6c46') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["certificationCycle","dueDate","reference","subjectName","submissionChannel"],"properties":{"certificationCycle":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submissionChannel":{"type":"string","minLength":1}}}'::jsonb,
+       '{"certificationCycle":"2026 annual certification","dueDate":"5 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submissionChannel":"In person at any Social Security office, or by post"}'::jsonb, 'published', 'da1918d0dd31f67066ad83757f558ad5ef65c5ed770e19083425ef6fcb3d6c46',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_due', 'Life certificate due', 'Notifies the pensioner that the life certificate is now due.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'bc9391b83ced935d6f4bbdbead6d2f698fbfd0a03720212cad41351832370246') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your life certificate is due by {{payload.dueDate}}","text":"Your life certificate is due\n\nDear {{payload.subjectName}},\n\nYour life certificate for the current cycle is now due. Please complete and return it so that your pension continues without interruption.\n\n  Award reference: {{payload.reference}}\n  Certification cycle: {{payload.certificationCycle}}\n  Due date: {{payload.dueDate}}\n  How to certify: {{payload.submissionChannel}}\n\nPayments may be suspended if the certificate is not received on time.\n\nWhat happens next\n  1. Complete the certificate and have it witnessed as instructed.\n  2. Return it before the due date.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your life certificate is due</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Please complete and return your life certificate.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your life certificate for the current cycle is now due. Please complete and return it so that your pension continues without interruption.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Certification cycle</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.certificationCycle}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Due date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to certify</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submissionChannel}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Payments may be suspended if the certificate is not received on time.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Complete the certificate and have it witnessed as instructed.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return it before the due date.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'bc9391b83ced935d6f4bbdbead6d2f698fbfd0a03720212cad41351832370246',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.REMINDER_DUE — Life certificate reminder
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.REMINDER_DUE';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.REMINDER_DUE', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate reminder',
+       'Reminds the pensioner that a life certificate is still outstanding.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate reminder', description = 'Reminds the pensioner that a life certificate is still outstanding.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'ef35b83888e5bc96c340addc531c38782dffb5996ea54e97b42e97671e7090c5') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["certificationCycle","daysRemaining","dueDate","reference","subjectName"],"properties":{"certificationCycle":{"type":"string","minLength":1},"daysRemaining":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"certificationCycle":"2026 annual certification","daysRemaining":"10","dueDate":"5 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'ef35b83888e5bc96c340addc531c38782dffb5996ea54e97b42e97671e7090c5',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_reminder', 'Life certificate reminder', 'Reminds the pensioner that a life certificate is still outstanding.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '4697ecfaf05c4e6971b8b2fa9e3e0e2f88d80df50907a55831e7c14ed98dc273') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Reminder: your life certificate is still outstanding","text":"Reminder — your life certificate is still outstanding\n\nDear {{payload.subjectName}},\n\nOur records show that we have not yet received your life certificate for the current cycle.\n\n  Award reference: {{payload.reference}}\n  Certification cycle: {{payload.certificationCycle}}\n  Due date: {{payload.dueDate}}\n  Days remaining: {{payload.daysRemaining}}\n\nIf we still do not receive it, your pension may be suspended until the certificate is provided.\n\nWhat happens next\n  1. Return the completed certificate as soon as possible.\n  2. Ignore this reminder if you have posted it in the last few days.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Reminder — your life certificate is still outstanding</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We have not yet received your life certificate.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Our records show that we have not yet received your life certificate for the current cycle.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Certification cycle</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.certificationCycle}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Due date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Days remaining</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.daysRemaining}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If we still do not receive it, your pension may be suspended until the certificate is provided.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return the completed certificate as soon as possible.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Ignore this reminder if you have posted it in the last few days.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '4697ecfaf05c4e6971b8b2fa9e3e0e2f88d80df50907a55831e7c14ed98dc273',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.GRACE_STARTED — Life certificate grace period started
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.GRACE_STARTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.GRACE_STARTED', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate grace period started',
+       'Tells the pensioner that a grace period has begun before suspension.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate grace period started', description = 'Tells the pensioner that a grace period has begun before suspension.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '6e448a883ca786e40cff7bf62b10a4202a551068fddadf6e7fce669ab7802659') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["dueDate","graceEndsOn","reference","subjectName","submissionChannel"],"properties":{"dueDate":{"type":"string","minLength":1},"graceEndsOn":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submissionChannel":{"type":"string","minLength":1}}}'::jsonb,
+       '{"dueDate":"5 September 2026","graceEndsOn":"30 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submissionChannel":"In person at any Social Security office, or by post"}'::jsonb, 'published', '6e448a883ca786e40cff7bf62b10a4202a551068fddadf6e7fce669ab7802659',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_grace_started', 'Life certificate grace period started', 'Tells the pensioner that a grace period has begun before suspension.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '49d613554b63e66087fb47417e4dabbd2c1d4c9d339152f4947b07c87b24a464') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Final period to return your life certificate","text":"A grace period has started for your life certificate\n\nDear {{payload.subjectName}},\n\nYour life certificate was not received by the due date. A short grace period has now started before your payments are affected.\n\n  Award reference: {{payload.reference}}\n  Original due date: {{payload.dueDate}}\n  Grace period ends: {{payload.graceEndsOn}}\n  How to certify: {{payload.submissionChannel}}\n\nIf the certificate is not received by {{payload.graceEndsOn}}, payments will be suspended.\n\nWhat happens next\n  1. Return the completed certificate before the grace period ends.\n  2. Contact us immediately if you are unable to complete it for medical reasons.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">A grace period has started for your life certificate</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A grace period has started before payments are affected.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your life certificate was not received by the due date. A short grace period has now started before your payments are affected.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Original due date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Grace period ends</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.graceEndsOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to certify</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submissionChannel}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If the certificate is not received by {{payload.graceEndsOn}}, payments will be suspended.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return the completed certificate before the grace period ends.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us immediately if you are unable to complete it for medical reasons.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '49d613554b63e66087fb47417e4dabbd2c1d4c9d339152f4947b07c87b24a464',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.OVERDUE — Life certificate overdue
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.OVERDUE';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.OVERDUE', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate overdue',
+       'Notifies the pensioner that the certificate is overdue.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate overdue', description = 'Notifies the pensioner that the certificate is overdue.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '313157838fe6f4da294a1a885c78bda837709b54b5c965c4ee5a2a5ce55c10a2') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["consequenceSummary","daysOverdue","dueDate","reference","subjectName"],"properties":{"consequenceSummary":{"type":"string","minLength":1},"daysOverdue":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"consequenceSummary":"Payments will be suspended until certification is completed","daysOverdue":"14","dueDate":"5 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '313157838fe6f4da294a1a885c78bda837709b54b5c965c4ee5a2a5ce55c10a2',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_overdue', 'Life certificate overdue', 'Notifies the pensioner that the certificate is overdue.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'f6d8190b83caa0b39c3aa1802005f883d0532e1db082a0bcecc27ed7cec9efa2') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your life certificate is overdue — action required","text":"Your life certificate is overdue\n\nDear {{payload.subjectName}},\n\nYour life certificate remains outstanding after the due date and any grace period allowed.\n\n  Award reference: {{payload.reference}}\n  Due date: {{payload.dueDate}}\n  Days overdue: {{payload.daysOverdue}}\n  Consequence if not received: {{payload.consequenceSummary}}\n\nPayments may already be held. They will resume once a valid certificate is verified.\n\nWhat happens next\n  1. Return the completed certificate immediately.\n  2. Contact us if you need help completing it.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your life certificate is overdue</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your life certificate has not been received.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your life certificate remains outstanding after the due date and any grace period allowed.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Due date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Days overdue</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.daysOverdue}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Consequence if not received</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.consequenceSummary}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Payments may already be held. They will resume once a valid certificate is verified.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return the completed certificate immediately.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if you need help completing it.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'f6d8190b83caa0b39c3aa1802005f883d0532e1db082a0bcecc27ed7cec9efa2',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.RECEIVED — Life certificate received
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.RECEIVED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.RECEIVED', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate received',
+       'Confirms receipt of a life certificate before verification.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate received', description = 'Confirms receipt of a life certificate before verification.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '2e420168da7b8bedad83f4c94e830c900327690d10b9f496cd0bc849c5476a0b') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["certificationCycle","receivedOn","reference","subjectName"],"properties":{"certificationCycle":{"type":"string","minLength":1},"receivedOn":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"certificationCycle":"2026 annual certification","receivedOn":"21 August 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '2e420168da7b8bedad83f4c94e830c900327690d10b9f496cd0bc849c5476a0b',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_received', 'Life certificate received', 'Confirms receipt of a life certificate before verification.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '17c3c71846b25f69687bb81dedcf0069f5587f6f3ecacec25fde8c9e82262227') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"We have received your life certificate","text":"Your life certificate has been received\n\nDear {{payload.subjectName}},\n\nThank you. Your life certificate has been received and is now being checked.\n\n  Award reference: {{payload.reference}}\n  Certification cycle: {{payload.certificationCycle}}\n  Received on: {{payload.receivedOn}}\n\nWhat happens next\n  1. An officer will verify the certificate.\n  2. We will write to you again once verification is complete.\n\nNo further action is needed from you at this stage.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your life certificate has been received</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your certificate is with us and is being checked.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you. Your life certificate has been received and is now being checked.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Certification cycle</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.certificationCycle}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Received on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.receivedOn}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">An officer will verify the certificate.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will write to you again once verification is complete.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">No further action is needed from you at this stage.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '17c3c71846b25f69687bb81dedcf0069f5587f6f3ecacec25fde8c9e82262227',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.VERIFIED — Life certificate verified
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.VERIFIED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.VERIFIED', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate verified',
+       'Confirms that the life certificate has been accepted.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate verified', description = 'Confirms that the life certificate has been accepted.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '2038a5bac0a3781641e0e47e32de89cce6f07cd5157a350536f80c9d434a9c21') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["certificationCycle","nextDueDate","reference","subjectName","verifiedOn"],"properties":{"certificationCycle":{"type":"string","minLength":1},"nextDueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"verifiedOn":{"type":"string","minLength":1}}}'::jsonb,
+       '{"certificationCycle":"2026 annual certification","nextDueDate":"1 September 2027","reference":"CLM-2026-000141","subjectName":"Alicia Warner","verifiedOn":"22 September 2026"}'::jsonb, 'published', '2038a5bac0a3781641e0e47e32de89cce6f07cd5157a350536f80c9d434a9c21',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_verified', 'Life certificate verified', 'Confirms that the life certificate has been accepted.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'ff7b840d015b6c19b82b0a5d2df78fe9b2e9192164c3365e7548cb658be50e3f') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your life certificate has been accepted","text":"Your life certificate has been accepted\n\nDear {{payload.subjectName}},\n\nYour life certificate has been verified and accepted. Your pension will continue without interruption.\n\n  Award reference: {{payload.reference}}\n  Certification cycle: {{payload.certificationCycle}}\n  Verified on: {{payload.verifiedOn}}\n  Next certification due: {{payload.nextDueDate}}\n\nWhat happens next\n  1. Keep this notice for your records.\n  2. We will contact you again when the next certification falls due.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your life certificate has been accepted</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your certification is complete for this cycle.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your life certificate has been verified and accepted. Your pension will continue without interruption.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Certification cycle</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.certificationCycle}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Verified on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.verifiedOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Next certification due</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.nextDueDate}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Keep this notice for your records.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will contact you again when the next certification falls due.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'ff7b840d015b6c19b82b0a5d2df78fe9b2e9192164c3365e7548cb658be50e3f',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.REJECTED — Life certificate rejected
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.REJECTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.REJECTED', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate rejected',
+       'Explains why a life certificate could not be accepted.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate rejected', description = 'Explains why a life certificate could not be accepted.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '7aeb48197b92d7cde597065739ba342954262d65558ca7eacc7ee56c8f2166bb') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["certificationCycle","dueDate","reference","rejectionReason","resolutionRequirement","subjectName"],"properties":{"certificationCycle":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"rejectionReason":{"type":"string","minLength":1},"resolutionRequirement":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"certificationCycle":"2026 annual certification","dueDate":"5 September 2026","reference":"CLM-2026-000141","rejectionReason":"The copy supplied was not legible","resolutionRequirement":"Return a completed and witnessed life certificate","subjectName":"Alicia Warner"}'::jsonb, 'published', '7aeb48197b92d7cde597065739ba342954262d65558ca7eacc7ee56c8f2166bb',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_rejected', 'Life certificate rejected', 'Explains why a life certificate could not be accepted.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '4b414826fa49dd0845db8a7284d73adb5491fac08b5c0ce6ce6d0980dd2c1a3b') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your life certificate could not be accepted","text":"Your life certificate could not be accepted\n\nDear {{payload.subjectName}},\n\nWe have checked the life certificate you returned. Unfortunately it cannot be accepted for the reason shown below.\n\n  Award reference: {{payload.reference}}\n  Certification cycle: {{payload.certificationCycle}}\n  Reason: {{payload.rejectionReason}}\n  What to do: {{payload.resolutionRequirement}}\n  Return by: {{payload.dueDate}}\n\nYour pension may be suspended if a valid certificate is not received.\n\nWhat happens next\n  1. Correct the issue described above.\n  2. Return a fresh certificate before the date shown.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your life certificate could not be accepted</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">There is a problem with the certificate you sent.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have checked the life certificate you returned. Unfortunately it cannot be accepted for the reason shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Certification cycle</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.certificationCycle}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.rejectionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">What to do</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.resolutionRequirement}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Return by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Your pension may be suspended if a valid certificate is not received.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Correct the issue described above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return a fresh certificate before the date shown.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '4b414826fa49dd0845db8a7284d73adb5491fac08b5c0ce6ce6d0980dd2c1a3b',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.RESUBMISSION_REQUIRED — Life certificate resubmission required
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.RESUBMISSION_REQUIRED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.RESUBMISSION_REQUIRED', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate resubmission required',
+       'Asks the pensioner to submit the life certificate again.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate resubmission required', description = 'Asks the pensioner to submit the life certificate again.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '264d818d2d27096f4075d521a9f581881b5d30f907e2b4db42b90c7c54a5f6f9') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["certificationCycle","dueDate","reference","resolutionRequirement","subjectName","submissionChannel"],"properties":{"certificationCycle":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"resolutionRequirement":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submissionChannel":{"type":"string","minLength":1}}}'::jsonb,
+       '{"certificationCycle":"2026 annual certification","dueDate":"5 September 2026","reference":"CLM-2026-000141","resolutionRequirement":"Return a completed and witnessed life certificate","subjectName":"Alicia Warner","submissionChannel":"In person at any Social Security office, or by post"}'::jsonb, 'published', '264d818d2d27096f4075d521a9f581881b5d30f907e2b4db42b90c7c54a5f6f9',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_resubmission_required', 'Life certificate resubmission required', 'Asks the pensioner to submit the life certificate again.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '97e0a6176d53f6f70a0032af3b21873927bd2fcfa6dfeb24f573fda7eea5a81c') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Please submit your life certificate again","text":"Please submit your life certificate again\n\nDear {{payload.subjectName}},\n\nA fresh life certificate is required before your certification for this cycle can be completed.\n\n  Award reference: {{payload.reference}}\n  Certification cycle: {{payload.certificationCycle}}\n  What must be corrected: {{payload.resolutionRequirement}}\n  Return by: {{payload.dueDate}}\n  How to certify: {{payload.submissionChannel}}\n\nWhat happens next\n  1. Have a new certificate completed and witnessed.\n  2. Return it before the date shown.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Please submit your life certificate again</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A fresh life certificate is required.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A fresh life certificate is required before your certification for this cycle can be completed.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Certification cycle</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.certificationCycle}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">What must be corrected</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.resolutionRequirement}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Return by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to certify</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submissionChannel}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Have a new certificate completed and witnessed.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return it before the date shown.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '97e0a6176d53f6f70a0032af3b21873927bd2fcfa6dfeb24f573fda7eea5a81c',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.WAIVED — Life certificate waived
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.WAIVED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.WAIVED', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate waived',
+       'Confirms that the certification requirement has been waived.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate waived', description = 'Confirms that the certification requirement has been waived.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'dc581f8b7c94f7eebb9727ee73ba46eb94ee65a9f67081ff4069b04ab0462938') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["certificationCycle","nextDueDate","reference","subjectName","waiverReason"],"properties":{"certificationCycle":{"type":"string","minLength":1},"nextDueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"waiverReason":{"type":"string","minLength":1}}}'::jsonb,
+       '{"certificationCycle":"2026 annual certification","nextDueDate":"1 September 2027","reference":"CLM-2026-000141","subjectName":"Alicia Warner","waiverReason":"Certified in person at a Board office"}'::jsonb, 'published', 'dc581f8b7c94f7eebb9727ee73ba46eb94ee65a9f67081ff4069b04ab0462938',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_waived', 'Life certificate waived', 'Confirms that the certification requirement has been waived.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '3d5f8c540159899db3a900efd9bd7785facde3a90596b4ba87fb23b9ec4c7504') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your life certificate requirement has been waived","text":"Your life certificate requirement has been waived\n\nDear {{payload.subjectName}},\n\nThe requirement to provide a life certificate for this cycle has been waived. You do not need to take any action.\n\n  Award reference: {{payload.reference}}\n  Certification cycle: {{payload.certificationCycle}}\n  Reason for waiver: {{payload.waiverReason}}\n  Next certification due: {{payload.nextDueDate}}\n\nWhat happens next\n  1. Keep this notice for your records.\n  2. We will contact you when the next certification falls due.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your life certificate requirement has been waived</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">You do not need to certify for this cycle.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">The requirement to provide a life certificate for this cycle has been waived. You do not need to take any action.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Certification cycle</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.certificationCycle}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for waiver</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.waiverReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Next certification due</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.nextDueDate}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Keep this notice for your records.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will contact you when the next certification falls due.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '3d5f8c540159899db3a900efd9bd7785facde3a90596b4ba87fb23b9ec4c7504',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.LIFE_CERTIFICATE.DEFERRED — Life certificate deferred
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.LIFE_CERTIFICATE.DEFERRED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.LIFE_CERTIFICATE.DEFERRED', 'BENEFITS', 'LIFE_CERTIFICATE', 'Life certificate deferred',
+       'Confirms a new deferred deadline for certification.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Life certificate deferred', description = 'Confirms a new deferred deadline for certification.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '40e8d594fefffb7e76cbbfff9f27a12d9e9928fe7ba7768e9f9ba19cbecfd4d4') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["certificationCycle","deferralReason","dueDate","reference","subjectName"],"properties":{"certificationCycle":{"type":"string","minLength":1},"deferralReason":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"certificationCycle":"2026 annual certification","deferralReason":"Hospital admission confirmed by the treating physician","dueDate":"5 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '40e8d594fefffb7e76cbbfff9f27a12d9e9928fe7ba7768e9f9ba19cbecfd4d4',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_lc_deferred', 'Life certificate deferred', 'Confirms a new deferred deadline for certification.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '9fb4e5a8abb5c5fb500b10930a56913e8b2f8e8a1cbc10c080caa28ed0816388') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your life certificate deadline has been extended","text":"Your life certificate deadline has been extended\n\nDear {{payload.subjectName}},\n\nThe deadline for returning your life certificate has been extended. Your new deadline is shown below.\n\n  Award reference: {{payload.reference}}\n  Certification cycle: {{payload.certificationCycle}}\n  New due date: {{payload.dueDate}}\n  Reason for deferral: {{payload.deferralReason}}\n\nWhat happens next\n  1. Return the completed certificate before the new date.\n  2. Contact us if you still cannot meet the deadline.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your life certificate deadline has been extended</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">You have more time to return your certificate.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">The deadline for returning your life certificate has been extended. Your new deadline is shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Award reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Certification cycle</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.certificationCycle}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">New due date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for deferral</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.deferralReason}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return the completed certificate before the new date.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if you still cannot meet the deadline.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '9fb4e5a8abb5c5fb500b10930a56913e8b2f8e8a1cbc10c080caa28ed0816388',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEDICAL_REVIEW.REFERRAL_ISSUED — Medical referral issued
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEDICAL_REVIEW.REFERRAL_ISSUED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEDICAL_REVIEW.REFERRAL_ISSUED', 'BENEFITS', 'MEDICAL_REVIEW', 'Medical referral issued',
+       'Sends a medical referral instruction to the examining provider.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Medical referral issued', description = 'Sends a medical referral instruction to the examining provider.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'e971b0d2c2e016a5f9aed5f62187e83d6f2b8b7f30a74c0748b7c64495bb0998') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["assessmentType","caseReference","dueDate","reference","referralQuestion","subjectName"],"properties":{"assessmentType":{"type":"string","minLength":1},"caseReference":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"referralQuestion":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"assessmentType":"Capacity for work assessment","caseReference":"BN-2026-000318","dueDate":"5 September 2026","reference":"CLM-2026-000141","referralQuestion":"Is the person capable of returning to their usual occupation?","subjectName":"Alicia Warner"}'::jsonb, 'published', 'e971b0d2c2e016a5f9aed5f62187e83d6f2b8b7f30a74c0748b7c64495bb0998',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mr_referral_issued', 'Medical referral issued', 'Sends a medical referral instruction to the examining provider.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'f111b2de92c90996b512d40039982d4fbc407b0994d7044cea278538650a19b9') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Medical referral {{payload.reference}} for assessment","text":"Medical referral issued\n\nDear {{payload.subjectName}},\n\nA referral has been issued to you for a medical assessment in connection with a benefit case. The details required to carry out the assessment are shown below.\n\n  Referral reference: {{payload.reference}}\n  Case reference: {{payload.caseReference}}\n  Assessment required: {{payload.assessmentType}}\n  Question to be answered: {{payload.referralQuestion}}\n  Report due by: {{payload.dueDate}}\n\nPlease treat all case information as confidential and disclose it only for the purpose of this assessment.\n\nWhat happens next\n  1. Arrange the assessment with the person concerned.\n  2. Return your report by the due date, addressing the referral question.\n  3. Contact the Board if you need further information before reporting.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Medical referral issued</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A referral has been issued for medical assessment.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A referral has been issued to you for a medical assessment in connection with a benefit case. The details required to carry out the assessment are shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Referral reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.caseReference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessment required</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.assessmentType}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Question to be answered</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.referralQuestion}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Report due by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Please treat all case information as confidential and disclose it only for the purpose of this assessment.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Arrange the assessment with the person concerned.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return your report by the due date, addressing the referral question.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact the Board if you need further information before reporting.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'f111b2de92c90996b512d40039982d4fbc407b0994d7044cea278538650a19b9',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEDICAL_REVIEW.APPOINTMENT_SCHEDULED — Medical appointment scheduled
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEDICAL_REVIEW.APPOINTMENT_SCHEDULED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEDICAL_REVIEW.APPOINTMENT_SCHEDULED', 'BENEFITS', 'MEDICAL_REVIEW', 'Medical appointment scheduled',
+       'Tells the claimant when and where their medical appointment is.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Medical appointment scheduled', description = 'Tells the claimant when and where their medical appointment is.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '75da6ad64a04c92b0591d6bb5a97a656a2aeb676d77d1ebeaa2339aaff06a858') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["appointmentDate","appointmentLocation","appointmentTime","bringItems","examinerName","reference","subjectName"],"properties":{"appointmentDate":{"type":"string","minLength":1},"appointmentLocation":{"type":"string","minLength":1},"appointmentTime":{"type":"string","minLength":1},"bringItems":{"type":"string","minLength":1},"examinerName":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"appointmentDate":"10 September 2026","appointmentLocation":"Social Security Medical Suite, Basseterre","appointmentTime":"10:30","bringItems":"Photo identification and any current medication list","examinerName":"Dr. M. Phillip","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '75da6ad64a04c92b0591d6bb5a97a656a2aeb676d77d1ebeaa2339aaff06a858',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mr_appointment_scheduled', 'Medical appointment scheduled', 'Tells the claimant when and where their medical appointment is.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '2671dda31276d29d07871ae383991c2ff0f9acbd7d3266919f07f441824c82ae') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your medical appointment on {{payload.appointmentDate}}","text":"Your medical appointment has been arranged\n\nDear {{payload.subjectName}},\n\nAn appointment has been arranged for a medical assessment in connection with your benefit case. Please attend at the time and place shown below.\n\n  Case reference: {{payload.reference}}\n  Date: {{payload.appointmentDate}}\n  Time: {{payload.appointmentTime}}\n  Location: {{payload.appointmentLocation}}\n  Examiner: {{payload.examinerName}}\n  What to bring: {{payload.bringItems}}\n\nFailure to attend without good reason may affect your benefit entitlement.\n\nWhat happens next\n  1. Arrive a few minutes early and bring valid identification.\n  2. Bring any medical reports or medication list you have.\n  3. Contact us as soon as possible if you cannot attend.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your medical appointment has been arranged</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">An appointment has been arranged for your medical assessment.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">An appointment has been arranged for a medical assessment in connection with your benefit case. Please attend at the time and place shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appointmentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Time</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appointmentTime}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Location</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appointmentLocation}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Examiner</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.examinerName}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">What to bring</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.bringItems}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Failure to attend without good reason may affect your benefit entitlement.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Arrive a few minutes early and bring valid identification.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Bring any medical reports or medication list you have.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us as soon as possible if you cannot attend.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '2671dda31276d29d07871ae383991c2ff0f9acbd7d3266919f07f441824c82ae',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEDICAL_REVIEW.APPOINTMENT_RESCHEDULED — Medical appointment rescheduled
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEDICAL_REVIEW.APPOINTMENT_RESCHEDULED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEDICAL_REVIEW.APPOINTMENT_RESCHEDULED', 'BENEFITS', 'MEDICAL_REVIEW', 'Medical appointment rescheduled',
+       'Notifies the claimant that the appointment has moved.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Medical appointment rescheduled', description = 'Notifies the claimant that the appointment has moved.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '37e009a346d49e2cbf5ad9a9bdfb5e87a146882fe56547caf06eddb395e22cbf') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["appointmentDate","appointmentLocation","appointmentTime","reference","rescheduleReason","subjectName"],"properties":{"appointmentDate":{"type":"string","minLength":1},"appointmentLocation":{"type":"string","minLength":1},"appointmentTime":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"rescheduleReason":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"appointmentDate":"10 September 2026","appointmentLocation":"Social Security Medical Suite, Basseterre","appointmentTime":"10:30","reference":"CLM-2026-000141","rescheduleReason":"The examiner was unavailable on the original date","subjectName":"Alicia Warner"}'::jsonb, 'published', '37e009a346d49e2cbf5ad9a9bdfb5e87a146882fe56547caf06eddb395e22cbf',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mr_appointment_rescheduled', 'Medical appointment rescheduled', 'Notifies the claimant that the appointment has moved.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '6caa0c058414d19b9e0f368925989332ac1d6997e28ee721dacf6c637e2bc2de') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your medical appointment has been moved to {{payload.appointmentDate}}","text":"Your medical appointment has been rescheduled\n\nDear {{payload.subjectName}},\n\nYour medical appointment has been rescheduled. Please note the new details below and disregard the previous appointment.\n\n  Case reference: {{payload.reference}}\n  New date: {{payload.appointmentDate}}\n  New time: {{payload.appointmentTime}}\n  Location: {{payload.appointmentLocation}}\n  Reason for the change: {{payload.rescheduleReason}}\n\nWhat happens next\n  1. Make a note of the new appointment.\n  2. Tell us immediately if the new time is not possible for you.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your medical appointment has been rescheduled</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your appointment date or place has changed.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your medical appointment has been rescheduled. Please note the new details below and disregard the previous appointment.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">New date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appointmentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">New time</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appointmentTime}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Location</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appointmentLocation}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for the change</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.rescheduleReason}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Make a note of the new appointment.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Tell us immediately if the new time is not possible for you.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '6caa0c058414d19b9e0f368925989332ac1d6997e28ee721dacf6c637e2bc2de',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEDICAL_REVIEW.APPOINTMENT_CANCELLED — Medical appointment cancelled
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEDICAL_REVIEW.APPOINTMENT_CANCELLED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEDICAL_REVIEW.APPOINTMENT_CANCELLED', 'BENEFITS', 'MEDICAL_REVIEW', 'Medical appointment cancelled',
+       'Notifies the claimant that the appointment has been cancelled.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Medical appointment cancelled', description = 'Notifies the claimant that the appointment has been cancelled.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '40af607788f0cf2f25afaff65d218811a0326d4ea4c0a0354a5b4dc8ff9bc887') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["appointmentDate","cancellationReason","nextActionSummary","reference","subjectName"],"properties":{"appointmentDate":{"type":"string","minLength":1},"cancellationReason":{"type":"string","minLength":1},"nextActionSummary":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"appointmentDate":"10 September 2026","cancellationReason":"Bank account details were rejected by the bank","nextActionSummary":"A new appointment will be arranged and sent to you","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '40af607788f0cf2f25afaff65d218811a0326d4ea4c0a0354a5b4dc8ff9bc887',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mr_appointment_cancelled', 'Medical appointment cancelled', 'Notifies the claimant that the appointment has been cancelled.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '74e20379ec63d2bc5d763989fcbd2489bb0095550a38a953a266c44d0541acb6') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your medical appointment has been cancelled","text":"Your medical appointment has been cancelled\n\nDear {{payload.subjectName}},\n\nThe medical appointment previously arranged for you has been cancelled. Please do not attend.\n\n  Case reference: {{payload.reference}}\n  Cancelled appointment: {{payload.appointmentDate}}\n  Reason: {{payload.cancellationReason}}\n  What happens now: {{payload.nextActionSummary}}\n\nWhat happens next\n  1. Wait for us to contact you with a new appointment, if one is needed.\n  2. Contact us if you have not heard from us within two weeks.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your medical appointment has been cancelled</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Do not attend the appointment previously arranged.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">The medical appointment previously arranged for you has been cancelled. Please do not attend.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Cancelled appointment</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appointmentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.cancellationReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">What happens now</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.nextActionSummary}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Wait for us to contact you with a new appointment, if one is needed.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if you have not heard from us within two weeks.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '74e20379ec63d2bc5d763989fcbd2489bb0095550a38a953a266c44d0541acb6',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEDICAL_REVIEW.APPOINTMENT_NON_ATTENDANCE — Medical appointment missed
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEDICAL_REVIEW.APPOINTMENT_NON_ATTENDANCE';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEDICAL_REVIEW.APPOINTMENT_NON_ATTENDANCE', 'BENEFITS', 'MEDICAL_REVIEW', 'Medical appointment missed',
+       'Records non-attendance at a medical appointment and explains the consequence.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Medical appointment missed', description = 'Records non-attendance at a medical appointment and explains the consequence.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '3d921565adce5b57f9cf918667a04b572a8e09ae1ded8068116c12d62121dd08') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["appointmentDate","appointmentLocation","dueDate","reference","subjectName"],"properties":{"appointmentDate":{"type":"string","minLength":1},"appointmentLocation":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"appointmentDate":"10 September 2026","appointmentLocation":"Social Security Medical Suite, Basseterre","dueDate":"5 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '3d921565adce5b57f9cf918667a04b572a8e09ae1ded8068116c12d62121dd08',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mr_non_attendance', 'Medical appointment missed', 'Records non-attendance at a medical appointment and explains the consequence.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'd45ee1a83f127588d2292819ac780eaab904e98dce188792134de2e59cfd8cce') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"You did not attend your medical appointment","text":"You did not attend your medical appointment\n\nDear {{payload.subjectName}},\n\nOur records show that you did not attend the medical appointment arranged for you, and we have not received an explanation.\n\n  Case reference: {{payload.reference}}\n  Missed appointment: {{payload.appointmentDate}}\n  Location: {{payload.appointmentLocation}}\n  Respond by: {{payload.dueDate}}\n\nIf we do not hear from you by {{payload.dueDate}}, a decision may be made on the information already held, which can affect your entitlement.\n\nWhat happens next\n  1. Contact us and explain why you could not attend.\n  2. A further appointment may be arranged if you have good reason.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">You did not attend your medical appointment</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your appointment was missed — please contact us.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Our records show that you did not attend the medical appointment arranged for you, and we have not received an explanation.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Missed appointment</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appointmentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Location</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appointmentLocation}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Respond by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If we do not hear from you by {{payload.dueDate}}, a decision may be made on the information already held, which can affect your entitlement.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us and explain why you could not attend.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">A further appointment may be arranged if you have good reason.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'd45ee1a83f127588d2292819ac780eaab904e98dce188792134de2e59cfd8cce',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEDICAL_REVIEW.SECOND_OPINION_REQUESTED — Second medical opinion requested
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEDICAL_REVIEW.SECOND_OPINION_REQUESTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEDICAL_REVIEW.SECOND_OPINION_REQUESTED', 'BENEFITS', 'MEDICAL_REVIEW', 'Second medical opinion requested',
+       'Requests an independent second medical opinion on a case.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Second medical opinion requested', description = 'Requests an independent second medical opinion on a case.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'dcd783962f645148ae1a0baf2b854880b55730caf7213a8f97ebf719f1f7fec8') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["caseReference","dueDate","materialProvided","reference","referralQuestion","subjectName"],"properties":{"caseReference":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"materialProvided":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"referralQuestion":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"caseReference":"BN-2026-000318","dueDate":"5 September 2026","materialProvided":"Referral report dated 20 August 2026 and claim file summary","reference":"CLM-2026-000141","referralQuestion":"Is the person capable of returning to their usual occupation?","subjectName":"Alicia Warner"}'::jsonb, 'published', 'dcd783962f645148ae1a0baf2b854880b55730caf7213a8f97ebf719f1f7fec8',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mr_second_opinion_requested', 'Second medical opinion requested', 'Requests an independent second medical opinion on a case.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '75bbea4cb723577ebabd7309d97fab763180a9a340a4f19ae71c82180ff6b172') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Request for a second medical opinion — {{payload.reference}}","text":"Request for a second medical opinion\n\nDear {{payload.subjectName}},\n\nThe Board requests an independent second medical opinion in connection with the case below.\n\n  Referral reference: {{payload.reference}}\n  Case reference: {{payload.caseReference}}\n  Question to be answered: {{payload.referralQuestion}}\n  Material provided: {{payload.materialProvided}}\n  Opinion due by: {{payload.dueDate}}\n\nPlease treat all case material as confidential.\n\nWhat happens next\n  1. Review the material provided.\n  2. Return your written opinion by the due date.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Request for a second medical opinion</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">An independent second opinion has been requested.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">The Board requests an independent second medical opinion in connection with the case below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Referral reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.caseReference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Question to be answered</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.referralQuestion}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Material provided</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.materialProvided}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Opinion due by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Please treat all case material as confidential.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Review the material provided.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return your written opinion by the due date.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '75bbea4cb723577ebabd7309d97fab763180a9a340a4f19ae71c82180ff6b172',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEDICAL_REVIEW.CLARIFICATION_REQUESTED — Medical clarification requested
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEDICAL_REVIEW.CLARIFICATION_REQUESTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEDICAL_REVIEW.CLARIFICATION_REQUESTED', 'BENEFITS', 'MEDICAL_REVIEW', 'Medical clarification requested',
+       'Asks the reporting provider to clarify part of a medical report.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Medical clarification requested', description = 'Asks the reporting provider to clarify part of a medical report.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '3ad01dd0cd6b626a3beac32af2219a70fe9995186635911d822a2dd27d4d5a20') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["caseReference","clarificationRequest","dueDate","reference","subjectName"],"properties":{"caseReference":{"type":"string","minLength":1},"clarificationRequest":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"caseReference":"BN-2026-000318","clarificationRequest":"Please confirm the expected duration of incapacity","dueDate":"5 September 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '3ad01dd0cd6b626a3beac32af2219a70fe9995186635911d822a2dd27d4d5a20',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mr_clarification_requested', 'Medical clarification requested', 'Asks the reporting provider to clarify part of a medical report.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '6465b4ba7ac69239ea229e119efea887de76581c0bc7af24d1f04b03bb4699be') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Clarification needed on medical report {{payload.reference}}","text":"Clarification requested on a medical report\n\nDear {{payload.subjectName}},\n\nThank you for your report. Before the case can proceed, we need clarification on the point set out below.\n\n  Referral reference: {{payload.reference}}\n  Case reference: {{payload.caseReference}}\n  Point requiring clarification: {{payload.clarificationRequest}}\n  Respond by: {{payload.dueDate}}\n\nWhat happens next\n  1. Provide a short written clarification addressing the point raised.\n  2. Return it by the date shown.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Clarification requested on a medical report</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We need clarification on part of your report.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your report. Before the case can proceed, we need clarification on the point set out below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Referral reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.caseReference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Point requiring clarification</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.clarificationRequest}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Respond by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Provide a short written clarification addressing the point raised.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return it by the date shown.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '6465b4ba7ac69239ea229e119efea887de76581c0bc7af24d1f04b03bb4699be',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEDICAL_REVIEW.BOARD_SESSION_SCHEDULED — Medical board session scheduled
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEDICAL_REVIEW.BOARD_SESSION_SCHEDULED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEDICAL_REVIEW.BOARD_SESSION_SCHEDULED', 'BENEFITS', 'MEDICAL_REVIEW', 'Medical board session scheduled',
+       'Convenes members for a scheduled medical board session.', 'operational', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Medical board session scheduled', description = 'Convenes members for a scheduled medical board session.',
+           communication_class = 'operational',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'dea26ecd75627ef7639d82b19d893d6d73cedd237c48237d32864a3f067a824f') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["caseCount","reference","sessionDate","sessionLocation","sessionTime","subjectName"],"properties":{"caseCount":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"sessionDate":{"type":"string","minLength":1},"sessionLocation":{"type":"string","minLength":1},"sessionTime":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"caseCount":"12","reference":"CLM-2026-000141","sessionDate":"18 September 2026","sessionLocation":"Board Room, Social Security Headquarters","sessionTime":"09:00","subjectName":"Alicia Warner"}'::jsonb, 'published', 'dea26ecd75627ef7639d82b19d893d6d73cedd237c48237d32864a3f067a824f',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mr_board_session_scheduled', 'Medical board session scheduled', 'Convenes members for a scheduled medical board session.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '290aad38abd3dcdb47c3295c5ae7390ec8e7a0cbdd581d5d05855521520531da') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Medical board session on {{payload.sessionDate}}","text":"Medical board session scheduled\n\nDear {{payload.subjectName}},\n\nA medical board session has been scheduled. Your attendance is requested.\n\n  Session reference: {{payload.reference}}\n  Date: {{payload.sessionDate}}\n  Time: {{payload.sessionTime}}\n  Location: {{payload.sessionLocation}}\n  Cases listed: {{payload.caseCount}}\n\nAll case papers are confidential and must not be shared outside the board.\n\nWhat happens next\n  1. Review the case papers before the session.\n  2. Confirm your attendance with the secretariat.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Medical board session scheduled</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A medical board session has been scheduled.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A medical board session has been scheduled. Your attendance is requested.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Session reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.sessionDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Time</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.sessionTime}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Location</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.sessionLocation}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Cases listed</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.caseCount}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">All case papers are confidential and must not be shared outside the board.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Review the case papers before the session.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Confirm your attendance with the secretariat.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '290aad38abd3dcdb47c3295c5ae7390ec8e7a0cbdd581d5d05855521520531da',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEDICAL_REVIEW.BOARD_EVIDENCE_REQUESTED — Medical board evidence requested
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEDICAL_REVIEW.BOARD_EVIDENCE_REQUESTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEDICAL_REVIEW.BOARD_EVIDENCE_REQUESTED', 'BENEFITS', 'MEDICAL_REVIEW', 'Medical board evidence requested',
+       'Requests further medical evidence ahead of a board review.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Medical board evidence requested', description = 'Requests further medical evidence ahead of a board review.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '9298944f65097d670120de1615eac89e61a164a290ec82d21cda8dcf7580af15') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["dueDate","evidenceRequested","reference","subjectName","submissionChannel"],"properties":{"dueDate":{"type":"string","minLength":1},"evidenceRequested":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submissionChannel":{"type":"string","minLength":1}}}'::jsonb,
+       '{"dueDate":"5 September 2026","evidenceRequested":"Medical certificate covering 1–31 July 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submissionChannel":"In person at any Social Security office, or by post"}'::jsonb, 'published', '9298944f65097d670120de1615eac89e61a164a290ec82d21cda8dcf7580af15',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mr_board_evidence_requested', 'Medical board evidence requested', 'Requests further medical evidence ahead of a board review.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '6ba6c799857bfe55dbb79b9cab1532cc5cb9e60de2f99a0fd4e743478d30f10a') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Medical evidence needed for your case {{payload.reference}}","text":"Further medical evidence is needed\n\nDear {{payload.subjectName}},\n\nThe medical board reviewing your case requires further evidence before it can reach a conclusion.\n\n  Case reference: {{payload.reference}}\n  Evidence required: {{payload.evidenceRequested}}\n  Send by: {{payload.dueDate}}\n  How to send: {{payload.submissionChannel}}\n\nIf the evidence is not received in time, the board may proceed on the information already held.\n\nWhat happens next\n  1. Obtain the evidence listed above from your treating practitioner.\n  2. Send it to us before the due date.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Further medical evidence is needed</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">The medical board needs further evidence from you.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">The medical board reviewing your case requires further evidence before it can reach a conclusion.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Evidence required</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.evidenceRequested}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Send by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to send</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submissionChannel}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If the evidence is not received in time, the board may proceed on the information already held.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Obtain the evidence listed above from your treating practitioner.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Send it to us before the due date.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '6ba6c799857bfe55dbb79b9cab1532cc5cb9e60de2f99a0fd4e743478d30f10a',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.APPEAL.SUBMITTED — Appeal submitted
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.APPEAL.SUBMITTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.APPEAL.SUBMITTED', 'BENEFITS', 'APPEAL', 'Appeal submitted',
+       'Confirms that an appeal has been lodged.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Appeal submitted', description = 'Confirms that an appeal has been lodged.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '95231e7d5cd2b5b1a840aa661e9f4c3d2045a48836f629a38bb6f2d12173f853') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["appealGrounds","decisionUnderAppeal","reference","subjectName","submittedOn"],"properties":{"appealGrounds":{"type":"string","minLength":1},"decisionUnderAppeal":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submittedOn":{"type":"string","minLength":1}}}'::jsonb,
+       '{"appealGrounds":"New medical evidence not considered in the original decision","decisionUnderAppeal":"Disallowance of claim CLM-2026-000141","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submittedOn":"12 August 2026"}'::jsonb, 'published', '95231e7d5cd2b5b1a840aa661e9f4c3d2045a48836f629a38bb6f2d12173f853',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_appeal_submitted', 'Appeal submitted', 'Confirms that an appeal has been lodged.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '52597775ae8fd1969c778c26a395f54a6266e65ce65cc22f17998555d0f38013') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your appeal {{payload.reference}} has been lodged","text":"Your appeal has been lodged\n\nDear {{payload.subjectName}},\n\nWe confirm that your appeal has been lodged and recorded. This message is your proof of lodgement.\n\n  Appeal reference: {{payload.reference}}\n  Decision appealed: {{payload.decisionUnderAppeal}}\n  Grounds recorded: {{payload.appealGrounds}}\n  Lodged on: {{payload.submittedOn}}\n\nWhat happens next\n  1. Your appeal will be checked for admissibility.\n  2. We will write to you with the outcome of that check.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your appeal has been lodged</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We have received your appeal.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We confirm that your appeal has been lodged and recorded. This message is your proof of lodgement.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Appeal reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decision appealed</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionUnderAppeal}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Grounds recorded</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appealGrounds}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Lodged on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submittedOn}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Your appeal will be checked for admissibility.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will write to you with the outcome of that check.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '52597775ae8fd1969c778c26a395f54a6266e65ce65cc22f17998555d0f38013',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.APPEAL.ACKNOWLEDGED — Appeal acknowledged
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.APPEAL.ACKNOWLEDGED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.APPEAL.ACKNOWLEDGED', 'BENEFITS', 'APPEAL', 'Appeal acknowledged',
+       'Formally acknowledges an appeal and sets expectations.', 'legal_mandatory', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Appeal acknowledged', description = 'Formally acknowledges an appeal and sets expectations.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '3454fb8d485e8f0a01acb580f1c39b42d9c7654aa6837fc3b58540112b89f992') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["acknowledgedOn","appealStage","nextMilestone","reference","subjectName"],"properties":{"acknowledgedOn":{"type":"string","minLength":1},"appealStage":{"type":"string","minLength":1},"nextMilestone":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"acknowledgedOn":"2 September 2026","appealStage":"Case preparation","nextMilestone":"Admissibility decision","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '3454fb8d485e8f0a01acb580f1c39b42d9c7654aa6837fc3b58540112b89f992',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_appeal_acknowledged', 'Appeal acknowledged', 'Formally acknowledges an appeal and sets expectations.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'ff8fbc7723ac55bd1cb7968e043b97455d5079b30612e554e7a65eae8a382c16') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Acknowledgement of your appeal {{payload.reference}}","text":"Your appeal has been acknowledged\n\nDear {{payload.subjectName}},\n\nYour appeal has been formally acknowledged and assigned for handling.\n\n  Appeal reference: {{payload.reference}}\n  Acknowledged on: {{payload.acknowledgedOn}}\n  Handling stage: {{payload.appealStage}}\n  Expected next milestone: {{payload.nextMilestone}}\n\nWhat happens next\n  1. No action is needed from you at this stage.\n  2. We will contact you if further information or a hearing is required.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your appeal has been acknowledged</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your appeal has been acknowledged.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your appeal has been formally acknowledged and assigned for handling.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Appeal reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Acknowledged on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.acknowledgedOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Handling stage</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appealStage}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Expected next milestone</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.nextMilestone}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">No action is needed from you at this stage.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will contact you if further information or a hearing is required.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'ff8fbc7723ac55bd1cb7968e043b97455d5079b30612e554e7a65eae8a382c16',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.APPEAL.ADMISSIBLE — Appeal admissible
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.APPEAL.ADMISSIBLE';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.APPEAL.ADMISSIBLE', 'BENEFITS', 'APPEAL', 'Appeal admissible',
+       'Tells the appellant the appeal has been accepted for consideration.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Appeal admissible', description = 'Tells the appellant the appeal has been accepted for consideration.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '7f30428860483ef42ce7187e9667aad5091da13771d248b934e55ad5adb9655c') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["admissibilityDate","decisionUnderAppeal","nextMilestone","reference","subjectName"],"properties":{"admissibilityDate":{"type":"string","minLength":1},"decisionUnderAppeal":{"type":"string","minLength":1},"nextMilestone":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"admissibilityDate":"9 September 2026","decisionUnderAppeal":"Disallowance of claim CLM-2026-000141","nextMilestone":"Admissibility decision","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '7f30428860483ef42ce7187e9667aad5091da13771d248b934e55ad5adb9655c',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_appeal_admissible', 'Appeal admissible', 'Tells the appellant the appeal has been accepted for consideration.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '728e74e2d6b327b1b9471004972edd74ce8520be7ab51586a05e00a66f4c0c37') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your appeal {{payload.reference}} will be considered","text":"Your appeal has been accepted\n\nDear {{payload.subjectName}},\n\nYour appeal has been examined and found admissible. It will now proceed to consideration on its merits.\n\n  Appeal reference: {{payload.reference}}\n  Decision appealed: {{payload.decisionUnderAppeal}}\n  Admissible from: {{payload.admissibilityDate}}\n  Next stage: {{payload.nextMilestone}}\n\nWhat happens next\n  1. Send any further supporting evidence as soon as possible.\n  2. We will notify you if a hearing is arranged.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your appeal has been accepted</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your appeal has been accepted as admissible.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your appeal has been examined and found admissible. It will now proceed to consideration on its merits.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Appeal reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decision appealed</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionUnderAppeal}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Admissible from</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.admissibilityDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Next stage</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.nextMilestone}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Send any further supporting evidence as soon as possible.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will notify you if a hearing is arranged.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '728e74e2d6b327b1b9471004972edd74ce8520be7ab51586a05e00a66f4c0c37',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.APPEAL.INADMISSIBLE — Appeal inadmissible
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.APPEAL.INADMISSIBLE';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.APPEAL.INADMISSIBLE', 'BENEFITS', 'APPEAL', 'Appeal inadmissible',
+       'Tells the appellant the appeal cannot be considered and explains why.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Appeal inadmissible', description = 'Tells the appellant the appeal cannot be considered and explains why.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '7fa970c8ba4980c013275b2a7cda402425e56c1ccef4310a6159d32a784701e2') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["decisionDate","decisionUnderAppeal","inadmissibilityReason","reference","subjectName"],"properties":{"decisionDate":{"type":"string","minLength":1},"decisionUnderAppeal":{"type":"string","minLength":1},"inadmissibilityReason":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"decisionDate":"28 August 2026","decisionUnderAppeal":"Disallowance of claim CLM-2026-000141","inadmissibilityReason":"The appeal was lodged outside the statutory period","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '7fa970c8ba4980c013275b2a7cda402425e56c1ccef4310a6159d32a784701e2',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_appeal_inadmissible', 'Appeal inadmissible', 'Tells the appellant the appeal cannot be considered and explains why.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '314e1139fe72a623b2b213742197de291d6d77d9e2e44bc2d1bb2369b8d40683') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your appeal {{payload.reference}} cannot be considered","text":"Your appeal cannot be considered\n\nDear {{payload.subjectName}},\n\nYour appeal has been examined. It cannot be considered for the reason set out below.\n\n  Appeal reference: {{payload.reference}}\n  Decision appealed: {{payload.decisionUnderAppeal}}\n  Reason: {{payload.inadmissibilityReason}}\n  Determined on: {{payload.decisionDate}}\n\nThis decision concerns admissibility only. It is not a decision on the merits of your case.\n\nWhat happens next\n  1. Read the reason given above.\n  2. If the reason can be cured — for example a missing document — you may write to us again.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your appeal cannot be considered</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your appeal has been found inadmissible.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your appeal has been examined. It cannot be considered for the reason set out below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Appeal reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decision appealed</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionUnderAppeal}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.inadmissibilityReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Determined on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">This decision concerns admissibility only. It is not a decision on the merits of your case.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Read the reason given above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If the reason can be cured — for example a missing document — you may write to us again.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '314e1139fe72a623b2b213742197de291d6d77d9e2e44bc2d1bb2369b8d40683',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.APPEAL.HEARING_SCHEDULED — Appeal hearing scheduled
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.APPEAL.HEARING_SCHEDULED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.APPEAL.HEARING_SCHEDULED', 'BENEFITS', 'APPEAL', 'Appeal hearing scheduled',
+       'Notifies the appellant of the hearing date, time and place.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Appeal hearing scheduled', description = 'Notifies the appellant of the hearing date, time and place.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'a8ac8f14794210a6520e415e9adb381933ba0517b62bcbe0033f62a4555b440b') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["hearingDate","hearingTime","hearingType","hearingVenue","reference","subjectName"],"properties":{"hearingDate":{"type":"string","minLength":1},"hearingTime":{"type":"string","minLength":1},"hearingType":{"type":"string","minLength":1},"hearingVenue":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"hearingDate":"14 October 2026","hearingTime":"11:00","hearingType":"Oral hearing","hearingVenue":"Appeals Tribunal Room, Basseterre","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'a8ac8f14794210a6520e415e9adb381933ba0517b62bcbe0033f62a4555b440b',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_appeal_hearing_scheduled', 'Appeal hearing scheduled', 'Notifies the appellant of the hearing date, time and place.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'a901ca528268e5446d94dfb3227b07c498e46119bc17b81430cedeb9c9f7b807') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your appeal hearing is on {{payload.hearingDate}}","text":"Your appeal hearing has been scheduled\n\nDear {{payload.subjectName}},\n\nA hearing has been scheduled for your appeal. Please make arrangements to attend.\n\n  Appeal reference: {{payload.reference}}\n  Hearing date: {{payload.hearingDate}}\n  Hearing time: {{payload.hearingTime}}\n  Venue: {{payload.hearingVenue}}\n  Hearing type: {{payload.hearingType}}\n\nIf you do not attend, the hearing may proceed in your absence and a decision may be made on the papers.\n\nWhat happens next\n  1. Confirm your attendance with the appeals secretariat.\n  2. Bring any documents you intend to rely on.\n  3. Tell us in advance if you will be represented.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your appeal hearing has been scheduled</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A hearing has been scheduled for your appeal.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A hearing has been scheduled for your appeal. Please make arrangements to attend.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Appeal reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Hearing date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.hearingDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Hearing time</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.hearingTime}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Venue</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.hearingVenue}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Hearing type</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.hearingType}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If you do not attend, the hearing may proceed in your absence and a decision may be made on the papers.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Confirm your attendance with the appeals secretariat.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Bring any documents you intend to rely on.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Tell us in advance if you will be represented.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'a901ca528268e5446d94dfb3227b07c498e46119bc17b81430cedeb9c9f7b807',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.APPEAL.DECIDED — Appeal decided
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.APPEAL.DECIDED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.APPEAL.DECIDED', 'BENEFITS', 'APPEAL', 'Appeal decided',
+       'Issues the appeal decision and any further rights.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Appeal decided', description = 'Issues the appeal decision and any further rights.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '6aa2edea2eb99cbe1ce08faf7e650179525af3b30aa212c824870108282bd24f') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["appealOutcome","decisionDate","decisionReason","implementationSummary","reference","subjectName"],"properties":{"appealOutcome":{"type":"string","minLength":1},"decisionDate":{"type":"string","minLength":1},"decisionReason":{"type":"string","minLength":1},"implementationSummary":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"appealOutcome":"Appeal allowed","decisionDate":"28 August 2026","decisionReason":"The contribution condition for this benefit was not satisfied","implementationSummary":"Your claim will be reassessed and any arrears paid","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '6aa2edea2eb99cbe1ce08faf7e650179525af3b30aa212c824870108282bd24f',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_appeal_decided', 'Appeal decided', 'Issues the appeal decision and any further rights.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '9505eac884ab595dc7a96020851552be640318d59f735babfb95569dc1cfe34f') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Decision on your appeal {{payload.reference}}","text":"Decision on your appeal\n\nDear {{payload.subjectName}},\n\nYour appeal has been decided. The outcome and the reasons for it are set out below.\n\n  Appeal reference: {{payload.reference}}\n  Outcome: {{payload.appealOutcome}}\n  Reasons: {{payload.decisionReason}}\n  Decision date: {{payload.decisionDate}}\n  Effect on your benefit: {{payload.implementationSummary}}\n\nIf you disagree with this decision, any further right of review must be exercised within the period allowed by law.\n\nWhat happens next\n  1. Read the outcome and reasons carefully.\n  2. Where the decision changes your benefit, the change will be implemented and confirmed to you separately.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Decision on your appeal</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A decision has been made on your appeal.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your appeal has been decided. The outcome and the reasons for it are set out below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Appeal reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Outcome</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.appealOutcome}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reasons</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decision date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Effect on your benefit</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.implementationSummary}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If you disagree with this decision, any further right of review must be exercised within the period allowed by law.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Read the outcome and reasons carefully.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Where the decision changes your benefit, the change will be implemented and confirmed to you separately.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '9505eac884ab595dc7a96020851552be640318d59f735babfb95569dc1cfe34f',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.APPEAL.WITHDRAWN — Appeal withdrawn
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.APPEAL.WITHDRAWN';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.APPEAL.WITHDRAWN', 'BENEFITS', 'APPEAL', 'Appeal withdrawn',
+       'Confirms withdrawal of an appeal and its consequences.', 'legal_mandatory', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Appeal withdrawn', description = 'Confirms withdrawal of an appeal and its consequences.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '9c62443954be617b30357e8b3d6fb451a9dc763c73d067e0eb3b16bd39159955') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["decisionUnderAppeal","reference","subjectName","withdrawalReason","withdrawnOn"],"properties":{"decisionUnderAppeal":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"withdrawalReason":{"type":"string","minLength":1},"withdrawnOn":{"type":"string","minLength":1}}}'::jsonb,
+       '{"decisionUnderAppeal":"Disallowance of claim CLM-2026-000141","reference":"CLM-2026-000141","subjectName":"Alicia Warner","withdrawalReason":"Requested by the claimant","withdrawnOn":"18 August 2026"}'::jsonb, 'published', '9c62443954be617b30357e8b3d6fb451a9dc763c73d067e0eb3b16bd39159955',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_appeal_withdrawn', 'Appeal withdrawn', 'Confirms withdrawal of an appeal and its consequences.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'd63e52a071c2689be29652285e7fc65cfcf30c7758bca44197d8ebb0cb7e7930') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your appeal {{payload.reference}} has been withdrawn","text":"Your appeal has been withdrawn\n\nDear {{payload.subjectName}},\n\nWe have recorded the withdrawal of your appeal. No hearing will take place and no appeal decision will be issued.\n\n  Appeal reference: {{payload.reference}}\n  Withdrawn on: {{payload.withdrawnOn}}\n  Reason recorded: {{payload.withdrawalReason}}\n  Decision that stands: {{payload.decisionUnderAppeal}}\n\nWhat happens next\n  1. The original decision remains in force.\n  2. Contact us if the withdrawal was recorded in error.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your appeal has been withdrawn</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We have closed your appeal at your request.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have recorded the withdrawal of your appeal. No hearing will take place and no appeal decision will be issued.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Appeal reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Withdrawn on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.withdrawnOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason recorded</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.withdrawalReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decision that stands</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionUnderAppeal}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">The original decision remains in force.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if the withdrawal was recorded in error.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'd63e52a071c2689be29652285e7fc65cfcf30c7758bca44197d8ebb0cb7e7930',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.NOTICE_ISSUED — Overpayment notice issued
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.NOTICE_ISSUED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.NOTICE_ISSUED', 'BENEFITS', 'OVERPAYMENT', 'Overpayment notice issued',
+       'Issues a formal notice that an overpayment has been identified, with the right to make representations.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Overpayment notice issued', description = 'Issues a formal notice that an overpayment has been identified, with the right to make representations.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '68ece2d96eb3fda74b117d4e9f2c0b9e6cf0bd3e89494774f23426d936909b1d') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["dueDate","overpaidAmount","overpaymentCause","overpaymentPeriod","reference","subjectName"],"properties":{"dueDate":{"type":"string","minLength":1},"overpaidAmount":{"type":"string","minLength":1},"overpaymentCause":{"type":"string","minLength":1},"overpaymentPeriod":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"dueDate":"5 September 2026","overpaidAmount":"XCD 1,240.00","overpaymentCause":"Benefit paid after return to employment","overpaymentPeriod":"1 March 2026 to 30 June 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '68ece2d96eb3fda74b117d4e9f2c0b9e6cf0bd3e89494774f23426d936909b1d',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_notice_issued', 'Overpayment notice issued', 'Issues a formal notice that an overpayment has been identified, with the right to make representations.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '5e11dd258d634d598a43afacadd86cff96c836e210967ee64bf1f5a234e4b909') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Notice of overpayment {{payload.reference}}","text":"Notice of overpayment\n\nDear {{payload.subjectName}},\n\nA review of your benefit record shows that you were paid more than you were entitled to receive. This notice sets out the amount, the period and the reason.\n\n  Overpayment reference: {{payload.reference}}\n  Amount overpaid: {{payload.overpaidAmount}}\n  Period covered: {{payload.overpaymentPeriod}}\n  Cause: {{payload.overpaymentCause}}\n  Respond by: {{payload.dueDate}}\n\nYou have the right to make representations before recovery begins. If we do not hear from you by {{payload.dueDate}}, recovery action may start.\n\nWhat happens next\n  1. Read the figures above and check them against your records.\n  2. If you disagree, send us your written representations before the date shown.\n  3. If you accept the amount, contact us to agree how it will be repaid.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Notice of overpayment</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">An overpayment has been identified on your record.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">A review of your benefit record shows that you were paid more than you were entitled to receive. This notice sets out the amount, the period and the reason.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount overpaid</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaidAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Period covered</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaymentPeriod}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Cause</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaymentCause}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Respond by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">You have the right to make representations before recovery begins. If we do not hear from you by {{payload.dueDate}}, recovery action may start.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Read the figures above and check them against your records.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If you disagree, send us your written representations before the date shown.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If you accept the amount, contact us to agree how it will be repaid.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '5e11dd258d634d598a43afacadd86cff96c836e210967ee64bf1f5a234e4b909',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.REPRESENTATION_RECEIVED — Overpayment representation received
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.REPRESENTATION_RECEIVED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.REPRESENTATION_RECEIVED', 'BENEFITS', 'OVERPAYMENT', 'Overpayment representation received',
+       'Confirms receipt of representations against an overpayment.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Overpayment representation received', description = 'Confirms receipt of representations against an overpayment.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'c9aea7c783725e7beda8911f79375a55dc16d3bba41a19d8d79ea1f10146b08b') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["receivedOn","reference","representationSummary","subjectName"],"properties":{"receivedOn":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"representationSummary":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"receivedOn":"21 August 2026","reference":"CLM-2026-000141","representationSummary":"Statement of earnings and hardship submitted","subjectName":"Alicia Warner"}'::jsonb, 'published', 'c9aea7c783725e7beda8911f79375a55dc16d3bba41a19d8d79ea1f10146b08b',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_representation_received', 'Overpayment representation received', 'Confirms receipt of representations against an overpayment.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'b6e06cd3efa739657725eeebe2fd53d3dd8282c1d438c5012df565a246e90455') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"We have received your response on overpayment {{payload.reference}}","text":"We have received your representations\n\nDear {{payload.subjectName}},\n\nThank you. Your representations about the overpayment have been received and will be considered before any decision on recovery is made.\n\n  Overpayment reference: {{payload.reference}}\n  Received on: {{payload.receivedOn}}\n  Points raised: {{payload.representationSummary}}\n\nRecovery is normally held while your representations are considered.\n\nWhat happens next\n  1. An officer will consider what you have told us.\n  2. We will write to you with the outcome.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">We have received your representations</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your representations are being considered.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you. Your representations about the overpayment have been received and will be considered before any decision on recovery is made.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Received on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.receivedOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Points raised</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.representationSummary}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Recovery is normally held while your representations are considered.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">An officer will consider what you have told us.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will write to you with the outcome.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'b6e06cd3efa739657725eeebe2fd53d3dd8282c1d438c5012df565a246e90455',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.LIABILITY_CONFIRMED — Overpayment liability confirmed
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.LIABILITY_CONFIRMED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.LIABILITY_CONFIRMED', 'BENEFITS', 'OVERPAYMENT', 'Overpayment liability confirmed',
+       'Confirms the final recoverable amount after consideration.', 'legal_mandatory', 'urgent',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Overpayment liability confirmed', description = 'Confirms the final recoverable amount after consideration.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'urgent', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'e1fd9a38e29e5cd6e2c02ed2a9a4e4b998a754a6e2fa2b71b08b6c20651e6a99') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["decisionReason","dueDate","overpaidAmount","overpaymentPeriod","reference","subjectName"],"properties":{"decisionReason":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"overpaidAmount":{"type":"string","minLength":1},"overpaymentPeriod":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"decisionReason":"The contribution condition for this benefit was not satisfied","dueDate":"5 September 2026","overpaidAmount":"XCD 1,240.00","overpaymentPeriod":"1 March 2026 to 30 June 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'e1fd9a38e29e5cd6e2c02ed2a9a4e4b998a754a6e2fa2b71b08b6c20651e6a99',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_liability_confirmed', 'Overpayment liability confirmed', 'Confirms the final recoverable amount after consideration.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'c9f19aeec8781b8940c5a58e34e1e417ee1a21b3fd87b2eebbd703f2a95b97f5') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Confirmed amount recoverable — overpayment {{payload.reference}}","text":"The overpayment amount has been confirmed\n\nDear {{payload.subjectName}},\n\nWe have considered all the information available, including anything you sent us. The recoverable amount has now been confirmed.\n\n  Overpayment reference: {{payload.reference}}\n  Amount recoverable: {{payload.overpaidAmount}}\n  Period covered: {{payload.overpaymentPeriod}}\n  Reason liability stands: {{payload.decisionReason}}\n  Respond by: {{payload.dueDate}}\n\nIf no arrangement is agreed, recovery may be made from ongoing benefit payments or by other lawful means. You may appeal this determination.\n\nWhat happens next\n  1. Contact us to agree a repayment arrangement.\n  2. If you cannot repay in full, ask about an instalment plan or a waiver.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">The overpayment amount has been confirmed</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">The recoverable amount has been confirmed.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have considered all the information available, including anything you sent us. The recoverable amount has now been confirmed.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount recoverable</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaidAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Period covered</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaymentPeriod}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason liability stands</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Respond by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If no arrangement is agreed, recovery may be made from ongoing benefit payments or by other lawful means. You may appeal this determination.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us to agree a repayment arrangement.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If you cannot repay in full, ask about an instalment plan or a waiver.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'c9f19aeec8781b8940c5a58e34e1e417ee1a21b3fd87b2eebbd703f2a95b97f5',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.RECOVERY_PLAN_PROPOSED — Recovery plan proposed
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.RECOVERY_PLAN_PROPOSED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.RECOVERY_PLAN_PROPOSED', 'BENEFITS', 'OVERPAYMENT', 'Recovery plan proposed',
+       'Puts a proposed repayment plan to the debtor for agreement.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Recovery plan proposed', description = 'Puts a proposed repayment plan to the debtor for agreement.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'e827ee05d32973555c4397601415aa3f212bd24036701054fb300c68b2a60c5d') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["dueDate","firstInstalmentDate","instalmentAmount","instalmentFrequency","overpaidAmount","reference","subjectName"],"properties":{"dueDate":{"type":"string","minLength":1},"firstInstalmentDate":{"type":"string","minLength":1},"instalmentAmount":{"type":"string","minLength":1},"instalmentFrequency":{"type":"string","minLength":1},"overpaidAmount":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"dueDate":"5 September 2026","firstInstalmentDate":"1 October 2026","instalmentAmount":"XCD 100.00","instalmentFrequency":"Monthly","overpaidAmount":"XCD 1,240.00","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'e827ee05d32973555c4397601415aa3f212bd24036701054fb300c68b2a60c5d',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_recovery_plan_proposed', 'Recovery plan proposed', 'Puts a proposed repayment plan to the debtor for agreement.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'f864a5fd561d798102d1c6afa09cce36c8f9ae0530c4166b36dd389b459b6394') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Proposed repayment plan for overpayment {{payload.reference}}","text":"A repayment plan has been proposed\n\nDear {{payload.subjectName}},\n\nWe have prepared a proposed repayment plan for the confirmed overpayment. Please review the terms below.\n\n  Overpayment reference: {{payload.reference}}\n  Total to repay: {{payload.overpaidAmount}}\n  Instalment amount: {{payload.instalmentAmount}}\n  Frequency: {{payload.instalmentFrequency}}\n  First instalment due: {{payload.firstInstalmentDate}}\n  Respond by: {{payload.dueDate}}\n\nWhat happens next\n  1. Tell us whether you accept the proposed terms.\n  2. If the instalments are unaffordable, tell us what you can pay and why.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">A repayment plan has been proposed</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Please review the proposed repayment terms.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have prepared a proposed repayment plan for the confirmed overpayment. Please review the terms below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Total to repay</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaidAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Instalment amount</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.instalmentAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Frequency</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.instalmentFrequency}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">First instalment due</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.firstInstalmentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Respond by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Tell us whether you accept the proposed terms.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If the instalments are unaffordable, tell us what you can pay and why.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'f864a5fd561d798102d1c6afa09cce36c8f9ae0530c4166b36dd389b459b6394',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.RECOVERY_PLAN_APPROVED — Recovery plan approved
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.RECOVERY_PLAN_APPROVED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.RECOVERY_PLAN_APPROVED', 'BENEFITS', 'OVERPAYMENT', 'Recovery plan approved',
+       'Confirms an agreed repayment plan and its terms.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Recovery plan approved', description = 'Confirms an agreed repayment plan and its terms.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'eac87f47f8da59bcaf97f1f9218034bb4771d2db70421b31d606caa530da8355') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["firstInstalmentDate","instalmentAmount","instalmentFrequency","overpaidAmount","paymentMethod","reference","subjectName"],"properties":{"firstInstalmentDate":{"type":"string","minLength":1},"instalmentAmount":{"type":"string","minLength":1},"instalmentFrequency":{"type":"string","minLength":1},"overpaidAmount":{"type":"string","minLength":1},"paymentMethod":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"firstInstalmentDate":"1 October 2026","instalmentAmount":"XCD 100.00","instalmentFrequency":"Monthly","overpaidAmount":"XCD 1,240.00","paymentMethod":"Direct bank transfer","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'eac87f47f8da59bcaf97f1f9218034bb4771d2db70421b31d606caa530da8355',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_recovery_plan_approved', 'Recovery plan approved', 'Confirms an agreed repayment plan and its terms.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'd3a126c997ed01b13270fed5a2608ec5f98bcc7a9ff710f8e1867ed8c5eb910c') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your repayment plan for overpayment {{payload.reference}} is approved","text":"Your repayment plan has been approved\n\nDear {{payload.subjectName}},\n\nYour repayment plan has been approved. Please keep to the terms below so that no further recovery action is needed.\n\n  Overpayment reference: {{payload.reference}}\n  Total to repay: {{payload.overpaidAmount}}\n  Instalment amount: {{payload.instalmentAmount}}\n  Frequency: {{payload.instalmentFrequency}}\n  First instalment due: {{payload.firstInstalmentDate}}\n  How to pay: {{payload.paymentMethod}}\n\nIf instalments are missed, the full outstanding balance may become due at once.\n\nWhat happens next\n  1. Make each instalment on or before its due date.\n  2. Contact us immediately if your circumstances change and you cannot pay.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your repayment plan has been approved</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your repayment plan has been approved.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your repayment plan has been approved. Please keep to the terms below so that no further recovery action is needed.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Total to repay</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaidAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Instalment amount</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.instalmentAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Frequency</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.instalmentFrequency}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">First instalment due</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.firstInstalmentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to pay</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.paymentMethod}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If instalments are missed, the full outstanding balance may become due at once.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Make each instalment on or before its due date.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us immediately if your circumstances change and you cannot pay.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'd3a126c997ed01b13270fed5a2608ec5f98bcc7a9ff710f8e1867ed8c5eb910c',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.RECOVERY_PLAN_REJECTED — Recovery plan rejected
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.RECOVERY_PLAN_REJECTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.RECOVERY_PLAN_REJECTED', 'BENEFITS', 'OVERPAYMENT', 'Recovery plan rejected',
+       'Explains why a proposed repayment plan was not accepted.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Recovery plan rejected', description = 'Explains why a proposed repayment plan was not accepted.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '70e5cfa3d86a12b53163a5a36f57df3f5a9018e8c17a0cc69974ffcb66cc5336') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["decisionReason","dueDate","overpaidAmount","reference","subjectName"],"properties":{"decisionReason":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"overpaidAmount":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"decisionReason":"The contribution condition for this benefit was not satisfied","dueDate":"5 September 2026","overpaidAmount":"XCD 1,240.00","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '70e5cfa3d86a12b53163a5a36f57df3f5a9018e8c17a0cc69974ffcb66cc5336',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_recovery_plan_rejected', 'Recovery plan rejected', 'Explains why a proposed repayment plan was not accepted.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '502577f9cc277eb9dde64dc5c77189e274adbc7959187d150299d4cdc68ae506') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your proposed repayment plan was not accepted","text":"Your proposed repayment plan was not accepted\n\nDear {{payload.subjectName}},\n\nWe have considered the repayment plan you proposed for the overpayment. Unfortunately it cannot be accepted for the reason below.\n\n  Overpayment reference: {{payload.reference}}\n  Amount outstanding: {{payload.overpaidAmount}}\n  Reason: {{payload.decisionReason}}\n  Respond by: {{payload.dueDate}}\n\nWhat happens next\n  1. Contact us to discuss an affordable alternative.\n  2. Send evidence of your income and expenses if affordability is the issue.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your proposed repayment plan was not accepted</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We could not accept the plan you proposed.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have considered the repayment plan you proposed for the overpayment. Unfortunately it cannot be accepted for the reason below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount outstanding</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaidAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Respond by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us to discuss an affordable alternative.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Send evidence of your income and expenses if affordability is the issue.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '502577f9cc277eb9dde64dc5c77189e274adbc7959187d150299d4cdc68ae506',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.RECOVERY_PLAN_REVISED — Recovery plan revised
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.RECOVERY_PLAN_REVISED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.RECOVERY_PLAN_REVISED', 'BENEFITS', 'OVERPAYMENT', 'Recovery plan revised',
+       'Confirms revised repayment terms.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Recovery plan revised', description = 'Confirms revised repayment terms.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'ed7edb87fd16179ae7ed5fc61f4350e97c774c1dd1c296af61b17673b128627f') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["balanceOutstanding","firstInstalmentDate","instalmentAmount","instalmentFrequency","reference","revisionReason","subjectName"],"properties":{"balanceOutstanding":{"type":"string","minLength":1},"firstInstalmentDate":{"type":"string","minLength":1},"instalmentAmount":{"type":"string","minLength":1},"instalmentFrequency":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"revisionReason":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"balanceOutstanding":"XCD 1,140.00","firstInstalmentDate":"1 October 2026","instalmentAmount":"XCD 100.00","instalmentFrequency":"Monthly","reference":"CLM-2026-000141","revisionReason":"Change in your reported income","subjectName":"Alicia Warner"}'::jsonb, 'published', 'ed7edb87fd16179ae7ed5fc61f4350e97c774c1dd1c296af61b17673b128627f',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_recovery_plan_revised', 'Recovery plan revised', 'Confirms revised repayment terms.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'c2b422f37ae7d58ca2f452bf1024f0531cd1861f9f6462b9d0e7fc2cc3669195') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your repayment plan has been revised","text":"Your repayment plan has been revised\n\nDear {{payload.subjectName}},\n\nYour repayment plan has been revised. The new terms replace the previous arrangement and take effect immediately.\n\n  Overpayment reference: {{payload.reference}}\n  Balance outstanding: {{payload.balanceOutstanding}}\n  New instalment amount: {{payload.instalmentAmount}}\n  Frequency: {{payload.instalmentFrequency}}\n  Next instalment due: {{payload.firstInstalmentDate}}\n  Reason for revision: {{payload.revisionReason}}\n\nWhat happens next\n  1. Pay each revised instalment on time.\n  2. Contact us if the revised terms are still unaffordable.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your repayment plan has been revised</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">The terms of your repayment plan have changed.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your repayment plan has been revised. The new terms replace the previous arrangement and take effect immediately.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Balance outstanding</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.balanceOutstanding}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">New instalment amount</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.instalmentAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Frequency</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.instalmentFrequency}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Next instalment due</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.firstInstalmentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for revision</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.revisionReason}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Pay each revised instalment on time.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if the revised terms are still unaffordable.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'c2b422f37ae7d58ca2f452bf1024f0531cd1861f9f6462b9d0e7fc2cc3669195',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.WAIVER_APPROVED — Overpayment waiver approved
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.WAIVER_APPROVED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.WAIVER_APPROVED', 'BENEFITS', 'OVERPAYMENT', 'Overpayment waiver approved',
+       'Confirms that recovery has been waived in whole or in part.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Overpayment waiver approved', description = 'Confirms that recovery has been waived in whole or in part.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '707a6609c4f9cc27fb338eb8a87b16f3a19205971489038645624d2bdc249ed1') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["balanceOutstanding","decisionDate","decisionReason","reference","subjectName","waivedAmount"],"properties":{"balanceOutstanding":{"type":"string","minLength":1},"decisionDate":{"type":"string","minLength":1},"decisionReason":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"waivedAmount":{"type":"string","minLength":1}}}'::jsonb,
+       '{"balanceOutstanding":"XCD 1,140.00","decisionDate":"28 August 2026","decisionReason":"The contribution condition for this benefit was not satisfied","reference":"CLM-2026-000141","subjectName":"Alicia Warner","waivedAmount":"XCD 620.00"}'::jsonb, 'published', '707a6609c4f9cc27fb338eb8a87b16f3a19205971489038645624d2bdc249ed1',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_waiver_approved', 'Overpayment waiver approved', 'Confirms that recovery has been waived in whole or in part.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'f3efd0dfd012355773696a122632fde67d4a20c39c1ca09cb62d898f807c95a0') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your waiver request on overpayment {{payload.reference}} was approved","text":"Your waiver request has been approved\n\nDear {{payload.subjectName}},\n\nYour request for the overpayment to be waived has been approved. The amount waived is shown below.\n\n  Overpayment reference: {{payload.reference}}\n  Amount waived: {{payload.waivedAmount}}\n  Balance still recoverable: {{payload.balanceOutstanding}}\n  Approved on: {{payload.decisionDate}}\n  Basis for the waiver: {{payload.decisionReason}}\n\nWhat happens next\n  1. Keep this notice for your records.\n  2. If a balance remains, continue to pay it as arranged.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your waiver request has been approved</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Recovery has been waived.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your request for the overpayment to be waived has been approved. The amount waived is shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount waived</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.waivedAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Balance still recoverable</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.balanceOutstanding}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Approved on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Basis for the waiver</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionReason}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Keep this notice for your records.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">If a balance remains, continue to pay it as arranged.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'f3efd0dfd012355773696a122632fde67d4a20c39c1ca09cb62d898f807c95a0',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.WAIVER_REJECTED — Overpayment waiver rejected
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.WAIVER_REJECTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.WAIVER_REJECTED', 'BENEFITS', 'OVERPAYMENT', 'Overpayment waiver rejected',
+       'Explains why a waiver request was refused.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Overpayment waiver rejected', description = 'Explains why a waiver request was refused.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'adb8f18f62cd8867f7fe0bf92d3157d1f8fac5a8dc7c973b682a83b943e0ff26') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["decisionDate","decisionReason","overpaidAmount","reference","subjectName"],"properties":{"decisionDate":{"type":"string","minLength":1},"decisionReason":{"type":"string","minLength":1},"overpaidAmount":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"decisionDate":"28 August 2026","decisionReason":"The contribution condition for this benefit was not satisfied","overpaidAmount":"XCD 1,240.00","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'adb8f18f62cd8867f7fe0bf92d3157d1f8fac5a8dc7c973b682a83b943e0ff26',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_waiver_rejected', 'Overpayment waiver rejected', 'Explains why a waiver request was refused.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'a9d5ae2a51cbf7151dcd7b511838573fa2d5e4a4d571cc780ccdd733a9f66f18') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your waiver request on overpayment {{payload.reference}} was refused","text":"Your waiver request has not been granted\n\nDear {{payload.subjectName}},\n\nWe have considered your request for the overpayment to be waived. The request has been refused for the reason below.\n\n  Overpayment reference: {{payload.reference}}\n  Amount recoverable: {{payload.overpaidAmount}}\n  Reason for refusal: {{payload.decisionReason}}\n  Decided on: {{payload.decisionDate}}\n\nYou may appeal this determination within the statutory period.\n\nWhat happens next\n  1. Contact us to agree how the amount will be repaid.\n  2. Tell us if your financial circumstances have changed since you applied.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your waiver request has not been granted</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your waiver request has not been granted.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have considered your request for the overpayment to be waived. The request has been refused for the reason below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Amount recoverable</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaidAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason for refusal</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decided on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">You may appeal this determination within the statutory period.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us to agree how the amount will be repaid.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Tell us if your financial circumstances have changed since you applied.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'a9d5ae2a51cbf7151dcd7b511838573fa2d5e4a4d571cc780ccdd733a9f66f18',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.OVERPAYMENT.RECOVERED — Overpayment fully recovered
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.OVERPAYMENT.RECOVERED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.OVERPAYMENT.RECOVERED', 'BENEFITS', 'OVERPAYMENT', 'Overpayment fully recovered',
+       'Confirms that an overpayment has been repaid in full.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Overpayment fully recovered', description = 'Confirms that an overpayment has been repaid in full.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'a84f4509cf14d20c322c38bfd6eeb819ebbf83a341df459708a2182386ee4f57') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["balanceOutstanding","finalPaymentDate","recoveredAmount","reference","subjectName"],"properties":{"balanceOutstanding":{"type":"string","minLength":1},"finalPaymentDate":{"type":"string","minLength":1},"recoveredAmount":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"balanceOutstanding":"XCD 1,140.00","finalPaymentDate":"1 August 2027","recoveredAmount":"XCD 1,240.00","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', 'a84f4509cf14d20c322c38bfd6eeb819ebbf83a341df459708a2182386ee4f57',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_ovp_recovered', 'Overpayment fully recovered', 'Confirms that an overpayment has been repaid in full.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'f64b328c9ff9bfb78009f122943af85af5fc1e562bf31a5f0b2fa8e080e68551') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Overpayment {{payload.reference}} has been repaid in full","text":"Your overpayment has been repaid in full\n\nDear {{payload.subjectName}},\n\nWe confirm that the overpayment on your record has been recovered in full. Nothing further is owed on this case.\n\n  Overpayment reference: {{payload.reference}}\n  Total recovered: {{payload.recoveredAmount}}\n  Final payment date: {{payload.finalPaymentDate}}\n  Closing balance: {{payload.balanceOutstanding}}\n\nWhat happens next\n  1. Keep this notice as proof that the debt is cleared.\n  2. Any recovery from your benefit payments will now stop.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your overpayment has been repaid in full</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your overpayment balance is now clear.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We confirm that the overpayment on your record has been recovered in full. Nothing further is owed on this case.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Overpayment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Total recovered</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.recoveredAmount}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Final payment date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.finalPaymentDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Closing balance</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.balanceOutstanding}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Keep this notice as proof that the debt is cleared.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Any recovery from your benefit payments will now stop.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'f64b328c9ff9bfb78009f122943af85af5fc1e562bf31a5f0b2fa8e080e68551',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEANS_TEST.SUBMITTED — Means test submitted
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEANS_TEST.SUBMITTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEANS_TEST.SUBMITTED', 'BENEFITS', 'MEANS_TEST', 'Means test submitted',
+       'Acknowledges a means test declaration.', 'transactional', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Means test submitted', description = 'Acknowledges a means test declaration.',
+           communication_class = 'transactional',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = 'e15f34bf14c744060ffa89cf356f80bf75e0f7675c4444ee9598564383a05da2') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["assessmentPeriod","householdSize","reference","subjectName","submittedOn"],"properties":{"assessmentPeriod":{"type":"string","minLength":1},"householdSize":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submittedOn":{"type":"string","minLength":1}}}'::jsonb,
+       '{"assessmentPeriod":"1 January 2026 to 31 December 2026","householdSize":"4","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submittedOn":"12 August 2026"}'::jsonb, 'published', 'e15f34bf14c744060ffa89cf356f80bf75e0f7675c4444ee9598564383a05da2',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_means_test_submitted', 'Means test submitted', 'Acknowledges a means test declaration.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '9c0b4440b4055014ac965869415dbec763c3f120a06e6691f16390df0ffbaaec') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"We have received your means test declaration {{payload.reference}}","text":"Your means test declaration has been received\n\nDear {{payload.subjectName}},\n\nThank you for submitting your means test declaration. It has been recorded and will now be assessed.\n\n  Assessment reference: {{payload.reference}}\n  Submitted on: {{payload.submittedOn}}\n  Household size declared: {{payload.householdSize}}\n  Assessment period: {{payload.assessmentPeriod}}\n\nYou must tell us if any declared income, asset or household detail changes during the assessment.\n\nWhat happens next\n  1. An officer will assess the declaration and any supporting documents.\n  2. We will contact you if further information is needed.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your means test declaration has been received</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your means test declaration has been received.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for submitting your means test declaration. It has been recorded and will now be assessed.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Submitted on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submittedOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Household size declared</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.householdSize}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessment period</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.assessmentPeriod}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">You must tell us if any declared income, asset or household detail changes during the assessment.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">An officer will assess the declaration and any supporting documents.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We will contact you if further information is needed.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '9c0b4440b4055014ac965869415dbec763c3f120a06e6691f16390df0ffbaaec',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEANS_TEST.INFORMATION_REQUESTED — Means test information requested
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEANS_TEST.INFORMATION_REQUESTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEANS_TEST.INFORMATION_REQUESTED', 'BENEFITS', 'MEANS_TEST', 'Means test information requested',
+       'Requests further financial information for a means assessment.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Means test information requested', description = 'Requests further financial information for a means assessment.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '987d780593ab2ea8067eda5402d905f95784096c13cc4ec7b7406d718e680f6e') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["dueDate","informationRequested","reference","subjectName","submissionChannel"],"properties":{"dueDate":{"type":"string","minLength":1},"informationRequested":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submissionChannel":{"type":"string","minLength":1}}}'::jsonb,
+       '{"dueDate":"5 September 2026","informationRequested":"Bank statements for the last three months","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submissionChannel":"In person at any Social Security office, or by post"}'::jsonb, 'published', '987d780593ab2ea8067eda5402d905f95784096c13cc4ec7b7406d718e680f6e',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_means_test_information_requested', 'Means test information requested', 'Requests further financial information for a means assessment.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '6fb9a771433e3f05e9e5636767141340eed5d84a170dd32ce652bd5d15c74505') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"More information needed for your means assessment","text":"We need more information for your means assessment\n\nDear {{payload.subjectName}},\n\nYour means assessment cannot be completed until we receive the information listed below.\n\n  Assessment reference: {{payload.reference}}\n  Information required: {{payload.informationRequested}}\n  Send by: {{payload.dueDate}}\n  How to send: {{payload.submissionChannel}}\n\nIf the information is not received, the assessment may be completed on the information already held or refused.\n\nWhat happens next\n  1. Gather the items listed above.\n  2. Send them before the due date.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">We need more information for your means assessment</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We need further financial information from you.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your means assessment cannot be completed until we receive the information listed below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Information required</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.informationRequested}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Send by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to send</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submissionChannel}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If the information is not received, the assessment may be completed on the information already held or refused.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Gather the items listed above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Send them before the due date.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '6fb9a771433e3f05e9e5636767141340eed5d84a170dd32ce652bd5d15c74505',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEANS_TEST.APPROVED — Means test approved
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEANS_TEST.APPROVED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEANS_TEST.APPROVED', 'BENEFITS', 'MEANS_TEST', 'Means test approved',
+       'Communicates a successful means assessment outcome.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Means test approved', description = 'Communicates a successful means assessment outcome.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '421670b4ede282321cc8884d36b58c9035085bb54a9229d30a534f75b8142ba0') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["assessedIncome","assessedMeans","effectiveFrom","nextReviewDate","reference","subjectName"],"properties":{"assessedIncome":{"type":"string","minLength":1},"assessedMeans":{"type":"string","minLength":1},"effectiveFrom":{"type":"string","minLength":1},"nextReviewDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"assessedIncome":"XCD 1,850.00 per month","assessedMeans":"XCD 2,050.00 per month","effectiveFrom":"1 September 2026","nextReviewDate":"1 September 2027","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '421670b4ede282321cc8884d36b58c9035085bb54a9229d30a534f75b8142ba0',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_means_test_approved', 'Means test approved', 'Communicates a successful means assessment outcome.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'd4362ad20bf8dfaf4a036689ffcb19cca72e006bacebe65d40b0f0756f693be7') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Outcome of your means assessment {{payload.reference}}","text":"Your means assessment has been approved\n\nDear {{payload.subjectName}},\n\nYour means assessment has been completed and approved. The assessed figures used in the decision are shown below.\n\n  Assessment reference: {{payload.reference}}\n  Assessed income: {{payload.assessedIncome}}\n  Assessed means: {{payload.assessedMeans}}\n  Effective from: {{payload.effectiveFrom}}\n  Next reassessment: {{payload.nextReviewDate}}\n\nYou may appeal the assessed figures within the statutory period.\n\nWhat happens next\n  1. Check the assessed figures.\n  2. Report any change in income, assets or household composition immediately.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your means assessment has been approved</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your means assessment has been approved.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your means assessment has been completed and approved. The assessed figures used in the decision are shown below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessed income</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.assessedIncome}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessed means</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.assessedMeans}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Effective from</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.effectiveFrom}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Next reassessment</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.nextReviewDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">You may appeal the assessed figures within the statutory period.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Check the assessed figures.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Report any change in income, assets or household composition immediately.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'd4362ad20bf8dfaf4a036689ffcb19cca72e006bacebe65d40b0f0756f693be7',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEANS_TEST.REJECTED — Means test rejected
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEANS_TEST.REJECTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEANS_TEST.REJECTED', 'BENEFITS', 'MEANS_TEST', 'Means test rejected',
+       'Communicates an unsuccessful means assessment outcome.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Means test rejected', description = 'Communicates an unsuccessful means assessment outcome.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '6df6d7aa207478700fd324a7f83318cdddb682038a3459652a85071ab4f08072') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["assessedMeans","decisionDate","decisionReason","meansThreshold","reference","subjectName"],"properties":{"assessedMeans":{"type":"string","minLength":1},"decisionDate":{"type":"string","minLength":1},"decisionReason":{"type":"string","minLength":1},"meansThreshold":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"assessedMeans":"XCD 2,050.00 per month","decisionDate":"28 August 2026","decisionReason":"The contribution condition for this benefit was not satisfied","meansThreshold":"XCD 1,900.00 per month","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '6df6d7aa207478700fd324a7f83318cdddb682038a3459652a85071ab4f08072',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_means_test_rejected', 'Means test rejected', 'Communicates an unsuccessful means assessment outcome.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '8fa81a46980d189ecd173abc837139dd28a35365c420044d238bd2b9422eefd7') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Outcome of your means assessment {{payload.reference}}","text":"Outcome of your means assessment\n\nDear {{payload.subjectName}},\n\nYour means assessment has been completed. On the information assessed, the means condition for this benefit is not met.\n\n  Assessment reference: {{payload.reference}}\n  Assessed means: {{payload.assessedMeans}}\n  Applicable threshold: {{payload.meansThreshold}}\n  Reason: {{payload.decisionReason}}\n  Decision date: {{payload.decisionDate}}\n\nYou have the right to appeal this assessment within the statutory period.\n\nWhat happens next\n  1. Check the assessed figures against your own records.\n  2. Send us corrected information if anything is wrong.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Outcome of your means assessment</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Your means assessment was not approved.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your means assessment has been completed. On the information assessed, the means condition for this benefit is not met.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessed means</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.assessedMeans}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Applicable threshold</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.meansThreshold}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decision date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">You have the right to appeal this assessment within the statutory period.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Check the assessed figures against your own records.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Send us corrected information if anything is wrong.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '8fa81a46980d189ecd173abc837139dd28a35365c420044d238bd2b9422eefd7',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MEANS_TEST.REASSESSMENT_DUE — Means reassessment due
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MEANS_TEST.REASSESSMENT_DUE';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MEANS_TEST.REASSESSMENT_DUE', 'BENEFITS', 'MEANS_TEST', 'Means reassessment due',
+       'Tells the claimant that a periodic means reassessment is due.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Means reassessment due', description = 'Tells the claimant that a periodic means reassessment is due.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '21352891e35a2b3419f0e62e17258f7acf880684eae19c9c55e51c430ecdee2d') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["assessmentPeriod","dueDate","informationRequested","reference","subjectName"],"properties":{"assessmentPeriod":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"informationRequested":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"assessmentPeriod":"1 January 2026 to 31 December 2026","dueDate":"5 September 2026","informationRequested":"Bank statements for the last three months","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '21352891e35a2b3419f0e62e17258f7acf880684eae19c9c55e51c430ecdee2d',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_means_test_reassessment_due', 'Means reassessment due', 'Tells the claimant that a periodic means reassessment is due.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '50888dd8c33940d0cbcd736f825543a58358aca5c7dbe027c0b5d3875fad8c74') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Your means reassessment is due by {{payload.dueDate}}","text":"Your means reassessment is due\n\nDear {{payload.subjectName}},\n\nYour benefit is subject to periodic means reassessment. A new declaration is now due so that your entitlement can continue.\n\n  Assessment reference: {{payload.reference}}\n  Reassessment period: {{payload.assessmentPeriod}}\n  Due date: {{payload.dueDate}}\n  What to provide: {{payload.informationRequested}}\n\nIf the reassessment is not completed, your benefit may be suspended or reduced.\n\nWhat happens next\n  1. Complete a new declaration with current figures.\n  2. Send it with supporting documents before the due date.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Your means reassessment is due</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A periodic means reassessment is now due.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Your benefit is subject to periodic means reassessment. A new declaration is now due so that your entitlement can continue.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessment reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reassessment period</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.assessmentPeriod}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Due date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">What to provide</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.informationRequested}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If the reassessment is not completed, your benefit may be suspended or reduced.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Complete a new declaration with current figures.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Send it with supporting documents before the due date.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '50888dd8c33940d0cbcd736f825543a58358aca5c7dbe027c0b5d3875fad8c74',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MORTALITY.REPORTED — Death report received
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MORTALITY.REPORTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MORTALITY.REPORTED', 'BENEFITS', 'MORTALITY', 'Death report received',
+       'Acknowledges a reported death to the person who reported it.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Death report received', description = 'Acknowledges a reported death to the person who reported it.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '5fbdf55b330f9a3a7cc647119b40ccef397c8bb62b4c505afdf30c2437d1a7a0') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["caseStatus","reference","reportedOn","subjectName","subjectSummary"],"properties":{"caseStatus":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"reportedOn":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"subjectSummary":{"type":"string","minLength":1}}}'::jsonb,
+       '{"caseStatus":"Awaiting verification","reference":"CLM-2026-000141","reportedOn":"3 September 2026","subjectName":"Alicia Warner","subjectSummary":"Pensioner record P-2026-0042"}'::jsonb, 'published', '5fbdf55b330f9a3a7cc647119b40ccef397c8bb62b4c505afdf30c2437d1a7a0',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mortality_reported', 'Death report received', 'Acknowledges a reported death to the person who reported it.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '4c8d1dad57401de6fb75bb4985b562e847f8e6e2803a583685615a4c549571dc') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"We have received your report — reference {{payload.reference}}","text":"We have received your report\n\nDear {{payload.subjectName}},\n\nPlease accept our condolences. This message confirms that the report you made to the Social Security Board has been received and recorded.\nWe will now check the report against our records before taking any action on benefits or awards.\n\n  Report reference: {{payload.reference}}\n  Reported on: {{payload.reportedOn}}\n  Person reported: {{payload.subjectSummary}}\n  Current status: {{payload.caseStatus}}\n\nWhat happens next\n  1. We may contact you for a certified document to verify the report.\n  2. Any benefits or awards affected will be reviewed and you will be informed.\n\nYou do not need to take any further action at this stage.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">We have received your report</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Thank you for notifying the Board.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Please accept our condolences. This message confirms that the report you made to the Social Security Board has been received and recorded.</p><p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We will now check the report against our records before taking any action on benefits or awards.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Report reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reported on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reportedOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Person reported</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.subjectSummary}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Current status</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.caseStatus}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">We may contact you for a certified document to verify the report.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Any benefits or awards affected will be reviewed and you will be informed.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">You do not need to take any further action at this stage.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '4c8d1dad57401de6fb75bb4985b562e847f8e6e2803a583685615a4c549571dc',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MORTALITY.VERIFICATION_REQUESTED — Death verification requested
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MORTALITY.VERIFICATION_REQUESTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MORTALITY.VERIFICATION_REQUESTED', 'BENEFITS', 'MORTALITY', 'Death verification requested',
+       'Requests documentary verification of a reported death.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Death verification requested', description = 'Requests documentary verification of a reported death.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '9298944f65097d670120de1615eac89e61a164a290ec82d21cda8dcf7580af15') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["dueDate","evidenceRequested","reference","subjectName","submissionChannel"],"properties":{"dueDate":{"type":"string","minLength":1},"evidenceRequested":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submissionChannel":{"type":"string","minLength":1}}}'::jsonb,
+       '{"dueDate":"5 September 2026","evidenceRequested":"Medical certificate covering 1–31 July 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submissionChannel":"In person at any Social Security office, or by post"}'::jsonb, 'published', '9298944f65097d670120de1615eac89e61a164a290ec82d21cda8dcf7580af15',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mortality_verification_requested', 'Death verification requested', 'Requests documentary verification of a reported death.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'aeb452840097764affad988a4d316ec8f15df6a54b15b9622138726304710c26') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Verification needed for report {{payload.reference}}","text":"We need a document to verify the report\n\nDear {{payload.subjectName}},\n\nBefore we can act on the report you made, we must verify it against an official document.\n\n  Report reference: {{payload.reference}}\n  Document required: {{payload.evidenceRequested}}\n  Send by: {{payload.dueDate}}\n  How to send: {{payload.submissionChannel}}\n\nWhat happens next\n  1. Send a certified copy of the document listed above.\n  2. Contact us if the document is not yet available.\n\nWe are sorry to ask for paperwork at a difficult time.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">We need a document to verify the report</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We need a document to verify the report.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Before we can act on the report you made, we must verify it against an official document.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Report reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Document required</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.evidenceRequested}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Send by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to send</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submissionChannel}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Send a certified copy of the document listed above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if the document is not yet available.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">We are sorry to ask for paperwork at a difficult time.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'aeb452840097764affad988a4d316ec8f15df6a54b15b9622138726304710c26',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MORTALITY.REJECTED — Death report not accepted
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MORTALITY.REJECTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MORTALITY.REJECTED', 'BENEFITS', 'MORTALITY', 'Death report not accepted',
+       'Explains why a reported death could not be accepted.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Death report not accepted', description = 'Explains why a reported death could not be accepted.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '43ec7eb0294f665d547286f3abbd74d89569fdb3dd8d1053330ebb1cb4f4cde6') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["decisionDate","reference","rejectionReason","resolutionRequirement","subjectName"],"properties":{"decisionDate":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"rejectionReason":{"type":"string","minLength":1},"resolutionRequirement":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"decisionDate":"28 August 2026","reference":"CLM-2026-000141","rejectionReason":"The copy supplied was not legible","resolutionRequirement":"Return a completed and witnessed life certificate","subjectName":"Alicia Warner"}'::jsonb, 'published', '43ec7eb0294f665d547286f3abbd74d89569fdb3dd8d1053330ebb1cb4f4cde6',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mortality_rejected', 'Death report not accepted', 'Explains why a reported death could not be accepted.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '79909b95c01200fd2cc0a274d6616a3b5c52ab9874f14f0c60d5747943c09706') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"We could not accept report {{payload.reference}}","text":"We could not accept the report\n\nDear {{payload.subjectName}},\n\nWe have examined the report you made. It cannot be accepted at this time for the reason set out below.\n\n  Report reference: {{payload.reference}}\n  Reason: {{payload.rejectionReason}}\n  What is needed: {{payload.resolutionRequirement}}\n  Decided on: {{payload.decisionDate}}\n\nNo benefit or award has been changed as a result of this report.\n\nWhat happens next\n  1. Send the item described above if you are able to obtain it.\n  2. Contact us if you believe the record we hold is wrong.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">We could not accept the report</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">The report could not be verified.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">We have examined the report you made. It cannot be accepted at this time for the reason set out below.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Report reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Reason</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.rejectionReason}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">What is needed</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.resolutionRequirement}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Decided on</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.decisionDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">No benefit or award has been changed as a result of this report.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Send the item described above if you are able to obtain it.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us if you believe the record we hold is wrong.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '79909b95c01200fd2cc0a274d6616a3b5c52ab9874f14f0c60d5747943c09706',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MORTALITY.AWARDS_TERMINATED — Awards terminated following death
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MORTALITY.AWARDS_TERMINATED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MORTALITY.AWARDS_TERMINATED', 'BENEFITS', 'MORTALITY', 'Awards terminated following death',
+       'Informs the estate representative that awards have been terminated following a verified death.', 'legal_mandatory', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Awards terminated following death', description = 'Informs the estate representative that awards have been terminated following a verified death.',
+           communication_class = 'legal_mandatory',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '0ebb98bd75c0841d8c346993a5f60f57db1c26134caf719d3e7183c581a00259') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["awardSummary","finalPaymentSummary","overpaidAmount","reference","subjectName","terminationDate"],"properties":{"awardSummary":{"type":"string","minLength":1},"finalPaymentSummary":{"type":"string","minLength":1},"overpaidAmount":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"terminationDate":{"type":"string","minLength":1}}}'::jsonb,
+       '{"awardSummary":"Sickness Benefit payable for 13 weeks","finalPaymentSummary":"One final payment of XCD 480.00","overpaidAmount":"XCD 1,240.00","reference":"CLM-2026-000141","subjectName":"Alicia Warner","terminationDate":"31 August 2026"}'::jsonb, 'published', '0ebb98bd75c0841d8c346993a5f60f57db1c26134caf719d3e7183c581a00259',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mortality_awards_terminated', 'Awards terminated following death', 'Informs the estate representative that awards have been terminated following a verified death.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'a5b942d21bc67fa2f0cc5daf7c3191419ef2de305a8704e974877640620ec029') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Benefit awards ended — reference {{payload.reference}}","text":"Benefit awards have been ended\n\nDear {{payload.subjectName}},\n\nFollowing verification of the death recorded on our system, the benefit awards listed below have been terminated.\nThis notice is sent so that the estate has a written record of the position.\n\n  Case reference: {{payload.reference}}\n  Awards ended: {{payload.awardSummary}}\n  Effective date: {{payload.terminationDate}}\n  Any final amount due: {{payload.finalPaymentSummary}}\n  Any amount overpaid: {{payload.overpaidAmount}}\n\nWhat happens next\n  1. Return any payment received after the effective date.\n  2. Contact us about any final amount due to the estate.\n  3. Ask us about survivor or funeral benefits if they may apply.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Benefit awards have been ended</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">Awards have been terminated following a verified death.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Following verification of the death recorded on our system, the benefit awards listed below have been terminated.</p><p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">This notice is sent so that the estate has a written record of the position.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Awards ended</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.awardSummary}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Effective date</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.terminationDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Any final amount due</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.finalPaymentSummary}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Any amount overpaid</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.overpaidAmount}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Return any payment received after the effective date.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Contact us about any final amount due to the estate.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Ask us about survivor or funeral benefits if they may apply.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'a5b942d21bc67fa2f0cc5daf7c3191419ef2de305a8704e974877640620ec029',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MORTALITY.SURVIVOR_ASSESSMENT_STARTED — Survivor assessment started
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MORTALITY.SURVIVOR_ASSESSMENT_STARTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MORTALITY.SURVIVOR_ASSESSMENT_STARTED', 'BENEFITS', 'MORTALITY', 'Survivor assessment started',
+       'Tells a potential survivor that an assessment has begun.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Survivor assessment started', description = 'Tells a potential survivor that an assessment has begun.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '12ee53c233c8cd9d64aa5f4af96a297cc11aa39d3cddcce922d196d4d17e775d') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["assessmentStartedOn","informationRequested","nextMilestone","reference","subjectName"],"properties":{"assessmentStartedOn":{"type":"string","minLength":1},"informationRequested":{"type":"string","minLength":1},"nextMilestone":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"assessmentStartedOn":"6 September 2026","informationRequested":"Bank statements for the last three months","nextMilestone":"Admissibility decision","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '12ee53c233c8cd9d64aa5f4af96a297cc11aa39d3cddcce922d196d4d17e775d',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mortality_survivor_assessment_started', 'Survivor assessment started', 'Tells a potential survivor that an assessment has begun.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '291a55f257b39eaa5a464fdab917c6b2157902d9e1047549dc7cba4fac571031') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"We are assessing your possible survivor entitlement","text":"We are assessing your possible survivor entitlement\n\nDear {{payload.subjectName}},\n\nFollowing a death recorded with the Board, we have started an assessment of whether you may be entitled to a survivor benefit.\n\n  Case reference: {{payload.reference}}\n  Assessment started: {{payload.assessmentStartedOn}}\n  Information we may need: {{payload.informationRequested}}\n  Expected next contact: {{payload.nextMilestone}}\n\nWhat happens next\n  1. Gather identification and proof of relationship in advance.\n  2. Respond promptly if we write to you asking for documents.\n\nPlease accept our condolences.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">We are assessing your possible survivor entitlement</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A survivor benefit assessment has started.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Following a death recorded with the Board, we have started an assessment of whether you may be entitled to a survivor benefit.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Assessment started</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.assessmentStartedOn}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Information we may need</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.informationRequested}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Expected next contact</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.nextMilestone}}</td></tr></tbody>\n</table>\n\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Gather identification and proof of relationship in advance.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Respond promptly if we write to you asking for documents.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Please accept our condolences.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '291a55f257b39eaa5a464fdab917c6b2157902d9e1047549dc7cba4fac571031',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.MORTALITY.FUNERAL_BENEFIT_OPPORTUNITY — Funeral benefit may be claimable
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.MORTALITY.FUNERAL_BENEFIT_OPPORTUNITY';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.MORTALITY.FUNERAL_BENEFIT_OPPORTUNITY', 'BENEFITS', 'MORTALITY', 'Funeral benefit may be claimable',
+       'Tells the person who met funeral costs that a funeral benefit may be claimable.', 'service', 'normal',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Funeral benefit may be claimable', description = 'Tells the person who met funeral costs that a funeral benefit may be claimable.',
+           communication_class = 'service',
+           default_priority = 'normal', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '2371a9f8c59e48a648639b7b7ae0277f6d69bdd2d52e23ce2036a77d16c685cd') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["benefitType","dueDate","evidenceRequested","reference","subjectName"],"properties":{"benefitType":{"type":"string","minLength":1},"dueDate":{"type":"string","minLength":1},"evidenceRequested":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1}}}'::jsonb,
+       '{"benefitType":"Invalidity Pension","dueDate":"5 September 2026","evidenceRequested":"Medical certificate covering 1–31 July 2026","reference":"CLM-2026-000141","subjectName":"Alicia Warner"}'::jsonb, 'published', '2371a9f8c59e48a648639b7b7ae0277f6d69bdd2d52e23ce2036a77d16c685cd',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_mortality_funeral_benefit_opportunity', 'Funeral benefit may be claimable', 'Tells the person who met funeral costs that a funeral benefit may be claimable.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = 'b59f77cfe73365ce102332f600be3ff3d577d3307d3b53a2c12f775dc87eb511') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"You may be able to claim a funeral benefit","text":"You may be able to claim a funeral benefit\n\nDear {{payload.subjectName}},\n\nOur records indicate that a funeral benefit may be claimable in connection with the case below.\nThis is not a decision on entitlement — it is an invitation to make a claim so that entitlement can be assessed.\n\n  Case reference: {{payload.reference}}\n  Benefit that may apply: {{payload.benefitType}}\n  Documents usually needed: {{payload.evidenceRequested}}\n  Claim by: {{payload.dueDate}}\n\nTime limits apply to funeral benefit claims. A late claim may not be payable.\n\nWhat happens next\n  1. Complete a funeral benefit claim form.\n  2. Attach the receipts and documents listed above.\n  3. Submit the claim before the time limit shown.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">You may be able to claim a funeral benefit</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">A funeral benefit may be available in this case.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">Our records indicate that a funeral benefit may be claimable in connection with the case below.</p><p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">This is not a decision on entitlement — it is an invitation to make a claim so that entitlement can be assessed.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Benefit that may apply</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.benefitType}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Documents usually needed</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.evidenceRequested}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Claim by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">Time limits apply to funeral benefit claims. A late claim may not be payable.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Complete a funeral benefit claim form.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Attach the receipts and documents listed above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Submit the claim before the time limit shown.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', 'b59f77cfe73365ce102332f600be3ff3d577d3307d3b53a2c12f775dc87eb511',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
+
+-- BENEFITS.RISK.VERIFICATION_REQUESTED — Verification of details requested
+DO $$
+DECLARE
+  v_event uuid;
+  v_family uuid;
+  v_version integer;
+BEGIN
+  SELECT id INTO v_event FROM public.omni_comms_event_definition WHERE code = 'BENEFITS.RISK.VERIFICATION_REQUESTED';
+  IF v_event IS NULL THEN
+    v_event := gen_random_uuid();
+    INSERT INTO public.omni_comms_event_definition
+      (id, code, module_code, entity_type, name, description, communication_class,
+       default_priority, status, created_at, created_by, updated_at, updated_by)
+    VALUES (v_event, 'BENEFITS.RISK.VERIFICATION_REQUESTED', 'BENEFITS', 'RISK', 'Verification of details requested',
+       'Neutral request to verify details as part of routine assurance checks; discloses no risk assessment.', 'transactional', 'high',
+       'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_definition
+       SET name = 'Verification of details requested', description = 'Neutral request to verify details as part of routine assurance checks; discloses no risk assessment.',
+           communication_class = 'transactional',
+           default_priority = 'high', status = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE id = v_event;
+  END IF;
+
+  -- Published event contract (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_contract
+                  WHERE event_definition_id = v_event AND status = 'published'
+                    AND checksum = '987d780593ab2ea8067eda5402d905f95784096c13cc4ec7b7406d718e680f6e') THEN
+    UPDATE public.omni_comms_event_contract
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_event_contract WHERE event_definition_id = v_event;
+    INSERT INTO public.omni_comms_event_contract
+      (id, event_definition_id, version_number, json_schema, sample_payload, status,
+       checksum, published_at, published_by, created_at, created_by, updated_at, updated_by)
+    VALUES (gen_random_uuid(), v_event, v_version, '{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"object","additionalProperties":false,"required":["dueDate","informationRequested","reference","subjectName","submissionChannel"],"properties":{"dueDate":{"type":"string","minLength":1},"informationRequested":{"type":"string","minLength":1},"reference":{"type":"string","minLength":1},"subjectName":{"type":"string","minLength":1},"submissionChannel":{"type":"string","minLength":1}}}'::jsonb,
+       '{"dueDate":"5 September 2026","informationRequested":"Bank statements for the last three months","reference":"CLM-2026-000141","subjectName":"Alicia Warner","submissionChannel":"In person at any Social Security office, or by post"}'::jsonb, 'published', '987d780593ab2ea8067eda5402d905f95784096c13cc4ec7b7406d718e680f6e',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Event-scoped template family.
+  SELECT id INTO v_family FROM public.omni_comms_template_family
+   WHERE event_definition_id = v_event AND status = 'active' LIMIT 1;
+  IF v_family IS NULL THEN
+    v_family := gen_random_uuid();
+    INSERT INTO public.omni_comms_template_family
+      (id, code, name, description, scope_type, organization_id, department_id,
+       event_definition_id, status, activated_at, activated_by, created_at, created_by,
+       updated_at, updated_by)
+    VALUES (v_family, 'bn_benefits_risk_verification_requested', 'Verification of details requested', 'Neutral request to verify details as part of routine assurance checks; discloses no risk assessment.',
+       'event', '69afc88b-da5c-4f41-a1e7-199e1ee1d416', NULL, v_event, 'active', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  END IF;
+
+  -- Published Email template version (content-addressed).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version
+                  WHERE template_family_id = v_family AND channel = 'email'
+                    AND locale = 'en-US' AND status = 'published'
+                    AND checksum = '1376f269a8790adfa97e6f15a61b16abac6f47a5188a1e3b45e3ba3ffeccc2a8') THEN
+    UPDATE public.omni_comms_template_version
+       SET status = 'retired', retired_at = now(), retired_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+           retirement_reason = 'Superseded by the generated Benefits letter library',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE template_family_id = v_family
+       AND channel = 'email' AND locale = 'en-US' AND status = 'published';
+    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version
+      FROM public.omni_comms_template_version
+     WHERE template_family_id = v_family AND channel = 'email' AND locale = 'en-US';
+    INSERT INTO public.omni_comms_template_version
+      (id, template_family_id, version_number, channel, locale, content, status, checksum,
+       approved_at, approved_by, published_at, published_by, created_at, created_by,
+       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)
+    VALUES (gen_random_uuid(), v_family, v_version, 'email', 'en-US',
+       '{"subject":"Please confirm some details on your record","text":"Please confirm some details on your record\n\nDear {{payload.subjectName}},\n\nAs part of routine checks on benefit records, we need you to confirm the details listed below.\nThis is a standard verification. It does not by itself mean anything is wrong with your claim or award.\n\n  Case reference: {{payload.reference}}\n  Details to confirm: {{payload.informationRequested}}\n  Respond by: {{payload.dueDate}}\n  How to respond: {{payload.submissionChannel}}\n\nIf we do not hear from you by {{payload.dueDate}}, your payments may be held while the check is completed.\n\nWhat happens next\n  1. Check each detail listed above.\n  2. Tell us whether it is correct, or send the corrected information.\n  3. Respond before the date shown.\n\nThank you for your co-operation.\nSocial Security Board, St. Kitts and Nevis\n\nReference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.","html":"<h2 style=\"margin:0 0 6px 0;color:#0f172a;font-size:20px;line-height:28px;\">Please confirm some details on your record</h2>\n<p style=\"margin:0 0 18px 0;color:#6b7280;font-size:13px;line-height:20px;\">We need you to confirm details held on your record.</p>\n<p style=\"margin:0 0 14px 0;color:#111827;font-size:15px;line-height:24px;\">Dear {{payload.subjectName}},</p>\n<p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">As part of routine checks on benefit records, we need you to confirm the details listed below.</p><p style=\"margin:0 0 14px 0;color:#374151;font-size:15px;line-height:24px;\">This is a standard verification. It does not by itself mean anything is wrong with your claim or award.</p>\n<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:18px 0;border-collapse:collapse;\">\n<tbody><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Case reference</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.reference}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Details to confirm</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.informationRequested}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">Respond by</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.dueDate}}</td></tr><tr><td style=\"padding:6px 12px 6px 0;color:#4b5563;font-size:14px;vertical-align:top;white-space:nowrap;\">How to respond</td><td style=\"padding:6px 0;color:#111827;font-size:14px;font-weight:600;\">{{payload.submissionChannel}}</td></tr></tbody>\n</table>\n<div style=\"margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:4px solid #0f766e;\">\n<p style=\"margin:0;color:#0f172a;font-size:14px;line-height:22px;\">If we do not hear from you by {{payload.dueDate}}, your payments may be held while the check is completed.</p>\n</div>\n<h3 style=\"margin:22px 0 8px 0;color:#0f172a;font-size:15px;line-height:22px;\">What happens next</h3>\n<ol style=\"margin:0 0 16px 20px;padding:0;\"><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Check each detail listed above.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Tell us whether it is correct, or send the corrected information.</li><li style=\"margin:0 0 6px 0;color:#374151;font-size:14px;line-height:22px;\">Respond before the date shown.</li></ol>\n<p style=\"margin:18px 0 6px 0;color:#374151;font-size:15px;line-height:24px;\">Thank you for your co-operation.</p>\n<p style=\"margin:0 0 18px 0;color:#111827;font-size:15px;line-height:24px;\">Social Security Board, St. Kitts and Nevis</p>\n<hr style=\"border:none;border-top:1px solid #e5e7eb;margin:20px 0;\" />\n<p style=\"margin:0;color:#6b7280;font-size:12px;line-height:20px;\">Reference {{payload.reference}}. If you have a question about this message, contact the Social Security Board and quote your reference number.</p>"}'::jsonb, 'published', '1376f269a8790adfa97e6f15a61b16abac6f47a5188a1e3b45e3ba3ffeccc2a8',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), NULL, now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       'pinned', 'c0a9d637-b9ee-4162-8b41-6a27493f1cd2', 'cce3a2af-288a-4a60-b6fe-b0369c8084d7');
+  END IF;
+
+  -- Department-scoped Email route.
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route
+                  WHERE event_definition_id = v_event AND channel = 'email'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_event_route
+      (id, organization_id, department_id, event_definition_id, channel, is_required,
+       is_enabled, priority, template_family_id, sender_identity_id,
+       sender_resolution_policy, preference_policy, lifecycle_state, created_at,
+       created_by, updated_at, updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', v_event, 'email', true, true,
+       100, v_family, 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b', 'explicit', 'honour', 'active',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_event_route
+       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND channel = 'email'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+
+  -- Active BENEFITS producer binding (queued only).
+  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_producer_event_binding
+                  WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+                    AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9') THEN
+    INSERT INTO public.omni_comms_producer_event_binding
+      (id, organization_id, department_id, caller_module_code, event_definition_id,
+       allowed_modes, status, integration_reference, created_at, created_by, updated_at,
+       updated_by, activated_at, activated_by)
+    VALUES (gen_random_uuid(), '69afc88b-da5c-4f41-a1e7-199e1ee1d416', 'c28f40f8-00db-4766-b211-5bda5dd641a9', 'BENEFITS', v_event,
+       ARRAY['queued']::text[], 'active', 'emitBenefitsCommunication', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85',
+       now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85', now(), '08655ffc-6bb2-4eea-bc5b-502c52cdcf85');
+  ELSE
+    UPDATE public.omni_comms_producer_event_binding
+       SET status = 'active', allowed_modes = ARRAY['queued']::text[],
+           activated_at = COALESCE(activated_at, now()),
+           activated_by = COALESCE(activated_by, '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'),
+           updated_at = now(), updated_by = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85'
+     WHERE event_definition_id = v_event AND caller_module_code = 'BENEFITS'
+       AND organization_id = '69afc88b-da5c-4f41-a1e7-199e1ee1d416' AND department_id = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
+  END IF;
+END $$;
