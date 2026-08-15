@@ -15,6 +15,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { runClaimCalculation } from '@/services/bn/claimActionRunner';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { BnEmptyState } from '@/components/bn/shared/BnEmptyState';
+import { MedicalExpensesPanel } from './MedicalExpensesPanel';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   claimId: string;
@@ -26,6 +29,26 @@ export const ActiveCalculationPanel: React.FC<Props> = ({ claimId, userCode, cal
   const [running, setRunning] = useState(false);
   const qc = useQueryClient();
   const latest = calculations?.[0];
+
+  // Reimbursement claims need captured expense lines before a payable amount exists.
+  const { data: isReimbursement = false } = useQuery({
+    queryKey: ['bn', 'claim-calc-type', claimId],
+    queryFn: async () => {
+      const db = supabase as any;
+      const { data: claim } = await db
+        .from('bn_claim')
+        .select('product_version_id')
+        .eq('id', claimId)
+        .maybeSingle();
+      if (!claim?.product_version_id) return false;
+      const { data: rules } = await db
+        .from('bn_calculation_rule')
+        .select('calc_type, is_active')
+        .eq('product_version_id', claim.product_version_id);
+      return (rules ?? []).some((r: any) =>
+        ['REIMBURSEMENT', 'MEDICAL_REIMBURSEMENT', 'ACTUAL_COST'].includes(String(r.calc_type).toUpperCase()));
+    },
+  });
 
   const handleRun = async () => {
     if (!userCode) {
@@ -53,6 +76,8 @@ export const ActiveCalculationPanel: React.FC<Props> = ({ claimId, userCode, cal
 
   if (!latest) {
     return (
+      <div className="space-y-4">
+      {isReimbursement && <MedicalExpensesPanel claimId={claimId} userCode={userCode} />}
       <Card>
         <CardContent className="py-10 flex flex-col items-center gap-4">
           <BnEmptyState
@@ -66,6 +91,7 @@ export const ActiveCalculationPanel: React.FC<Props> = ({ claimId, userCode, cal
           </Button>
         </CardContent>
       </Card>
+      </div>
     );
   }
 
@@ -76,6 +102,7 @@ export const ActiveCalculationPanel: React.FC<Props> = ({ claimId, userCode, cal
 
   return (
     <div className="space-y-4">
+      {isReimbursement && <MedicalExpensesPanel claimId={claimId} userCode={userCode} />}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
