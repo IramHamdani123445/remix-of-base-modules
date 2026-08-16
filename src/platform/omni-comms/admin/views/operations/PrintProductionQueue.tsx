@@ -13,7 +13,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Layers, Printer, RefreshCw } from "lucide-react";
+import { ExternalLink, Eye, Layers, Printer, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,25 @@ import {
   previewPrintBatch,
 } from "@/platform/omni-comms/application/printBatchService";
 import PrintBatchConsole from "./PrintBatchConsole";
+import PrintReadinessPanel, {
+  PRINT_READINESS_QUERY_KEY,
+} from "./PrintReadinessPanel";
+import { useOmniCommsPrintDocumentInvoker } from "@/platform/omni-comms/admin/hooks/useOmniCommsPrintDocument";
+import {
+  requestPrintDocument,
+  PrintDocumentError,
+  type PrintDocumentAccess,
+  type PrintDocumentMode,
+} from "@/platform/omni-comms/application/printDocumentService";
+import { describePrintError } from "@/platform/omni-comms/application/printReadinessTypes";
+
+/** Statuses from which an operator may open the letter for physical printing. */
+const OPENABLE_FOR_PRINT: readonly OmniCommsPrintStatus[] = [
+  "artefact_produced",
+  "queued_for_print",
+  "printing",
+  "print_failed",
+];
 
 
 
@@ -101,6 +120,14 @@ const PrintProductionQueueInner: React.FC = () => {
   const [selected, setSelected] = useState<string[]>([]);
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchNotes, setBatchNotes] = useState("");
+
+  // Open & Print — secure access to the official print PDF.
+  const printDocuments = useOmniCommsPrintDocumentInvoker();
+  const [openRow, setOpenRow] = useState<PrintQueueRow | null>(null);
+  const [access, setAccess] = useState<PrintDocumentAccess | null>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
+
+
 
 
   const queueKey = [
@@ -155,6 +182,69 @@ const PrintProductionQueueInner: React.FC = () => {
       toast.error(message);
     },
   });
+
+  /**
+   * Opens the official Print PDF. `print` mode also moves the letter into
+   * physical printing and opens a governed attempt server-side; `preview`
+   * changes nothing.
+   */
+  const openDocument = useMutation({
+    mutationFn: (input: { row: PrintQueueRow; mode: PrintDocumentMode }) =>
+      requestPrintDocument(printDocuments, {
+        printItemId: input.row.id,
+        mode: input.mode,
+        expectedVersion: input.mode === "print" ? input.row.version : null,
+      }),
+    onMutate: (input) => {
+      setOpenRow(input.row);
+      setAccess(null);
+      setAccessError(null);
+    },
+    onSuccess: (result) => {
+      setAccess(result);
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-queue"] });
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-item"] });
+      void queryClient.invalidateQueries({ queryKey: PRINT_READINESS_QUERY_KEY });
+    },
+    onError: (error: unknown) => {
+      const code =
+        error instanceof PrintDocumentError ? error.errorCode : "print_access_failed";
+      const guidance = describePrintError(code);
+      setAccessError(`${guidance.title} ${guidance.action}`);
+    },
+  });
+
+  /** Records the physical outcome for the letter currently open for printing. */
+  const recordOutcome = useMutation({
+    mutationFn: (input: { row: PrintQueueRow; action: OmniCommsPrintAction }) =>
+      performPrintItemAction(client, {
+        id: input.row.id,
+        action: input.action,
+        expectedVersion: null,
+        reason:
+          input.action === "confirm_printed"
+            ? "Printed at the workstation."
+            : reason.trim() || "Recorded from the Open & Print workflow.",
+        equipmentReference: equipment.trim() || null,
+      }),
+    onSuccess: (result) => {
+      toast.success(
+        `Print item is now “${OMNI_COMMS_PRINT_STATUS_LABELS[result.physical_status]}”.`,
+      );
+      setOpenRow(null);
+      setAccess(null);
+      setReason("");
+      setEquipment("");
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-queue"] });
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-item"] });
+    },
+    onError: (error: unknown) =>
+      toast.error(
+        error instanceof Error ? error.message : "Could not record the print outcome.",
+      ),
+  });
+
+
 
   const rows = queue.data?.items ?? [];
   const fullDetail = queue.data?.full_detail_permitted ?? false;
