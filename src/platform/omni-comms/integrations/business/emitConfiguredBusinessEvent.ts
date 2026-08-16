@@ -30,17 +30,8 @@ import { emitBusinessCommunication } from './emitBusinessCommunication';
 import { resolveBusinessCommunicationScope } from './businessScopeResolver';
 import { resolveEffectiveCommunicationPlan } from '../../application/effectiveCommunicationPlan';
 import { buildConfiguredEventIdempotencyKey } from './configuredEventIdentity';
-import type { OmniCommsChannel as FacadeChannel } from '../../sendCommunication';
 
-/** Channels the public façade accepts today. */
-const FACADE_CHANNELS: FacadeChannel[] = [
-  'email',
-  'sms',
-  'whatsapp',
-  'push',
-  'in_app',
-  'print',
-];
+
 import {
   OMNI_COMMS_RECIPIENT_TYPES,
   type BusinessProducerOutcome,
