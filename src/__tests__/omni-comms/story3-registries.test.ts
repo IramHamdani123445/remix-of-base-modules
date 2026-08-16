@@ -60,7 +60,7 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     expect(r.errors).toEqual([]);
     expect(r.ok).toBe(true);
     expect(r.counts).toEqual({
-      activeObjects: 42,
+      activeObjects: 44,
       deferredObjects: 2,
       routes: 7,
       integrations: 11,
