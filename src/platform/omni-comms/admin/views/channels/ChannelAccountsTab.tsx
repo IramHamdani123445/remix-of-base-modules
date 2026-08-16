@@ -444,7 +444,7 @@ export const ChannelAccountsTab: React.FC<{
  */
 export function accountLifecycleActions(
   account: ChannelProviderAccountRow,
-  opts: { verifiable: boolean; complete: boolean },
+  opts: { verifiable: boolean; complete: boolean; credentialFree?: boolean },
 ): LifecycleActionDescriptor[] {
   const actions: LifecycleActionDescriptor[] = [];
   if (opts.verifiable) {
@@ -453,8 +453,11 @@ export function accountLifecycleActions(
   const canActivate = account.status === 'draft' || account.status === 'disabled';
   const complete = opts.complete;
   if (canActivate) {
-    const blocked =
-      !opts.verifiable
+    // A credential-free internal adapter has nothing to verify, so requiring a
+    // verification step would make it permanently unactivatable.
+    const blocked = opts.credentialFree
+      ? undefined
+      : !opts.verifiable
         ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
         : !complete
           ? 'All required credential references must be configured.'
