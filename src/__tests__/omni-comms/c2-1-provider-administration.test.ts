@@ -39,9 +39,11 @@ function makeClient(calls: { fn: string; args: unknown }[]) {
 describe('C2.1 — adapter catalogue', () => {
   it('is truthful about which adapters can deliver', () => {
     expect(adapterDeliveryImplemented('resend')).toBe(true);
-    expect(adapterDeliveryImplemented('twilio')).toBe(false);
+    // Twilio SMS delivery is now implemented (server-only adapter).
+    expect(adapterDeliveryImplemented('twilio')).toBe(true);
     expect(OMNI_COMMS_PROVIDER_ADAPTERS.filter((a) => a.deliveryImplemented))
-      .toHaveLength(1);
+      .toHaveLength(2);
+
     expect(NO_DELIVERY_ADAPTER_MESSAGE).toMatch(/no delivery adapter is installed/i);
   });
 
