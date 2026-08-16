@@ -690,6 +690,9 @@ Deno.serve(async (req: Request) => {
       p_recipient_references: canonical.recipients
         .map((r) => r.recipientReference)
         .filter((v): v is string => typeof v === "string" && v.length > 0),
+      // Product authority: a product-specific action of the same code fully
+      // replaces the generic one. Resolution happens server-side only.
+      p_product_id: canonical.businessContext.productId ?? null,
     },
   );
 
