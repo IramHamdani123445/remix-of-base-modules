@@ -58,6 +58,26 @@ export interface SenderSnapshot {
   department_id: string | null;
 }
 
+/**
+ * One `delivery_legs[]` entry persisted by the Communication Action model.
+ * Structurally a channel resolution PLUS the action obligation it satisfies.
+ */
+export interface PersistedDeliveryLeg extends PersistedChannelResolution {
+  leg_key: string;
+  communication_action_id: string;
+  communication_action_code: string;
+  recipient_role: string | null;
+  obligation: string;
+  satisfaction_rule: string;
+  action_channel_option_id: string;
+  delivery_policy_id: string | null;
+  delivery_policy_version: number | null;
+  delivery_policy_mode: string | null;
+  resolution_reason: string;
+  is_fallback: boolean;
+  template_family_source: "action_option" | "route_fallback";
+}
+
 /** One `channel_resolutions[]` entry persisted by Slice 2c-ii. */
 export interface PersistedChannelResolution {
   channel: string;
@@ -100,6 +120,7 @@ export interface PersistedRecipient {
     fingerprint?: string;
     input_index?: number;
     channel_resolutions?: PersistedChannelResolution[];
+    delivery_legs?: PersistedDeliveryLeg[];
   };
 }
 
@@ -163,4 +184,10 @@ export interface MessageCandidate {
   rendered_checksum: string | null;
   status: "rendered" | "blocked";
   blockers: string[];
+  /** Communication Action binding. Null under the legacy route model. */
+  action_id?: string | null;
+  action_channel_option_id?: string | null;
+  delivery_policy_id?: string | null;
+  delivery_leg_key?: string | null;
+  resolution_reason?: Record<string, unknown> | null;
 }
