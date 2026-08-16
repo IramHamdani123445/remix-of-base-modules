@@ -339,6 +339,10 @@ const PrintProductionQueueInner: React.FC = () => {
         </div>
       </header>
 
+      {/* The single authoritative Print readiness / control-gate panel. */}
+      <PrintReadinessPanel />
+
+      {/* Batching stays optional — it never gates printing one letter. */}
       <PrintBatchConsole />
 
 
