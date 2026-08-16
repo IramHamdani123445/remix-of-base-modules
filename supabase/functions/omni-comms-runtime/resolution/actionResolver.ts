@@ -259,6 +259,7 @@ export function resolveCommunicationActions(
       actionModelApplies: false,
       actions: [],
       selectedChannels: [],
+      deliveryLegs: [],
       blockers: [],
     };
   }
@@ -277,8 +278,38 @@ export function resolveCommunicationActions(
     (p) => p.preference === "paper_required",
   );
 
+  // ── Fulfilment evidence, per ACTION CHANNEL OPTION ─────────────────────
+  const fulfilment = input.optionFulfilment ?? null;
+  const optionFulfilment = (
+    option: ActionChannelOptionRow,
+  ): ActionOptionFulfilment => {
+    const explicit = fulfilment?.[option.id];
+    if (explicit) return explicit;
+    return {
+      variantAvailable: input.channelsWithVariant.includes(option.channel),
+      channelReady: input.readyChannels.includes(option.channel),
+      destinationAvailable: DIGITAL_CHANNELS.has(option.channel)
+        ? input.digitalDestinationAvailable
+        : true,
+    };
+  };
+
+  // Corrected semantics: "digital is available" means at least one DIGITAL
+  // action option can genuinely be fulfilled — destination AND published
+  // channel variant AND transport readiness. Holding an email address while
+  // the Email channel is disabled, unpublished or unbound is NOT availability.
+  const digitalFulfilmentAvailable = fulfilment
+    ? snapshot.action_channel_options.some((o) => {
+      if (o.status !== "active") return false;
+      if (!DIGITAL_CHANNELS.has(o.channel)) return false;
+      const f = optionFulfilment(o);
+      return f.destinationAvailable && f.variantAvailable && f.channelReady;
+    })
+    : input.digitalDestinationAvailable;
+
   const resolved: ResolvedAction[] = [];
   const blockers: string[] = [];
+
 
   for (const action of actions) {
     const options = snapshot.action_channel_options
