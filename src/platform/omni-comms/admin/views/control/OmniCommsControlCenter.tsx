@@ -506,40 +506,45 @@ export const OmniCommsControlCenter: React.FC = () => {
         </CardContent>
       </Card>
 
-      <DeliveryStatusPanel
-        snapshot={snapshot}
-        automation={automation.status}
-        pendingApprovals={approvals.open.length}
-        channelLabel={CHANNEL_LABEL}
-      />
+      {isPrint ? null : (
+        <>
+          <DeliveryStatusPanel
+            snapshot={snapshot}
+            automation={automation.status}
+            pendingApprovals={approvals.open.length}
+            channelLabel={CHANNEL_LABEL}
+          />
 
-      <GateApprovalQueueCard
-        open={approvals.open}
-        recent={approvals.recent}
-        loading={approvals.loading}
-        error={approvals.error}
-        busyId={busyRequestId}
-        onApprove={onApprove}
-        onReject={onReject}
-        onWithdraw={onWithdraw}
-      />
+          <GateApprovalQueueCard
+            open={approvals.open}
+            recent={approvals.recent}
+            loading={approvals.loading}
+            error={approvals.error}
+            busyId={busyRequestId}
+            onApprove={onApprove}
+            onReject={onReject}
+            onWithdraw={onWithdraw}
+          />
 
-      <SimpleTestDeliveryCard
-        client={client}
-        transport={testTransport}
-        organizationId={organizationId}
-        departmentId={departmentId ?? null}
-        channel={CHANNEL}
-        channelLabel={CHANNEL_LABEL}
-        bindingId={bindingId}
-        canExecute={canTest}
-      />
+          <SimpleTestDeliveryCard
+            client={client}
+            transport={testTransport}
+            organizationId={organizationId}
+            departmentId={departmentId ?? null}
+            channel={CHANNEL}
+            channelLabel={CHANNEL_LABEL}
+            bindingId={bindingId}
+            canExecute={canTest}
+          />
 
-      <TestDeliveryTraceCard
-        deliveries={testDeliveries}
-        loading={loading}
-        onRefresh={() => void load()}
-      />
+          <TestDeliveryTraceCard
+            deliveries={testDeliveries}
+            loading={loading}
+            onRefresh={() => void load()}
+          />
+        </>
+      )}
+
 
       <OmniCommsAutomationOverviewCard organizationId={organizationId} />
 
