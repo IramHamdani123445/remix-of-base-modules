@@ -436,59 +436,7 @@ Deno.serve(async (req) => {
     secretResolver,
     storageMode,
   });
+  return await finish(outcome);
 
-
-  if (outcome.status === "accepted") {
-    const delivery = await complete("accepted", "provider_accepted", {
-      providerMessageId: outcome.providerMessageId,
-      providerStatusCode: outcome.providerStatusCode,
-      providerResponse: { ...outcome.providerResponse, latency_ms: outcome.latencyMs },
-    });
-    return json({ replayed: false, dispatched: true, delivery });
-  }
-
-  if (outcome.status === "outcome_unknown") {
-    console.error(
-      "omni-comms-test-delivery outcome unknown:",
-      outcome.errorCode ?? "provider_outcome_unknown",
-    );
-    // The request may have reached the provider — never assert failure.
-    const delivery = await complete("outcome_unknown", "provider_outcome_unknown", {
-      providerStatusCode: outcome.providerStatusCode,
-      providerResponse: outcome.providerResponse,
-      errorCode: outcome.errorCode ?? "provider_outcome_unknown",
-      errorDetail: outcome.errorDetail,
-    });
-    return json(
-      {
-        error: "provider_outcome_unknown",
-        status: outcome.providerStatusCode,
-        detail: outcome.errorDetail
-          ?? "The provider outcome is unknown. A safe retry is permitted.",
-        delivery,
-      },
-      outcome.providerStatusCode ?? 502,
-    );
-  }
-
-  console.error(
-    `omni-comms-test-delivery provider rejected [${outcome.providerStatusCode ?? 0}]`,
-    JSON.stringify(outcome.providerResponse),
-  );
-  const delivery = await complete("failed", outcome.resultCode, {
-    providerStatusCode: outcome.providerStatusCode,
-    providerResponse: outcome.providerResponse,
-    errorCode: outcome.errorCode ?? "provider_error",
-    errorDetail: outcome.errorDetail,
-  });
-  return json(
-    {
-      error: "provider_rejected",
-      status: outcome.providerStatusCode,
-      detail: outcome.errorDetail ?? "The provider rejected the test message.",
-      delivery,
-    },
-    outcome.providerStatusCode ?? 502,
-  );
 });
 
