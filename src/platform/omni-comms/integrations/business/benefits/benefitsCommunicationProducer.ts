@@ -43,6 +43,12 @@ export interface BenefitsCommunicationInput {
   /** Human-facing business reference rendered in the letter footer. */
   reference: string;
   recipientEmail?: string | null;
+  /**
+   * Physical postal destination. When supplied the emission also requests the
+   * Print channel; the Hub (not Benefits) decides whether a letter is actually
+   * produced, from the configured route, policy and print release state.
+   */
+  recipientPostalAddress?: import('../../../sendCommunication').SendCommunicationRecipientInput['postalAddress'];
   locale?: string | null;
   /** Business values for the event's remaining template tokens. */
   values?: Record<string, unknown>;
