@@ -13,6 +13,7 @@ import { revalidateSnapshot } from "./snapshotRevalidator.ts";
 import type {
   MessageCandidate,
   PersistedChannelResolution,
+  PersistedDeliveryLeg,
   RenderContext,
 } from "./renderingTypes.ts";
 
