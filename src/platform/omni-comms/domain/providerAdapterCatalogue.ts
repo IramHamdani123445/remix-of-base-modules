@@ -83,24 +83,38 @@ export const OMNI_COMMS_PROVIDER_ADAPTERS: readonly ProviderAdapterDescriptor[] 
     adapterKey: 'twilio',
     label: 'Twilio (SMS)',
     channel: 'sms',
-    deliveryImplemented: false,
-    verificationImplemented: false,
+    // A real server-only Twilio adapter ships in
+    // `_shared/omni-comms/twilioSmsAdapter.ts`; approved technical test
+    // delivery and read-only credential verification are implemented.
+    deliveryImplemented: true,
+    verificationImplemented: true,
     credentials: [
       {
         purpose: 'account_sid',
         displayName: 'Twilio account SID secret',
+        description: 'Edge secret (or vault reference) holding the Twilio account SID.',
         required: true,
-        secretRefPattern: KEY('sms', 'twilio'),
+        secretRefPattern: '^OMNI_COMMS_TWILIO_[A-Z0-9_]+$',
       },
       {
         purpose: 'auth_token',
         displayName: 'Twilio auth token secret',
+        description: 'Edge secret (or vault reference) holding the Twilio auth token.',
         required: true,
-        secretRefPattern: KEY('sms', 'twilio'),
+        secretRefPattern: '^OMNI_COMMS_TWILIO_[A-Z0-9_]+$',
+      },
+      {
+        purpose: 'messaging_service_sid',
+        displayName: 'Twilio Messaging Service SID (optional)',
+        description: 'When present it takes precedence over the sender number.',
+        required: false,
+        secretRefPattern: '^OMNI_COMMS_TWILIO_[A-Z0-9_]+$',
       },
     ],
-    notes: 'Registration and configuration only — no SMS adapter is deployed.',
+    notes:
+      'Approved technical SMS test delivery and credential verification are implemented. Business SMS dispatch remains governed by the SMS delivery gate.',
   },
+
   {
     adapterKey: 'sms_gateway',
     label: 'Local SMS gateway',
