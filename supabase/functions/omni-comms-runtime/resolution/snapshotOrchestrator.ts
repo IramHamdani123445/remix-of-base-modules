@@ -4,6 +4,7 @@ import type {
   ChannelResolution,
   NormalizedRecipient,
   RecipientInput,
+  ResolvedDeliveryLeg,
   RuntimeRecipientResolution,
   RuntimeResolutionResult,
 } from "./resolutionTypes.ts";
@@ -13,12 +14,15 @@ import { validatePayload } from "./contractValidator.ts";
 import { resolveRoutes } from "./routeResolver.ts";
 import { normalizeRecipients } from "./recipientResolver.ts";
 import { evaluateChannel } from "./channelEligibility.ts";
+import { resolveTemplateForFamilyChannel } from "./templateResolver.ts";
 import {
   EMPTY_ACTION_SNAPSHOT,
   buildActionResolutionEvidence,
   resolveCommunicationActions,
+  type ActionOptionFulfilment,
   type ActionSnapshot,
 } from "./actionResolver.ts";
+
 
 
 const REQUIRED_SNAPSHOT_KEYS = [
