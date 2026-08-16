@@ -96097,6 +96097,99 @@ export type Database = {
           },
         ]
       }
+      omni_comms_print_dispatch: {
+        Row: {
+          address_lines: string[]
+          address_snapshot: Json
+          addressee_display: string | null
+          carrier: string | null
+          created_at: string
+          dispatch_method: string
+          dispatch_sequence: number
+          dispatched_at: string
+          dispatched_by: string | null
+          enclosure_count: number | null
+          id: string
+          notes: string | null
+          organization_id: string
+          page_count: number | null
+          postage_cost: number | null
+          postage_currency: string | null
+          print_batch_id: string | null
+          print_item_id: string
+          return_reason: string | null
+          returned_at: string | null
+          returned_by: string | null
+          service_level: string | null
+          tracking_reference: string | null
+        }
+        Insert: {
+          address_lines?: string[]
+          address_snapshot?: Json
+          addressee_display?: string | null
+          carrier?: string | null
+          created_at?: string
+          dispatch_method: string
+          dispatch_sequence: number
+          dispatched_at?: string
+          dispatched_by?: string | null
+          enclosure_count?: number | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          page_count?: number | null
+          postage_cost?: number | null
+          postage_currency?: string | null
+          print_batch_id?: string | null
+          print_item_id: string
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          service_level?: string | null
+          tracking_reference?: string | null
+        }
+        Update: {
+          address_lines?: string[]
+          address_snapshot?: Json
+          addressee_display?: string | null
+          carrier?: string | null
+          created_at?: string
+          dispatch_method?: string
+          dispatch_sequence?: number
+          dispatched_at?: string
+          dispatched_by?: string | null
+          enclosure_count?: number | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          page_count?: number | null
+          postage_cost?: number | null
+          postage_currency?: string | null
+          print_batch_id?: string | null
+          print_item_id?: string
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
+          service_level?: string | null
+          tracking_reference?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_print_dispatch_print_batch_id_fkey"
+            columns: ["print_batch_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_print_batch"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_print_dispatch_print_item_id_fkey"
+            columns: ["print_item_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_print_item"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_print_item: {
         Row: {
           artefact_bucket: string | null
@@ -96108,6 +96201,9 @@ export type Database = {
           created_by: string | null
           delivery_attempt_id: string | null
           department_id: string | null
+          dispatch_method: string | null
+          dispatch_reference: string | null
+          dispatched_at: string | null
           hold_reason: string | null
           id: string
           issuing_authority: string | null
@@ -96123,6 +96219,8 @@ export type Database = {
           recipient_display: string | null
           recipient_reference: string | null
           request_id: string
+          return_reason: string | null
+          returned_at: string | null
           template_family_id: string | null
           template_provenance: Json
           template_version_id: string | null
@@ -96140,6 +96238,9 @@ export type Database = {
           created_by?: string | null
           delivery_attempt_id?: string | null
           department_id?: string | null
+          dispatch_method?: string | null
+          dispatch_reference?: string | null
+          dispatched_at?: string | null
           hold_reason?: string | null
           id?: string
           issuing_authority?: string | null
@@ -96155,6 +96256,8 @@ export type Database = {
           recipient_display?: string | null
           recipient_reference?: string | null
           request_id: string
+          return_reason?: string | null
+          returned_at?: string | null
           template_family_id?: string | null
           template_provenance?: Json
           template_version_id?: string | null
@@ -96172,6 +96275,9 @@ export type Database = {
           created_by?: string | null
           delivery_attempt_id?: string | null
           department_id?: string | null
+          dispatch_method?: string | null
+          dispatch_reference?: string | null
+          dispatched_at?: string | null
           hold_reason?: string | null
           id?: string
           issuing_authority?: string | null
@@ -96187,6 +96293,8 @@ export type Database = {
           recipient_display?: string | null
           recipient_reference?: string | null
           request_id?: string
+          return_reason?: string | null
+          returned_at?: string | null
           template_family_id?: string | null
           template_provenance?: Json
           template_version_id?: string | null
@@ -122492,6 +122600,7 @@ export type Database = {
         Args: {
           p_action: string
           p_correlation_id?: string
+          p_dispatch?: Json
           p_equipment_reference?: string
           p_expected_version: number
           p_id: string
