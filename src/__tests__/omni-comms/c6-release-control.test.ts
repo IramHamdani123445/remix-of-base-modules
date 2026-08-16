@@ -341,7 +341,7 @@ describe('C6 — registries', () => {
     const result = validateOmniCommsRegistries();
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
-    expect(result.counts.activeObjects).toBe(42);
+    expect(result.counts.activeObjects).toBe(44);
     expect(result.counts.integrations).toBe(11);
   });
 });
