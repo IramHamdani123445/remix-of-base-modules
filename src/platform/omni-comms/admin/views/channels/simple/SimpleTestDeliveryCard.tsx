@@ -51,6 +51,16 @@ export const SIMPLE_TEST_RESULT_LABEL: Record<SimpleTestState, string> = {
 
 const describeTestProblem = (error: unknown): string => {
   const detail = error instanceof Error ? error.message : '';
+  if (detail.includes('channel_adapter_missing')
+    || detail.includes('controlled_delivery_channel_unsupported')) {
+    return 'No delivery adapter is deployed for this channel yet, so a test cannot be sent.';
+  }
+  if (detail.includes('provider_not_supported')) {
+    return 'The configured provider is not supported for this channel. Open Settings to select a supported provider.';
+  }
+  if (detail.includes('invalid_target')) {
+    return 'The recipient is not valid for this channel. Check the format and try again.';
+  }
   if (detail.includes('invalid_idempotency_key')) {
     return 'The test request could not be validated. Refresh the page and try again.';
   }
@@ -68,9 +78,34 @@ const describeTestProblem = (error: unknown): string => {
 
 const maskRecipient = (value: string): string => {
   const at = value.indexOf('@');
-  if (at <= 0) return '***';
+  if (at <= 0) return `${value.slice(0, 1)}***${value.slice(-2)}`;
   return `${value[0]}***${value.slice(at)}`;
 };
+
+/** Per-channel recipient wording. The server still validates every target. */
+export const TEST_RECIPIENT_HINT: Record<string, { label: string; placeholder: string }> = {
+  email: { label: 'Recipient email address', placeholder: 'name@example.com' },
+  sms: { label: 'Recipient mobile number', placeholder: '+18695550123' },
+  whatsapp: { label: 'Recipient WhatsApp number', placeholder: '+18695550123' },
+  push: { label: 'Device token', placeholder: 'device token' },
+  in_app: { label: 'User reference', placeholder: 'user reference' },
+  print: { label: 'Recipient reference', placeholder: 'J. Smith, Basseterre' },
+};
+
+const recipientHint = (channel: string) =>
+  TEST_RECIPIENT_HINT[channel] ?? { label: 'Recipient', placeholder: 'recipient reference' };
+
+/** Preflight payload shape expected by the server for each channel. */
+export function testPayloadForChannel(
+  channel: string,
+  title: string,
+  body: string,
+): Record<string, string> {
+  if (channel === 'sms' || channel === 'whatsapp') return { text: body };
+  if (channel === 'push' || channel === 'in_app') return { title, body };
+  if (channel === 'print') return { document_title: title, sample_text: body };
+  return { subject: title, body };
+}
 
 export interface SimpleTestDeliveryCardProps {
   client: OmniCommsRpcClient;
@@ -118,10 +153,11 @@ export const SimpleTestDeliveryCard: React.FC<SimpleTestDeliveryCardProps> = ({
         channel,
         bindingId,
         target,
-        payload: {
-          subject: `${channelLabel} configuration test`,
-          body: 'This is a configuration test message from the Communication Hub.',
-        },
+        payload: testPayloadForChannel(
+          channel,
+          `${channelLabel} configuration test`,
+          'This is a configuration test message from the Communication Hub.',
+        ),
         idempotencyKey: key,
       });
       if (preflight.run.status !== 'passed') {
@@ -181,12 +217,14 @@ export const SimpleTestDeliveryCard: React.FC<SimpleTestDeliveryCardProps> = ({
       <CardContent className="space-y-4">
         {!finished || state === 'failed' ? (
           <div className="space-y-2">
-            <Label htmlFor="omni-comms-simple-test-recipient">Recipient</Label>
+            <Label htmlFor="omni-comms-simple-test-recipient">
+              {recipientHint(channel).label}
+            </Label>
             <Input
               id="omni-comms-simple-test-recipient"
               value={recipient}
               disabled={busy}
-              placeholder="name@example.com"
+              placeholder={recipientHint(channel).placeholder}
               onChange={(e) => setRecipient(e.target.value)}
             />
           </div>
@@ -202,7 +240,9 @@ export const SimpleTestDeliveryCard: React.FC<SimpleTestDeliveryCardProps> = ({
                 {state === 'delivered'
                   ? 'Delivered successfully'
                   : state === 'accepted'
-                    ? 'Accepted by the provider'
+                    ? (channel === 'print'
+                      ? 'Artefact produced and archived'
+                      : 'Accepted by the provider')
                     : 'Waiting for the delivery result'}
               </span>
             </div>

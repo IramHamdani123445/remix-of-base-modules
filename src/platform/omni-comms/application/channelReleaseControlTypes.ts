@@ -69,7 +69,7 @@ export interface ReleaseRecipientRule {
   readonly target_hash_prefix: string;
 }
 
-export type ReleaseControlChannel = 'email' | 'sms';
+export type ReleaseControlChannel = 'email' | 'sms' | 'print';
 
 export interface ChannelReleaseControl {
   readonly id: string;

@@ -57,7 +57,21 @@ export const OMNI_COMMS_ADAPTERS: readonly OmniCommsAdapterDescriptor[] = [
     secretRefPattern: OMNI_COMMS_TWILIO_SECRET_REF_PATTERN,
     usesSendingDomain: false,
   },
+  {
+    // Internal production channel: the artefact store is the "provider", so no
+    // external credential exists and no secret reference is ever accepted.
+    channel: "print",
+    adapterKey: "print_spool",
+    label: "Print spool / letter production",
+    deliveryImplemented: true,
+    verificationImplemented: false,
+    requiredCredentialPurposes: [],
+    optionalCredentialPurposes: [],
+    secretRefPattern: /^(?!)/,
+    usesSendingDomain: false,
+  },
 ];
+
 
 /** Resolves the deployed adapter for a channel, or null when none ships. */
 export function adapterForChannel(
