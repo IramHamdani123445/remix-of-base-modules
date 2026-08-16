@@ -39,6 +39,11 @@ export interface CanonicalRecipient {
   email: string | null;
   phone: string | null;
   pushDestination: string | null;
+  /**
+   * Physical postal destination, canonicalised to a newline-joined address
+   * block. Print / Correspondence ONLY; never sent to a digital provider.
+   */
+  postalAddress: string | null;
 }
 
 export interface CanonicalCallerContext {
