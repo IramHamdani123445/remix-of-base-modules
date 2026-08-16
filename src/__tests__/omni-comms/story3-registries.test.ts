@@ -2,7 +2,7 @@
  * Epic 1 / Story 3 — Omnichannel Communications registries.
  *
  * Verifies:
- *  - counts (20 active objects, 2 deferred, 7 routes, 7 integrations, 5 queues)
+ *  - the current authoritative registry counts (asserted here and nowhere else)
  *  - registry validation succeeds
  *  - registry invariants (prefixes, uniqueness, approved epics, write authority)
  *  - Story 3 introduces no migration, edge function, queue, or sendCommunication
@@ -20,6 +20,7 @@ import { OMNI_COMMS_INTEGRATION_REGISTRY } from '@/platform/omni-comms/registry/
 import { OMNI_COMMS_QUEUE_REGISTRY } from '@/platform/omni-comms/registry/queueRegistry';
 import { validateOmniCommsRegistries } from '@/platform/omni-comms/registry/validateRegistries';
 import { OMNI_COMMS_READINESS_MANIFEST as M } from '@/platform/omni-comms/registry/readinessManifest';
+import { OMNI_COMMS_ADMIN_RPC_RUNTIME_OBJECTS, OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 const OMNI_ROOT = path.join(REPO_ROOT, 'src', 'platform', 'omni-comms');
@@ -36,9 +37,9 @@ function walk(dir: string): string[] {
   return out;
 }
 
-describe('Omni-Comms Story 3 — registry counts', () => {
+describe('Omni-Comms — current registry state (authoritative counts)', () => {
   it('has exactly 50 active objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(48);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(50);
   });
   it('has exactly 2 deferred objects', () => {
     expect(OMNI_COMMS_DEFERRED_OBJECTS).toHaveLength(2);
@@ -47,7 +48,7 @@ describe('Omni-Comms Story 3 — registry counts', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
   });
   it('has exactly 12 registered integrations', () => {
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(11);
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(12);
   });
   it('has exactly 5 reserved queues', () => {
     expect(OMNI_COMMS_QUEUE_REGISTRY).toHaveLength(5);
@@ -78,12 +79,7 @@ describe('Omni-Comms Story 3 — registry validation', () => {
   });
 
   it('runtime objects are service_role_only, except the test evidence ledgers', () => {
-    const adminTriggered = new Set([
-      'omni_comms_channel_test_run',
-      'omni_comms_channel_test_delivery',
-      'omni_comms_print_item',
-      'omni_comms_print_attempt',
-    ]);
+    const adminTriggered = OMNI_COMMS_ADMIN_RPC_RUNTIME_OBJECTS;
     for (const o of OMNI_COMMS_OBJECT_REGISTRY.filter((x) => x.category === 'runtime')) {
       if (adminTriggered.has(o.name)) {
         expect(o.writeAuthority).toBe('admin_rpc');

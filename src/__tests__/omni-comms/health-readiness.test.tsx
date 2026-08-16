@@ -55,6 +55,7 @@ vi.mock('@/hooks/useNavigationMenu', () => ({
 // components under test (imported after mocks)
 import OmniCommsAdminRoute from '@/platform/omni-comms/admin/components/OmniCommsAdminRoute';
 import OmniCommsHealthPage from '@/platform/omni-comms/admin/views/OmniCommsHealthPage';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 
 // Readiness now lives on the Health screen's `?view=engineering` view.
 function renderHealthAt(
@@ -118,7 +119,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     expect(M.permanentRoutes).toHaveLength(7);
   });
 
-  it('lists all 44 logical objects with accurate physical-schema status', () => {
+  it('lists every registered logical object with accurate physical-schema status', () => {
     permState.hasView = true;
     renderHealthAt();
     const all = [
@@ -126,7 +127,7 @@ describe('Omni-Comms Health page — Readiness', () => {
       ...M.plannedObjects.channelsSendersPreferences,
       ...M.plannedObjects.runtime,
     ];
-    expect(all).toHaveLength(48);
+    expect(all).toHaveLength(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
     for (const entry of all) {
       expect(screen.getAllByText(entry.name).length).toBeGreaterThan(0);
     }
@@ -144,7 +145,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     const notCreated = all.filter(
       (o) => o.status === 'Registered in architecture catalogue — Not yet created',
     );
-    expect(notCreated.length + available.length).toBe(48);
+    expect(notCreated.length + available.length).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
   });
 
   it('shows available edge functions as Available', () => {

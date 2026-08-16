@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 import { OMNI_COMMS_READINESS_MANIFEST as M } from '@/platform/omni-comms/registry/readinessManifest';
+import { validateOmniCommsRegistries } from '@/platform/omni-comms/registry/validateRegistries';
 
 const REPO_ROOT = process.cwd();
 
@@ -29,8 +30,8 @@ describe('Omni-Comms Epic 2 — Story 1 (event tables)', () => {
     }
   });
 
-  it('object registry still enumerates exactly 34 approved objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(48);
+  it('keeps every registry invariant satisfied after Story 1', () => {
+    expect(validateOmniCommsRegistries().ok).toBe(true);
   });
 
   it('object registry marks both Story 1 event tables as AVAILABLE', () => {

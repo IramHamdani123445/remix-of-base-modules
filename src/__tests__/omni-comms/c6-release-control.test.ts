@@ -36,6 +36,7 @@ import { validateOmniCommsRegistries } from '@/platform/omni-comms/registry/vali
 import { OMNI_COMMS_GENERIC_TABS } from '@/platform/omni-comms/domain/channelCatalogue';
 import { CHANNEL_WORKSPACE_TAB_LABELS } from '@/platform/omni-comms/admin/views/channels/channelUiRegistry';
 import { OMNI_COMMS_PERMISSION_DEFINITIONS } from '@/platform/rbac/omniComms.permissions';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 import {
   EMAIL_BUSINESS_DISPATCH_IMPLEMENTED,
   EMAIL_RELEASE_CONTROL_IMPLEMENTED,
@@ -327,8 +328,10 @@ describe('C6 — registries', () => {
     expect(names).toContain('omni_comms_channel_release_event');
   });
 
-  it('raises the approved object ceiling to 34', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(48);
+  it('registers both C6 release-control objects exactly once', () => {
+    const c6 = OMNI_COMMS_OBJECT_REGISTRY.filter((o) =>
+      o.name === 'omni_comms_channel_release_control' || o.name === 'omni_comms_channel_release_event');
+    expect(c6).toHaveLength(2);
   });
 
   it('registers the release-control edge function', () => {
@@ -341,8 +344,8 @@ describe('C6 — registries', () => {
     const result = validateOmniCommsRegistries();
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
-    expect(result.counts.activeObjects).toBe(48);
-    expect(result.counts.integrations).toBe(11);
+    expect(result.counts.activeObjects).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
+    expect(result.counts.integrations).toBe(OMNI_COMMS_REGISTRY_COUNTS.integrations);
   });
 });
 

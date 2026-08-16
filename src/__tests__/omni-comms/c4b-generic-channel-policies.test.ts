@@ -39,6 +39,7 @@ import {
 } from '@/platform/omni-comms/application/channelPolicyService';
 import { projectEmailReadiness } from '@/platform/omni-comms/admin/views/channels/emailReadiness';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 
 const ROOT = process.cwd();
 const CH_DIR = join(ROOT, 'src/platform/omni-comms/admin/views/channels');
@@ -184,7 +185,7 @@ describe('C4B schema and migration', () => {
     expect(
       OMNI_COMMS_OBJECT_REGISTRY.filter((o) => o.name === 'omni_comms_channel_setting'),
     ).toHaveLength(1);
-    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(48);
+    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
   });
 
   it('ships a rollback and a verifier script', () => {

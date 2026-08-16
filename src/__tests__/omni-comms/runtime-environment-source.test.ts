@@ -13,6 +13,7 @@ import {
   OMNI_COMMS_OBJECT_COUNT,
 } from '@/platform/omni-comms/registry/objectRegistry';
 import { validateOmniCommsRegistries } from '@/platform/omni-comms/registry/validateRegistries';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 
 const root = process.cwd();
 const migrationsDir = path.join(root, 'supabase/migrations');
@@ -183,8 +184,8 @@ describe('registry catalogue', () => {
     expect(entry?.status).toBe('AVAILABLE');
   });
 
-  it('keeps the registry ceiling consistent and valid', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(48);
+  it('keeps the registry consistent and valid', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
     expect(validateOmniCommsRegistries().errors).toEqual([]);
   });
 });

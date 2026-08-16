@@ -14,13 +14,14 @@ import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeR
 import { SHARED_ASSETS_RPC_NAMES } from '@/platform/omni-comms/application/sharedAssetsService';
 import { composeAssembledEmail } from '@/platform/omni-comms/rendering/manifestComposer';
 import type { RenderManifest } from '@/platform/omni-comms/application/sharedAssetsTypes';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 
 const root = resolve(__dirname, '..', '..', '..');
 
 describe('Build 1 — Shared Assets & Layouts', () => {
-  it('omni-comms object registry remains exactly 20 objects (19 foundation + caller-module registry)', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(48);
-    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(48);
+  it('omni-comms object registry stays consistent with the authoritative count', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
+    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
     for (const o of OMNI_COMMS_OBJECT_REGISTRY) {
       expect(o.name.startsWith('omni_comms_')).toBe(true);
     }
