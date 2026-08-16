@@ -141,6 +141,7 @@ export const ChannelReleaseControlTab: React.FC<{
 }> = ({ definition, client, orgId, departmentId, departmentName, transport, onChanged }) => {
   const channel = definition.code;
   const supported = channel === 'email' || channel === 'sms';
+  const releaseChannel = channel as ReleaseControlChannel;
 
   const [summary, setSummary] = useState<ChannelReleaseControlSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -192,7 +193,7 @@ export const ChannelReleaseControlTab: React.FC<{
       const next = await getChannelReleaseControlSummary(client, {
         organizationId: orgId,
         departmentId: departmentId ?? null,
-        channel,
+        channel: releaseChannel,
       });
       setSummary(next);
       try {
@@ -207,7 +208,7 @@ export const ChannelReleaseControlTab: React.FC<{
         setDelivery(await getDeliveryToggleSnapshot(client, {
           organizationId: orgId,
           departmentId: departmentId ?? null,
-          channel,
+          channel: releaseChannel,
         }));
       } catch {
         setDelivery(null);
@@ -452,7 +453,7 @@ export const ChannelReleaseControlTab: React.FC<{
         expectedUpdatedAt: release?.updated_at ?? null,
         organizationId: orgId,
         departmentId: departmentId ?? null,
-        channel,
+        channel: releaseChannel,
         permittedEventCodes: splitList(form.eventCodes),
         permittedCallerModules: splitList(form.callerModules),
         permittedModes: ['queued'],
@@ -511,7 +512,7 @@ export const ChannelReleaseControlTab: React.FC<{
         const res = await transport.invoke(buildDeliveryRequestBody({
           organizationId: orgId,
           departmentId: departmentId ?? null,
-          channel,
+          channel: releaseChannel,
           intent,
         }));
         if (res.error) throw new Error(res.error.message ?? 'Delivery request failed');
