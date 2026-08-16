@@ -36,7 +36,9 @@ export const DeliveryStatusPanel: React.FC<{
   snapshot: DeliveryToggleSnapshot | null;
   automation: AutomationStatus | null;
   pendingApprovals: number;
-}> = ({ snapshot, automation, pendingApprovals }) => {
+  /** Operator-facing channel name, e.g. "Email" or "SMS". */
+  channelLabel?: string;
+}> = ({ snapshot, automation, pendingApprovals, channelLabel = 'Email' }) => {
   const live = snapshot?.state === 'on';
   const delivery = automation?.delivery_processor;
   const warnings = [
@@ -48,7 +50,7 @@ export const DeliveryStatusPanel: React.FC<{
       ? 'Delivery result tracking is not switched on, so sends cannot be confirmed.'
       : null,
     (delivery?.held_jobs ?? 0) > 0 && !live
-      ? 'Emails are held because automatic delivery is off.'
+      ? `${channelLabel} messages are held because automatic delivery is off.`
       : null,
   ].filter((w): w is string => Boolean(w));
 
@@ -56,11 +58,11 @@ export const DeliveryStatusPanel: React.FC<{
     <Card data-testid="omni-comms-delivery-status">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-3">
-          <CardTitle className="text-base">Email delivery status</CardTitle>
+          <CardTitle className="text-base">{channelLabel} delivery status</CardTitle>
           <Badge variant={live ? 'default' : 'secondary'}>{live ? 'LIVE' : 'OFF'}</Badge>
         </div>
         <CardDescription>
-          What the system is doing right now with business Email.
+          What the system is doing right now with business {channelLabel}.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
@@ -70,7 +72,7 @@ export const DeliveryStatusPanel: React.FC<{
             <strong data-testid="omni-comms-status-approvals">{pendingApprovals}</strong>
           </p>
           <p>
-            Held emails:{' '}
+            Held messages:{' '}
             <strong data-testid="omni-comms-status-held">{delivery?.held_jobs ?? 0}</strong>
           </p>
           <p>
@@ -94,7 +96,7 @@ export const DeliveryStatusPanel: React.FC<{
         {warnings.length > 0 ? (
           <Alert variant="destructive" data-testid="omni-comms-status-warning">
             <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Attention needed before emails get stuck</AlertTitle>
+            <AlertTitle>Attention needed before messages get stuck</AlertTitle>
             <AlertDescription>
               <ul className="ml-4 list-disc">
                 {warnings.map((w) => (
