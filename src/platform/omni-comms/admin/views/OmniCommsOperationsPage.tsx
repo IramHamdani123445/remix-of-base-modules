@@ -591,6 +591,9 @@ export const OmniCommsOperationsPage: React.FC = () => {
 
       <EmailJourneySection organizationId={organizationId} onOpenEmail={openEmail} />
 
+      {/* Print / Correspondence physical production queue (Phase 3A). */}
+      <PrintProductionQueue />
+
       {/*
         Technical details — the support-engineer register. Kept, but BELOW the
         business-friendly activity view.
