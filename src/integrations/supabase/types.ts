@@ -95493,12 +95493,14 @@ export type Database = {
       }
       omni_comms_message: {
         Row: {
+          action_channel_option_id: string | null
           action_id: string | null
           blockers: Json
           channel: string
           channel_setting_snapshot: Json
           completed_at: string | null
           created_at: string
+          delivery_leg_key: string | null
           delivery_policy_id: string | null
           department_id: string | null
           destination_snapshot: Json
@@ -95530,12 +95532,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          action_channel_option_id?: string | null
           action_id?: string | null
           blockers?: Json
           channel: string
           channel_setting_snapshot?: Json
           completed_at?: string | null
           created_at?: string
+          delivery_leg_key?: string | null
           delivery_policy_id?: string | null
           department_id?: string | null
           destination_snapshot?: Json
@@ -95567,12 +95571,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          action_channel_option_id?: string | null
           action_id?: string | null
           blockers?: Json
           channel?: string
           channel_setting_snapshot?: Json
           completed_at?: string | null
           created_at?: string
+          delivery_leg_key?: string | null
           delivery_policy_id?: string | null
           department_id?: string | null
           destination_snapshot?: Json

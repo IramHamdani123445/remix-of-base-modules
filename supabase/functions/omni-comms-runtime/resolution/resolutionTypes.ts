@@ -232,6 +232,50 @@ export interface ChannelResolution {
   blockers: string[];
 }
 
+/**
+ * The CANONICAL unit of the resolved delivery plan.
+ *
+ * A leg is one recipient × one Communication Action × one channel, carrying
+ * the action's OWN channel-specific template binding. Two actions selecting
+ * the same channel produce two legs and must never be collapsed. Content is
+ * always resolved from the leg's own family + channel variant, never derived
+ * from another channel's rendered content.
+ */
+export interface ResolvedDeliveryLeg {
+  legKey: string;
+  communicationActionId: string;
+  communicationActionCode: string;
+  recipientRole: string | null;
+  obligation: string;
+  satisfactionRule: string;
+  channel: string;
+  actionChannelOptionId: string;
+  deliveryPolicyId: string | null;
+  deliveryPolicyVersion: number | null;
+  deliveryPolicyMode: string | null;
+  resolutionReason: string;
+  isFallback: boolean;
+  /** Authoritative binding taken from the action option, never the route. */
+  templateFamilyId: string | null;
+  templateFamilySource: "action_option" | "route_fallback";
+  templateVersionId?: string;
+  templateVersionNumber?: number;
+  templateVersionChecksum?: string;
+  layoutId?: string;
+  layoutVersionId?: string;
+  layoutChecksum?: string;
+  layoutInheritance?: "pinned" | "department" | "organization";
+  assets: ResolvedAsset[];
+  senderIdentityId?: string;
+  senderProviderBindingId?: string;
+  providerId?: string;
+  providerAccountId?: string;
+  eventRouteId?: string;
+  senderChannelReady: boolean;
+  liveDeliveryReady: boolean;
+  blockers: string[];
+}
+
 export interface RuntimeRecipientResolution {
   inputIndex: number;
   fingerprint: string;
@@ -243,7 +287,10 @@ export interface RuntimeRecipientResolution {
   resolvedChannels: string[];
   blockers: string[];
   channelResolutions: ChannelResolution[];
+  /** Present only under the Communication Action model. */
+  deliveryLegs?: ResolvedDeliveryLeg[];
 }
+
 
 export interface RuntimeResolutionResult {
   event: {

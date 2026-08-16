@@ -145,6 +145,21 @@ export interface ResolvedAction {
   blockers: string[];
 }
 
+/**
+ * Per-option fulfilment evidence. Availability is decided PER ACTION CHANNEL
+ * OPTION (not per channel name) because two actions may use the same channel
+ * with different template families — one may be publishable while the other
+ * is not.
+ */
+export interface ActionOptionFulfilment {
+  /** A published template version exists for THIS option's family + channel. */
+  variantAvailable: boolean;
+  /** Transport (route/sender/binding/provider/release) is ready. */
+  channelReady: boolean;
+  /** The recipient has a usable destination for this channel. */
+  destinationAvailable: boolean;
+}
+
 export interface ActionResolutionInput {
   snapshot: ActionSnapshot;
   recipientRole: string | null;
@@ -157,16 +172,47 @@ export interface ActionResolutionInput {
   channelsWithVariant: string[];
   /** True when the recipient has no usable digital destination. */
   digitalDestinationAvailable: boolean;
+  /**
+   * Authoritative per-option fulfilment evidence keyed by option id. When
+   * supplied it OVERRIDES the coarse channel-level inputs above, and digital
+   * availability is derived from actually-fulfillable digital options rather
+   * than from the mere presence of an email address or phone number.
+   */
+  optionFulfilment?: Record<string, ActionOptionFulfilment>;
+}
+
+/**
+ * One semantic delivery obligation for one recipient on one channel with one
+ * exact channel-specific template family. Two actions using the same channel
+ * produce TWO legs; they are never collapsed into a channel name.
+ */
+export interface ResolvedDeliveryLegSelection {
+  communicationActionId: string;
+  communicationActionCode: string;
+  recipientRole: string | null;
+  obligation: ActionObligation;
+  satisfactionRule: ActionSatisfactionRule;
+  channel: string;
+  optionId: string;
+  templateFamilyId: string | null;
+  policyId: string | null;
+  policyVersion: number | null;
+  policyMode: string | null;
+  selectionReason: ResolvedActionChannel["reason"];
+  isFallback: boolean;
 }
 
 export interface ActionResolutionResult {
   /** False when the event has no active actions — caller uses legacy routes. */
   actionModelApplies: boolean;
   actions: ResolvedAction[];
-  /** Union of channels selected across all actions. */
+  /** Union of channels selected across all actions. Transport hint ONLY. */
   selectedChannels: string[];
+  /** Canonical plan: one entry per action × selected channel. */
+  deliveryLegs: ResolvedDeliveryLegSelection[];
   blockers: string[];
 }
+
 
 function pickPolicy(
   policies: DeliveryPolicyRow[],
@@ -213,6 +259,7 @@ export function resolveCommunicationActions(
       actionModelApplies: false,
       actions: [],
       selectedChannels: [],
+      deliveryLegs: [],
       blockers: [],
     };
   }
@@ -231,8 +278,38 @@ export function resolveCommunicationActions(
     (p) => p.preference === "paper_required",
   );
 
+  // ── Fulfilment evidence, per ACTION CHANNEL OPTION ─────────────────────
+  const fulfilment = input.optionFulfilment ?? null;
+  const optionFulfilment = (
+    option: ActionChannelOptionRow,
+  ): ActionOptionFulfilment => {
+    const explicit = fulfilment?.[option.id];
+    if (explicit) return explicit;
+    return {
+      variantAvailable: input.channelsWithVariant.includes(option.channel),
+      channelReady: input.readyChannels.includes(option.channel),
+      destinationAvailable: DIGITAL_CHANNELS.has(option.channel)
+        ? input.digitalDestinationAvailable
+        : true,
+    };
+  };
+
+  // Corrected semantics: "digital is available" means at least one DIGITAL
+  // action option can genuinely be fulfilled — destination AND published
+  // channel variant AND transport readiness. Holding an email address while
+  // the Email channel is disabled, unpublished or unbound is NOT availability.
+  const digitalFulfilmentAvailable = fulfilment
+    ? snapshot.action_channel_options.some((o) => {
+      if (o.status !== "active") return false;
+      if (!DIGITAL_CHANNELS.has(o.channel)) return false;
+      const f = optionFulfilment(o);
+      return f.destinationAvailable && f.variantAvailable && f.channelReady;
+    })
+    : input.digitalDestinationAvailable;
+
   const resolved: ResolvedAction[] = [];
   const blockers: string[] = [];
+
 
   for (const action of actions) {
     const options = snapshot.action_channel_options
@@ -257,6 +334,7 @@ export function resolveCommunicationActions(
       const channel = option.channel;
       const isPrint = channel === "print";
       const isDigital = DIGITAL_CHANNELS.has(channel);
+      const f = optionFulfilment(option);
 
       if (
         input.requestedChannels.length > 0 &&
@@ -266,12 +344,14 @@ export function resolveCommunicationActions(
         rejected.push({ channel, reason: "not_requested_by_caller" });
         continue;
       }
-      if (!input.channelsWithVariant.includes(channel)) {
-        // Print is NEVER derived from the Email variant. Fail closed.
+      if (!f.variantAvailable) {
+        // The Action's OWN channel-specific template family must have a
+        // published variant for THIS channel. Print is never derived from the
+        // Email variant. Fail closed.
         rejected.push({ channel, reason: "variant_missing" });
         continue;
       }
-      if (!input.readyChannels.includes(channel)) {
+      if (!f.channelReady) {
         rejected.push({ channel, reason: "channel_not_ready" });
         continue;
       }
@@ -288,7 +368,7 @@ export function resolveCommunicationActions(
           statutoryPrint ||
           (printWhen.recipient_requested === true && paperRequiredByRecipient) ||
           (printWhen.digital_unavailable === true &&
-            !input.digitalDestinationAvailable) ||
+            !digitalFulfilmentAvailable) ||
           printWhen.policy_exception === true;
         if (!printAllowed) {
           rejected.push({ channel, reason: "policy_digital_first" });
@@ -300,17 +380,18 @@ export function resolveCommunicationActions(
             ? "statutory_print_required"
             : paperRequiredByRecipient
               ? "recipient_paper_required"
-              : !input.digitalDestinationAvailable
+              : !digitalFulfilmentAvailable
                 ? "fallback_digital_unavailable"
                 : "policy_selected",
         });
         continue;
       }
 
-      if (isDigital && !input.digitalDestinationAvailable) {
+      if (isDigital && !f.destinationAvailable) {
         // No usable digital destination for this recipient: paper carries it.
         rejected.push({ channel, reason: "channel_not_ready" });
         continue;
+
       }
 
       if (isDigital && mode === "paper_first" && action.obligation === "required") {
@@ -409,13 +490,35 @@ export function resolveCommunicationActions(
     new Set(resolved.flatMap((a) => a.selected.map((s) => s.channel))),
   ).sort();
 
+  // Legs are never deduplicated by channel: two actions on the same channel
+  // are two distinct obligations with two distinct template families.
+  const deliveryLegs: ResolvedDeliveryLegSelection[] = resolved.flatMap((a) =>
+    a.selected.map((s) => ({
+      communicationActionId: a.actionId,
+      communicationActionCode: a.actionCode,
+      recipientRole: a.recipientRole,
+      obligation: a.obligation,
+      satisfactionRule: a.satisfactionRule,
+      channel: s.channel,
+      optionId: s.optionId,
+      templateFamilyId: s.templateFamilyId,
+      policyId: a.policyId,
+      policyVersion: a.policyVersion,
+      policyMode: a.policyMode,
+      selectionReason: s.reason,
+      isFallback: s.isFallback,
+    }))
+  );
+
   return {
     actionModelApplies: true,
     actions: resolved,
     selectedChannels,
+    deliveryLegs,
     blockers,
   };
 }
+
 
 function toSelected(
   option: ActionChannelOptionRow,
@@ -449,6 +552,15 @@ export function buildActionResolutionEvidence(
       blockers: a.blockers,
     })),
     selected_channels: result.selectedChannels,
+    delivery_legs: result.deliveryLegs.map((l) => ({
+      action: l.communicationActionCode,
+      channel: l.channel,
+      obligation: l.obligation,
+      reason: l.selectionReason,
+      template_family_id: l.templateFamilyId,
+      policy_version: l.policyVersion,
+    })),
     blockers: result.blockers,
+
   };
 }
