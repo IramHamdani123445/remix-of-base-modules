@@ -13,6 +13,7 @@
  */
 import { callOmniCommsRpc, type OmniCommsRpcClient } from './omniCommsRpcErrors';
 import type {
+  ReleaseControlChannel,
   ChannelReleaseControl,
   ChannelReleaseControlSummary,
   ReleaseBasicState,
@@ -22,8 +23,8 @@ import type {
 export interface GetReleaseControlSummaryInput {
   organizationId: string;
   departmentId?: string | null;
-  /** C6 supports Email only. */
-  channel: 'email';
+  /** Channels with a deployed delivery adapter. */
+  channel: ReleaseControlChannel;
   historyLimit?: number;
 }
 
