@@ -76,6 +76,7 @@ import OperationsSummaryCards from "./operations/OperationsSummaryCards";
 import RequestDetailPanel from "./operations/RequestDetailPanel";
 import BusinessEventDetailPanel from "./operations/BusinessEventDetailPanel";
 import EmailJourneySection from "./operations/EmailJourneySection";
+import PrintProductionQueue from "./operations/PrintProductionQueue";
 import EmailJourneyDetailPanel from "./operations/EmailJourneyDetailPanel";
 
 /** Normal-operator filter chips, expressed in business-event vocabulary. */
