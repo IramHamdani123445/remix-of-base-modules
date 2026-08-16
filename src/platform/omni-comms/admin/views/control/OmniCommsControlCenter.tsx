@@ -51,6 +51,7 @@ import {
 } from '@/platform/omni-comms/application/gateApprovalWorkflowService';
 import { notifyGateApprovalEvent } from '@/platform/notifications/gateApprovalNotifications';
 import PauseDeliveryDialog from './PauseDeliveryDialog';
+import PrintControlSurface from './PrintControlSurface';
 
 import { ChannelDeliverySwitch } from '../channels/simple/ChannelDeliverySwitch';
 import { ReadOnlyHealthSwitch } from '../channels/simple/ReadOnlyHealthSwitch';
@@ -109,6 +110,8 @@ export const OmniCommsControlCenter: React.FC = () => {
   const [channel, setChannel] = React.useState<GovernedChannel>('email');
   const CHANNEL: TestCentreChannel & GovernedChannel = channel;
   const CHANNEL_LABEL = getChannelDescriptor(channel).label;
+  /** Print is produced in-platform: provider gates and proposals do not apply. */
+  const isPrint = channel === 'print';
   const fixHref = React.useCallback(
     (indicatorKey: string) => channelHref(channel, tabForHealthIndicator(indicatorKey)),
     [channel],
