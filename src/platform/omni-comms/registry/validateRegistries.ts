@@ -58,6 +58,10 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
       // C5B — reserved by an operator RPC, completed only by the trusted
       // Edge boundary. Approved technical test delivery only; never live send.
       && o.name !== 'omni_comms_channel_test_delivery'
+      // Print Phase 3A — physical production is operator-driven through
+      // bounded admin RPCs. No provider delivery is ever performed here.
+      && o.name !== 'omni_comms_print_item'
+      && o.name !== 'omni_comms_print_attempt'
     ) {
       errors.push(`Runtime object ${o.name} must be service_role_only.`);
     }

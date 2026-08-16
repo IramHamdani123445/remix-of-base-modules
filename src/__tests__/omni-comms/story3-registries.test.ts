@@ -81,6 +81,8 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     const adminTriggered = new Set([
       'omni_comms_channel_test_run',
       'omni_comms_channel_test_delivery',
+      'omni_comms_print_item',
+      'omni_comms_print_attempt',
     ]);
     for (const o of OMNI_COMMS_OBJECT_REGISTRY.filter((x) => x.category === 'runtime')) {
       if (adminTriggered.has(o.name)) {
