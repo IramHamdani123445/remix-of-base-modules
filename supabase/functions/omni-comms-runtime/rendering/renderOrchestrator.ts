@@ -89,13 +89,34 @@ export async function orchestrateRendering(context: RenderContext): Promise<Orch
     const resolutions: PersistedChannelResolution[] =
       recipient.resolution_snapshot?.channel_resolutions ?? [];
     const eligible = [...(recipient.resolved_channels ?? [])].sort();
+    const persistedLegs = recipient.resolution_snapshot?.delivery_legs ?? [];
 
-    for (const channel of eligible) {
-      const resolution = resolutions.find((r) => r.channel === channel);
+    // Under the Communication Action model the LEG is the unit of work: two
+    // actions on the same channel render twice, from their own template
+    // families. Legacy (route-only) requests keep the per-channel unit.
+    const units: Array<{
+      channel: string;
+      resolution: PersistedChannelResolution;
+      leg: PersistedDeliveryLeg | null;
+    }> = persistedLegs.length > 0
+      ? persistedLegs
+        .filter((l) => eligible.includes(l.channel))
+        .sort((a, b) => (a.leg_key < b.leg_key ? -1 : a.leg_key > b.leg_key ? 1 : 0))
+        .map((l) => ({ channel: l.channel, resolution: l, leg: l }))
+      : eligible.map((channel) => ({
+        channel,
+        resolution: resolutions.find((r) => r.channel === channel)!,
+        leg: null,
+      }));
+
+    for (const unit of units) {
+      const channel = unit.channel;
+      const resolution = unit.resolution;
       if (!resolution) {
         requestBlockers.add("resolution_snapshot_missing");
         continue;
       }
+      const leg = unit.leg;
 
       const revalidation = revalidateSnapshot(context, resolution);
       const base = {
@@ -116,7 +137,24 @@ export async function orchestrateRendering(context: RenderContext): Promise<Orch
         provider_account_id: resolution.provider_account_id,
         channel_setting_snapshot: channelSettingSnapshot(context, channel),
         destination_snapshot: recipient.destination_snapshot ?? {},
+        action_id: leg?.communication_action_id ?? null,
+        action_channel_option_id: leg?.action_channel_option_id ?? null,
+        delivery_policy_id: leg?.delivery_policy_id ?? null,
+        delivery_leg_key: leg?.leg_key ?? null,
+        resolution_reason: leg
+          ? {
+            action_code: leg.communication_action_code,
+            obligation: leg.obligation,
+            satisfaction_rule: leg.satisfaction_rule,
+            reason: leg.resolution_reason,
+            is_fallback: leg.is_fallback,
+            template_family_source: leg.template_family_source,
+            policy_version: leg.delivery_policy_version,
+            policy_mode: leg.delivery_policy_mode,
+          }
+          : null,
       };
+
 
       if (!revalidation.ok) {
         for (const b of revalidation.blockers) requestBlockers.add(b);
