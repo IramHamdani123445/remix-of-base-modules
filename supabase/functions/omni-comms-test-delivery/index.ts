@@ -39,6 +39,11 @@ import {
   sendTwilioSms,
 } from "../_shared/omni-comms/twilioSmsAdapter.ts";
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
+import {
+  adapterForChannel,
+  channelDeliverySupported,
+  secretReferenceAcceptable,
+} from "../_shared/omni-comms/adapterRegistry.ts";
 
 
 const corsHeaders = {
@@ -336,6 +341,16 @@ Deno.serve(async (req) => {
   const channel = typeof plan.channel === "string" ? plan.channel : "email";
   const secretResolver = createVaultSecretResolver(serviceClient);
 
+  // Fail closed: only channels with a genuine deployed adapter may be sent on.
+  if (!channelDeliverySupported(channel)) {
+    const delivery = await complete("failed", "configuration_invalid", {
+      errorCode: "channel_adapter_missing",
+      errorDetail: `No delivery adapter is deployed for the ${channel} channel.`,
+    });
+    return json({ error: "OC409", detail: "channel_adapter_missing", delivery }, 409);
+  }
+  const adapter = adapterForChannel(channel)!;
+
   // ---- SMS (Twilio) ------------------------------------------------------
   if (channel === "sms") {
     const authTokenRef =
@@ -347,8 +362,8 @@ Deno.serve(async (req) => {
     const smsSender = typeof plan.sms_sender === "string" ? plan.sms_sender : "";
 
     if (
-      !TWILIO_SECRET_REF_PATTERN.test(secretRef)
-      || !TWILIO_SECRET_REF_PATTERN.test(authTokenRef)
+      !secretReferenceAcceptable(channel, secretRef)
+      || !secretReferenceAcceptable(channel, authTokenRef)
     ) {
       const delivery = await complete("failed", "configuration_invalid", {
         errorCode: "secret_reference_invalid",
@@ -401,7 +416,7 @@ Deno.serve(async (req) => {
   }
 
   // ---- Email (Resend) ----------------------------------------------------
-  if (!SECRET_REF_PATTERN.test(secretRef)) {
+  if (!secretReferenceAcceptable(channel, secretRef)) {
     const delivery = await complete("failed", "configuration_invalid", {
       errorCode: "secret_reference_invalid",
       errorDetail: "The configured credential reference name is not permitted.",
