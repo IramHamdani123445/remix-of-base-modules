@@ -13,6 +13,13 @@ import { validatePayload } from "./contractValidator.ts";
 import { resolveRoutes } from "./routeResolver.ts";
 import { normalizeRecipients } from "./recipientResolver.ts";
 import { evaluateChannel } from "./channelEligibility.ts";
+import {
+  EMPTY_ACTION_SNAPSHOT,
+  buildActionResolutionEvidence,
+  resolveCommunicationActions,
+  type ActionSnapshot,
+} from "./actionResolver.ts";
+
 
 const REQUIRED_SNAPSHOT_KEYS = [
   "snapshot_at",
@@ -74,7 +81,15 @@ export interface OrchestrationInput {
   productId?: string | null;
   /** Authoritative product-level overrides for THIS organisation + event. */
   productOverrides?: ProductCommunicationOverride[];
+  /**
+   * Communication Action (obligation) snapshot. When absent or empty the
+   * runtime stays on the LEGACY per-channel route model, unchanged.
+   */
+  actionSnapshot?: ActionSnapshot;
+  /** Semantic business role per recipient input index (claimant, employer…). */
+  recipientRolesByIndex?: Record<number, string | null>;
 }
+
 
 /**
  * Per-property inheritance:
@@ -161,9 +176,67 @@ export async function orchestrateResolution(
   const normalized = await normalizeRecipients(input.recipients);
   if (normalized.length === 0) requestBlockers.push("recipient_input_invalid");
 
-  const recipientResolutions: RuntimeRecipientResolution[] = normalized.map((r) =>
-    resolveRecipient(input.snapshot, r, effectiveRoutes, event.eventDefinitionId, input.organizationId, input.departmentId, input.mode)
-  );
+  const actionSnapshot: ActionSnapshot =
+    input.actionSnapshot ?? EMPTY_ACTION_SNAPSHOT;
+
+  const recipientResolutions: RuntimeRecipientResolution[] = [];
+  const actionEvidence: Array<Record<string, unknown>> = [];
+
+  for (const r of normalized) {
+    const resolution = resolveRecipient(
+      input.snapshot,
+      r,
+      effectiveRoutes,
+      event.eventDefinitionId,
+      input.organizationId,
+      input.departmentId,
+      input.mode,
+    );
+
+    // ── Communication Action (obligation) layer — dual mode ───────────────
+    // When the event has no active actions the LEGACY route model above is
+    // authoritative and nothing below changes behaviour.
+    if (actionSnapshot.communication_actions.length > 0) {
+      const channelsWithVariant = resolution.channelResolutions
+        .filter((c) => Boolean(c.templateVersionId))
+        .map((c) => c.channel);
+      const isLive = input.mode === "queued";
+      const readyChannels = resolution.channelResolutions
+        .filter((c) => (isLive ? c.liveDeliveryReady : c.senderChannelReady))
+        .map((c) => c.channel);
+      const digitalDestinationAvailable = Boolean(
+        r.normalizedDestinations.email || r.normalizedDestinations.phone ||
+          r.normalizedDestinations.push,
+      );
+
+      const actionResult = resolveCommunicationActions(
+        {
+          snapshot: actionSnapshot,
+          recipientRole: input.recipientRolesByIndex?.[r.inputIndex] ?? null,
+          recipientReference: r.recipientReference,
+          requestedChannels: input.requestedChannels,
+          readyChannels,
+          channelsWithVariant,
+          digitalDestinationAvailable,
+        },
+        input.departmentId,
+      );
+
+      const selected = new Set(actionResult.selectedChannels);
+      resolution.channelResolutions = resolution.channelResolutions.filter((c) =>
+        selected.has(c.channel)
+      );
+      resolution.resolvedChannels = resolution.resolvedChannels.filter((c) =>
+        selected.has(c)
+      );
+      for (const b of actionResult.blockers) {
+        if (!resolution.blockers.includes(b)) resolution.blockers.push(b);
+      }
+      actionEvidence.push(buildActionResolutionEvidence(actionResult));
+    }
+
+    recipientResolutions.push(resolution);
+  }
 
   return {
     event: {
@@ -180,10 +253,13 @@ export async function orchestrateResolution(
       product_id: input.productId ?? null,
       product_override_applied: Object.keys(productProvenance).length > 0,
       department_override_applied: winningRoutes.some((r) => r.inheritedFrom === "department"),
+      action_model_applied: actionSnapshot.communication_actions.length > 0,
+      action_resolution: actionEvidence,
       ...productProvenance,
     },
   };
 }
+
 
 function resolveRecipient(
   snap: AggregateSnapshot,

@@ -446,7 +446,49 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Print Phase 3A — physical production foundation',
   },
 
+  {
+    name: 'omni_comms_communication_action',
+    category: 'channels_senders_preferences',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Communication obligation for a business event and recipient role (for example "issue formal notice"). Declares whether the action is required or optional and how it is satisfied. Channels are chosen to satisfy the action; the action itself is channel-neutral.',
+    status: 'AVAILABLE',
+    introductionStory: 'Communication Action layer — channel-neutral obligations',
+  },
+  {
+    name: 'omni_comms_action_channel_option',
+    category: 'channels_senders_preferences',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Ranked channel that may satisfy a communication action, optionally bound to a template family and marked as a fallback. A channel is only selectable when a published template variant exists for that channel.',
+    status: 'AVAILABLE',
+    introductionStory: 'Communication Action layer — channel-neutral obligations',
+  },
+  {
+    name: 'omni_comms_delivery_policy',
+    category: 'channels_senders_preferences',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Versioned organisation or action level delivery policy: digital-first, paper-first or both, plus the conditions under which print remains required. Superseded versions are retired, never edited.',
+    status: 'AVAILABLE',
+    introductionStory: 'Communication Action layer — channel-neutral obligations',
+  },
+  {
+    name: 'omni_comms_recipient_channel_preference',
+    category: 'channels_senders_preferences',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Recipient-stated channel preference, opt-out or paper requirement with its source and evidence. Preferences narrow channel selection but never override a statutory requirement.',
+    status: 'AVAILABLE',
+    introductionStory: 'Communication Action layer — channel-neutral obligations',
+  },
+
 ] as const;
+
 
 
 

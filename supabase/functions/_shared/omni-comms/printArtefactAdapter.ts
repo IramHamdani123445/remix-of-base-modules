@@ -44,7 +44,15 @@ export interface ProducePrintArtefactInput {
   /** Optional template family / version recorded as artefact provenance. */
   templateFamily?: string | null;
   templateVersion?: string | null;
+  /**
+   * Channel of the template variant the content came from.
+   * Print is NEVER derived from an Email (or any other) variant: when a
+   * source channel is supplied it MUST be `print`, otherwise production
+   * fails closed with `print_variant_required`.
+   */
+  sourceChannel?: string | null;
 }
+
 
 export interface PrintArtefactOutcome {
   status: "accepted" | "failed" | "outcome_unknown";
@@ -237,8 +245,22 @@ export async function producePrintArtefact(
   input: ProducePrintArtefactInput,
 ): Promise<PrintArtefactOutcome> {
   const started = Date.now();
+  if (
+    typeof input.sourceChannel === "string" &&
+    input.sourceChannel.trim().toLowerCase() !== "print"
+  ) {
+    return {
+      status: "failed",
+      resultCode: "print_variant_required",
+      errorCode: "print_variant_required",
+      errorDetail:
+        "Print artefacts must be produced from a print template variant, never from another channel's rendered content.",
+      latencyMs: Date.now() - started,
+    };
+  }
   try {
     const letterReference = await printLetterReference(input.idempotencyKey);
+
     const lines = composePrintDocument({
       letterReference,
       documentTitle: input.documentTitle,

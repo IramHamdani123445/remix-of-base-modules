@@ -101,7 +101,7 @@ describe('C5A — object registry', () => {
   });
 
   it('raises the approved object ceiling from 27 to 28 (C5B closure raises it to 31)', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(44);
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(48);
   });
 
   it('marks the test-run object AVAILABLE, runtime evidence, admin_rpc', () => {
