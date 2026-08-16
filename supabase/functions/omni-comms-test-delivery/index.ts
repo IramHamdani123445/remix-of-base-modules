@@ -259,6 +259,73 @@ Deno.serve(async (req) => {
     return res.data ?? null;
   };
 
+  /** Channel-neutral outcome handling: identical evidence and uncertainty rules. */
+  interface ProviderOutcome {
+    status: "accepted" | "failed" | "outcome_unknown";
+    resultCode: string;
+    providerMessageId?: string | null;
+    providerStatusCode?: number | null;
+    providerResponse?: Record<string, unknown>;
+    errorCode?: string | null;
+    errorDetail?: string | null;
+    latencyMs?: number;
+  }
+
+  const finish = async (outcome: ProviderOutcome): Promise<Response> => {
+    if (outcome.status === "accepted") {
+      const delivery = await complete("accepted", "provider_accepted", {
+        providerMessageId: outcome.providerMessageId,
+        providerStatusCode: outcome.providerStatusCode,
+        providerResponse: { ...outcome.providerResponse, latency_ms: outcome.latencyMs },
+      });
+      return json({ replayed: false, dispatched: true, delivery });
+    }
+
+    if (outcome.status === "outcome_unknown") {
+      console.error(
+        "omni-comms-test-delivery outcome unknown:",
+        outcome.errorCode ?? "provider_outcome_unknown",
+      );
+      // The request may have reached the provider — never assert failure.
+      const delivery = await complete("outcome_unknown", "provider_outcome_unknown", {
+        providerStatusCode: outcome.providerStatusCode,
+        providerResponse: outcome.providerResponse,
+        errorCode: outcome.errorCode ?? "provider_outcome_unknown",
+        errorDetail: outcome.errorDetail,
+      });
+      return json(
+        {
+          error: "provider_outcome_unknown",
+          status: outcome.providerStatusCode,
+          detail: outcome.errorDetail
+            ?? "The provider outcome is unknown. A safe retry is permitted.",
+          delivery,
+        },
+        outcome.providerStatusCode ?? 502,
+      );
+    }
+
+    console.error(
+      `omni-comms-test-delivery provider rejected [${outcome.providerStatusCode ?? 0}]`,
+      JSON.stringify(outcome.providerResponse),
+    );
+    const delivery = await complete("failed", outcome.resultCode, {
+      providerStatusCode: outcome.providerStatusCode,
+      providerResponse: outcome.providerResponse,
+      errorCode: outcome.errorCode ?? "provider_error",
+      errorDetail: outcome.errorDetail,
+    });
+    return json(
+      {
+        error: "provider_rejected",
+        status: outcome.providerStatusCode,
+        detail: outcome.errorDetail ?? "The provider rejected the test message.",
+        delivery,
+      },
+      outcome.providerStatusCode ?? 502,
+    );
+  };
+
   const channel = typeof plan.channel === "string" ? plan.channel : "email";
   const secretResolver = createVaultSecretResolver(serviceClient);
 
