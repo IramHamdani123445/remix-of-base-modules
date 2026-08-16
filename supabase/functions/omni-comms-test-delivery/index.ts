@@ -32,7 +32,14 @@ import {
   resolveSecretStrict,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
+import {
+  OMNI_COMMS_TWILIO_SECRET_REF_PATTERN as TWILIO_SECRET_REF_PATTERN,
+  resolveTwilioCredentials,
+  resolveTwilioSecret,
+  sendTwilioSms,
+} from "../_shared/omni-comms/twilioSmsAdapter.ts";
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
