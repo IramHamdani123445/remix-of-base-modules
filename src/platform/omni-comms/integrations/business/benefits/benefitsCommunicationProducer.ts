@@ -43,6 +43,12 @@ export interface BenefitsCommunicationInput {
   /** Human-facing business reference rendered in the letter footer. */
   reference: string;
   recipientEmail?: string | null;
+  /**
+   * Physical postal destination. When supplied the emission also requests the
+   * Print channel; the Hub (not Benefits) decides whether a letter is actually
+   * produced, from the configured route, policy and print release state.
+   */
+  recipientPostalAddress?: import('../../../sendCommunication').SendCommunicationRecipientInput['postalAddress'];
   locale?: string | null;
   /** Business values for the event's remaining template tokens. */
   values?: Record<string, unknown>;
@@ -89,7 +95,10 @@ export async function emitBenefitsCommunication(
     entityId: input.entityId,
     entityVersion: input.entityVersion,
     mode,
-    requestedChannels: ['email'],
+    // Benefits ASKS; the Hub DECIDES. Print is only requested when a physical
+    // destination exists — routing, policy and release control still govern
+    // whether a letter is produced.
+    requestedChannels: input.recipientPostalAddress ? ['email', 'print'] : ['email'],
     correlationId:
       input.correlationId?.trim() ||
       buildBenefitsCorrelationId(entry.registeredEventCode, input.entityId),
@@ -100,6 +109,7 @@ export async function emitBenefitsCommunication(
         recipientReference: input.reference,
         displayName: input.subjectName,
         email: input.recipientEmail ?? null,
+        postalAddress: input.recipientPostalAddress ?? null,
         locale: input.locale ?? null,
       },
     ],

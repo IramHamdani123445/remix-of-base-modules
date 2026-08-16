@@ -39,6 +39,11 @@ export interface CanonicalRecipient {
   email: string | null;
   phone: string | null;
   pushDestination: string | null;
+  /**
+   * Physical postal destination, canonicalised to a newline-joined address
+   * block. Print / Correspondence ONLY; never sent to a digital provider.
+   */
+  postalAddress: string | null;
 }
 
 export interface CanonicalCallerContext {
@@ -144,6 +149,7 @@ function canonicalizeRecipient(
   const email = trimOrNull(r.email, 320);
   const phone = trimOrNull(r.phone, 64);
   const push = trimOrNull(r.pushDestination, 500);
+  const postal = canonicalizePostalAddress(r.postalAddress ?? null);
   return {
     recipientType: type,
     recipientRole: canonicalizeRole(r.recipientRole ?? null),
@@ -153,7 +159,32 @@ function canonicalizeRecipient(
     email: email ? email.toLowerCase() : null,
     phone: phone ?? null,
     pushDestination: push ?? null,
+    postalAddress: postal,
   };
+}
+
+/**
+ * Canonical postal address block: a deterministic newline-joined set of
+ * address lines. Empty input yields null so digital-only requests keep their
+ * existing idempotency fingerprint.
+ */
+export function canonicalizePostalAddress(
+  value: SendCommunicationRecipientInput['postalAddress'] | string | null | undefined,
+): string | null {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const lines = value.split('\n').map((l) => l.trim()).filter(Boolean);
+    return lines.length > 0 ? lines.join('\n').slice(0, 1000) : null;
+  }
+  const parts = [
+    value.addressee ?? null,
+    ...(Array.isArray(value.addressLines) ? value.addressLines : []),
+    [value.locality, value.region, value.postalCode].filter(Boolean).join(' '),
+    value.country ?? null,
+  ]
+    .map((l) => (typeof l === 'string' ? l.trim() : ''))
+    .filter((l) => l.length > 0);
+  return parts.length > 0 ? parts.join('\n').slice(0, 1000) : null;
 }
 
 function canonicalizePayload(input: unknown, depth = 0): unknown {
@@ -326,6 +357,10 @@ export function canonicalJsonString(c: CanonicalRequest): string {
         phone: r.phone,
         pushDestination: r.pushDestination,
       };
+      // Fingerprint continuity: the postal key is hashed ONLY when a physical
+      // address was actually supplied, so digital-only requests keep their
+      // original idempotency fingerprint.
+      if (r.postalAddress) base.postalAddress = r.postalAddress;
       if (r.recipientRole) base.recipientRole = r.recipientRole;
       return base;
     }),

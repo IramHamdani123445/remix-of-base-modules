@@ -7,7 +7,10 @@
  * the single Omni-Comms façade.
  */
 
-import type { OmniCommsChannel } from '../../sendCommunication';
+import type {
+  OmniCommsChannel,
+  SendCommunicationRecipientInput,
+} from '../../sendCommunication';
 
 /**
  * Modes a business producer may request.
@@ -63,6 +66,8 @@ export interface BusinessProducerRecipient {
   locale?: string | null;
   email?: string | null;
   phone?: string | null;
+  /** Physical postal destination — Print / Correspondence only. */
+  postalAddress?: SendCommunicationRecipientInput['postalAddress'];
 }
 
 export interface BusinessProducerEmission {

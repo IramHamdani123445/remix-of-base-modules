@@ -671,6 +671,7 @@ Deno.serve(async (req: Request) => {
       ...(r.email ? { email: r.email } : {}),
       ...(r.phone ? { phone: r.phone } : {}),
       ...(r.pushDestination ? { push: r.pushDestination } : {}),
+      ...(r.postalAddress ? { print: r.postalAddress } : {}),
     },
   }));
 

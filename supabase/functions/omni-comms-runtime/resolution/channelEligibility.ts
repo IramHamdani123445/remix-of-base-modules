@@ -17,7 +17,9 @@ const CHANNEL_TO_DEST: Record<string, keyof NormalizedRecipient["normalizedDesti
   whatsapp: "phone",
   push: "push",
   in_app: "push",
-  print: "push",
+  // Print is physical: its destination is the postal address, never a digital
+  // push token.
+  print: "print",
 };
 
 export function evaluateChannel(
