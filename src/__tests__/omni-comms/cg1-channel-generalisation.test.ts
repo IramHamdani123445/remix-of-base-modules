@@ -152,7 +152,8 @@ describe('CG1 — approved per-channel workflow', () => {
 describe('CG1 — invalid tab handling and cross-channel resource clearing', () => {
   it('an out-of-capability tab resolves to Overview', () => {
     expect(resolveApplicableTab('push', 'identities')).toBe('overview');
-    expect(resolveApplicableTab('sms', 'release-control')).toBe('overview');
+    expect(resolveApplicableTab('whatsapp', 'release-control')).toBe('overview');
+    expect(resolveApplicableTab('sms', 'release-control')).toBe('release-control');
     expect(resolveApplicableTab('email', 'release-control')).toBe('release-control');
   });
 
