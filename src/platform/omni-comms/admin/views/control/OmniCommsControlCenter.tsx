@@ -71,19 +71,48 @@ import { getChannelReleaseControlSummary } from '@/platform/omni-comms/applicati
 import type { ReleaseHistoryEntry } from '@/platform/omni-comms/application/channelReleaseControlTypes';
 import type { ChannelTestDelivery } from '@/platform/omni-comms/application/channelTestDeliveryTypes';
 import { useAutomationStatus } from '../../hooks/useAutomationStatus';
+import {
+  OMNI_COMMS_CHANNEL_CATALOGUE,
+  getChannelDescriptor,
+} from '@/platform/omni-comms/domain/channelCatalogue';
+import type { TestCentreChannel } from '@/platform/omni-comms/application/channelTestCentreTypes';
 
-const CHANNEL = 'email';
-const CHANNEL_LABEL = 'Email';
 const HEALTHY_WORD_ROWS = new Set(['dispatcher', 'callbacks', 'safety']);
 
-const fixHref = (indicatorKey: string) =>
-  `/admin/omnichannel-communications/channels?channel=email&tab=${tabForHealthIndicator(indicatorKey)}`;
+/**
+ * Channels whose delivery gate is governed here. Derived from the canonical
+ * capability matrix — never hand-authored — so a channel appears the moment
+ * it genuinely gains Release Control.
+ */
+const GOVERNED_CHANNELS = OMNI_COMMS_CHANNEL_CATALOGUE.filter(
+  (d) => d.capabilities['release-control'].uiApplicable,
+);
+
+/** Channels that are configurable but have no governed delivery gate yet. */
+const OTHER_CHANNELS = OMNI_COMMS_CHANNEL_CATALOGUE.filter(
+  (d) => !d.capabilities['release-control'].uiApplicable,
+);
+
+/** Channels the Control Center can govern end-to-end. */
+export type GovernedChannel = 'email' | 'sms';
+
+const channelHref = (channel: string, tab = 'overview') =>
+  `/admin/omnichannel-communications/channels?channel=${channel}&tab=${tab}`;
 
 export const OmniCommsControlCenter: React.FC = () => {
   const client = useOmniCommsRpcClient();
   const releaseTransport = useChannelReleaseControlTransport();
   const testTransport = useChannelTestDeliveryTransport();
   const { organizationId, organizationName, departmentId } = useOmniCommsTenant();
+
+  // Which governed channel this screen is controlling right now.
+  const [channel, setChannel] = React.useState<GovernedChannel>('email');
+  const CHANNEL: TestCentreChannel & GovernedChannel = channel;
+  const CHANNEL_LABEL = getChannelDescriptor(channel).label;
+  const fixHref = React.useCallback(
+    (indicatorKey: string) => channelHref(channel, tabForHealthIndicator(indicatorKey)),
+    [channel],
+  );
 
   const [snapshot, setSnapshot] = React.useState<DeliveryToggleSnapshot | null>(null);
   const [bindingId, setBindingId] = React.useState<string | null>(null);
@@ -120,7 +149,7 @@ export const OmniCommsControlCenter: React.FC = () => {
         getChannelReleaseControlSummary(client, {
           organizationId,
           departmentId: departmentId ?? null,
-          channel: 'email',
+          channel: CHANNEL,
           historyLimit: 25,
         }).catch(() => null),
       ]);
@@ -137,7 +166,7 @@ export const OmniCommsControlCenter: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [client, organizationId, departmentId]);
+  }, [client, organizationId, departmentId, CHANNEL]);
 
   React.useEffect(() => {
     void load();
@@ -160,7 +189,7 @@ export const OmniCommsControlCenter: React.FC = () => {
       }
       return outcome;
     },
-    [releaseTransport, organizationId, departmentId],
+    [releaseTransport, organizationId, departmentId, CHANNEL],
   );
 
   const gateScope = React.useMemo(
@@ -170,7 +199,7 @@ export const OmniCommsControlCenter: React.FC = () => {
       channel: CHANNEL,
       gate: 'channel_delivery',
     }),
-    [organizationId, departmentId],
+    [organizationId, departmentId, CHANNEL],
   );
 
   /** Turning delivery ON: always a two-person request, recorded centrally. */
@@ -368,6 +397,27 @@ export const OmniCommsControlCenter: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div
+            className="flex flex-wrap gap-2"
+            role="tablist"
+            aria-label="Channel"
+            data-testid="omni-comms-control-channel-picker"
+          >
+            {GOVERNED_CHANNELS.map((d) => (
+              <Button
+                key={d.channel}
+                role="tab"
+                aria-selected={d.channel === channel}
+                size="sm"
+                variant={d.channel === channel ? 'default' : 'outline'}
+                onClick={() => setChannel(d.channel as GovernedChannel)}
+                data-testid={`omni-comms-control-channel-${d.channel}`}
+              >
+                {d.label}
+              </Button>
+            ))}
+          </div>
+
           <ChannelDeliverySwitch
             label={`Automatic ${CHANNEL_LABEL} delivery`}
             snapshot={snapshot}
@@ -451,6 +501,7 @@ export const OmniCommsControlCenter: React.FC = () => {
         snapshot={snapshot}
         automation={automation.status}
         pendingApprovals={approvals.open.length}
+        channelLabel={CHANNEL_LABEL}
       />
 
       <GateApprovalQueueCard
@@ -488,6 +539,45 @@ export const OmniCommsControlCenter: React.FC = () => {
         requests={[...approvals.open, ...approvals.recent]}
         loading={loading}
       />
+
+      <Card data-testid="omni-comms-other-channels">
+        <CardHeader>
+          <CardTitle className="text-base">Other channels</CardTitle>
+          <CardDescription>
+            These channels are configured in their own workspace. They have no
+            automatic delivery gate yet, so nothing can be sent from them.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {OTHER_CHANNELS.map((d) => (
+            <div
+              key={d.channel}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3"
+            >
+              <div>
+                <p className="text-sm font-medium">{d.label}</p>
+                <p className="text-xs text-muted-foreground">
+                  {d.databaseSupported
+                    ? d.implemented
+                      ? 'Delivery adapter deployed. Gate coming with its release contract.'
+                      : 'Configuration only — no delivery adapter is deployed.'
+                    : 'Not available yet — the platform cannot store this channel.'}
+                </p>
+              </div>
+              <Button
+                asChild={d.databaseSupported}
+                size="sm"
+                variant="outline"
+                disabled={!d.databaseSupported}
+              >
+                {d.databaseSupported
+                  ? <Link to={channelHref(d.channel)}>Open workspace</Link>
+                  : <span>Open workspace</span>}
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
