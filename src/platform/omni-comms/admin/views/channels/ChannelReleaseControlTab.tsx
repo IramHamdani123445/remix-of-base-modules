@@ -61,6 +61,7 @@ import {
   releaseBlockers,
   type ChannelReleaseControlSummary,
   type ReleaseCheckState,
+  type ReleaseControlChannel,
 } from '@/platform/omni-comms/application/channelReleaseControlTypes';
 import type { ChannelReleaseControlTransport } from '@/platform/omni-comms/admin/hooks/useChannelReleaseControlTransport';
 import { listProducerEventBindings } from '@/platform/omni-comms/application/producerIntegrationsService';
