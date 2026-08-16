@@ -183,6 +183,7 @@ export async function emitBusinessCommunication(
         locale: r.locale ?? null,
         email: r.email ?? null,
         phone: r.phone ?? null,
+        postalAddress: r.postalAddress ?? null,
       })),
       callerContext: {
         moduleCode: input.moduleCode,
