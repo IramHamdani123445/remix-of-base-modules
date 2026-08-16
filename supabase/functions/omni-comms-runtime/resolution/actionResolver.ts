@@ -145,6 +145,21 @@ export interface ResolvedAction {
   blockers: string[];
 }
 
+/**
+ * Per-option fulfilment evidence. Availability is decided PER ACTION CHANNEL
+ * OPTION (not per channel name) because two actions may use the same channel
+ * with different template families — one may be publishable while the other
+ * is not.
+ */
+export interface ActionOptionFulfilment {
+  /** A published template version exists for THIS option's family + channel. */
+  variantAvailable: boolean;
+  /** Transport (route/sender/binding/provider/release) is ready. */
+  channelReady: boolean;
+  /** The recipient has a usable destination for this channel. */
+  destinationAvailable: boolean;
+}
+
 export interface ActionResolutionInput {
   snapshot: ActionSnapshot;
   recipientRole: string | null;
@@ -157,16 +172,47 @@ export interface ActionResolutionInput {
   channelsWithVariant: string[];
   /** True when the recipient has no usable digital destination. */
   digitalDestinationAvailable: boolean;
+  /**
+   * Authoritative per-option fulfilment evidence keyed by option id. When
+   * supplied it OVERRIDES the coarse channel-level inputs above, and digital
+   * availability is derived from actually-fulfillable digital options rather
+   * than from the mere presence of an email address or phone number.
+   */
+  optionFulfilment?: Record<string, ActionOptionFulfilment>;
+}
+
+/**
+ * One semantic delivery obligation for one recipient on one channel with one
+ * exact channel-specific template family. Two actions using the same channel
+ * produce TWO legs; they are never collapsed into a channel name.
+ */
+export interface ResolvedDeliveryLegSelection {
+  communicationActionId: string;
+  communicationActionCode: string;
+  recipientRole: string | null;
+  obligation: ActionObligation;
+  satisfactionRule: ActionSatisfactionRule;
+  channel: string;
+  optionId: string;
+  templateFamilyId: string | null;
+  policyId: string | null;
+  policyVersion: number | null;
+  policyMode: string | null;
+  selectionReason: ResolvedActionChannel["reason"];
+  isFallback: boolean;
 }
 
 export interface ActionResolutionResult {
   /** False when the event has no active actions — caller uses legacy routes. */
   actionModelApplies: boolean;
   actions: ResolvedAction[];
-  /** Union of channels selected across all actions. */
+  /** Union of channels selected across all actions. Transport hint ONLY. */
   selectedChannels: string[];
+  /** Canonical plan: one entry per action × selected channel. */
+  deliveryLegs: ResolvedDeliveryLegSelection[];
   blockers: string[];
 }
+
 
 function pickPolicy(
   policies: DeliveryPolicyRow[],
