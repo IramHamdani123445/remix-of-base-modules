@@ -6,7 +6,13 @@
  * writes to the print tables directly.
  */
 import React, { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { Printer, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +78,7 @@ interface PendingAction {
   action: OmniCommsPrintAction;
 }
 
-export const PrintProductionQueue: React.FC = () => {
+const PrintProductionQueueInner: React.FC = () => {
   const { organizationId, departmentId } = useOmniCommsTenant();
   const client = useOmniCommsRpcClient();
   const queryClient = useQueryClient();
@@ -395,6 +401,27 @@ export const PrintProductionQueue: React.FC = () => {
         </DialogContent>
       </Dialog>
     </div>
+  );
+};
+
+/**
+ * Host pages may mount this section outside a React Query provider (isolated
+ * render tests do). Providing a local client keeps the section self-contained
+ * instead of crashing its host.
+ */
+export const PrintProductionQueue: React.FC = () => {
+  let hasClient = true;
+  try {
+    useQueryClient();
+  } catch {
+    hasClient = false;
+  }
+  const [fallback] = useState(() => new QueryClient());
+  if (hasClient) return <PrintProductionQueueInner />;
+  return (
+    <QueryClientProvider client={fallback}>
+      <PrintProductionQueueInner />
+    </QueryClientProvider>
   );
 };
 
