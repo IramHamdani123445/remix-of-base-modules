@@ -35,10 +35,19 @@ export async function normalizeRecipients(
       blockers.push("recipient_destination_invalid");
     }
 
+    // Physical postal destination for Print / Correspondence. It is carried
+    // verbatim (already canonicalised upstream) and never normalised as a
+    // digital destination.
+    const print = typeof inp.destinations?.print === "string" &&
+        inp.destinations.print.trim() !== ""
+      ? inp.destinations.print.trim()
+      : null;
+
     const normalizedDestinations: Record<string, string | null> = {
       email,
       phone,
       push,
+      print,
     };
 
     const fp = await sha256Hex(
