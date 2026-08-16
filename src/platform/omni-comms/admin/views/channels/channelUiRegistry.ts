@@ -317,8 +317,10 @@ export function validateChannelUiCatalogue(): string[] {
       problems.push('email must be presented as configuring');
     }
     if (d.tabs.length === 0) problems.push(`${d.code}: no tabs declared`);
-    if (d.code !== 'email' && d.tabs.includes('release-control')) {
-      problems.push(`${d.code}: Release Control is an Email-only contract`);
+    if (d.implementationState !== 'configuring' && d.tabs.includes('release-control')) {
+      problems.push(
+        `${d.code}: Release Control requires a deployed delivery adapter`,
+      );
     }
     for (const t of d.tabs) {
       if (!(CHANNEL_WORKSPACE_TABS as readonly string[]).includes(t)) {
