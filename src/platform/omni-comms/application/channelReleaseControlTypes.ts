@@ -69,11 +69,13 @@ export interface ReleaseRecipientRule {
   readonly target_hash_prefix: string;
 }
 
+export type ReleaseControlChannel = 'email' | 'sms';
+
 export interface ChannelReleaseControl {
   readonly id: string;
   readonly organization_id: string;
   readonly department_id: string | null;
-  readonly channel: 'email';
+  readonly channel: ReleaseControlChannel;
   readonly data_origin: ReleaseDataOrigin;
   readonly release_state: ReleaseState;
   readonly release_version: number;
@@ -264,7 +266,7 @@ export interface UpsertReleaseConfigurationInput {
   expectedUpdatedAt?: string | null;
   organizationId: string;
   departmentId?: string | null;
-  channel: 'email';
+  channel: ReleaseControlChannel;
   permittedEventCodes: string[];
   permittedCallerModules: string[];
   permittedModes: string[];

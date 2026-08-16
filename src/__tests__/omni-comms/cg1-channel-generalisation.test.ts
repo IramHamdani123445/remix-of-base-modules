@@ -133,10 +133,10 @@ describe('CG1 — approved per-channel workflow', () => {
     }
   });
 
-  it('Release Control is Email-only', () => {
+  it('Release Control is exposed only for channels with a deployed adapter', () => {
     for (const d of OMNI_COMMS_CHANNEL_CATALOGUE) {
       const applicable = isTabApplicable(d.channel, 'release-control');
-      expect(applicable).toBe(d.channel === 'email');
+      expect(applicable).toBe(d.implemented);
     }
   });
 
@@ -152,7 +152,8 @@ describe('CG1 — approved per-channel workflow', () => {
 describe('CG1 — invalid tab handling and cross-channel resource clearing', () => {
   it('an out-of-capability tab resolves to Overview', () => {
     expect(resolveApplicableTab('push', 'identities')).toBe('overview');
-    expect(resolveApplicableTab('sms', 'release-control')).toBe('overview');
+    expect(resolveApplicableTab('whatsapp', 'release-control')).toBe('overview');
+    expect(resolveApplicableTab('sms', 'release-control')).toBe('release-control');
     expect(resolveApplicableTab('email', 'release-control')).toBe('release-control');
   });
 
@@ -207,19 +208,19 @@ describe('CG1 — truthful counts and readiness', () => {
   });
 
   it('readiness is two independent facets', () => {
-    const projection = projectChannelReadiness({ channel: 'sms', configurationSummary: null });
+    const projection = projectChannelReadiness({ channel: 'whatsapp', configurationSummary: null });
     expect(projection.configuration.state).toBe('unknown');
     expect(projection.delivery.state).toBe('adapter_not_installed');
     expect(projection.delivery.label).toBe('Delivery adapter not installed');
   });
 
   it('configuration ready never implies delivery ready', () => {
-    const summary = configurationSummary('sms', 'ready', 1);
-    const facet = projectChannelConfigurationReadiness('sms', summary, false);
+    const summary = configurationSummary('whatsapp', 'ready', 1);
+    const facet = projectChannelConfigurationReadiness('whatsapp', summary, false);
     expect(facet.state).toBe('ready');
     expect(facet.label).toBe('Configuration ready');
     const projection = projectChannelReadiness({
-      channel: 'sms',
+      channel: 'whatsapp',
       configurationSummary: summary,
     });
     expect(projection.delivery.state).toBe('adapter_not_installed');

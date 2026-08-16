@@ -61,6 +61,7 @@ import {
   releaseBlockers,
   type ChannelReleaseControlSummary,
   type ReleaseCheckState,
+  type ReleaseControlChannel,
 } from '@/platform/omni-comms/application/channelReleaseControlTypes';
 import type { ChannelReleaseControlTransport } from '@/platform/omni-comms/admin/hooks/useChannelReleaseControlTransport';
 import { listProducerEventBindings } from '@/platform/omni-comms/application/producerIntegrationsService';
@@ -140,7 +141,8 @@ export const ChannelReleaseControlTab: React.FC<{
   onChanged?: () => void;
 }> = ({ definition, client, orgId, departmentId, departmentName, transport, onChanged }) => {
   const channel = definition.code;
-  const supported = channel === 'email';
+  const supported = channel === 'email' || channel === 'sms';
+  const releaseChannel = channel as ReleaseControlChannel;
 
   const [summary, setSummary] = useState<ChannelReleaseControlSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -192,7 +194,7 @@ export const ChannelReleaseControlTab: React.FC<{
       const next = await getChannelReleaseControlSummary(client, {
         organizationId: orgId,
         departmentId: departmentId ?? null,
-        channel: 'email',
+        channel: releaseChannel,
       });
       setSummary(next);
       try {
@@ -207,7 +209,7 @@ export const ChannelReleaseControlTab: React.FC<{
         setDelivery(await getDeliveryToggleSnapshot(client, {
           organizationId: orgId,
           departmentId: departmentId ?? null,
-          channel: 'email',
+          channel: releaseChannel,
         }));
       } catch {
         setDelivery(null);
@@ -452,7 +454,7 @@ export const ChannelReleaseControlTab: React.FC<{
         expectedUpdatedAt: release?.updated_at ?? null,
         organizationId: orgId,
         departmentId: departmentId ?? null,
-        channel: 'email',
+        channel: releaseChannel,
         permittedEventCodes: splitList(form.eventCodes),
         permittedCallerModules: splitList(form.callerModules),
         permittedModes: ['queued'],
@@ -511,7 +513,7 @@ export const ChannelReleaseControlTab: React.FC<{
         const res = await transport.invoke(buildDeliveryRequestBody({
           organizationId: orgId,
           departmentId: departmentId ?? null,
-          channel: 'email',
+          channel: releaseChannel,
           intent,
         }));
         if (res.error) throw new Error(res.error.message ?? 'Delivery request failed');

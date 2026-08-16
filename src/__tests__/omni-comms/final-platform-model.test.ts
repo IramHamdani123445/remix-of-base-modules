@@ -165,7 +165,8 @@ describe('module API — business modules provide facts only', () => {
     // Channels present on the emission come from the authoritative effective
     // plan, never from the business caller (the caller supplies no channels).
     expect((input as any).channels).toBeUndefined();
-    expect(emission.requestedChannels ?? []).not.toContain('sms');
+    // Channels are decided by the effective plan, not the caller.
+    expect(emission.requestedChannels ?? []).toContain('email');
     expect(emission.mode).toBe('queued');
     expect(Object.keys(emission)).not.toContain('templateId');
     expect(Object.keys(emission)).not.toContain('senderIdentityId');

@@ -80,7 +80,8 @@ describe('C1 — channel catalogue', () => {
       expect(d.databaseSupported).toBe(false);
       expect(isChannelConfigurable(d)).toBe(false);
     }
-    for (const code of ['sms', 'whatsapp', 'push', 'in_app', 'print'] as const) {
+    expect(getChannelUi('sms').implementationState).toBe('configuring');
+    for (const code of ['whatsapp', 'push', 'in_app', 'print'] as const) {
       const d = getChannelUi(code);
       expect(d.implementationState).toBe('not_configured');
       expect(d.databaseSupported).toBe(true);
@@ -105,9 +106,9 @@ describe('C1 — URL channel and tab state', () => {
     expect(page).toContain('useOmniCommsSelectedChannel');
   });
 
-  it('6. selecting SMS opens a truthful empty configuration workspace', () => {
+  it('6. selecting SMS opens its configuration workspace', () => {
     const sms = resolveChannelUi('sms');
-    expect(sms?.implementationState).toBe('not_configured');
+    expect(sms?.implementationState).toBe('configuring');
     expect(read(`${DIR}/ChannelAccountsTab.tsx`)).toContain(
       'omni-comms-accounts-empty-state',
     );
