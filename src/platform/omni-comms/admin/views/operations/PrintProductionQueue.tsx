@@ -695,6 +695,135 @@ const PrintProductionQueueInner: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/*
+        Open & Print — the operator sees the official Print PDF (never an
+        email rendering), prints it on the normal workstation printer, then
+        records the physical outcome. No bucket, path or permanent URL is ever
+        exposed: the link below is short-lived and server-authorised.
+      */}
+      <Dialog
+        open={openRow != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOpenRow(null);
+            setAccess(null);
+            setAccessError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {access?.mode === "preview" ? "Preview letter" : "Open & print letter"}
+            </DialogTitle>
+            <DialogDescription>
+              {openRow?.letter_reference ?? ""} — this is the Print-specific
+              document. Print it on your normal printer, then record the
+              outcome so the physical attempt is evidenced.
+            </DialogDescription>
+          </DialogHeader>
+
+          {openDocument.isPending && (
+            <p className="text-sm text-muted-foreground">Opening secure document…</p>
+          )}
+
+          {accessError && (
+            <p
+              className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+              data-testid="print-open-error"
+            >
+              {accessError}
+            </p>
+          )}
+
+          {access && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild size="sm">
+                  <a href={access.url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Open PDF & print
+                  </a>
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Secure link expires in {access.expiresInSeconds}s ·{" "}
+                  {access.printItem.pageCount ?? "—"} page(s) · checksum{" "}
+                  {access.printItem.checksumSha256.slice(0, 12)}…
+                </span>
+              </div>
+
+              <iframe
+                title="Print document"
+                src={access.url}
+                className="h-[420px] w-full rounded-md border"
+              />
+
+              {access.mode === "print" && openRow && (
+                <div className="space-y-2">
+                  <div>
+                    <Label htmlFor="print-outcome-equipment">
+                      Equipment reference (optional)
+                    </Label>
+                    <Input
+                      id="print-outcome-equipment"
+                      value={equipment}
+                      onChange={(e) => setEquipment(e.target.value)}
+                      placeholder="e.g. HQ-PRN-02"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="print-outcome-reason">
+                      Notes (required if it failed or was spoiled)
+                    </Label>
+                    <Textarea
+                      id="print-outcome-reason"
+                      rows={2}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={recordOutcome.isPending}
+                      onClick={() =>
+                        recordOutcome.mutate({
+                          row: openRow,
+                          action: "confirm_printed",
+                        })
+                      }
+                      data-testid="print-confirm-printed"
+                    >
+                      Printed successfully
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={recordOutcome.isPending || reason.trim().length === 0}
+                      onClick={() =>
+                        recordOutcome.mutate({ row: openRow, action: "mark_failed" })
+                      }
+                    >
+                      Print failed
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={recordOutcome.isPending || reason.trim().length === 0}
+                      onClick={() =>
+                        recordOutcome.mutate({ row: openRow, action: "mark_spoiled" })
+                      }
+                    >
+                      Spoiled
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
 
   );
