@@ -11,6 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 import {
   OMNI_COMMS_OBJECT_REGISTRY,
   OMNI_COMMS_OBJECT_COUNT,
@@ -100,8 +101,8 @@ describe('C5A — object registry', () => {
     expect(entries[0].name).toBe('omni_comms_channel_test_run');
   });
 
-  it('raises the approved object ceiling from 27 to 28 (C5B closure raises it to 31)', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(48);
+  it('registers the C5A object and stays consistent with the authoritative count', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
   });
 
   it('marks the test-run object AVAILABLE, runtime evidence, admin_rpc', () => {

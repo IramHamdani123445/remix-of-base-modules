@@ -10,6 +10,7 @@ import { OMNI_COMMS_DEFERRED_OBJECTS } from './deferredObjects';
 import { OMNI_COMMS_ROUTE_REGISTRY } from './routeRegistry';
 import { OMNI_COMMS_INTEGRATION_REGISTRY } from './integrationRegistry';
 import { OMNI_COMMS_QUEUE_REGISTRY } from './queueRegistry';
+import { OMNI_COMMS_ADMIN_RPC_RUNTIME_OBJECTS } from './registryCounts';
 
 export interface RegistryValidationResult {
   ok: boolean;
@@ -32,9 +33,10 @@ const QUEUE_PREFIX = 'omni-comms.';
 export function validateOmniCommsRegistries(): RegistryValidationResult {
   const errors: string[] = [];
 
-  // Objects
-  if (OMNI_COMMS_OBJECT_REGISTRY.length !== 50) {
-    errors.push(`Object registry must contain 50 entries, found ${OMNI_COMMS_OBJECT_REGISTRY.length}.`);
+  // Objects — structural invariants only. The registry is allowed to grow;
+  // the current total is asserted once, in the dedicated current-state test.
+  if (OMNI_COMMS_OBJECT_REGISTRY.length === 0) {
+    errors.push('Object registry must not be empty.');
   }
   const seenObjects = new Set<string>();
   for (const o of OMNI_COMMS_OBJECT_REGISTRY) {
@@ -48,20 +50,12 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
     if (o.status === 'AVAILABLE' && !o.introductionStory) {
       errors.push(`Object ${o.name} is AVAILABLE but has no introductionStory.`);
     }
-    // Runtime delivery objects are written only by the service role. The C5A
-    // preflight-evidence ledger is the single admin-triggered exception: it
-    // records configuration evidence and never any provider delivery.
+    // Runtime delivery objects are written only by the service role, except
+    // the governed admin-RPC ledgers listed in the authoritative allowlist.
     if (
       o.category === 'runtime'
       && o.writeAuthority !== 'service_role_only'
-      && o.name !== 'omni_comms_channel_test_run'
-      // C5B — reserved by an operator RPC, completed only by the trusted
-      // Edge boundary. Approved technical test delivery only; never live send.
-      && o.name !== 'omni_comms_channel_test_delivery'
-      // Print Phase 3A — physical production is operator-driven through
-      // bounded admin RPCs. No provider delivery is ever performed here.
-      && o.name !== 'omni_comms_print_item'
-      && o.name !== 'omni_comms_print_attempt'
+      && !OMNI_COMMS_ADMIN_RPC_RUNTIME_OBJECTS.has(o.name)
     ) {
       errors.push(`Runtime object ${o.name} must be service_role_only.`);
     }
@@ -92,8 +86,8 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
   }
 
   // Integrations
-  if (OMNI_COMMS_INTEGRATION_REGISTRY.length !== 12) {
-    errors.push(`Integration registry must contain 12 entries, found ${OMNI_COMMS_INTEGRATION_REGISTRY.length}.`);
+  if (OMNI_COMMS_INTEGRATION_REGISTRY.length === 0) {
+    errors.push('Integration registry must not be empty.');
   }
   const seenIntegrations = new Set<string>();
   for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {

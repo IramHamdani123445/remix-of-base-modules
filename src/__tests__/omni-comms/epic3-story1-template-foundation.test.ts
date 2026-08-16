@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
 import { OMNI_COMMS_READINESS_MANIFEST } from '@/platform/omni-comms/registry/readinessManifest';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 
 const SRC_ROOT = join(process.cwd(), 'src');
 const MIGRATIONS_DIR = join(process.cwd(), 'supabase', 'migrations');
@@ -29,8 +30,8 @@ const findFiles = (root: string, pred: (p: string) => boolean): string[] => {
 };
 
 describe('Epic 3 Story 1 — object registry', () => {
-  it('keeps the 20-object ceiling', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(48);
+  it('keeps the registry consistent with the authoritative count', () => {
+    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
   });
 
   it('marks template_family and template_version as AVAILABLE', () => {

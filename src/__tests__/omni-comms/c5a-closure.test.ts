@@ -22,6 +22,7 @@ import {
   EMAIL_READINESS_LABEL,
 } from '@/platform/omni-comms/admin/views/channels/emailReadiness';
 import type { ChannelTestCentreSummary, ChannelTestRun } from '@/platform/omni-comms/application/channelTestCentreTypes';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 
 const ROOT = process.cwd();
 const read = (p: string) => fs.readFileSync(path.join(ROOT, p), 'utf8');
@@ -133,9 +134,9 @@ describe('C5A closure — 2. registry classification', () => {
     );
   });
 
-  it('keeps the object count aligned with the registry', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(48);
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(48);
+  it('keeps the exported object count aligned with the registry', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
   });
 
   it('registers exactly one C5A object and keeps registries valid', () => {

@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 import { OMNI_COMMS_READINESS_MANIFEST as readinessManifest } from '@/platform/omni-comms/registry/readinessManifest';
+import { validateOmniCommsRegistries } from '@/platform/omni-comms/registry/validateRegistries';
 
 describe('Epic 4 — Story 1: Provider/Sender/Channel foundation', () => {
-  it('object registry preserves 40 entries', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(48);
+  it('keeps every registry invariant satisfied after Story 1', () => {
+    expect(validateOmniCommsRegistries().ok).toBe(true);
   });
 
   it('five Story 1 objects are AVAILABLE and introduced in Epic 4 — Story 1', () => {

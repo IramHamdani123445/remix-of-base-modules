@@ -13,6 +13,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 import {
   OMNI_COMMS_OBJECT_REGISTRY,
   OMNI_COMMS_OBJECT_COUNT,
@@ -240,8 +241,8 @@ describe('C7 — runtime and façade boundaries are unchanged', () => {
 });
 
 describe('C7 — registries', () => {
-  it('keeps the object count at 40', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(48);
+  it('keeps the object count consistent with the authoritative registry', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
   });
 
   it('promotes the webhook event ledger to AVAILABLE', () => {
@@ -252,8 +253,8 @@ describe('C7 — registries', () => {
     expect(row?.writeAuthority).toBe('service_role_only');
   });
 
-  it('keeps the integration count at 11 and marks the dispatcher available', () => {
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY.length).toBe(12);
+  it('registers the dispatcher exactly once and marks it available', () => {
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY.filter((i) => i.name === 'omni-comms-dispatch')).toHaveLength(1);
     const row = OMNI_COMMS_INTEGRATION_REGISTRY.find(
       (i) => i.name === 'omni-comms-dispatch',
     );

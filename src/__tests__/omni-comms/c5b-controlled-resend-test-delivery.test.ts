@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 
 import {
   MAX_APPROVED_TEST_RECIPIENTS,
@@ -272,8 +273,8 @@ describe('C5B — registry and script governance', () => {
     expect(entry?.writeAuthority).toBe('service_role_only');
   });
 
-  it('raises the registered object count to 31', () => {
-    expect(OMNI_COMMS_OBJECT_COUNT).toBe(48);
+  it('registers the C5B object and stays consistent with the authoritative count', () => {
+    expect(OMNI_COMMS_OBJECT_COUNT).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
   });
 
   it('keeps the C5B rollback script fail-safe', () => {

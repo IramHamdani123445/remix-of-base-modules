@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 import { OMNI_COMMS_READINESS_MANIFEST } from '@/platform/omni-comms/registry/readinessManifest';
+import { OMNI_COMMS_REGISTRY_COUNTS } from '@/platform/omni-comms/registry/registryCounts';
 
 const RUNTIME_TABLES = [
   'omni_comms_event_route',
@@ -19,8 +20,8 @@ const RUNTIME_TABLES = [
 ] as const;
 
 describe('Build 3 Slice 1 — object registry', () => {
-  it('keeps the registry ceiling at exactly 20 entries', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(48);
+  it('keeps the registry consistent with the authoritative count', () => {
+    expect(OMNI_COMMS_OBJECT_REGISTRY.length).toBe(OMNI_COMMS_REGISTRY_COUNTS.activeObjects);
   });
 
   it.each(RUNTIME_TABLES)('marks %s as AVAILABLE', (name) => {
