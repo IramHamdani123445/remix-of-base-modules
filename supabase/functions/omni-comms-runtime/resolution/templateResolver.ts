@@ -134,3 +134,56 @@ function unresolved(
     blockers: [code],
   };
 }
+
+/**
+ * Communication Action template binding.
+ *
+ * Resolves the published version of an EXPLICIT template family for an EXACT
+ * channel. This is the authoritative content binding when the Communication
+ * Action model applies: the Action decides the semantic leg and its
+ * channel-specific family, and the transport route may never substitute it.
+ *
+ * Returns null when the family has no published version for THAT channel —
+ * the caller then fails the leg closed with `variant_missing`. Content is
+ * never derived from another channel's variant.
+ */
+export function resolveTemplateForFamilyChannel(
+  snap: AggregateSnapshot,
+  familyId: string,
+  channel: string,
+  organizationId: string,
+  departmentId: string | null,
+  localeFallbacks: string[],
+): ResolvedTemplate | null {
+  const family = snap.template_families.find(
+    (f) =>
+      f.id === familyId &&
+      f.status === "active" &&
+      f.organization_id === organizationId &&
+      (f.department_id === null || f.department_id === departmentId),
+  );
+  if (!family) return null;
+
+  const versions = snap.template_versions.filter(
+    (v) =>
+      v.template_family_id === family.id &&
+      v.status === "published" &&
+      v.channel === channel,
+  );
+  if (versions.length === 0) return null;
+
+  for (const loc of localeFallbacks) {
+    const forLocale = versions.filter((v) => v.locale === loc);
+    if (forLocale.length === 1) return build(family.id, "route_pinned", forLocale[0]);
+    if (forLocale.length > 1) return null;
+  }
+  for (const loc of localeFallbacks) {
+    if (loc.includes("-")) continue;
+    const sameLanguage = versions.filter(
+      (v) => typeof v.locale === "string" && v.locale.startsWith(`${loc}-`),
+    );
+    if (sameLanguage.length === 1) return build(family.id, "route_pinned", sameLanguage[0]);
+    if (sameLanguage.length > 1) return null;
+  }
+  return null;
+}
