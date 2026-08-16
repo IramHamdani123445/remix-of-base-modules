@@ -70,6 +70,19 @@ export interface SendCommunicationRecipientInput {
   email?: string | null;
   phone?: string | null;
   pushDestination?: string | null;
+  /**
+   * Physical postal destination for the Print / Correspondence channel.
+   * Never used by a digital channel; it is snapshotted onto the message and
+   * becomes the address of record on the produced print item.
+   */
+  postalAddress?: {
+    addressee?: string | null;
+    addressLines: string[];
+    locality?: string | null;
+    region?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
+  } | null;
 }
 
 export interface SendCommunicationCallerContext {
