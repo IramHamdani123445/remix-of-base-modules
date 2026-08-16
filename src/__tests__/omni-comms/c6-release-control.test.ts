@@ -465,7 +465,10 @@ describe('C6 closure — SQL artefact evidence', () => {
     .map((f) => fs.readFileSync(path.join(migrationsDir, f), 'utf8'))
     .filter((s) => (s.includes('omni_comms_channel_release') || s.includes('release_decision_snapshot'))
       // C7 dispatch migrations also reference Release Control; they are out of C6 scope.
-      && !s.includes('omni_comms_priv_dispatch_claim_email'))
+      && !s.includes('omni_comms_priv_dispatch_claim_email')
+      // Print physical-production migrations also reference Release Control;
+      // they are out of C6 scope.
+      && !/omni_comms_priv_print_|omni_comms_print_/i.test(s))
     .join('\n');
 
   const verifier = readOnce('scripts/omni-comms/verify-c6-release-control.sql');

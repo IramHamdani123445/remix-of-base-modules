@@ -113,7 +113,8 @@ describe('Step 3 — happy path', () => {
     expect(sent.organizationId).toBe(ORG);
     expect(sent.departmentId).toBe(DEPT);
     expect(sent.mode).toBe('queued');
-    expect(sent.requestedChannels).toEqual(['email']);
+    // The Hub decides every delivery leg: no producer-side channel request.
+    expect(sent.requestedChannels).toBeUndefined();
     expect(sent.recipients).toHaveLength(1);
     expect(sent.recipients[0]).toMatchObject({
       recipientType: 'external',

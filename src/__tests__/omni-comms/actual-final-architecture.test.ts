@@ -125,6 +125,9 @@ describe('recipient roles are first-class business facts', () => {
       'src/platform/omni-comms/integrations/business/emitConfiguredBusinessEvent.ts',
     );
     expect(emitter).not.toMatch(/PRODUCT_GATED_CHANNELS/);
-    expect(emitter).toMatch(/plan\.runnableChannels/);
+    // and no longer pre-resolve them either: the canonical runtime is the
+    // single resolution authority.
+    expect(emitter).not.toMatch(/plan\.runnableChannels/);
+    expect(emitter).not.toMatch(/resolveEffectiveCommunicationPlan\(/);
   });
 });

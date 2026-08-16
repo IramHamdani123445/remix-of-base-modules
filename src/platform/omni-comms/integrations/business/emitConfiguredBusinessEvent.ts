@@ -28,7 +28,9 @@
  */
 import { emitBusinessCommunication } from './emitBusinessCommunication';
 import { resolveBusinessCommunicationScope } from './businessScopeResolver';
-import { resolveEffectiveCommunicationPlan } from '../../application/effectiveCommunicationPlan';
+// NOTE: this helper deliberately imports NO communication resolver. Channel,
+// template, sender, provider and delivery policy are resolved exactly once, by
+// the canonical Omni-Comms runtime behind `sendCommunication()`.
 import { buildConfiguredEventIdempotencyKey } from './configuredEventIdentity';
 
 
@@ -57,6 +59,11 @@ export interface ConfiguredBusinessEventRecipient {
   displayName?: string | null;
   email?: string | null;
   phone?: string | null;
+  /** Physical destination. Presence NEVER means "print"; it means print is
+   *  technically possible if configuration/policy selects it. */
+  postalAddress?: import('../../sendCommunication').SendCommunicationRecipientInput['postalAddress'];
+  /** Push destination token, when the recipient has one. */
+  pushDestination?: string | null;
   locale?: string | null;
   /**
    * Whether the recipient is outside the organisation. Defaults to
@@ -103,16 +110,24 @@ export interface ConfiguredBusinessEventResult
   organizationId: string | null;
   departmentId: string | null;
   departmentSource: 'explicit' | 'module_context' | 'none';
-  /** Set when the Hub decided this obligation does not apply. */
+  /**
+   * Set when the CANONICAL RUNTIME decided this obligation does not apply.
+   * It is never predicted by the business layer.
+   */
   skippedReason: string | null;
-  /** Channels the authoritative effective plan turned on. */
-  enabledChannels: string[];
-  /** Enabled channels with a real delivery adapter. */
-  runnableChannels: string[];
-  /** Effective template/sender chosen by the plan, for module-side logging. */
-  effectiveTemplate: string | null;
-  effectiveSender: string | null;
 }
+
+/**
+ * Canonical runtime refusal codes that mean "configuration says nothing is
+ * owed here" rather than "something went wrong".
+ */
+const RUNTIME_SKIP_CODES = new Set<string>([
+  'no_applicable_obligation',
+  'no_channel_enabled',
+  'no_delivery_leg_resolved',
+  'channel_delivery_not_implemented',
+  'communication_not_configured',
+]);
 
 function deriveModuleCode(eventCode: string): string {
   return String(eventCode ?? '').split('.')[0]?.trim().toUpperCase() ?? '';
@@ -153,10 +168,6 @@ function blocked(
     departmentId: scope.departmentId,
     departmentSource: scope.departmentSource,
     skippedReason,
-    enabledChannels: [],
-    runnableChannels: [],
-    effectiveTemplate: null,
-    effectiveSender: null,
   };
 }
 
@@ -196,38 +207,13 @@ export async function emitConfiguredBusinessEvent(
     return blocked(eventCode, ['organization_unresolved'], scope);
   }
 
-  // ONE authoritative resolution. The plan — not the business module and not
-  // a hard-coded channel list — decides which channels carry an obligation,
-  // which template and sender apply and which recipient role is addressed.
+  // NO business-side resolution. The product identity is supplied as a FACT;
+  // the canonical runtime is the only authority that decides whether an
+  // obligation exists, and which channel/template/sender/provider carries it.
   const productId = input.context?.productId?.trim() || null;
-  const plan = await resolveEffectiveCommunicationPlan({
-    organizationId: scope.organizationId,
-    moduleCode,
-    eventCode,
-    productId,
-    // Department is resolution CONTEXT only, never a delivery instruction.
-    departmentId: scope.departmentId,
-    recipientRoles: roles,
-  });
-
-  if (plan.enabledChannels.length === 0) {
-    const reason = plan.blockers[0] ?? 'no_channel_enabled';
-    return {
-      ...blocked(eventCode, [reason], scope),
-      outcome: 'skipped',
-      skippedReason: reason,
-    };
-  }
-  if (plan.runnableChannels.length === 0) {
-    const reason = 'channel_delivery_not_implemented';
-    return {
-      ...blocked(eventCode, [reason], scope),
-      outcome: 'skipped',
-      skippedReason: reason,
-    };
-  }
 
   const recipients = roles.map((role) => {
+
     const r = input.recipients[role] ?? {};
     return {
       recipientType: toRecipientType(r.audience),
@@ -237,8 +223,13 @@ export async function emitConfiguredBusinessEvent(
       recipientReference: r.reference ?? role,
       displayName: r.displayName ?? null,
       locale: r.locale ?? null,
+      // Destinations are FACTS, never channel requests. A postal address does
+      // not mean "print" and a phone number does not mean "SMS": the Hub
+      // decides which destination (if any) is used.
       email: r.email ?? null,
       phone: r.phone ?? null,
+      postalAddress: r.postalAddress ?? null,
+      pushDestination: r.pushDestination ?? null,
     };
   });
 
@@ -254,8 +245,6 @@ export async function emitConfiguredBusinessEvent(
     entityId: String(input.entity.id),
     occurrence,
   });
-
-  const primary = plan.channels.find((c) => c.channel === plan.runnableChannels[0]) ?? null;
 
   const result = await emitBusinessCommunication({
     moduleCode,
@@ -282,15 +271,17 @@ export async function emitConfiguredBusinessEvent(
     payload: { ...(input.data ?? {}) },
   });
 
+  const runtimeSkipped =
+    result.outcome === 'blocked' &&
+    result.blockers.some((b) => RUNTIME_SKIP_CODES.has(b));
+
   return {
     ...result,
     organizationId: scope.organizationId,
     departmentId: scope.departmentId,
     departmentSource: scope.departmentSource,
-    skippedReason: null,
-    enabledChannels: [...plan.enabledChannels],
-    runnableChannels: [...plan.runnableChannels],
-    effectiveTemplate: primary?.templateRef ?? null,
-    effectiveSender: primary?.senderRef ?? null,
+    // The runtime — not a second resolver — reports "nothing to send".
+    outcome: runtimeSkipped ? 'skipped' : result.outcome,
+    skippedReason: runtimeSkipped ? result.blockers[0] ?? 'no_applicable_obligation' : null,
   };
 }

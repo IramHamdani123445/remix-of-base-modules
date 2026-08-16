@@ -162,7 +162,7 @@ describe('Build 4A — employer registration pilot', () => {
     });
     expect(arg.callerContext.moduleCode).toBe(EMPLOYER_REGISTRATION_MODULE_CODE);
     expect(arg.callerContext.entityId).toBe('ER-00042');
-    expect(arg.requestedChannels).toEqual(['email']);
+    expect(arg.requestedChannels).toBeUndefined();
   });
 });
 

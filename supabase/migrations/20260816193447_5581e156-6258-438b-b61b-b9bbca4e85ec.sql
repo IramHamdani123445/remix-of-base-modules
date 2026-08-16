@@ -1,0 +1,2 @@
+ALTER INDEX IF EXISTS public.omni_comms_communication_action_uniq_v2
+  RENAME TO omni_comms_communication_action_scope_uniq;

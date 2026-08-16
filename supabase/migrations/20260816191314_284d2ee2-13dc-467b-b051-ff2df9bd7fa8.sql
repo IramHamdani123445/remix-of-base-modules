@@ -12,7 +12,7 @@ ALTER TABLE public.omni_comms_communication_action
 DROP INDEX IF EXISTS public.omni_comms_communication_action_unique;
 DROP INDEX IF EXISTS public.omni_comms_communication_action_uniq;
 
-CREATE UNIQUE INDEX IF NOT EXISTS omni_comms_communication_action_uniq_v2
+CREATE UNIQUE INDEX IF NOT EXISTS omni_comms_communication_action_scope_uniq
   ON public.omni_comms_communication_action (
     organization_id,
     coalesce(department_id, '00000000-0000-0000-0000-000000000000'::uuid),
