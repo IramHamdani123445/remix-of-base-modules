@@ -74,8 +74,8 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
   }
 
   // Routes
-  if (OMNI_COMMS_ROUTE_REGISTRY.length !== 8) {
-    errors.push(`Route registry must contain 8 entries, found ${OMNI_COMMS_ROUTE_REGISTRY.length}.`);
+  if (OMNI_COMMS_ROUTE_REGISTRY.length !== 7) {
+    errors.push(`Route registry must contain 7 entries, found ${OMNI_COMMS_ROUTE_REGISTRY.length}.`);
   }
   const seenRoutes = new Set<string>();
   for (const r of OMNI_COMMS_ROUTE_REGISTRY) {
