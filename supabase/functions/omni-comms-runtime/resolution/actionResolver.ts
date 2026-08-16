@@ -334,6 +334,7 @@ export function resolveCommunicationActions(
       const channel = option.channel;
       const isPrint = channel === "print";
       const isDigital = DIGITAL_CHANNELS.has(channel);
+      const f = optionFulfilment(option);
 
       if (
         input.requestedChannels.length > 0 &&
@@ -343,12 +344,14 @@ export function resolveCommunicationActions(
         rejected.push({ channel, reason: "not_requested_by_caller" });
         continue;
       }
-      if (!input.channelsWithVariant.includes(channel)) {
-        // Print is NEVER derived from the Email variant. Fail closed.
+      if (!f.variantAvailable) {
+        // The Action's OWN channel-specific template family must have a
+        // published variant for THIS channel. Print is never derived from the
+        // Email variant. Fail closed.
         rejected.push({ channel, reason: "variant_missing" });
         continue;
       }
-      if (!input.readyChannels.includes(channel)) {
+      if (!f.channelReady) {
         rejected.push({ channel, reason: "channel_not_ready" });
         continue;
       }
@@ -365,7 +368,7 @@ export function resolveCommunicationActions(
           statutoryPrint ||
           (printWhen.recipient_requested === true && paperRequiredByRecipient) ||
           (printWhen.digital_unavailable === true &&
-            !input.digitalDestinationAvailable) ||
+            !digitalFulfilmentAvailable) ||
           printWhen.policy_exception === true;
         if (!printAllowed) {
           rejected.push({ channel, reason: "policy_digital_first" });
@@ -377,17 +380,18 @@ export function resolveCommunicationActions(
             ? "statutory_print_required"
             : paperRequiredByRecipient
               ? "recipient_paper_required"
-              : !input.digitalDestinationAvailable
+              : !digitalFulfilmentAvailable
                 ? "fallback_digital_unavailable"
                 : "policy_selected",
         });
         continue;
       }
 
-      if (isDigital && !input.digitalDestinationAvailable) {
+      if (isDigital && !f.destinationAvailable) {
         // No usable digital destination for this recipient: paper carries it.
         rejected.push({ channel, reason: "channel_not_ready" });
         continue;
+
       }
 
       if (isDigital && mode === "paper_first" && action.obligation === "required") {
