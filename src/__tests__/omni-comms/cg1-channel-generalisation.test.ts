@@ -125,12 +125,16 @@ describe('CG1 — approved per-channel workflow', () => {
     expect(getChannelDescriptor('push').tabs).not.toContain('identities');
   });
 
-  it('In-App and Print keep their narrow surface', () => {
-    for (const channel of ['in_app', 'print'] as const) {
-      const tabs = getChannelDescriptor(channel).tabs;
-      expect(tabs).not.toContain('accounts');
-      expect(tabs).not.toContain('bindings');
-    }
+  it('In-App keeps its narrow surface', () => {
+    const tabs = getChannelDescriptor('in_app').tabs;
+    expect(tabs).not.toContain('accounts');
+    expect(tabs).not.toContain('bindings');
+  });
+
+  it('Print gains full provider administration now its adapter ships', () => {
+    const tabs = getChannelDescriptor('print').tabs;
+    expect(tabs).toContain('accounts');
+    expect(tabs).toContain('bindings');
   });
 
   it('Release Control is exposed only for channels with a deployed adapter', () => {

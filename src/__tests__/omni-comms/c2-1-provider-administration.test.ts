@@ -41,8 +41,10 @@ describe('C2.1 — adapter catalogue', () => {
     expect(adapterDeliveryImplemented('resend')).toBe(true);
     // Twilio SMS delivery is now implemented (server-only adapter).
     expect(adapterDeliveryImplemented('twilio')).toBe(true);
+    // Print artefact production is internal but genuinely deployed.
+    expect(adapterDeliveryImplemented('print_spool')).toBe(true);
     expect(OMNI_COMMS_PROVIDER_ADAPTERS.filter((a) => a.deliveryImplemented))
-      .toHaveLength(2);
+      .toHaveLength(3);
 
     expect(NO_DELIVERY_ADAPTER_MESSAGE).toMatch(/no delivery adapter is installed/i);
   });

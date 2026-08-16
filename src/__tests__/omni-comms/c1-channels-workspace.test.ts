@@ -81,7 +81,8 @@ describe('C1 — channel catalogue', () => {
       expect(isChannelConfigurable(d)).toBe(false);
     }
     expect(getChannelUi('sms').implementationState).toBe('configuring');
-    for (const code of ['whatsapp', 'push', 'in_app', 'print'] as const) {
+    expect(getChannelUi('print').implementationState).toBe('configuring');
+    for (const code of ['whatsapp', 'push', 'in_app'] as const) {
       const d = getChannelUi(code);
       expect(d.implementationState).toBe('not_configured');
       expect(d.databaseSupported).toBe(true);
