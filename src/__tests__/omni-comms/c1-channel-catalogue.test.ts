@@ -35,8 +35,8 @@ describe('C1 — channel catalogue', () => {
     expect(byChunk('C10')).toEqual(['webhook', 'print', 'voice']);
   });
 
-  it('only email has an implemented administration surface', () => {
-    expect(getImplementedChannels().map((d) => d.channel)).toEqual(['email']);
+  it('email and sms have implemented administration surfaces', () => {
+    expect(getImplementedChannels().map((d) => d.channel)).toEqual(['email', 'sms']);
   });
 
   it('exposes no provider adapters for unimplemented channels', () => {
