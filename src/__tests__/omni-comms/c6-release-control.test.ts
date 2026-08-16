@@ -328,7 +328,7 @@ describe('C6 — registries', () => {
   });
 
   it('raises the approved object ceiling to 34', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(44);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(48);
   });
 
   it('registers the release-control edge function', () => {
@@ -341,7 +341,7 @@ describe('C6 — registries', () => {
     const result = validateOmniCommsRegistries();
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);
-    expect(result.counts.activeObjects).toBe(44);
+    expect(result.counts.activeObjects).toBe(48);
     expect(result.counts.integrations).toBe(11);
   });
 });

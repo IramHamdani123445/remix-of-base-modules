@@ -362,6 +362,10 @@ Deno.serve(async (req) => {
         typeof plan.print_return_reference === "string" ? plan.print_return_reference : null,
       documentTitle: subject,
       bodyText: providerText,
+      // Explicit provenance: this content is the PRINT variant, never a
+      // converted Email render.
+      sourceChannel: "print",
+
       store: {
         upload: async (bucket, path, body, contentType) => {
           const res = await serviceClient.storage

@@ -93728,6 +93728,66 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_action_channel_option: {
+        Row: {
+          action_id: string
+          channel: string
+          condition: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          is_fallback: boolean
+          rank: number
+          status: string
+          template_family_id: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_id: string
+          channel: string
+          condition?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_fallback?: boolean
+          rank?: number
+          status?: string
+          template_family_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_id?: string
+          channel?: string
+          condition?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_fallback?: boolean
+          rank?: number
+          status?: string
+          template_family_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_action_channel_option_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_communication_action"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_action_channel_option_template_family_id_fkey"
+            columns: ["template_family_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_template_family"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_business_event_outbox: {
         Row: {
           attempt_count: number
@@ -94676,6 +94736,74 @@ export type Database = {
           },
         ]
       }
+      omni_comms_communication_action: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          description: string | null
+          event_definition_id: string
+          id: string
+          legal_basis: string | null
+          name: string
+          obligation: string
+          organization_id: string
+          priority: number
+          recipient_role: string | null
+          satisfaction_rule: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          event_definition_id: string
+          id?: string
+          legal_basis?: string | null
+          name: string
+          obligation?: string
+          organization_id: string
+          priority?: number
+          recipient_role?: string | null
+          satisfaction_rule?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          description?: string | null
+          event_definition_id?: string
+          id?: string
+          legal_basis?: string | null
+          name?: string
+          obligation?: string
+          organization_id?: string
+          priority?: number
+          recipient_role?: string | null
+          satisfaction_rule?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_communication_action_event_definition_id_fkey"
+            columns: ["event_definition_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_event_definition"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_delivery_attempt: {
         Row: {
           attempt_number: number
@@ -94837,6 +94965,68 @@ export type Database = {
             columns: ["release_control_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_channel_release_control"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_delivery_policy: {
+        Row: {
+          action_id: string | null
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          effective_from: string
+          effective_to: string | null
+          id: string
+          mode: string
+          notes: string | null
+          organization_id: string
+          print_when: Json
+          status: string
+          updated_at: string
+          updated_by: string | null
+          version_number: number
+        }
+        Insert: {
+          action_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          mode?: string
+          notes?: string | null
+          organization_id: string
+          print_when?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_number?: number
+        }
+        Update: {
+          action_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          id?: string
+          mode?: string
+          notes?: string | null
+          organization_id?: string
+          print_when?: Json
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_delivery_policy_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_communication_action"
             referencedColumns: ["id"]
           },
         ]
@@ -95199,6 +95389,7 @@ export type Database = {
       }
       omni_comms_event_route: {
         Row: {
+          action_id: string | null
           activated_at: string | null
           activated_by: string | null
           channel: string
@@ -95222,6 +95413,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          action_id?: string | null
           activated_at?: string | null
           activated_by?: string | null
           channel: string
@@ -95245,6 +95437,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          action_id?: string | null
           activated_at?: string | null
           activated_by?: string | null
           channel?: string
@@ -95268,6 +95461,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "omni_comms_event_route_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_communication_action"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omni_comms_event_route_event_definition_id_fkey"
             columns: ["event_definition_id"]
@@ -95293,11 +95493,13 @@ export type Database = {
       }
       omni_comms_message: {
         Row: {
+          action_id: string | null
           blockers: Json
           channel: string
           channel_setting_snapshot: Json
           completed_at: string | null
           created_at: string
+          delivery_policy_id: string | null
           department_id: string | null
           destination_snapshot: Json
           event_definition_id: string
@@ -95317,6 +95519,7 @@ export type Database = {
           rendered_subject: string | null
           rendered_text: string | null
           request_id: string
+          resolution_reason: Json | null
           resolved_asset_manifest: Json
           sender_identity_id: string | null
           status: string
@@ -95327,11 +95530,13 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          action_id?: string | null
           blockers?: Json
           channel: string
           channel_setting_snapshot?: Json
           completed_at?: string | null
           created_at?: string
+          delivery_policy_id?: string | null
           department_id?: string | null
           destination_snapshot?: Json
           event_definition_id: string
@@ -95351,6 +95556,7 @@ export type Database = {
           rendered_subject?: string | null
           rendered_text?: string | null
           request_id: string
+          resolution_reason?: Json | null
           resolved_asset_manifest?: Json
           sender_identity_id?: string | null
           status?: string
@@ -95361,11 +95567,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          action_id?: string | null
           blockers?: Json
           channel?: string
           channel_setting_snapshot?: Json
           completed_at?: string | null
           created_at?: string
+          delivery_policy_id?: string | null
           department_id?: string | null
           destination_snapshot?: Json
           event_definition_id?: string
@@ -95385,6 +95593,7 @@ export type Database = {
           rendered_subject?: string | null
           rendered_text?: string | null
           request_id?: string
+          resolution_reason?: Json | null
           resolved_asset_manifest?: Json
           sender_identity_id?: string | null
           status?: string
@@ -95395,6 +95604,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "omni_comms_message_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_communication_action"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_delivery_policy_id_fkey"
+            columns: ["delivery_policy_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_delivery_policy"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omni_comms_message_event_definition_id_fkey"
             columns: ["event_definition_id"]
@@ -96356,6 +96579,57 @@ export type Database = {
           },
         ]
       }
+      omni_comms_recipient_channel_preference: {
+        Row: {
+          channel: string
+          created_at: string
+          created_by: string | null
+          effective_from: string
+          effective_to: string | null
+          evidence: Json
+          id: string
+          organization_id: string
+          preference: string
+          recipient_reference: string
+          recipient_role: string | null
+          source: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          evidence?: Json
+          id?: string
+          organization_id: string
+          preference: string
+          recipient_reference: string
+          recipient_role?: string | null
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          created_by?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          evidence?: Json
+          id?: string
+          organization_id?: string
+          preference?: string
+          recipient_reference?: string
+          recipient_role?: string | null
+          source?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       omni_comms_request: {
         Row: {
           accepted_at: string | null
@@ -96857,6 +97131,7 @@ export type Database = {
           id: string
           name: string
           organization_id: string
+          produces_official_document: boolean
           retired_at: string | null
           retired_by: string | null
           retirement_reason: string | null
@@ -96877,6 +97152,7 @@ export type Database = {
           id?: string
           name: string
           organization_id: string
+          produces_official_document?: boolean
           retired_at?: string | null
           retired_by?: string | null
           retirement_reason?: string | null
@@ -96897,6 +97173,7 @@ export type Database = {
           id?: string
           name?: string
           organization_id?: string
+          produces_official_document?: boolean
           retired_at?: string | null
           retired_by?: string | null
           retirement_reason?: string | null
@@ -121060,6 +121337,18 @@ export type Database = {
         Args: { p_stage: string }
         Returns: string
       }
+      omni_comms_action_channel_option_upsert: {
+        Args: {
+          p_action_id: string
+          p_channel: string
+          p_condition?: Json
+          p_is_fallback?: boolean
+          p_rank?: number
+          p_status?: string
+          p_template_family_id?: string
+        }
+        Returns: string
+      }
       omni_comms_automation_cron_evidence: {
         Args: { p_jobname: string }
         Returns: string
@@ -121465,7 +121754,43 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_communication_action_list: {
+        Args: {
+          p_department_id?: string
+          p_event_code?: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_communication_action_upsert: {
+        Args: {
+          p_code: string
+          p_department_id?: string
+          p_description?: string
+          p_event_code: string
+          p_legal_basis?: string
+          p_name: string
+          p_obligation?: string
+          p_organization_id: string
+          p_priority?: number
+          p_recipient_role?: string
+          p_satisfaction_rule?: string
+          p_status?: string
+        }
+        Returns: string
+      }
       omni_comms_controlled_dry_run_gate: { Args: never; Returns: Json }
+      omni_comms_delivery_policy_publish: {
+        Args: {
+          p_action_id?: string
+          p_department_id?: string
+          p_mode: string
+          p_notes?: string
+          p_organization_id: string
+          p_print_when?: Json
+        }
+        Returns: string
+      }
       omni_comms_diagnostics: {
         Args: { p_organization_id?: string }
         Returns: Json
@@ -123202,6 +123527,15 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_runtime_action_snapshot: {
+        Args: {
+          p_department_id: string
+          p_event_definition_id: string
+          p_organization_id: string
+          p_recipient_references?: string[]
+        }
+        Returns: Json
+      }
       omni_comms_priv_runtime_certification: { Args: never; Returns: Json }
       omni_comms_priv_runtime_environment: { Args: never; Returns: string }
       omni_comms_priv_runtime_health_posture: {
@@ -123502,6 +123836,18 @@ export type Database = {
       omni_comms_provider_secret_configuration: {
         Args: { p_organization_id: string }
         Returns: Json
+      }
+      omni_comms_recipient_channel_preference_set: {
+        Args: {
+          p_channel: string
+          p_evidence?: Json
+          p_organization_id: string
+          p_preference: string
+          p_recipient_reference: string
+          p_recipient_role?: string
+          p_source?: string
+        }
+        Returns: string
       }
       omni_comms_reference_seed_apply: {
         Args: {

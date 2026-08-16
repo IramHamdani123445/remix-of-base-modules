@@ -674,6 +674,24 @@ Deno.serve(async (req: Request) => {
     },
   }));
 
+  const recipientRolesByIndex: Record<number, string | null> = {};
+  canonical.recipients.forEach((r, index) => {
+    recipientRolesByIndex[index] = r.recipientRole ?? null;
+  });
+
+  // Communication Action (obligation) snapshot. Absent/empty => LEGACY mode.
+  const { data: actionSnapData } = await admin.rpc(
+    "omni_comms_priv_runtime_action_snapshot",
+    {
+      p_organization_id: canonical.organizationId,
+      p_department_id: canonical.departmentId,
+      p_event_definition_id: (snapshot as { event?: { id?: string } }).event?.id ?? null,
+      p_recipient_references: canonical.recipients
+        .map((r) => r.recipientReference)
+        .filter((v): v is string => typeof v === "string" && v.length > 0),
+    },
+  );
+
   let result;
   try {
     result = await orchestrateResolution({
@@ -686,11 +704,22 @@ Deno.serve(async (req: Request) => {
       mode: canonical.mode,
       productId: canonical.businessContext.productId ?? null,
       productOverrides: Array.isArray(productOverrideData) ? productOverrideData : [],
+      actionSnapshot: actionSnapData
+        ? {
+          communication_actions: actionSnapData.communication_actions ?? [],
+          action_channel_options: actionSnapData.action_channel_options ?? [],
+          delivery_policies: actionSnapData.delivery_policies ?? [],
+          recipient_channel_preferences:
+            actionSnapData.recipient_channel_preferences ?? [],
+        }
+        : undefined,
+      recipientRolesByIndex,
     });
   } catch (err) {
     const code = err instanceof RuntimeResolutionError ? err.code : "runtime_persistence_failed";
     return finalizeBlocked(admin, userId, row, canonical, code);
   }
+
 
   // Build finalize payload.
   const anyRenderable = result.recipients.some((r) => r.resolvedChannels.length > 0);

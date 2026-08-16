@@ -44,7 +44,9 @@ const REQUIRED_MODULES = [
   'senderResolver.ts',
   'channelEligibility.ts',
   'snapshotOrchestrator.ts',
+  'actionResolver.ts',
 ];
+
 
 describe('Slice 2c-ii Batch B — resolver package layout', () => {
   it('resolution directory exists', () => {
