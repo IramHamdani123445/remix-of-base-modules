@@ -36,6 +36,8 @@ import {
   resolveTwilioSecret,
   sendTwilioSms,
 } from "../_shared/omni-comms/twilioSmsAdapter.ts";
+import { producePrintArtefact } from "../_shared/omni-comms/printArtefactAdapter.ts";
+
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
 import {
   adapterForChannel,
@@ -351,7 +353,32 @@ Deno.serve(async (req) => {
     `omni-comms-test-delivery adapter=${adapterForChannel(channel)?.adapterKey} channel=${channel}`,
   );
 
+  // ---- Print / Correspondence (internal artefact production) --------------
+  if (channel === "print") {
+    const printOutcome = await producePrintArtefact({
+      idempotencyKey: providerIdempotencyKey,
+      recipientReference: target,
+      returnReference:
+        typeof plan.print_return_reference === "string" ? plan.print_return_reference : null,
+      documentTitle: subject,
+      bodyText: providerText,
+      store: {
+        upload: async (bucket, path, body, contentType) => {
+          const res = await serviceClient.storage
+            .from(bucket)
+            .upload(path, body, { contentType, upsert: true });
+          if (res.error) {
+            return { ok: false, errorCode: "print_store_rejected", detail: res.error.message };
+          }
+          return { ok: true };
+        },
+      },
+    });
+    return await finish(printOutcome);
+  }
+
   // ---- SMS (Twilio) ------------------------------------------------------
+
   if (channel === "sms") {
     const authTokenRef =
       typeof plan.auth_token_secret_ref === "string" ? plan.auth_token_secret_ref : "";

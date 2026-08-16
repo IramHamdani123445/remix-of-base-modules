@@ -94,7 +94,7 @@ const OTHER_CHANNELS = OMNI_COMMS_CHANNEL_CATALOGUE.filter(
 );
 
 /** Channels the Control Center can govern end-to-end. */
-export type GovernedChannel = 'email' | 'sms';
+export type GovernedChannel = 'email' | 'sms' | 'print';
 
 const channelHref = (channel: string, tab = 'overview') =>
   `/admin/omnichannel-communications/channels?channel=${channel}&tab=${tab}`;

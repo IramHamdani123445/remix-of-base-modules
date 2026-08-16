@@ -182,11 +182,13 @@ export const OMNI_COMMS_PROVIDER_ADAPTERS: readonly ProviderAdapterDescriptor[] 
     adapterKey: 'print_spool',
     label: 'Print spool / letter production',
     channel: 'print',
-    deliveryImplemented: false,
+    deliveryImplemented: true,
     verificationImplemented: false,
     credentials: [],
-    notes: 'Registration only — physical production ships in build C10.',
+    notes:
+      'Internal production — artefacts are written to the shared document store. No external credential is required, so nothing needs verifying.',
   },
+
 ];
 
 /** Channels whose schema currently accepts a provider row. */
