@@ -63,7 +63,7 @@ describe('Omni-Comms Story 3 — registry validation', () => {
       activeObjects: 48,
       deferredObjects: 2,
       routes: 7,
-      integrations: 11,
+      integrations: 12,
       queues: 5,
     });
   });

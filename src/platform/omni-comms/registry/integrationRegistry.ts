@@ -1,5 +1,5 @@
 /**
- * Omni-Comms — Integrations registry (8 entries).
+ * Omni-Comms — Integrations registry (12 entries).
  *
  * Reserves the external touchpoints the new system will use once
  * implementation begins. Nothing here is deployed, configured, or wired.
@@ -68,6 +68,13 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     kind: 'edge_function',
     ownership: 'omni_comms',
     purpose: 'Trusted approval boundary for controlled-pilot activation: verifies the second approver, matches the deployed revision against the certified commit server-side, and records the activation. Contacts no provider and sends nothing.',
+    status: 'Available',
+  },
+  {
+    name: 'omni-comms-print-document',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Secure Print document boundary. Authorises the caller server-side through the print access RPC (tenant, Omni-Comms capability, release control, physical state), then mints a short-lived signed URL for the exact archived print artefact. Contacts no provider and sends nothing.',
     status: 'Available',
   },
   // Shared platform assets (3) — reused, not re-created

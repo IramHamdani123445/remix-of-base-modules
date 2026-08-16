@@ -53,6 +53,8 @@ project_id = "xynceskeiiisiefqlgxo"
     verify_jwt = false
   [functions.comm-hub-send-controlled-revalidation]
     verify_jwt = true
+  [functions.omni-comms-print-document]
+    verify_jwt = true
   [functions.omni-comms-test-delivery]
     verify_jwt = true
   [functions.omni-comms-webhook-resend]

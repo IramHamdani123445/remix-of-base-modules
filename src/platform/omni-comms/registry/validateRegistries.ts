@@ -92,8 +92,8 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
   }
 
   // Integrations
-  if (OMNI_COMMS_INTEGRATION_REGISTRY.length !== 11) {
-    errors.push(`Integration registry must contain 11 entries, found ${OMNI_COMMS_INTEGRATION_REGISTRY.length}.`);
+  if (OMNI_COMMS_INTEGRATION_REGISTRY.length !== 12) {
+    errors.push(`Integration registry must contain 12 entries, found ${OMNI_COMMS_INTEGRATION_REGISTRY.length}.`);
   }
   const seenIntegrations = new Set<string>();
   for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {
