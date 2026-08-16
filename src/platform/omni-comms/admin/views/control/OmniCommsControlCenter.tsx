@@ -51,6 +51,7 @@ import {
 } from '@/platform/omni-comms/application/gateApprovalWorkflowService';
 import { notifyGateApprovalEvent } from '@/platform/notifications/gateApprovalNotifications';
 import PauseDeliveryDialog from './PauseDeliveryDialog';
+import PrintControlSurface from './PrintControlSurface';
 
 import { ChannelDeliverySwitch } from '../channels/simple/ChannelDeliverySwitch';
 import { ReadOnlyHealthSwitch } from '../channels/simple/ReadOnlyHealthSwitch';
@@ -109,6 +110,8 @@ export const OmniCommsControlCenter: React.FC = () => {
   const [channel, setChannel] = React.useState<GovernedChannel>('email');
   const CHANNEL: TestCentreChannel & GovernedChannel = channel;
   const CHANNEL_LABEL = getChannelDescriptor(channel).label;
+  /** Print is produced in-platform: provider gates and proposals do not apply. */
+  const isPrint = channel === 'print';
   const fixHref = React.useCallback(
     (indicatorKey: string) => channelHref(channel, tabForHealthIndicator(indicatorKey)),
     [channel],
@@ -418,119 +421,130 @@ export const OmniCommsControlCenter: React.FC = () => {
             ))}
           </div>
 
-          <ChannelDeliverySwitch
-            label={`Automatic ${CHANNEL_LABEL} delivery`}
-            snapshot={snapshot}
-            loading={loading}
-            busy={busy}
-            onChange={onToggleDelivery}
-          />
-
-          <PauseDeliveryDialog
-            open={pauseOpen}
-            channelLabel={CHANNEL_LABEL}
-            busy={busy}
-            onCancel={() => setPauseOpen(false)}
-            onConfirm={onConfirmPause}
-          />
-
-
-          {snapshot?.state === 'awaiting_approval' ? (
-            <Alert data-testid="omni-comms-pending-proposal">
-              <ShieldAlert className="h-4 w-4" />
-              <AlertTitle>A request to turn delivery on is waiting</AlertTitle>
-              <AlertDescription className="mt-2 space-y-2">
-                <p>
-                  {snapshot.awaitingSelfApproval
-                    ? 'You raised this request, so a different administrator must confirm it. '
-                      + 'Withdraw it if you want to use the switch again yourself.'
-                    : 'Turn the switch on to confirm this request as the second approver.'}
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busy}
-                  onClick={onCancelProposal}
-                  data-testid="omni-comms-withdraw-proposal"
-                >
-                  Withdraw request
-                </Button>
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {loading && !snapshot ? (
-            <Skeleton className="h-40 w-full" />
+          {isPrint ? (
+            <PrintControlSurface />
           ) : (
-            <div className="space-y-2" data-testid="omni-comms-control-gates">
-              {rows.map((key) => {
-                const ready = indicatorByKey.get(key) === true;
-                return (
-                  <ReadOnlyHealthSwitch
-                    key={key}
-                    indicatorKey={key}
-                    label={HEALTH_ROW_LABEL[key] ?? key}
-                    ready={ready}
-                    statusWord={
-                      ready
-                        ? (HEALTHY_WORD_ROWS.has(key) ? 'Healthy' : 'Ready')
-                        : 'Needs attention'
-                    }
-                    onFix={(k) => { window.location.assign(fixHref(k)); }}
-                  />
-                );
-              })}
-            </div>
+            <>
+              <ChannelDeliverySwitch
+                label={`Automatic ${CHANNEL_LABEL} delivery`}
+                snapshot={snapshot}
+                loading={loading}
+                busy={busy}
+                onChange={onToggleDelivery}
+              />
+
+              <PauseDeliveryDialog
+                open={pauseOpen}
+                channelLabel={CHANNEL_LABEL}
+                busy={busy}
+                onCancel={() => setPauseOpen(false)}
+                onConfirm={onConfirmPause}
+              />
+
+              {snapshot?.state === 'awaiting_approval' ? (
+                <Alert data-testid="omni-comms-pending-proposal">
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertTitle>A request to turn delivery on is waiting</AlertTitle>
+                  <AlertDescription className="mt-2 space-y-2">
+                    <p>
+                      {snapshot.awaitingSelfApproval
+                        ? 'You raised this request, so a different administrator must confirm it. '
+                          + 'Withdraw it if you want to use the switch again yourself.'
+                        : 'Turn the switch on to confirm this request as the second approver.'}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={onCancelProposal}
+                      data-testid="omni-comms-withdraw-proposal"
+                    >
+                      Withdraw request
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              {loading && !snapshot ? (
+                <Skeleton className="h-40 w-full" />
+              ) : (
+                <div className="space-y-2" data-testid="omni-comms-control-gates">
+                  {rows.map((key) => {
+                    const ready = indicatorByKey.get(key) === true;
+                    return (
+                      <ReadOnlyHealthSwitch
+                        key={key}
+                        indicatorKey={key}
+                        label={HEALTH_ROW_LABEL[key] ?? key}
+                        ready={ready}
+                        statusWord={
+                          ready
+                            ? (HEALTHY_WORD_ROWS.has(key) ? 'Healthy' : 'Ready')
+                            : 'Needs attention'
+                        }
+                        onFix={(k) => { window.location.assign(fixHref(k)); }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              {firstProblem ? (
+                <Alert variant="destructive" data-testid="omni-comms-control-blocker">
+                  <ShieldAlert className="h-4 w-4" />
+                  <AlertTitle>{HEALTH_ROW_PROBLEM[firstProblem] ?? 'Needs attention.'}</AlertTitle>
+                  <AlertDescription className="mt-2">
+                    <Button asChild size="sm" variant="outline">
+                      <Link to={fixHref(firstProblem)}>Fix</Link>
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+            </>
           )}
 
-          {firstProblem ? (
-            <Alert variant="destructive" data-testid="omni-comms-control-blocker">
-              <ShieldAlert className="h-4 w-4" />
-              <AlertTitle>{HEALTH_ROW_PROBLEM[firstProblem] ?? 'Needs attention.'}</AlertTitle>
-              <AlertDescription className="mt-2">
-                <Button asChild size="sm" variant="outline">
-                  <Link to={fixHref(firstProblem)}>Fix</Link>
-                </Button>
-              </AlertDescription>
-            </Alert>
-          ) : null}
         </CardContent>
       </Card>
 
-      <DeliveryStatusPanel
-        snapshot={snapshot}
-        automation={automation.status}
-        pendingApprovals={approvals.open.length}
-        channelLabel={CHANNEL_LABEL}
-      />
+      {isPrint ? null : (
+        <>
+          <DeliveryStatusPanel
+            snapshot={snapshot}
+            automation={automation.status}
+            pendingApprovals={approvals.open.length}
+            channelLabel={CHANNEL_LABEL}
+          />
 
-      <GateApprovalQueueCard
-        open={approvals.open}
-        recent={approvals.recent}
-        loading={approvals.loading}
-        error={approvals.error}
-        busyId={busyRequestId}
-        onApprove={onApprove}
-        onReject={onReject}
-        onWithdraw={onWithdraw}
-      />
+          <GateApprovalQueueCard
+            open={approvals.open}
+            recent={approvals.recent}
+            loading={approvals.loading}
+            error={approvals.error}
+            busyId={busyRequestId}
+            onApprove={onApprove}
+            onReject={onReject}
+            onWithdraw={onWithdraw}
+          />
 
-      <SimpleTestDeliveryCard
-        client={client}
-        transport={testTransport}
-        organizationId={organizationId}
-        departmentId={departmentId ?? null}
-        channel={CHANNEL}
-        channelLabel={CHANNEL_LABEL}
-        bindingId={bindingId}
-        canExecute={canTest}
-      />
+          <SimpleTestDeliveryCard
+            client={client}
+            transport={testTransport}
+            organizationId={organizationId}
+            departmentId={departmentId ?? null}
+            channel={CHANNEL}
+            channelLabel={CHANNEL_LABEL}
+            bindingId={bindingId}
+            canExecute={canTest}
+          />
 
-      <TestDeliveryTraceCard
-        deliveries={testDeliveries}
-        loading={loading}
-        onRefresh={() => void load()}
-      />
+          <TestDeliveryTraceCard
+            deliveries={testDeliveries}
+            loading={loading}
+            onRefresh={() => void load()}
+          />
+        </>
+      )}
+
 
       <OmniCommsAutomationOverviewCard organizationId={organizationId} />
 
