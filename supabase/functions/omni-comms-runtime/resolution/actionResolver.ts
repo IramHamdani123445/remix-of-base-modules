@@ -490,13 +490,35 @@ export function resolveCommunicationActions(
     new Set(resolved.flatMap((a) => a.selected.map((s) => s.channel))),
   ).sort();
 
+  // Legs are never deduplicated by channel: two actions on the same channel
+  // are two distinct obligations with two distinct template families.
+  const deliveryLegs: ResolvedDeliveryLegSelection[] = resolved.flatMap((a) =>
+    a.selected.map((s) => ({
+      communicationActionId: a.actionId,
+      communicationActionCode: a.actionCode,
+      recipientRole: a.recipientRole,
+      obligation: a.obligation,
+      satisfactionRule: a.satisfactionRule,
+      channel: s.channel,
+      optionId: s.optionId,
+      templateFamilyId: s.templateFamilyId,
+      policyId: a.policyId,
+      policyVersion: a.policyVersion,
+      policyMode: a.policyMode,
+      selectionReason: s.reason,
+      isFallback: s.isFallback,
+    }))
+  );
+
   return {
     actionModelApplies: true,
     actions: resolved,
     selectedChannels,
+    deliveryLegs,
     blockers,
   };
 }
+
 
 function toSelected(
   option: ActionChannelOptionRow,
