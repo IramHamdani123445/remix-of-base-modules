@@ -131,7 +131,8 @@ export async function emitBenefitsClaimSubmitted(
     entityId: input.claimId,
     entityVersion: BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION,
     mode: BENEFITS_CLAIM_SUBMITTED_PILOT_MODE,
-    requestedChannels: ['email'],
+    // No channel is requested: the Hub decides every delivery leg from the
+    // configured Communication Action, channel options and delivery policy.
     correlationId:
       input.correlationId?.trim() ||
       buildBenefitsClaimSubmittedCorrelationId(input.claimId),
