@@ -37,7 +37,7 @@ const FORBIDDEN: Array<{ pattern: RegExp; reason: string }> = [
     reason: 'a business producer must not hard-code a channel list',
   },
   {
-    pattern: /providerCode|provider_code|resend|twilio/i,
+    pattern: /provider(Code|Id|_code|_id)\b|['"](resend|twilio)['"]/i,
     reason: 'a business producer must never name a provider',
   },
 ];
