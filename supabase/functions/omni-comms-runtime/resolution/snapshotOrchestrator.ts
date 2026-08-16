@@ -197,17 +197,64 @@ export async function orchestrateResolution(
     // When the event has no active actions the LEGACY route model above is
     // authoritative and nothing below changes behaviour.
     if (actionSnapshot.communication_actions.length > 0) {
+      const channelResFor = (channel: string) =>
+        resolution.channelResolutions.find((c) => c.channel === channel) ?? null;
+      const isLive = input.mode === "queued";
       const channelsWithVariant = resolution.channelResolutions
         .filter((c) => Boolean(c.templateVersionId))
         .map((c) => c.channel);
-      const isLive = input.mode === "queued";
       const readyChannels = resolution.channelResolutions
         .filter((c) => (isLive ? c.liveDeliveryReady : c.senderChannelReady))
         .map((c) => c.channel);
-      const digitalDestinationAvailable = Boolean(
-        r.normalizedDestinations.email || r.normalizedDestinations.phone ||
-          r.normalizedDestinations.push,
-      );
+      const destinationFor = (channel: string): boolean => {
+        if (channel === "email") return Boolean(r.normalizedDestinations.email);
+        if (channel === "sms") return Boolean(r.normalizedDestinations.phone);
+        if (channel === "push") return Boolean(r.normalizedDestinations.push);
+        // Print/correspondence uses the postal identity of the recipient.
+        return true;
+      };
+
+      // Authoritative ACTION template binding, resolved per option so that two
+      // actions on the same channel are evaluated independently.
+      const actionTemplateByOption = new Map<
+        string,
+        ReturnType<typeof resolveTemplateForFamilyChannel>
+      >();
+      for (const opt of actionSnapshot.action_channel_options) {
+        if (opt.status !== "active") continue;
+        if (!opt.template_family_id) {
+          actionTemplateByOption.set(opt.id, null);
+          continue;
+        }
+        actionTemplateByOption.set(
+          opt.id,
+          resolveTemplateForFamilyChannel(
+            input.snapshot,
+            opt.template_family_id,
+            opt.channel,
+            input.organizationId,
+            input.departmentId,
+            r.localeFallbackCandidates,
+          ),
+        );
+      }
+
+      const optionFulfilment: Record<string, ActionOptionFulfilment> = {};
+      for (const opt of actionSnapshot.action_channel_options) {
+        if (opt.status !== "active") continue;
+        const cr = channelResFor(opt.channel);
+        const bound = actionTemplateByOption.get(opt.id) ?? null;
+        optionFulfilment[opt.id] = {
+          // Action-bound families must publish their OWN channel variant.
+          variantAvailable: opt.template_family_id
+            ? bound !== null
+            : Boolean(cr?.templateVersionId),
+          channelReady: Boolean(
+            cr && (isLive ? cr.liveDeliveryReady : cr.senderChannelReady),
+          ),
+          destinationAvailable: destinationFor(opt.channel),
+        };
+      }
 
       const actionResult = resolveCommunicationActions(
         {
@@ -217,10 +264,58 @@ export async function orchestrateResolution(
           requestedChannels: input.requestedChannels,
           readyChannels,
           channelsWithVariant,
-          digitalDestinationAvailable,
+          digitalDestinationAvailable: Boolean(
+            r.normalizedDestinations.email || r.normalizedDestinations.phone ||
+              r.normalizedDestinations.push,
+          ),
+          optionFulfilment,
         },
         input.departmentId,
       );
+
+      // Build the canonical multi-leg plan. Legs are NOT deduplicated by
+      // channel: each action keeps its own obligation and template binding.
+      const legs: ResolvedDeliveryLeg[] = actionResult.deliveryLegs.map((l) => {
+        const cr = channelResFor(l.channel);
+        const bound = actionTemplateByOption.get(l.optionId) ?? null;
+        const useAction = Boolean(l.templateFamilyId && bound);
+        return {
+          legKey: `${l.communicationActionId}:${l.channel}:${l.optionId}`,
+          communicationActionId: l.communicationActionId,
+          communicationActionCode: l.communicationActionCode,
+          recipientRole: l.recipientRole,
+          obligation: l.obligation,
+          satisfactionRule: l.satisfactionRule,
+          channel: l.channel,
+          actionChannelOptionId: l.optionId,
+          deliveryPolicyId: l.policyId,
+          deliveryPolicyVersion: l.policyVersion,
+          deliveryPolicyMode: l.policyMode,
+          resolutionReason: l.selectionReason,
+          isFallback: l.isFallback,
+          templateFamilyId: useAction ? l.templateFamilyId : cr?.templateFamilyId ?? null,
+          templateFamilySource: useAction ? "action_option" : "route_fallback",
+          templateVersionId: useAction ? bound!.versionId : cr?.templateVersionId,
+          templateVersionNumber: useAction ? bound!.versionNumber : cr?.templateVersionNumber,
+          templateVersionChecksum: useAction ? bound!.checksum : cr?.templateVersionChecksum,
+          layoutId: useAction ? bound!.layoutId ?? undefined : cr?.layoutId,
+          layoutVersionId: useAction
+            ? bound!.pinnedLayoutVersionId ?? cr?.layoutVersionId
+            : cr?.layoutVersionId,
+          layoutChecksum: cr?.layoutChecksum,
+          layoutInheritance: cr?.layoutInheritance,
+          assets: cr?.assets ?? [],
+          senderIdentityId: cr?.senderIdentityId,
+          senderProviderBindingId: cr?.senderProviderBindingId,
+          providerId: cr?.providerId,
+          providerAccountId: cr?.providerAccountId,
+          eventRouteId: cr?.eventRouteId,
+          senderChannelReady: Boolean(cr?.senderChannelReady),
+          liveDeliveryReady: Boolean(cr?.liveDeliveryReady),
+          blockers: cr?.blockers ?? [],
+        };
+      });
+      resolution.deliveryLegs = legs;
 
       const selected = new Set(actionResult.selectedChannels);
       resolution.channelResolutions = resolution.channelResolutions.filter((c) =>
@@ -236,6 +331,7 @@ export async function orchestrateResolution(
     }
 
     recipientResolutions.push(resolution);
+
   }
 
   return {
