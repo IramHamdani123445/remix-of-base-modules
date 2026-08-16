@@ -63,6 +63,8 @@ export interface BusinessProducerRecipient {
   locale?: string | null;
   email?: string | null;
   phone?: string | null;
+  /** Physical postal destination — Print / Correspondence only. */
+  postalAddress?: SendCommunicationRecipientInput['postalAddress'];
 }
 
 export interface BusinessProducerEmission {
