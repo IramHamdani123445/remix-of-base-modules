@@ -123734,6 +123734,26 @@ export type Database = {
         Args: { p_snapshot: Json }
         Returns: string
       }
+      omni_comms_priv_print_production_claim: {
+        Args: {
+          p_batch_limit: number
+          p_correlation_id: string
+          p_deployed_revision: string
+          p_worker: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_print_production_complete: {
+        Args: {
+          p_artefact?: Json
+          p_attempt_id: string
+          p_claim_token: string
+          p_error_code?: string
+          p_error_detail?: string
+          p_status: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_print_profile_signature: {
         Args: { p_production_account_id: string; p_profile: Json }
         Returns: string
