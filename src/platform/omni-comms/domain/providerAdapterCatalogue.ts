@@ -221,5 +221,18 @@ export function adapterDeliveryImplemented(adapterKey: string): boolean {
   return findAdapter(adapterKey)?.deliveryImplemented === true;
 }
 
+/**
+ * True when the adapter genuinely needs no external credential (an internal
+ * production adapter such as the Print spool). Such an account is complete the
+ * moment it exists and can be activated without a verification step.
+ */
+export function adapterCredentialFree(adapterKey: string): boolean {
+  const adapter = findAdapter(adapterKey);
+  return Boolean(adapter && adapter.credentials.length === 0 && adapter.deliveryImplemented);
+}
+
+export const CREDENTIAL_FREE_ADAPTER_MESSAGE =
+  'No external credential is required for this provider.';
+
 export const NO_DELIVERY_ADAPTER_MESSAGE =
   'This provider can be registered and configured, but no delivery adapter is installed for it yet.';
