@@ -425,6 +425,27 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Benefits Live — durable business integration',
   },
 
+  {
+    name: 'omni_comms_print_item',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'One physical fulfilment record per Print/Correspondence message: letter reference, recipient reference, postal destination snapshot, artefact provenance (path, checksum, pages) and the governed physical production status. Producing the artefact is not printing.',
+    status: 'AVAILABLE',
+    introductionStory: 'Print Phase 3A — physical production foundation',
+  },
+  {
+    name: 'omni_comms_print_attempt',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Append-only record of every physical paper-production attempt for a print item: attempt number, production account, operator, equipment reference, timings, outcome and failure or spoil reason. Earlier attempts are never overwritten.',
+    status: 'AVAILABLE',
+    introductionStory: 'Print Phase 3A — physical production foundation',
+  },
+
 ] as const;
 
 

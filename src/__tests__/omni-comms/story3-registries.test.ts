@@ -38,7 +38,7 @@ function walk(dir: string): string[] {
 
 describe('Omni-Comms Story 3 — registry counts', () => {
   it('has exactly 42 active objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(42);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(44);
   });
   it('has exactly 2 deferred objects', () => {
     expect(OMNI_COMMS_DEFERRED_OBJECTS).toHaveLength(2);

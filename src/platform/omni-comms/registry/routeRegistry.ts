@@ -64,6 +64,14 @@ export const OMNI_COMMS_ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     requiredPermission: 'omni_comms.view',
     state: 'Available',
   },
+  {
+    path: '/admin/omnichannel-communications/print-queue',
+    label: 'Print queue',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/PrintQueuePage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/operations/PrintProductionQueue.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
 ] as const;
 
 export const OMNI_COMMS_ROUTE_COUNT = OMNI_COMMS_ROUTE_REGISTRY.length;

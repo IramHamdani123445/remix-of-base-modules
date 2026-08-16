@@ -925,6 +925,7 @@ const OmniCommsTemplatesPage = lazy(() => import('@/pages/admin/omnichannel-comm
 const OmniCommsChannelsPage = lazy(() => import('@/pages/admin/omnichannel-communications/ChannelsPage'));
 const OmniCommsPreferencesPage = lazy(() => import('@/pages/admin/omnichannel-communications/PreferencesPage'));
 const OmniCommsHealthPage = lazy(() => import('@/pages/admin/omnichannel-communications/HealthPage'));
+const OmniCommsPrintQueuePage = lazy(() => import('@/pages/admin/omnichannel-communications/PrintQueuePage'));
 const OrganizationDirectLeaf = lazy(() => import('@/pages/admin/organization/OrganizationDirectLeaf'));
 // OrgLocationsPage is rendered inside OfficesAdmin's "Locations" tab; route lazy import removed.
 // OrgDepartmentProfilesPage now rendered inside DepartmentsAdmin (Profiles tab).
@@ -2321,6 +2322,7 @@ export const AppRoutes = () => {
       <Route path="/admin/omnichannel-communications/channels" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsChannelsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
       <Route path="/admin/omnichannel-communications/preferences" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsPreferencesPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
       <Route path="/admin/omnichannel-communications/health" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsHealthPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/print-queue" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsPrintQueuePage /></Suspense></OmniCommsAdminRoute></Suspense>} />
 
 
 
