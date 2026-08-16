@@ -95,7 +95,10 @@ export async function emitBenefitsCommunication(
     entityId: input.entityId,
     entityVersion: input.entityVersion,
     mode,
-    requestedChannels: ['email'],
+    // Benefits ASKS; the Hub DECIDES. Print is only requested when a physical
+    // destination exists — routing, policy and release control still govern
+    // whether a letter is produced.
+    requestedChannels: input.recipientPostalAddress ? ['email', 'print'] : ['email'],
     correlationId:
       input.correlationId?.trim() ||
       buildBenefitsCorrelationId(entry.registeredEventCode, input.entityId),
@@ -106,6 +109,7 @@ export async function emitBenefitsCommunication(
         recipientReference: input.reference,
         displayName: input.subjectName,
         email: input.recipientEmail ?? null,
+        postalAddress: input.recipientPostalAddress ?? null,
         locale: input.locale ?? null,
       },
     ],
