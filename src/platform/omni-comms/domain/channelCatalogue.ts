@@ -496,8 +496,9 @@ export function validateChannelCatalogue(): string[] {
       }
     }
 
-    // Release Control is an Email-only governance contract.
-    if (d.channel !== 'email' && d.capabilities['release-control'].uiApplicable) {
+    // Release Control is channel-generic, but it may only be exposed for a
+    // channel that has a genuine deployed delivery adapter.
+    if (!d.implemented && d.capabilities['release-control'].uiApplicable) {
       errors.push(`Channel ${d.channel} must not expose Release Control`);
     }
 
