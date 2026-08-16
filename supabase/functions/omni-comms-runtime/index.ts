@@ -776,7 +776,40 @@ Deno.serve(async (req: Request) => {
           live_delivery_ready: c.liveDeliveryReady,
           blockers: c.blockers,
         })),
+        // Canonical multi-leg plan (Communication Action model). One entry per
+        // action × channel; never collapsed by channel.
+        delivery_legs: (r.deliveryLegs ?? []).map((l) => ({
+          leg_key: l.legKey,
+          communication_action_id: l.communicationActionId,
+          communication_action_code: l.communicationActionCode,
+          recipient_role: l.recipientRole,
+          obligation: l.obligation,
+          satisfaction_rule: l.satisfactionRule,
+          channel: l.channel,
+          action_channel_option_id: l.actionChannelOptionId,
+          delivery_policy_id: l.deliveryPolicyId,
+          delivery_policy_version: l.deliveryPolicyVersion,
+          delivery_policy_mode: l.deliveryPolicyMode,
+          resolution_reason: l.resolutionReason,
+          is_fallback: l.isFallback,
+          template_family_id: l.templateFamilyId,
+          template_family_source: l.templateFamilySource,
+          template_version_id: l.templateVersionId ?? null,
+          template_version_number: l.templateVersionNumber ?? null,
+          template_version_checksum: l.templateVersionChecksum ?? null,
+          layout_id: l.layoutId ?? null,
+          layout_version_id: l.layoutVersionId ?? null,
+          sender_identity_id: l.senderIdentityId ?? null,
+          sender_provider_binding_id: l.senderProviderBindingId ?? null,
+          provider_id: l.providerId ?? null,
+          provider_account_id: l.providerAccountId ?? null,
+          route_id: l.eventRouteId ?? null,
+          sender_channel_ready: l.senderChannelReady,
+          live_delivery_ready: l.liveDeliveryReady,
+          blockers: l.blockers,
+        })),
       },
+
     };
   });
 
