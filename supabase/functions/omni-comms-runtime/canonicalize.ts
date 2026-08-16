@@ -341,6 +341,8 @@ export function canonicalJsonString(c: CanonicalRequest): string {
         pushDestination: r.pushDestination,
       };
       if (r.recipientRole) base.recipientRole = r.recipientRole;
+      // Fingerprint continuity: hashed ONLY when a physical address exists.
+      if (r.postalAddress) base.postalAddress = r.postalAddress;
       return base;
     }),
     requestedChannels: c.requestedChannels,
