@@ -133,7 +133,8 @@ export async function emitEmployerRegistrationApplicationSubmitted(
     entityId: input.reference,
     entityVersion: EMPLOYER_APPLICATION_SUBMITTED_ENTITY_VERSION,
     mode: EMPLOYER_APPLICATION_SUBMITTED_PILOT_MODE,
-    requestedChannels: ['email'],
+    // No channel is requested: the Hub decides every delivery leg from the
+    // configured Communication Action, channel options and delivery policy.
     correlationId:
       input.correlationId?.trim() ||
       buildEmployerRegistrationApplicationSubmittedCorrelationId(input.reference),

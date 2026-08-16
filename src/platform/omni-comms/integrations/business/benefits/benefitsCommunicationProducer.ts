@@ -44,9 +44,8 @@ export interface BenefitsCommunicationInput {
   reference: string;
   recipientEmail?: string | null;
   /**
-   * Physical postal destination. When supplied the emission also requests the
-   * Print channel; the Hub (not Benefits) decides whether a letter is actually
-   * produced, from the configured route, policy and print release state.
+   * Physical postal destination. It is a DESTINATION, never a channel choice:
+   * the Hub decides from configuration whether a letter is produced.
    */
   recipientPostalAddress?: import('../../../sendCommunication').SendCommunicationRecipientInput['postalAddress'];
   locale?: string | null;
@@ -95,10 +94,11 @@ export async function emitBenefitsCommunication(
     entityId: input.entityId,
     entityVersion: input.entityVersion,
     mode,
-    // Benefits ASKS; the Hub DECIDES. Print is only requested when a physical
-    // destination exists — routing, policy and release control still govern
-    // whether a letter is produced.
-    requestedChannels: input.recipientPostalAddress ? ['email', 'print'] : ['email'],
+    // Benefits ASKS; the Hub DECIDES. No channel is requested here: the
+    // configured Communication Action, its channel options, the delivery
+    // policy and the product configuration decide every delivery leg. A
+    // postal address is supplied as a DESTINATION, never as a channel choice.
+
     correlationId:
       input.correlationId?.trim() ||
       buildBenefitsCorrelationId(entry.registeredEventCode, input.entityId),

@@ -30,17 +30,8 @@ import { emitBusinessCommunication } from './emitBusinessCommunication';
 import { resolveBusinessCommunicationScope } from './businessScopeResolver';
 import { resolveEffectiveCommunicationPlan } from '../../application/effectiveCommunicationPlan';
 import { buildConfiguredEventIdempotencyKey } from './configuredEventIdentity';
-import type { OmniCommsChannel as FacadeChannel } from '../../sendCommunication';
 
-/** Channels the public façade accepts today. */
-const FACADE_CHANNELS: FacadeChannel[] = [
-  'email',
-  'sms',
-  'whatsapp',
-  'push',
-  'in_app',
-  'print',
-];
+
 import {
   OMNI_COMMS_RECIPIENT_TYPES,
   type BusinessProducerOutcome,
@@ -278,10 +269,11 @@ export async function emitConfiguredBusinessEvent(
     // Production business communications are always queued.
     mode: 'queued',
     idempotencyKeyOverride,
-    // Channels come from the authoritative plan, never from the caller.
-    requestedChannels: plan.runnableChannels.filter(
-      (c): c is FacadeChannel => FACADE_CHANNELS.includes(c as FacadeChannel),
-    ),
+    // No channel is requested. The Hub — Communication Actions, channel
+    // options, delivery policy and product configuration — is the single
+    // authority that decides which legs are produced. A business caller that
+    // narrows channels here would silently override that authority.
+
     resolutionContext: { productId, recipientRoles: roles },
     correlationId:
       input.correlationId?.trim() ||

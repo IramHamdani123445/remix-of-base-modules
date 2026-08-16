@@ -94750,6 +94750,7 @@ export type Database = {
           obligation: string
           organization_id: string
           priority: number
+          product_id: string | null
           recipient_role: string | null
           satisfaction_rule: string
           status: string
@@ -94769,6 +94770,7 @@ export type Database = {
           obligation?: string
           organization_id: string
           priority?: number
+          product_id?: string | null
           recipient_role?: string | null
           satisfaction_rule?: string
           status?: string
@@ -94788,6 +94790,7 @@ export type Database = {
           obligation?: string
           organization_id?: string
           priority?: number
+          product_id?: string | null
           recipient_role?: string | null
           satisfaction_rule?: string
           status?: string
@@ -122056,23 +122059,42 @@ export type Database = {
         }
         Returns: Json
       }
-      omni_comms_communication_action_upsert: {
-        Args: {
-          p_code: string
-          p_department_id?: string
-          p_description?: string
-          p_event_code: string
-          p_legal_basis?: string
-          p_name: string
-          p_obligation?: string
-          p_organization_id: string
-          p_priority?: number
-          p_recipient_role?: string
-          p_satisfaction_rule?: string
-          p_status?: string
-        }
-        Returns: string
-      }
+      omni_comms_communication_action_upsert:
+        | {
+            Args: {
+              p_code: string
+              p_department_id?: string
+              p_description?: string
+              p_event_code: string
+              p_legal_basis?: string
+              p_name: string
+              p_obligation?: string
+              p_organization_id: string
+              p_priority?: number
+              p_recipient_role?: string
+              p_satisfaction_rule?: string
+              p_status?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_code: string
+              p_department_id?: string
+              p_description?: string
+              p_event_code: string
+              p_legal_basis?: string
+              p_name: string
+              p_obligation?: string
+              p_organization_id: string
+              p_priority?: number
+              p_product_id?: string
+              p_recipient_role?: string
+              p_satisfaction_rule?: string
+              p_status?: string
+            }
+            Returns: string
+          }
       omni_comms_controlled_dry_run_gate: { Args: never; Returns: Json }
       omni_comms_delivery_policy_publish: {
         Args: {
@@ -123734,6 +123756,10 @@ export type Database = {
         Args: { p_snapshot: Json }
         Returns: string
       }
+      omni_comms_priv_print_postal_lines: {
+        Args: { p_snapshot: Json }
+        Returns: Json
+      }
       omni_comms_priv_print_production_claim: {
         Args: {
           p_batch_limit: number
@@ -123944,15 +123970,26 @@ export type Database = {
         }
         Returns: Json
       }
-      omni_comms_priv_runtime_action_snapshot: {
-        Args: {
-          p_department_id: string
-          p_event_definition_id: string
-          p_organization_id: string
-          p_recipient_references?: string[]
-        }
-        Returns: Json
-      }
+      omni_comms_priv_runtime_action_snapshot:
+        | {
+            Args: {
+              p_department_id: string
+              p_event_definition_id: string
+              p_organization_id: string
+              p_recipient_references?: string[]
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_department_id: string
+              p_event_definition_id: string
+              p_organization_id: string
+              p_product_id?: string
+              p_recipient_references?: string[]
+            }
+            Returns: Json
+          }
       omni_comms_priv_runtime_certification: { Args: never; Returns: Json }
       omni_comms_priv_runtime_environment: { Args: never; Returns: string }
       omni_comms_priv_runtime_health_posture: {
