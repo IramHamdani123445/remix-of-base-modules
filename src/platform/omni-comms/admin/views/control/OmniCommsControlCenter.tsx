@@ -418,7 +418,9 @@ export const OmniCommsControlCenter: React.FC = () => {
             ))}
           </div>
 
+          {isPrint ? null : (
           <ChannelDeliverySwitch
+
             label={`Automatic ${CHANNEL_LABEL} delivery`}
             snapshot={snapshot}
             loading={loading}
