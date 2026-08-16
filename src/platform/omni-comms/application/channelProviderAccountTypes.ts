@@ -118,10 +118,24 @@ export interface SetChannelProviderAccountLifecycleInput {
 
 /** Credential completeness label, e.g. "1 of 1 configured". */
 export function credentialCompleteness(a: ChannelProviderAccountRow): string {
+  if (a.required_credential_count === 0 && a.configured_credential_count === 0) {
+    return 'No credential required';
+  }
   return `${a.configured_credential_count} of ${a.required_credential_count} configured`;
 }
 
-export function credentialsComplete(a: ChannelProviderAccountRow): boolean {
+/**
+ * Credential completeness.
+ *
+ * An adapter that genuinely requires no external credential (an internal
+ * production adapter such as the Print spool) is complete by definition; every
+ * other adapter must carry all of its required credential references.
+ */
+export function credentialsComplete(
+  a: ChannelProviderAccountRow,
+  credentialFree = false,
+): boolean {
+  if (credentialFree) return true;
   return (
     a.required_credential_count > 0 &&
     a.configured_credential_count >= a.required_credential_count

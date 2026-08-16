@@ -64,6 +64,10 @@ import {
   type ProviderCredentialRequirementRow,
 } from '@/platform/omni-comms/application/channelProviderAccountTypes';
 import {
+  adapterCredentialFree,
+  CREDENTIAL_FREE_ADAPTER_MESSAGE,
+} from '@/platform/omni-comms/domain/providerAdapterCatalogue';
+import {
   PROVIDER_VERIFICATION_MESSAGES,
   verifyProviderCredentials,
 } from '@/platform/omni-comms/application/providerVerificationService';
@@ -444,7 +448,7 @@ export const ChannelAccountsTab: React.FC<{
  */
 export function accountLifecycleActions(
   account: ChannelProviderAccountRow,
-  opts: { verifiable: boolean; complete: boolean },
+  opts: { verifiable: boolean; complete: boolean; credentialFree?: boolean },
 ): LifecycleActionDescriptor[] {
   const actions: LifecycleActionDescriptor[] = [];
   if (opts.verifiable) {
@@ -453,8 +457,11 @@ export function accountLifecycleActions(
   const canActivate = account.status === 'draft' || account.status === 'disabled';
   const complete = opts.complete;
   if (canActivate) {
-    const blocked =
-      !opts.verifiable
+    // A credential-free internal adapter has nothing to verify, so requiring a
+    // verification step would make it permanently unactivatable.
+    const blocked = opts.credentialFree
+      ? undefined
+      : !opts.verifiable
         ? VERIFICATION_NOT_IMPLEMENTED_MESSAGE
         : !complete
           ? 'All required credential references must be configured.'
@@ -485,8 +492,9 @@ export const AccountRowActions: React.FC<{
 }> = ({ account, client, orgId, onEdit, onChanged, onViewDetails }) => {
   const [busy, setBusy] = useState(false);
   const isReference = account.data_origin === 'reference_seed';
+  const credentialFree = adapterCredentialFree(account.provider_adapter_key);
   const verifiable = verificationImplemented(account.provider_adapter_key);
-  const complete = credentialsComplete(account);
+  const complete = credentialsComplete(account, credentialFree);
 
   const verify = async () => {
     if (isReference) return;
@@ -541,7 +549,11 @@ export const AccountRowActions: React.FC<{
         testId={`omni-comms-account-actions-${account.code}`}
         label={`Actions for ${account.display_name}`}
         disabled={busy || isReference}
-        actions={isReference ? [] : accountLifecycleActions(account, { verifiable, complete })}
+        actions={
+          isReference
+            ? []
+            : accountLifecycleActions(account, { verifiable, complete, credentialFree })
+        }
         onSelect={dialog.request}
         onEdit={!isReference && account.status === 'draft' ? onEdit : undefined}
         onViewDetails={onViewDetails}
@@ -565,6 +577,7 @@ const AccountRow: React.FC<{
   onViewDetails: () => void;
 }> = ({ account, client, orgId, onEdit, onChanged, onViewDetails }) => {
   const isReference = account.data_origin === 'reference_seed';
+  const credentialFree = adapterCredentialFree(account.provider_adapter_key);
   const verifiable = verificationImplemented(account.provider_adapter_key);
 
 
@@ -590,7 +603,11 @@ const AccountRow: React.FC<{
         </div>
       </TableCell>
       <TableCell>
-        {!verifiable ? (
+        {credentialFree ? (
+          <span className="text-xs text-muted-foreground">
+            {CREDENTIAL_FREE_ADAPTER_MESSAGE}
+          </span>
+        ) : !verifiable ? (
           <span className="text-xs text-muted-foreground">
             {VERIFICATION_NOT_IMPLEMENTED_MESSAGE}
           </span>
