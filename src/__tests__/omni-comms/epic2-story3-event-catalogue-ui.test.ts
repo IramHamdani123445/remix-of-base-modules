@@ -134,6 +134,9 @@ describe('Omni-Comms Epic 2 — Story 3 (admin UI + hardening)', () => {
     const EXEMPT = new Set([
       'omni_comms_priv_reference_seed_catalogue_v2',
       'omni_comms_priv_reference_seed_run_v2',
+      // Historic index name that a later migration renames AWAY to a
+      // permanent name; only the rename statement still mentions it.
+      'omni_comms_communication_action_uniq_v2',
     ]);
     const offenders = [...new Set(combined.match(/omni_comms[a-z_]*_v2\b/gi) ?? [])]
       .filter((name) => !EXEMPT.has(name.toLowerCase()));

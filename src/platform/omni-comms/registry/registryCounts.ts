@@ -44,4 +44,6 @@ export const OMNI_COMMS_ADMIN_RPC_RUNTIME_OBJECTS: ReadonlySet<string> = new Set
   // Print Phase 3B — governed print batches and reconciliation.
   'omni_comms_print_batch',
   'omni_comms_print_batch_item',
+  // Print dispatch tracking — physical fulfilment evidence.
+  'omni_comms_print_dispatch',
 ]);

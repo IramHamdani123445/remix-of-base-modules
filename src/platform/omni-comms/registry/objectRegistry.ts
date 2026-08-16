@@ -469,6 +469,17 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
 
 
   {
+    name: 'omni_comms_print_dispatch',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Physical dispatch evidence for a produced print item: the postal destination actually used, dispatch method, carrier/tracking reference, dispatch cost, dispatching operator and timestamps, plus any returned-undelivered outcome. It records what physically left the building; it never produces an artefact and never decides a channel.',
+    status: 'AVAILABLE',
+    introductionStory: 'Print dispatch tracking — physical fulfilment evidence',
+  },
+
+  {
     name: 'omni_comms_communication_action',
     category: 'channels_senders_preferences',
     epic: 6,

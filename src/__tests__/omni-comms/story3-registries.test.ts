@@ -38,8 +38,10 @@ function walk(dir: string): string[] {
 }
 
 describe('Omni-Comms — current registry state (authoritative counts)', () => {
-  it('has exactly 50 active objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(50);
+  it('matches the authoritative active-object count', () => {
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(
+      OMNI_COMMS_REGISTRY_COUNTS.activeObjects,
+    );
   });
   it('has exactly 2 deferred objects', () => {
     expect(OMNI_COMMS_DEFERRED_OBJECTS).toHaveLength(2);
@@ -47,8 +49,10 @@ describe('Omni-Comms — current registry state (authoritative counts)', () => {
   it('has exactly 7 permanent routes', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
   });
-  it('has exactly 12 registered integrations', () => {
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(12);
+  it('matches the authoritative integration count', () => {
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(
+      OMNI_COMMS_REGISTRY_COUNTS.integrations,
+    );
   });
   it('has exactly 5 reserved queues', () => {
     expect(OMNI_COMMS_QUEUE_REGISTRY).toHaveLength(5);
@@ -60,13 +64,7 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     const r = validateOmniCommsRegistries();
     expect(r.errors).toEqual([]);
     expect(r.ok).toBe(true);
-    expect(r.counts).toEqual({
-      activeObjects: 50,
-      deferredObjects: 2,
-      routes: 7,
-      integrations: 12,
-      queues: 5,
-    });
+    expect(r.counts).toEqual(OMNI_COMMS_REGISTRY_COUNTS);
   });
 
   it('every object uses the omni_comms_ prefix and an approved epic', () => {

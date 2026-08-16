@@ -2,13 +2,15 @@
  * Controlled production pilot — Benefits Claim Registration / Intake
  * acknowledgement.
  *
- * This is the ONE wired pilot business producer. When a benefit claim is
- * successfully registered by the claim-intake transaction, the claimant is
- * acknowledged through the single Omni-Comms façade in `queued` mode: the
- * runtime resolves the recipient, renders the published Email template
- * version and persists a HELD dispatch job. A held job is not runnable —
- * only Release Control can later make it eligible — so no provider is
- * contacted and no email leaves the platform.
+ * This producer is the PERMANENT pattern, not an Email pilot. When a benefit
+ * claim is successfully registered by the claim-intake transaction, the
+ * claimant is acknowledged through the single Omni-Comms façade in `queued`
+ * mode. The runtime — using the configured Communication Action, its channel
+ * options, the delivery policy and any product override — decides which
+ * channel(s) carry the obligation (Email, SMS, Print, …), renders the
+ * corresponding published template version and persists the dispatch job(s)
+ * under the governed delivery state of each channel. This producer names no
+ * channel, template, sender or provider.
  *
  * SEMANTICS. Claim registration means the application has been received and
  * recorded. It is NOT an approval, award, payment or entitlement decision.
@@ -34,8 +36,9 @@ export const BENEFITS_CLAIM_INTAKE_MODULE_CODE = 'BENEFITS';
 export const BENEFITS_CLAIM_SUBMITTED_EVENT_CODE = 'BENEFITS.CLAIM.SUBMITTED';
 
 /**
- * Pilot emission mode. `queued` produces a HELD (non-runnable) Email dispatch
- * job. Release Control, not this producer, decides eligibility for dispatch.
+ * Production emission mode. `queued` produces dispatch job(s) on whichever
+ * channels the Hub resolves. Release Control, not this producer, decides
+ * eligibility for dispatch.
  */
 export const BENEFITS_CLAIM_SUBMITTED_PILOT_MODE: BusinessProducerMode = 'queued';
 
@@ -59,7 +62,7 @@ export const BENEFITS_CLAIM_SUBMITTED_CORRELATION_PREFIX =
   'benefits-claim-registered';
 
 /**
- * Single deterministic recipient type for the pilot.
+ * Single deterministic recipient type.
  *
  * The claimant is a person outside the organisation, so the CANONICAL
  * persisted vocabulary value is `external`. The business meaning
@@ -68,6 +71,9 @@ export const BENEFITS_CLAIM_SUBMITTED_CORRELATION_PREFIX =
  */
 export const BENEFITS_CLAIM_SUBMITTED_RECIPIENT_TYPE: OmniCommsRecipientType =
   'external';
+
+/** Semantic business role addressed by this event. */
+export const BENEFITS_CLAIM_SUBMITTED_RECIPIENT_ROLE = 'claimant';
 
 /**
  * Canonical payload vocabulary. Sourced from the SINGLE Benefits template
@@ -93,7 +99,15 @@ export interface BenefitsClaimSubmittedInput {
   submittedOn?: string | null;
   /** Plain-language intake status, e.g. "Awaiting assessment". */
   claimStatus?: string | null;
+  /** Benefit Product identity — a FACT used by the Hub for product-scoped
+   *  Communication Actions. Benefits never resolves configuration with it. */
+  productId?: string | null;
   contactEmail?: string | null;
+  /** Mobile/telephone destination. Presence never means "send SMS". */
+  contactPhone?: string | null;
+  /** Postal destination. Presence never means "print"; it only makes Print
+   *  technically possible when configuration/policy selects it. */
+  postalAddress?: import('../../sendCommunication').SendCommunicationRecipientInput['postalAddress'];
   correlationId?: string | null;
 }
 
@@ -132,18 +146,26 @@ export async function emitBenefitsClaimSubmitted(
     entityVersion: BENEFITS_CLAIM_SUBMITTED_ENTITY_VERSION,
     mode: BENEFITS_CLAIM_SUBMITTED_PILOT_MODE,
     // No channel is requested: the Hub decides every delivery leg from the
-    // configured Communication Action, channel options and delivery policy.
+    // configured Communication Action, channel options, delivery policy and
+    // product configuration. Destinations below are facts, not instructions.
     correlationId:
       input.correlationId?.trim() ||
       buildBenefitsClaimSubmittedCorrelationId(input.claimId),
     recipients: [
       {
         recipientType: BENEFITS_CLAIM_SUBMITTED_RECIPIENT_TYPE,
+        recipientRole: BENEFITS_CLAIM_SUBMITTED_RECIPIENT_ROLE,
         recipientReference: input.reference,
         displayName: input.subjectName,
         email: input.contactEmail ?? null,
+        phone: input.contactPhone ?? null,
+        postalAddress: input.postalAddress ?? null,
       },
     ],
+    resolutionContext: {
+      productId: input.productId ?? null,
+      recipientRoles: [BENEFITS_CLAIM_SUBMITTED_RECIPIENT_ROLE],
+    },
     payload: buildBenefitsClaimSubmittedPayload(
       input,
     ) as unknown as Record<string, unknown>,

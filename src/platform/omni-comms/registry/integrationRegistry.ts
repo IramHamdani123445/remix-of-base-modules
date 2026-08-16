@@ -77,6 +77,13 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     purpose: 'Secure Print document boundary. Authorises the caller server-side through the print access RPC (tenant, Omni-Comms capability, release control, physical state), then mints a short-lived signed URL for the exact archived print artefact. Contacts no provider and sends nothing.',
     status: 'Available',
   },
+  {
+    name: 'omni-comms-print-production',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Governed Print production worker. Drains claimed print items, renders and archives the PDF artefact into the shared documents bucket and records artefact provenance through the print production RPCs. Contacts no external provider and sends nothing.',
+    status: 'Available',
+  },
   // Shared platform assets (3) — reused, not re-created
   {
     name: 'core-documents',
