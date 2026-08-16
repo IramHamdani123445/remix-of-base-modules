@@ -178,6 +178,11 @@ const NOT_IN_PRODUCT_WORKFLOW =
   'The shared table can represent this channel, but the resource is not part '
   + 'of the approved operator workflow for it.';
 
+const PRINT_NO_EXTERNAL_PROVIDER =
+  'Print is produced by the in-platform print spool. There is no external '
+  + 'provider credential or delivery callback to test; production is proved '
+  + 'by the archived PDF in the print queue.';
+
 const PUSH_IDENTITY_REASON =
   'Push targets registered device tokens. Sender identities are not part of '
   + 'the canonical Push product model.';
@@ -326,7 +331,10 @@ const SEEDS: readonly CatalogueSeed[] = [
       bindings: cap(true, true),
       policies: cap(true, true),
       'release-control': cap(true, true),
-      'test-centre': cap(true, true),
+      // The shared Test Centre proves an EXTERNAL provider credential and
+      // delivery callback. The internal print spool has neither, so the proof
+      // for Print is the archived PDF in the print production queue.
+      'test-centre': cap(true, false, PRINT_NO_EXTERNAL_PROVIDER),
       diagnostics: cap(true, true),
     }),
     reservedProviders: ['print_spool'],
