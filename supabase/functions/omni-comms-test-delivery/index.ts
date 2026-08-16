@@ -259,6 +259,74 @@ Deno.serve(async (req) => {
     return res.data ?? null;
   };
 
+  const channel = typeof plan.channel === "string" ? plan.channel : "email";
+  const secretResolver = createVaultSecretResolver(serviceClient);
+
+  // ---- SMS (Twilio) ------------------------------------------------------
+  if (channel === "sms") {
+    const authTokenRef =
+      typeof plan.auth_token_secret_ref === "string" ? plan.auth_token_secret_ref : "";
+    const messagingServiceRef =
+      typeof plan.messaging_service_secret_ref === "string"
+        ? plan.messaging_service_secret_ref
+        : "";
+    const smsSender = typeof plan.sms_sender === "string" ? plan.sms_sender : "";
+
+    if (
+      !TWILIO_SECRET_REF_PATTERN.test(secretRef)
+      || !TWILIO_SECRET_REF_PATTERN.test(authTokenRef)
+    ) {
+      const delivery = await complete("failed", "configuration_invalid", {
+        errorCode: "secret_reference_invalid",
+        errorDetail: "The configured credential reference name is not permitted.",
+      });
+      return json({ error: "OC409", detail: "secret_reference_invalid", delivery }, 409);
+    }
+
+    const resolved = await resolveTwilioCredentials({
+      accountSidRef: secretRef,
+      authTokenRef,
+      storageMode,
+      secretResolver,
+    });
+    if (!resolved.ok) {
+      const delivery = await complete("failed", "credential_missing", {
+        errorCode: resolved.errorCode,
+        errorDetail: resolved.detail,
+      });
+      return json({ error: "OC409", detail: resolved.errorCode, delivery }, 409);
+    }
+
+    let messagingServiceSid: string | null = null;
+    if (messagingServiceRef) {
+      const svc = await resolveTwilioSecret(
+        messagingServiceRef,
+        storageMode,
+        secretResolver,
+      );
+      if (svc.ok) messagingServiceSid = svc.value.trim();
+    }
+
+    if (!smsSender && !messagingServiceSid) {
+      const delivery = await complete("failed", "configuration_invalid", {
+        errorCode: "sms_sender_missing",
+        errorDetail: "No sender number or messaging service is configured.",
+      });
+      return json({ error: "OC409", detail: "sms_sender_missing", delivery }, 409);
+    }
+
+    const smsOutcome = await sendTwilioSms({
+      credentials: resolved.credentials,
+      from: smsSender || null,
+      messagingServiceSid,
+      to: target,
+      body: providerText,
+      idempotencyKey: providerIdempotencyKey,
+    });
+    return await finish(smsOutcome);
+  }
+
+  // ---- Email (Resend) ----------------------------------------------------
   if (!SECRET_REF_PATTERN.test(secretRef)) {
     const delivery = await complete("failed", "configuration_invalid", {
       errorCode: "secret_reference_invalid",
@@ -269,7 +337,6 @@ Deno.serve(async (req) => {
 
   // Strict single-source resolution: the account's selected credential store
   // decides where the value comes from, so one store can never shadow another.
-  const secretResolver = createVaultSecretResolver(serviceClient);
   const credential = await resolveSecretStrict(secretRef, storageMode, secretResolver);
   if (!credential.ok) {
     const delivery = await complete("failed", "credential_missing", {
@@ -302,6 +369,7 @@ Deno.serve(async (req) => {
     secretResolver,
     storageMode,
   });
+
 
   if (outcome.status === "accepted") {
     const delivery = await complete("accepted", "provider_accepted", {
