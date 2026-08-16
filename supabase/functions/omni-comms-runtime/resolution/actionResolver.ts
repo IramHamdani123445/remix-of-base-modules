@@ -552,6 +552,15 @@ export function buildActionResolutionEvidence(
       blockers: a.blockers,
     })),
     selected_channels: result.selectedChannels,
+    delivery_legs: result.deliveryLegs.map((l) => ({
+      action: l.communicationActionCode,
+      channel: l.channel,
+      obligation: l.obligation,
+      reason: l.selectionReason,
+      template_family_id: l.templateFamilyId,
+      policy_version: l.policyVersion,
+    })),
     blockers: result.blockers,
+
   };
 }
