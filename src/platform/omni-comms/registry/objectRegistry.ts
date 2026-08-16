@@ -445,6 +445,28 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     status: 'AVAILABLE',
     introductionStory: 'Print Phase 3A — physical production foundation',
   },
+  {
+    name: 'omni_comms_print_batch',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Governed production run grouping compatible print items: batch reference, production account, frozen production-profile signature and snapshot, lifecycle status (draft, ready, locked, in production, reconciling, completed, cancelled) and governed override or cancellation reasons. A batch is an operational grouping only — it never creates a communication or artefact and never means dispatched or delivered.',
+    status: 'AVAILABLE',
+    introductionStory: 'Print Phase 3B — governed print batches and reconciliation',
+  },
+  {
+    name: 'omni_comms_print_batch_item',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Membership of a print item in a print batch, preserving history: when it joined, whether it was removed before lock or deliberately deferred out of the run, and the governed reason. Reconciliation counts are derived from this membership plus current item state plus immutable print attempts, never from an editable counter.',
+    status: 'AVAILABLE',
+    introductionStory: 'Print Phase 3B — governed print batches and reconciliation',
+  },
+
+
 
   {
     name: 'omni_comms_communication_action',

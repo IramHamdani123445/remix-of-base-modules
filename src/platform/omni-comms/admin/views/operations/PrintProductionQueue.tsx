@@ -13,7 +13,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Printer, RefreshCw } from "lucide-react";
+import { Layers, Printer, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,9 +24,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
 import {
   Table,
   TableBody,
@@ -62,6 +64,13 @@ import {
   type OmniCommsPrintStatus,
   type PrintQueueRow,
 } from "@/platform/omni-comms/application/printProductionTypes";
+import {
+  createPrintBatch,
+  previewPrintBatch,
+} from "@/platform/omni-comms/application/printBatchService";
+import PrintBatchConsole from "./PrintBatchConsole";
+
+
 
 const STATUS_TONE: Record<OmniCommsPrintStatus, string> = {
   artefact_produced: "bg-muted text-muted-foreground",
@@ -89,6 +98,10 @@ const PrintProductionQueueInner: React.FC = () => {
   const [reason, setReason] = useState("");
   const [equipment, setEquipment] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchNotes, setBatchNotes] = useState("");
+
 
   const queueKey = [
     "omni-comms",
@@ -157,6 +170,47 @@ const PrintProductionQueueInner: React.FC = () => {
     OMNI_COMMS_PRINT_REASON_REQUIRED.includes(pending.action) &&
     reason.trim().length === 0;
 
+  const batchable = useMemo(
+    () => rows.filter((r) => r.physical_status === "queued_for_print"),
+    [rows],
+  );
+  const toggleSelected = (id: string) =>
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const preview = useQuery({
+    queryKey: ["omni-comms", "print-batch-preview", organizationId, selected],
+    enabled: batchOpen && selected.length > 0 && Boolean(organizationId),
+    queryFn: () => previewPrintBatch(client, organizationId as string, selected),
+  });
+
+  const createBatch = useMutation({
+    mutationFn: () =>
+      createPrintBatch(client, {
+        organizationId: organizationId as string,
+        printItemIds: selected,
+        departmentId: departmentId ?? null,
+        notes: batchNotes.trim() || null,
+      }),
+    onSuccess: (result) => {
+      toast.success(
+        `Batch ${result.batch_reference} created with ${result.item_count} letter(s).`,
+      );
+      setBatchOpen(false);
+      setBatchNotes("");
+      setSelected([]);
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-batches"] });
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-queue"] });
+    },
+    onError: (error: unknown) =>
+      toast.error(
+        error instanceof Error ? error.message : "Could not create the print batch.",
+      ),
+  });
+
+
+
   return (
     <div className="space-y-6" data-testid="omni-comms-print-queue">
       <header className="flex items-start justify-between gap-3">
@@ -171,19 +225,33 @@ const PrintProductionQueueInner: React.FC = () => {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void queue.refetch()}
-          disabled={queue.isFetching}
-        >
-          <RefreshCw
-            className={`mr-2 h-4 w-4 ${queue.isFetching ? "animate-spin" : ""}`}
-            aria-hidden="true"
-          />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            disabled={selected.length === 0}
+            onClick={() => setBatchOpen(true)}
+          >
+            <Layers className="mr-2 h-4 w-4" aria-hidden="true" />
+            Create print batch{selected.length > 0 ? ` (${selected.length})` : ""}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void queue.refetch()}
+            disabled={queue.isFetching}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${queue.isFetching ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
+            Refresh
+          </Button>
+        </div>
       </header>
+
+      <PrintBatchConsole />
+
+
 
       <Card>
         <CardHeader className="pb-3">
@@ -229,6 +297,17 @@ const PrintProductionQueueInner: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    aria-label="Select all queued letters"
+                    checked={
+                      batchable.length > 0 && selected.length === batchable.length
+                    }
+                    onCheckedChange={(v) =>
+                      setSelected(v === true ? batchable.map((r) => r.id) : [])
+                    }
+                  />
+                </TableHead>
                 <TableHead>Letter</TableHead>
                 <TableHead>Module / event</TableHead>
                 <TableHead>Recipient</TableHead>
@@ -242,7 +321,7 @@ const PrintProductionQueueInner: React.FC = () => {
             <TableBody>
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-sm text-muted-foreground">
+                  <TableCell colSpan={9} className="text-sm text-muted-foreground">
                     {queue.isLoading
                       ? "Loading print items…"
                       : "No correspondence artefacts are awaiting physical production."}
@@ -255,6 +334,15 @@ const PrintProductionQueueInner: React.FC = () => {
                   className="cursor-pointer"
                   onClick={() => setDetailId(row.id)}
                 >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      aria-label={`Select ${row.letter_reference}`}
+                      disabled={row.physical_status !== "queued_for_print"}
+                      checked={selected.includes(row.id)}
+                      onCheckedChange={() => toggleSelected(row.id)}
+                    />
+                  </TableCell>
+
                   <TableCell className="font-mono text-xs">{row.letter_reference}</TableCell>
                   <TableCell className="text-xs">
                     {row.module_code ?? "—"} / {row.event_code ?? "—"}
@@ -400,7 +488,91 @@ const PrintProductionQueueInner: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Create a governed production batch from the selected letters. */}
+      <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create print batch</DialogTitle>
+            <DialogDescription>
+              A batch groups existing letters for one production run. No new
+              communication or artefact is created, and nothing is dispatched.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 text-sm">
+            {preview.isLoading && (
+              <p className="text-muted-foreground">Checking compatibility…</p>
+            )}
+            {preview.data && (
+              <>
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-md border p-2">
+                    <div className="text-muted-foreground">Letters</div>
+                    <div className="text-base font-semibold">
+                      {preview.data.selected_count}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-2">
+                    <div className="text-muted-foreground">Pages</div>
+                    <div className="text-base font-semibold">
+                      {preview.data.total_pages}
+                    </div>
+                  </div>
+                  <div className="rounded-md border p-2">
+                    <div className="text-muted-foreground">Profiles</div>
+                    <div className="text-base font-semibold">
+                      {preview.data.distinct_profiles}
+                    </div>
+                  </div>
+                </div>
+                {!preview.data.compatible && (
+                  <p className="rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
+                    The selected letters do not share one production profile or
+                    production account, or some are not queued for print. Split
+                    the selection into compatible runs.
+                  </p>
+                )}
+                {preview.data.items
+                  .filter((i) => !i.eligible)
+                  .map((i) => (
+                    <p key={i.print_item_id} className="text-xs text-muted-foreground">
+                      {i.letter_reference} — {i.blocker ?? "not eligible"}
+                    </p>
+                  ))}
+              </>
+            )}
+
+            <div>
+              <Label htmlFor="batch-notes">Notes (optional)</Label>
+              <Textarea
+                id="batch-notes"
+                rows={2}
+                value={batchNotes}
+                onChange={(e) => setBatchNotes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={
+                createBatch.isPending ||
+                preview.isLoading ||
+                preview.data?.compatible !== true
+              }
+              onClick={() => createBatch.mutate()}
+            >
+              Create batch
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 };
 

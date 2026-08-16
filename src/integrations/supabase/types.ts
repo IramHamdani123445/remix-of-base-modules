@@ -95852,6 +95852,7 @@ export type Database = {
           organization_id: string
           outcome: string
           page_count: number | null
+          print_batch_id: string | null
           print_item_id: string
           production_account_id: string | null
           production_provider_id: string | null
@@ -95870,6 +95871,7 @@ export type Database = {
           organization_id: string
           outcome?: string
           page_count?: number | null
+          print_batch_id?: string | null
           print_item_id: string
           production_account_id?: string | null
           production_provider_id?: string | null
@@ -95888,12 +95890,20 @@ export type Database = {
           organization_id?: string
           outcome?: string
           page_count?: number | null
+          print_batch_id?: string | null
           print_item_id?: string
           production_account_id?: string | null
           production_provider_id?: string | null
           started_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "omni_comms_print_attempt_print_batch_id_fkey"
+            columns: ["print_batch_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_print_batch"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omni_comms_print_attempt_print_item_id_fkey"
             columns: ["print_item_id"]
@@ -95913,6 +95923,176 @@ export type Database = {
             columns: ["production_provider_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_print_batch: {
+        Row: {
+          batch_reference: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          notes: string | null
+          organization_id: string
+          production_account_id: string | null
+          profile_signature: string
+          profile_snapshot: Json
+          reconciled_at: string | null
+          reconciled_by: string | null
+          reconciliation_override_reason: string | null
+          reconciliation_snapshot: Json | null
+          started_at: string | null
+          started_by: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          batch_reference: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          organization_id: string
+          production_account_id?: string | null
+          profile_signature: string
+          profile_snapshot?: Json
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_override_reason?: string | null
+          reconciliation_snapshot?: Json | null
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          batch_reference?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          notes?: string | null
+          organization_id?: string
+          production_account_id?: string | null
+          profile_signature?: string
+          profile_snapshot?: Json
+          reconciled_at?: string | null
+          reconciled_by?: string | null
+          reconciliation_override_reason?: string | null
+          reconciliation_snapshot?: Json | null
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_print_batch_production_account_id_fkey"
+            columns: ["production_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_print_batch_item: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          batch_id: string
+          closed_at: string | null
+          closed_by: string | null
+          closed_outcome: string | null
+          deferral_reason: string | null
+          expected_copies: number
+          expected_pages: number | null
+          id: string
+          membership_status: string
+          organization_id: string
+          print_item_id: string
+          profile_signature: string
+          removal_reason: string | null
+          sequence_number: number
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          batch_id: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_outcome?: string | null
+          deferral_reason?: string | null
+          expected_copies?: number
+          expected_pages?: number | null
+          id?: string
+          membership_status?: string
+          organization_id: string
+          print_item_id: string
+          profile_signature: string
+          removal_reason?: string | null
+          sequence_number: number
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          batch_id?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_outcome?: string | null
+          deferral_reason?: string | null
+          expected_copies?: number
+          expected_pages?: number | null
+          id?: string
+          membership_status?: string
+          organization_id?: string
+          print_item_id?: string
+          profile_signature?: string
+          removal_reason?: string | null
+          sequence_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_print_batch_item_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_print_batch"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_print_batch_item_print_item_id_fkey"
+            columns: ["print_item_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_print_item"
             referencedColumns: ["id"]
           },
         ]
@@ -122250,6 +122430,60 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_print_batch_action: {
+        Args: {
+          p_action: string
+          p_equipment_reference?: string
+          p_expected_version: number
+          p_id: string
+          p_override?: boolean
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      omni_comms_print_batch_create: {
+        Args: {
+          p_department_id?: string
+          p_notes?: string
+          p_organization_id: string
+          p_print_item_ids: string[]
+        }
+        Returns: Json
+      }
+      omni_comms_print_batch_defer_item: {
+        Args: {
+          p_batch_id: string
+          p_expected_item_version?: number
+          p_print_item_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      omni_comms_print_batch_detail: { Args: { p_id: string }; Returns: Json }
+      omni_comms_print_batch_list: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_organization_id: string
+          p_search?: string
+          p_statuses?: string[]
+        }
+        Returns: Json
+      }
+      omni_comms_print_batch_membership: {
+        Args: {
+          p_batch_id: string
+          p_expected_version: number
+          p_operation: string
+          p_print_item_ids: string[]
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      omni_comms_print_batch_preview: {
+        Args: { p_organization_id: string; p_print_item_ids: string[] }
+        Returns: Json
+      }
       omni_comms_print_item_action: {
         Args: {
           p_action: string
@@ -123343,8 +123577,36 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      omni_comms_priv_print_batch_accounting: {
+        Args: { p_batch_id: string }
+        Returns: {
+          accounting_state: string
+          batch_attempts: number
+          batch_item_id: string
+          expected_copies: number
+          expected_pages: number
+          letter_reference: string
+          membership_status: string
+          physical_status: string
+          print_item_id: string
+          printed_in_batch: number
+          spoiled_or_failed_in_batch: number
+        }[]
+      }
+      omni_comms_priv_print_batch_reconciliation: {
+        Args: { p_batch_id: string }
+        Returns: Json
+      }
+      omni_comms_priv_print_batch_transition_allowed: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
+      }
       omni_comms_priv_print_mask_address: {
         Args: { p_snapshot: Json }
+        Returns: string
+      }
+      omni_comms_priv_print_profile_signature: {
+        Args: { p_production_account_id: string; p_profile: Json }
         Returns: string
       }
       omni_comms_priv_print_transition_allowed: {
