@@ -26,14 +26,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  OMNI_COMMS_SECRET_REF_PATTERN as SECRET_REF_PATTERN,
   fetchResendEmailStatus,
   normalizeStorageMode,
   resolveSecretStrict,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
 import {
-  OMNI_COMMS_TWILIO_SECRET_REF_PATTERN as TWILIO_SECRET_REF_PATTERN,
   resolveTwilioCredentials,
   resolveTwilioSecret,
   sendTwilioSms,
@@ -349,7 +347,9 @@ Deno.serve(async (req) => {
     });
     return json({ error: "OC409", detail: "channel_adapter_missing", delivery }, 409);
   }
-  const adapter = adapterForChannel(channel)!;
+  console.log(
+    `omni-comms-test-delivery adapter=${adapterForChannel(channel)?.adapterKey} channel=${channel}`,
+  );
 
   // ---- SMS (Twilio) ------------------------------------------------------
   if (channel === "sms") {
