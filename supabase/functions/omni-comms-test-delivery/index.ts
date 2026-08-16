@@ -32,7 +32,14 @@ import {
   resolveSecretStrict,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
+import {
+  OMNI_COMMS_TWILIO_SECRET_REF_PATTERN as TWILIO_SECRET_REF_PATTERN,
+  resolveTwilioCredentials,
+  resolveTwilioSecret,
+  sendTwilioSms,
+} from "../_shared/omni-comms/twilioSmsAdapter.ts";
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -259,6 +266,141 @@ Deno.serve(async (req) => {
     return res.data ?? null;
   };
 
+  /** Channel-neutral outcome handling: identical evidence and uncertainty rules. */
+  interface ProviderOutcome {
+    status: "accepted" | "failed" | "outcome_unknown";
+    resultCode: string;
+    providerMessageId?: string | null;
+    providerStatusCode?: number | null;
+    providerResponse?: Record<string, unknown>;
+    errorCode?: string | null;
+    errorDetail?: string | null;
+    latencyMs?: number;
+  }
+
+  const finish = async (outcome: ProviderOutcome): Promise<Response> => {
+    if (outcome.status === "accepted") {
+      const delivery = await complete("accepted", "provider_accepted", {
+        providerMessageId: outcome.providerMessageId,
+        providerStatusCode: outcome.providerStatusCode,
+        providerResponse: { ...outcome.providerResponse, latency_ms: outcome.latencyMs },
+      });
+      return json({ replayed: false, dispatched: true, delivery });
+    }
+
+    if (outcome.status === "outcome_unknown") {
+      console.error(
+        "omni-comms-test-delivery outcome unknown:",
+        outcome.errorCode ?? "provider_outcome_unknown",
+      );
+      // The request may have reached the provider — never assert failure.
+      const delivery = await complete("outcome_unknown", "provider_outcome_unknown", {
+        providerStatusCode: outcome.providerStatusCode,
+        providerResponse: outcome.providerResponse,
+        errorCode: outcome.errorCode ?? "provider_outcome_unknown",
+        errorDetail: outcome.errorDetail,
+      });
+      return json(
+        {
+          error: "provider_outcome_unknown",
+          status: outcome.providerStatusCode,
+          detail: outcome.errorDetail
+            ?? "The provider outcome is unknown. A safe retry is permitted.",
+          delivery,
+        },
+        outcome.providerStatusCode ?? 502,
+      );
+    }
+
+    console.error(
+      `omni-comms-test-delivery provider rejected [${outcome.providerStatusCode ?? 0}]`,
+      JSON.stringify(outcome.providerResponse),
+    );
+    const delivery = await complete("failed", outcome.resultCode, {
+      providerStatusCode: outcome.providerStatusCode,
+      providerResponse: outcome.providerResponse,
+      errorCode: outcome.errorCode ?? "provider_error",
+      errorDetail: outcome.errorDetail,
+    });
+    return json(
+      {
+        error: "provider_rejected",
+        status: outcome.providerStatusCode,
+        detail: outcome.errorDetail ?? "The provider rejected the test message.",
+        delivery,
+      },
+      outcome.providerStatusCode ?? 502,
+    );
+  };
+
+  const channel = typeof plan.channel === "string" ? plan.channel : "email";
+  const secretResolver = createVaultSecretResolver(serviceClient);
+
+  // ---- SMS (Twilio) ------------------------------------------------------
+  if (channel === "sms") {
+    const authTokenRef =
+      typeof plan.auth_token_secret_ref === "string" ? plan.auth_token_secret_ref : "";
+    const messagingServiceRef =
+      typeof plan.messaging_service_secret_ref === "string"
+        ? plan.messaging_service_secret_ref
+        : "";
+    const smsSender = typeof plan.sms_sender === "string" ? plan.sms_sender : "";
+
+    if (
+      !TWILIO_SECRET_REF_PATTERN.test(secretRef)
+      || !TWILIO_SECRET_REF_PATTERN.test(authTokenRef)
+    ) {
+      const delivery = await complete("failed", "configuration_invalid", {
+        errorCode: "secret_reference_invalid",
+        errorDetail: "The configured credential reference name is not permitted.",
+      });
+      return json({ error: "OC409", detail: "secret_reference_invalid", delivery }, 409);
+    }
+
+    const resolved = await resolveTwilioCredentials({
+      accountSidRef: secretRef,
+      authTokenRef,
+      storageMode,
+      secretResolver,
+    });
+    if (!resolved.ok) {
+      const delivery = await complete("failed", "credential_missing", {
+        errorCode: resolved.errorCode,
+        errorDetail: resolved.detail,
+      });
+      return json({ error: "OC409", detail: resolved.errorCode, delivery }, 409);
+    }
+
+    let messagingServiceSid: string | null = null;
+    if (messagingServiceRef) {
+      const svc = await resolveTwilioSecret(
+        messagingServiceRef,
+        storageMode,
+        secretResolver,
+      );
+      if (svc.ok) messagingServiceSid = svc.value.trim();
+    }
+
+    if (!smsSender && !messagingServiceSid) {
+      const delivery = await complete("failed", "configuration_invalid", {
+        errorCode: "sms_sender_missing",
+        errorDetail: "No sender number or messaging service is configured.",
+      });
+      return json({ error: "OC409", detail: "sms_sender_missing", delivery }, 409);
+    }
+
+    const smsOutcome = await sendTwilioSms({
+      credentials: resolved.credentials,
+      from: smsSender || null,
+      messagingServiceSid,
+      to: target,
+      body: providerText,
+      idempotencyKey: providerIdempotencyKey,
+    });
+    return await finish(smsOutcome);
+  }
+
+  // ---- Email (Resend) ----------------------------------------------------
   if (!SECRET_REF_PATTERN.test(secretRef)) {
     const delivery = await complete("failed", "configuration_invalid", {
       errorCode: "secret_reference_invalid",
@@ -269,7 +411,6 @@ Deno.serve(async (req) => {
 
   // Strict single-source resolution: the account's selected credential store
   // decides where the value comes from, so one store can never shadow another.
-  const secretResolver = createVaultSecretResolver(serviceClient);
   const credential = await resolveSecretStrict(secretRef, storageMode, secretResolver);
   if (!credential.ok) {
     const delivery = await complete("failed", "credential_missing", {
@@ -302,58 +443,7 @@ Deno.serve(async (req) => {
     secretResolver,
     storageMode,
   });
+  return await finish(outcome);
 
-  if (outcome.status === "accepted") {
-    const delivery = await complete("accepted", "provider_accepted", {
-      providerMessageId: outcome.providerMessageId,
-      providerStatusCode: outcome.providerStatusCode,
-      providerResponse: { ...outcome.providerResponse, latency_ms: outcome.latencyMs },
-    });
-    return json({ replayed: false, dispatched: true, delivery });
-  }
-
-  if (outcome.status === "outcome_unknown") {
-    console.error(
-      "omni-comms-test-delivery outcome unknown:",
-      outcome.errorCode ?? "provider_outcome_unknown",
-    );
-    // The request may have reached the provider — never assert failure.
-    const delivery = await complete("outcome_unknown", "provider_outcome_unknown", {
-      providerStatusCode: outcome.providerStatusCode,
-      providerResponse: outcome.providerResponse,
-      errorCode: outcome.errorCode ?? "provider_outcome_unknown",
-      errorDetail: outcome.errorDetail,
-    });
-    return json(
-      {
-        error: "provider_outcome_unknown",
-        status: outcome.providerStatusCode,
-        detail: outcome.errorDetail
-          ?? "The provider outcome is unknown. A safe retry is permitted.",
-        delivery,
-      },
-      outcome.providerStatusCode ?? 502,
-    );
-  }
-
-  console.error(
-    `omni-comms-test-delivery provider rejected [${outcome.providerStatusCode ?? 0}]`,
-    JSON.stringify(outcome.providerResponse),
-  );
-  const delivery = await complete("failed", outcome.resultCode, {
-    providerStatusCode: outcome.providerStatusCode,
-    providerResponse: outcome.providerResponse,
-    errorCode: outcome.errorCode ?? "provider_error",
-    errorDetail: outcome.errorDetail,
-  });
-  return json(
-    {
-      error: "provider_rejected",
-      status: outcome.providerStatusCode,
-      detail: outcome.errorDetail ?? "The provider rejected the test message.",
-      delivery,
-    },
-    outcome.providerStatusCode ?? 502,
-  );
 });
 
