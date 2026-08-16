@@ -44,9 +44,8 @@ export interface BenefitsCommunicationInput {
   reference: string;
   recipientEmail?: string | null;
   /**
-   * Physical postal destination. When supplied the emission also requests the
-   * Print channel; the Hub (not Benefits) decides whether a letter is actually
-   * produced, from the configured route, policy and print release state.
+   * Physical postal destination. It is a DESTINATION, never a channel choice:
+   * the Hub decides from configuration whether a letter is produced.
    */
   recipientPostalAddress?: import('../../../sendCommunication').SendCommunicationRecipientInput['postalAddress'];
   locale?: string | null;
