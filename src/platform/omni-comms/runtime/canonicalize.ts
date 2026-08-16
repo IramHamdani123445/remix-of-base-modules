@@ -357,6 +357,10 @@ export function canonicalJsonString(c: CanonicalRequest): string {
         phone: r.phone,
         pushDestination: r.pushDestination,
       };
+      // Fingerprint continuity: the postal key is hashed ONLY when a physical
+      // address was actually supplied, so digital-only requests keep their
+      // original idempotency fingerprint.
+      if (r.postalAddress) base.postalAddress = r.postalAddress;
       if (r.recipientRole) base.recipientRole = r.recipientRole;
       return base;
     }),
