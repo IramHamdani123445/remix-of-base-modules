@@ -95,10 +95,11 @@ export async function emitBenefitsCommunication(
     entityId: input.entityId,
     entityVersion: input.entityVersion,
     mode,
-    // Benefits ASKS; the Hub DECIDES. Print is only requested when a physical
-    // destination exists — routing, policy and release control still govern
-    // whether a letter is produced.
-    requestedChannels: input.recipientPostalAddress ? ['email', 'print'] : ['email'],
+    // Benefits ASKS; the Hub DECIDES. No channel is requested here: the
+    // configured Communication Action, its channel options, the delivery
+    // policy and the product configuration decide every delivery leg. A
+    // postal address is supplied as a DESTINATION, never as a channel choice.
+
     correlationId:
       input.correlationId?.trim() ||
       buildBenefitsCorrelationId(entry.registeredEventCode, input.entityId),
