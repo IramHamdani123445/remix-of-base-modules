@@ -33,8 +33,8 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
   const errors: string[] = [];
 
   // Objects
-  if (OMNI_COMMS_OBJECT_REGISTRY.length !== 42) {
-    errors.push(`Object registry must contain 42 entries, found ${OMNI_COMMS_OBJECT_REGISTRY.length}.`);
+  if (OMNI_COMMS_OBJECT_REGISTRY.length !== 44) {
+    errors.push(`Object registry must contain 44 entries, found ${OMNI_COMMS_OBJECT_REGISTRY.length}.`);
   }
   const seenObjects = new Set<string>();
   for (const o of OMNI_COMMS_OBJECT_REGISTRY) {
@@ -58,6 +58,10 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
       // C5B — reserved by an operator RPC, completed only by the trusted
       // Edge boundary. Approved technical test delivery only; never live send.
       && o.name !== 'omni_comms_channel_test_delivery'
+      // Print Phase 3A — physical production is operator-driven through
+      // bounded admin RPCs. No provider delivery is ever performed here.
+      && o.name !== 'omni_comms_print_item'
+      && o.name !== 'omni_comms_print_attempt'
     ) {
       errors.push(`Runtime object ${o.name} must be service_role_only.`);
     }

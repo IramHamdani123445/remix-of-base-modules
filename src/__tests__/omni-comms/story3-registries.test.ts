@@ -38,7 +38,7 @@ function walk(dir: string): string[] {
 
 describe('Omni-Comms Story 3 — registry counts', () => {
   it('has exactly 42 active objects', () => {
-    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(42);
+    expect(OMNI_COMMS_OBJECT_REGISTRY).toHaveLength(44);
   });
   it('has exactly 2 deferred objects', () => {
     expect(OMNI_COMMS_DEFERRED_OBJECTS).toHaveLength(2);
@@ -60,7 +60,7 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     expect(r.errors).toEqual([]);
     expect(r.ok).toBe(true);
     expect(r.counts).toEqual({
-      activeObjects: 42,
+      activeObjects: 44,
       deferredObjects: 2,
       routes: 7,
       integrations: 11,
@@ -81,6 +81,8 @@ describe('Omni-Comms Story 3 — registry validation', () => {
     const adminTriggered = new Set([
       'omni_comms_channel_test_run',
       'omni_comms_channel_test_delivery',
+      'omni_comms_print_item',
+      'omni_comms_print_attempt',
     ]);
     for (const o of OMNI_COMMS_OBJECT_REGISTRY.filter((x) => x.category === 'runtime')) {
       if (adminTriggered.has(o.name)) {

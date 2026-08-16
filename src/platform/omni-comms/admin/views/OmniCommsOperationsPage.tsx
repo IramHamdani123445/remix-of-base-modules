@@ -76,6 +76,7 @@ import OperationsSummaryCards from "./operations/OperationsSummaryCards";
 import RequestDetailPanel from "./operations/RequestDetailPanel";
 import BusinessEventDetailPanel from "./operations/BusinessEventDetailPanel";
 import EmailJourneySection from "./operations/EmailJourneySection";
+import PrintProductionQueue from "./operations/PrintProductionQueue";
 import EmailJourneyDetailPanel from "./operations/EmailJourneyDetailPanel";
 
 /** Normal-operator filter chips, expressed in business-event vocabulary. */
@@ -590,6 +591,9 @@ export const OmniCommsOperationsPage: React.FC = () => {
       </Card>
 
       <EmailJourneySection organizationId={organizationId} onOpenEmail={openEmail} />
+
+      {/* Print / Correspondence physical production queue (Phase 3A). */}
+      <PrintProductionQueue />
 
       {/*
         Technical details — the support-engineer register. Kept, but BELOW the

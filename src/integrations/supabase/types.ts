@@ -95609,6 +95609,213 @@ export type Database = {
           },
         ]
       }
+      omni_comms_print_attempt: {
+        Row: {
+          attempt_number: number
+          completed_at: string | null
+          correlation_id: string | null
+          created_at: string
+          equipment_reference: string | null
+          failure_reason: string | null
+          id: string
+          idempotency_key: string | null
+          operator_id: string | null
+          organization_id: string
+          outcome: string
+          page_count: number | null
+          print_item_id: string
+          production_account_id: string | null
+          production_provider_id: string | null
+          started_at: string
+        }
+        Insert: {
+          attempt_number: number
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          equipment_reference?: string | null
+          failure_reason?: string | null
+          id?: string
+          idempotency_key?: string | null
+          operator_id?: string | null
+          organization_id: string
+          outcome?: string
+          page_count?: number | null
+          print_item_id: string
+          production_account_id?: string | null
+          production_provider_id?: string | null
+          started_at?: string
+        }
+        Update: {
+          attempt_number?: number
+          completed_at?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          equipment_reference?: string | null
+          failure_reason?: string | null
+          id?: string
+          idempotency_key?: string | null
+          operator_id?: string | null
+          organization_id?: string
+          outcome?: string
+          page_count?: number | null
+          print_item_id?: string
+          production_account_id?: string | null
+          production_provider_id?: string | null
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_print_attempt_print_item_id_fkey"
+            columns: ["print_item_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_print_item"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_print_attempt_production_account_id_fkey"
+            columns: ["production_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_print_attempt_production_provider_id_fkey"
+            columns: ["production_provider_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_print_item: {
+        Row: {
+          artefact_bucket: string | null
+          artefact_byte_size: number | null
+          artefact_checksum_sha256: string | null
+          artefact_path: string | null
+          attempt_count: number
+          created_at: string
+          created_by: string | null
+          delivery_attempt_id: string | null
+          department_id: string | null
+          hold_reason: string | null
+          id: string
+          issuing_authority: string | null
+          last_failure_reason: string | null
+          letter_reference: string
+          message_id: string
+          organization_id: string
+          page_count: number | null
+          physical_status: string
+          postal_destination_snapshot: Json
+          production_account_id: string | null
+          production_profile: Json
+          recipient_display: string | null
+          recipient_reference: string | null
+          request_id: string
+          template_family_id: string | null
+          template_provenance: Json
+          template_version_id: string | null
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          artefact_bucket?: string | null
+          artefact_byte_size?: number | null
+          artefact_checksum_sha256?: string | null
+          artefact_path?: string | null
+          attempt_count?: number
+          created_at?: string
+          created_by?: string | null
+          delivery_attempt_id?: string | null
+          department_id?: string | null
+          hold_reason?: string | null
+          id?: string
+          issuing_authority?: string | null
+          last_failure_reason?: string | null
+          letter_reference: string
+          message_id: string
+          organization_id: string
+          page_count?: number | null
+          physical_status?: string
+          postal_destination_snapshot?: Json
+          production_account_id?: string | null
+          production_profile?: Json
+          recipient_display?: string | null
+          recipient_reference?: string | null
+          request_id: string
+          template_family_id?: string | null
+          template_provenance?: Json
+          template_version_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          artefact_bucket?: string | null
+          artefact_byte_size?: number | null
+          artefact_checksum_sha256?: string | null
+          artefact_path?: string | null
+          attempt_count?: number
+          created_at?: string
+          created_by?: string | null
+          delivery_attempt_id?: string | null
+          department_id?: string | null
+          hold_reason?: string | null
+          id?: string
+          issuing_authority?: string | null
+          last_failure_reason?: string | null
+          letter_reference?: string
+          message_id?: string
+          organization_id?: string
+          page_count?: number | null
+          physical_status?: string
+          postal_destination_snapshot?: Json
+          production_account_id?: string | null
+          production_profile?: Json
+          recipient_display?: string | null
+          recipient_reference?: string | null
+          request_id?: string
+          template_family_id?: string | null
+          template_provenance?: Json
+          template_version_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_print_item_delivery_attempt_id_fkey"
+            columns: ["delivery_attempt_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_delivery_attempt"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_print_item_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "omni_comms_message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_print_item_production_account_id_fkey"
+            columns: ["production_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_print_item_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_request"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_producer_event_binding: {
         Row: {
           activated_at: string | null
@@ -121712,6 +121919,40 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_print_item_action: {
+        Args: {
+          p_action: string
+          p_correlation_id?: string
+          p_equipment_reference?: string
+          p_expected_version: number
+          p_id: string
+          p_page_count?: number
+          p_production_account_id?: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      omni_comms_print_item_detail: { Args: { p_id: string }; Returns: Json }
+      omni_comms_print_item_ensure: {
+        Args: {
+          p_message_id: string
+          p_production_account_id?: string
+          p_production_profile?: Json
+        }
+        Returns: string
+      }
+      omni_comms_print_queue_list: {
+        Args: {
+          p_department_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_organization_id: string
+          p_production_account_id?: string
+          p_search?: string
+          p_statuses?: string[]
+        }
+        Returns: Json
+      }
       omni_comms_priv_abandon_request: {
         Args: {
           p_actor_id: string
@@ -122770,6 +123011,14 @@ export type Database = {
       omni_comms_priv_pilot_assert_non_production: {
         Args: never
         Returns: undefined
+      }
+      omni_comms_priv_print_mask_address: {
+        Args: { p_snapshot: Json }
+        Returns: string
+      }
+      omni_comms_priv_print_transition_allowed: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
       }
       omni_comms_priv_product_communication_effective: {
         Args: {
