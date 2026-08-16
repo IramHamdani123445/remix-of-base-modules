@@ -7,7 +7,10 @@
  * the single Omni-Comms façade.
  */
 
-import type { OmniCommsChannel } from '../../sendCommunication';
+import type {
+  OmniCommsChannel,
+  SendCommunicationRecipientInput,
+} from '../../sendCommunication';
 
 /**
  * Modes a business producer may request.
