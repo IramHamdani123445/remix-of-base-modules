@@ -13,7 +13,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Layers, Printer, RefreshCw } from "lucide-react";
+import { ExternalLink, Eye, Layers, Printer, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,6 +69,25 @@ import {
   previewPrintBatch,
 } from "@/platform/omni-comms/application/printBatchService";
 import PrintBatchConsole from "./PrintBatchConsole";
+import PrintReadinessPanel, {
+  PRINT_READINESS_QUERY_KEY,
+} from "./PrintReadinessPanel";
+import { useOmniCommsPrintDocumentInvoker } from "@/platform/omni-comms/admin/hooks/useOmniCommsPrintDocument";
+import {
+  requestPrintDocument,
+  PrintDocumentError,
+  type PrintDocumentAccess,
+  type PrintDocumentMode,
+} from "@/platform/omni-comms/application/printDocumentService";
+import { describePrintError } from "@/platform/omni-comms/application/printReadinessTypes";
+
+/** Statuses from which an operator may open the letter for physical printing. */
+const OPENABLE_FOR_PRINT: readonly OmniCommsPrintStatus[] = [
+  "artefact_produced",
+  "queued_for_print",
+  "printing",
+  "print_failed",
+];
 
 
 
@@ -101,6 +120,14 @@ const PrintProductionQueueInner: React.FC = () => {
   const [selected, setSelected] = useState<string[]>([]);
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchNotes, setBatchNotes] = useState("");
+
+  // Open & Print — secure access to the official print PDF.
+  const printDocuments = useOmniCommsPrintDocumentInvoker();
+  const [openRow, setOpenRow] = useState<PrintQueueRow | null>(null);
+  const [access, setAccess] = useState<PrintDocumentAccess | null>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
+
+
 
 
   const queueKey = [
@@ -155,6 +182,69 @@ const PrintProductionQueueInner: React.FC = () => {
       toast.error(message);
     },
   });
+
+  /**
+   * Opens the official Print PDF. `print` mode also moves the letter into
+   * physical printing and opens a governed attempt server-side; `preview`
+   * changes nothing.
+   */
+  const openDocument = useMutation({
+    mutationFn: (input: { row: PrintQueueRow; mode: PrintDocumentMode }) =>
+      requestPrintDocument(printDocuments, {
+        printItemId: input.row.id,
+        mode: input.mode,
+        expectedVersion: input.mode === "print" ? input.row.version : null,
+      }),
+    onMutate: (input) => {
+      setOpenRow(input.row);
+      setAccess(null);
+      setAccessError(null);
+    },
+    onSuccess: (result) => {
+      setAccess(result);
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-queue"] });
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-item"] });
+      void queryClient.invalidateQueries({ queryKey: PRINT_READINESS_QUERY_KEY });
+    },
+    onError: (error: unknown) => {
+      const code =
+        error instanceof PrintDocumentError ? error.errorCode : "print_access_failed";
+      const guidance = describePrintError(code);
+      setAccessError(`${guidance.title} ${guidance.action}`);
+    },
+  });
+
+  /** Records the physical outcome for the letter currently open for printing. */
+  const recordOutcome = useMutation({
+    mutationFn: (input: { row: PrintQueueRow; action: OmniCommsPrintAction }) =>
+      performPrintItemAction(client, {
+        id: input.row.id,
+        action: input.action,
+        expectedVersion: null,
+        reason:
+          input.action === "confirm_printed"
+            ? "Printed at the workstation."
+            : reason.trim() || "Recorded from the Open & Print workflow.",
+        equipmentReference: equipment.trim() || null,
+      }),
+    onSuccess: (result) => {
+      toast.success(
+        `Print item is now “${OMNI_COMMS_PRINT_STATUS_LABELS[result.physical_status]}”.`,
+      );
+      setOpenRow(null);
+      setAccess(null);
+      setReason("");
+      setEquipment("");
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-queue"] });
+      void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-item"] });
+    },
+    onError: (error: unknown) =>
+      toast.error(
+        error instanceof Error ? error.message : "Could not record the print outcome.",
+      ),
+  });
+
+
 
   const rows = queue.data?.items ?? [];
   const fullDetail = queue.data?.full_detail_permitted ?? false;
@@ -249,6 +339,10 @@ const PrintProductionQueueInner: React.FC = () => {
         </div>
       </header>
 
+      {/* The single authoritative Print readiness / control-gate panel. */}
+      <PrintReadinessPanel />
+
+      {/* Batching stays optional — it never gates printing one letter. */}
       <PrintBatchConsole />
 
 
@@ -365,11 +459,41 @@ const PrintProductionQueueInner: React.FC = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-wrap justify-end gap-1">
+                      {/* One letter, one click — batching is never required. */}
+                      {OPENABLE_FOR_PRINT.includes(row.physical_status) && (
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReason("");
+                            setEquipment("");
+                            openDocument.mutate({ row, mode: "print" });
+                          }}
+                          disabled={openDocument.isPending}
+                          data-testid={`print-open-${row.id}`}
+                        >
+                          <Printer className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+                          Open &amp; print
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDocument.mutate({ row, mode: "preview" });
+                        }}
+                        disabled={openDocument.isPending}
+                        title="View the official PDF without changing the letter"
+                      >
+                        <Eye className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+                        Preview
+                      </Button>
                       {availablePrintActions(row.physical_status).map((action) => (
                         <Button
                           key={action}
                           size="sm"
-                          variant="outline"
+                          variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
                             setReason("");
@@ -569,6 +693,135 @@ const PrintProductionQueueInner: React.FC = () => {
               Create batch
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/*
+        Open & Print — the operator sees the official Print PDF (never an
+        email rendering), prints it on the normal workstation printer, then
+        records the physical outcome. No bucket, path or permanent URL is ever
+        exposed: the link below is short-lived and server-authorised.
+      */}
+      <Dialog
+        open={openRow != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOpenRow(null);
+            setAccess(null);
+            setAccessError(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {access?.mode === "preview" ? "Preview letter" : "Open & print letter"}
+            </DialogTitle>
+            <DialogDescription>
+              {openRow?.letter_reference ?? ""} — this is the Print-specific
+              document. Print it on your normal printer, then record the
+              outcome so the physical attempt is evidenced.
+            </DialogDescription>
+          </DialogHeader>
+
+          {openDocument.isPending && (
+            <p className="text-sm text-muted-foreground">Opening secure document…</p>
+          )}
+
+          {accessError && (
+            <p
+              className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive"
+              data-testid="print-open-error"
+            >
+              {accessError}
+            </p>
+          )}
+
+          {access && (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button asChild size="sm">
+                  <a href={access.url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
+                    Open PDF & print
+                  </a>
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  Secure link expires in {access.expiresInSeconds}s ·{" "}
+                  {access.printItem.pageCount ?? "—"} page(s) · checksum{" "}
+                  {access.printItem.checksumSha256.slice(0, 12)}…
+                </span>
+              </div>
+
+              <iframe
+                title="Print document"
+                src={access.url}
+                className="h-[420px] w-full rounded-md border"
+              />
+
+              {access.mode === "print" && openRow && (
+                <div className="space-y-2">
+                  <div>
+                    <Label htmlFor="print-outcome-equipment">
+                      Equipment reference (optional)
+                    </Label>
+                    <Input
+                      id="print-outcome-equipment"
+                      value={equipment}
+                      onChange={(e) => setEquipment(e.target.value)}
+                      placeholder="e.g. HQ-PRN-02"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="print-outcome-reason">
+                      Notes (required if it failed or was spoiled)
+                    </Label>
+                    <Textarea
+                      id="print-outcome-reason"
+                      rows={2}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={recordOutcome.isPending}
+                      onClick={() =>
+                        recordOutcome.mutate({
+                          row: openRow,
+                          action: "confirm_printed",
+                        })
+                      }
+                      data-testid="print-confirm-printed"
+                    >
+                      Printed successfully
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={recordOutcome.isPending || reason.trim().length === 0}
+                      onClick={() =>
+                        recordOutcome.mutate({ row: openRow, action: "mark_failed" })
+                      }
+                    >
+                      Print failed
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={recordOutcome.isPending || reason.trim().length === 0}
+                      onClick={() =>
+                        recordOutcome.mutate({ row: openRow, action: "mark_spoiled" })
+                      }
+                    >
+                      Spoiled
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

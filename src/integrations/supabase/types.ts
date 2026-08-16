@@ -122484,6 +122484,10 @@ export type Database = {
         Args: { p_organization_id: string; p_print_item_ids: string[] }
         Returns: Json
       }
+      omni_comms_print_document_access: {
+        Args: { p_expected_version?: number; p_id: string; p_mode?: string }
+        Returns: Json
+      }
       omni_comms_print_item_action: {
         Args: {
           p_action: string
@@ -122506,6 +122510,10 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_print_provision_defaults: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
       omni_comms_print_queue_list: {
         Args: {
           p_department_id?: string
@@ -122515,6 +122523,18 @@ export type Database = {
           p_production_account_id?: string
           p_search?: string
           p_statuses?: string[]
+        }
+        Returns: Json
+      }
+      omni_comms_print_readiness: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_print_release_set: {
+        Args: {
+          p_enabled: boolean
+          p_organization_id: string
+          p_reason?: string
         }
         Returns: Json
       }

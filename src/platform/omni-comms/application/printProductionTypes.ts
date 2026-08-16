@@ -197,7 +197,8 @@ export interface PrintItemDetail {
 export interface PrintItemActionInput {
   id: string;
   action: OmniCommsPrintAction;
-  expectedVersion: number;
+  /** Null skips optimistic concurrency (server still validates the transition). */
+  expectedVersion: number | null;
   reason?: string | null;
   productionAccountId?: string | null;
   equipmentReference?: string | null;

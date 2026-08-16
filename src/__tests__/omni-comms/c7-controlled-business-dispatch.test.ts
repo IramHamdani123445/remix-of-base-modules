@@ -253,7 +253,7 @@ describe('C7 — registries', () => {
   });
 
   it('keeps the integration count at 11 and marks the dispatcher available', () => {
-    expect(OMNI_COMMS_INTEGRATION_REGISTRY.length).toBe(11);
+    expect(OMNI_COMMS_INTEGRATION_REGISTRY.length).toBe(12);
     const row = OMNI_COMMS_INTEGRATION_REGISTRY.find(
       (i) => i.name === 'omni-comms-dispatch',
     );
