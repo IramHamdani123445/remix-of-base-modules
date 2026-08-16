@@ -141,6 +141,7 @@ function canonicalizeRecipient(r: any): CanonicalRecipient {
   const email = trimOrNull(r.email, 320);
   const phone = trimOrNull(r.phone, 64);
   const push = trimOrNull(r.pushDestination, 500);
+  const postal = canonicalizePostalAddress(r.postalAddress ?? null);
   return {
     recipientType: type,
     recipientRole: canonicalizeRole(r.recipientRole ?? null),
@@ -150,7 +151,32 @@ function canonicalizeRecipient(r: any): CanonicalRecipient {
     email: email ? email.toLowerCase() : null,
     phone: phone ?? null,
     pushDestination: push ?? null,
+    postalAddress: postal,
   };
+}
+
+/**
+ * Canonical postal address block: a deterministic newline-joined set of
+ * address lines. Empty input yields null so digital-only requests keep their
+ * existing idempotency fingerprint.
+ */
+// deno-lint-ignore no-explicit-any
+export function canonicalizePostalAddress(value: any): string | null {
+  if (!value) return null;
+  if (typeof value === "string") {
+    const lines = value.split("\n").map((l) => l.trim()).filter(Boolean);
+    return lines.length > 0 ? lines.join("\n").slice(0, 1000) : null;
+  }
+  if (typeof value !== "object" || Array.isArray(value)) return null;
+  const parts = [
+    value.addressee ?? null,
+    ...(Array.isArray(value.addressLines) ? value.addressLines : []),
+    [value.locality, value.region, value.postalCode].filter(Boolean).join(" "),
+    value.country ?? null,
+  ]
+    .map((l: unknown) => (typeof l === "string" ? l.trim() : ""))
+    .filter((l: string) => l.length > 0);
+  return parts.length > 0 ? parts.join("\n").slice(0, 1000) : null;
 }
 
 function canonicalizePayload(input: unknown, depth = 0): unknown {
