@@ -455,11 +455,41 @@ const PrintProductionQueueInner: React.FC = () => {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-wrap justify-end gap-1">
+                      {/* One letter, one click — batching is never required. */}
+                      {OPENABLE_FOR_PRINT.includes(row.physical_status) && (
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReason("");
+                            setEquipment("");
+                            openDocument.mutate({ row, mode: "print" });
+                          }}
+                          disabled={openDocument.isPending}
+                          data-testid={`print-open-${row.id}`}
+                        >
+                          <Printer className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+                          Open &amp; print
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDocument.mutate({ row, mode: "preview" });
+                        }}
+                        disabled={openDocument.isPending}
+                        title="View the official PDF without changing the letter"
+                      >
+                        <Eye className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
+                        Preview
+                      </Button>
                       {availablePrintActions(row.physical_status).map((action) => (
                         <Button
                           key={action}
                           size="sm"
-                          variant="outline"
+                          variant="ghost"
                           onClick={(e) => {
                             e.stopPropagation();
                             setReason("");
