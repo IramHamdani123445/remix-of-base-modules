@@ -488,8 +488,9 @@ export const AccountRowActions: React.FC<{
 }> = ({ account, client, orgId, onEdit, onChanged, onViewDetails }) => {
   const [busy, setBusy] = useState(false);
   const isReference = account.data_origin === 'reference_seed';
+  const credentialFree = adapterCredentialFree(account.provider_adapter_key);
   const verifiable = verificationImplemented(account.provider_adapter_key);
-  const complete = credentialsComplete(account);
+  const complete = credentialsComplete(account, credentialFree);
 
   const verify = async () => {
     if (isReference) return;
@@ -544,7 +545,11 @@ export const AccountRowActions: React.FC<{
         testId={`omni-comms-account-actions-${account.code}`}
         label={`Actions for ${account.display_name}`}
         disabled={busy || isReference}
-        actions={isReference ? [] : accountLifecycleActions(account, { verifiable, complete })}
+        actions={
+          isReference
+            ? []
+            : accountLifecycleActions(account, { verifiable, complete, credentialFree })
+        }
         onSelect={dialog.request}
         onEdit={!isReference && account.status === 'draft' ? onEdit : undefined}
         onViewDetails={onViewDetails}
@@ -568,6 +573,7 @@ const AccountRow: React.FC<{
   onViewDetails: () => void;
 }> = ({ account, client, orgId, onEdit, onChanged, onViewDetails }) => {
   const isReference = account.data_origin === 'reference_seed';
+  const credentialFree = adapterCredentialFree(account.provider_adapter_key);
   const verifiable = verificationImplemented(account.provider_adapter_key);
 
 
@@ -593,7 +599,11 @@ const AccountRow: React.FC<{
         </div>
       </TableCell>
       <TableCell>
-        {!verifiable ? (
+        {credentialFree ? (
+          <span className="text-xs text-muted-foreground">
+            {CREDENTIAL_FREE_ADAPTER_MESSAGE}
+          </span>
+        ) : !verifiable ? (
           <span className="text-xs text-muted-foreground">
             {VERIFICATION_NOT_IMPLEMENTED_MESSAGE}
           </span>
