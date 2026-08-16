@@ -64,6 +64,10 @@ import {
   type ProviderCredentialRequirementRow,
 } from '@/platform/omni-comms/application/channelProviderAccountTypes';
 import {
+  adapterCredentialFree,
+  CREDENTIAL_FREE_ADAPTER_MESSAGE,
+} from '@/platform/omni-comms/domain/providerAdapterCatalogue';
+import {
   PROVIDER_VERIFICATION_MESSAGES,
   verifyProviderCredentials,
 } from '@/platform/omni-comms/application/providerVerificationService';
