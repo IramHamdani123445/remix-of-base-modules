@@ -7,7 +7,7 @@
  */
 import { OMNI_COMMS_OBJECT_REGISTRY } from './objectRegistry';
 import { OMNI_COMMS_DEFERRED_OBJECTS } from './deferredObjects';
-import { OMNI_COMMS_ROUTE_REGISTRY } from './routeRegistry';
+import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from './routeRegistry';
 import { OMNI_COMMS_INTEGRATION_REGISTRY } from './integrationRegistry';
 import { OMNI_COMMS_QUEUE_REGISTRY } from './queueRegistry';
 import { OMNI_COMMS_ADMIN_RPC_RUNTIME_OBJECTS } from './registryCounts';
