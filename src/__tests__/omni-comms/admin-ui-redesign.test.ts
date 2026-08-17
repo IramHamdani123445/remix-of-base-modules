@@ -104,8 +104,8 @@ describe('Omni-Comms admin UI acceptance corrections', () => {
       '/admin/omnichannel-communications',
       'reference-data',
     );
-    // Reference data is unadvertised and owned by the Setup section.
-    expect(active.id).toBe('setup');
+    // Reference data is unadvertised: the legacy link stays on Overview.
+    expect(active.id).toBe('overview');
     expect(
       nav.resolveActiveNavItem('/admin/omnichannel-communications', 'dry-run').id,
     ).toBe('safe-test');

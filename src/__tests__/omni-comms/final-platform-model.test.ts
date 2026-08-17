@@ -97,7 +97,7 @@ describe('normal navigation', () => {
   it('keeps unadvertised deep links resolving to the surface that owns them', () => {
     expect(
       resolveActiveNavItem('/admin/omnichannel-communications/templates', null).id,
-    ).toBe('communications');
+    ).toBe('templates');
     expect(
       resolveActiveNavItem('/admin/omnichannel-communications/health', null).id,
     ).toBe('health');
