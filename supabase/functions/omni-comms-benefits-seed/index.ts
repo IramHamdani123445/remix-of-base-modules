@@ -257,17 +257,31 @@ serve(async (req) => {
         changed = true;
       }
 
-      // 4. Published Email template version (content-addressed).
-      const { data: liveVersion } = await admin
-        .from("omni_comms_template_version")
-        .select("id, checksum")
-        .eq("template_family_id", familyId)
-        .eq("channel", "email")
-        .eq("locale", SEED_LOCALE)
-        .eq("status", "published")
-        .maybeSingle();
+      // 4. Published channel-native template versions (content-addressed).
+      //    Each channel carries its own content schema and its own pinned
+      //    layout — Print is a letter, never the email body reprinted.
+      const variants = row.variants ?? [
+        {
+          channel: "email",
+          content: row.content as unknown as Record<string, string>,
+          checksum: row.contentChecksum,
+          layoutId: SEED_EMAIL_LAYOUT_ID,
+          layoutVersionId: SEED_EMAIL_LAYOUT_VERSION_ID,
+        },
+      ];
 
-      if (!liveVersion || liveVersion.checksum !== row.contentChecksum) {
+      for (const variant of variants) {
+        const { data: liveVersion } = await admin
+          .from("omni_comms_template_version")
+          .select("id, checksum")
+          .eq("template_family_id", familyId)
+          .eq("channel", variant.channel)
+          .eq("locale", SEED_LOCALE)
+          .eq("status", "published")
+          .maybeSingle();
+
+        if (liveVersion && liveVersion.checksum === variant.checksum) continue;
+
         if (liveVersion) {
           await admin
             .from("omni_comms_template_version")
@@ -276,7 +290,7 @@ serve(async (req) => {
               retired_at: now(),
               retired_by: SEED_ACTOR_ID,
               retirement_reason:
-                "Superseded by the generated Benefits letter library",
+                "Superseded by the generated Benefits template library",
               updated_at: now(),
               updated_by: SEED_ACTOR_ID,
             })
@@ -286,7 +300,7 @@ serve(async (req) => {
           .from("omni_comms_template_version")
           .select("version_number")
           .eq("template_family_id", familyId)
-          .eq("channel", "email")
+          .eq("channel", variant.channel)
           .eq("locale", SEED_LOCALE)
           .order("version_number", { ascending: false })
           .limit(1);
@@ -296,9 +310,9 @@ serve(async (req) => {
           .insert({
             template_family_id: familyId,
             version_number: nextVersion,
-            channel: "email",
+            channel: variant.channel,
             locale: SEED_LOCALE,
-            content: row.content,
+            content: variant.content,
             status: "draft",
             created_at: now(),
             // created_by stays null so the independent-approver rule holds.
@@ -306,17 +320,17 @@ serve(async (req) => {
             updated_at: now(),
             updated_by: SEED_ACTOR_ID,
             layout_selection_mode: "pinned",
-            layout_id: SEED_EMAIL_LAYOUT_ID,
-            pinned_layout_version_id: SEED_EMAIL_LAYOUT_VERSION_ID,
+            layout_id: variant.layoutId,
+            pinned_layout_version_id: variant.layoutVersionId,
           })
           .select("id")
           .single();
-        if (error) throw new Error(`template_version:${error.message}`);
+        if (error) throw new Error(`template_version[${variant.channel}]:${error.message}`);
         const { error: apprErr } = await admin
           .from("omni_comms_template_version")
           .update({
             status: "approved",
-            checksum: row.contentChecksum,
+            checksum: variant.checksum,
             approved_at: now(),
             approved_by: SEED_ACTOR_ID,
             updated_at: now(),

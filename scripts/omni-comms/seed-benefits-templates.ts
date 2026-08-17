@@ -25,6 +25,58 @@ const EMAIL_LAYOUT_VERSION_ID = 'cce3a2af-288a-4a60-b6fe-b0369c8084d7';
 const EMAIL_SENDER_IDENTITY_ID = 'e537f062-b1cd-48d2-be9f-e6a46ebe0b8b';
 const LOCALE = 'en-US';
 
+/**
+ * Channel → pinned reference layout. Every published template version must
+ * carry a layout whose kind matches the channel (LETTER for print, SMS for
+ * sms, WHATSAPP for whatsapp, EMAIL for email).
+ */
+export const SEED_CHANNEL_LAYOUTS: Record<
+  string,
+  { layoutId: string; layoutVersionId: string }
+> = {
+  email: { layoutId: EMAIL_LAYOUT_ID, layoutVersionId: EMAIL_LAYOUT_VERSION_ID },
+  print: {
+    layoutId: 'de5c568a-a51c-496f-b65c-91b39c405c59',
+    layoutVersionId: 'a6eed409-0478-4af7-8aa4-2ff22060ea5b',
+  },
+  sms: {
+    layoutId: '51451fdb-725b-4c7f-ae8f-c9f9078064ad',
+    layoutVersionId: '87225c40-d929-4c48-9d91-bc0b155a8b0a',
+  },
+  whatsapp: {
+    layoutId: 'df941d25-02ca-44b5-9ab0-a06c8ada73ae',
+    layoutVersionId: '3636a3e2-c0a5-4535-abe2-f45184910551',
+  },
+};
+
+const SEEDED_CHANNELS = ['email', 'print', 'sms', 'whatsapp'] as const;
+type SeededChannel = (typeof SEEDED_CHANNELS)[number];
+
+/** Channel-native content, exactly matching each channel's content schema. */
+function channelContent(
+  entry: (typeof BENEFITS_TEMPLATE_ENTRIES)[number],
+  channel: SeededChannel,
+): Record<string, string> {
+  switch (channel) {
+    case 'email':
+      return {
+        subject: entry.variants.email.subject,
+        text: entry.variants.email.text,
+        html: entry.variants.email.html,
+      };
+    case 'print':
+      return {
+        subject: entry.variants.print.subject,
+        text: entry.variants.print.text,
+        html: entry.variants.print.html,
+      };
+    case 'sms':
+      return { body: entry.variants.sms.body };
+    case 'whatsapp':
+      return { body: entry.variants.whatsapp.body };
+  }
+}
+
 function q(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
@@ -134,30 +186,42 @@ for (const entry of BENEFITS_TEMPLATE_ENTRIES) {
     `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)});`,
     '  END IF;',
     '',
-    '  -- Published Email template version (content-addressed).',
-    '  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version',
-    `                  WHERE template_family_id = v_family AND channel = 'email'`,
-    `                    AND locale = ${q(LOCALE)} AND status = 'published'`,
-    `                    AND checksum = ${q(contentChecksum)}) THEN`,
-    '    UPDATE public.omni_comms_template_version',
-    `       SET status = 'retired', retired_at = now(), retired_by = ${q(ACTOR_ID)},`,
-    `           retirement_reason = 'Superseded by the generated Benefits letter library',`,
-    `           updated_at = now(), updated_by = ${q(ACTOR_ID)}`,
-    '     WHERE template_family_id = v_family',
-    `       AND channel = 'email' AND locale = ${q(LOCALE)} AND status = 'published';`,
-    '    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version',
-    '      FROM public.omni_comms_template_version',
-    `     WHERE template_family_id = v_family AND channel = 'email' AND locale = ${q(LOCALE)};`,
-    '    INSERT INTO public.omni_comms_template_version',
-    '      (id, template_family_id, version_number, channel, locale, content, status, checksum,',
-    '       approved_at, approved_by, published_at, published_by, created_at, created_by,',
-    '       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)',
-    `    VALUES (gen_random_uuid(), v_family, v_version, 'email', ${q(LOCALE)},`,
-    `       ${q(JSON.stringify(content))}::jsonb, 'published', ${q(contentChecksum)},`,
-    `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)}, now(), NULL, now(), ${q(ACTOR_ID)},`,
-    `       'pinned', ${q(EMAIL_LAYOUT_ID)}, ${q(EMAIL_LAYOUT_VERSION_ID)});`,
-    '  END IF;',
-    '',
+  );
+
+  // Published channel-native template versions (content-addressed).
+  for (const channel of SEEDED_CHANNELS) {
+    const variant = channelContent(entry, channel);
+    const variantChecksum = sha256(canonical(variant));
+    const layout = SEED_CHANNEL_LAYOUTS[channel];
+    lines.push(
+      `  -- Published ${channel} template version (content-addressed).`,
+      '  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version',
+      `                  WHERE template_family_id = v_family AND channel = ${q(channel)}`,
+      `                    AND locale = ${q(LOCALE)} AND status = 'published'`,
+      `                    AND checksum = ${q(variantChecksum)}) THEN`,
+      '    UPDATE public.omni_comms_template_version',
+      `       SET status = 'retired', retired_at = now(), retired_by = ${q(ACTOR_ID)},`,
+      `           retirement_reason = 'Superseded by the generated Benefits template library',`,
+      `           updated_at = now(), updated_by = ${q(ACTOR_ID)}`,
+      '     WHERE template_family_id = v_family',
+      `       AND channel = ${q(channel)} AND locale = ${q(LOCALE)} AND status = 'published';`,
+      '    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version',
+      '      FROM public.omni_comms_template_version',
+      `     WHERE template_family_id = v_family AND channel = ${q(channel)} AND locale = ${q(LOCALE)};`,
+      '    INSERT INTO public.omni_comms_template_version',
+      '      (id, template_family_id, version_number, channel, locale, content, status, checksum,',
+      '       approved_at, approved_by, published_at, published_by, created_at, created_by,',
+      '       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)',
+      `    VALUES (gen_random_uuid(), v_family, v_version, ${q(channel)}, ${q(LOCALE)},`,
+      `       ${q(JSON.stringify(variant))}::jsonb, 'published', ${q(variantChecksum)},`,
+      `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)}, now(), NULL, now(), ${q(ACTOR_ID)},`,
+      `       'pinned', ${q(layout.layoutId)}, ${q(layout.layoutVersionId)});`,
+      '  END IF;',
+      '',
+    );
+  }
+
+  lines.push(
     '  -- Department-scoped Email route.',
     '  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route',
     `                  WHERE event_definition_id = v_event AND channel = 'email'`,
@@ -240,6 +304,16 @@ const seedRows = BENEFITS_TEMPLATE_ENTRIES.map((entry) => {
     tokens: entry.tokens,
     content,
     contentChecksum: sha256(canonical(content)),
+    variants: SEEDED_CHANNELS.map((channel) => {
+      const variant = channelContent(entry, channel);
+      return {
+        channel,
+        content: variant,
+        checksum: sha256(canonical(variant)),
+        layoutId: SEED_CHANNEL_LAYOUTS[channel].layoutId,
+        layoutVersionId: SEED_CHANNEL_LAYOUTS[channel].layoutVersionId,
+      };
+    }),
     schema,
     schemaChecksum: sha256(canonical(schema)),
     samplePayload: entry.samplePayload,
@@ -263,6 +337,8 @@ writeFileSync(
     `  communicationClass: string; priority: string; familyCode: string;\n` +
     `  recipientRole: string; tokens: string[];\n` +
     `  content: { subject: string; text: string; html: string };\n` +
+    `  variants: { channel: string; content: Record<string, string>;\n` +
+    `    checksum: string; layoutId: string; layoutVersionId: string }[];\n` +
     `  contentChecksum: string; schema: Record<string, unknown>;\n` +
     `  schemaChecksum: string; samplePayload: Record<string, string>;\n` +
     `}\n` +

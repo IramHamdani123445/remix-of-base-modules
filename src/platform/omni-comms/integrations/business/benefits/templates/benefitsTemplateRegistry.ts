@@ -26,6 +26,13 @@ import {
   type BenefitsEmailSpec,
   type ComposedBenefitsEmail,
 } from './benefitsEmailComposer';
+import {
+  composeBenefitsPrintLetter,
+  composeBenefitsSms,
+  composeBenefitsWhatsApp,
+  type ComposedPrintLetter,
+  type ComposedShortMessage,
+} from './benefitsChannelComposer';
 
 /** Value used when the business layer has no value for a declared token. */
 export const BENEFITS_TOKEN_PLACEHOLDER = 'Not stated';
@@ -45,6 +52,17 @@ export interface BenefitsTemplateEntry {
   priority: BenefitsEmailSpec['priority'];
   tokens: string[];
   content: ComposedBenefitsEmail;
+  /**
+   * Channel-native variants composed from the same specification. Print is a
+   * formal letter, SMS is one short line, WhatsApp is a short structured
+   * message — never the email body reused.
+   */
+  variants: {
+    email: ComposedBenefitsEmail;
+    print: ComposedPrintLetter;
+    sms: ComposedShortMessage;
+    whatsapp: ComposedShortMessage;
+  };
   samplePayload: Record<string, string>;
   spec: BenefitsEmailSpec;
 }
@@ -179,6 +197,12 @@ function buildEntry(spec: BenefitsEmailSpec): BenefitsTemplateEntry {
     priority: spec.priority,
     tokens,
     content: composeBenefitsEmail(spec),
+    variants: {
+      email: composeBenefitsEmail(spec),
+      print: composeBenefitsPrintLetter(spec),
+      sms: composeBenefitsSms(spec),
+      whatsapp: composeBenefitsWhatsApp(spec),
+    },
     samplePayload,
     spec,
   };
