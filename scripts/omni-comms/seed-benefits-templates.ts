@@ -304,6 +304,16 @@ const seedRows = BENEFITS_TEMPLATE_ENTRIES.map((entry) => {
     tokens: entry.tokens,
     content,
     contentChecksum: sha256(canonical(content)),
+    variants: SEEDED_CHANNELS.map((channel) => {
+      const variant = channelContent(entry, channel);
+      return {
+        channel,
+        content: variant,
+        checksum: sha256(canonical(variant)),
+        layoutId: SEED_CHANNEL_LAYOUTS[channel].layoutId,
+        layoutVersionId: SEED_CHANNEL_LAYOUTS[channel].layoutVersionId,
+      };
+    }),
     schema,
     schemaChecksum: sha256(canonical(schema)),
     samplePayload: entry.samplePayload,
