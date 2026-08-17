@@ -7,6 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
+import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
 
 import type {
   ArchitectureBaselineEntry,
