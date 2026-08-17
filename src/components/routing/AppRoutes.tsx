@@ -935,6 +935,7 @@ const OmniCommsStationeryMediaPage = lazy(() => import('@/pages/admin/omnichanne
 const OmniCommsStationeryTextBlocksPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/TextBlocksPage'));
 const OmniCommsStationeryHeadersFootersPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/HeadersFootersPage'));
 const OmniCommsStationerySignaturesPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/SignaturesPage'));
+const OmniCommsStationeryDisclaimersPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/DisclaimersPage'));
 const OrganizationDirectLeaf = lazy(() => import('@/pages/admin/organization/OrganizationDirectLeaf'));
 // OrgLocationsPage is rendered inside OfficesAdmin's "Locations" tab; route lazy import removed.
 // OrgDepartmentProfilesPage now rendered inside DepartmentsAdmin (Profiles tab).
@@ -2341,6 +2342,7 @@ export const AppRoutes = () => {
       <Route path="/admin/omnichannel-communications/stationery/text-blocks" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationeryTextBlocksPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
       <Route path="/admin/omnichannel-communications/stationery/headers-footers" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationeryHeadersFootersPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
       <Route path="/admin/omnichannel-communications/stationery/signatures" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationerySignaturesPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/stationery/disclaimers" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationeryDisclaimersPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
 
 
 

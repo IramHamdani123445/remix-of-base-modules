@@ -145,6 +145,14 @@ export const OMNI_COMMS_ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     requiredPermission: 'omni_comms.view',
     state: 'Available',
   },
+  {
+    path: '/admin/omnichannel-communications/stationery/disclaimers',
+    label: 'Disclaimers',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/stationery/DisclaimersPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/stationery/DisclaimersView.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
 ] as const;
 
 
