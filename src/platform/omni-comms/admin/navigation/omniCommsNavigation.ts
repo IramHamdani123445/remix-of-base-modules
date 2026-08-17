@@ -29,6 +29,7 @@ export const OMNI_COMMS_OVERVIEW_VIEWS = [
   'setup',
   'safe-test',
   'reference-data',
+  'stationery',
 ] as const;
 export type OmniCommsOverviewView = (typeof OMNI_COMMS_OVERVIEW_VIEWS)[number];
 
