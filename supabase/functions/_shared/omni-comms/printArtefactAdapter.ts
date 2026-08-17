@@ -47,7 +47,12 @@ export interface PrintStationery {
   letterheadSource?: string | null;
   printFooterName?: string | null;
   printFooterSource?: string | null;
+  /** Decoded letterhead logo drawn at the top of every page. */
+  logo?: PrintImageAsset | null;
+  /** Name of the logo asset, recorded as artefact provenance. */
+  logoName?: string | null;
 }
+
 
 export interface ProducePrintArtefactInput {
   /** Stable idempotency key; drives the deterministic storage path. */
