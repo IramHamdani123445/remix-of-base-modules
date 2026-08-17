@@ -50,7 +50,10 @@ describe('Omni-Comms UI Stabilization', () => {
   it('every page wrapper mounts the shared OmniCommsShell', () => {
     const dir = 'src/pages/admin/omnichannel-communications';
     const files = fs.readdirSync(path.join(REPO, dir)).filter((f) => f.endsWith('.tsx'));
-    expect(files.length).toBe(7);
+    const topLevelWrappers = OMNI_COMMS_ROUTE_REGISTRY.filter(
+      (r) => r.pageWrapper.split('/').length === 5,
+    );
+    expect(files.length).toBe(topLevelWrappers.length);
     for (const file of files) {
       const src = read(`${dir}/${file}`);
       expect(src, `${file} must import OmniCommsShell`).toContain(

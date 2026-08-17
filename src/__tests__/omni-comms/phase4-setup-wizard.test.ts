@@ -473,11 +473,14 @@ describe('Phase 4 — RPC adapter', () => {
 // ─── 6. Route ceiling and deep links ─────────────────────────────────────
 
 describe('Phase 4 — route ceiling', () => {
-  it('33. keeps the permanent route count at seven', () => {
+  it('33. keeps the permanent route set aligned with the registry', () => {
     expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
+    // Setup is now its own registered route, not a tab on Overview.
     expect(
-      OMNI_COMMS_ROUTE_REGISTRY.some((r) => r.path.includes('setup')),
-    ).toBe(false);
+      OMNI_COMMS_ROUTE_REGISTRY.some(
+        (r) => r.path === '/admin/omnichannel-communications/setup',
+      ),
+    ).toBe(true);
   });
 
   it('34. every step deep link targets a permanent route', () => {

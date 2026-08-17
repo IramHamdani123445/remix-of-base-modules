@@ -101,7 +101,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     expect(screen.getByTestId('omni-comms-readiness-tab')).toBeInTheDocument();
   });
 
-  it('displays all seven approved permanent routes', () => {
+  it('displays every approved permanent route', () => {
     permState.hasView = true;
     renderHealthAt();
     const expected = [
@@ -116,7 +116,7 @@ describe('Omni-Comms Health page — Readiness', () => {
     for (const p of expected) {
       expect(screen.getAllByText(p).length).toBeGreaterThan(0);
     }
-    expect(M.permanentRoutes).toHaveLength(7);
+    expect(M.permanentRoutes.length).toBe(OMNI_COMMS_ROUTE_REGISTRY.length);
   });
 
   it('lists every registered logical object with accurate physical-schema status', () => {
