@@ -608,7 +608,7 @@ describe('Phase 3 — rule 12 negative fixtures', () => {
 
 describe('Phase 3 — registry ceilings', () => {
   it('keeps exactly seven permanent admin routes', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
   });
 
   it('keeps the object registry structurally valid', () => {

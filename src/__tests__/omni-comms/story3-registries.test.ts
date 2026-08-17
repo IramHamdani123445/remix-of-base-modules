@@ -47,7 +47,7 @@ describe('Omni-Comms — current registry state (authoritative counts)', () => {
     expect(OMNI_COMMS_DEFERRED_OBJECTS).toHaveLength(2);
   });
   it('has exactly 7 permanent routes', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
   });
   it('matches the authoritative integration count', () => {
     expect(OMNI_COMMS_INTEGRATION_REGISTRY).toHaveLength(

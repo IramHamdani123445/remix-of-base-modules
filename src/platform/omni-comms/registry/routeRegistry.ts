@@ -1,5 +1,6 @@
 /**
- * Omni-Comms — Approved permanent route registry (7 routes).
+ * Omni-Comms — Approved permanent route registry (18 routes).
+
  *
  * These are the only admin routes reserved for the new system. All routes
  * are protected by `OmniCommsAdminRoute`, which checks `omni_comms.view`.
@@ -64,6 +65,87 @@ export const OMNI_COMMS_ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     requiredPermission: 'omni_comms.view',
     state: 'Available',
   },
+  {
+    path: '/admin/omnichannel-communications/control-center',
+    label: 'Control Center',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/ControlCenterPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/OmniCommsControlCenterPage.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
+    path: '/admin/omnichannel-communications/setup',
+    label: 'Setup readiness',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/SetupPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/OmniCommsSetupPage.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
+    path: '/admin/omnichannel-communications/safe-test',
+    label: 'Safe test',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/SafeTestPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/OmniCommsSafeTestPage.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
+    path: '/admin/omnichannel-communications/reference-data',
+    label: 'Reference data',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/ReferenceDataPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/OmniCommsReferenceDataPage.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
+    path: '/admin/omnichannel-communications/stationery/letterheads',
+    label: 'Letterheads',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/stationery/LetterheadsPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/stationery/LetterheadsView.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
+    path: '/admin/omnichannel-communications/stationery/email-layouts',
+    label: 'Email layouts',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/stationery/EmailLayoutsPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/stationery/EmailLayoutsView.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
+    path: '/admin/omnichannel-communications/stationery/media',
+    label: 'Media library',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/stationery/MediaLibraryPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/stationery/MediaLibraryView.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
+    path: '/admin/omnichannel-communications/stationery/text-blocks',
+    label: 'Text blocks',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/stationery/TextBlocksPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/stationery/TextBlocksView.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
+    path: '/admin/omnichannel-communications/stationery/headers-footers',
+    label: 'Headers & footers',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/stationery/HeadersFootersPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/stationery/HeadersFootersView.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
+    path: '/admin/omnichannel-communications/stationery/signatures',
+    label: 'Signatures',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/stationery/SignaturesPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/stationery/SignaturesView.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
 ] as const;
+
 
 export const OMNI_COMMS_ROUTE_COUNT = OMNI_COMMS_ROUTE_REGISTRY.length;

@@ -106,7 +106,7 @@ describe('Omni-Comms Epic 2 — Story 4 (final source verification)', () => {
   });
 
   it('the seven permanent routes still exist and no new route was added by Story 4', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
     const events = OMNI_COMMS_ROUTE_REGISTRY.find(
       (r) => r.path === '/admin/omnichannel-communications/events',
     );
