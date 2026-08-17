@@ -61,6 +61,7 @@ import {
   type OmniCommsPrintBatchStatus,
   type PrintBatchRow,
 } from "@/platform/omni-comms/application/printBatchTypes";
+import PrintEquipmentSelect from "./PrintEquipmentSelect";
 
 const STATUS_TONE: Record<OmniCommsPrintBatchStatus, string> = {
   draft: "bg-muted text-muted-foreground",
