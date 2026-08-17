@@ -78,6 +78,7 @@ import BusinessEventDetailPanel from "./operations/BusinessEventDetailPanel";
 import EmailJourneySection from "./operations/EmailJourneySection";
 import PrintProductionQueue from "./operations/PrintProductionQueue";
 import PrinterStatusPanel from "./operations/PrinterStatusPanel";
+import PrintAuditPanel from "./operations/PrintAuditPanel";
 import EmailJourneyDetailPanel from "./operations/EmailJourneyDetailPanel";
 import ChannelActivityCards from "./operations/ChannelActivityCards";
 
@@ -599,6 +600,7 @@ export const OmniCommsOperationsPage: React.FC = () => {
       {/* Print / Correspondence physical production queue (Phase 3A). */}
       <PrinterStatusPanel />
       <PrintProductionQueue />
+      <PrintAuditPanel />
 
       {/*
         Technical details — the support-engineer register. Kept, but BELOW the
