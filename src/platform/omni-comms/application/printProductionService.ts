@@ -83,3 +83,51 @@ export function performPrintItemAction(
     p_dispatch: input.dispatch ?? null,
   });
 }
+
+/** One row of the physical print audit trail. */
+export interface PrintAuditRow {
+  id: string;
+  created_at: string;
+  letter_reference: string | null;
+  module_code: string | null;
+  event_code: string | null;
+  physical_status: string;
+  page_count: number | null;
+  attempt_count: number | null;
+  checksum_sha256: string | null;
+  recipient_display: string | null;
+  queued_for_print_at: string | null;
+  last_equipment_reference: string | null;
+  last_equipment_name: string | null;
+  last_outcome: string | null;
+  last_printed_at: string | null;
+}
+
+export interface PrintAuditResult {
+  items: PrintAuditRow[];
+  total: number;
+  full_detail_permitted: boolean;
+  generated_at: string;
+}
+
+/** Read-only print audit evidence: letter, outcome, device, pages, checksum. */
+export function listPrintAudit(
+  client: OmniCommsRpcClient,
+  input: {
+    organizationId: string;
+    departmentId?: string | null;
+    search?: string | null;
+    outcome?: string | null;
+    limit?: number;
+    offset?: number;
+  },
+): Promise<PrintAuditResult> {
+  return callOmniCommsRpc<PrintAuditResult>(client, 'omni_comms_print_audit_list', {
+    p_organization_id: input.organizationId,
+    p_search: input.search ?? null,
+    p_outcome: input.outcome ?? null,
+    p_department_id: input.departmentId ?? null,
+    p_limit: input.limit ?? 50,
+    p_offset: input.offset ?? 0,
+  });
+}
