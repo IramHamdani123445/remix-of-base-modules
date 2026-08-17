@@ -96396,6 +96396,7 @@ export type Database = {
           postal_destination_snapshot: Json
           production_account_id: string | null
           production_profile: Json
+          queued_for_print_at: string | null
           recipient_display: string | null
           recipient_reference: string | null
           request_id: string
@@ -96433,6 +96434,7 @@ export type Database = {
           postal_destination_snapshot?: Json
           production_account_id?: string | null
           production_profile?: Json
+          queued_for_print_at?: string | null
           recipient_display?: string | null
           recipient_reference?: string | null
           request_id: string
@@ -96470,6 +96472,7 @@ export type Database = {
           postal_destination_snapshot?: Json
           production_account_id?: string | null
           production_profile?: Json
+          queued_for_print_at?: string | null
           recipient_display?: string | null
           recipient_reference?: string | null
           request_id?: string
@@ -122897,18 +122900,31 @@ export type Database = {
         Args: { p_department_id?: string; p_organization_id: string }
         Returns: Json
       }
-      omni_comms_print_queue_list: {
-        Args: {
-          p_department_id?: string
-          p_limit?: number
-          p_offset?: number
-          p_organization_id: string
-          p_production_account_id?: string
-          p_search?: string
-          p_statuses?: string[]
-        }
-        Returns: Json
-      }
+      omni_comms_print_queue_list:
+        | {
+            Args: {
+              p_department_id?: string
+              p_limit?: number
+              p_offset?: number
+              p_organization_id: string
+              p_production_account_id?: string
+              p_search?: string
+              p_statuses?: string[]
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_department_id?: string
+              p_limit?: number
+              p_offset?: number
+              p_organization_id: string
+              p_production_account_id?: string
+              p_search?: string
+              p_statuses?: string[]
+            }
+            Returns: Json
+          }
       omni_comms_print_readiness: {
         Args: { p_department_id?: string; p_organization_id: string }
         Returns: Json

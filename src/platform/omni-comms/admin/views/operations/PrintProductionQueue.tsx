@@ -451,6 +451,7 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                 <TableHead>Pages</TableHead>
                 <TableHead>Attempts</TableHead>
                 <TableHead>Device used</TableHead>
+                <TableHead>Generated / queued</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -458,7 +459,7 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
             <TableBody>
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-sm text-muted-foreground">
+                  <TableCell colSpan={11} className="text-sm text-muted-foreground">
                     {queue.isLoading
                       ? "Loading print items…"
                       : "No correspondence artefacts are awaiting physical production."}
@@ -511,6 +512,21 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                     ) : (
                       <span className="text-muted-foreground">Not printed yet</span>
                     )}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <div>
+                      {row.letter_generated_at ?? row.created_at
+                        ? new Date(row.letter_generated_at ?? row.created_at).toLocaleString()
+                        : "—"}
+                    </div>
+                    <div className="text-muted-foreground">
+                      {row.queued_for_print_at
+                        ? `Queued ${new Date(row.queued_for_print_at).toLocaleString()}`
+                        : "Not queued yet"}
+                      {typeof row.waiting_hours === "number"
+                        ? ` · waiting ${row.waiting_hours}h`
+                        : ""}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <Badge className={STATUS_TONE[row.physical_status]} variant="outline">
