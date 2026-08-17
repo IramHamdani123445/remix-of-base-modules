@@ -346,12 +346,15 @@ export function buildLetterheadPdf(
       const dims = fit(headerBand.asset, g.pageWidth, g.pageHeight * BAND_MAX_HEIGHT_RATIO);
       header += image(headerBand, 0, g.pageHeight - dims.height, dims.width, dims.height);
     }
+    const bandHeight = headerBand
+      ? fit(headerBand.asset, g.pageWidth, g.pageHeight * BAND_MAX_HEIGHT_RATIO).height
+      : 0;
     const marks: RegisteredImage[] = [logo, seal].filter(Boolean) as RegisteredImage[];
     let x = g.pageWidth - g.marginRight;
     for (const mark of marks) {
       const dims = fit(mark.asset, 54, 40);
       x -= dims.width + 6;
-      header += image(mark, x, g.pageHeight - g.marginTopSafe(0) || 0, dims.width, dims.height);
+      header += image(mark, x, g.pageHeight - bandHeight - dims.height - 8, dims.width, dims.height);
     }
   } else {
     const top = g.pageHeight - (design.margins?.top ?? 20) * MM;
