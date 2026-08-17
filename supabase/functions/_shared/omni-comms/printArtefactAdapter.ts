@@ -487,6 +487,9 @@ export async function producePrintArtefact(
         letterhead_source: input.stationery?.letterheadSource ?? null,
         print_footer_name: input.stationery?.printFooterName ?? null,
         print_footer_source: input.stationery?.printFooterSource ?? null,
+        letterhead_logo_name: input.stationery?.logoName ?? null,
+        letterhead_logo_embedded: Boolean(input.stationery?.logo),
+
         // Truthful physical state: nothing has been printed or dispatched.
         physical_state: "artefact_produced",
       },
