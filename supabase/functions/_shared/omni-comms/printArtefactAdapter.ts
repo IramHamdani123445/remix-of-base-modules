@@ -267,6 +267,12 @@ export function buildPrintPdf(
   pages: readonly (readonly string[])[],
   stationery?: PrintStationery | null,
 ): Uint8Array {
+  if (stationery?.design) {
+    return buildLetterheadPdf(pages, stationery.design, {
+      footerLines: stationery.footerLines ?? null,
+      pageFooter: stationery.pageFooter ?? null,
+    });
+  }
   const objects: (string | Uint8Array[])[] = [];
   const pageCount = pages.length;
   const { headerLines, footerLines, pageFooter, logo } = stationeryReservation(
