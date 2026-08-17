@@ -122740,6 +122740,17 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_print_audit_list: {
+        Args: {
+          p_department_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_organization_id: string
+          p_outcome?: string
+          p_search?: string
+        }
+        Returns: Json
+      }
       omni_comms_print_batch_action: {
         Args: {
           p_action: string
@@ -124061,7 +124072,7 @@ export type Database = {
         Returns: number
       }
       omni_comms_priv_print_stationery_effective: {
-        Args: { p_department_id: string; p_organization_id: string }
+        Args: { p_department_id?: string; p_organization_id: string }
         Returns: Json
       }
       omni_comms_priv_print_transition_allowed: {
