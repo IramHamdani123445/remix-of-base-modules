@@ -925,6 +925,16 @@ const OmniCommsTemplatesPage = lazy(() => import('@/pages/admin/omnichannel-comm
 const OmniCommsChannelsPage = lazy(() => import('@/pages/admin/omnichannel-communications/ChannelsPage'));
 const OmniCommsPreferencesPage = lazy(() => import('@/pages/admin/omnichannel-communications/PreferencesPage'));
 const OmniCommsHealthPage = lazy(() => import('@/pages/admin/omnichannel-communications/HealthPage'));
+const OmniCommsControlCenterPage = lazy(() => import('@/pages/admin/omnichannel-communications/ControlCenterPage'));
+const OmniCommsSetupPage = lazy(() => import('@/pages/admin/omnichannel-communications/SetupPage'));
+const OmniCommsSafeTestPage = lazy(() => import('@/pages/admin/omnichannel-communications/SafeTestPage'));
+const OmniCommsReferenceDataPage = lazy(() => import('@/pages/admin/omnichannel-communications/ReferenceDataPage'));
+const OmniCommsStationeryLetterheadsPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/LetterheadsPage'));
+const OmniCommsStationeryEmailLayoutsPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/EmailLayoutsPage'));
+const OmniCommsStationeryMediaPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/MediaLibraryPage'));
+const OmniCommsStationeryTextBlocksPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/TextBlocksPage'));
+const OmniCommsStationeryHeadersFootersPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/HeadersFootersPage'));
+const OmniCommsStationerySignaturesPage = lazy(() => import('@/pages/admin/omnichannel-communications/stationery/SignaturesPage'));
 const OrganizationDirectLeaf = lazy(() => import('@/pages/admin/organization/OrganizationDirectLeaf'));
 // OrgLocationsPage is rendered inside OfficesAdmin's "Locations" tab; route lazy import removed.
 // OrgDepartmentProfilesPage now rendered inside DepartmentsAdmin (Profiles tab).
