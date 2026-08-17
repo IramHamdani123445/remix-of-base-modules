@@ -20,9 +20,10 @@ import {
   ENVIRONMENT_LABEL,
 } from '../posture/omniCommsPosture';
 import {
-  omniCommsNavItems,
+  omniCommsNavGroups,
   OMNI_COMMS_PLANNED_NAV_ITEMS,
   resolveActiveNavItem,
+
 } from '../navigation/omniCommsNavigation';
 import { mergeOmniCommsHref } from '../navigation/searchParamMerge';
 
