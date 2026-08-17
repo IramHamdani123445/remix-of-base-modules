@@ -451,6 +451,7 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                 <TableHead>Pages</TableHead>
                 <TableHead>Attempts</TableHead>
                 <TableHead>Device used</TableHead>
+                <TableHead>Generated / queued</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
