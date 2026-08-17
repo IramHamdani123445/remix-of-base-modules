@@ -15,7 +15,10 @@
 //     those remain governed physical states on the print item.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { producePrintArtefact } from "../_shared/omni-comms/printArtefactAdapter.ts";
+import {
+  producePrintArtefact,
+  type PrintLetterheadDesign,
+} from "../_shared/omni-comms/printArtefactAdapter.ts";
 import { decodePngForPdf, type PrintImageAsset } from "../_shared/omni-comms/printImage.ts";
 
 
