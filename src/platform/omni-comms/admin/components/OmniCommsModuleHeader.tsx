@@ -97,31 +97,40 @@ export const OmniCommsModuleHeader: React.FC = () => {
 
         <OmniCommsScopeSelector />
 
-        <nav aria-label="Omnichannel Communications sections">
+        <nav aria-label="Omnichannel Communications sections" className="space-y-2">
+          {navGroups.map((group) => (
+            <div key={group.id} className="flex flex-wrap items-center gap-2">
+              <span className="w-24 shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
+                {group.label}
+              </span>
+              <ul className="flex flex-wrap items-center gap-1">
+                {group.items.map((item) => {
+                  const isActive = item.id === active.id;
+                  return (
+                    <li key={item.id}>
+                      <Link
+                        to={mergeOmniCommsHref(item.href, location.search)}
+                        aria-current={isActive ? 'page' : undefined}
+                        title={item.description}
+                        data-testid={`omni-comms-nav-${item.id}`}
+                        className={cn(
+                          'inline-flex min-h-11 items-center rounded-md px-3 text-sm transition-colors',
+                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                          isActive
+                            ? 'bg-primary text-primary-foreground font-medium'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
           <ul className="flex flex-wrap items-center gap-1">
-            {navItems.map((item) => {
-              const isActive = item.id === active.id;
-              return (
-                <li key={item.id}>
-                  <Link
-                    to={mergeOmniCommsHref(item.href, location.search)}
-                    aria-current={isActive ? 'page' : undefined}
-                    title={item.description}
-                    data-testid={`omni-comms-nav-${item.id}`}
 
-                    className={cn(
-                      'inline-flex min-h-11 items-center rounded-md px-3 text-sm transition-colors',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      isActive
-                        ? 'bg-primary text-primary-foreground font-medium'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
             {OMNI_COMMS_PLANNED_NAV_ITEMS.map((item) => (
               <li key={item.id}>
                 <span
