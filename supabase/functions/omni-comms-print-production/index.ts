@@ -31,6 +31,11 @@ const DEPLOYED_REVISION = Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "";
 
 const CHANNEL = "print";
 const MAX_BATCH_LIMIT = 25;
+// PDF rendering plus a private Storage write must finish inside the worker's
+// execution window. Process one letter per scheduler invocation by default;
+// callers may still request a larger bounded batch explicitly.
+const DEFAULT_BATCH_LIMIT = 1;
+const STORAGE_WRITE_TIMEOUT_MS = 20_000;
 const BOUNDED_CODE = /^[a-z][a-z0-9_]{0,63}$/;
 
 function json(body: unknown, status = 200): Response {
@@ -93,7 +98,7 @@ Deno.serve(async (req) => {
     return json({ error: "OC422", detail: "correlation_id_invalid" }, 400);
   }
 
-  const batchLimit = typeof raw.batchLimit === "number" ? raw.batchLimit : 5;
+  const batchLimit = typeof raw.batchLimit === "number" ? raw.batchLimit : DEFAULT_BATCH_LIMIT;
   const correlationId = typeof raw.correlationId === "string" ? raw.correlationId : null;
 
   const service = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -160,12 +165,24 @@ Deno.serve(async (req) => {
 
   const store = {
     upload: async (bucket: string, path: string, body: Uint8Array, contentType: string) => {
-      const res = await service.storage.from(bucket).upload(path, body, {
+      const upload = service.storage.from(bucket).upload(path, body, {
         contentType,
         upsert: true,
       });
+      const timeout = new Promise<{ data: null; error: Error }>((resolve) => {
+        setTimeout(
+          () => resolve({ data: null, error: new Error("Print artefact storage timed out.") }),
+          STORAGE_WRITE_TIMEOUT_MS,
+        );
+      });
+      const res = await Promise.race([upload, timeout]);
       if (res.error) {
-        return { ok: false as const, errorCode: "print_store_rejected", detail: res.error.message };
+        const timedOut = res.error.message.includes("timed out");
+        return {
+          ok: false as const,
+          errorCode: timedOut ? "print_store_timeout" : "print_store_rejected",
+          detail: res.error.message,
+        };
       }
       return { ok: true as const };
     },

@@ -123784,6 +123784,10 @@ export type Database = {
         Args: { p_production_account_id: string; p_profile: Json }
         Returns: string
       }
+      omni_comms_priv_print_recover_expired_jobs: {
+        Args: never
+        Returns: number
+      }
       omni_comms_priv_print_transition_allowed: {
         Args: { p_from: string; p_to: string }
         Returns: boolean
