@@ -67,11 +67,21 @@ export function resolveSenderForRoute(
     ? snap.providers.find((p) => p.id === account.provider_id && p.status === "active")
     : undefined;
 
+  // Credential-free internal adapters (e.g. the internal print spool) have no
+  // external credential to configure: absence of a secret is NOT a blocker.
+  const CREDENTIAL_FREE_ADAPTERS = new Set(["print_spool"]);
+  const credentialFree = provider
+    ? CREDENTIAL_FREE_ADAPTERS.has(provider.adapter_key)
+    : false;
+
   const bl: string[] = [];
   if (binding.verification_status !== "verified") bl.push("sender_verification_pending");
   if (!account) bl.push("provider_account_inactive");
   if (!provider) bl.push("provider_inactive");
-  if (account && !account.secret_reference_configured) bl.push("provider_credentials_unavailable");
+  if (account && !credentialFree && !account.secret_reference_configured) {
+    bl.push("provider_credentials_unavailable");
+  }
+
 
   const senderChannelReady = bl.filter((b) =>
     b === "sender_verification_pending" ||
