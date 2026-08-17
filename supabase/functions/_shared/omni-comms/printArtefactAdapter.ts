@@ -60,7 +60,14 @@ export interface PrintStationery {
   /** Decoded letterhead logo drawn at the top of every page. */
   logo?: PrintImageAsset | null;
   /** Name of the logo asset, recorded as artefact provenance. */
+  /** Name of the logo asset, recorded as artefact provenance. */
   logoName?: string | null;
+  /**
+   * Fully resolved letterhead design (layout variant, margins, office blocks,
+   * media assets). When present the letter is rendered with the SAME design the
+   * Communication Hub previews, and the flattened header lines are ignored.
+   */
+  design?: PrintLetterheadDesign | null;
 }
 
 
