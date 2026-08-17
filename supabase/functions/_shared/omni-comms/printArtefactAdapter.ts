@@ -14,6 +14,13 @@
 //     storage path and the same document checksum.
 
 import type { PrintImageAsset } from "./printImage.ts";
+import {
+  buildLetterheadPdf,
+  letterheadGeometry,
+  type PrintLetterheadDesign,
+} from "./printLetterheadPdf.ts";
+
+export type { PrintLetterheadDesign };
 
 /** Bucket holding official generated correspondence artefacts. */
 export const OMNI_COMMS_PRINT_BUCKET = "core-documents";
