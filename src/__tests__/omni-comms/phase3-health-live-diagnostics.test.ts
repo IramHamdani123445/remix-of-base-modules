@@ -589,7 +589,7 @@ describe('Phase 3 — rule 12 negative fixtures', () => {
       `export const R = '/admin/omnichannel-communications/diagnostics';`,
     );
     expect(v).toHaveLength(1);
-    expect(v[0].message).toContain('ceiling is exactly seven');
+    expect(v[0].message).toContain('ceiling is exactly the registered route set');
   });
 
   it('accepts the approved seven routes', () => {
