@@ -207,12 +207,12 @@ describe('UI Phase 1 — breadcrumbs', () => {
     expect(crumbs[crumbs.length - 1].href).toBeUndefined();
   });
 
-  it('resolves the unadvertised `?view=setup` deep link to Overview', () => {
+  it('resolves the legacy `?view=setup` deep link to the Setup section', () => {
     const crumbs = buildOmniCommsBreadcrumbs({
       pathname: '/admin/omnichannel-communications',
       view: 'setup',
     });
-    expect(crumbs[crumbs.length - 1].label).toBe('Overview');
+    expect(crumbs[crumbs.length - 1].label).toBe('Setup');
   });
 });
 

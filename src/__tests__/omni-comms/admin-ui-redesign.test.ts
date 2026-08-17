@@ -98,31 +98,33 @@ describe('Omni-Comms admin UI acceptance corrections', () => {
     expect(nav.resolveOverviewView(null)).toBe('dashboard');
   });
 
-  it('reference data and safe test resolve to the Overview surface', async () => {
+  it('legacy reference data and safe test links resolve to their own sections', async () => {
     const nav = await import('@/platform/omni-comms/admin/navigation/omniCommsNavigation');
     const active = nav.resolveActiveNavItem(
       '/admin/omnichannel-communications',
       'reference-data',
     );
-    expect(active.id).toBe('overview');
+    // Reference data is unadvertised and owned by the Setup section.
+    expect(active.id).toBe('setup');
     expect(
       nav.resolveActiveNavItem('/admin/omnichannel-communications', 'dry-run').id,
-    ).toBe('overview');
+    ).toBe('safe-test');
   });
 
-  it('Safe test is never advertised in navigation, in any environment', async () => {
+  it('Safe test is offered outside production only', async () => {
     const nav = await import('@/platform/omni-comms/admin/navigation/omniCommsNavigation');
-    expect(nav.omniCommsNavItems('non_production').map((i) => i.id)).not.toContain('safe-test');
+    expect(nav.omniCommsNavItems('non_production').map((i) => i.id)).toContain('safe-test');
     expect(nav.omniCommsNavItems('production').map((i) => i.id)).not.toContain('safe-test');
     expect(nav.omniCommsNavItems('unknown').map((i) => i.id)).not.toContain('safe-test');
   });
 
-  it('the Overview page renders no Safe test surface in production', () => {
-    const src = read('src/platform/omni-comms/admin/views/OmniCommsLandingPage.tsx');
-    expect(src).toContain('resolveOverviewView');
-    // Deep link falls back to the Dashboard rather than rendering the tab.
-    expect(src).toMatch(/requested === "safe-test"[\s\S]*?"dashboard"/);
-    expect(src).toContain('nonProduction ? (');
+  it('Safe test lives on its own route and is withheld in production', () => {
+    const landing = read('src/platform/omni-comms/admin/views/OmniCommsLandingPage.tsx');
+    // Overview is a dashboard: it hosts no Safe test surface at all.
+    expect(landing).not.toContain('SafeTestPanel');
+    expect(landing).toContain('legacyViewRedirect');
+    const page = read('src/platform/omni-comms/admin/views/OmniCommsSafeTestPage.tsx');
+    expect(page).toContain('isNonProduction');
   });
 
   it('certification posture is derived in exactly one place and fails closed', async () => {
