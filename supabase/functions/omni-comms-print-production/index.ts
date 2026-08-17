@@ -143,10 +143,13 @@ Deno.serve(async (req) => {
     p_deployed_revision: DEPLOYED_REVISION,
   });
   if (claimed.error) {
+    const claimErrorCode = BOUNDED_CODE.test(String(claimed.error.code ?? ""))
+      ? String(claimed.error.code)
+      : "database_error";
     console.error(
-      `omni-comms-print-production claim_failed correlation=${correlationId ?? "none"}`,
+      `omni-comms-print-production claim_failed correlation=${correlationId ?? "none"} code=${claimErrorCode}`,
     );
-    return json({ error: "OC500", detail: "print_claim_failed" }, 500);
+    return json({ error: "OC500", detail: "print_claim_failed", code: claimErrorCode }, 500);
   }
 
   const plan = (claimed.data ?? {}) as Record<string, unknown>;
