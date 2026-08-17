@@ -1,16 +1,23 @@
 /**
  * Omni-Comms Print — registered equipment picker.
  *
- * Equipment is no longer typed by hand: the operator chooses a device that
- * exists in the tenant's print equipment register, so every physical attempt
- * can be traced back to a real, active machine. Operators who may configure
- * Omni-Comms can register a missing device without leaving the flow.
+ * Browsers cannot enumerate operating-system or network printers, so this is
+ * deliberately NOT the machine's printer list: it is the governed register of
+ * devices, and the value chosen here is the evidence of WHICH physical machine
+ * produced the letter. The native print dialog still chooses where the job is
+ * actually sent.
+ *
+ * To keep it one click in daily use, the picker pre-selects the operator's
+ * last recorded device, otherwise the department default. Operators who may
+ * configure Omni-Comms can register a missing device, mark a default, or pull
+ * the queues reported by a registered print agent without leaving the flow.
  */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw, Star } from "lucide-react";
 import { toast } from "sonner";
 
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +41,11 @@ import { useOmniCommsTenant } from "@/platform/omni-comms/context/OmniCommsTenan
 import { useOmniCommsRpcClient } from "@/platform/omni-comms/admin/hooks/useOmniCommsRpcClient";
 import {
   describePrintEquipment,
+  listPrintDiscoverySources,
   listPrintEquipment,
+  readLastUsedPrintEquipment,
+  rememberLastUsedPrintEquipment,
+  setDefaultPrintEquipment,
   upsertPrintEquipment,
   OMNI_COMMS_PRINT_DEVICE_TYPES,
   OMNI_COMMS_PRINT_DEVICE_TYPE_LABELS,
@@ -42,6 +53,7 @@ import {
 } from "@/platform/omni-comms/application/printEquipmentService";
 
 export const PRINT_EQUIPMENT_QUERY_KEY = ["omni-comms", "print-equipment"];
+export const PRINT_DISCOVERY_QUERY_KEY = ["omni-comms", "print-discovery"];
 
 export interface PrintEquipmentSelectProps {
   id?: string;
@@ -83,6 +95,16 @@ export const PrintEquipmentSelect: React.FC<PrintEquipmentSelectProps> = ({
       }),
   });
 
+  const discovery = useQuery({
+    queryKey: [...PRINT_DISCOVERY_QUERY_KEY, organizationId, departmentId],
+    enabled: Boolean(organizationId),
+    queryFn: () =>
+      listPrintDiscoverySources(client, {
+        organizationId: organizationId as string,
+        departmentId: departmentId ?? null,
+      }),
+  });
+
   const register = useMutation({
     mutationFn: () =>
       upsertPrintEquipment(client, {
@@ -110,6 +132,64 @@ export const PrintEquipmentSelect: React.FC<PrintEquipmentSelectProps> = ({
 
   const items = equipment.data?.items ?? [];
   const canManage = equipment.data?.manage_permitted ?? false;
+  const activeSources = (discovery.data?.items ?? []).filter(
+    (row) => row.status === "active",
+  );
+  const selected = items.find((row) => row.code === value) ?? null;
+
+  const makeDefault = useMutation({
+    mutationFn: (equipmentId: string) =>
+      setDefaultPrintEquipment(client, equipmentId),
+    onSuccess: (result) => {
+      toast.success(`${result.code} is now the default device.`);
+      void queryClient.invalidateQueries({ queryKey: PRINT_EQUIPMENT_QUERY_KEY });
+    },
+    onError: (error: unknown) =>
+      toast.error(
+        error instanceof Error ? error.message : "Could not set the default device.",
+      ),
+  });
+
+  const syncDevices = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const { data, error } = await supabase.functions.invoke(
+        "omni-comms-print-equipment-sync",
+        { body: { sourceId } },
+      );
+      if (error) throw new Error(error.message);
+      return data as { status: string; discovered: number; detail?: string | null };
+    },
+    onSuccess: (result) => {
+      if (result.status === "ok") {
+        toast.success(`Discovered ${result.discovered} print queue(s).`);
+      } else {
+        toast.warning(result.detail ?? "The print agent reported no queues.");
+      }
+      void queryClient.invalidateQueries({ queryKey: PRINT_EQUIPMENT_QUERY_KEY });
+      void queryClient.invalidateQueries({ queryKey: PRINT_DISCOVERY_QUERY_KEY });
+    },
+    onError: (error: unknown) =>
+      toast.error(
+        error instanceof Error ? error.message : "Printer discovery failed.",
+      ),
+  });
+
+  // One-click daily use: last device this operator recorded, else the default.
+  useEffect(() => {
+    if (value || items.length === 0) return;
+    const last = readLastUsedPrintEquipment();
+    const preferred =
+      (last && items.find((row) => row.code === last && row.status === "active")?.code) ||
+      equipment.data?.default_code ||
+      null;
+    if (preferred) onChange(preferred);
+  }, [value, items, equipment.data?.default_code, onChange]);
+
+  const handleChange = (next: string) => {
+    onChange(next);
+    if (next) rememberLastUsedPrintEquipment(next);
+  };
+
 
   return (
     <div className="space-y-1">
@@ -119,7 +199,7 @@ export const PrintEquipmentSelect: React.FC<PrintEquipmentSelectProps> = ({
       <div className="flex items-center gap-2">
         <Select
           value={value || NONE}
-          onValueChange={(next) => onChange(next === NONE ? "" : next)}
+          onValueChange={(next) => handleChange(next === NONE ? "" : next)}
         >
           <SelectTrigger id={id} data-testid="print-equipment-select">
             <SelectValue
@@ -137,6 +217,33 @@ export const PrintEquipmentSelect: React.FC<PrintEquipmentSelectProps> = ({
             ))}
           </SelectContent>
         </Select>
+        {canManage && activeSources.length > 0 && (
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            title={`Sync printers from ${activeSources[0].display_name}`}
+            disabled={syncDevices.isPending}
+            onClick={() => syncDevices.mutate(activeSources[0].id)}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${syncDevices.isPending ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
+          </Button>
+        )}
+        {canManage && selected && !selected.is_default && (
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            title="Make this the default device"
+            disabled={makeDefault.isPending}
+            onClick={() => makeDefault.mutate(selected.id)}
+          >
+            <Star className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        )}
         {canManage && (
           <Button
             type="button"
@@ -149,14 +256,19 @@ export const PrintEquipmentSelect: React.FC<PrintEquipmentSelectProps> = ({
           </Button>
         )}
       </div>
+      <p className="text-xs text-muted-foreground">
+        This records which machine produced the letter. The device the job is
+        actually sent to is chosen in your browser's print dialog.
+      </p>
       {!equipment.isLoading && items.length === 0 && (
         <p className="text-xs text-muted-foreground">
           No active device is registered for this organisation.{" "}
           {canManage
-            ? "Register the print-room printer before recording a physical print."
+            ? "Register the print-room printer, or sync the queues from a registered print agent, before recording a physical print."
             : "Ask an Omni-Comms administrator to register the print-room printer."}
         </p>
       )}
+
 
       <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
         <DialogContent className="max-w-md">
