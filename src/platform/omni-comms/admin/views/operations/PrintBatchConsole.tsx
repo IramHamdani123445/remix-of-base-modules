@@ -353,15 +353,11 @@ const PrintBatchConsole: React.FC = () => {
 
           <div className="space-y-3">
             {pending?.action === "start_production" && (
-              <div>
-                <Label htmlFor="batch-equipment">Equipment reference (optional)</Label>
-                <Input
-                  id="batch-equipment"
-                  value={equipment}
-                  onChange={(e) => setEquipment(e.target.value)}
-                  placeholder="e.g. HQ-PRN-02"
-                />
-              </div>
+              <PrintEquipmentSelect
+                id="batch-equipment"
+                value={equipment}
+                onChange={setEquipment}
+              />
             )}
 
             {completeBlocked && (
