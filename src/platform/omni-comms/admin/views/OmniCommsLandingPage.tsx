@@ -41,6 +41,7 @@ import {
   resolveOverviewView,
   type OmniCommsOverviewView,
 } from "../navigation/omniCommsNavigation";
+import StationerySurface from "./stationery/StationerySurface";
 import {
   buildSetupPlan,
   getSetupReadiness,
