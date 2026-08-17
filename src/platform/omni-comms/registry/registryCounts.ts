@@ -48,4 +48,7 @@ export const OMNI_COMMS_ADMIN_RPC_RUNTIME_OBJECTS: ReadonlySet<string> = new Set
   'omni_comms_print_dispatch',
   // Print equipment register — operator-maintained physical device catalogue.
   'omni_comms_print_equipment',
+  // Print equipment discovery — registered network print agents / spools.
+  'omni_comms_print_discovery_source',
 ]);
+

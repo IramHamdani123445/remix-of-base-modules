@@ -490,6 +490,19 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Print equipment register — traceable physical production',
   },
 
+  {
+    name: 'omni_comms_print_discovery_source',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Registered network print server or print agent that reports its available print queues so the equipment register can be kept in step automatically. Holds the secure endpoint, mode, owning department/production account and the last sync outcome. Discovery only names devices; it never sends, prints or dispatches anything.',
+    status: 'AVAILABLE',
+    introductionStory: 'Print equipment register — network discovery',
+  },
+
+
+
 
   {
     name: 'omni_comms_communication_action',

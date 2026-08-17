@@ -96110,6 +96110,77 @@ export type Database = {
           },
         ]
       }
+      omni_comms_print_discovery_source: {
+        Row: {
+          auth_secret_ref: string | null
+          code: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          display_name: string
+          endpoint_url: string
+          id: string
+          last_discovered_count: number
+          last_sync_at: string | null
+          last_sync_detail: string | null
+          last_sync_status: string | null
+          mode: string
+          organization_id: string
+          production_account_id: string | null
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auth_secret_ref?: string | null
+          code: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          display_name: string
+          endpoint_url: string
+          id?: string
+          last_discovered_count?: number
+          last_sync_at?: string | null
+          last_sync_detail?: string | null
+          last_sync_status?: string | null
+          mode?: string
+          organization_id: string
+          production_account_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auth_secret_ref?: string | null
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          display_name?: string
+          endpoint_url?: string
+          id?: string
+          last_discovered_count?: number
+          last_sync_at?: string | null
+          last_sync_detail?: string | null
+          last_sync_status?: string | null
+          mode?: string
+          organization_id?: string
+          production_account_id?: string | null
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_print_discovery_source_production_account_id_fkey"
+            columns: ["production_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_print_dispatch: {
         Row: {
           address_lines: string[]
@@ -96211,14 +96282,21 @@ export type Database = {
           created_by: string | null
           department_id: string | null
           device_type: string
+          device_uri: string | null
+          discovery_metadata: Json
+          discovery_source: string
+          discovery_source_id: string | null
           display_name: string
           duplex_capable: boolean
           id: string
+          is_default: boolean
+          last_seen_at: string | null
           location: string | null
           notes: string | null
           organization_id: string
           paper_sizes: string[]
           production_account_id: string | null
+          queue_name: string | null
           status: string
           updated_at: string
           updated_by: string | null
@@ -96230,14 +96308,21 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           device_type?: string
+          device_uri?: string | null
+          discovery_metadata?: Json
+          discovery_source?: string
+          discovery_source_id?: string | null
           display_name: string
           duplex_capable?: boolean
           id?: string
+          is_default?: boolean
+          last_seen_at?: string | null
           location?: string | null
           notes?: string | null
           organization_id: string
           paper_sizes?: string[]
           production_account_id?: string | null
+          queue_name?: string | null
           status?: string
           updated_at?: string
           updated_by?: string | null
@@ -96249,19 +96334,33 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           device_type?: string
+          device_uri?: string | null
+          discovery_metadata?: Json
+          discovery_source?: string
+          discovery_source_id?: string | null
           display_name?: string
           duplex_capable?: boolean
           id?: string
+          is_default?: boolean
+          last_seen_at?: string | null
           location?: string | null
           notes?: string | null
           organization_id?: string
           paper_sizes?: string[]
           production_account_id?: string | null
+          queue_name?: string | null
           status?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "omni_comms_print_equipment_discovery_source_fkey"
+            columns: ["discovery_source_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_print_discovery_source"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omni_comms_print_equipment_production_account_id_fkey"
             columns: ["production_account_id"]
@@ -122692,6 +122791,25 @@ export type Database = {
         Args: { p_organization_id: string; p_print_item_ids: string[] }
         Returns: Json
       }
+      omni_comms_print_discovery_source_list: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_print_discovery_source_upsert: {
+        Args: {
+          p_auth_secret_ref?: string
+          p_code: string
+          p_department_id?: string
+          p_display_name: string
+          p_endpoint_url: string
+          p_id?: string
+          p_mode?: string
+          p_organization_id: string
+          p_production_account_id?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       omni_comms_print_document_access: {
         Args: { p_expected_version?: number; p_id: string; p_mode?: string }
         Returns: Json
@@ -122704,24 +122822,50 @@ export type Database = {
         }
         Returns: Json
       }
-      omni_comms_print_equipment_upsert: {
-        Args: {
-          p_code: string
-          p_colour_capable?: boolean
-          p_department_id?: string
-          p_device_type?: string
-          p_display_name: string
-          p_duplex_capable?: boolean
-          p_id?: string
-          p_location?: string
-          p_notes?: string
-          p_organization_id: string
-          p_paper_sizes?: string[]
-          p_production_account_id?: string
-          p_status?: string
-        }
+      omni_comms_print_equipment_set_default: {
+        Args: { p_id: string }
         Returns: Json
       }
+      omni_comms_print_equipment_upsert:
+        | {
+            Args: {
+              p_code: string
+              p_colour_capable?: boolean
+              p_department_id?: string
+              p_device_type?: string
+              p_display_name: string
+              p_duplex_capable?: boolean
+              p_id?: string
+              p_location?: string
+              p_notes?: string
+              p_organization_id: string
+              p_paper_sizes?: string[]
+              p_production_account_id?: string
+              p_status?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_code: string
+              p_colour_capable?: boolean
+              p_department_id?: string
+              p_device_type?: string
+              p_device_uri?: string
+              p_display_name: string
+              p_duplex_capable?: boolean
+              p_id?: string
+              p_is_default?: boolean
+              p_location?: string
+              p_notes?: string
+              p_organization_id: string
+              p_paper_sizes?: string[]
+              p_production_account_id?: string
+              p_queue_name?: string
+              p_status?: string
+            }
+            Returns: Json
+          }
       omni_comms_print_item_action: {
         Args: {
           p_action: string
@@ -123855,6 +123999,15 @@ export type Database = {
       omni_comms_priv_print_batch_transition_allowed: {
         Args: { p_from: string; p_to: string }
         Returns: boolean
+      }
+      omni_comms_priv_print_equipment_sync: {
+        Args: {
+          p_detail?: string
+          p_printers: Json
+          p_source_id: string
+          p_sync_status?: string
+        }
+        Returns: Json
       }
       omni_comms_priv_print_item_ensure_system: {
         Args: { p_attempt_id: string; p_message_id: string }
