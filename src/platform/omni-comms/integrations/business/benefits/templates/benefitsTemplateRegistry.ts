@@ -26,6 +26,13 @@ import {
   type BenefitsEmailSpec,
   type ComposedBenefitsEmail,
 } from './benefitsEmailComposer';
+import {
+  composeBenefitsPrintLetter,
+  composeBenefitsSms,
+  composeBenefitsWhatsApp,
+  type ComposedPrintLetter,
+  type ComposedShortMessage,
+} from './benefitsChannelComposer';
 
 /** Value used when the business layer has no value for a declared token. */
 export const BENEFITS_TOKEN_PLACEHOLDER = 'Not stated';
