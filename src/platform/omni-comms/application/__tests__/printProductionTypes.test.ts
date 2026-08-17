@@ -20,7 +20,7 @@ describe('print physical state machine (client mirror)', () => {
   });
 
   it('offers no queue action once an item is printed', () => {
-    expect(availablePrintActions('printed')).toEqual(['mark_spoiled']);
+    expect(availablePrintActions('printed')).toEqual(['mark_spoiled', 'confirm_dispatched']);
   });
 
   it('offers recovery actions after a failure', () => {
@@ -33,7 +33,15 @@ describe('print physical state machine (client mirror)', () => {
     expect([...OMNI_COMMS_PRINT_REASON_REQUIRED].sort()).toEqual([
       'hold',
       'mark_failed',
+      'mark_returned',
       'mark_spoiled',
     ]);
+  });
+
+  it('tracks dispatch and return as physical states', () => {
+    expect(availablePrintActions('dispatched')).toEqual(['mark_returned']);
+    expect(availablePrintActions('returned_undelivered')).toEqual(
+      expect.arrayContaining(['hold', 'requeue']),
+    );
   });
 });

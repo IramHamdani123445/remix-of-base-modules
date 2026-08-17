@@ -146,8 +146,11 @@ Deno.serve(async (req) => {
     const claimErrorCode = BOUNDED_CODE.test(String(claimed.error.code ?? ""))
       ? String(claimed.error.code)
       : "database_error";
+    const claimErrorMessage = String(claimed.error.message ?? "")
+      .replace(/[^A-Za-z0-9_ .:-]/g, "")
+      .slice(0, 240);
     console.error(
-      `omni-comms-print-production claim_failed correlation=${correlationId ?? "none"} code=${claimErrorCode}`,
+      `omni-comms-print-production claim_failed correlation=${correlationId ?? "none"} code=${claimErrorCode} message=${claimErrorMessage || "unavailable"}`,
     );
     return json({ error: "OC500", detail: "print_claim_failed", code: claimErrorCode }, 500);
   }
@@ -207,8 +210,11 @@ Deno.serve(async (req) => {
       p_error_detail: outcome.errorDetail ?? null,
     });
     if (completion.error) {
+      const completionMessage = String(completion.error.message ?? "")
+        .replace(/[^A-Za-z0-9_ .:-]/g, "")
+        .slice(0, 240);
       console.error(
-        `omni-comms-print-production evidence_record_failed correlation=${correlationId ?? "none"} attempt=${attemptId}`,
+        `omni-comms-print-production evidence_record_failed correlation=${correlationId ?? "none"} attempt=${attemptId} message=${completionMessage || "unavailable"}`,
       );
     }
 

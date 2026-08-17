@@ -15,6 +15,8 @@ export const OMNI_COMMS_PRINT_STATUSES = [
   'print_failed',
   'spoiled',
   'held',
+  'dispatched',
+  'returned_undelivered',
 ] as const;
 
 export type OmniCommsPrintStatus = (typeof OMNI_COMMS_PRINT_STATUSES)[number];
@@ -27,6 +29,8 @@ export const OMNI_COMMS_PRINT_STATUS_LABELS: Record<OmniCommsPrintStatus, string
   print_failed: 'Print failed',
   spoiled: 'Spoiled',
   held: 'Held',
+  dispatched: 'Dispatched',
+  returned_undelivered: 'Returned undelivered',
 };
 
 export const OMNI_COMMS_PRINT_ACTIONS = [
@@ -37,6 +41,8 @@ export const OMNI_COMMS_PRINT_ACTIONS = [
   'mark_spoiled',
   'hold',
   'requeue',
+  'confirm_dispatched',
+  'mark_returned',
 ] as const;
 
 export type OmniCommsPrintAction = (typeof OMNI_COMMS_PRINT_ACTIONS)[number];
@@ -49,6 +55,8 @@ export const OMNI_COMMS_PRINT_ACTION_LABELS: Record<OmniCommsPrintAction, string
   mark_spoiled: 'Mark spoiled',
   hold: 'Hold',
   requeue: 'Requeue',
+  confirm_dispatched: 'Confirm dispatch',
+  mark_returned: 'Mark returned',
 };
 
 /** Actions that always require an operator reason. */
@@ -56,6 +64,7 @@ export const OMNI_COMMS_PRINT_REASON_REQUIRED: readonly OmniCommsPrintAction[] =
   'hold',
   'mark_failed',
   'mark_spoiled',
+  'mark_returned',
 ];
 
 /**
@@ -67,10 +76,12 @@ const TRANSITIONS: Record<OmniCommsPrintStatus, OmniCommsPrintStatus[]> = {
   artefact_produced: ['queued_for_print', 'held'],
   queued_for_print: ['printing', 'held'],
   printing: ['printed', 'print_failed', 'held'],
-  printed: ['spoiled'],
+  printed: ['spoiled', 'dispatched'],
   print_failed: ['queued_for_print', 'spoiled', 'held'],
   spoiled: ['queued_for_print'],
   held: ['queued_for_print', 'artefact_produced'],
+  dispatched: ['returned_undelivered'],
+  returned_undelivered: ['queued_for_print', 'held'],
 };
 
 const ACTION_TARGET: Record<OmniCommsPrintAction, OmniCommsPrintStatus> = {
@@ -81,6 +92,8 @@ const ACTION_TARGET: Record<OmniCommsPrintAction, OmniCommsPrintStatus> = {
   mark_spoiled: 'spoiled',
   hold: 'held',
   requeue: 'queued_for_print',
+  confirm_dispatched: 'dispatched',
+  mark_returned: 'returned_undelivered',
 };
 
 export function printTransitionAllowed(
@@ -94,10 +107,18 @@ export function availablePrintActions(
   status: OmniCommsPrintStatus,
 ): OmniCommsPrintAction[] {
   return OMNI_COMMS_PRINT_ACTIONS.filter((action) => {
-    if (action === 'requeue' && status !== 'print_failed' && status !== 'spoiled' && status !== 'held') {
+    if (
+      action === 'requeue' &&
+      status !== 'print_failed' &&
+      status !== 'spoiled' &&
+      status !== 'held' &&
+      status !== 'returned_undelivered'
+    ) {
       return false;
     }
     if (action === 'queue_for_print' && status !== 'artefact_produced') return false;
+    if (action === 'confirm_dispatched' && status !== 'printed') return false;
+    if (action === 'mark_returned' && status !== 'dispatched') return false;
     return printTransitionAllowed(status, ACTION_TARGET[action]);
   });
 }
@@ -204,6 +225,16 @@ export interface PrintItemActionInput {
   equipmentReference?: string | null;
   pageCount?: number | null;
   correlationId?: string | null;
+  dispatch?: {
+    dispatch_method: string;
+    carrier?: string | null;
+    service_level?: string | null;
+    tracking_reference?: string | null;
+    postage_cost?: number | null;
+    postage_currency?: string | null;
+    enclosure_count?: number | null;
+    notes?: string | null;
+  } | null;
 }
 
 export interface PrintItemActionResult {

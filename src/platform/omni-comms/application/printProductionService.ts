@@ -80,5 +80,6 @@ export function performPrintItemAction(
     p_equipment_reference: input.equipmentReference ?? null,
     p_page_count: input.pageCount ?? null,
     p_correlation_id: input.correlationId ?? null,
+    p_dispatch: input.dispatch ?? null,
   });
 }
