@@ -234,12 +234,20 @@ export function paginatePrintLines(
   lines: readonly string[],
   stationery?: PrintStationery | null,
 ): string[][] {
-  const { headerLines, footerLines, pageFooter, logo } = stationeryReservation(
-    stationery,
-  );
-  const reserved = headerLines.length + footerLines.length +
-    (pageFooter ? 1 : 0) + (logo?.reservedLines ?? 0);
-  const perPage = Math.max(5, LINES_PER_PAGE - reserved);
+  let perPage: number;
+  if (stationery?.design) {
+    perPage = letterheadGeometry(stationery.design, {
+      footerLines: stationery.footerLines ?? null,
+      pageFooter: stationery.pageFooter ?? null,
+    }).linesPerPage;
+  } else {
+    const { headerLines, footerLines, pageFooter, logo } = stationeryReservation(
+      stationery,
+    );
+    const reserved = headerLines.length + footerLines.length +
+      (pageFooter ? 1 : 0) + (logo?.reservedLines ?? 0);
+    perPage = Math.max(5, LINES_PER_PAGE - reserved);
+  }
   const pages: string[][] = [];
   for (let i = 0; i < lines.length; i += perPage) {
     pages.push(lines.slice(i, i + perPage));
