@@ -16,6 +16,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { producePrintArtefact } from "../_shared/omni-comms/printArtefactAdapter.ts";
+import { decodePngForPdf, type PrintImageAsset } from "../_shared/omni-comms/printImage.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
