@@ -60,7 +60,6 @@ export interface PrintStationery {
   /** Decoded letterhead logo drawn at the top of every page. */
   logo?: PrintImageAsset | null;
   /** Name of the logo asset, recorded as artefact provenance. */
-  /** Name of the logo asset, recorded as artefact provenance. */
   logoName?: string | null;
   /**
    * Fully resolved letterhead design (layout variant, margins, office blocks,
