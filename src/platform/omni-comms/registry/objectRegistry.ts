@@ -480,6 +480,18 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
   },
 
   {
+    name: 'omni_comms_print_equipment',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Tenant register of physical production equipment (print-room printers, multi-function devices, mail inserters and outsourced bureaux): device code, name, location, capability and lifecycle status. Every physical print attempt is bound to a registered active device, so "equipment reference" is evidence rather than free text. Registering a device never sends, prints or dispatches anything.',
+    status: 'AVAILABLE',
+    introductionStory: 'Print equipment register — traceable physical production',
+  },
+
+
+  {
     name: 'omni_comms_communication_action',
     category: 'channels_senders_preferences',
     epic: 6,

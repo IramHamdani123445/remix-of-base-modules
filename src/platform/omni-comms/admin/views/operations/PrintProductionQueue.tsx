@@ -80,6 +80,8 @@ import {
   type PrintDocumentMode,
 } from "@/platform/omni-comms/application/printDocumentService";
 import { describePrintError } from "@/platform/omni-comms/application/printReadinessTypes";
+import PrintEquipmentSelect from "./PrintEquipmentSelect";
+import { useOmniCommsPrintDocumentObject } from "@/platform/omni-comms/admin/hooks/useOmniCommsPrintDocumentObject";
 
 /** Statuses from which an operator may open the letter for physical printing. */
 const OPENABLE_FOR_PRINT: readonly OmniCommsPrintStatus[] = [
@@ -136,6 +138,12 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
   const [openRow, setOpenRow] = useState<PrintQueueRow | null>(null);
   const [access, setAccess] = useState<PrintDocumentAccess | null>(null);
   const [accessError, setAccessError] = useState<string | null>(null);
+  /**
+   * The signed URL lives on the backend origin, which content blockers often
+   * refuse to frame. Fetching it once and framing a local blob keeps the
+   * letter visible for every operator.
+   */
+  const printDocument = useOmniCommsPrintDocumentObject(access?.url ?? null);
 
 
 
@@ -548,15 +556,11 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
           </DialogHeader>
           <div className="space-y-3">
             {pending?.action === "start_printing" && (
-              <div>
-                <Label htmlFor="print-equipment">Equipment reference (optional)</Label>
-                <Input
-                  id="print-equipment"
-                  value={equipment}
-                  onChange={(e) => setEquipment(e.target.value)}
-                  placeholder="e.g. HQ-PRN-02"
-                />
-              </div>
+              <PrintEquipmentSelect
+                id="print-equipment"
+                value={equipment}
+                onChange={setEquipment}
+              />
             )}
             {pending?.action === "confirm_dispatched" && (
               <div className="space-y-3">
@@ -799,11 +803,17 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
           {access && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Button asChild size="sm">
-                  <a href={access.url} target="_blank" rel="noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
-                    Open PDF & print
-                  </a>
+                <Button
+                  size="sm"
+                  disabled={!printDocument.objectUrl}
+                  onClick={() => {
+                    if (printDocument.objectUrl) {
+                      window.open(printDocument.objectUrl, "_blank", "noopener");
+                    }
+                  }}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Open PDF & print
                 </Button>
                 <span className="text-xs text-muted-foreground">
                   Secure link expires in {access.expiresInSeconds}s ·{" "}
@@ -812,25 +822,49 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                 </span>
               </div>
 
-              <iframe
-                title="Print document"
-                src={access.url}
-                className="h-[420px] w-full rounded-md border"
-              />
+              {printDocument.loading && (
+                <p className="text-sm text-muted-foreground">
+                  Downloading the archived letter…
+                </p>
+              )}
+
+              {printDocument.blocked && (
+                <div
+                  className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm"
+                  data-testid="print-document-blocked"
+                >
+                  <p className="font-medium">
+                    Your browser blocked the document download.
+                  </p>
+                  <p className="text-muted-foreground">
+                    An ad-blocker, shield or privacy extension is stopping this
+                    page from loading the letter (ERR_BLOCKED_BY_CLIENT). Allow
+                    this site in the blocker, or open the secure link directly —
+                    the link is short-lived and server-authorised.
+                  </p>
+                  <Button asChild size="sm" variant="outline">
+                    <a href={access.url} target="_blank" rel="noreferrer">
+                      Open the secure link directly
+                    </a>
+                  </Button>
+                </div>
+              )}
+
+              {printDocument.objectUrl && (
+                <iframe
+                  title="Print document"
+                  src={printDocument.objectUrl}
+                  className="h-[420px] w-full rounded-md border"
+                />
+              )}
 
               {access.mode === "print" && openRow && (
                 <div className="space-y-2">
-                  <div>
-                    <Label htmlFor="print-outcome-equipment">
-                      Equipment reference (optional)
-                    </Label>
-                    <Input
-                      id="print-outcome-equipment"
-                      value={equipment}
-                      onChange={(e) => setEquipment(e.target.value)}
-                      placeholder="e.g. HQ-PRN-02"
-                    />
-                  </div>
+                  <PrintEquipmentSelect
+                    id="print-outcome-equipment"
+                    value={equipment}
+                    onChange={setEquipment}
+                  />
                   <div>
                     <Label htmlFor="print-outcome-reason">
                       Notes (required if it failed or was spoiled)
@@ -845,7 +879,7 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      disabled={recordOutcome.isPending}
+                      disabled={recordOutcome.isPending || equipment.trim().length === 0}
                       onClick={() =>
                         recordOutcome.mutate({
                           row: openRow,

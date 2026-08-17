@@ -46,4 +46,6 @@ export const OMNI_COMMS_ADMIN_RPC_RUNTIME_OBJECTS: ReadonlySet<string> = new Set
   'omni_comms_print_batch_item',
   // Print dispatch tracking — physical fulfilment evidence.
   'omni_comms_print_dispatch',
+  // Print equipment register — operator-maintained physical device catalogue.
+  'omni_comms_print_equipment',
 ]);
