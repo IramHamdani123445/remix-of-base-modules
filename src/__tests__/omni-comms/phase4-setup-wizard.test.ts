@@ -493,7 +493,16 @@ describe('Phase 4 — route ceiling', () => {
     }
   });
 
-  it('35. the wizard is reachable from the Overview route as a tab', () => {
+  it('35. the wizard is reachable at its own Setup route', () => {
+    const setupPage = fs.readFileSync(
+      path.join(
+        REPO_ROOT,
+        'src/platform/omni-comms/admin/views/OmniCommsSetupPage.tsx',
+      ),
+      'utf8',
+    );
+    expect(setupPage).toContain('SetupWizardPanel');
+    // Historic `?view=setup` deep links still land on the Setup route.
     const landing = fs.readFileSync(
       path.join(
         REPO_ROOT,
@@ -501,9 +510,7 @@ describe('Phase 4 — route ceiling', () => {
       ),
       'utf8',
     );
-    expect(landing).toContain('SetupWizardPanel');
-    expect(landing).toContain('"view"');
-    expect(landing).toContain('"setup"');
+    expect(landing).toContain('legacyViewRedirect');
   });
 
   it('36. channel setup links target the canonical channel tabs', () => {
