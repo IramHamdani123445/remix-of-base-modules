@@ -15,7 +15,10 @@
 //     those remain governed physical states on the print item.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { producePrintArtefact } from "../_shared/omni-comms/printArtefactAdapter.ts";
+import {
+  producePrintArtefact,
+  type PrintLetterheadDesign,
+} from "../_shared/omni-comms/printArtefactAdapter.ts";
 import { decodePngForPdf, type PrintImageAsset } from "../_shared/omni-comms/printImage.ts";
 
 
@@ -209,26 +212,84 @@ Deno.serve(async (req) => {
     const strings = (v: unknown) =>
       Array.isArray(v) ? v.map((l) => String(l)).filter(Boolean) : [];
 
-    // Letterhead logo: downloaded from the branding bucket and embedded so the
-    // printed letter matches the Communication & Documents template preview.
-    const logoBucket = (st.logo_bucket as string | null) ?? null;
-    const logoPath = (st.logo_path as string | null) ?? null;
-    let logo = logoPath ? logoCache.get(`${logoBucket ?? "url"}:${logoPath}`) ?? null : null;
-    if (logoPath && !logo && !logoCache.has(`${logoBucket ?? "url"}:${logoPath}`)) {
+    // Media Library assets are downloaded once per batch and embedded so the
+    // printed letter matches the Communication Hub letterhead preview exactly.
+    const loadAsset = async (
+      bucket: string | null,
+      path: string | null,
+    ): Promise<PrintImageAsset | null> => {
+      if (!path) return null;
+      const key = `${bucket ?? "url"}:${path}`;
+      if (logoCache.has(key)) return logoCache.get(key) ?? null;
+      let asset: PrintImageAsset | null = null;
       try {
         let bytes: Uint8Array | null = null;
-        if (logoBucket) {
-          const dl = await service.storage.from(logoBucket).download(logoPath);
+        if (bucket) {
+          const dl = await service.storage.from(bucket).download(path);
           if (!dl.error && dl.data) bytes = new Uint8Array(await dl.data.arrayBuffer());
         } else {
-          const res = await fetch(logoPath);
+          const res = await fetch(path);
           if (res.ok) bytes = new Uint8Array(await res.arrayBuffer());
         }
-        logo = bytes ? await decodePngForPdf(bytes) : null;
+        asset = bytes ? await decodePngForPdf(bytes) : null;
       } catch (_error) {
-        logo = null;
+        asset = null;
       }
-      logoCache.set(`${logoBucket ?? "url"}:${logoPath}`, logo);
+      logoCache.set(key, asset);
+      return asset;
+    };
+
+    const logo = await loadAsset(
+      (st.logo_bucket as string | null) ?? null,
+      (st.logo_path as string | null) ?? null,
+    );
+
+    // Full letterhead design (layout, offices, media) resolved server-side.
+    const rawDesign = (st.letterhead_design ?? null) as Record<string, unknown> | null;
+    let design: PrintLetterheadDesign | null = null;
+    if (rawDesign) {
+      const rawAssets = (rawDesign.assets ?? {}) as Record<string, unknown>;
+      const pick = async (name: string) => {
+        const entry = rawAssets[name] as Record<string, unknown> | undefined;
+        if (!entry || entry.found !== true) return null;
+        return await loadAsset(
+          (entry.bucket as string | null) ?? null,
+          (entry.path as string | null) ?? null,
+        );
+      };
+      const office = (value: unknown) => {
+        const block = (value ?? null) as Record<string, unknown> | null;
+        if (!block) return null;
+        return {
+          label: (block.label as string | null) ?? null,
+          lines: strings(block.lines),
+        };
+      };
+      design = {
+        letterheadId: (rawDesign.letterhead_id as string | null) ?? null,
+        letterheadCode: (rawDesign.letterhead_code as string | null) ?? null,
+        letterheadName: (rawDesign.letterhead_name as string | null) ?? null,
+        letterheadSource: (rawDesign.letterhead_source as string | null) ?? null,
+        layoutVariant: (rawDesign.layout_variant as string | null) ?? "ssb_standard",
+        pageSize: (rawDesign.page_size as string | null) ?? "A4",
+        orientation: (rawDesign.orientation as string | null) ?? "portrait",
+        margins: (rawDesign.margins ?? null) as PrintLetterheadDesign["margins"],
+        dividerColor: (rawDesign.divider_color as string | null) ?? null,
+        officeBlockLayout: (rawDesign.office_block_layout as string | null) ?? null,
+        organizationName: (rawDesign.organization_name as string | null) ?? null,
+        tagline: (rawDesign.tagline as string | null) ?? null,
+        headOffice: office(rawDesign.head_office),
+        branchOffice: office(rawDesign.branch_office),
+        footerNote: (rawDesign.footer_note as string | null) ?? null,
+        footerNoteSource: (rawDesign.footer_note_source as string | null) ?? null,
+        assets: {
+          logo: (await pick("logo")) ?? logo,
+          watermark: await pick("watermark"),
+          seal: await pick("seal"),
+          headerBand: await pick("header_band"),
+          footerBand: await pick("footer_band"),
+        },
+      };
     }
 
     const outcome = await producePrintArtefact({
@@ -249,6 +310,7 @@ Deno.serve(async (req) => {
         printFooterSource: (st.print_footer_source as string | null) ?? null,
         logo,
         logoName: (st.logo_name as string | null) ?? null,
+        design,
       },
 
       // Print content is ALWAYS produced from the print variant.

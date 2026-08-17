@@ -122740,6 +122740,17 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_print_audit_list: {
+        Args: {
+          p_department_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_organization_id: string
+          p_outcome?: string
+          p_search?: string
+        }
+        Returns: Json
+      }
       omni_comms_print_batch_action: {
         Args: {
           p_action: string
@@ -124024,9 +124035,62 @@ export type Database = {
         Args: { p_attempt_id: string; p_message_id: string }
         Returns: string
       }
+      omni_comms_priv_print_letterhead_effective: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
       omni_comms_priv_print_mask_address: {
         Args: { p_snapshot: Json }
         Returns: string
+      }
+      omni_comms_priv_print_media_asset: {
+        Args: { p_code: string }
+        Returns: Json
+      }
+      omni_comms_priv_print_office_lines: {
+        Args: {
+          p_design: Json
+          p_loc: Database["public"]["Tables"]["office_locations"]["Row"]
+        }
+        Returns: string[]
+      }
+      omni_comms_priv_print_pick_location: {
+        Args: { p_org_id: string; p_role: string; p_specific_id: string }
+        Returns: {
+          address: string | null
+          branch_name: string
+          city: string | null
+          country: string | null
+          created_at: string | null
+          created_by: string | null
+          email: string | null
+          fax: string | null
+          gps_lat: number | null
+          gps_lng: number | null
+          id: string
+          is_active: boolean | null
+          is_primary: boolean | null
+          is_service_center: boolean
+          island_or_region: string | null
+          location_type: string | null
+          logo_override_url: string | null
+          manager_user_code: string | null
+          office_hours: string | null
+          organization_id: string | null
+          parish_city: string | null
+          phone: string | null
+          public_facing: boolean
+          services_offered: Json
+          state: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "office_locations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       omni_comms_priv_print_postal_lines: {
         Args: { p_snapshot: Json }
@@ -124061,7 +124125,7 @@ export type Database = {
         Returns: number
       }
       omni_comms_priv_print_stationery_effective: {
-        Args: { p_department_id: string; p_organization_id: string }
+        Args: { p_department_id?: string; p_organization_id: string }
         Returns: Json
       }
       omni_comms_priv_print_transition_allowed: {
