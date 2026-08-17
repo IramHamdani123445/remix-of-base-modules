@@ -78,6 +78,14 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     status: 'Available',
   },
   {
+    name: 'omni-comms-print-equipment-sync',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Print equipment discovery boundary. Asks a registered network print agent or CUPS/IPP source for its available print queues and hands them to the governed sync RPC, which reconciles the tenant equipment register. Prints nothing, dispatches nothing and contacts no messaging provider.',
+    status: 'Available',
+  },
+
+  {
     name: 'omni-comms-print-production',
     kind: 'edge_function',
     ownership: 'omni_comms',
