@@ -10,9 +10,13 @@
  * The dashboard renders only facts returned by the bounded read-only setup
  * readiness RPC and the safe Edge health probe. It invents no metrics, shows
  * no delivery counts and never mutates anything.
+ *
+ * Since the navigation restructure this page hosts NO tabs. Control Center,
+ * Setup, Safe test, Reference data and Stationery are real routes. Historic
+ * `?view=` deep links are redirected here to their owning route.
  */
 import React from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { ArrowRight, LayoutDashboard, Loader2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -23,7 +27,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { useOmniCommsTenant } from "../../context/OmniCommsTenantContext";
 import { useOmniCommsRpcClient } from "../hooks/useOmniCommsRpcClient";
 import { useOmniCommsCertificationPosture } from "../hooks/useOmniCommsCertificationPosture";
@@ -36,12 +39,10 @@ import {
   OmniCommsInlineWarning,
 } from "../components/OmniCommsPostureBadge";
 import {
-  omniCommsNavItems,
-  overviewViewHref,
-  resolveOverviewView,
-  type OmniCommsOverviewView,
+  legacyViewRedirect,
+  omniCommsNavGroups,
+  OMNI_COMMS_ROUTES,
 } from "../navigation/omniCommsNavigation";
-import StationerySurface from "./stationery/StationerySurface";
 import {
   buildSetupPlan,
   getSetupReadiness,
@@ -51,12 +52,6 @@ import {
   type SetupPlan,
 } from "../../application/setupReadinessService";
 import OmniCommsAutomationOverviewCard from "./OmniCommsAutomationOverviewCard";
-import SetupWizardPanel from "./setup/SetupWizardPanel";
-import ControlledDryRunPanel from "./dryrun/ControlledDryRunPanel";
-import OmniCommsControlCenter from "./control/OmniCommsControlCenter";
-
-import ReferenceSeedPanel from "./seed/ReferenceSeedPanel";
-
 
 // ── Dashboard body ────────────────────────────────────────────────────────
 
@@ -116,6 +111,7 @@ const DashboardView: React.FC = () => {
   });
 
   const nextStep = plan?.nextRequiredStep ?? null;
+  const groups = omniCommsNavGroups(environment);
 
   return (
     <div className="space-y-6" data-testid="omni-comms-dashboard">
@@ -197,7 +193,7 @@ const DashboardView: React.FC = () => {
                   <p className="text-muted-foreground">{nextStep.purpose}</p>
                   <div className="flex flex-wrap gap-2">
                     <Button asChild size="sm">
-                      <Link to={overviewViewHref("setup")}>
+                      <Link to={OMNI_COMMS_ROUTES.setup}>
                         Open Setup readiness
                         <ArrowRight className="ml-1 h-4 w-4" aria-hidden="true" />
                       </Link>
@@ -222,36 +218,35 @@ const DashboardView: React.FC = () => {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Where to go next</CardTitle>
-          <CardDescription>
-            Every administration destination in this module.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {omniCommsNavItems(environment).map((item) => (
-              <li
-                key={item.id}
-                data-testid={`omni-comms-dashboard-link-${item.id}`}
-                className="rounded-md border p-3"
-              >
-                <p className="font-medium">{item.label}</p>
-                <p className="mb-2 text-sm text-muted-foreground">
-                  {item.description}
-                </p>
-                <Button asChild size="sm" variant="ghost">
-                  <Link to={item.href}>
-                    Open
-                    <ArrowRight className="ml-1 h-3 w-3" aria-hidden="true" />
-                  </Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+      {groups.map((group) => (
+        <Card key={group.id}>
+          <CardHeader>
+            <CardTitle className="text-base">{group.label}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="grid gap-3 sm:grid-cols-2">
+              {group.items.map((item) => (
+                <li
+                  key={item.id}
+                  data-testid={`omni-comms-dashboard-link-${item.id}`}
+                  className="rounded-md border p-3"
+                >
+                  <p className="font-medium">{item.label}</p>
+                  <p className="mb-2 text-sm text-muted-foreground">
+                    {item.description}
+                  </p>
+                  <Button asChild size="sm" variant="ghost">
+                    <Link to={item.href}>
+                      Open
+                      <ArrowRight className="ml-1 h-3 w-3" aria-hidden="true" />
+                    </Link>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ))}
 
       {!isNonProduction(environment) ? (
         <OmniCommsInlineWarning>
@@ -267,70 +262,18 @@ const DashboardView: React.FC = () => {
 
 export const OmniCommsLandingPage: React.FC = () => {
   const [searchParams] = useSearchParams();
-  // Single canonical parser shared with the module header, deep links and
-  // tests. This page never parses `?view=` itself.
-  const requested = resolveOverviewView(searchParams.get("view"));
-  const { environment } = useOmniCommsCertificationPosture({ autoProbe: false });
-  const nonProduction = isNonProduction(environment);
 
-  // Safe test is a non-production surface. In production it is not rendered
-  // AND a direct `?view=safe-test` deep link falls back to the Dashboard.
-  const view: OmniCommsOverviewView =
-    (requested === "safe-test" || requested === "reference-data") && !nonProduction
-      ? "dashboard"
-      : requested;
+  // Historic `?view=` (and `?section=`) deep links now redirect to the real
+  // route that owns the surface. Nothing already bookmarked breaks.
+  const redirect = legacyViewRedirect(
+    searchParams.get("view"),
+    searchParams.get("section"),
+  );
+  if (redirect) return <Navigate to={redirect} replace />;
 
   return (
     <div data-testid="omni-comms-landing" className="space-y-6">
-      {/*
-        UI Phase 1 — this page no longer renders its own tab strip. Dashboard,
-        Setup readiness and Safe test are already offered exactly once, by the
-        module navigation in `OmniCommsModuleHeader`. The `?view=` vocabulary,
-        its aliases and every deep link are unchanged; this component simply
-        renders the resolved view.
-      */}
-      <Tabs value={view} className="w-full">
-
-
-        <TabsContent value="dashboard" className="mt-4">
-          <DashboardView />
-        </TabsContent>
-
-        <TabsContent value="control-center" className="mt-4">
-          <OmniCommsControlCenter />
-        </TabsContent>
-
-        <TabsContent value="setup" className="mt-4">
-
-          <SetupWizardPanel />
-        </TabsContent>
-
-        <TabsContent value="stationery" className="mt-4">
-          <StationerySurface />
-        </TabsContent>
-
-
-        {nonProduction ? (
-          <TabsContent value="safe-test" className="mt-4">
-            <ControlledDryRunPanel />
-          </TabsContent>
-        ) : null}
-
-        {/*
-          Reference data is a non-production configuration tool, not a primary
-          administration destination. It stays URL-addressable
-          (`?view=reference-data`) and is reached from Setup readiness.
-        */}
-        {nonProduction ? (
-          <TabsContent
-            value="reference-data"
-            className="mt-4"
-            data-testid="omni-comms-landing-tab-reference-data"
-          >
-            <ReferenceSeedPanel />
-          </TabsContent>
-        ) : null}
-      </Tabs>
+      <DashboardView />
     </div>
   );
 };
