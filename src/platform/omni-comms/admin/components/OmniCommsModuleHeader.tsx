@@ -54,8 +54,9 @@ export const OmniCommsModuleHeader: React.FC = () => {
   );
 
   // Non-production-only destinations are withheld in production.
-  const navItems = React.useMemo(() => omniCommsNavItems(environment), [environment]);
+  const navGroups = React.useMemo(() => omniCommsNavGroups(environment), [environment]);
   const active = resolveActiveNavItem(location.pathname, searchParams.get('view'));
+
 
   return (
     <header
