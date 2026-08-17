@@ -24,7 +24,7 @@ import {
 import { buildOmniCommsBreadcrumbs } from '@/platform/omni-comms/admin/navigation/omniCommsBreadcrumbs';
 import { OMNI_COMMS_GENERIC_TABS } from '@/platform/omni-comms/domain/channelCatalogue';
 import { resolveChannelWorkspaceTab } from '@/platform/omni-comms/admin/hooks/useOmniCommsTabParam';
-import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
+import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8');
 

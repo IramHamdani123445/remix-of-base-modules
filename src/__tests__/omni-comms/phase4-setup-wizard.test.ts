@@ -23,7 +23,7 @@ import {
   type SetupReadinessPayload,
 } from '@/platform/omni-comms/application/setupReadinessService';
 import { OmniCommsRpcError } from '@/platform/omni-comms/application/eventCatalogueTypes';
-import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
+import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 import { OMNI_COMMS_READINESS_MANIFEST } from '@/platform/omni-comms/registry/readinessManifest';
 import {
   checkSetupWizardBoundary,

@@ -29,7 +29,7 @@ import {
   checkHealthBoundary,
   isHealthSurfaceFile,
 } from '@/platform/omni-comms/architecture';
-import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
+import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 import { validateOmniCommsRegistries } from '@/platform/omni-comms/registry/validateRegistries';
 
