@@ -78,6 +78,7 @@ import BusinessEventDetailPanel from "./operations/BusinessEventDetailPanel";
 import EmailJourneySection from "./operations/EmailJourneySection";
 import PrintProductionQueue from "./operations/PrintProductionQueue";
 import EmailJourneyDetailPanel from "./operations/EmailJourneyDetailPanel";
+import ChannelActivityCards from "./operations/ChannelActivityCards";
 
 /** Normal-operator filter chips, expressed in business-event vocabulary. */
 const EVENT_FILTERS = [
@@ -363,6 +364,8 @@ export const OmniCommsOperationsPage: React.FC = () => {
         loading={automation.loading}
         onRefresh={automation.refresh}
       />
+
+      <ChannelActivityCards rows={events?.items ?? []} loading={loading && !events} />
 
       <Card data-testid="omni-comms-needs-attention">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
