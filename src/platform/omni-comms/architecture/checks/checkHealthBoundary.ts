@@ -11,13 +11,14 @@
  *   - expose secret material (secret_ref, api keys, JWT / authorization
  *     headers).
  *
- * Additionally guards the permanent route ceiling of SEVEN admin routes:
- * an eighth permanent Omni-Comms admin route is rejected.
+ * Additionally guards the permanent route ceiling: every permanent
+ * Omni-Comms admin route must exist in the approved route registry.
  */
 import type {
   ArchitectureViolation,
   RepositoryScan,
 } from '../architectureCheck.types';
+import { OMNI_COMMS_ROUTE_REGISTRY } from '../../registry/routeRegistry';
 import {
   LEGACY_IMPORT_PATTERNS,
   PROVIDER_SDK_PACKAGES,
@@ -50,15 +51,9 @@ const SECRET_TOKENS = [
 ];
 
 const PERMANENT_ROUTE_RE = /['"`]\/admin\/omnichannel-communications(?:\/[a-z-]+)?['"`]/g;
-const APPROVED_ROUTES = new Set([
-  '/admin/omnichannel-communications',
-  '/admin/omnichannel-communications/operations',
-  '/admin/omnichannel-communications/events',
-  '/admin/omnichannel-communications/templates',
-  '/admin/omnichannel-communications/channels',
-  '/admin/omnichannel-communications/preferences',
-  '/admin/omnichannel-communications/health',
-]);
+// The approved set is the route registry itself: routes and registry always
+// move together, so the ceiling can never drift from what is registered.
+const APPROVED_ROUTES = new Set<string>(OMNI_COMMS_ROUTE_REGISTRY.map((r) => r.path));
 
 function push(
   out: ArchitectureViolation[],
@@ -95,8 +90,8 @@ export function checkHealthBoundary(scan: RepositoryScan): ArchitectureViolation
           out,
           f.filePath,
           rm[0],
-          `Unapproved permanent Omni-Comms admin route "${route}" — the ceiling is exactly seven routes.`,
-          'Use tabs, panels or query parameters on an existing permanent route instead of adding an eighth route.',
+          `Unapproved permanent Omni-Comms admin route "${route}" — the ceiling is exactly the registered route set.`,
+          'Register the route in routeRegistry.ts (with its permission and page) before adding it to AppRoutes.',
         );
       }
     }
