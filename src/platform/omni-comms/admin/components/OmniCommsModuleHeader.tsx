@@ -121,35 +121,12 @@ export const OmniCommsModuleHeader: React.FC = () => {
 
         <nav aria-label="Omnichannel Communications sections" className="space-y-2">
           {/*
-            Only the primary working destinations live here. Stationery and
-            Setup & health are addressed from the left-hand menu, which now
-            nests them one level deeper — no stacked tab strips.
+            Working destinations only appear on the working surfaces. On a
+            configuration page (Stationery, Setup & health) the header shows
+            just where you are — the left menu is the single way back out, so
+            there is no unrelated Overview / Control Center / Operations strip
+            sitting on top of a stationery editor.
           */}
-          <ul className="flex flex-wrap items-center gap-1">
-            {primaryItems.map((item) => {
-              const isActive = item.id === active.id;
-              return (
-                <li key={item.id}>
-                  <Link
-                    to={mergeOmniCommsHref(item.href, location.search)}
-                    aria-current={isActive ? 'page' : undefined}
-                    title={item.description}
-                    data-testid={`omni-comms-nav-${item.id}`}
-                    className={cn(
-                      'inline-flex min-h-11 items-center rounded-md px-3 text-sm transition-colors',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                      isActive
-                        ? 'bg-primary text-primary-foreground font-medium'
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-
           {secondaryGroup ? (
             <p
               className="text-xs text-muted-foreground"
@@ -158,7 +135,33 @@ export const OmniCommsModuleHeader: React.FC = () => {
               {secondaryGroup.label} <span aria-hidden="true">›</span>{' '}
               <span className="font-medium text-foreground">{active.label}</span>
             </p>
-          ) : null}
+          ) : (
+            <ul className="flex flex-wrap items-center gap-1">
+              {primaryItems.map((item) => {
+                const isActive = item.id === active.id;
+                return (
+                  <li key={item.id}>
+                    <Link
+                      to={mergeOmniCommsHref(item.href, location.search)}
+                      aria-current={isActive ? 'page' : undefined}
+                      title={item.description}
+                      data-testid={`omni-comms-nav-${item.id}`}
+                      className={cn(
+                        'inline-flex min-h-11 items-center rounded-md px-3 text-sm transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                        isActive
+                          ? 'bg-primary text-primary-foreground font-medium'
+                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
 
           <ul className="flex flex-wrap items-center gap-1">
 
