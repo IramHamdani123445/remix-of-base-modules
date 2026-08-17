@@ -20,6 +20,9 @@ export interface PrintDocumentAccess {
   ok: true;
   mode: PrintDocumentMode;
   url: string;
+  /** Inline PDF bytes (base64) so blockers cannot break the preview. */
+  contentBase64?: string | null;
+  contentType?: string | null;
   expiresInSeconds: number;
   printItem: {
     id: string;

@@ -157,6 +157,11 @@ export interface PrintQueueRow {
   version: number;
   hold_reason: string | null;
   last_failure_reason: string | null;
+  /** Device the operator actually used on the most recent physical attempt. */
+  last_equipment_reference: string | null;
+  last_equipment_name: string | null;
+  last_attempt_outcome: string | null;
+  last_printed_at: string | null;
   age_hours: number | null;
 }
 

@@ -13,7 +13,15 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { ExternalLink, Eye, Layers, Printer, RefreshCw, Send } from "lucide-react";
+import {
+  Download,
+  ExternalLink,
+  Eye,
+  Layers,
+  Printer,
+  RefreshCw,
+  Send,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -143,7 +151,11 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
    * refuse to frame. Fetching it once and framing a local blob keeps the
    * letter visible for every operator.
    */
-  const printDocument = useOmniCommsPrintDocumentObject(access?.url ?? null);
+  const printDocument = useOmniCommsPrintDocumentObject(
+    access
+      ? { signedUrl: access.url, contentBase64: access.contentBase64 ?? null }
+      : null,
+  );
 
 
 
@@ -438,6 +450,7 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                 <TableHead>Profile</TableHead>
                 <TableHead>Pages</TableHead>
                 <TableHead>Attempts</TableHead>
+                <TableHead>Device used</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -445,7 +458,7 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
             <TableBody>
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-sm text-muted-foreground">
+                  <TableCell colSpan={10} className="text-sm text-muted-foreground">
                     {queue.isLoading
                       ? "Loading print items…"
                       : "No correspondence artefacts are awaiting physical production."}
@@ -482,6 +495,23 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                   </TableCell>
                   <TableCell className="text-xs">{row.page_count ?? "—"}</TableCell>
                   <TableCell className="text-xs">{row.attempt_count}</TableCell>
+                  <TableCell className="text-xs">
+                    {row.last_equipment_reference ? (
+                      <>
+                        <div className="font-medium">
+                          {row.last_equipment_name ?? row.last_equipment_reference}
+                        </div>
+                        <div className="text-muted-foreground">
+                          {row.last_equipment_reference}
+                          {row.last_printed_at
+                            ? ` · ${new Date(row.last_printed_at).toLocaleString()}`
+                            : ""}
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">Not printed yet</span>
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge className={STATUS_TONE[row.physical_status]} variant="outline">
                       {OMNI_COMMS_PRINT_STATUS_LABELS[row.physical_status]}
@@ -814,6 +844,24 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                 >
                   <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
                   Open PDF & print
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!printDocument.objectUrl}
+                  data-testid="print-download-pdf"
+                  onClick={() => {
+                    if (!printDocument.objectUrl) return;
+                    const link = document.createElement("a");
+                    link.href = printDocument.objectUrl;
+                    link.download = `${openRow?.letter_reference ?? "letter"}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                  }}
+                >
+                  <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                  Save as PDF
                 </Button>
                 <span className="text-xs text-muted-foreground">
                   Secure link expires in {access.expiresInSeconds}s ·{" "}
