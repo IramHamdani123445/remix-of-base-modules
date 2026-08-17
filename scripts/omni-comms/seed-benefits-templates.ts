@@ -337,6 +337,8 @@ writeFileSync(
     `  communicationClass: string; priority: string; familyCode: string;\n` +
     `  recipientRole: string; tokens: string[];\n` +
     `  content: { subject: string; text: string; html: string };\n` +
+    `  variants: { channel: string; content: Record<string, string>;\n` +
+    `    checksum: string; layoutId: string; layoutVersionId: string }[];\n` +
     `  contentChecksum: string; schema: Record<string, unknown>;\n` +
     `  schemaChecksum: string; samplePayload: Record<string, string>;\n` +
     `}\n` +
