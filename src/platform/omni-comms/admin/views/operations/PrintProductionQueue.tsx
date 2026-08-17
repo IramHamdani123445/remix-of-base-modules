@@ -13,7 +13,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { ExternalLink, Eye, Layers, Printer, RefreshCw } from "lucide-react";
+import { ExternalLink, Eye, Layers, Printer, RefreshCw, Send } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,6 +99,8 @@ const STATUS_TONE: Record<OmniCommsPrintStatus, string> = {
   print_failed: "bg-destructive/10 text-destructive",
   spoiled: "bg-destructive/10 text-destructive",
   held: "bg-amber-500/10 text-amber-700 dark:text-amber-500",
+  dispatched: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+  returned_undelivered: "bg-destructive/10 text-destructive",
 };
 
 interface PendingAction {
@@ -121,6 +123,9 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [reason, setReason] = useState("");
   const [equipment, setEquipment] = useState("");
+  const [dispatchMethod, setDispatchMethod] = useState("ordinary_post");
+  const [carrier, setCarrier] = useState("");
+  const [trackingReference, setTrackingReference] = useState("");
   const [detailId, setDetailId] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [batchOpen, setBatchOpen] = useState(false);
@@ -171,6 +176,15 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
         expectedVersion: input.row.version,
         reason: reason.trim() || null,
         equipmentReference: equipment.trim() || null,
+        dispatch:
+          input.action === "confirm_dispatched"
+            ? {
+                dispatch_method: dispatchMethod,
+                carrier: carrier.trim() || null,
+                tracking_reference: trackingReference.trim() || null,
+                notes: reason.trim() || null,
+              }
+            : null,
       }),
     onSuccess: (result) => {
       toast.success(
@@ -179,6 +193,8 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
       setPending(null);
       setReason("");
       setEquipment("");
+      setCarrier("");
+      setTrackingReference("");
       void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-queue"] });
       void queryClient.invalidateQueries({ queryKey: ["omni-comms", "print-item"] });
     },
@@ -542,6 +558,36 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                 />
               </div>
             )}
+            {pending?.action === "confirm_dispatched" && (
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="dispatch-method">Dispatch method</Label>
+                  <Input
+                    id="dispatch-method"
+                    value={dispatchMethod}
+                    onChange={(e) => setDispatchMethod(e.target.value)}
+                    placeholder="ordinary_post"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="dispatch-carrier">Carrier (optional)</Label>
+                  <Input
+                    id="dispatch-carrier"
+                    value={carrier}
+                    onChange={(e) => setCarrier(e.target.value)}
+                    placeholder="Postal service or courier"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="dispatch-tracking">Tracking reference (optional)</Label>
+                  <Input
+                    id="dispatch-tracking"
+                    value={trackingReference}
+                    onChange={(e) => setTrackingReference(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <Label htmlFor="print-reason">
                 Reason
@@ -562,9 +608,16 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
               Cancel
             </Button>
             <Button
-              disabled={reasonRequired || act.isPending}
+              disabled={
+                reasonRequired ||
+                act.isPending ||
+                (pending?.action === "confirm_dispatched" && dispatchMethod.trim().length === 0)
+              }
               onClick={() => pending && act.mutate(pending)}
             >
+              {pending?.action === "confirm_dispatched" && (
+                <Send className="mr-2 h-4 w-4" aria-hidden="true" />
+              )}
               Confirm
             </Button>
           </DialogFooter>
