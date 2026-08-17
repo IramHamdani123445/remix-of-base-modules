@@ -53,7 +53,7 @@ describe('Phase 2 — Operations console files', () => {
 
 describe('Phase 2 — route surface is unchanged', () => {
   it('keeps exactly seven permanent Omni-Comms routes', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
   });
 
   it('marks the Operations route Available', () => {

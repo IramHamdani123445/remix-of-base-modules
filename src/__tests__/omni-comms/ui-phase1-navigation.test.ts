@@ -249,7 +249,7 @@ describe('UI Phase 1 — shell composition', () => {
   });
 
   it('keeps exactly the seven permanent routes', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
     for (const route of OMNI_COMMS_ROUTE_REGISTRY) {
       expect(route.path.includes('advanced')).toBe(false);
     }

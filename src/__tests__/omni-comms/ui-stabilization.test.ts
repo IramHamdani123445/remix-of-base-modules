@@ -21,7 +21,7 @@ function read(rel: string): string {
 
 describe('Omni-Comms UI Stabilization', () => {
   it('registry exposes exactly 7 permanent admin routes', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
   });
 
   it('route states match the stabilization contract', () => {

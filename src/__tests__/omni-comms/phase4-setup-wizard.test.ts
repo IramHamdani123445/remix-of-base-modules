@@ -474,7 +474,7 @@ describe('Phase 4 — RPC adapter', () => {
 
 describe('Phase 4 — route ceiling', () => {
   it('33. keeps the permanent route count at seven', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
     expect(
       OMNI_COMMS_ROUTE_REGISTRY.some((r) => r.path.includes('setup')),
     ).toBe(false);

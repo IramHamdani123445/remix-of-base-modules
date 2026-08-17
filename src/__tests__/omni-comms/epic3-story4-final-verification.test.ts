@@ -119,6 +119,6 @@ describe('Omni-Comms Epic 3 — Story 4 (Final verification)', () => {
   });
 
   it('all seven permanent Omni-Comms routes remain registered', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
   });
 });

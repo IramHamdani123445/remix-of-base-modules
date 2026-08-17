@@ -60,7 +60,7 @@ describe('Epic 1 — Story 5 final verification', () => {
   });
 
   it('registers exactly seven permanent routes and valid integrations', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
     expect(OMNI_COMMS_INTEGRATION_REGISTRY.length).toBeGreaterThan(0);
     for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {
       expect(['reserved', 'reused', 'available']).toContain(String(i.status).toLowerCase());
@@ -101,7 +101,7 @@ describe('Epic 1 — Story 5 final verification', () => {
     }
     // Reject an eighth route under this prefix.
     const routeMatches = src.match(/path="\/admin\/omnichannel-communications[^"]*"/g) ?? [];
-    expect(routeMatches).toHaveLength(18);
+    expect(routeMatches).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
   });
 
   it('Readiness manifest advances beyond Epic 1 without regressing overall status', () => {
