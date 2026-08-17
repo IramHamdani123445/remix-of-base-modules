@@ -64,3 +64,5 @@ project_id = "xynceskeiiisiefqlgxo"
   [functions.bn-life-certificate-runner]
     verify_jwt = false
 
+  [functions.omni-comms-print-equipment-sync]
+    verify_jwt = true
