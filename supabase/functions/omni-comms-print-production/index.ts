@@ -191,6 +191,9 @@ Deno.serve(async (req) => {
   };
 
   const results: Record<string, unknown>[] = [];
+  /** Decoded letterhead logos, reused across every letter in the batch. */
+  const logoCache = new Map<string, PrintImageAsset | null>();
+
   for (const claim of claims) {
     const attemptId = String(claim.attempt_id ?? "");
     const claimToken = String(claim.claim_token ?? "");
