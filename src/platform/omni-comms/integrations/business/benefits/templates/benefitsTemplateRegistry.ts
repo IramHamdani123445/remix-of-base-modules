@@ -197,6 +197,12 @@ function buildEntry(spec: BenefitsEmailSpec): BenefitsTemplateEntry {
     priority: spec.priority,
     tokens,
     content: composeBenefitsEmail(spec),
+    variants: {
+      email: composeBenefitsEmail(spec),
+      print: composeBenefitsPrintLetter(spec),
+      sms: composeBenefitsSms(spec),
+      whatsapp: composeBenefitsWhatsApp(spec),
+    },
     samplePayload,
     spec,
   };
