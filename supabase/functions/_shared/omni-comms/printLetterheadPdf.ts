@@ -71,9 +71,22 @@ function esc(text: string): string {
   return text.replace(/[\\()]/g, (c) => `\\${c}`);
 }
 
+const GLYPH_FOLD: Record<string, string> = {
+  "\u2022": "\u00B7",
+  "\u2013": "-",
+  "\u2014": "-",
+  "\u2018": "'",
+  "\u2019": "'",
+  "\u201C": '"',
+  "\u201D": '"',
+  "\u2026": "...",
+  "\u00A0": " ",
+};
+
 function winAnsi(text: string): string {
+  const folded = text.replace(/[\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026\u00A0]/g, (c) => GLYPH_FOLD[c] ?? c);
   // deno-lint-ignore no-control-regex
-  return text.replace(/[^\x20-\x7E\u00A0-\u00FF]/g, "?");
+  return folded.replace(/[^\x20-\x7E\u00A0-\u00FF]/g, "?");
 }
 
 /** Approximate Helvetica advance width — good enough for centring. */
