@@ -57,6 +57,28 @@ export const OmniCommsModuleHeader: React.FC = () => {
   const navGroups = React.useMemo(() => omniCommsNavGroups(environment), [environment]);
   const active = resolveActiveNavItem(location.pathname, searchParams.get('view'));
 
+  // Primary working destinations stay in the header; grouped configuration
+  // surfaces (Stationery, Setup & health) are reached from the left menu and
+  // only announce themselves here as a breadcrumb.
+  const primaryItems = React.useMemo(
+    () =>
+      navGroups
+        .filter((g) => g.id === 'operate' || g.id === 'configure')
+        .flatMap((g) => g.items),
+    [navGroups],
+  );
+  const secondaryGroup = React.useMemo(
+    () =>
+      navGroups.find(
+        (g) =>
+          (g.id === 'stationery' || g.id === 'setup') &&
+          g.items.some((i) => i.id === active.id),
+      ) ?? null,
+    [navGroups, active.id],
+  );
+
+
+
 
   return (
     <header
