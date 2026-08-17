@@ -126,7 +126,7 @@ describe('Activity & Automation route', () => {
     const nav = screen.getByRole('navigation', {
       name: /Omnichannel Communications sections/i,
     });
-    for (const label of ['Overview', 'Providers', 'Communications', 'Activity & Automation']) {
+    for (const label of ['Overview', 'Channels', 'Events', 'Operations']) {
       expect(within(nav).getByText(label)).toBeTruthy();
     }
   });
@@ -134,13 +134,13 @@ describe('Activity & Automation route', () => {
   it('marks Activity & Automation as the active destination', () => {
     renderRoute();
     const link = screen.getByTestId('omni-comms-nav-activity');
-    expect(link.textContent).toContain('Activity & Automation');
+    expect(link.textContent).toContain('Operations');
     expect(link.getAttribute('aria-current')).toBe('page');
   });
 
   it('renders the page title and the automation dashboard cards', async () => {
     renderRoute();
-    expect((await screen.findAllByText('Activity & Automation')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText('Operations')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Automation')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Business event processing')).length).toBeGreaterThan(0);
     expect((await screen.findAllByText('Email delivery')).length).toBeGreaterThan(0);

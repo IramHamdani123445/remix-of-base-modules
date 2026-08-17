@@ -64,9 +64,9 @@ describe('normal navigation', () => {
     expect(OMNI_COMMS_NAV_ITEMS.map((i) => i.label)).toEqual([
       'Overview',
       'Control Center',
-      'Providers',
-      'Communications',
-      'Activity & Automation',
+      'Channels',
+      'Events',
+      'Operations',
     ]);
     expect(omniCommsNavItems('production')).toHaveLength(5);
     expect(omniCommsNavItems('non_production')).toHaveLength(5);
@@ -79,9 +79,9 @@ describe('normal navigation', () => {
     for (const forbidden of [
       'setup',
       'safe test',
-      'events',
+      // 'events' and 'channels' are now the advertised labels: module
+      // navigation must read exactly like the left sidebar rows.
       'templates',
-      'channels',
       'health',
       'test & verify',
       'go live',
