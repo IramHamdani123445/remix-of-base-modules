@@ -122826,6 +122826,10 @@ export type Database = {
         Args: { p_id: string }
         Returns: Json
       }
+      omni_comms_print_equipment_status: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
       omni_comms_print_equipment_upsert:
         | {
             Args: {
