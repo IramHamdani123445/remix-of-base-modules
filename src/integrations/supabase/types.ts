@@ -124013,6 +124013,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_print_html_to_lines: {
+        Args: { p_html: string }
+        Returns: Json
+      }
       omni_comms_priv_print_item_ensure_system: {
         Args: { p_attempt_id: string; p_message_id: string }
         Returns: string
@@ -124052,6 +124056,10 @@ export type Database = {
       omni_comms_priv_print_recover_expired_jobs: {
         Args: never
         Returns: number
+      }
+      omni_comms_priv_print_stationery_effective: {
+        Args: { p_department_id: string; p_organization_id: string }
+        Returns: Json
       }
       omni_comms_priv_print_transition_allowed: {
         Args: { p_from: string; p_to: string }
