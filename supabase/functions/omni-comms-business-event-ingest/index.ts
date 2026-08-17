@@ -84,7 +84,31 @@ export function buildRecipients(row: OutboxRow): Array<Record<string, unknown>> 
     locale: str(fact?.locale),
     email: str(fact?.email),
     phone: str(fact?.phone),
+    // Physical destination fact. Its presence NEVER means "print": the Hub
+    // alone decides channels. Without it, a resolved Print leg has no
+    // address of record and cannot be produced.
+    postalAddress: buildPostalAddress(fact?.postal_address),
   }));
+}
+
+/** Channel-neutral postal fact, normalised to the canonical façade shape. */
+export function buildPostalAddress(
+  value: unknown,
+): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  const lines = Array.isArray(v.address_lines)
+    ? v.address_lines.map((l) => str(l)).filter((l): l is string => !!l)
+    : [];
+  if (lines.length === 0) return null;
+  return {
+    addressee: str(v.addressee),
+    addressLines: lines,
+    locality: str(v.locality),
+    region: str(v.region),
+    postalCode: str(v.postal_code),
+    country: str(v.country),
+  };
 }
 
 /**

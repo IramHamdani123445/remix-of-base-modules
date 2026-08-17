@@ -79,7 +79,7 @@ export interface OmniCommsNavItem {
 /**
  * FINAL normal product navigation — exactly four operator destinations.
  *
- * Overview · Providers · Communications · Activity
+ * Overview · Control Center · Channels · Events · Operations
  *
  * Every other historic surface (Setup, Safe Test, Events, Templates,
  * Channels, Health, Delivery Setup, Test & Verify, Go Live, Accounts,
@@ -108,21 +108,21 @@ export const OMNI_COMMS_NAV_ITEMS: readonly OmniCommsNavItem[] = [
 
   {
     id: 'providers',
-    label: 'Providers',
+    label: 'Channels',
     href: '/admin/omnichannel-communications/channels',
     route: '/admin/omnichannel-communications/channels',
     description: 'Transport connections for every channel.',
   },
   {
     id: 'communications',
-    label: 'Communications',
+    label: 'Events',
     href: '/admin/omnichannel-communications/events',
     route: '/admin/omnichannel-communications/events',
     description: 'Business communications by module, event and channel.',
   },
   {
     id: 'activity',
-    label: 'Activity & Automation',
+    label: 'Operations',
     href: '/admin/omnichannel-communications/operations',
     route: '/admin/omnichannel-communications/operations',
     description:

@@ -106,7 +106,12 @@ interface PendingAction {
   action: OmniCommsPrintAction;
 }
 
-const PrintProductionQueueInner: React.FC = () => {
+export interface PrintProductionQueueProps {
+  /** Show the Print readiness / gate panel. Off by default: gates live in Control Center → Print. */
+  showReadiness?: boolean;
+}
+
+const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showReadiness = false }) => {
   const { organizationId, departmentId } = useOmniCommsTenant();
   const client = useOmniCommsRpcClient();
   const queryClient = useQueryClient();
@@ -339,8 +344,9 @@ const PrintProductionQueueInner: React.FC = () => {
         </div>
       </header>
 
-      {/* The single authoritative Print readiness / control-gate panel. */}
-      <PrintReadinessPanel />
+      {/* Readiness/control gates live in Control Center → Print. This screen
+          is operational only; it never re-hosts configuration. */}
+      {showReadiness ? <PrintReadinessPanel /> : null}
 
       {/* Batching stays optional — it never gates printing one letter. */}
       <PrintBatchConsole />
@@ -834,7 +840,7 @@ const PrintProductionQueueInner: React.FC = () => {
  * render tests do). Providing a local client keeps the section self-contained
  * instead of crashing its host.
  */
-export const PrintProductionQueue: React.FC = () => {
+export const PrintProductionQueue: React.FC<PrintProductionQueueProps> = (props) => {
   let hasClient = true;
   try {
     useQueryClient();
@@ -842,10 +848,10 @@ export const PrintProductionQueue: React.FC = () => {
     hasClient = false;
   }
   const [fallback] = useState(() => new QueryClient());
-  if (hasClient) return <PrintProductionQueueInner />;
+  if (hasClient) return <PrintProductionQueueInner {...props} />;
   return (
     <QueryClientProvider client={fallback}>
-      <PrintProductionQueueInner />
+      <PrintProductionQueueInner {...props} />
     </QueryClientProvider>
   );
 };
