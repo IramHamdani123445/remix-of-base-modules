@@ -391,6 +391,11 @@ export async function producePrintArtefact(
         postal_destination: input.postalDestination ?? null,
         template_family: input.templateFamily ?? null,
         template_version: input.templateVersion ?? null,
+        letterhead_id: input.stationery?.letterheadName ? undefined : undefined,
+        letterhead_name: input.stationery?.letterheadName ?? null,
+        letterhead_source: input.stationery?.letterheadSource ?? null,
+        print_footer_name: input.stationery?.printFooterName ?? null,
+        print_footer_source: input.stationery?.printFooterSource ?? null,
         // Truthful physical state: nothing has been printed or dispatched.
         physical_state: "artefact_produced",
       },
