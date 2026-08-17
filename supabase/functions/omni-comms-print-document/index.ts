@@ -139,10 +139,35 @@ Deno.serve(async (req) => {
       );
     }
 
+    // 3. Also return the bytes inline (base64). Privacy/ad blockers commonly
+    //    block direct storage object URLs in an iframe (ERR_BLOCKED_BY_CLIENT),
+    //    which left operators with an empty preview. Inline bytes let the
+    //    browser build a same-origin blob: URL with nothing to block.
+    let inlineBase64: string | null = null;
+    try {
+      const download = await admin.storage.from(access.bucket).download(access.path);
+      if (!download.error && download.data) {
+        const buffer = new Uint8Array(await download.data.arrayBuffer());
+        // 12 MB ceiling — beyond that the operator uses the signed link.
+        if (buffer.byteLength <= 12 * 1024 * 1024) {
+          let binary = "";
+          const chunk = 0x8000;
+          for (let i = 0; i < buffer.length; i += chunk) {
+            binary += String.fromCharCode(...buffer.subarray(i, i + chunk));
+          }
+          inlineBase64 = btoa(binary);
+        }
+      }
+    } catch (downloadError) {
+      console.error("[omni-comms-print-document] inline download failed", downloadError);
+    }
+
     return json({
       ok: true,
       mode: access.mode,
       url: signed.data.signedUrl,
+      contentBase64: inlineBase64,
+      contentType: "application/pdf",
       expiresInSeconds: SIGNED_URL_TTL_SECONDS,
       printItem: {
         id: access.id,
