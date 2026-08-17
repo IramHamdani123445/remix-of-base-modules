@@ -204,6 +204,28 @@ Deno.serve(async (req) => {
     const strings = (v: unknown) =>
       Array.isArray(v) ? v.map((l) => String(l)).filter(Boolean) : [];
 
+    // Letterhead logo: downloaded from the branding bucket and embedded so the
+    // printed letter matches the Communication & Documents template preview.
+    const logoBucket = (st.logo_bucket as string | null) ?? null;
+    const logoPath = (st.logo_path as string | null) ?? null;
+    let logo = logoPath ? logoCache.get(`${logoBucket ?? "url"}:${logoPath}`) ?? null : null;
+    if (logoPath && !logo && !logoCache.has(`${logoBucket ?? "url"}:${logoPath}`)) {
+      try {
+        let bytes: Uint8Array | null = null;
+        if (logoBucket) {
+          const dl = await service.storage.from(logoBucket).download(logoPath);
+          if (!dl.error && dl.data) bytes = new Uint8Array(await dl.data.arrayBuffer());
+        } else {
+          const res = await fetch(logoPath);
+          if (res.ok) bytes = new Uint8Array(await res.arrayBuffer());
+        }
+        logo = bytes ? await decodePngForPdf(bytes) : null;
+      } catch (_error) {
+        logo = null;
+      }
+      logoCache.set(`${logoBucket ?? "url"}:${logoPath}`, logo);
+    }
+
     const outcome = await producePrintArtefact({
       idempotencyKey: `omni-comms/print/${String(claim.message_id ?? attemptId)}`,
       recipientReference: String(claim.recipient_reference ?? claim.recipient_display ?? "recipient"),
@@ -220,7 +242,10 @@ Deno.serve(async (req) => {
         letterheadSource: (st.letterhead_source as string | null) ?? null,
         printFooterName: (st.print_footer_name as string | null) ?? null,
         printFooterSource: (st.print_footer_source as string | null) ?? null,
+        logo,
+        logoName: (st.logo_name as string | null) ?? null,
       },
+
       // Print content is ALWAYS produced from the print variant.
       sourceChannel: "print",
       store,
