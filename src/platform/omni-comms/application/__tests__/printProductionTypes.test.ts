@@ -33,8 +33,8 @@ describe('print physical state machine (client mirror)', () => {
     expect([...OMNI_COMMS_PRINT_REASON_REQUIRED].sort()).toEqual([
       'hold',
       'mark_failed',
-      'mark_spoiled',
       'mark_returned',
+      'mark_spoiled',
     ]);
   });
 

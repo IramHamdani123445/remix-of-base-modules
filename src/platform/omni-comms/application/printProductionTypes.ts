@@ -76,7 +76,7 @@ const TRANSITIONS: Record<OmniCommsPrintStatus, OmniCommsPrintStatus[]> = {
   artefact_produced: ['queued_for_print', 'held'],
   queued_for_print: ['printing', 'held'],
   printing: ['printed', 'print_failed', 'held'],
-  printed: ['spoiled'],
+  printed: ['spoiled', 'dispatched'],
   print_failed: ['queued_for_print', 'spoiled', 'held'],
   spoiled: ['queued_for_print'],
   held: ['queued_for_print', 'artefact_produced'],
@@ -107,7 +107,13 @@ export function availablePrintActions(
   status: OmniCommsPrintStatus,
 ): OmniCommsPrintAction[] {
   return OMNI_COMMS_PRINT_ACTIONS.filter((action) => {
-    if (action === 'requeue' && status !== 'print_failed' && status !== 'spoiled' && status !== 'held') {
+    if (
+      action === 'requeue' &&
+      status !== 'print_failed' &&
+      status !== 'spoiled' &&
+      status !== 'held' &&
+      status !== 'returned_undelivered'
+    ) {
       return false;
     }
     if (action === 'queue_for_print' && status !== 'artefact_produced') return false;
