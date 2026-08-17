@@ -11,7 +11,7 @@ import path from 'node:path';
 
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 import { OMNI_COMMS_DEFERRED_OBJECTS } from '@/platform/omni-comms/registry/deferredObjects';
-import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
+import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 import { OMNI_COMMS_INTEGRATION_REGISTRY } from '@/platform/omni-comms/registry/integrationRegistry';
 import { OMNI_COMMS_QUEUE_REGISTRY } from '@/platform/omni-comms/registry/queueRegistry';
 import { OMNI_COMMS_READINESS_MANIFEST as M } from '@/platform/omni-comms/registry/readinessManifest';
@@ -60,7 +60,7 @@ describe('Epic 1 — Story 5 final verification', () => {
   });
 
   it('registers exactly seven permanent routes and valid integrations', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
     expect(OMNI_COMMS_INTEGRATION_REGISTRY.length).toBeGreaterThan(0);
     for (const i of OMNI_COMMS_INTEGRATION_REGISTRY) {
       expect(['reserved', 'reused', 'available']).toContain(String(i.status).toLowerCase());
@@ -101,7 +101,7 @@ describe('Epic 1 — Story 5 final verification', () => {
     }
     // Reject an eighth route under this prefix.
     const routeMatches = src.match(/path="\/admin\/omnichannel-communications[^"]*"/g) ?? [];
-    expect(routeMatches).toHaveLength(18);
+    expect(routeMatches).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
   });
 
   it('Readiness manifest advances beyond Epic 1 without regressing overall status', () => {

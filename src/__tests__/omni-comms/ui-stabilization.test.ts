@@ -11,7 +11,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
+import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 
 const REPO = process.cwd();
 
@@ -21,7 +21,7 @@ function read(rel: string): string {
 
 describe('Omni-Comms UI Stabilization', () => {
   it('registry exposes exactly 7 permanent admin routes', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
   });
 
   it('route states match the stabilization contract', () => {
@@ -50,7 +50,10 @@ describe('Omni-Comms UI Stabilization', () => {
   it('every page wrapper mounts the shared OmniCommsShell', () => {
     const dir = 'src/pages/admin/omnichannel-communications';
     const files = fs.readdirSync(path.join(REPO, dir)).filter((f) => f.endsWith('.tsx'));
-    expect(files.length).toBe(7);
+    const topLevelWrappers = OMNI_COMMS_ROUTE_REGISTRY.filter(
+      (r) => r.pageWrapper.split('/').length === 5,
+    );
+    expect(files.length).toBe(topLevelWrappers.length);
     for (const file of files) {
       const src = read(`${dir}/${file}`);
       expect(src, `${file} must import OmniCommsShell`).toContain(

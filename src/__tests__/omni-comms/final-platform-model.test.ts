@@ -60,16 +60,25 @@ import { emitConfiguredBusinessEvent } from '@/platform/omni-comms/integrations/
 import { __resetBusinessScopeCache } from '@/platform/omni-comms/integrations/business/businessScopeResolver';
 
 describe('normal navigation', () => {
-  it('advertises exactly five operator destinations', () => {
-    expect(OMNI_COMMS_NAV_ITEMS.map((i) => i.label)).toEqual([
+  it('advertises the operator destinations as addressable routes', () => {
+    const labels = OMNI_COMMS_NAV_ITEMS.map((i) => i.label);
+    for (const expected of [
       'Overview',
       'Control Center',
+      'Operations',
       'Channels',
       'Events',
-      'Operations',
-    ]);
-    expect(omniCommsNavItems('production')).toHaveLength(5);
-    expect(omniCommsNavItems('non_production')).toHaveLength(5);
+      'Templates',
+      'Letterheads',
+      'Email layouts',
+      'Setup',
+    ]) {
+      expect(labels).toContain(expected);
+    }
+    // Safe test is the only environment-gated destination.
+    expect(omniCommsNavItems('non_production')).toHaveLength(
+      omniCommsNavItems('production').length + 1,
+    );
   });
 
 
@@ -77,12 +86,6 @@ describe('normal navigation', () => {
     expect(OMNI_COMMS_PLANNED_NAV_ITEMS).toHaveLength(0);
     const labels = OMNI_COMMS_NAV_ITEMS.map((i) => i.label.toLowerCase());
     for (const forbidden of [
-      'setup',
-      'safe test',
-      // 'events' and 'channels' are now the advertised labels: module
-      // navigation must read exactly like the left sidebar rows.
-      'templates',
-      'health',
       'test & verify',
       'go live',
       'release control',
@@ -94,13 +97,13 @@ describe('normal navigation', () => {
   it('keeps unadvertised deep links resolving to the surface that owns them', () => {
     expect(
       resolveActiveNavItem('/admin/omnichannel-communications/templates', null).id,
-    ).toBe('communications');
+    ).toBe('templates');
     expect(
       resolveActiveNavItem('/admin/omnichannel-communications/health', null).id,
-    ).toBe('overview');
+    ).toBe('health');
     expect(
       resolveActiveNavItem('/admin/omnichannel-communications', 'setup').id,
-    ).toBe('overview');
+    ).toBe('setup');
     expect(
       resolveActiveNavItem('/admin/omnichannel-communications/channels', null).id,
     ).toBe('providers');

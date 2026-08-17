@@ -24,7 +24,7 @@ import {
 import { buildOmniCommsBreadcrumbs } from '@/platform/omni-comms/admin/navigation/omniCommsBreadcrumbs';
 import { OMNI_COMMS_GENERIC_TABS } from '@/platform/omni-comms/domain/channelCatalogue';
 import { resolveChannelWorkspaceTab } from '@/platform/omni-comms/admin/hooks/useOmniCommsTabParam';
-import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
+import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 
 const read = (p: string) => readFileSync(resolve(process.cwd(), p), 'utf8');
 
@@ -207,12 +207,12 @@ describe('UI Phase 1 — breadcrumbs', () => {
     expect(crumbs[crumbs.length - 1].href).toBeUndefined();
   });
 
-  it('resolves the unadvertised `?view=setup` deep link to Overview', () => {
+  it('resolves the legacy `?view=setup` deep link to the Setup section', () => {
     const crumbs = buildOmniCommsBreadcrumbs({
       pathname: '/admin/omnichannel-communications',
       view: 'setup',
     });
-    expect(crumbs[crumbs.length - 1].label).toBe('Overview');
+    expect(crumbs[crumbs.length - 1].label).toBe('Setup');
   });
 });
 
@@ -249,7 +249,7 @@ describe('UI Phase 1 — shell composition', () => {
   });
 
   it('keeps exactly the seven permanent routes', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(7);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
     for (const route of OMNI_COMMS_ROUTE_REGISTRY) {
       expect(route.path.includes('advanced')).toBe(false);
     }

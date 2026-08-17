@@ -49,15 +49,15 @@ describe('Reference Seed Pack — files exist', () => {
     });
   }
 
-  it('mounts the Reference Data tab on the landing page', () => {
+  it('mounts the reference seed panel on its own Reference data route', () => {
     const src = fs.readFileSync(
       path.join(
         REPO_ROOT,
-        'src/platform/omni-comms/admin/views/OmniCommsLandingPage.tsx',
+        'src/platform/omni-comms/admin/views/OmniCommsReferenceDataPage.tsx',
       ),
       'utf8',
     );
-    expect(src).toContain('omni-comms-landing-tab-reference-data');
+    expect(src).toContain('omni-comms-reference-data-page');
     expect(src).toContain('<ReferenceSeedPanel />');
     expect(src).toContain('./seed/ReferenceSeedPanel');
   });

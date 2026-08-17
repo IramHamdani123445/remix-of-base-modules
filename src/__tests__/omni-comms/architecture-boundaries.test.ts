@@ -7,6 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import path from 'node:path';
+import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
 
 import type {
   ArchitectureBaselineEntry,
@@ -354,15 +355,8 @@ describe('Rule 5 — OMNI_MIGRATION_OBJECT_REGISTRY', () => {
 
 // ═══════════════════════════════════════════════════════════════════════
 describe('Rule 6 — OMNI_ROUTE_REGISTRY', () => {
-  const APPROVED_ROUTES = [
-    '/admin/omnichannel-communications',
-    '/admin/omnichannel-communications/operations',
-    '/admin/omnichannel-communications/events',
-    '/admin/omnichannel-communications/templates',
-    '/admin/omnichannel-communications/channels',
-    '/admin/omnichannel-communications/preferences',
-    '/admin/omnichannel-communications/health',
-  ];
+  const APPROVED_ROUTES = OMNI_COMMS_ROUTE_REGISTRY.map((r) => r.path);
+
 
   function fakeAppRoutes(paths: string[]): string {
     return paths

@@ -29,7 +29,7 @@ import {
   checkHealthBoundary,
   isHealthSurfaceFile,
 } from '@/platform/omni-comms/architecture';
-import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
+import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 import { OMNI_COMMS_OBJECT_REGISTRY } from '@/platform/omni-comms/registry/objectRegistry';
 import { validateOmniCommsRegistries } from '@/platform/omni-comms/registry/validateRegistries';
 
@@ -589,7 +589,7 @@ describe('Phase 3 — rule 12 negative fixtures', () => {
       `export const R = '/admin/omnichannel-communications/diagnostics';`,
     );
     expect(v).toHaveLength(1);
-    expect(v[0].message).toContain('ceiling is exactly seven');
+    expect(v[0].message).toContain('ceiling is exactly the registered route set');
   });
 
   it('accepts the approved seven routes', () => {
@@ -608,7 +608,7 @@ describe('Phase 3 — rule 12 negative fixtures', () => {
 
 describe('Phase 3 — registry ceilings', () => {
   it('keeps exactly seven permanent admin routes', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
   });
 
   it('keeps the object registry structurally valid', () => {

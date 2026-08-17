@@ -57,6 +57,28 @@ export const OmniCommsModuleHeader: React.FC = () => {
   const navGroups = React.useMemo(() => omniCommsNavGroups(environment), [environment]);
   const active = resolveActiveNavItem(location.pathname, searchParams.get('view'));
 
+  // Primary working destinations stay in the header; grouped configuration
+  // surfaces (Stationery, Setup & health) are reached from the left menu and
+  // only announce themselves here as a breadcrumb.
+  const primaryItems = React.useMemo(
+    () =>
+      navGroups
+        .filter((g) => g.id === 'operate' || g.id === 'configure')
+        .flatMap((g) => g.items),
+    [navGroups],
+  );
+  const secondaryGroup = React.useMemo(
+    () =>
+      navGroups.find(
+        (g) =>
+          (g.id === 'stationery' || g.id === 'setup') &&
+          g.items.some((i) => i.id === active.id),
+      ) ?? null,
+    [navGroups, active.id],
+  );
+
+
+
 
   return (
     <header
@@ -98,37 +120,46 @@ export const OmniCommsModuleHeader: React.FC = () => {
         <OmniCommsScopeSelector />
 
         <nav aria-label="Omnichannel Communications sections" className="space-y-2">
-          {navGroups.map((group) => (
-            <div key={group.id} className="flex flex-wrap items-center gap-2">
-              <span className="w-24 shrink-0 text-xs uppercase tracking-wide text-muted-foreground">
-                {group.label}
-              </span>
-              <ul className="flex flex-wrap items-center gap-1">
-                {group.items.map((item) => {
-                  const isActive = item.id === active.id;
-                  return (
-                    <li key={item.id}>
-                      <Link
-                        to={mergeOmniCommsHref(item.href, location.search)}
-                        aria-current={isActive ? 'page' : undefined}
-                        title={item.description}
-                        data-testid={`omni-comms-nav-${item.id}`}
-                        className={cn(
-                          'inline-flex min-h-11 items-center rounded-md px-3 text-sm transition-colors',
-                          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                          isActive
-                            ? 'bg-primary text-primary-foreground font-medium'
-                            : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                        )}
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+          {/*
+            Only the primary working destinations live here. Stationery and
+            Setup & health are addressed from the left-hand menu, which now
+            nests them one level deeper — no stacked tab strips.
+          */}
+          <ul className="flex flex-wrap items-center gap-1">
+            {primaryItems.map((item) => {
+              const isActive = item.id === active.id;
+              return (
+                <li key={item.id}>
+                  <Link
+                    to={mergeOmniCommsHref(item.href, location.search)}
+                    aria-current={isActive ? 'page' : undefined}
+                    title={item.description}
+                    data-testid={`omni-comms-nav-${item.id}`}
+                    className={cn(
+                      'inline-flex min-h-11 items-center rounded-md px-3 text-sm transition-colors',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      isActive
+                        ? 'bg-primary text-primary-foreground font-medium'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {secondaryGroup ? (
+            <p
+              className="text-xs text-muted-foreground"
+              data-testid="omni-comms-nav-breadcrumb"
+            >
+              {secondaryGroup.label} <span aria-hidden="true">›</span>{' '}
+              <span className="font-medium text-foreground">{active.label}</span>
+            </p>
+          ) : null}
+
           <ul className="flex flex-wrap items-center gap-1">
 
             {OMNI_COMMS_PLANNED_NAV_ITEMS.map((item) => (

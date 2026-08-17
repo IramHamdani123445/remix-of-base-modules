@@ -23,7 +23,7 @@ import {
   type SetupReadinessPayload,
 } from '@/platform/omni-comms/application/setupReadinessService';
 import { OmniCommsRpcError } from '@/platform/omni-comms/application/eventCatalogueTypes';
-import { OMNI_COMMS_ROUTE_REGISTRY } from '@/platform/omni-comms/registry/routeRegistry';
+import { OMNI_COMMS_ROUTE_REGISTRY, OMNI_COMMS_ROUTE_COUNT } from '@/platform/omni-comms/registry/routeRegistry';
 import { OMNI_COMMS_READINESS_MANIFEST } from '@/platform/omni-comms/registry/readinessManifest';
 import {
   checkSetupWizardBoundary,
@@ -473,11 +473,14 @@ describe('Phase 4 — RPC adapter', () => {
 // ─── 6. Route ceiling and deep links ─────────────────────────────────────
 
 describe('Phase 4 — route ceiling', () => {
-  it('33. keeps the permanent route count at seven', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(18);
+  it('33. keeps the permanent route set aligned with the registry', () => {
+    expect(OMNI_COMMS_ROUTE_REGISTRY).toHaveLength(OMNI_COMMS_ROUTE_COUNT);
+    // Setup is now its own registered route, not a tab on Overview.
     expect(
-      OMNI_COMMS_ROUTE_REGISTRY.some((r) => r.path.includes('setup')),
-    ).toBe(false);
+      OMNI_COMMS_ROUTE_REGISTRY.some(
+        (r) => r.path === '/admin/omnichannel-communications/setup',
+      ),
+    ).toBe(true);
   });
 
   it('34. every step deep link targets a permanent route', () => {
@@ -490,7 +493,16 @@ describe('Phase 4 — route ceiling', () => {
     }
   });
 
-  it('35. the wizard is reachable from the Overview route as a tab', () => {
+  it('35. the wizard is reachable at its own Setup route', () => {
+    const setupPage = fs.readFileSync(
+      path.join(
+        REPO_ROOT,
+        'src/platform/omni-comms/admin/views/OmniCommsSetupPage.tsx',
+      ),
+      'utf8',
+    );
+    expect(setupPage).toContain('SetupWizardPanel');
+    // Historic `?view=setup` deep links still land on the Setup route.
     const landing = fs.readFileSync(
       path.join(
         REPO_ROOT,
@@ -498,9 +510,7 @@ describe('Phase 4 — route ceiling', () => {
       ),
       'utf8',
     );
-    expect(landing).toContain('SetupWizardPanel');
-    expect(landing).toContain('"view"');
-    expect(landing).toContain('"setup"');
+    expect(landing).toContain('legacyViewRedirect');
   });
 
   it('36. channel setup links target the canonical channel tabs', () => {
