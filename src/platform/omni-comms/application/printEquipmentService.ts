@@ -242,7 +242,7 @@ export function describePrintEquipment(row: PrintEquipmentRow): string {
 
 /* Last device used by this operator — a convenience pre-selection only; the
  * database remains the authority for whether the device may be recorded. */
-const LAST_DEVICE_KEY = 'omni-comms.print.last-device';
+const LAST_DEVICE_KEY = 'omniCommsPrintLastDevice';
 
 export function readLastUsedPrintEquipment(): string | null {
   try {
