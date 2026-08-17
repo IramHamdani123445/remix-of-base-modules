@@ -13,8 +13,11 @@
 //   - Deterministic: the same idempotency key + same content yields the same
 //     storage path and the same document checksum.
 
+import type { PrintImageAsset } from "./printImage.ts";
+
 /** Bucket holding official generated correspondence artefacts. */
 export const OMNI_COMMS_PRINT_BUCKET = "core-documents";
+
 
 /** Official artefact format for Print / Correspondence. */
 export const OMNI_COMMS_PRINT_ARTEFACT_FORMAT = "pdf" as const;
@@ -47,7 +50,12 @@ export interface PrintStationery {
   letterheadSource?: string | null;
   printFooterName?: string | null;
   printFooterSource?: string | null;
+  /** Decoded letterhead logo drawn at the top of every page. */
+  logo?: PrintImageAsset | null;
+  /** Name of the logo asset, recorded as artefact provenance. */
+  logoName?: string | null;
 }
+
 
 export interface ProducePrintArtefactInput {
   /** Stable idempotency key; drives the deterministic storage path. */
@@ -176,27 +184,48 @@ export function stationeryBlock(
   return out;
 }
 
+/** Maximum drawn size of the letterhead logo, in points. */
+const LOGO_MAX_HEIGHT = 52;
+const LOGO_MAX_WIDTH = 170;
+
+/** Drawn geometry for the letterhead logo, when one is supplied. */
+function logoGeometry(stationery?: PrintStationery | null) {
+  const logo = stationery?.logo;
+  if (!logo || !logo.width || !logo.height) return null;
+  const scale = Math.min(
+    LOGO_MAX_HEIGHT / logo.height,
+    LOGO_MAX_WIDTH / logo.width,
+  );
+  const width = Math.max(1, logo.width * scale);
+  const height = Math.max(1, logo.height * scale);
+  return { logo, width, height, reservedLines: Math.ceil((height + 8) / LINE_HEIGHT) };
+}
+
 /** Lines reserved by the stationery header / footer on every page. */
 function stationeryReservation(stationery?: PrintStationery | null) {
   const header = stationeryBlock(stationery?.headerLines);
   const headerFoot = stationeryBlock(stationery?.letterheadFooterLines);
   const footer = stationeryBlock(stationery?.footerLines);
   const pageFooter = (stationery?.pageFooter ?? "").trim();
+  const logo = logoGeometry(stationery);
   const headerLines = header.length || headerFoot.length
     ? [...header, ...headerFoot, "".padEnd(MAX_CHARS_PER_LINE, "_"), ""]
     : [];
   const footerLines = footer.length || pageFooter
     ? ["".padEnd(MAX_CHARS_PER_LINE, "_"), ...footer]
     : [];
-  return { headerLines, footerLines, pageFooter };
+  return { headerLines, footerLines, pageFooter, logo };
 }
 
 export function paginatePrintLines(
   lines: readonly string[],
   stationery?: PrintStationery | null,
 ): string[][] {
-  const { headerLines, footerLines, pageFooter } = stationeryReservation(stationery);
-  const reserved = headerLines.length + footerLines.length + (pageFooter ? 1 : 0);
+  const { headerLines, footerLines, pageFooter, logo } = stationeryReservation(
+    stationery,
+  );
+  const reserved = headerLines.length + footerLines.length +
+    (pageFooter ? 1 : 0) + (logo?.reservedLines ?? 0);
   const perPage = Math.max(5, LINES_PER_PAGE - reserved);
   const pages: string[][] = [];
   for (let i = 0; i < lines.length; i += perPage) {
@@ -205,20 +234,33 @@ export function paginatePrintLines(
   return pages.length ? pages : [[]];
 }
 
+/** Latin-1 encodes PDF syntax so binary streams survive assembly. */
+function latin1(text: string): Uint8Array {
+  const out = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) out[i] = text.charCodeAt(i) & 0xff;
+  return out;
+}
+
 /** Builds a deterministic single- or multi-page PDF document. */
 export function buildPrintPdf(
   pages: readonly (readonly string[])[],
   stationery?: PrintStationery | null,
 ): Uint8Array {
-  const objects: string[] = [];
+  const objects: (string | Uint8Array[])[] = [];
   const pageCount = pages.length;
-  const { headerLines, footerLines, pageFooter } = stationeryReservation(stationery);
-  // 1 = Catalog, 2 = Pages, 3 = Font, then per page: content + page object.
+  const { headerLines, footerLines, pageFooter, logo } = stationeryReservation(
+    stationery,
+  );
+  // 1 = Catalog, 2 = Pages, 3 = Font, 4/5 = logo image + soft mask (optional),
+  // then per page: content + page object.
+  const logoId = logo ? 4 : 0;
+  const maskId = logo?.logo.alphaDeflate ? 5 : 0;
+  const firstPageId = 4 + (logo ? 1 : 0) + (maskId ? 1 : 0);
   const contentIds: number[] = [];
   const pageIds: number[] = [];
   for (let i = 0; i < pageCount; i++) {
-    contentIds.push(4 + i * 2);
-    pageIds.push(5 + i * 2);
+    contentIds.push(firstPageId + i * 2);
+    pageIds.push(firstPageId + 1 + i * 2);
   }
 
   objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
@@ -227,6 +269,28 @@ export function buildPrintPdf(
   }] /Count ${pageCount} >>`;
   objects[3] =
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
+
+  if (logo) {
+    objects[logoId] = [
+      latin1(
+        `<< /Type /XObject /Subtype /Image /Width ${logo.logo.width} /Height ${logo.logo.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode${
+          maskId ? ` /SMask ${maskId} 0 R` : ""
+        } /Length ${logo.logo.rgbDeflate.byteLength} >>\nstream\n`,
+      ),
+      logo.logo.rgbDeflate,
+      latin1("\nendstream"),
+    ];
+    if (maskId) {
+      const alpha = logo.logo.alphaDeflate as Uint8Array;
+      objects[maskId] = [
+        latin1(
+          `<< /Type /XObject /Subtype /Image /Width ${logo.logo.width} /Height ${logo.logo.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /Length ${alpha.byteLength} >>\nstream\n`,
+        ),
+        alpha,
+        latin1("\nendstream"),
+      ];
+    }
+  }
 
   const draw = (lines: readonly string[], startY: number) =>
     lines
@@ -248,7 +312,15 @@ export function buildPrintPdf(
           .replace(/\{pages\}/gi, String(pageCount)),
       ]
       : footerLines;
-    const topY = PAGE_HEIGHT - MARGIN;
+    let topY = PAGE_HEIGHT - MARGIN;
+    let imageBlock = "";
+    if (logo) {
+      const y = topY - logo.height;
+      imageBlock = `q\n${logo.width.toFixed(2)} 0 0 ${
+        logo.height.toFixed(2)
+      } ${MARGIN} ${y.toFixed(2)} cm\n/LOGO Do\nQ\n`;
+      topY = y - 10;
+    }
     const blocks: string[] = [];
     if (headerLines.length) blocks.push(draw(headerLines, topY));
     const bodyY = topY - headerLines.length * LINE_HEIGHT;
@@ -256,33 +328,52 @@ export function buildPrintPdf(
     if (foot.length) {
       blocks.push(draw(foot, MARGIN + (foot.length - 1) * LINE_HEIGHT));
     }
-    const stream = `BT\n/F1 ${FONT_SIZE} Tf\n${LINE_HEIGHT} TL\n${
+    const stream = `${imageBlock}BT\n/F1 ${FONT_SIZE} Tf\n${LINE_HEIGHT} TL\n${
       blocks.join("\n")
     }\nET\n`;
     objects[contentIds[index]] =
       `<< /Length ${stream.length} >>\nstream\n${stream}endstream`;
     objects[pageIds[index]] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${
       PAGE_WIDTH.toFixed(2)
-    } ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R >> >> /Contents ${
-      contentIds[index]
-    } 0 R >>`;
+    } ${PAGE_HEIGHT.toFixed(2)}] /Resources << /Font << /F1 3 0 R >>${
+      logo ? ` /XObject << /LOGO ${logoId} 0 R >>` : ""
+    } >> /Contents ${contentIds[index]} 0 R >>`;
   });
 
-  let pdf = "%PDF-1.4\n";
+  const chunks: Uint8Array[] = [latin1("%PDF-1.4\n")];
+  let length = chunks[0].byteLength;
+  const push = (part: Uint8Array) => {
+    chunks.push(part);
+    length += part.byteLength;
+  };
   const offsets: number[] = [];
   for (let id = 1; id < objects.length; id++) {
-    offsets[id] = pdf.length;
-    pdf += `${id} 0 obj\n${objects[id]}\nendobj\n`;
+    offsets[id] = length;
+    push(latin1(`${id} 0 obj\n`));
+    const body = objects[id];
+    if (typeof body === "string") push(latin1(body));
+    else for (const part of body) push(part);
+    push(latin1("\nendobj\n"));
   }
-  const xrefOffset = pdf.length;
+  const xrefOffset = length;
   const total = objects.length; // ids 1..objects.length-1 plus free entry
-  pdf += `xref\n0 ${total}\n0000000000 65535 f \n`;
+  let tail = `xref\n0 ${total}\n0000000000 65535 f \n`;
   for (let id = 1; id < objects.length; id++) {
-    pdf += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
+    tail += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
   }
-  pdf += `trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
-  return new TextEncoder().encode(pdf);
+  tail +=
+    `trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  push(latin1(tail));
+
+  const pdf = new Uint8Array(length);
+  let cursor = 0;
+  for (const part of chunks) {
+    pdf.set(part, cursor);
+    cursor += part.byteLength;
+  }
+  return pdf;
 }
+
 
 /** Composes the correspondence body, including its provenance block. */
 export function composePrintDocument(input: {
@@ -396,6 +487,9 @@ export async function producePrintArtefact(
         letterhead_source: input.stationery?.letterheadSource ?? null,
         print_footer_name: input.stationery?.printFooterName ?? null,
         print_footer_source: input.stationery?.printFooterSource ?? null,
+        letterhead_logo_name: input.stationery?.logoName ?? null,
+        letterhead_logo_embedded: Boolean(input.stationery?.logo),
+
         // Truthful physical state: nothing has been printed or dispatched.
         physical_state: "artefact_produced",
       },
