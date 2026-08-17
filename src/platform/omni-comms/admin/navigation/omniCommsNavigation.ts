@@ -44,6 +44,10 @@ export const OMNI_COMMS_OVERVIEW_VIEW_ALIASES: Readonly<Record<string, OmniComms
   'control_center': 'control-center',
   controls: 'control-center',
   gates: 'control-center',
+  letterheads: 'stationery',
+  'brand-assets': 'stationery',
+  'media-library': 'stationery',
+  'text-blocks': 'stationery',
 };
 
 
