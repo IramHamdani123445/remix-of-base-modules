@@ -13,8 +13,11 @@
 //   - Deterministic: the same idempotency key + same content yields the same
 //     storage path and the same document checksum.
 
+import type { PrintImageAsset } from "./printImage.ts";
+
 /** Bucket holding official generated correspondence artefacts. */
 export const OMNI_COMMS_PRINT_BUCKET = "core-documents";
+
 
 /** Official artefact format for Print / Correspondence. */
 export const OMNI_COMMS_PRINT_ARTEFACT_FORMAT = "pdf" as const;
