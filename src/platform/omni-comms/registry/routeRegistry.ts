@@ -1,5 +1,6 @@
 /**
- * Omni-Comms — Approved permanent route registry (7 routes).
+ * Omni-Comms — Approved permanent route registry (18 routes).
+
  *
  * These are the only admin routes reserved for the new system. All routes
  * are protected by `OmniCommsAdminRoute`, which checks `omni_comms.view`.
