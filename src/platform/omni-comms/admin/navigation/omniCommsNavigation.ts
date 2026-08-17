@@ -26,6 +26,7 @@ export const OMNI_COMMS_ROUTES = {
   stationeryTextBlocks: R('/stationery/text-blocks'),
   stationeryHeadersFooters: R('/stationery/headers-footers'),
   stationerySignatures: R('/stationery/signatures'),
+  stationeryDisclaimers: R('/stationery/disclaimers'),
   setup: R('/setup'),
   safeTest: R('/safe-test'),
   referenceData: R('/reference-data'),
@@ -80,6 +81,7 @@ export const OMNI_COMMS_STATIONERY_SECTION_ROUTES: Readonly<Record<string, strin
   'text-blocks': OMNI_COMMS_ROUTES.stationeryTextBlocks,
   'headers-footers': OMNI_COMMS_ROUTES.stationeryHeadersFooters,
   signatures: OMNI_COMMS_ROUTES.stationerySignatures,
+  disclaimers: OMNI_COMMS_ROUTES.stationeryDisclaimers,
 };
 
 /**
@@ -260,6 +262,13 @@ export const OMNI_COMMS_NAV_GROUPS: readonly OmniCommsNavGroup[] = [
         OMNI_COMMS_ROUTES.stationerySignatures,
         'stationery',
         'Signing officers and signature images.',
+      ),
+      item(
+        'stationery-disclaimers',
+        'Disclaimers',
+        OMNI_COMMS_ROUTES.stationeryDisclaimers,
+        'stationery',
+        'Legal disclaimers applied to correspondence.',
       ),
     ],
   },
