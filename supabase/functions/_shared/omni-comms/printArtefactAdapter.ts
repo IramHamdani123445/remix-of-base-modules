@@ -353,8 +353,8 @@ export async function producePrintArtefact(
       templateFamily: input.templateFamily ?? null,
       templateVersion: input.templateVersion ?? null,
     });
-    const pages = paginatePrintLines(lines);
-    const bytes = buildPrintPdf(pages);
+    const pages = paginatePrintLines(lines, input.stationery ?? null);
+    const bytes = buildPrintPdf(pages, input.stationery ?? null);
     const checksum = await sha256Hex(bytes);
     const path = `omni-comms/print/${slug(input.idempotencyKey)}/${letterReference}.pdf`;
 
