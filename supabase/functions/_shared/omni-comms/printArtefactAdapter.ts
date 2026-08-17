@@ -29,6 +29,26 @@ export interface PrintArtefactStore {
   ): Promise<{ ok: true } | { ok: false; errorCode: string; detail: string }>;
 }
 
+/**
+ * Effective print stationery resolved by the platform inheritance model
+ * (organisation default, overridden by the department profile). The adapter
+ * NEVER reads configuration itself — it renders exactly what it is given.
+ */
+export interface PrintStationery {
+  /** Letterhead header block, one text line per rendered line. */
+  headerLines?: readonly string[] | null;
+  /** Letterhead's own footer block (address strip under the header design). */
+  letterheadFooterLines?: readonly string[] | null;
+  /** Print footer block from the effective print footer. */
+  footerLines?: readonly string[] | null;
+  /** Page footer template, supports {page} and {pages}. */
+  pageFooter?: string | null;
+  letterheadName?: string | null;
+  letterheadSource?: string | null;
+  printFooterName?: string | null;
+  printFooterSource?: string | null;
+}
+
 export interface ProducePrintArtefactInput {
   /** Stable idempotency key; drives the deterministic storage path. */
   idempotencyKey: string;
@@ -44,6 +64,8 @@ export interface ProducePrintArtefactInput {
   /** Optional template family / version recorded as artefact provenance. */
   templateFamily?: string | null;
   templateVersion?: string | null;
+  /** Effective letterhead / print footer for this organisation + department. */
+  stationery?: PrintStationery | null;
   /**
    * Channel of the template variant the content came from.
    * Print is NEVER derived from an Email (or any other) variant: when a
@@ -52,6 +74,7 @@ export interface ProducePrintArtefactInput {
    */
   sourceChannel?: string | null;
 }
+
 
 
 export interface PrintArtefactOutcome {
