@@ -138,6 +138,14 @@ export interface PrintQueueRow {
   id: string;
   created_at: string;
   updated_at: string;
+  /** When the letter content was rendered (falls back to artefact creation). */
+  letter_generated_at?: string | null;
+  /** When the printable artefact (PDF) was produced and archived. */
+  artefact_produced_at?: string | null;
+  /** When the item entered the physical print queue. */
+  queued_for_print_at?: string | null;
+  /** Hours the item has been waiting since it was queued (or produced). */
+  waiting_hours?: number | null;
   letter_reference: string;
   request_id: string;
   message_id: string;
