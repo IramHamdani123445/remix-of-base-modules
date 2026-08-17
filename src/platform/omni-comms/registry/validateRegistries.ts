@@ -72,9 +72,12 @@ export function validateOmniCommsRegistries(): RegistryValidationResult {
   }
 
   // Routes
-  if (OMNI_COMMS_ROUTE_REGISTRY.length !== 7) {
-    errors.push(`Route registry must contain 7 entries, found ${OMNI_COMMS_ROUTE_REGISTRY.length}.`);
+  if (OMNI_COMMS_ROUTE_REGISTRY.length !== OMNI_COMMS_ROUTE_COUNT) {
+    errors.push(
+      `Route registry must contain ${OMNI_COMMS_ROUTE_COUNT} entries, found ${OMNI_COMMS_ROUTE_REGISTRY.length}.`,
+    );
   }
+
   const seenRoutes = new Set<string>();
   for (const r of OMNI_COMMS_ROUTE_REGISTRY) {
     if (!r.path.startsWith(ROUTE_PREFIX)) errors.push(`Route ${r.path} missing ${ROUTE_PREFIX} prefix.`);
