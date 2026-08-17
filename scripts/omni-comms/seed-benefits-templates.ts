@@ -186,30 +186,42 @@ for (const entry of BENEFITS_TEMPLATE_ENTRIES) {
     `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)});`,
     '  END IF;',
     '',
-    '  -- Published Email template version (content-addressed).',
-    '  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version',
-    `                  WHERE template_family_id = v_family AND channel = 'email'`,
-    `                    AND locale = ${q(LOCALE)} AND status = 'published'`,
-    `                    AND checksum = ${q(contentChecksum)}) THEN`,
-    '    UPDATE public.omni_comms_template_version',
-    `       SET status = 'retired', retired_at = now(), retired_by = ${q(ACTOR_ID)},`,
-    `           retirement_reason = 'Superseded by the generated Benefits letter library',`,
-    `           updated_at = now(), updated_by = ${q(ACTOR_ID)}`,
-    '     WHERE template_family_id = v_family',
-    `       AND channel = 'email' AND locale = ${q(LOCALE)} AND status = 'published';`,
-    '    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version',
-    '      FROM public.omni_comms_template_version',
-    `     WHERE template_family_id = v_family AND channel = 'email' AND locale = ${q(LOCALE)};`,
-    '    INSERT INTO public.omni_comms_template_version',
-    '      (id, template_family_id, version_number, channel, locale, content, status, checksum,',
-    '       approved_at, approved_by, published_at, published_by, created_at, created_by,',
-    '       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)',
-    `    VALUES (gen_random_uuid(), v_family, v_version, 'email', ${q(LOCALE)},`,
-    `       ${q(JSON.stringify(content))}::jsonb, 'published', ${q(contentChecksum)},`,
-    `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)}, now(), NULL, now(), ${q(ACTOR_ID)},`,
-    `       'pinned', ${q(EMAIL_LAYOUT_ID)}, ${q(EMAIL_LAYOUT_VERSION_ID)});`,
-    '  END IF;',
-    '',
+  );
+
+  // Published channel-native template versions (content-addressed).
+  for (const channel of SEEDED_CHANNELS) {
+    const variant = channelContent(entry, channel);
+    const variantChecksum = sha256(canonical(variant));
+    const layout = SEED_CHANNEL_LAYOUTS[channel];
+    lines.push(
+      `  -- Published ${channel} template version (content-addressed).`,
+      '  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_template_version',
+      `                  WHERE template_family_id = v_family AND channel = ${q(channel)}`,
+      `                    AND locale = ${q(LOCALE)} AND status = 'published'`,
+      `                    AND checksum = ${q(variantChecksum)}) THEN`,
+      '    UPDATE public.omni_comms_template_version',
+      `       SET status = 'retired', retired_at = now(), retired_by = ${q(ACTOR_ID)},`,
+      `           retirement_reason = 'Superseded by the generated Benefits template library',`,
+      `           updated_at = now(), updated_by = ${q(ACTOR_ID)}`,
+      '     WHERE template_family_id = v_family',
+      `       AND channel = ${q(channel)} AND locale = ${q(LOCALE)} AND status = 'published';`,
+      '    SELECT COALESCE(MAX(version_number), 0) + 1 INTO v_version',
+      '      FROM public.omni_comms_template_version',
+      `     WHERE template_family_id = v_family AND channel = ${q(channel)} AND locale = ${q(LOCALE)};`,
+      '    INSERT INTO public.omni_comms_template_version',
+      '      (id, template_family_id, version_number, channel, locale, content, status, checksum,',
+      '       approved_at, approved_by, published_at, published_by, created_at, created_by,',
+      '       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)',
+      `    VALUES (gen_random_uuid(), v_family, v_version, ${q(channel)}, ${q(LOCALE)},`,
+      `       ${q(JSON.stringify(variant))}::jsonb, 'published', ${q(variantChecksum)},`,
+      `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)}, now(), NULL, now(), ${q(ACTOR_ID)},`,
+      `       'pinned', ${q(layout.layoutId)}, ${q(layout.layoutVersionId)});`,
+      '  END IF;',
+      '',
+    );
+  }
+
+  lines.push(
     '  -- Department-scoped Email route.',
     '  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route',
     `                  WHERE event_definition_id = v_event AND channel = 'email'`,
