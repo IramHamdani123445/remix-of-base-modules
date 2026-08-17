@@ -458,7 +458,7 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
             <TableBody>
               {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-sm text-muted-foreground">
+                  <TableCell colSpan={10} className="text-sm text-muted-foreground">
                     {queue.isLoading
                       ? "Loading print items…"
                       : "No correspondence artefacts are awaiting physical production."}
