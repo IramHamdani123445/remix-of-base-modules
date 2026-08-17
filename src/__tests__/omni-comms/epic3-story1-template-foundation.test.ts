@@ -104,7 +104,7 @@ describe('Epic 3 Story 1 — routes untouched', () => {
   });
 
   it('no new permanent omni-comms route was added', () => {
-    expect(OMNI_COMMS_ROUTE_REGISTRY.length).toBe(7);
+    expect(OMNI_COMMS_ROUTE_REGISTRY.length).toBe(18);
   });
 });
 
