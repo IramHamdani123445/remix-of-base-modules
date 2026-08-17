@@ -123752,6 +123752,10 @@ export type Database = {
         Args: { p_from: string; p_to: string }
         Returns: boolean
       }
+      omni_comms_priv_print_item_ensure_system: {
+        Args: { p_attempt_id: string; p_message_id: string }
+        Returns: string
+      }
       omni_comms_priv_print_mask_address: {
         Args: { p_snapshot: Json }
         Returns: string
