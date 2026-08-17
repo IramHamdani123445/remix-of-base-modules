@@ -2331,6 +2331,17 @@ export const AppRoutes = () => {
       <Route path="/admin/omnichannel-communications/channels" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsChannelsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
       <Route path="/admin/omnichannel-communications/preferences" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsPreferencesPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
       <Route path="/admin/omnichannel-communications/health" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsHealthPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/control-center" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsControlCenterPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/setup" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsSetupPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/safe-test" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsSafeTestPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/reference-data" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsReferenceDataPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/stationery/letterheads" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationeryLetterheadsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/stationery/email-layouts" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationeryEmailLayoutsPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/stationery/media" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationeryMediaPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/stationery/text-blocks" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationeryTextBlocksPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/stationery/headers-footers" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationeryHeadersFootersPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+      <Route path="/admin/omnichannel-communications/stationery/signatures" element={<Suspense fallback={<div>Loading...</div>}><OmniCommsAdminRoute><Suspense fallback={<div>Loading...</div>}><OmniCommsStationerySignaturesPage /></Suspense></OmniCommsAdminRoute></Suspense>} />
+
 
 
 
