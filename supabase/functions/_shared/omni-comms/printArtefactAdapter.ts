@@ -29,6 +29,26 @@ export interface PrintArtefactStore {
   ): Promise<{ ok: true } | { ok: false; errorCode: string; detail: string }>;
 }
 
+/**
+ * Effective print stationery resolved by the platform inheritance model
+ * (organisation default, overridden by the department profile). The adapter
+ * NEVER reads configuration itself — it renders exactly what it is given.
+ */
+export interface PrintStationery {
+  /** Letterhead header block, one text line per rendered line. */
+  headerLines?: readonly string[] | null;
+  /** Letterhead's own footer block (address strip under the header design). */
+  letterheadFooterLines?: readonly string[] | null;
+  /** Print footer block from the effective print footer. */
+  footerLines?: readonly string[] | null;
+  /** Page footer template, supports {page} and {pages}. */
+  pageFooter?: string | null;
+  letterheadName?: string | null;
+  letterheadSource?: string | null;
+  printFooterName?: string | null;
+  printFooterSource?: string | null;
+}
+
 export interface ProducePrintArtefactInput {
   /** Stable idempotency key; drives the deterministic storage path. */
   idempotencyKey: string;
@@ -44,6 +64,8 @@ export interface ProducePrintArtefactInput {
   /** Optional template family / version recorded as artefact provenance. */
   templateFamily?: string | null;
   templateVersion?: string | null;
+  /** Effective letterhead / print footer for this organisation + department. */
+  stationery?: PrintStationery | null;
   /**
    * Channel of the template variant the content came from.
    * Print is NEVER derived from an Email (or any other) variant: when a
@@ -52,6 +74,7 @@ export interface ProducePrintArtefactInput {
    */
   sourceChannel?: string | null;
 }
+
 
 
 export interface PrintArtefactOutcome {
@@ -140,18 +163,56 @@ export function wrapPrintLines(text: string, width = MAX_CHARS_PER_LINE): string
   return out;
 }
 
-export function paginatePrintLines(lines: readonly string[]): string[][] {
+/** Normalises a stationery block into safe, wrapped text lines. */
+export function stationeryBlock(
+  lines: readonly string[] | null | undefined,
+): string[] {
+  const out: string[] = [];
+  for (const raw of lines ?? []) {
+    const value = String(raw ?? "").trim();
+    if (!value) continue;
+    out.push(...wrapPrintLines(value));
+  }
+  return out;
+}
+
+/** Lines reserved by the stationery header / footer on every page. */
+function stationeryReservation(stationery?: PrintStationery | null) {
+  const header = stationeryBlock(stationery?.headerLines);
+  const headerFoot = stationeryBlock(stationery?.letterheadFooterLines);
+  const footer = stationeryBlock(stationery?.footerLines);
+  const pageFooter = (stationery?.pageFooter ?? "").trim();
+  const headerLines = header.length || headerFoot.length
+    ? [...header, ...headerFoot, "".padEnd(MAX_CHARS_PER_LINE, "_"), ""]
+    : [];
+  const footerLines = footer.length || pageFooter
+    ? ["".padEnd(MAX_CHARS_PER_LINE, "_"), ...footer]
+    : [];
+  return { headerLines, footerLines, pageFooter };
+}
+
+export function paginatePrintLines(
+  lines: readonly string[],
+  stationery?: PrintStationery | null,
+): string[][] {
+  const { headerLines, footerLines, pageFooter } = stationeryReservation(stationery);
+  const reserved = headerLines.length + footerLines.length + (pageFooter ? 1 : 0);
+  const perPage = Math.max(5, LINES_PER_PAGE - reserved);
   const pages: string[][] = [];
-  for (let i = 0; i < lines.length; i += LINES_PER_PAGE) {
-    pages.push(lines.slice(i, i + LINES_PER_PAGE));
+  for (let i = 0; i < lines.length; i += perPage) {
+    pages.push(lines.slice(i, i + perPage));
   }
   return pages.length ? pages : [[]];
 }
 
 /** Builds a deterministic single- or multi-page PDF document. */
-export function buildPrintPdf(pages: readonly (readonly string[])[]): Uint8Array {
+export function buildPrintPdf(
+  pages: readonly (readonly string[])[],
+  stationery?: PrintStationery | null,
+): Uint8Array {
   const objects: string[] = [];
   const pageCount = pages.length;
+  const { headerLines, footerLines, pageFooter } = stationeryReservation(stationery);
   // 1 = Catalog, 2 = Pages, 3 = Font, then per page: content + page object.
   const contentIds: number[] = [];
   const pageIds: number[] = [];
@@ -167,17 +228,37 @@ export function buildPrintPdf(pages: readonly (readonly string[])[]): Uint8Array
   objects[3] =
     "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
 
-  pages.forEach((lines, index) => {
-    const body = lines
+  const draw = (lines: readonly string[], startY: number) =>
+    lines
       .map((line, i) =>
         i === 0
-          ? `1 0 0 1 ${MARGIN} ${PAGE_HEIGHT - MARGIN} Tm (${
+          ? `1 0 0 1 ${MARGIN} ${startY.toFixed(2)} Tm (${
             pdfEscape(winAnsi(line))
           }) Tj`
           : `0 -${LINE_HEIGHT} Td (${pdfEscape(winAnsi(line))}) Tj`
       )
       .join("\n");
-    const stream = `BT\n/F1 ${FONT_SIZE} Tf\n${LINE_HEIGHT} TL\n${body}\nET\n`;
+
+  pages.forEach((lines, index) => {
+    const foot = pageFooter
+      ? [
+        ...footerLines,
+        pageFooter
+          .replace(/\{page\}/gi, String(index + 1))
+          .replace(/\{pages\}/gi, String(pageCount)),
+      ]
+      : footerLines;
+    const topY = PAGE_HEIGHT - MARGIN;
+    const blocks: string[] = [];
+    if (headerLines.length) blocks.push(draw(headerLines, topY));
+    const bodyY = topY - headerLines.length * LINE_HEIGHT;
+    if (lines.length) blocks.push(draw(lines, bodyY));
+    if (foot.length) {
+      blocks.push(draw(foot, MARGIN + (foot.length - 1) * LINE_HEIGHT));
+    }
+    const stream = `BT\n/F1 ${FONT_SIZE} Tf\n${LINE_HEIGHT} TL\n${
+      blocks.join("\n")
+    }\nET\n`;
     objects[contentIds[index]] =
       `<< /Length ${stream.length} >>\nstream\n${stream}endstream`;
     objects[pageIds[index]] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${
@@ -235,6 +316,7 @@ export function composePrintDocument(input: {
   return [...head, ...wrapPrintLines(input.bodyText), ...foot];
 }
 
+
 /**
  * Renders and archives one correspondence artefact.
  *
@@ -271,8 +353,8 @@ export async function producePrintArtefact(
       templateFamily: input.templateFamily ?? null,
       templateVersion: input.templateVersion ?? null,
     });
-    const pages = paginatePrintLines(lines);
-    const bytes = buildPrintPdf(pages);
+    const pages = paginatePrintLines(lines, input.stationery ?? null);
+    const bytes = buildPrintPdf(pages, input.stationery ?? null);
     const checksum = await sha256Hex(bytes);
     const path = `omni-comms/print/${slug(input.idempotencyKey)}/${letterReference}.pdf`;
 
@@ -309,6 +391,11 @@ export async function producePrintArtefact(
         postal_destination: input.postalDestination ?? null,
         template_family: input.templateFamily ?? null,
         template_version: input.templateVersion ?? null,
+        
+        letterhead_name: input.stationery?.letterheadName ?? null,
+        letterhead_source: input.stationery?.letterheadSource ?? null,
+        print_footer_name: input.stationery?.printFooterName ?? null,
+        print_footer_source: input.stationery?.printFooterSource ?? null,
         // Truthful physical state: nothing has been printed or dispatched.
         physical_state: "artefact_produced",
       },

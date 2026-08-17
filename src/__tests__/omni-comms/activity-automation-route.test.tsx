@@ -98,25 +98,33 @@ vi.mock('@/platform/omni-comms/application/operationsService', async () => {
   };
 });
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
 import OmniCommsShell from '@/platform/omni-comms/admin/components/OmniCommsShell';
 import OmniCommsOperationsPage from '@/platform/omni-comms/admin/views/OmniCommsOperationsPage';
 
 function renderRoute() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
   return render(
-    <MemoryRouter initialEntries={['/admin/omnichannel-communications/operations']}>
-      <Routes>
-        <Route
-          path="/admin/omnichannel-communications/operations"
-          element={
-            <OmniCommsShell>
-              <OmniCommsOperationsPage />
-            </OmniCommsShell>
-          }
-        />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={['/admin/omnichannel-communications/operations']}>
+        <Routes>
+          <Route
+            path="/admin/omnichannel-communications/operations"
+            element={
+              <OmniCommsShell>
+                <OmniCommsOperationsPage />
+              </OmniCommsShell>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
+
 
 describe('Activity & Automation route', () => {
   beforeEach(() => vi.clearAllMocks());

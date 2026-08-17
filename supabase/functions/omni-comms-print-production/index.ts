@@ -198,6 +198,12 @@ Deno.serve(async (req) => {
       ? (claim.postal_address_lines as unknown[]).map((l) => String(l)).filter(Boolean)
       : [];
 
+    // Effective stationery resolved server-side: organisation default,
+    // overridden by the owning department's profile (e.g. Benefits).
+    const st = (claim.stationery ?? {}) as Record<string, unknown>;
+    const strings = (v: unknown) =>
+      Array.isArray(v) ? v.map((l) => String(l)).filter(Boolean) : [];
+
     const outcome = await producePrintArtefact({
       idempotencyKey: `omni-comms/print/${String(claim.message_id ?? attemptId)}`,
       recipientReference: String(claim.recipient_reference ?? claim.recipient_display ?? "recipient"),
@@ -205,10 +211,21 @@ Deno.serve(async (req) => {
       documentTitle: String(claim.subject ?? "Correspondence"),
       bodyText: String(claim.text_body ?? ""),
       postalDestination: lines,
+      stationery: {
+        headerLines: strings(st.header_lines),
+        letterheadFooterLines: strings(st.letterhead_footer_lines),
+        footerLines: strings(st.footer_lines),
+        pageFooter: (st.page_footer as string | null) ?? null,
+        letterheadName: (st.letterhead_name as string | null) ?? null,
+        letterheadSource: (st.letterhead_source as string | null) ?? null,
+        printFooterName: (st.print_footer_name as string | null) ?? null,
+        printFooterSource: (st.print_footer_source as string | null) ?? null,
+      },
       // Print content is ALWAYS produced from the print variant.
       sourceChannel: "print",
       store,
     });
+
 
     const artefact = (outcome.providerResponse ?? {}) as Record<string, unknown>;
     const completion = await service.rpc("omni_comms_priv_print_production_complete", {
