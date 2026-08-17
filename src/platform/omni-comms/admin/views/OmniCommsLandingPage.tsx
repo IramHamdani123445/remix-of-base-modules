@@ -41,6 +41,7 @@ import {
   resolveOverviewView,
   type OmniCommsOverviewView,
 } from "../navigation/omniCommsNavigation";
+import StationerySurface from "./stationery/StationerySurface";
 import {
   buildSetupPlan,
   getSetupReadiness,
@@ -303,6 +304,11 @@ export const OmniCommsLandingPage: React.FC = () => {
 
           <SetupWizardPanel />
         </TabsContent>
+
+        <TabsContent value="stationery" className="mt-4">
+          <StationerySurface />
+        </TabsContent>
+
 
         {nonProduction ? (
           <TabsContent value="safe-test" className="mt-4">
