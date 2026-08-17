@@ -513,6 +513,21 @@ const PrintProductionQueueInner: React.FC<PrintProductionQueueProps> = ({ showRe
                       <span className="text-muted-foreground">Not printed yet</span>
                     )}
                   </TableCell>
+                  <TableCell className="text-xs">
+                    <div>
+                      {row.letter_generated_at ?? row.created_at
+                        ? new Date(row.letter_generated_at ?? row.created_at).toLocaleString()
+                        : "—"}
+                    </div>
+                    <div className="text-muted-foreground">
+                      {row.queued_for_print_at
+                        ? `Queued ${new Date(row.queued_for_print_at).toLocaleString()}`
+                        : "Not queued yet"}
+                      {typeof row.waiting_hours === "number"
+                        ? ` · waiting ${row.waiting_hours}h`
+                        : ""}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <Badge className={STATUS_TONE[row.physical_status]} variant="outline">
                       {OMNI_COMMS_PRINT_STATUS_LABELS[row.physical_status]}
