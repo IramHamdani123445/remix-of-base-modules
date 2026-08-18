@@ -80,6 +80,19 @@ import {
   type SortState,
 } from "./templateTableUtils";
 import { OmniCommsAssemblyTab } from "./OmniCommsAssemblyTab";
+import { getTemplateBusinessCatalogue } from "@/platform/omni-comms/application/businessTemplateCatalogueService";
+import {
+  filterCatalogue,
+  moduleOptions,
+  businessObjectOptions,
+  CATALOGUE_CHANNEL_ORDER,
+  CHANNEL_LABEL,
+  type CatalogueAction,
+  type CompletenessFilter,
+  type TemplateBusinessCatalogue,
+} from "@/platform/omni-comms/domain/templateBusinessCatalogue";
+import TemplateBusinessCatalogueView from "./templates/TemplateBusinessCatalogue";
+import TemplateChannelWorkspace from "./templates/TemplateChannelWorkspace";
 import { OmniCommsLayoutSelectionDialog } from "../components/OmniCommsLayoutSelectionDialog";
 import {
   describeLayoutSelection,
@@ -357,14 +370,20 @@ const VersionCreateDialog: React.FC<{
   onSaved: () => void;
   familyId: string;
   nextVersionNumber: number;
-}> = ({ open, onClose, onSaved, familyId, nextVersionNumber }) => {
+  /** Preselected channel when opened from the channel workspace. */
+  presetChannel?: TemplateChannel | null;
+}> = ({ open, onClose, onSaved, familyId, nextVersionNumber, presetChannel }) => {
   const client = useOmniCommsRpcClient();
   const [busy, setBusy] = React.useState(false);
-  const [channel, setChannel] = React.useState<TemplateChannel>("email");
+  const [channel, setChannel] = React.useState<TemplateChannel>(presetChannel ?? "email");
   const [locale, setLocale] = React.useState("en-US");
   const [versionNumber, setVersionNumber] = React.useState(nextVersionNumber);
   const [contentText, setContentText] = React.useState('{\n  "subject": "Hello {{name}}",\n  "text": "Welcome!"\n}');
   React.useEffect(() => { if (open) setVersionNumber(nextVersionNumber); }, [open, nextVersionNumber]);
+  // The administrator already chose the channel by clicking it — never ask again.
+  React.useEffect(() => {
+    if (open && presetChannel) setChannel(presetChannel);
+  }, [open, presetChannel]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !busy && !o && onClose()}>
@@ -959,8 +978,8 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const canApprove = can("approve_templates");
   const canViewSensitive = can("view_sensitive_content");
 
-  // URL-controlled: /admin/omnichannel-communications/templates?tab=library|versions|preview|assembly
-  const [tab, setTab] = useOmniCommsTabParam(OMNI_COMMS_TEMPLATE_TABS, "library");
+  // URL-controlled: /admin/omnichannel-communications/templates?tab=catalogue|flat
+  const [tab, setTab] = useOmniCommsTabParam(OMNI_COMMS_TEMPLATE_TABS, "catalogue");
   const [families, setFamilies] = React.useState<TemplateFamilyListItem[]>([]);
   const [familiesLoading, setFamiliesLoading] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -999,6 +1018,22 @@ export const OmniCommsTemplatesPage: React.FC = () => {
     React.useState<SortState<VersionSortKey>>({ key: "version_number", direction: "desc" });
   const [versionPage, setVersionPage] = React.useState(1);
   const [versionPageSize, setVersionPageSize] = React.useState(25);
+
+  // ── Business catalogue (module → object → event → action → channels) ──
+  const [catalogue, setCatalogue] = React.useState<TemplateBusinessCatalogue>({
+    modules: [], shared: [],
+  });
+  const [catalogueLoading, setCatalogueLoading] = React.useState(false);
+  const [moduleFilter, setModuleFilter] = React.useState<string>("all");
+  const [objectFilter, setObjectFilter] = React.useState<string>("all");
+  const [channelFilter, setChannelFilter] = React.useState<string>("all");
+  const [completeness, setCompleteness] = React.useState<CompletenessFilter>("all");
+  const [workspaceAction, setWorkspaceAction] = React.useState<CatalogueAction | null>(null);
+  const [workspaceEventName, setWorkspaceEventName] = React.useState<string | null>(null);
+  const [workspaceChannel, setWorkspaceChannel] = React.useState<TemplateChannel>("email");
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [finalPreviewOpen, setFinalPreviewOpen] = React.useState(false);
+
 
 
   // ── Load the event catalogue once ──
@@ -1052,6 +1087,20 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   }, [client, search, statusFilter, scopeFilter, canView]);
 
   React.useEffect(() => { void reloadFamilies(); }, [reloadFamilies]);
+
+  // ── Load the governed business catalogue ──
+  const reloadCatalogue = React.useCallback(async () => {
+    if (!canView) return;
+    setCatalogueLoading(true);
+    try {
+      const c = await getTemplateBusinessCatalogue(client, organizationId || null);
+      setCatalogue({ modules: c.modules ?? [], shared: c.shared ?? [] });
+    } catch (e) { toastError(e); }
+    finally { setCatalogueLoading(false); }
+  }, [client, canView, organizationId]);
+
+  React.useEffect(() => { void reloadCatalogue(); }, [reloadCatalogue]);
+
 
   const reloadSelectedFamily = React.useCallback(async (id: string | null) => {
     if (!id) { setSelectedFamily(null); return; }
@@ -1187,16 +1236,145 @@ export const OmniCommsTemplatesPage: React.FC = () => {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="library" data-testid="tab-library">Library</TabsTrigger>
-          <TabsTrigger value="versions" data-testid="tab-versions" disabled={!selectedFamilyId}>
-            Versions{selectedFamily ? ` · ${selectedFamily.code}` : ""}
+          <TabsTrigger value="catalogue" data-testid="tab-catalogue">
+            Business catalogue
           </TabsTrigger>
-          <TabsTrigger value="preview" data-testid="tab-preview" disabled={!selectedVersion}>Preview</TabsTrigger>
-          <TabsTrigger value="assembly" data-testid="tab-assembly">Assembly</TabsTrigger>
+          <TabsTrigger value="flat" data-testid="tab-flat">
+            Technical (flat) view
+          </TabsTrigger>
         </TabsList>
 
-        {/* ── Library ── */}
-        <TabsContent value="library" className="space-y-3">
+        {/* ── Business catalogue: module → object → event → action → channels ── */}
+        <TabsContent value="catalogue" className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search events, actions or codes…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+              data-testid="catalogue-search"
+            />
+            <Select value={moduleFilter} onValueChange={(v) => { setModuleFilter(v); setObjectFilter("all"); }}>
+              <SelectTrigger className="w-44" data-testid="catalogue-module-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All modules</SelectItem>
+                {moduleOptions(catalogue).map((m) => (
+                  <SelectItem key={m.code} value={m.code}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={objectFilter} onValueChange={setObjectFilter}>
+              <SelectTrigger className="w-48" data-testid="catalogue-object-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All business objects</SelectItem>
+                {businessObjectOptions(catalogue, moduleFilter === "all" ? null : moduleFilter).map((b) => (
+                  <SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="w-36" data-testid="catalogue-channel-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All channels</SelectItem>
+                {CATALOGUE_CHANNEL_ORDER.map((c) => (
+                  <SelectItem key={c} value={c}>{CHANNEL_LABEL[c]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={completeness} onValueChange={(v) => setCompleteness(v as CompletenessFilter)}>
+              <SelectTrigger className="w-40" data-testid="catalogue-completeness-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any completeness</SelectItem>
+                <SelectItem value="configured">Configured</SelectItem>
+                <SelectItem value="missing">Missing</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={scopeFilter} onValueChange={(v) => setScopeFilter(v as typeof scopeFilter)}>
+              <SelectTrigger className="w-40" data-testid="catalogue-scope-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All scopes</SelectItem>
+                <SelectItem value="organization">Organisation</SelectItem>
+                <SelectItem value="department">Department</SelectItem>
+                <SelectItem value="event">Event</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="icon" onClick={() => reloadCatalogue()} data-testid="reload-catalogue">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <div className="flex-1" />
+            <Button
+              disabled={!canConfigure}
+              onClick={() => setFamilyEditor({ open: true, mode: "create" })}
+              data-testid="new-family-catalogue"
+            >
+              <Plus className="mr-1 h-4 w-4" />New communication action
+            </Button>
+          </div>
+
+          {workspaceAction && (
+            <TemplateChannelWorkspace
+              action={workspaceAction}
+              eventName={workspaceEventName}
+              versions={versions}
+              loading={versionsLoading}
+              channel={workspaceChannel}
+              onSelectChannel={setWorkspaceChannel}
+              onClose={() => { setWorkspaceAction(null); setSelectedFamilyId(null); }}
+              canAuthor={canAuthor}
+              canApprove={canApprove}
+              onCreateDraft={(c) => { setWorkspaceChannel(c); setVersionCreate(true); }}
+              onPreviewVersion={async (id) => {
+                try {
+                  const full = await svc.getTemplateVersion(client, id);
+                  setSelectedVersion(full); setPreviewOpen(true);
+                } catch (e) { toastError(e); }
+              }}
+              onConfigureLayout={(id) => void openLayoutDialog(id)}
+              onApproveVersion={(id) => startApproval(id)}
+              onPublishVersion={(id) => void openPublishDialog(id)}
+              onRetireVersion={(id) => setReasonDialog({
+                open: true, required: true,
+                title: "Retire version",
+                description: "Retirement is permanent; reason required.",
+                submitLabel: "Retire",
+                onSubmit: async (reason) => {
+                  await svc.retireTemplateVersion(client, { id, reason });
+                  toast.success("Retired");
+                  await reloadVersions(selectedFamilyId);
+                  await reloadCatalogue();
+                },
+              })}
+              onPreviewFinal={() => setFinalPreviewOpen(true)}
+            />
+          )}
+
+          <TemplateBusinessCatalogueView
+            catalogue={filterCatalogue(catalogue, {
+              search,
+              moduleCode: moduleFilter === "all" ? null : moduleFilter,
+              businessObjectCode: objectFilter === "all" ? null : objectFilter,
+              channel: channelFilter === "all" ? null : (channelFilter as TemplateChannel),
+              scopeType: scopeFilter === "all" ? null : scopeFilter,
+              status: statusFilter === "all" ? null : statusFilter,
+              completeness,
+            })}
+            loading={catalogueLoading}
+            onOpenChannel={(action, channel) => {
+              setWorkspaceAction(action);
+              setWorkspaceChannel(channel);
+              setWorkspaceEventName(
+                catalogue.modules
+                  .flatMap((m) => m.business_objects)
+                  .flatMap((b) => b.events)
+                  .find((ev) => ev.actions.some((a) => a.id === action.id))?.name ?? null,
+              );
+              setSelectedFamilyId(action.id);
+            }}
+          />
+        </TabsContent>
+
+        {/* ── Technical / flat view (engineering & support) ── */}
+        <TabsContent value="flat" className="space-y-3">
           <div className="flex items-center gap-2">
             <Input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
@@ -1339,10 +1517,9 @@ export const OmniCommsTemplatesPage: React.FC = () => {
             />
           </Card>
           <ScopeResolutionCard organizationId={organizationId} departments={departments} events={events} />
-        </TabsContent>
 
-        {/* ── Versions ── */}
-        <TabsContent value="versions" className="space-y-3">
+          {/* Channel-agnostic version table — engineering/support only. */}
+          <div className="space-y-3">
           {selectedFamily && (
             <div className="flex items-center justify-between">
               <div>
@@ -1496,16 +1673,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
               </AlertDescription>
             </Alert>
           )}
-        </TabsContent>
-
-        {/* ── Preview ── */}
-        <TabsContent value="preview">
-          <PreviewTab version={selectedVersion} canViewSensitive={canViewSensitive} />
-        </TabsContent>
-
-        {/* ── Assembly (Build 1 shared assets) ── */}
-        <TabsContent value="assembly">
-          <OmniCommsAssemblyTab organizationId={organizationId} departments={departments} families={families} />
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -1521,15 +1689,16 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         <VersionCreateDialog
           open={versionCreate}
           onClose={() => setVersionCreate(false)}
-          onSaved={() => reloadVersions(selectedFamilyId)}
+          onSaved={async () => { await reloadVersions(selectedFamilyId); await reloadCatalogue(); }}
           familyId={selectedFamilyId}
           nextVersionNumber={nextVersionNumber}
+          presetChannel={workspaceAction ? workspaceChannel : null}
         />
       )}
       <PublishDialog
         state={publishState}
         onClose={() => setPublishState({ open: false, version: null, hasExistingPublished: false })}
-        onPublished={() => { void reloadVersions(selectedFamilyId); }}
+        onPublished={() => { void reloadVersions(selectedFamilyId); void reloadCatalogue(); }}
       />
       <ReasonDialog
         state={reasonDialog}
@@ -1547,6 +1716,37 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         family={quickPreviewFamily}
         onClose={() => setQuickPreviewFamily(null)}
       />
+
+      {/* Preview belongs to the channel being authored, not a global tab. */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Preview</DialogTitle>
+            <DialogDescription>
+              Rendered with a synthetic payload — no live recipient data.
+            </DialogDescription>
+          </DialogHeader>
+          <PreviewTab version={selectedVersion} canViewSensitive={canViewSensitive} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Assembly is internal: administrators only see its result. */}
+      <Dialog open={finalPreviewOpen} onOpenChange={setFinalPreviewOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Preview final communication</DialogTitle>
+            <DialogDescription>
+              Template, resolved presentation and shared assets combined exactly
+              as the recipient would receive them.
+            </DialogDescription>
+          </DialogHeader>
+          <OmniCommsAssemblyTab
+            organizationId={organizationId}
+            departments={departments}
+            families={families}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
     </TooltipProvider>
   );

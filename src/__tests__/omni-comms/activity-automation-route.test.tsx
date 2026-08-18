@@ -129,21 +129,16 @@ function renderRoute() {
 describe('Activity & Automation route', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('shows the four normal destinations in the rendered main navigation', () => {
+  it('states the current location instead of repeating route links', () => {
     renderRoute();
     const nav = screen.getByRole('navigation', {
-      name: /Omnichannel Communications sections/i,
+      name: /Omnichannel Communications location/i,
     });
-    for (const label of ['Overview', 'Channels', 'Events', 'Operations']) {
-      expect(within(nav).getByText(label)).toBeTruthy();
-    }
-  });
-
-  it('marks Activity & Automation as the active destination', () => {
-    renderRoute();
-    const link = screen.getByTestId('omni-comms-nav-activity');
-    expect(link.textContent).toContain('Operations');
-    expect(link.getAttribute('aria-current')).toBe('page');
+    // The left sidebar is the single destination navigation mechanism.
+    expect(within(nav).getByTestId('omni-comms-nav-breadcrumb').textContent).toContain(
+      'Operations',
+    );
+    expect(within(nav).queryByTestId('omni-comms-nav-overview')).toBeNull();
   });
 
   it('renders the page title and the automation dashboard cards', async () => {

@@ -4,15 +4,14 @@
  * Rendered by `OmniCommsShell` on every Omni-Comms administration screen so
  * the administrator always sees the same product identity, the selected
  * tenant, the environment and the truthful runtime / delivery / Legacy
- * posture, plus module-local navigation.
+ * posture, and where the administrator currently is.
  *
  * Presentation only: no RPC, no mutation, no provider contact.
  */
 import React from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Radio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { OmniCommsScopeSelector } from './OmniCommsScopeSelector';
 import { OmniCommsPostureBadgeList } from './OmniCommsPostureBadge';
 import {
@@ -25,7 +24,6 @@ import {
   resolveActiveNavItem,
 
 } from '../navigation/omniCommsNavigation';
-import { mergeOmniCommsHref } from '../navigation/searchParamMerge';
 
 import { useOmniCommsCertificationPosture } from '../hooks/useOmniCommsCertificationPosture';
 import { useOmniCommsScope } from '../../context/OmniCommsScopeContext';
@@ -57,16 +55,6 @@ export const OmniCommsModuleHeader: React.FC = () => {
   const navGroups = React.useMemo(() => omniCommsNavGroups(environment), [environment]);
   const active = resolveActiveNavItem(location.pathname, searchParams.get('view'));
 
-  // Primary working destinations stay in the header; grouped configuration
-  // surfaces (Stationery, Setup & health) are reached from the left menu and
-  // only announce themselves here as a breadcrumb.
-  const primaryItems = React.useMemo(
-    () =>
-      navGroups
-        .filter((g) => g.id === 'operate' || g.id === 'configure')
-        .flatMap((g) => g.items),
-    [navGroups],
-  );
   const secondaryGroup = React.useMemo(
     () =>
       navGroups.find(
@@ -119,52 +107,25 @@ export const OmniCommsModuleHeader: React.FC = () => {
 
         <OmniCommsScopeSelector />
 
-        <nav aria-label="Omnichannel Communications sections" className="space-y-2">
-          {/*
-            Working destinations only appear on the working surfaces. On a
-            configuration page (Stationery, Setup & health) the header shows
-            just where you are — the left menu is the single way back out, so
-            there is no unrelated Overview / Control Center / Operations strip
-            sitting on top of a stationery editor.
-          */}
-          {secondaryGroup ? (
-            <p
-              className="text-xs text-muted-foreground"
-              data-testid="omni-comms-nav-breadcrumb"
-            >
-              {secondaryGroup.label} <span aria-hidden="true">›</span>{' '}
-              <span className="font-medium text-foreground">{active.label}</span>
-            </p>
-          ) : (
-            <ul className="flex flex-wrap items-center gap-1">
-              {primaryItems.map((item) => {
-                const isActive = item.id === active.id;
-                return (
-                  <li key={item.id}>
-                    <Link
-                      to={mergeOmniCommsHref(item.href, location.search)}
-                      aria-current={isActive ? 'page' : undefined}
-                      title={item.description}
-                      data-testid={`omni-comms-nav-${item.id}`}
-                      className={cn(
-                        'inline-flex min-h-11 items-center rounded-md px-3 text-sm transition-colors',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                        isActive
-                          ? 'bg-primary text-primary-foreground font-medium'
-                          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
+        {/*
+          The left Omni-Comms menu is the single destination navigation
+          mechanism. The header no longer repeats route links on every page —
+          it states only where you are.
+        */}
+        <nav aria-label="Omnichannel Communications location" className="space-y-2">
+          <p
+            className="text-xs text-muted-foreground"
+            data-testid="omni-comms-nav-breadcrumb"
+          >
+            {secondaryGroup ? (
+              <>
+                {secondaryGroup.label} <span aria-hidden="true">›</span>{' '}
+              </>
+            ) : null}
+            <span className="font-medium text-foreground">{active.label}</span>
+          </p>
 
           <ul className="flex flex-wrap items-center gap-1">
-
             {OMNI_COMMS_PLANNED_NAV_ITEMS.map((item) => (
               <li key={item.id}>
                 <span

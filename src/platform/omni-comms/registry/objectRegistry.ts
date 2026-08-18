@@ -425,6 +425,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Enterprise template, branding and inheritance consolidation',
   },
   {
+    name: 'omni_comms_business_object',
+    category: 'events_and_content',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Governed business-object classification metadata (module code, business object code, display name, display order) used to present the template catalogue as Module → Business Object → Event → Communication Action. Presentation classification only — never message content, never a second template store.',
+    status: 'AVAILABLE',
+    introductionStory: 'Business-oriented template workspace and navigation consolidation',
+  },
+  {
     name: 'omni_comms_business_event_outbox',
     category: 'runtime',
     epic: 6,
