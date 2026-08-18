@@ -98,6 +98,14 @@ export const OMNI_COMMS_ROUTE_REGISTRY: readonly RouteRegistryEntry[] = [
     state: 'Available',
   },
   {
+    path: '/admin/omnichannel-communications/branding/defaults',
+    label: 'Defaults & overrides',
+    pageWrapper: 'src/pages/admin/omnichannel-communications/branding/DefaultsOverridesPage.tsx',
+    moduleView: 'src/platform/omni-comms/admin/views/branding/BrandingDefaultsView.tsx',
+    requiredPermission: 'omni_comms.view',
+    state: 'Available',
+  },
+  {
     path: '/admin/omnichannel-communications/stationery/letterheads',
     label: 'Letterheads',
     pageWrapper: 'src/pages/admin/omnichannel-communications/stationery/LetterheadsPage.tsx',

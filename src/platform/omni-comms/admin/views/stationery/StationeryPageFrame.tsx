@@ -26,7 +26,7 @@ export const StationeryPageFrame: React.FC<StationeryPageFrameProps> = ({
   <div className="space-y-4" data-testid="omni-comms-stationery">
     <Card>
       <CardContent className="pt-6">
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">Stationery</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Branding &amp; Layouts</p>
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </CardContent>
