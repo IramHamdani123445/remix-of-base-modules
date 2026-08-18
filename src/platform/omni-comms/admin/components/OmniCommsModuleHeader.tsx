@@ -4,15 +4,14 @@
  * Rendered by `OmniCommsShell` on every Omni-Comms administration screen so
  * the administrator always sees the same product identity, the selected
  * tenant, the environment and the truthful runtime / delivery / Legacy
- * posture, plus module-local navigation.
+ * posture, and where the administrator currently is.
  *
  * Presentation only: no RPC, no mutation, no provider contact.
  */
 import React from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Radio } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { OmniCommsScopeSelector } from './OmniCommsScopeSelector';
 import { OmniCommsPostureBadgeList } from './OmniCommsPostureBadge';
 import {
@@ -25,7 +24,6 @@ import {
   resolveActiveNavItem,
 
 } from '../navigation/omniCommsNavigation';
-import { mergeOmniCommsHref } from '../navigation/searchParamMerge';
 
 import { useOmniCommsCertificationPosture } from '../hooks/useOmniCommsCertificationPosture';
 import { useOmniCommsScope } from '../../context/OmniCommsScopeContext';
@@ -57,16 +55,6 @@ export const OmniCommsModuleHeader: React.FC = () => {
   const navGroups = React.useMemo(() => omniCommsNavGroups(environment), [environment]);
   const active = resolveActiveNavItem(location.pathname, searchParams.get('view'));
 
-  // Primary working destinations stay in the header; grouped configuration
-  // surfaces (Stationery, Setup & health) are reached from the left menu and
-  // only announce themselves here as a breadcrumb.
-  const primaryItems = React.useMemo(
-    () =>
-      navGroups
-        .filter((g) => g.id === 'operate' || g.id === 'configure')
-        .flatMap((g) => g.items),
-    [navGroups],
-  );
   const secondaryGroup = React.useMemo(
     () =>
       navGroups.find(
