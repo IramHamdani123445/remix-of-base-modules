@@ -965,8 +965,8 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const canApprove = can("approve_templates");
   const canViewSensitive = can("view_sensitive_content");
 
-  // URL-controlled: /admin/omnichannel-communications/templates?tab=library|versions|preview|assembly
-  const [tab, setTab] = useOmniCommsTabParam(OMNI_COMMS_TEMPLATE_TABS, "library");
+  // URL-controlled: /admin/omnichannel-communications/templates?tab=catalogue|flat
+  const [tab, setTab] = useOmniCommsTabParam(OMNI_COMMS_TEMPLATE_TABS, "catalogue");
   const [families, setFamilies] = React.useState<TemplateFamilyListItem[]>([]);
   const [familiesLoading, setFamiliesLoading] = React.useState(false);
   const [search, setSearch] = React.useState("");
