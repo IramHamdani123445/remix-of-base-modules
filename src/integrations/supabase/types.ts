@@ -125086,6 +125086,15 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_template_version_create_next_draft: {
+        Args: {
+          p_channel: string
+          p_correlation_id?: string
+          p_locale: string
+          p_template_family_id: string
+        }
+        Returns: Json
+      }
       omni_comms_template_version_get: { Args: { p_id: string }; Returns: Json }
       omni_comms_template_version_list: {
         Args: {
