@@ -24,6 +24,22 @@ interface InAppNotification {
   link: string | null;
   is_read: boolean;
   created_at: string;
+  action_label?: string | null;
+  source?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+/** Severity badge styling for Omni-Comms in-app notifications. */
+const SEVERITY_STYLES: Record<string, string> = {
+  info: "bg-muted text-muted-foreground",
+  success: "bg-primary/10 text-primary",
+  warning: "bg-accent/30 text-accent-foreground",
+  critical: "bg-destructive/10 text-destructive",
+};
+
+function severityOf(notification: InAppNotification): string | null {
+  const value = (notification.metadata as { severity?: unknown } | null)?.severity;
+  return typeof value === "string" && value in SEVERITY_STYLES ? value : null;
 }
 
 export function InAppNotificationBell() {
@@ -129,8 +145,20 @@ export function InAppNotificationBell() {
   // Combined count: unread notifications + pending approvals
   const totalBadgeCount = unreadCount + pendingApprovalCount;
 
+  // Omni-Comms notifications record engagement through the governed RPC so
+  // the read / action becomes delivery evidence on the originating message.
   const markAsRead = useMutation({
-    mutationFn: async (notificationId: string) => {
+    mutationFn: async (
+      input: string | { id: string; engagement: 'read' | 'action' },
+    ) => {
+      const notificationId = typeof input === 'string' ? input : input.id;
+      const engagement = typeof input === 'string' ? 'read' : input.engagement;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: rpcError } = await (supabase as any).rpc(
+        'omni_comms_in_app_record_engagement',
+        { p_notification_id: notificationId, p_engagement: engagement },
+      );
+      if (!rpcError) return;
       const { error } = await supabase
         .from('in_app_notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
@@ -158,9 +186,10 @@ export function InAppNotificationBell() {
   });
 
   const handleNotificationClick = (notification: InAppNotification) => {
-    if (!notification.is_read) {
-      markAsRead.mutate(notification.id);
-    }
+    markAsRead.mutate({
+      id: notification.id,
+      engagement: notification.link ? 'action' : 'read',
+    });
     if (notification.link) {
       setOpen(false);
       navigate(notification.link);
@@ -169,9 +198,10 @@ export function InAppNotificationBell() {
 
   const handlePopupClick = () => {
     if (popupNotification) {
-      if (!popupNotification.is_read) {
-        markAsRead.mutate(popupNotification.id);
-      }
+      markAsRead.mutate({
+        id: popupNotification.id,
+        engagement: popupNotification.link ? 'action' : 'read',
+      });
       if (popupNotification.link) {
         navigate(popupNotification.link);
       }
@@ -318,8 +348,20 @@ export function InAppNotificationBell() {
                           <span className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                           </span>
+                          {severityOf(notification) && (
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-medium capitalize ${
+                                SEVERITY_STYLES[severityOf(notification) as string]
+                              }`}
+                            >
+                              {severityOf(notification)}
+                            </span>
+                          )}
                           {notification.link && (
-                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                            <span className="inline-flex items-center gap-1 text-xs text-primary">
+                              {notification.action_label || 'Open'}
+                              <ExternalLink className="h-3 w-3" />
+                            </span>
                           )}
                         </div>
                       </div>

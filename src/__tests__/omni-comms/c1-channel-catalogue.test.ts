@@ -35,8 +35,9 @@ describe('C1 — channel catalogue', () => {
     expect(byChunk('C10')).toEqual(['webhook', 'print', 'voice']);
   });
 
-  it('email, sms and print have implemented administration surfaces', () => {
-    expect(getImplementedChannels().map((d) => d.channel)).toEqual(['email', 'sms', 'print']);
+  it('email, sms, in-app and print have implemented administration surfaces', () => {
+    expect(getImplementedChannels().map((d) => d.channel))
+      .toEqual(['email', 'sms', 'in_app', 'print']);
   });
 
   it('exposes no provider adapters for unimplemented channels', () => {
@@ -67,11 +68,18 @@ describe('C1 — channel catalogue', () => {
     expect(d.tabs).not.toContain('identities');
   });
 
-  it('gives in-app the narrowest surface', () => {
+  it('gives in-app the full surface minus the endpoint and Test Centre tabs', () => {
+    // The internal in-app adapter now ships, so the channel is administered
+    // like any other. It has no remote endpoint and no external provider
+    // credential, so those two tabs stay out.
     expect(getChannelDescriptor('in_app').tabs).toEqual([
       'overview',
+      'providers',
+      'accounts',
+      'identities',
+      'bindings',
       'policies',
-      'test-centre',
+      'release-control',
       'diagnostics',
     ]);
   });

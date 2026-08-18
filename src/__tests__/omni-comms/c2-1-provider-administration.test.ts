@@ -43,8 +43,10 @@ describe('C2.1 — adapter catalogue', () => {
     expect(adapterDeliveryImplemented('twilio')).toBe(true);
     // Print artefact production is internal but genuinely deployed.
     expect(adapterDeliveryImplemented('print_spool')).toBe(true);
+    // The internal in-app adapter is deployed too.
+    expect(adapterDeliveryImplemented('internal_in_app')).toBe(true);
     expect(OMNI_COMMS_PROVIDER_ADAPTERS.filter((a) => a.deliveryImplemented))
-      .toHaveLength(3);
+      .toHaveLength(4);
 
     expect(NO_DELIVERY_ADAPTER_MESSAGE).toMatch(/no delivery adapter is installed/i);
   });
@@ -122,7 +124,7 @@ describe('C2.1 — Providers tab', () => {
     expect(CHANNEL_WORKSPACE_TAB_LABELS.providers).toBe('Providers');
     expect(getChannelDescriptor('email').tabs).toContain('providers');
     expect(getChannelDescriptor('sms').tabs).toContain('providers');
-    expect(getChannelDescriptor('in_app').tabs).not.toContain('providers');
+    expect(getChannelDescriptor('in_app').tabs).toContain('providers');
   });
 
   it('never requests a credential value and cannot send', () => {

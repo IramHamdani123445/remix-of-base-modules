@@ -173,10 +173,13 @@ export const OMNI_COMMS_PROVIDER_ADAPTERS: readonly ProviderAdapterDescriptor[] 
     adapterKey: 'internal_in_app',
     label: 'Internal in-app delivery',
     channel: 'in_app',
-    deliveryImplemented: false,
+    // Internal production adapter: the portal notification inbox is the
+    // "provider", so there is no external credential and nothing to verify.
+    deliveryImplemented: true,
     verificationImplemented: false,
     credentials: [],
-    notes: 'Registration only — the in-app surface is delivered in build C9.',
+    notes:
+      'Internal production — notifications are projected into the recipient portal inbox exactly once per message. No external credential is required, so nothing needs verifying.',
   },
   {
     adapterKey: 'print_spool',

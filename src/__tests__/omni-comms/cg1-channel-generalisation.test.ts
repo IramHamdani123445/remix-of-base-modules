@@ -125,10 +125,13 @@ describe('CG1 — approved per-channel workflow', () => {
     expect(getChannelDescriptor('push').tabs).not.toContain('identities');
   });
 
-  it('In-App keeps its narrow surface', () => {
+  it('In-App gains full administration now its internal adapter ships', () => {
     const tabs = getChannelDescriptor('in_app').tabs;
-    expect(tabs).not.toContain('accounts');
-    expect(tabs).not.toContain('bindings');
+    expect(tabs).toContain('accounts');
+    expect(tabs).toContain('bindings');
+    // No remote endpoint and no external provider credential to test.
+    expect(tabs).not.toContain('endpoints');
+    expect(tabs).not.toContain('test-centre');
   });
 
   it('Print gains full provider administration now its adapter ships', () => {

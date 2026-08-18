@@ -183,6 +183,16 @@ const PRINT_NO_EXTERNAL_PROVIDER =
   + 'provider credential or delivery callback to test; production is proved '
   + 'by the archived PDF in the print queue.';
 
+const IN_APP_NO_EXTERNAL_PROVIDER =
+  'In-App is delivered by the internal portal adapter. There is no external '
+  + 'provider credential or delivery callback to test; delivery is proved by '
+  + 'the notification appearing in the recipient inbox.';
+
+const IN_APP_NO_ENDPOINT =
+  'In-App has no remote endpoint: the destination is the recipient portal '
+  + 'inbox resolved from their application user account.';
+
+
 const PUSH_IDENTITY_REASON =
   'Push targets registered device tokens. Sender identities are not part of '
   + 'the canonical Push product model.';
@@ -289,20 +299,23 @@ const SEEDS: readonly CatalogueSeed[] = [
     description: 'Messages surfaced inside the product notification centre.',
     kind: 'inbound_surface',
     chunk: 'C9',
-    implemented: false,
+    implemented: true,
     databaseSupported: true,
     capabilities: matrix({
-      providers: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
-      accounts: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
-      identities: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
-      endpoints: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
-      bindings: cap(true, false, NOT_IN_PRODUCT_WORKFLOW),
+      providers: cap(true, true),
+      accounts: cap(true, true),
+      identities: cap(true, true),
+      endpoints: cap(true, false, IN_APP_NO_ENDPOINT),
+      bindings: cap(true, true),
       policies: cap(true, true),
-      'release-control': cap(false, false, RELEASE_CONTROL_EMAIL_ONLY),
-      'test-centre': cap(true, true),
+      'release-control': cap(true, true),
+      // The shared Test Centre proves an EXTERNAL provider credential and a
+      // delivery callback. The internal in-app adapter has neither: the proof
+      // is the notification appearing in the recipient's own inbox.
+      'test-centre': cap(true, false, IN_APP_NO_EXTERNAL_PROVIDER),
       diagnostics: cap(true, true),
     }),
-    reservedProviders: [],
+    reservedProviders: ['internal_in_app'],
   },
   {
     channel: 'webhook',

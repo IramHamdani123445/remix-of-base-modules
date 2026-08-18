@@ -75804,6 +75804,8 @@ export type Database = {
       }
       in_app_notifications: {
         Row: {
+          acted_at: string | null
+          action_label: string | null
           body: string
           created_at: string | null
           id: string
@@ -75812,13 +75814,18 @@ export type Database = {
           metadata: Json | null
           module: string | null
           notification_type: string | null
+          omni_comms_message_id: string | null
+          omni_comms_request_id: string | null
           priority: string | null
           read_at: string | null
           related_record_id: string | null
+          source: string
           title: string
           user_id: string
         }
         Insert: {
+          acted_at?: string | null
+          action_label?: string | null
           body: string
           created_at?: string | null
           id?: string
@@ -75827,13 +75834,18 @@ export type Database = {
           metadata?: Json | null
           module?: string | null
           notification_type?: string | null
+          omni_comms_message_id?: string | null
+          omni_comms_request_id?: string | null
           priority?: string | null
           read_at?: string | null
           related_record_id?: string | null
+          source?: string
           title: string
           user_id: string
         }
         Update: {
+          acted_at?: string | null
+          action_label?: string | null
           body?: string
           created_at?: string | null
           id?: string
@@ -75842,13 +75854,24 @@ export type Database = {
           metadata?: Json | null
           module?: string | null
           notification_type?: string | null
+          omni_comms_message_id?: string | null
+          omni_comms_request_id?: string | null
           priority?: string | null
           read_at?: string | null
           related_record_id?: string | null
+          source?: string
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "in_app_notifications_omni_message_fk"
+            columns: ["omni_comms_message_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_message"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inspector_activities: {
         Row: {
@@ -122829,6 +122852,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_in_app_record_engagement: {
+        Args: { p_engagement: string; p_notification_id: string }
+        Returns: boolean
+      }
       omni_comms_list_producer_event_bindings: {
         Args: {
           p_department_id?: string
@@ -123762,6 +123789,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_dispatch_deliver_in_app: {
+        Args: {
+          p_batch_limit?: number
+          p_correlation_id?: string
+          p_worker?: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_dispatch_operator_scopes: {
         Args: { p_actor: string }
         Returns: Json
@@ -124502,6 +124537,10 @@ export type Database = {
           p_organization_id: string
         }
         Returns: undefined
+      }
+      omni_comms_priv_resolve_in_app_user: {
+        Args: { p_recipient_id: string }
+        Returns: string
       }
       omni_comms_priv_resolve_managed_secret: {
         Args: { p_secret_ref: string }
