@@ -67,11 +67,15 @@ export const OMNI_COMMS_EVENT_TABS = [
   'producers',
 ] as const;
 
+/**
+ * Templates are administered through the business catalogue. Versions,
+ * preview and assembly are no longer primary tabs — version history lives
+ * inside a channel, preview belongs to the channel editor, and assembly is
+ * surfaced only as "Preview final communication".
+ */
 export const OMNI_COMMS_TEMPLATE_TABS = [
-  'library',
-  'versions',
-  'preview',
-  'assembly',
+  'catalogue',
+  'flat',
 ] as const;
 
 export type OmniCommsChannelTab = (typeof OMNI_COMMS_CHANNEL_TABS)[number];
