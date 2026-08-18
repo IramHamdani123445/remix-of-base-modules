@@ -12,9 +12,14 @@ DECLARE
   v_dup_route int;
   v_dup_name int;
   v_expected_children text[] := ARRAY[
-    'omni_comms_overview','omni_comms_operations','omni_comms_events',
-    'omni_comms_templates','omni_comms_channels','omni_comms_preferences',
-    'omni_comms_health'
+    'omni_comms_operate_group','omni_comms_configure_group',
+    'omni_comms_stationery','omni_comms_setup_group'
+  ];
+  v_expected_leaves text[] := ARRAY[
+    'omni_comms_overview','omni_comms_control_center','omni_comms_operations',
+    'omni_comms_channels','omni_comms_events','omni_comms_templates',
+    'omni_comms_branding_defaults','omni_comms_stationery_letterheads',
+    'omni_comms_setup','omni_comms_health'
   ];
   v_expected_actions text[] := ARRAY[
     'view','operate','configure','author_templates',
@@ -30,15 +35,15 @@ BEGIN
     RAISE EXCEPTION 'Duplicate omni_comms root';
   END IF;
 
-  -- 2. exactly seven children, all enabled+visible, correct routes
+  -- 2. exactly four groups directly under the root, all enabled+visible
   SELECT count(*) INTO v_child_count
     FROM public.app_modules
    WHERE parent_id = v_root_id
      AND name = ANY(v_expected_children)
      AND is_enabled = true
      AND show_in_menu = true;
-  IF v_child_count <> 7 THEN
-    RAISE EXCEPTION 'Expected 7 enabled+visible children, found %', v_child_count;
+  IF v_child_count <> 4 THEN
+    RAISE EXCEPTION 'Expected 4 enabled+visible menu groups, found %', v_child_count;
   END IF;
 
   FOREACH v_missing IN ARRAY v_expected_children LOOP
@@ -46,9 +51,24 @@ BEGIN
       SELECT 1 FROM public.app_modules
        WHERE name = v_missing AND parent_id = v_root_id
     ) THEN
-      RAISE EXCEPTION 'Missing child menu row: %', v_missing;
+      RAISE EXCEPTION 'Missing menu group row: %', v_missing;
     END IF;
   END LOOP;
+
+  -- 2b. every advertised leaf hangs under one of those groups
+  FOREACH v_missing IN ARRAY v_expected_leaves LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM public.app_modules c
+        JOIN public.app_modules g ON g.id = c.parent_id
+       WHERE c.name = v_missing
+         AND g.parent_id = v_root_id
+         AND c.is_enabled = true
+         AND c.show_in_menu = true
+    ) THEN
+      RAISE EXCEPTION 'Missing or unattached menu leaf: %', v_missing;
+    END IF;
+  END LOOP;
+
 
   -- 3. no duplicate child names / routes
   SELECT count(*) INTO v_dup_name FROM (
@@ -58,7 +78,8 @@ BEGIN
   IF v_dup_name > 0 THEN RAISE EXCEPTION 'Duplicate child names present'; END IF;
 
   SELECT count(*) INTO v_dup_route FROM (
-    SELECT route FROM public.app_modules WHERE parent_id=v_root_id
+    SELECT route FROM public.app_modules
+     WHERE parent_id=v_root_id AND route IS NOT NULL
     GROUP BY route HAVING count(*) > 1
   ) x;
   IF v_dup_route > 0 THEN RAISE EXCEPTION 'Duplicate child routes present'; END IF;
