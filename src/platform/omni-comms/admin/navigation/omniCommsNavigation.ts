@@ -20,6 +20,7 @@ export const OMNI_COMMS_ROUTES = {
   channels: R('/channels'),
   events: R('/events'),
   templates: R('/templates'),
+  brandingDefaults: R('/branding/defaults'),
   stationeryLetterheads: R('/stationery/letterheads'),
   stationeryEmailLayouts: R('/stationery/email-layouts'),
   stationeryMedia: R('/stationery/media'),
@@ -73,6 +74,9 @@ export function resolveOverviewView(raw: string | null | undefined): OmniCommsOv
 
 /** Stationery sections, previously a second tab strip, now real routes. */
 export const OMNI_COMMS_STATIONERY_SECTION_ROUTES: Readonly<Record<string, string>> = {
+  defaults: OMNI_COMMS_ROUTES.brandingDefaults,
+  'defaults-overrides': OMNI_COMMS_ROUTES.brandingDefaults,
+  branding: OMNI_COMMS_ROUTES.brandingDefaults,
   letterheads: OMNI_COMMS_ROUTES.stationeryLetterheads,
   'email-layouts': OMNI_COMMS_ROUTES.stationeryEmailLayouts,
   email: OMNI_COMMS_ROUTES.stationeryEmailLayouts,
@@ -219,8 +223,15 @@ export const OMNI_COMMS_NAV_GROUPS: readonly OmniCommsNavGroup[] = [
   },
   {
     id: 'stationery',
-    label: 'Stationery',
+    label: 'Branding & Layouts',
     items: [
+      item(
+        'branding-defaults',
+        'Defaults & overrides',
+        OMNI_COMMS_ROUTES.brandingDefaults,
+        'stationery',
+        'Which layout and shared assets apply per module, department and event, with the inherited source of every value.',
+      ),
       item(
         'stationery-letterheads',
         'Letterheads',
