@@ -1689,15 +1689,16 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         <VersionCreateDialog
           open={versionCreate}
           onClose={() => setVersionCreate(false)}
-          onSaved={() => reloadVersions(selectedFamilyId)}
+          onSaved={async () => { await reloadVersions(selectedFamilyId); await reloadCatalogue(); }}
           familyId={selectedFamilyId}
           nextVersionNumber={nextVersionNumber}
+          presetChannel={workspaceAction ? workspaceChannel : null}
         />
       )}
       <PublishDialog
         state={publishState}
         onClose={() => setPublishState({ open: false, version: null, hasExistingPublished: false })}
-        onPublished={() => { void reloadVersions(selectedFamilyId); }}
+        onPublished={() => { void reloadVersions(selectedFamilyId); void reloadCatalogue(); }}
       />
       <ReasonDialog
         state={reasonDialog}
@@ -1715,6 +1716,37 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         family={quickPreviewFamily}
         onClose={() => setQuickPreviewFamily(null)}
       />
+
+      {/* Preview belongs to the channel being authored, not a global tab. */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Preview</DialogTitle>
+            <DialogDescription>
+              Rendered with a synthetic payload — no live recipient data.
+            </DialogDescription>
+          </DialogHeader>
+          <PreviewTab version={selectedVersion} canViewSensitive={canViewSensitive} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Assembly is internal: administrators only see its result. */}
+      <Dialog open={finalPreviewOpen} onOpenChange={setFinalPreviewOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Preview final communication</DialogTitle>
+            <DialogDescription>
+              Template, resolved presentation and shared assets combined exactly
+              as the recipient would receive them.
+            </DialogDescription>
+          </DialogHeader>
+          <OmniCommsAssemblyTab
+            organizationId={organizationId}
+            departments={departments}
+            families={families}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
     </TooltipProvider>
   );
