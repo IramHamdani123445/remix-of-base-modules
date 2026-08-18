@@ -94,6 +94,11 @@ import {
 } from "@/platform/omni-comms/domain/templateBusinessCatalogue";
 import TemplateBusinessCatalogueView from "./templates/TemplateBusinessCatalogue";
 import TemplateChannelWorkspace from "./templates/TemplateChannelWorkspace";
+import TemplateAuthoringWorkspace from "./templates/TemplateAuthoringWorkspace";
+import TemplatePreviewPanel from "./templates/TemplatePreviewPanel";
+import { OmniCommsPreviewShell } from "../components/OmniCommsPreviewShell";
+import { createNextTemplateDraft } from "@/platform/omni-comms/application/templateDraftService";
+import { editAffordanceFor } from "@/platform/omni-comms/domain/templateAuthoring";
 import { OmniCommsLayoutSelectionDialog } from "../components/OmniCommsLayoutSelectionDialog";
 import {
   describeLayoutSelection,
@@ -375,23 +380,20 @@ const FamilyEditor: React.FC<{
   );
 };
 
-// ─── Version create dialog ───────────────────────────────────────────────────
+// ─── Add channel content dialog (no manual version numbers) ─────────────────
 const VersionCreateDialog: React.FC<{
   open: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  /** Receives the draft allocated by the server so the editor can open it. */
+  onCreated: (versionId: string) => void | Promise<void>;
   familyId: string;
-  nextVersionNumber: number;
   /** Preselected channel when opened from the channel workspace. */
   presetChannel?: TemplateChannel | null;
-}> = ({ open, onClose, onSaved, familyId, nextVersionNumber, presetChannel }) => {
+}> = ({ open, onClose, onCreated, familyId, presetChannel }) => {
   const client = useOmniCommsRpcClient();
   const [busy, setBusy] = React.useState(false);
   const [channel, setChannel] = React.useState<TemplateChannel>(presetChannel ?? "email");
   const [locale, setLocale] = React.useState("en-US");
-  const [versionNumber, setVersionNumber] = React.useState(nextVersionNumber);
-  const [contentText, setContentText] = React.useState('{\n  "subject": "Hello {{name}}",\n  "text": "Welcome!"\n}');
-  React.useEffect(() => { if (open) setVersionNumber(nextVersionNumber); }, [open, nextVersionNumber]);
   // The administrator already chose the channel by clicking it — never ask again.
   React.useEffect(() => {
     if (open && presetChannel) setChannel(presetChannel);
@@ -399,38 +401,27 @@ const VersionCreateDialog: React.FC<{
 
   return (
     <Dialog open={open} onOpenChange={(o) => !busy && !o && onClose()}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>New template version</DialogTitle>
-          <DialogDescription>Draft content per the channel's allowed keys.</DialogDescription>
+          <DialogTitle>Add channel content</DialogTitle>
+          <DialogDescription>
+            A draft is created for this channel and locale. The version number is
+            allocated by the server — you never choose it.
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <Label>Channel</Label>
-              <Select value={channel} onValueChange={(v) => setChannel(v as TemplateChannel)}>
-                <SelectTrigger data-testid="version-channel"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {TEMPLATE_CHANNELS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Locale</Label>
-              <Input value={locale} onChange={(e) => setLocale(e.target.value)} placeholder="en-US" data-testid="version-locale" />
-            </div>
-            <div>
-              <Label>Version #</Label>
-              <Input type="number" min={1} value={versionNumber}
-                onChange={(e) => setVersionNumber(parseInt(e.target.value || "1", 10))} data-testid="version-number" />
-            </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Channel</Label>
+            <Select value={channel} onValueChange={(v) => setChannel(v as TemplateChannel)}>
+              <SelectTrigger data-testid="version-channel"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {TEMPLATE_CHANNELS.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div>
-            <Label>Content (JSON)</Label>
-            <Textarea value={contentText} onChange={(e) => setContentText(e.target.value)} rows={10} className="font-mono text-xs" data-testid="version-content" />
-            <p className="text-xs text-muted-foreground mt-1">
-              Allowed keys for {channel}: {TEMPLATE_CHANNEL_KEYS[channel].allowed.join(", ")}. Required: {TEMPLATE_CHANNEL_KEYS[channel].required.join(", ") || "—"}
-            </p>
+            <Label>Locale</Label>
+            <Input value={locale} onChange={(e) => setLocale(e.target.value)} placeholder="en-US" data-testid="version-locale" />
           </div>
         </div>
         <DialogFooter>
@@ -441,21 +432,19 @@ const VersionCreateDialog: React.FC<{
             onClick={async () => {
               setBusy(true);
               try {
-                const parsed = JSON.parse(contentText);
-                if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-                  throw new Error("Content must be a JSON object");
-                }
-                await svc.createTemplateVersion(client, {
+                const res = await createNextTemplateDraft(client, {
                   templateFamilyId: familyId, channel, locale,
-                  versionNumber, content: parsed as Record<string, string>,
                 });
-                toast.success("Version drafted");
-                onSaved(); onClose();
+                toast.success(res.reused_existing_draft
+                  ? `Opened existing draft v${res.version_number}`
+                  : `Draft v${res.version_number} created`);
+                await onCreated(res.id);
+                onClose();
               } catch (e) { toastError(e); }
               finally { setBusy(false); }
             }}
           >
-            {busy && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Create draft
+            {busy && <Loader2 className="h-4 w-4 animate-spin mr-2" />}Open editor
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -733,14 +722,14 @@ const QuickPreviewDialog: React.FC<{
   const htmlKeys = current ? TEMPLATE_CHANNEL_KEYS[current.channel].html : [];
 
   return (
-    <Dialog open={family !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" data-testid="quick-preview-dialog">
-        <DialogHeader>
-          <DialogTitle className="font-mono text-base">{family?.code}</DialogTitle>
-          <DialogDescription>
-            {family?.name} — rendered with placeholder values. Nothing is sent or saved.
-          </DialogDescription>
-        </DialogHeader>
+    <OmniCommsPreviewShell
+      open={family !== null}
+      onOpenChange={(o) => !o && onClose()}
+      title={<span className="font-mono text-base">{family?.code}</span>}
+      description={`${family?.name ?? ""} — rendered with placeholder values. Nothing is sent or saved.`}
+      testId="quick-preview-dialog"
+    >
+      <div className="min-w-0 space-y-3">
 
         {versionRows.length > 1 && (
           <Select
@@ -784,114 +773,8 @@ const QuickPreviewDialog: React.FC<{
             )}
           </div>
         ))}
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-// ─── Preview tab ─────────────────────────────────────────────────────────────
-const PreviewTab: React.FC<{
-  version: TemplateVersionGetResult | null;
-  canViewSensitive: boolean;
-}> = ({ version, canViewSensitive }) => {
-  // Synthetic payload lives ONLY in component state — never persisted,
-  // never sent to telemetry, never placed in a query cache.
-  const [payloadText, setPayloadText] = React.useState("{}");
-  const [showSource, setShowSource] = React.useState(false);
-  const [rendered, setRendered] = React.useState<{ ok: true; fields: Record<string, string> } | { ok: false; error: string } | null>(null);
-
-  // Seed the payload from the template's own tokens so the preview renders
-  // immediately instead of failing on the first unsupplied token.
-  React.useEffect(() => {
-    if (!version) return;
-    setPayloadText(JSON.stringify(buildSamplePayload(version.content), null, 2));
-  }, [version]);
-
-  React.useEffect(() => {
-    if (!version) { setRendered(null); return; }
-    try {
-      const payload = JSON.parse(payloadText);
-      const out = renderTemplate(version.channel, version.content, payload);
-      setRendered({ ok: true, fields: out.fields });
-    } catch (e) {
-      setRendered({ ok: false, error: (e as Error).message });
-    }
-  }, [payloadText, version]);
-
-
-  if (!version) {
-    return (
-      <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">
-        Select a version from the Versions tab to preview it.
-      </CardContent></Card>
-    );
-  }
-
-  const htmlKeys = TEMPLATE_CHANNEL_KEYS[version.channel].html;
-
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Synthetic payload</CardTitle>
-          <CardDescription className="text-xs">
-            Never persisted. Held only in this browser tab.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Textarea
-            value={payloadText}
-            onChange={(e) => setPayloadText(e.target.value)}
-            rows={16}
-            className="font-mono text-xs"
-            data-testid="preview-payload"
-          />
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="show-source"
-              checked={showSource}
-              onCheckedChange={(c) => setShowSource(c === true)}
-            />
-            <Label htmlFor="show-source" className="text-xs cursor-pointer">
-              Show escaped HTML source
-            </Label>
-          </div>
-          {!canViewSensitive && (
-            <p className="text-xs text-muted-foreground">
-              Payload is local-only. Rendered output may include synthetic values.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Rendered output</CardTitle>
-          <CardDescription className="text-xs">
-            {version.channel} · {version.locale} · v{version.version_number}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {rendered?.ok === false && (
-            <Alert variant="destructive"><AlertDescription>{rendered.error}</AlertDescription></Alert>
-          )}
-          {rendered?.ok && Object.entries(rendered.fields).map(([field, value]) => {
-            const isHtml = htmlKeys.includes(field);
-            return (
-              <div key={field}>
-                <div className="text-xs font-semibold uppercase text-muted-foreground mb-1">{field}</div>
-                {isHtml && !showSource ? (
-                  <OmniCommsSandboxedPreview html={value} title={`${field} preview`} testId={`preview-iframe-${field}`} />
-                ) : (
-                  <pre className="text-xs whitespace-pre-wrap break-all bg-muted p-2 rounded" data-testid={`preview-source-${field}`}>
-                    {isHtml && showSource ? escapeHtmlForDisplay(value) : value}
-                  </pre>
-                )}
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-    </div>
+      </div>
+    </OmniCommsPreviewShell>
   );
 };
 
@@ -1011,6 +894,8 @@ export const OmniCommsTemplatesPage: React.FC = () => {
 
   const [familyEditor, setFamilyEditor] = React.useState<FamilyEditorState>({ open: false, mode: "create" });
   const [versionCreate, setVersionCreate] = React.useState(false);
+  const [editingVersion, setEditingVersion] = React.useState<TemplateVersionGetResult | null>(null);
+  const [savingDraft, setSavingDraft] = React.useState(false);
   const [publishState, setPublishState] = React.useState<PublishDialogState>({ open: false, version: null, hasExistingPublished: false });
   const [reasonDialog, setReasonDialog] = React.useState<ReasonDialogState>(CLOSED_REASON);
   const [layoutDialogVersion, setLayoutDialogVersion] =
@@ -1138,6 +1023,61 @@ export const OmniCommsTemplatesPage: React.FC = () => {
     setSelectedVersion(null);
   }, [selectedFamilyId, reloadSelectedFamily, reloadVersions]);
 
+  /** Open one version for authoring, honouring its lifecycle. */
+  const openVersionForEditing = React.useCallback(async (
+    versionId: string,
+    status: TemplateVersionStatus,
+    channel: TemplateChannel,
+    locale: string,
+  ) => {
+    try {
+      const affordance = editAffordanceFor(status);
+      let targetId = versionId;
+      if (affordance.kind === "new_draft_from_published" && selectedFamilyId) {
+        const draft = await createNextTemplateDraft(client, {
+          templateFamilyId: selectedFamilyId, channel, locale,
+        });
+        targetId = draft.id;
+        toast.success(draft.reused_existing_draft
+          ? `Opened existing draft v${draft.version_number}`
+          : `Draft v${draft.version_number} created from v${draft.source_version_id ? "published" : "scratch"}`);
+        await reloadVersions(selectedFamilyId);
+      }
+      setEditingVersion(await svc.getTemplateVersion(client, targetId));
+    } catch (e) { toastError(e); }
+  }, [client, selectedFamilyId, reloadVersions]);
+
+  /** Primary "Edit <channel>" action — the server allocates or reuses the draft. */
+  const startChannelEditing = React.useCallback(async (
+    channel: TemplateChannel, locale: string,
+  ) => {
+    if (!selectedFamilyId) return;
+    try {
+      const draft = await createNextTemplateDraft(client, {
+        templateFamilyId: selectedFamilyId, channel, locale,
+      });
+      setEditingVersion(await svc.getTemplateVersion(client, draft.id));
+      await reloadVersions(selectedFamilyId);
+      await reloadCatalogue();
+    } catch (e) { toastError(e); }
+  }, [client, selectedFamilyId, reloadVersions, reloadCatalogue]);
+
+  const saveEditingDraft = React.useCallback(async (content: Record<string, string>) => {
+    if (!editingVersion) return;
+    setSavingDraft(true);
+    try {
+      await svc.updateTemplateVersion(client, {
+        id: editingVersion.id,
+        content,
+        expectedUpdatedAt: editingVersion.updated_at,
+      });
+      setEditingVersion(await svc.getTemplateVersion(client, editingVersion.id));
+      await reloadVersions(selectedFamilyId);
+      toast.success("Draft saved");
+    } catch (e) { toastError(e); }
+    finally { setSavingDraft(false); }
+  }, [client, editingVersion, reloadVersions, selectedFamilyId]);
+
   if (!canView) {
     return (
       <Card>
@@ -1150,7 +1090,6 @@ export const OmniCommsTemplatesPage: React.FC = () => {
     );
   }
 
-  const nextVersionNumber = versions.reduce((m, v) => Math.max(m, v.version_number), 0) + 1;
 
   // Sorting + paging are applied to the loaded, filtered result set.
   const familyPageSlice = paginate(
@@ -1323,7 +1262,19 @@ export const OmniCommsTemplatesPage: React.FC = () => {
             </Button>
           </div>
 
-          {workspaceAction && (
+          {workspaceAction && editingVersion && (
+            <TemplateAuthoringWorkspace
+              contextTrail={[workspaceEventName ?? "", workspaceAction.name]}
+              version={editingVersion}
+              canAuthor={canAuthor}
+              saving={savingDraft}
+              onSave={saveEditingDraft}
+              onClose={() => setEditingVersion(null)}
+              onConfigureLayout={() => void openLayoutDialog(editingVersion.id)}
+            />
+          )}
+
+          {workspaceAction && !editingVersion && (
             <TemplateChannelWorkspace
               action={workspaceAction}
               eventName={workspaceEventName}
@@ -1334,7 +1285,8 @@ export const OmniCommsTemplatesPage: React.FC = () => {
               onClose={() => { setWorkspaceAction(null); setSelectedFamilyId(null); }}
               canAuthor={canAuthor}
               canApprove={canApprove}
-              onCreateDraft={(c) => { setWorkspaceChannel(c); setVersionCreate(true); }}
+              onStartEditing={(c, l) => { setWorkspaceChannel(c); void startChannelEditing(c, l); }}
+              onEditVersion={(v) => { void openVersionForEditing(v.id, v.status, v.channel, v.locale); }}
               onPreviewVersion={async (id) => {
                 try {
                   const full = await svc.getTemplateVersion(client, id);
@@ -1701,9 +1653,13 @@ export const OmniCommsTemplatesPage: React.FC = () => {
         <VersionCreateDialog
           open={versionCreate}
           onClose={() => setVersionCreate(false)}
-          onSaved={async () => { await reloadVersions(selectedFamilyId); await reloadCatalogue(); }}
+          onCreated={async (versionId) => {
+            await reloadVersions(selectedFamilyId);
+            await reloadCatalogue();
+            try { setEditingVersion(await svc.getTemplateVersion(client, versionId)); }
+            catch (e) { toastError(e); }
+          }}
           familyId={selectedFamilyId}
-          nextVersionNumber={nextVersionNumber}
           presetChannel={workspaceAction ? workspaceChannel : null}
         />
       )}
@@ -1730,17 +1686,26 @@ export const OmniCommsTemplatesPage: React.FC = () => {
       />
 
       {/* Preview belongs to the channel being authored, not a global tab. */}
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Preview</DialogTitle>
-            <DialogDescription>
-              Rendered with a synthetic payload — no live recipient data.
-            </DialogDescription>
-          </DialogHeader>
-          <PreviewTab version={selectedVersion} canViewSensitive={canViewSensitive} />
-        </DialogContent>
-      </Dialog>
+      <OmniCommsPreviewShell
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title="Preview"
+        description="Rendered with a synthetic payload — no live recipient data."
+        testId="template-preview-shell"
+      >
+        {selectedVersion ? (
+          <TemplatePreviewPanel
+            channel={selectedVersion.channel}
+            content={selectedVersion.content}
+            caption={`${selectedVersion.channel} · ${selectedVersion.locale} · v${selectedVersion.version_number}`}
+            testId="version-preview-panel"
+          />
+        ) : (
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            Select a version to preview it.
+          </p>
+        )}
+      </OmniCommsPreviewShell>
 
       {/* Assembly is internal: administrators only see its result. */}
       <Dialog open={finalPreviewOpen} onOpenChange={setFinalPreviewOpen}>

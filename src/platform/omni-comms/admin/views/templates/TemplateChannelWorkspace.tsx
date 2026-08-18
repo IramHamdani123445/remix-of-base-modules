@@ -18,8 +18,15 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Archive, CheckCircle2, Eye, LayoutTemplate, Loader2, Plus, Upload, X,
+  Archive, CheckCircle2, Eye, LayoutTemplate, Loader2, Pencil, Plus, Upload, X,
 } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  editAffordanceFor,
+  localesForChannel,
+} from "@/platform/omni-comms/domain/templateAuthoring";
 import { cn } from "@/lib/utils";
 import type {
   TemplateChannel,
@@ -45,7 +52,10 @@ export interface TemplateChannelWorkspaceProps {
   onClose: () => void;
   canAuthor: boolean;
   canApprove: boolean;
-  onCreateDraft: (channel: TemplateChannel) => void;
+  /** Start (or resume) authoring for this channel + locale — server allocates the draft. */
+  onStartEditing: (channel: TemplateChannel, locale: string) => void;
+  /** Open one specific version: draft → edit, published → next draft, otherwise read-only. */
+  onEditVersion: (version: TemplateVersionListItem) => void;
   onPreviewVersion: (versionId: string) => void;
   onConfigureLayout: (versionId: string) => void;
   onApproveVersion: (versionId: string) => void;
@@ -56,10 +66,17 @@ export interface TemplateChannelWorkspaceProps {
 
 export const TemplateChannelWorkspace: React.FC<TemplateChannelWorkspaceProps> = ({
   action, eventName, versions, loading, channel, onSelectChannel, onClose,
-  canAuthor, canApprove, onCreateDraft, onPreviewVersion, onConfigureLayout,
+  canAuthor, canApprove, onStartEditing, onEditVersion, onPreviewVersion, onConfigureLayout,
   onApproveVersion, onPublishVersion, onRetireVersion, onPreviewFinal,
 }) => {
-  const forChannel = versions.filter((v) => v.channel === channel);
+  const locales = localesForChannel(versions, channel);
+  const [locale, setLocale] = React.useState<string>(locales[0] ?? "en-US");
+  React.useEffect(() => {
+    setLocale((cur) => (locales.includes(cur) ? cur : locales[0] ?? "en-US"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel, locales.join("|")]);
+
+  const forChannel = versions.filter((v) => v.channel === channel && v.locale === locale);
   const current = forChannel.find((v) => v.status === "published") ?? null;
   const approved = forChannel.filter((v) => v.status === "approved");
   const drafts = forChannel.filter((v) => v.status === "draft");
@@ -123,16 +140,27 @@ export const TemplateChannelWorkspace: React.FC<TemplateChannelWorkspaceProps> =
           >
             <Eye className="mr-1 h-4 w-4" />Preview final {CHANNEL_LABEL[channel]}
           </Button>
+          {locales.length > 1 && (
+            <Select value={locale} onValueChange={setLocale}>
+              <SelectTrigger className="h-8 w-28" aria-label="Locale" data-testid="workspace-locale">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {locales.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
           <Button
             size="sm"
             disabled={!canAuthor}
-            onClick={() => onCreateDraft(channel)}
+            onClick={() => onStartEditing(channel, locale)}
             data-testid={`workspace-create-${channel}`}
           >
-            <Plus className="mr-1 h-4 w-4" />
             {forChannel.length === 0
-              ? `Create ${CHANNEL_LABEL[channel]}`
-              : `New ${CHANNEL_LABEL[channel]} draft`}
+              ? <><Plus className="mr-1 h-4 w-4" />Create {CHANNEL_LABEL[channel]} content</>
+              : drafts.length > 0
+                ? <><Pencil className="mr-1 h-4 w-4" />Continue editing draft</>
+                : <><Pencil className="mr-1 h-4 w-4" />Edit {CHANNEL_LABEL[channel]} content</>}
           </Button>
         </div>
 
@@ -187,7 +215,22 @@ export const TemplateChannelWorkspace: React.FC<TemplateChannelWorkspaceProps> =
                       {new Date(v.updated_at).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex flex-wrap justify-end gap-1">
+                        {(() => {
+                          const aff = editAffordanceFor(v.status);
+                          return (
+                            <Button
+                              variant={aff.kind === "read_only" ? "ghost" : "outline"}
+                              size="sm"
+                              disabled={aff.kind !== "read_only" && !canAuthor}
+                              onClick={() => onEditVersion(v)}
+                              title={aff.kind === "read_only" ? aff.reason : undefined}
+                              data-testid={`workspace-edit-${v.id}`}
+                            >
+                              <Pencil className="mr-1 h-3.5 w-3.5" />{aff.label}
+                            </Button>
+                          );
+                        })()}
                         <Button variant="ghost" size="icon" aria-label="Preview"
                           onClick={() => onPreviewVersion(v.id)}
                           data-testid={`workspace-preview-${v.id}`}>
