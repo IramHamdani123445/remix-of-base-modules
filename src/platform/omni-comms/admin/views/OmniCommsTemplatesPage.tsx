@@ -1236,16 +1236,145 @@ export const OmniCommsTemplatesPage: React.FC = () => {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="library" data-testid="tab-library">Library</TabsTrigger>
-          <TabsTrigger value="versions" data-testid="tab-versions" disabled={!selectedFamilyId}>
-            Versions{selectedFamily ? ` · ${selectedFamily.code}` : ""}
+          <TabsTrigger value="catalogue" data-testid="tab-catalogue">
+            Business catalogue
           </TabsTrigger>
-          <TabsTrigger value="preview" data-testid="tab-preview" disabled={!selectedVersion}>Preview</TabsTrigger>
-          <TabsTrigger value="assembly" data-testid="tab-assembly">Assembly</TabsTrigger>
+          <TabsTrigger value="flat" data-testid="tab-flat">
+            Technical (flat) view
+          </TabsTrigger>
         </TabsList>
 
-        {/* ── Library ── */}
-        <TabsContent value="library" className="space-y-3">
+        {/* ── Business catalogue: module → object → event → action → channels ── */}
+        <TabsContent value="catalogue" className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search events, actions or codes…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="max-w-xs"
+              data-testid="catalogue-search"
+            />
+            <Select value={moduleFilter} onValueChange={(v) => { setModuleFilter(v); setObjectFilter("all"); }}>
+              <SelectTrigger className="w-44" data-testid="catalogue-module-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All modules</SelectItem>
+                {moduleOptions(catalogue).map((m) => (
+                  <SelectItem key={m.code} value={m.code}>{m.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={objectFilter} onValueChange={setObjectFilter}>
+              <SelectTrigger className="w-48" data-testid="catalogue-object-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All business objects</SelectItem>
+                {businessObjectOptions(catalogue, moduleFilter === "all" ? null : moduleFilter).map((b) => (
+                  <SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="w-36" data-testid="catalogue-channel-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All channels</SelectItem>
+                {CATALOGUE_CHANNEL_ORDER.map((c) => (
+                  <SelectItem key={c} value={c}>{CHANNEL_LABEL[c]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={completeness} onValueChange={(v) => setCompleteness(v as CompletenessFilter)}>
+              <SelectTrigger className="w-40" data-testid="catalogue-completeness-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any completeness</SelectItem>
+                <SelectItem value="configured">Configured</SelectItem>
+                <SelectItem value="missing">Missing</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={scopeFilter} onValueChange={(v) => setScopeFilter(v as typeof scopeFilter)}>
+              <SelectTrigger className="w-40" data-testid="catalogue-scope-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All scopes</SelectItem>
+                <SelectItem value="organization">Organisation</SelectItem>
+                <SelectItem value="department">Department</SelectItem>
+                <SelectItem value="event">Event</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="icon" onClick={() => reloadCatalogue()} data-testid="reload-catalogue">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <div className="flex-1" />
+            <Button
+              disabled={!canConfigure}
+              onClick={() => setFamilyEditor({ open: true, mode: "create" })}
+              data-testid="new-family-catalogue"
+            >
+              <Plus className="mr-1 h-4 w-4" />New communication action
+            </Button>
+          </div>
+
+          {workspaceAction && (
+            <TemplateChannelWorkspace
+              action={workspaceAction}
+              eventName={workspaceEventName}
+              versions={versions}
+              loading={versionsLoading}
+              channel={workspaceChannel}
+              onSelectChannel={setWorkspaceChannel}
+              onClose={() => { setWorkspaceAction(null); setSelectedFamilyId(null); }}
+              canAuthor={canAuthor}
+              canApprove={canApprove}
+              onCreateDraft={(c) => { setWorkspaceChannel(c); setVersionCreate(true); }}
+              onPreviewVersion={async (id) => {
+                try {
+                  const full = await svc.getTemplateVersion(client, id);
+                  setSelectedVersion(full); setPreviewOpen(true);
+                } catch (e) { toastError(e); }
+              }}
+              onConfigureLayout={(id) => void openLayoutDialog(id)}
+              onApproveVersion={(id) => startApproval(id)}
+              onPublishVersion={(id) => void openPublishDialog(id)}
+              onRetireVersion={(id) => setReasonDialog({
+                open: true, required: true,
+                title: "Retire version",
+                description: "Retirement is permanent; reason required.",
+                submitLabel: "Retire",
+                onSubmit: async (reason) => {
+                  await svc.retireTemplateVersion(client, { id, reason });
+                  toast.success("Retired");
+                  await reloadVersions(selectedFamilyId);
+                  await reloadCatalogue();
+                },
+              })}
+              onPreviewFinal={() => setFinalPreviewOpen(true)}
+            />
+          )}
+
+          <TemplateBusinessCatalogueView
+            catalogue={filterCatalogue(catalogue, {
+              search,
+              moduleCode: moduleFilter === "all" ? null : moduleFilter,
+              businessObjectCode: objectFilter === "all" ? null : objectFilter,
+              channel: channelFilter === "all" ? null : (channelFilter as TemplateChannel),
+              scopeType: scopeFilter === "all" ? null : scopeFilter,
+              status: statusFilter === "all" ? null : statusFilter,
+              completeness,
+            })}
+            loading={catalogueLoading}
+            onOpenChannel={(action, channel) => {
+              setWorkspaceAction(action);
+              setWorkspaceChannel(channel);
+              setWorkspaceEventName(
+                catalogue.modules
+                  .flatMap((m) => m.business_objects)
+                  .flatMap((b) => b.events)
+                  .find((ev) => ev.actions.some((a) => a.id === action.id))?.name ?? null,
+              );
+              setSelectedFamilyId(action.id);
+            }}
+          />
+        </TabsContent>
+
+        {/* ── Technical / flat view (engineering & support) ── */}
+        <TabsContent value="flat" className="space-y-3">
           <div className="flex items-center gap-2">
             <Input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
