@@ -216,6 +216,7 @@ export interface ListEventDefinitionsInput {
   status?: 'draft' | 'active' | 'suspended' | 'retired' | null;
   moduleCode?: string | null;
   search?: string | null;
+  businessObjectCode?: string | null;
 }
 
 export function listEventDefinitions(
