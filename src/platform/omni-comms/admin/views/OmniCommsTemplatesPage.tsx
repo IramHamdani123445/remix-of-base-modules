@@ -55,6 +55,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { createCommunicationAction } from "@/platform/omni-comms/application/businessCatalogueAdminService";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -257,17 +258,24 @@ const FamilyEditor: React.FC<{
     <Dialog open={state.open} onOpenChange={(o) => !busy && !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit template family" : "New template family"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit template family" : "New communication action"}</DialogTitle>
           <DialogDescription>
             {isEdit
               ? "Update the name or description. Scope, code and ownership are immutable."
-              : "Families are created in draft. Activate them once ready."}
+              : "A communication action is one business communication. It owns every channel template and keeps its identity across scope overrides."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
             <Label>Code</Label>
-            <Input value={code} disabled={isEdit} onChange={(e) => setCode(e.target.value)} placeholder="benefits.approval_notice" data-testid="family-code" />
+            <Input
+              value={code}
+              disabled={isEdit}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="CLAIM_APPROVAL_NOTICE"
+              className="font-mono"
+              data-testid="family-code"
+            />
           </div>
           <div>
             <Label>Name</Label>
@@ -340,14 +348,18 @@ const FamilyEditor: React.FC<{
                   });
                   toast.success("Family updated");
                 } else {
-                  await svc.createTemplateFamily(client, {
-                    code: code.trim(), name: name.trim(),
+                  // Governed identity: the action owns its channel templates
+                  // and survives department/organisation overrides.
+                  await createCommunicationAction(client, {
+                    organizationId,
+                    code: code.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "_"),
+                    name: name.trim(),
                     description: description.trim() || null,
-                    scopeType, organizationId,
+                    scopeType,
                     departmentId: scopeType === "department" ? departmentId : null,
                     eventDefinitionId: scopeType === "event" ? eventDefinitionId : null,
                   });
-                  toast.success("Family created");
+                  toast.success("Communication action created");
                 }
                 onSaved();
                 onClose();
