@@ -1006,6 +1006,22 @@ export const OmniCommsTemplatesPage: React.FC = () => {
   const [versionPage, setVersionPage] = React.useState(1);
   const [versionPageSize, setVersionPageSize] = React.useState(25);
 
+  // ── Business catalogue (module → object → event → action → channels) ──
+  const [catalogue, setCatalogue] = React.useState<TemplateBusinessCatalogue>({
+    modules: [], shared: [],
+  });
+  const [catalogueLoading, setCatalogueLoading] = React.useState(false);
+  const [moduleFilter, setModuleFilter] = React.useState<string>("all");
+  const [objectFilter, setObjectFilter] = React.useState<string>("all");
+  const [channelFilter, setChannelFilter] = React.useState<string>("all");
+  const [completeness, setCompleteness] = React.useState<CompletenessFilter>("all");
+  const [workspaceAction, setWorkspaceAction] = React.useState<CatalogueAction | null>(null);
+  const [workspaceEventName, setWorkspaceEventName] = React.useState<string | null>(null);
+  const [workspaceChannel, setWorkspaceChannel] = React.useState<TemplateChannel>("email");
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [finalPreviewOpen, setFinalPreviewOpen] = React.useState(false);
+
+
 
   // ── Load the event catalogue once ──
   React.useEffect(() => {
