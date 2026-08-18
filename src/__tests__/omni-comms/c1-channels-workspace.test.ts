@@ -82,7 +82,9 @@ describe('C1 — channel catalogue', () => {
     }
     expect(getChannelUi('sms').implementationState).toBe('configuring');
     expect(getChannelUi('print').implementationState).toBe('configuring');
-    for (const code of ['whatsapp', 'push', 'in_app'] as const) {
+    // In-App now has a deployed internal adapter.
+    expect(getChannelUi('in_app').implementationState).toBe('configuring');
+    for (const code of ['whatsapp', 'push'] as const) {
       const d = getChannelUi(code);
       expect(d.implementationState).toBe('not_configured');
       expect(d.databaseSupported).toBe(true);

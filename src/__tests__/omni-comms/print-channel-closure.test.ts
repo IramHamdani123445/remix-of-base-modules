@@ -55,8 +55,8 @@ describe('print channel — credential-free semantics', () => {
   it('does not treat credential-bearing adapters as credential-free', () => {
     expect(adapterCredentialFree('resend')).toBe(false);
     expect(adapterCredentialFree('twilio')).toBe(false);
-    // Not deployed, so it must never be treated as ready.
-    expect(adapterCredentialFree('internal_in_app')).toBe(false);
+    // Internal in-app delivery is deployed and genuinely credential-free.
+    expect(adapterCredentialFree('internal_in_app')).toBe(true);
   });
 
   it('labels and treats a credential-free account as complete', () => {
