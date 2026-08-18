@@ -1517,10 +1517,9 @@ export const OmniCommsTemplatesPage: React.FC = () => {
             />
           </Card>
           <ScopeResolutionCard organizationId={organizationId} departments={departments} events={events} />
-        </TabsContent>
 
-        {/* ── Versions ── */}
-        <TabsContent value="versions" className="space-y-3">
+          {/* Channel-agnostic version table — engineering/support only. */}
+          <div className="space-y-3">
           {selectedFamily && (
             <div className="flex items-center justify-between">
               <div>
