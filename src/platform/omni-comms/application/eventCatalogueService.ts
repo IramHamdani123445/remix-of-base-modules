@@ -67,6 +67,10 @@ export interface CreateEventDefinitionInput {
     | 'operational'
     | 'marketing';
   defaultPriority?: 'low' | 'normal' | 'high' | 'urgent';
+  /** Governed business object classification (defaults to entityType). */
+  businessObjectCode?: string | null;
+  /** Ordering of this event inside its business object. */
+  displayOrder?: number | null;
   correlationId?: string | null;
 }
 
@@ -83,6 +87,8 @@ export function createEventDefinition(
     p_communication_class: input.communicationClass,
     p_default_priority: input.defaultPriority ?? 'normal',
     p_correlation_id: input.correlationId ?? null,
+    p_business_object_code: input.businessObjectCode ?? input.entityType,
+    p_display_order: input.displayOrder ?? null,
   });
 }
 
@@ -106,6 +112,8 @@ export function updateEventDefinitionDraft(
     p_communication_class: input.communicationClass,
     p_default_priority: input.defaultPriority ?? 'normal',
     p_correlation_id: input.correlationId ?? null,
+    p_business_object_code: input.businessObjectCode ?? input.entityType,
+    p_display_order: input.displayOrder ?? null,
   });
 }
 
@@ -220,6 +228,7 @@ export function listEventDefinitions(
     p_status: input.status ?? null,
     p_module_code: input.moduleCode ?? null,
     p_search: input.search ?? null,
+    p_business_object_code: input.businessObjectCode ?? null,
   });
 }
 
