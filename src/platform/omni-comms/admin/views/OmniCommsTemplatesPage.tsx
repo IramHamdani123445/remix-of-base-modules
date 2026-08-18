@@ -1088,6 +1088,20 @@ export const OmniCommsTemplatesPage: React.FC = () => {
 
   React.useEffect(() => { void reloadFamilies(); }, [reloadFamilies]);
 
+  // ── Load the governed business catalogue ──
+  const reloadCatalogue = React.useCallback(async () => {
+    if (!canView) return;
+    setCatalogueLoading(true);
+    try {
+      const c = await getTemplateBusinessCatalogue(client, organizationId || null);
+      setCatalogue({ modules: c.modules ?? [], shared: c.shared ?? [] });
+    } catch (e) { toastError(e); }
+    finally { setCatalogueLoading(false); }
+  }, [client, canView, organizationId]);
+
+  React.useEffect(() => { void reloadCatalogue(); }, [reloadCatalogue]);
+
+
   const reloadSelectedFamily = React.useCallback(async (id: string | null) => {
     if (!id) { setSelectedFamily(null); return; }
     try {
