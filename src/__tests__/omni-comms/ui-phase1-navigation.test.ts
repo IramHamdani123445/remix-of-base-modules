@@ -244,8 +244,11 @@ describe('UI Phase 1 — shell composition', () => {
     expect(src).toContain('SheetContent');
   });
 
-  it('preserves scope on every module navigation link', () => {
-    expect(read(HEADER)).toContain('mergeOmniCommsHref(item.href, location.search)');
+  it('does not duplicate destination links in the header', () => {
+    // Destination links now live only in the left menu; the header states
+    // the current location, so it must not build route hrefs at all.
+    expect(read(HEADER)).not.toContain('mergeOmniCommsHref');
+    expect(read(HEADER)).toContain('omni-comms-nav-breadcrumb');
   });
 
   it('keeps exactly the seven permanent routes', () => {
