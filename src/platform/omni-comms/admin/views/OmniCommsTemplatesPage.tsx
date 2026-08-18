@@ -1674,16 +1674,7 @@ export const OmniCommsTemplatesPage: React.FC = () => {
               </AlertDescription>
             </Alert>
           )}
-        </TabsContent>
-
-        {/* ── Preview ── */}
-        <TabsContent value="preview">
-          <PreviewTab version={selectedVersion} canViewSensitive={canViewSensitive} />
-        </TabsContent>
-
-        {/* ── Assembly (Build 1 shared assets) ── */}
-        <TabsContent value="assembly">
-          <OmniCommsAssemblyTab organizationId={organizationId} departments={departments} families={families} />
+          </div>
         </TabsContent>
       </Tabs>
 
