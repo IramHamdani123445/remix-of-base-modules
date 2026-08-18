@@ -124933,6 +124933,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_template_business_catalogue: {
+        Args: { p_organization_id?: string }
+        Returns: Json
+      }
       omni_comms_template_family_activate: {
         Args: { p_correlation_id: string; p_id: string; p_reason: string }
         Returns: Json
