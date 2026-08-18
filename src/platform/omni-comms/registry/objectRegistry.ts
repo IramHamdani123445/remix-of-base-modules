@@ -415,6 +415,16 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Benefits Live — Product Definition communications',
   },
   {
+    name: 'omni_comms_presentation_assignment_audit',
+    category: 'events_and_content',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Append-only history of branding and layout assignment changes: which layout or shared asset was set, removed or replaced, at which scope (organisation, module, department x module, module x event, department x module x event), by whom and with the previous value. Presentation configuration only — never message content.',
+    status: 'AVAILABLE',
+    introductionStory: 'Enterprise template, branding and inheritance consolidation',
+  },
+  {
     name: 'omni_comms_business_event_outbox',
     category: 'runtime',
     epic: 6,
