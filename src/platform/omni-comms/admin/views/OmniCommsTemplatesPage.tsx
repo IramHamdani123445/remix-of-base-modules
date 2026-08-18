@@ -357,14 +357,20 @@ const VersionCreateDialog: React.FC<{
   onSaved: () => void;
   familyId: string;
   nextVersionNumber: number;
-}> = ({ open, onClose, onSaved, familyId, nextVersionNumber }) => {
+  /** Preselected channel when opened from the channel workspace. */
+  presetChannel?: TemplateChannel | null;
+}> = ({ open, onClose, onSaved, familyId, nextVersionNumber, presetChannel }) => {
   const client = useOmniCommsRpcClient();
   const [busy, setBusy] = React.useState(false);
-  const [channel, setChannel] = React.useState<TemplateChannel>("email");
+  const [channel, setChannel] = React.useState<TemplateChannel>(presetChannel ?? "email");
   const [locale, setLocale] = React.useState("en-US");
   const [versionNumber, setVersionNumber] = React.useState(nextVersionNumber);
   const [contentText, setContentText] = React.useState('{\n  "subject": "Hello {{name}}",\n  "text": "Welcome!"\n}');
   React.useEffect(() => { if (open) setVersionNumber(nextVersionNumber); }, [open, nextVersionNumber]);
+  // The administrator already chose the channel by clicking it — never ask again.
+  React.useEffect(() => {
+    if (open && presetChannel) setChannel(presetChannel);
+  }, [open, presetChannel]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !busy && !o && onClose()}>
