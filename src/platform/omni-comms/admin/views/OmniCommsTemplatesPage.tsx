@@ -80,6 +80,19 @@ import {
   type SortState,
 } from "./templateTableUtils";
 import { OmniCommsAssemblyTab } from "./OmniCommsAssemblyTab";
+import { getTemplateBusinessCatalogue } from "@/platform/omni-comms/application/businessTemplateCatalogueService";
+import {
+  filterCatalogue,
+  moduleOptions,
+  businessObjectOptions,
+  CATALOGUE_CHANNEL_ORDER,
+  CHANNEL_LABEL,
+  type CatalogueAction,
+  type CompletenessFilter,
+  type TemplateBusinessCatalogue,
+} from "@/platform/omni-comms/domain/templateBusinessCatalogue";
+import TemplateBusinessCatalogueView from "./templates/TemplateBusinessCatalogue";
+import TemplateChannelWorkspace from "./templates/TemplateChannelWorkspace";
 import { OmniCommsLayoutSelectionDialog } from "../components/OmniCommsLayoutSelectionDialog";
 import {
   describeLayoutSelection,
