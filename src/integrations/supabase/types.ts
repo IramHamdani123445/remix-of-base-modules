@@ -58135,8 +58135,10 @@ export type Database = {
           created_at: string
           created_by: string | null
           department_id: string | null
+          event_code: string | null
           id: string
           layout_id: string | null
+          module_code: string | null
           organization_id: string
           output_channel: string
           slot_code: string | null
@@ -58149,8 +58151,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           department_id?: string | null
+          event_code?: string | null
           id?: string
           layout_id?: string | null
+          module_code?: string | null
           organization_id: string
           output_channel: string
           slot_code?: string | null
@@ -58163,8 +58167,10 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           department_id?: string | null
+          event_code?: string | null
           id?: string
           layout_id?: string | null
+          module_code?: string | null
           organization_id?: string
           output_channel?: string
           slot_code?: string | null
@@ -95841,6 +95847,60 @@ export type Database = {
           },
         ]
       }
+      omni_comms_presentation_assignment_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          assignment_id: string | null
+          assignment_kind: string
+          created_at: string
+          department_id: string | null
+          event_code: string | null
+          id: string
+          module_code: string | null
+          new_value: Json | null
+          organization_id: string
+          output_channel: string
+          previous_value: Json | null
+          scope_level: string
+          slot_code: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          assignment_id?: string | null
+          assignment_kind: string
+          created_at?: string
+          department_id?: string | null
+          event_code?: string | null
+          id?: string
+          module_code?: string | null
+          new_value?: Json | null
+          organization_id: string
+          output_channel: string
+          previous_value?: Json | null
+          scope_level: string
+          slot_code?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          assignment_id?: string | null
+          assignment_kind?: string
+          created_at?: string
+          department_id?: string | null
+          event_code?: string | null
+          id?: string
+          module_code?: string | null
+          new_value?: Json | null
+          organization_id?: string
+          output_channel?: string
+          previous_value?: Json | null
+          scope_level?: string
+          slot_code?: string | null
+        }
+        Relationships: []
+      }
       omni_comms_print_attempt: {
         Row: {
           attempt_number: number
@@ -121826,6 +121886,44 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_assignment_history: {
+        Args: {
+          p_limit?: number
+          p_organization_id: string
+          p_output_channel?: string
+        }
+        Returns: Json
+      }
+      omni_comms_assignment_list_scoped: {
+        Args: { p_organization_id: string; p_output_channel?: string }
+        Returns: Json
+      }
+      omni_comms_assignment_reset_scoped: {
+        Args: {
+          p_assignment_kind: string
+          p_department_id?: string
+          p_event_code?: string
+          p_module_code?: string
+          p_organization_id: string
+          p_output_channel: string
+          p_slot_code?: string
+        }
+        Returns: boolean
+      }
+      omni_comms_assignment_upsert_scoped: {
+        Args: {
+          p_asset_id?: string
+          p_assignment_kind: string
+          p_department_id?: string
+          p_event_code?: string
+          p_layout_id?: string
+          p_module_code?: string
+          p_organization_id: string
+          p_output_channel: string
+          p_slot_code?: string
+        }
+        Returns: string
+      }
       omni_comms_automation_cron_evidence: {
         Args: { p_jobname: string }
         Returns: string
@@ -124367,6 +124465,14 @@ export type Database = {
         Args: { p_purpose?: string }
         Returns: string
       }
+      omni_comms_priv_scope_level: {
+        Args: {
+          p_department_id: string
+          p_event_code: string
+          p_module_code: string
+        }
+        Returns: string
+      }
       omni_comms_priv_scope_permitted: {
         Args: {
           p_actor: string
@@ -124374,6 +124480,14 @@ export type Database = {
           p_organization_id: string
         }
         Returns: Json
+      }
+      omni_comms_priv_scope_rank: {
+        Args: {
+          p_department_id: string
+          p_event_code: string
+          p_module_code: string
+        }
+        Returns: number
       }
       omni_comms_priv_send_communication: {
         Args: {
@@ -124671,9 +124785,30 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: Json
       }
+      omni_comms_resolve_presentation: {
+        Args: {
+          p_department_id?: string
+          p_event_code?: string
+          p_module_code?: string
+          p_organization_id: string
+          p_output_channel: string
+          p_pinned_layout_id?: string
+        }
+        Returns: Json
+      }
       omni_comms_resolve_render_manifest: {
         Args: {
           p_department_id?: string
+          p_organization_id: string
+          p_template_version_id: string
+        }
+        Returns: Json
+      }
+      omni_comms_resolve_render_manifest_scoped: {
+        Args: {
+          p_department_id?: string
+          p_event_code?: string
+          p_module_code?: string
           p_organization_id: string
           p_template_version_id: string
         }
