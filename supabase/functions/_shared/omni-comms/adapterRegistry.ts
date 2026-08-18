@@ -58,6 +58,20 @@ export const OMNI_COMMS_ADAPTERS: readonly OmniCommsAdapterDescriptor[] = [
     usesSendingDomain: false,
   },
   {
+    // Internal production channel: the recipient portal inbox is the
+    // "provider", so no external credential exists and no secret reference is
+    // ever accepted. Delivery is a governed, exactly-once projection.
+    channel: "in_app",
+    adapterKey: "internal_in_app",
+    label: "Internal in-app delivery",
+    deliveryImplemented: true,
+    verificationImplemented: false,
+    requiredCredentialPurposes: [],
+    optionalCredentialPurposes: [],
+    secretRefPattern: /^(?!)/,
+    usesSendingDomain: false,
+  },
+  {
     // Internal production channel: the artefact store is the "provider", so no
     // external credential exists and no secret reference is ever accepted.
     channel: "print",

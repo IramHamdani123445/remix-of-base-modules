@@ -21,7 +21,8 @@ export const TEMPLATE_CHANNEL_KEYS: Record<TemplateChannel, {
 }> = {
   email:    { allowed: ['subject','html','text','preheader'], required: ['subject'],       html: ['html'] },
   sms:      { allowed: ['body'],                             required: ['body'],           html: [] },
-  in_app:   { allowed: ['title','body'],                     required: ['title','body'],   html: [] },
+  in_app:   { allowed: ['title','body','severity','category','action_label','action_url'],
+                                                             required: ['title','body'],   html: [] },
   push:     { allowed: ['title','body'],                     required: ['title','body'],   html: [] },
   whatsapp: { allowed: ['body'],                             required: ['body'],           html: [] },
   print:    { allowed: ['subject','html','text'],            required: ['subject'],        html: ['html'] },

@@ -84,13 +84,46 @@ export const CHANNEL_AUTHORING: Record<TemplateChannel, ChannelAuthoringSpec> = 
   },
   in_app: {
     title: "In-app notification",
-    description: "Notification shown inside the portal.",
+    description:
+      "Notification delivered to the recipient's portal inbox, with an optional in-product action.",
     fields: [
-      { key: "title", label: "Title", kind: "text", required: true },
-      { key: "body", label: "Body", kind: "textarea", required: true },
+      { key: "title", label: "Title", kind: "text", required: true, placeholder: "Claim {{claim.reference}} approved" },
+      { key: "body", label: "Message", kind: "textarea", required: true },
+      {
+        key: "severity",
+        label: "Severity",
+        kind: "text",
+        required: false,
+        help: "info, success, warning or critical. Defaults to info.",
+        placeholder: "info",
+      },
+      {
+        key: "category",
+        label: "Category",
+        kind: "text",
+        required: false,
+        help: "Optional grouping label shown in the notification centre.",
+      },
+      {
+        key: "action_label",
+        label: "Action button label",
+        kind: "text",
+        required: false,
+        help: "Shown only when an action link is supplied.",
+        placeholder: "Open claim",
+      },
+      {
+        key: "action_url",
+        label: "Action link",
+        kind: "text",
+        required: false,
+        help: "Must be an in-product path such as /benefits/claims/{{claim.id}}. External links are refused.",
+        placeholder: "/benefits/claims/{{claim.id}}",
+      },
     ],
     presentationNotes: [
-      "Severity, icon, actions and deep link come from the in-app presentation profile.",
+      "Icon and colour are derived from the severity you choose.",
+      "The action link always stays inside the portal; external destinations are rejected on save.",
     ],
   },
   push: {
