@@ -21,6 +21,8 @@ export interface EventDefinitionRow {
   code: string;
   module_code: string;
   entity_type: string;
+  business_object_code: string;
+  display_order: number;
   name: string;
   description: string | null;
   communication_class: CommunicationClass;
@@ -37,6 +39,8 @@ export interface EventDefinitionListItem {
   code: string;
   module_code: string;
   entity_type: string;
+  business_object_code: string;
+  display_order: number;
   name: string;
   communication_class: CommunicationClass;
   default_priority: EventPriority;

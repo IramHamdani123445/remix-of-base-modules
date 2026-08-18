@@ -93876,29 +93876,41 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          created_by: string | null
+          description: string | null
           display_order: number
           id: string
           module_code: string
           name: string
+          status: string
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           code: string
           created_at?: string
+          created_by?: string | null
+          description?: string | null
           display_order?: number
           id?: string
           module_code: string
           name: string
+          status?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           code?: string
           created_at?: string
+          created_by?: string | null
+          description?: string | null
           display_order?: number
           id?: string
           module_code?: string
           name?: string
+          status?: string
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -94779,7 +94791,7 @@ export type Database = {
           created_by: string | null
           department_id: string | null
           description: string | null
-          event_definition_id: string
+          event_definition_id: string | null
           id: string
           legal_basis: string | null
           name: string
@@ -94799,7 +94811,7 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           description?: string | null
-          event_definition_id: string
+          event_definition_id?: string | null
           id?: string
           legal_basis?: string | null
           name: string
@@ -94819,7 +94831,7 @@ export type Database = {
           created_by?: string | null
           department_id?: string | null
           description?: string | null
-          event_definition_id?: string
+          event_definition_id?: string | null
           id?: string
           legal_basis?: string | null
           name?: string
@@ -97696,6 +97708,7 @@ export type Database = {
           activated_at: string | null
           activated_by: string | null
           code: string
+          communication_action_id: string | null
           created_at: string
           created_by: string | null
           department_id: string | null
@@ -97717,6 +97730,7 @@ export type Database = {
           activated_at?: string | null
           activated_by?: string | null
           code: string
+          communication_action_id?: string | null
           created_at?: string
           created_by?: string | null
           department_id?: string | null
@@ -97738,6 +97752,7 @@ export type Database = {
           activated_at?: string | null
           activated_by?: string | null
           code?: string
+          communication_action_id?: string | null
           created_at?: string
           created_by?: string | null
           department_id?: string | null
@@ -97756,6 +97771,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "omni_comms_template_family_communication_action_id_fkey"
+            columns: ["communication_action_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_communication_action"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "omni_comms_template_family_department_id_fkey"
             columns: ["department_id"]
@@ -122022,6 +122044,32 @@ export type Database = {
         Returns: Json
       }
       omni_comms_business_event_outbox_health: { Args: never; Returns: Json }
+      omni_comms_business_object_create: {
+        Args: {
+          p_code: string
+          p_correlation_id?: string
+          p_description?: string
+          p_display_order?: number
+          p_module_code: string
+          p_name: string
+        }
+        Returns: Json
+      }
+      omni_comms_business_object_list: {
+        Args: { p_include_retired?: boolean; p_module_code?: string }
+        Returns: Json
+      }
+      omni_comms_business_object_update: {
+        Args: {
+          p_correlation_id?: string
+          p_description?: string
+          p_display_order?: number
+          p_id: string
+          p_name?: string
+          p_status?: string
+        }
+        Returns: Json
+      }
       omni_comms_channel_binding_set_lifecycle: {
         Args: {
           p_action: string
@@ -122365,6 +122413,28 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_communication_action_add_scope: {
+        Args: {
+          p_communication_action_id: string
+          p_correlation_id?: string
+          p_department_id?: string
+          p_scope_type: string
+        }
+        Returns: Json
+      }
+      omni_comms_communication_action_create: {
+        Args: {
+          p_code: string
+          p_correlation_id?: string
+          p_department_id?: string
+          p_description?: string
+          p_event_definition_id?: string
+          p_name: string
+          p_organization_id: string
+          p_scope_type?: string
+        }
+        Returns: Json
+      }
       omni_comms_communication_action_list: {
         Args: {
           p_department_id?: string
@@ -122600,11 +122670,13 @@ export type Database = {
       }
       omni_comms_event_definition_create: {
         Args: {
+          p_business_object_code?: string
           p_code: string
           p_communication_class: string
           p_correlation_id: string
           p_default_priority: string
           p_description: string
+          p_display_order?: number
           p_entity_type: string
           p_module_code: string
           p_name: string
@@ -122631,6 +122703,7 @@ export type Database = {
       }
       omni_comms_event_definition_list: {
         Args: {
+          p_business_object_code?: string
           p_limit: number
           p_module_code: string
           p_offset: number
@@ -122638,9 +122711,11 @@ export type Database = {
           p_status: string
         }
         Returns: {
+          business_object_code: string
           code: string
           communication_class: string
           default_priority: string
+          display_order: number
           entity_type: string
           id: string
           module_code: string
@@ -122669,11 +122744,13 @@ export type Database = {
       }
       omni_comms_event_definition_update_draft: {
         Args: {
+          p_business_object_code?: string
           p_code: string
           p_communication_class: string
           p_correlation_id: string
           p_default_priority: string
           p_description: string
+          p_display_order?: number
           p_entity_type: string
           p_expected_updated_at: string
           p_id: string

@@ -165,7 +165,7 @@ describe('Omni-Comms Templates picker pagination hotfix', () => {
     const { client, calls } = mockClient([rows(3)]);
     await svc.listEventDefinitions(client, { limit: 25, offset: 10, status: 'active' });
     expect(calls[0].args).toEqual({
-      p_limit: 25, p_offset: 10, p_status: 'active', p_module_code: null, p_search: null,
+      p_limit: 25, p_offset: 10, p_status: 'active', p_module_code: null, p_search: null, p_business_object_code: null,
     });
   });
 });
