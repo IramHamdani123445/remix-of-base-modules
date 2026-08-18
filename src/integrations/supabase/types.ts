@@ -93872,6 +93872,36 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_business_object: {
+        Row: {
+          code: string
+          created_at: string
+          display_order: number
+          id: string
+          module_code: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          module_code: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          module_code?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omni_comms_caller_module_registry: {
         Row: {
           created_at: string
@@ -95350,12 +95380,14 @@ export type Database = {
       }
       omni_comms_event_definition: {
         Row: {
+          business_object_code: string | null
           code: string
           communication_class: string
           created_at: string
           created_by: string | null
           default_priority: string
           description: string | null
+          display_order: number
           entity_type: string
           id: string
           module_code: string
@@ -95365,12 +95397,14 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          business_object_code?: string | null
           code: string
           communication_class: string
           created_at?: string
           created_by?: string | null
           default_priority?: string
           description?: string | null
+          display_order?: number
           entity_type: string
           id?: string
           module_code: string
@@ -95380,12 +95414,14 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          business_object_code?: string | null
           code?: string
           communication_class?: string
           created_at?: string
           created_by?: string | null
           default_priority?: string
           description?: string | null
+          display_order?: number
           entity_type?: string
           id?: string
           module_code?: string
