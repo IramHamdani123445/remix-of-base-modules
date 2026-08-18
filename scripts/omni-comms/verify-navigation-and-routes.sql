@@ -78,7 +78,8 @@ BEGIN
   IF v_dup_name > 0 THEN RAISE EXCEPTION 'Duplicate child names present'; END IF;
 
   SELECT count(*) INTO v_dup_route FROM (
-    SELECT route FROM public.app_modules WHERE parent_id=v_root_id
+    SELECT route FROM public.app_modules
+     WHERE parent_id=v_root_id AND route IS NOT NULL
     GROUP BY route HAVING count(*) > 1
   ) x;
   IF v_dup_route > 0 THEN RAISE EXCEPTION 'Duplicate child routes present'; END IF;
