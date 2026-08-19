@@ -85,7 +85,8 @@ describe('C1 — channel catalogue', () => {
     expect(getChannelUi('in_app').implementationState).toBe('configuring');
     for (const code of ['push'] as const) {
       const d = getChannelUi(code);
-      expect(d.implementationState).toBe('not_configured');
+      // A real FCM adapter is deployed, so Push is configurable too.
+      expect(d.implementationState).toBe('configuring');
       expect(d.databaseSupported).toBe(true);
     }
     expect(validateChannelUiCatalogue()).toEqual([]);
