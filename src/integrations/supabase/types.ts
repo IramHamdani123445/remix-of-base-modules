@@ -97853,12 +97853,15 @@ export type Database = {
           created_by: string | null
           id: string
           last_checked_at: string | null
+          last_reconciled_at: string | null
           organization_id: string
           provider_account_id: string
           provider_category: string
+          provider_evidence: Json
           provider_language: string
           provider_status: string
           provider_template_ref: string | null
+          reconciliation_error_code: string | null
           rejected_at: string | null
           rejection_code: string | null
           rejection_reason: string | null
@@ -97867,6 +97870,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           variable_mapping: Json
+          verification_mode: string
         }
         Insert: {
           adapter_key: string
@@ -97875,12 +97879,15 @@ export type Database = {
           created_by?: string | null
           id?: string
           last_checked_at?: string | null
+          last_reconciled_at?: string | null
           organization_id: string
           provider_account_id: string
           provider_category?: string
+          provider_evidence?: Json
           provider_language?: string
           provider_status?: string
           provider_template_ref?: string | null
+          reconciliation_error_code?: string | null
           rejected_at?: string | null
           rejection_code?: string | null
           rejection_reason?: string | null
@@ -97889,6 +97896,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           variable_mapping?: Json
+          verification_mode?: string
         }
         Update: {
           adapter_key?: string
@@ -97897,12 +97905,15 @@ export type Database = {
           created_by?: string | null
           id?: string
           last_checked_at?: string | null
+          last_reconciled_at?: string | null
           organization_id?: string
           provider_account_id?: string
           provider_category?: string
+          provider_evidence?: Json
           provider_language?: string
           provider_status?: string
           provider_template_ref?: string | null
+          reconciliation_error_code?: string | null
           rejected_at?: string | null
           rejection_code?: string | null
           rejection_reason?: string | null
@@ -97911,6 +97922,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           variable_mapping?: Json
+          verification_mode?: string
         }
         Relationships: [
           {
@@ -124833,6 +124845,17 @@ export type Database = {
         Args: { p_account_id: string }
         Returns: undefined
       }
+      omni_comms_priv_template_provider_registration_reconcile: {
+        Args: {
+          p_correlation_id?: string
+          p_error_code?: string
+          p_id: string
+          p_provider_evidence?: Json
+          p_provider_status: string
+          p_provider_template_ref?: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_validate_binding: {
         Args: {
           p_actor_id: string
@@ -125022,6 +125045,10 @@ export type Database = {
       }
       omni_comms_provider_credential_source: {
         Args: { p_provider_account_id: string }
+        Returns: Json
+      }
+      omni_comms_provider_registration_refresh_authorize: {
+        Args: { p_id: string }
         Returns: Json
       }
       omni_comms_provider_secret_configuration: {
@@ -125224,6 +125251,14 @@ export type Database = {
         Returns: Json
       }
       omni_comms_template_provider_registration_approve: {
+        Args: {
+          p_correlation_id?: string
+          p_id: string
+          p_provider_template_ref: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_provider_registration_attest: {
         Args: {
           p_correlation_id?: string
           p_id: string

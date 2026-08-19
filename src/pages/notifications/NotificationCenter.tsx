@@ -19,6 +19,16 @@ import { formatDistanceToNow } from 'date-fns';
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseAuth } from "@/contexts/SupabaseAuthContext";
+import { useNavigate } from 'react-router-dom';
+import { useInAppNotificationRpcClient } from "@/platform/omni-comms/admin/hooks/useInAppNotificationRpcClient";
+import {
+  isOmniCommsNotification,
+  isSafeInternalActionUrl,
+  markAllOmniUnread,
+  recordEngagement,
+  recordEngagementBulk,
+  splitBySource,
+} from "@/platform/omni-comms/application/inAppNotificationService";
 
 interface NotificationItem {
   id: string;
@@ -29,6 +39,9 @@ interface NotificationItem {
   is_read: boolean;
   read_at: string | null;
   created_at: string;
+  source?: string | null;
+  action_label?: string | null;
+  metadata?: Record<string, unknown> | null;
 }
 
 export default function NotificationCenter() {
@@ -38,6 +51,8 @@ export default function NotificationCenter() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedNotifications, setSelectedNotifications] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const rpcClient = useInAppNotificationRpcClient();
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['in-app-notifications', user?.id],
@@ -99,8 +114,22 @@ export default function NotificationCenter() {
     };
   }, [user?.id, queryClient]);
 
+  /**
+   * Omni-Comms notifications are mutated only through the governed engagement
+   * RPCs (auth.uid() scoped, idempotent, evidence-producing). Legacy rows keep
+   * a clearly separated compatibility path; the two are never merged into one
+   * database update.
+   */
   const markAsRead = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (input: string | { id: string; engagement: 'read' | 'action' }) => {
+      const id = typeof input === 'string' ? input : input.id;
+      const engagement = typeof input === 'string' ? 'read' : input.engagement;
+      const target = notifications.find((n) => n.id === id);
+
+      if (isOmniCommsNotification(target)) {
+        await recordEngagement(rpcClient, id, engagement);
+        return;
+      }
       const { error } = await supabase
         .from('in_app_notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
@@ -111,28 +140,75 @@ export default function NotificationCenter() {
       queryClient.invalidateQueries({ queryKey: ['in-app-notifications', user?.id] });
       toast({ title: "Success", description: "Notification marked as read" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update notification", variant: "destructive" });
+    onError: (error: unknown) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update notification",
+        variant: "destructive",
+      });
     },
   });
 
   const markBulkAsRead = useMutation({
     mutationFn: async (ids: string[]) => {
-      const { error } = await supabase
-        .from('in_app_notifications')
-        .update({ is_read: true, read_at: new Date().toISOString() })
-        .in('id', ids);
-      if (error) throw error;
+      const selected = notifications.filter((n) => ids.includes(n.id));
+      const { omni, legacy } = splitBySource(selected);
+
+      if (omni.length > 0) {
+        await recordEngagementBulk(rpcClient, omni.map((n) => n.id));
+      }
+      if (legacy.length > 0) {
+        const { error } = await supabase
+          .from('in_app_notifications')
+          .update({ is_read: true, read_at: new Date().toISOString() })
+          .in('id', legacy.map((n) => n.id));
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['in-app-notifications', user?.id] });
       setSelectedNotifications(new Set());
-      toast({ title: "Success", description: `${selectedNotifications.size} notifications marked as read` });
+      toast({ title: "Success", description: "Selected notifications marked as read" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update notifications", variant: "destructive" });
+    onError: (error: unknown) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update notifications",
+        variant: "destructive",
+      });
     },
   });
+
+  const markAllAsRead = useMutation({
+    mutationFn: async () => {
+      const unread = notifications.filter((n) => !n.is_read);
+      const { omni, legacy } = splitBySource(unread);
+
+      if (omni.length > 0) await markAllOmniUnread(rpcClient);
+      if (legacy.length > 0) {
+        const { error } = await supabase
+          .from('in_app_notifications')
+          .update({ is_read: true, read_at: new Date().toISOString() })
+          .in('id', legacy.map((n) => n.id));
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['in-app-notifications', user?.id] });
+      toast({ title: "Success", description: "All notifications marked as read" });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to update notifications",
+        variant: "destructive",
+      });
+    },
+  });
+
+  /** Only safe internal portal routes may be opened from a notification. */
+  const openTarget = (notification: NotificationItem): string | null =>
+    isSafeInternalActionUrl(notification.link) ? (notification.link as string) : null;
 
   const filteredNotifications = notifications.filter(n => {
     const matchesSearch = searchTerm === '' ||
@@ -201,6 +277,17 @@ export default function NotificationCenter() {
                 >
                   <Check className="h-4 w-4 mr-2" />
                   Mark Selected as Read ({selectedNotifications.size})
+                </Button>
+              )}
+              {notifications.some((n) => !n.is_read) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => markAllAsRead.mutate()}
+                  disabled={markAllAsRead.isPending}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Mark All as Read
                 </Button>
               )}
             </div>
@@ -280,12 +367,18 @@ export default function NotificationCenter() {
                           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                         </span>
                         <div className="flex items-center gap-2">
-                          {notification.link && (
-                            <Button variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
-                              <a href={notification.link}>
-                                <ExternalLink className="h-3 w-3 mr-1" />
-                                View Details
-                              </a>
+                          {openTarget(notification) && (
+                            <Button
+                              variant="link"
+                              size="sm"
+                              className="h-auto p-0 text-xs"
+                              onClick={() => {
+                                markAsRead.mutate({ id: notification.id, engagement: 'action' });
+                                navigate(openTarget(notification) as string);
+                              }}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              {notification.action_label || 'View Details'}
                             </Button>
                           )}
                           {!notification.is_read && (

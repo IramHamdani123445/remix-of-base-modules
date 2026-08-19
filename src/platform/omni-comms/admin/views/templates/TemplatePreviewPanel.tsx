@@ -16,6 +16,7 @@ import {
 } from "@/platform/omni-comms/application/templateCatalogueTypes";
 import { OmniCommsSandboxedPreview } from "../../components/OmniCommsSandboxedPreview";
 import { buildSamplePayload } from "../templateTableUtils";
+import { WhatsAppMessagePreview } from "./WhatsAppMessagePreview";
 
 function escapeHtmlForDisplay(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({
@@ -68,7 +69,13 @@ export const TemplatePreviewPanel: React.FC<TemplatePreviewPanelProps> = ({
         {rendered.ok === false && (
           <Alert variant="destructive"><AlertDescription>{rendered.error}</AlertDescription></Alert>
         )}
-        {rendered.ok && Object.entries(rendered.fields).map(([field, value]) => (
+        {rendered.ok && channel === "whatsapp" && (
+          <WhatsAppMessagePreview
+            fields={rendered.fields}
+            testId={`${testId}-whatsapp`}
+          />
+        )}
+        {rendered.ok && channel !== "whatsapp" && Object.entries(rendered.fields).map(([field, value]) => (
           <div key={field} className="min-w-0 space-y-1">
             <div className="text-xs font-semibold uppercase text-muted-foreground">{field}</div>
             {htmlKeys.includes(field) ? (
