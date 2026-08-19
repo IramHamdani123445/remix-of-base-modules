@@ -239,12 +239,13 @@ export function InAppNotificationBell() {
 
   const handlePopupClick = () => {
     if (popupNotification) {
+      const target = openTarget(popupNotification);
       markAsRead.mutate({
         id: popupNotification.id,
-        engagement: popupNotification.link ? 'action' : 'read',
+        engagement: target ? 'action' : 'read',
       });
-      if (popupNotification.link) {
-        navigate(popupNotification.link);
+      if (target) {
+        navigate(target);
       }
       dismissPopup();
     }
@@ -398,7 +399,7 @@ export function InAppNotificationBell() {
                               {severityOf(notification)}
                             </span>
                           )}
-                          {notification.link && (
+                          {openTarget(notification) && (
                             <span className="inline-flex items-center gap-1 text-xs text-primary">
                               {notification.action_label || 'Open'}
                               <ExternalLink className="h-3 w-3" />
