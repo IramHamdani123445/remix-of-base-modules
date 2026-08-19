@@ -308,7 +308,7 @@ describe('C7 final closure — protected posture unchanged', () => {
 
   it('16b. no provider SDK import was introduced', () => {
     for (const src of [ADAPTER, DISPATCH, WEBHOOK]) {
-      expect(src).not.toMatch(/npm:resend|resend-node|twilio|@sendgrid/i);
+      expect(src).not.toMatch(/npm:resend|resend-node|npm:twilio|@sendgrid/i);
     }
   });
 

@@ -37,7 +37,7 @@ describe('C1 — channel catalogue', () => {
 
   it('email, sms, in-app and print have implemented administration surfaces', () => {
     expect(getImplementedChannels().map((d) => d.channel))
-      .toEqual(['email', 'sms', 'in_app', 'print']);
+      .toEqual(['email', 'sms', 'whatsapp', 'in_app', 'print']);
   });
 
   it('exposes no provider adapters for unimplemented channels', () => {
