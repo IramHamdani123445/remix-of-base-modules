@@ -38,6 +38,9 @@ import {
   type WhatsAppClaimParseSuccess,
 } from "../_shared/omni-comms/whatsappClaim.ts";
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
+import { sendFcmPush, type PushDeviceTarget } from "../_shared/omni-comms/fcmPushAdapter.ts";
+import { sendOutboundWebhook } from "../_shared/omni-comms/outboundWebhookAdapter.ts";
+import { sendTwilioVoice } from "../_shared/omni-comms/twilioVoiceAdapter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -333,6 +336,15 @@ Deno.serve(async (req) => {
       whatsappClaim = parsed;
     }
 
+    // The claim is immutable and authoritative for every channel: the payload
+    // below only re-shapes fields the database already resolved.
+    const pushDevices: PushDeviceTarget[] = Array.isArray(claim.devices)
+      ? (claim.devices as Record<string, unknown>[]).map((d) => ({
+        token: String(d?.token ?? ""),
+        platform: String(d?.platform ?? ""),
+      })).filter((d) => d.token !== "")
+      : [];
+
     const providerPayload = claimChannel === "whatsapp"
       ? {
         from: String(claim.from_number ?? ""),
@@ -345,6 +357,37 @@ Deno.serve(async (req) => {
         contentVariables: whatsappClaim?.contentVariables ?? {},
         mediaUrl: (claim.media_url as string | null) ?? null,
         statusCallbackUrl: whatsappClaim?.statusCallbackUrl ?? null,
+      }
+      : claimChannel === "push"
+      ? {
+        title: String(claim.title ?? ""),
+        body: String(claim.body ?? ""),
+        imageUrl: (claim.image_url as string | null) ?? null,
+        actionUrl: (claim.action_url as string | null) ?? null,
+        collapseKey: (claim.collapse_key as string | null) ?? null,
+        priority: (claim.priority as string | null) ?? "high",
+        ttlSeconds: claim.ttl_seconds ?? null,
+        // Device identity is hashed into the fingerprint, never the raw token.
+        deviceCount: pushDevices.length,
+      }
+      : claimChannel === "webhook"
+      ? {
+        endpointUrl: String(claim.endpoint_url ?? ""),
+        httpMethod: String(claim.http_method ?? "POST"),
+        schemaVersion: String(claim.schema_version ?? "1.0"),
+        payload: String(claim.payload ?? ""),
+      }
+      : claimChannel === "voice"
+      ? {
+        from: String(claim.from_number ?? ""),
+        to: String(claim.recipient ?? ""),
+        script: (claim.script as string | null) ?? null,
+        audioUrl: (claim.audio_url as string | null) ?? null,
+        language: (claim.language as string | null) ?? null,
+        voiceName: (claim.voice_name as string | null) ?? null,
+        gatherDigits: (claim.gather_digits as string | null) ?? null,
+        gatherPrompt: (claim.gather_prompt as string | null) ?? null,
+        statusCallbackUrl: (claim.status_callback_url as string | null) ?? null,
       }
       : {
         fromAddress: String(claim.from_address ?? ""),
@@ -432,6 +475,74 @@ Deno.serve(async (req) => {
         });
 
       })()
+      : claimChannel === "push"
+      ? await sendFcmPush({
+        serviceAccountRef: String(claim.service_account_ref ?? ""),
+        storageMode,
+        secretResolver,
+        devices: pushDevices,
+        title: String(claim.title ?? ""),
+        body: String(claim.body ?? ""),
+        imageUrl: (claim.image_url as string | null) ?? null,
+        actionUrl: (claim.action_url as string | null) ?? null,
+        collapseKey: (claim.collapse_key as string | null) ?? null,
+        priority: (claim.priority as string | null) ?? "high",
+        ttlSeconds: claim.ttl_seconds === null || claim.ttl_seconds === undefined
+          ? null
+          : Number(claim.ttl_seconds),
+        // Deterministic: identical on every safe retry of this message.
+        idempotencyKey: String(claim.provider_idempotency_key ?? ""),
+      })
+      : claimChannel === "webhook"
+      ? await sendOutboundWebhook({
+        endpointUrl: String(claim.endpoint_url ?? ""),
+        httpMethod: String(claim.http_method ?? "POST"),
+        timeoutMs: claim.timeout_ms === null || claim.timeout_ms === undefined
+          ? null
+          : Number(claim.timeout_ms),
+        signingSecretRef: String(claim.signing_secret_ref ?? ""),
+        storageMode,
+        secretResolver,
+        customHeaders: (claim.custom_headers as Record<string, unknown> | null) ?? null,
+        eventCode: String(claim.event_code ?? ""),
+        schemaVersion: String(claim.schema_version ?? "1.0"),
+        payload: String(claim.payload ?? ""),
+        idempotencyKey: String(claim.provider_idempotency_key ?? ""),
+      })
+      : claimChannel === "voice"
+      ? await (async () => {
+        const resolved = await resolveTwilioCredentials({
+          accountSidRef: String(claim.account_sid_ref ?? ""),
+          authTokenRef: String(claim.auth_token_ref ?? ""),
+          storageMode,
+          secretResolver,
+        });
+        if (!resolved.ok) {
+          return {
+            status: "failed" as const,
+            resultCode: "configuration_invalid",
+            providerMessageId: null,
+            providerStatusCode: null,
+            providerResponse: { channel: "voice" },
+            errorCode: resolved.errorCode,
+            errorDetail: resolved.detail,
+          };
+        }
+        return await sendTwilioVoice({
+          credentials: resolved.credentials,
+          from: String(claim.from_number ?? ""),
+          to: String(claim.recipient ?? ""),
+          script: (claim.script as string | null) ?? null,
+          audioUrl: (claim.audio_url as string | null) ?? null,
+          language: (claim.language as string | null) ?? null,
+          voiceName: (claim.voice_name as string | null) ?? null,
+          gatherDigits: (claim.gather_digits as string | null) ?? null,
+          gatherPrompt: (claim.gather_prompt as string | null) ?? null,
+          // Exclusively from omni_comms_runtime_endpoint via the claim.
+          statusCallbackUrl: (claim.status_callback_url as string | null) ?? null,
+          idempotencyKey: String(claim.provider_idempotency_key ?? ""),
+        });
+      })()
       : await sendResendEmail({
         secretRef: String(claim.secret_ref ?? ""),
         ...(providerPayload as Record<string, unknown>),
@@ -443,6 +554,18 @@ Deno.serve(async (req) => {
         storageMode,
         // deno-lint-ignore no-explicit-any
       } as any);
+
+    // A device the push provider permanently rejected is retired from the
+    // governed register so it can never be targeted again.
+    const retired = (outcome as { retiredTokens?: { token: string; reason: string }[] })
+      .retiredTokens ?? [];
+    for (const entry of retired) {
+      await service.rpc("omni_comms_priv_push_device_feedback", {
+        p_device_token: entry.token,
+        p_outcome: entry.reason,
+        p_provider_code: "firebase_push",
+      });
+    }
 
     const completion = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
       p_attempt_id: attemptId,
@@ -490,6 +613,9 @@ Deno.serve(async (req) => {
     results,
     in_app: plan.in_app ?? null,
     whatsapp: plan.whatsapp ?? null,
+    push: plan.push ?? null,
+    webhook: plan.webhook ?? null,
+    voice: plan.voice ?? null,
     live_delivery_enabled: false,
     release_live_state_available: false,
   });

@@ -280,7 +280,10 @@ const SEEDS: readonly CatalogueSeed[] = [
     description: 'Mobile and web push notifications to registered devices.',
     kind: 'device',
     chunk: 'C9',
-    implemented: false,
+    // A real server-only Firebase Cloud Messaging adapter ships in
+    // `_shared/omni-comms/fcmPushAdapter.ts`, targeting the governed device
+    // register and retiring tokens the provider permanently rejects.
+    implemented: true,
     databaseSupported: true,
     capabilities: matrix({
       providers: cap(true, true),
@@ -291,11 +294,12 @@ const SEEDS: readonly CatalogueSeed[] = [
       endpoints: cap(false, false, NO_SCHEMA),
       bindings: cap(true, true),
       policies: cap(true, true),
-      'release-control': cap(false, false, RELEASE_CONTROL_EMAIL_ONLY),
+      // Release Control is channel-generic; Push has a deployed adapter.
+      'release-control': cap(true, true),
       'test-centre': cap(true, true),
       diagnostics: cap(true, true),
     }),
-    reservedProviders: [],
+    reservedProviders: ['firebase_push'],
   },
   {
     channel: 'in_app',
@@ -327,10 +331,28 @@ const SEEDS: readonly CatalogueSeed[] = [
     description: 'Machine-to-machine delivery to a configured remote endpoint.',
     kind: 'endpoint',
     chunk: 'C10',
-    implemented: false,
-    databaseSupported: false,
-    capabilities: plannedMatrix(),
-    reservedProviders: [],
+    // A real server-only signed outbound adapter ships in
+    // `_shared/omni-comms/outboundWebhookAdapter.ts`.
+    implemented: true,
+    databaseSupported: true,
+    capabilities: matrix({
+      providers: cap(true, true),
+      accounts: cap(true, true),
+      // The subscriber endpoint IS the destination: there is no sender
+      // identity to resolve for a machine-to-machine delivery.
+      identities: cap(
+        true,
+        false,
+        'Webhook delivery addresses a configured subscriber endpoint, so no sender identity is resolved.',
+      ),
+      endpoints: cap(true, true),
+      bindings: cap(true, true),
+      policies: cap(true, true),
+      'release-control': cap(true, true),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
+    reservedProviders: ['outbound_webhook'],
   },
   {
     channel: 'print',
@@ -363,10 +385,23 @@ const SEEDS: readonly CatalogueSeed[] = [
     description: 'Outbound voice / IVR notification calls.',
     kind: 'addressed',
     chunk: 'C10',
-    implemented: false,
-    databaseSupported: false,
-    capabilities: plannedMatrix(),
-    reservedProviders: [],
+    // A real server-only Twilio Programmable Voice adapter ships in
+    // `_shared/omni-comms/twilioVoiceAdapter.ts`, with inline governed TwiML
+    // and an optional keypad (IVR) question.
+    implemented: true,
+    databaseSupported: true,
+    capabilities: matrix({
+      providers: cap(true, true),
+      accounts: cap(true, true),
+      identities: cap(true, true),
+      endpoints: cap(true, true),
+      bindings: cap(true, true),
+      policies: cap(true, true),
+      'release-control': cap(true, true),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
+    reservedProviders: ['twilio_voice'],
   },
 ];
 

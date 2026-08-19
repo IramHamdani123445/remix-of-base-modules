@@ -13,6 +13,8 @@
 
 import { OMNI_COMMS_SECRET_REF_PATTERN } from "./resendAdapter.ts";
 import { OMNI_COMMS_TWILIO_SECRET_REF_PATTERN } from "./twilioSmsAdapter.ts";
+import { OMNI_COMMS_FCM_SECRET_REF_PATTERN } from "./fcmPushAdapter.ts";
+import { OMNI_COMMS_WEBHOOK_SECRET_REF_PATTERN } from "./outboundWebhookAdapter.ts";
 
 export interface OmniCommsAdapterDescriptor {
   /** Canonical channel value used by the database. */
@@ -93,6 +95,41 @@ export const OMNI_COMMS_ADAPTERS: readonly OmniCommsAdapterDescriptor[] = [
     requiredCredentialPurposes: [],
     optionalCredentialPurposes: [],
     secretRefPattern: /^(?!)/,
+    usesSendingDomain: false,
+  },
+  {
+    channel: "push",
+    adapterKey: "firebase_push",
+    label: "Firebase Cloud Messaging (Push)",
+    deliveryImplemented: true,
+    verificationImplemented: false,
+    requiredCredentialPurposes: ["service_account"],
+    optionalCredentialPurposes: [],
+    secretRefPattern: OMNI_COMMS_FCM_SECRET_REF_PATTERN,
+    usesSendingDomain: false,
+  },
+  {
+    // The subscriber endpoint is the "provider": the credential is the shared
+    // signing secret that lets the subscriber verify authenticity.
+    channel: "webhook",
+    adapterKey: "outbound_webhook",
+    label: "Outbound webhook",
+    deliveryImplemented: true,
+    verificationImplemented: false,
+    requiredCredentialPurposes: ["webhook_signing_secret"],
+    optionalCredentialPurposes: [],
+    secretRefPattern: OMNI_COMMS_WEBHOOK_SECRET_REF_PATTERN,
+    usesSendingDomain: false,
+  },
+  {
+    channel: "voice",
+    adapterKey: "twilio_voice",
+    label: "Twilio Programmable Voice",
+    deliveryImplemented: true,
+    verificationImplemented: true,
+    requiredCredentialPurposes: ["account_sid", "auth_token"],
+    optionalCredentialPurposes: ["webhook_signing"],
+    secretRefPattern: OMNI_COMMS_TWILIO_SECRET_REF_PATTERN,
     usesSendingDomain: false,
   },
 ];
