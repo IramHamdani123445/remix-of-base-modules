@@ -123821,6 +123821,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_channel_release_channel_kind: {
+        Args: { p_channel: string }
+        Returns: string
+      }
       omni_comms_priv_channel_release_decision: {
         Args: {
           p_caller_module_code: string
@@ -124159,29 +124163,17 @@ export type Database = {
         }
         Returns: Json
       }
-      omni_comms_priv_dispatch_claim_generic:
-        | {
-            Args: {
-              p_batch_limit: number
-              p_channel: string
-              p_correlation_id: string
-              p_deployed_revision: string
-              p_execution_context: string
-              p_worker: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_batch_limit?: number
-              p_channel: string
-              p_correlation_id?: string
-              p_deployed_revision?: string
-              p_execution_context?: string
-              p_worker?: string
-            }
-            Returns: Json
-          }
+      omni_comms_priv_dispatch_claim_generic: {
+        Args: {
+          p_batch_limit: number
+          p_channel: string
+          p_correlation_id: string
+          p_deployed_revision: string
+          p_execution_context: string
+          p_worker: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_dispatch_claim_safety_suspend: {
         Args: {
           p_code: string

@@ -34,6 +34,21 @@ export type PushOutcomeStatus = "accepted" | "failed" | "outcome_unknown";
 export interface PushDeviceTarget {
   readonly token: string;
   readonly platform: string;
+  /** Governed registration identity (omni_comms_push_device.id). */
+  readonly deviceId?: string | null;
+}
+
+/**
+ * Per-installation outcome. The raw device token is deliberately absent: the
+ * governed registration identity is the only thing recorded as evidence.
+ */
+export interface PushDeviceOutcome {
+  readonly deviceId: string | null;
+  readonly platform: string;
+  readonly status: "accepted" | "rejected" | "uncertain";
+  readonly providerMessageId: string | null;
+  readonly rejectionClassification: string | null;
+  readonly errorCode: string | null;
 }
 
 export interface FcmSendInput {
@@ -63,6 +78,8 @@ export interface FcmSendResult {
   readonly latencyMs: number;
   /** Device tokens the provider permanently rejected. */
   readonly retiredTokens: readonly { token: string; reason: string }[];
+  /** One entry per targeted installation, in the order they were attempted. */
+  readonly deviceOutcomes: readonly PushDeviceOutcome[];
 }
 
 function failure(errorCode: string, errorDetail: string): FcmSendResult {
@@ -76,6 +93,7 @@ function failure(errorCode: string, errorDetail: string): FcmSendResult {
     errorDetail,
     latencyMs: 0,
     retiredTokens: [],
+    deviceOutcomes: [],
   };
 }
 
@@ -227,6 +245,7 @@ export async function sendFcmPush(input: FcmSendInput): Promise<FcmSendResult> {
   let lastStatus: number | null = null;
   let lastErrorCode: string | null = null;
   const retiredTokens: { token: string; reason: string }[] = [];
+  const deviceOutcomes: PushDeviceOutcome[] = [];
 
   for (const device of devices) {
     const platform = String(device.platform ?? "").toLowerCase();
@@ -277,10 +296,17 @@ export async function sendFcmPush(input: FcmSendInput): Promise<FcmSendResult> {
 
       if (res.ok) {
         accepted += 1;
-        if (!firstMessageId) {
-          const name = String(parsed.name ?? "").trim();
-          firstMessageId = name === "" ? null : name.slice(0, 200);
-        }
+        const name = String(parsed.name ?? "").trim();
+        const deviceMessageId = name === "" ? null : name.slice(0, 200);
+        if (!firstMessageId) firstMessageId = deviceMessageId;
+        deviceOutcomes.push({
+          deviceId: device.deviceId ?? null,
+          platform,
+          status: "accepted",
+          providerMessageId: deviceMessageId,
+          rejectionClassification: null,
+          errorCode: null,
+        });
         continue;
       }
 
@@ -290,13 +316,48 @@ export async function sendFcmPush(input: FcmSendInput): Promise<FcmSendResult> {
 
       if (res.status === 404 || FCM_PERMANENT_TOKEN_ERRORS.has(providerCode)) {
         retiredTokens.push({ token: device.token, reason: providerCode || "unregistered" });
+        deviceOutcomes.push({
+          deviceId: device.deviceId ?? null,
+          platform,
+          status: "rejected",
+          providerMessageId: null,
+          rejectionClassification: "token_retired",
+          errorCode: (providerCode || "unregistered").slice(0, 80),
+        });
         continue;
       }
-      if (res.status >= 500 || res.status === 429) uncertain += 1;
+      if (res.status >= 500 || res.status === 429) {
+        uncertain += 1;
+        deviceOutcomes.push({
+          deviceId: device.deviceId ?? null,
+          platform,
+          status: "uncertain",
+          providerMessageId: null,
+          rejectionClassification: null,
+          errorCode: String(lastErrorCode ?? `http_${res.status}`).slice(0, 80),
+        });
+      } else {
+        deviceOutcomes.push({
+          deviceId: device.deviceId ?? null,
+          platform,
+          status: "rejected",
+          providerMessageId: null,
+          rejectionClassification: "provider_rejected",
+          errorCode: String(lastErrorCode ?? `http_${res.status}`).slice(0, 80),
+        });
+      }
     } catch {
       // A transport failure is never a definite delivery failure.
       uncertain += 1;
       lastErrorCode = "transport_failure";
+      deviceOutcomes.push({
+        deviceId: device.deviceId ?? null,
+        platform,
+        status: "uncertain",
+        providerMessageId: null,
+        rejectionClassification: null,
+        errorCode: "transport_failure",
+      });
     } finally {
       clearTimeout(timer);
     }
@@ -323,6 +384,7 @@ export async function sendFcmPush(input: FcmSendInput): Promise<FcmSendResult> {
       errorDetail: null,
       latencyMs,
       retiredTokens,
+      deviceOutcomes,
     };
   }
   if (uncertain > 0) {
@@ -336,6 +398,7 @@ export async function sendFcmPush(input: FcmSendInput): Promise<FcmSendResult> {
       errorDetail: "The push provider did not confirm the outcome.",
       latencyMs,
       retiredTokens,
+      deviceOutcomes,
     };
   }
   return {
@@ -348,5 +411,6 @@ export async function sendFcmPush(input: FcmSendInput): Promise<FcmSendResult> {
     errorDetail: "Every registered device was rejected by the push provider.",
     latencyMs,
     retiredTokens,
+    deviceOutcomes,
   };
 }

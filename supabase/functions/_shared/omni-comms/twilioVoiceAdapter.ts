@@ -112,8 +112,11 @@ export function buildVoiceTwiml(input: {
       : `<Say language="${language}"${voiceAttr}>${escapeTwiml(prompt)}</Say>`;
     // The keypad answer NEVER goes to the status callback endpoint.
     const action = (input.ivrActionUrl ?? "").trim();
+    // `actionOnEmptyResult` guarantees the governed IVR endpoint is called even
+    // when the caller presses nothing, so "no response" is recorded truthfully
+    // instead of silently disappearing.
     const actionAttr = /^https:\/\/\S+$/.test(action)
-      ? ` action="${escapeTwiml(action)}" method="POST"`
+      ? ` action="${escapeTwiml(action)}" method="POST" actionOnEmptyResult="true"`
       : "";
     return `<?xml version="1.0" encoding="UTF-8"?><Response>${speak}` +
       `<Gather numDigits="1" timeout="8"${actionAttr}>${promptSay}</Gather></Response>`;
