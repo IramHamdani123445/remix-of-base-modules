@@ -417,11 +417,16 @@ Deno.serve(async (req) => {
           from: String(claim.from_number ?? ""),
           to: String(claim.recipient ?? ""),
           body: (claim.body as string | null) ?? null,
-          contentSid: (claim.content_sid as string | null) ?? null,
+          contentSid: whatsappClaim?.contentSid ?? null,
+          // Server-resolved by the claim; never recomputed here.
+          contentVariables: whatsappClaim?.contentVariables ?? null,
           mediaUrl: (claim.media_url as string | null) ?? null,
+          // Exclusively from omni_comms_runtime_endpoint via the claim.
+          statusCallbackUrl: whatsappClaim?.statusCallbackUrl ?? null,
           // Deterministic: identical on every safe retry of this message.
           idempotencyKey: String(claim.provider_idempotency_key ?? ""),
         });
+
       })()
       : await sendResendEmail({
         secretRef: String(claim.secret_ref ?? ""),
