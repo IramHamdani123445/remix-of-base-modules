@@ -297,13 +297,50 @@ Deno.serve(async (req) => {
       : "edge_env";
     const secretResolver = createVaultSecretResolver(service);
 
+    // ── WhatsApp: the DB claim is immutable and authoritative ──────────────
+    // ContentSid, positional variables and the status-callback endpoint come
+    // exclusively from the claim. They are validated, never recomputed, and a
+    // malformed claim is refused BEFORE the provider is contacted.
+    let whatsappClaim: WhatsAppClaimParseSuccess | null = null;
+    if (claimChannel === "whatsapp") {
+      const parsed = parseWhatsAppClaim(claim);
+      if (!parsed.ok) {
+        const preFailure = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
+          p_attempt_id: attemptId,
+          p_claim_token: claimToken,
+          p_status: "rejected",
+          p_provider_message_id: null,
+          p_provider_status_code: null,
+          p_provider_response: { category: "pre_dispatch_guard", channel: "whatsapp" },
+          p_error_code: parsed.code,
+          p_error_detail: parsed.detail,
+        });
+        results.push({
+          attempt_id: attemptId,
+          channel: claimChannel,
+          attempt_number: claim.attempt_number ?? null,
+          outcome: "blocked",
+          result_code: parsed.code,
+          provider_contacted: false,
+          recorded: !preFailure.error,
+        });
+        continue;
+      }
+      whatsappClaim = parsed;
+    }
+
     const providerPayload = claimChannel === "whatsapp"
       ? {
         from: String(claim.from_number ?? ""),
         to: String(claim.recipient ?? ""),
         body: (claim.body as string | null) ?? null,
-        contentSid: (claim.content_sid as string | null) ?? null,
+        contentSid: whatsappClaim?.contentSid ?? null,
+        // Canonically ordered so a safe retry hashes identically, and any
+        // change of provider variables under the same idempotency identity
+        // is refused by the fingerprint gate.
+        contentVariables: whatsappClaim?.contentVariables ?? {},
         mediaUrl: (claim.media_url as string | null) ?? null,
+        statusCallbackUrl: whatsappClaim?.statusCallbackUrl ?? null,
       }
       : {
         fromAddress: String(claim.from_address ?? ""),
@@ -314,6 +351,7 @@ Deno.serve(async (req) => {
         text: String(claim.text_body ?? ""),
         html: (claim.html_body as string | null) ?? null,
       };
+
 
     // ── Payload fingerprint gate — MUST succeed before the provider is
     //    contacted. A retry that carries different content under the same
