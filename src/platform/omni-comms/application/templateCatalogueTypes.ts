@@ -6,14 +6,26 @@
 
 export type TemplateFamilyStatus = 'draft' | 'active' | 'retired';
 export type TemplateVersionStatus = 'draft' | 'approved' | 'published' | 'retired';
-export type TemplateChannel = 'email' | 'sms' | 'in_app' | 'push' | 'whatsapp' | 'print';
+export type TemplateChannel =
+  | 'email'
+  | 'sms'
+  | 'in_app'
+  | 'push'
+  | 'whatsapp'
+  | 'print'
+  | 'webhook'
+  | 'voice';
 export type TemplateScopeType = 'organization' | 'department' | 'event';
 
 export const TEMPLATE_CHANNELS: readonly TemplateChannel[] = [
-  'email', 'sms', 'in_app', 'push', 'whatsapp', 'print',
+  'email', 'sms', 'in_app', 'push', 'whatsapp', 'print', 'webhook', 'voice',
 ] as const;
 
-/** Exact channel content schemas — mirrored by SQL validator. */
+/**
+ * Exact channel content schemas — mirrored byte-for-byte by the SQL validator
+ * `omni_comms_priv_validate_channel_content`. Never invent aliases here: a key
+ * that the database rejects is TypeScript/SQL drift.
+ */
 export const TEMPLATE_CHANNEL_KEYS: Record<TemplateChannel, {
   allowed: readonly string[];
   required: readonly string[];
@@ -23,14 +35,26 @@ export const TEMPLATE_CHANNEL_KEYS: Record<TemplateChannel, {
   sms:      { allowed: ['body'],                             required: ['body'],           html: [] },
   in_app:   { allowed: ['title','body','severity','category','action_label','action_url'],
                                                              required: ['title','body'],   html: [] },
-  push:     { allowed: ['title','body'],                     required: ['title','body'],   html: [] },
+  // Canonical Push content: title/body plus image, action, collapse key,
+  // priority, badge, sound and TTL. These are the exact persisted key names.
+  push:     { allowed: ['title','body','image_url','action_url','collapse_key','priority','badge','sound','ttl_seconds'],
+                                                             required: ['title','body'],   html: [] },
   // Provider-neutral. Twilio ContentSid is NOT content — it lives on the
   // template provider registration. `buttons` is a JSON-encoded array of
   // { label, url? } objects (max 3) held as a string.
   whatsapp: { allowed: ['header','body','footer','media_url','buttons','button_label','button_url'],
                                                              required: ['body'],           html: [] },
   print:    { allowed: ['subject','html','text'],            required: ['subject'],        html: ['html'] },
+  // Webhook authoring is payload only. The endpoint URL is NEVER authored on a
+  // template: it is resolved from the governed action → subscription → endpoint.
+  webhook:  { allowed: ['payload','schema_version','content_type'],
+                                                             required: ['payload','schema_version'], html: [] },
+  // Basic IVR only: one governed keypad Gather with a bounded digit → semantic
+  // outcome map. No raw TwiML authoring.
+  voice:    { allowed: ['script','audio_url','language','voice_name','speech_rate','gather_prompt','gather_digits','gather_map','max_attempts'],
+                                                             required: [],                 html: [] },
 };
+
 
 // ─── DTOs returned by RPCs (exact key sets) ──────────────────────────────────
 
