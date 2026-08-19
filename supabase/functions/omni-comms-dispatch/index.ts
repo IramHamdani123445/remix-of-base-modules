@@ -562,7 +562,7 @@ Deno.serve(async (req) => {
     for (const entry of retired) {
       await service.rpc("omni_comms_priv_push_device_feedback", {
         p_device_token: entry.token,
-        p_reason: entry.reason,
+        p_outcome: entry.reason,
         p_provider_code: "firebase_push",
       });
     }
@@ -613,6 +613,9 @@ Deno.serve(async (req) => {
     results,
     in_app: plan.in_app ?? null,
     whatsapp: plan.whatsapp ?? null,
+    push: plan.push ?? null,
+    webhook: plan.webhook ?? null,
+    voice: plan.voice ?? null,
     live_delivery_enabled: false,
     release_live_state_available: false,
   });
