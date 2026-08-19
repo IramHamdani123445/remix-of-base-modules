@@ -32,6 +32,13 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     status: 'Available',
   },
   {
+    name: 'omni-comms-webhook-twilio',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Receives signature-verified Twilio WhatsApp and SMS status callbacks and records normalized callback evidence for business delivery attempts and approved technical test deliveries. Verification uses the provider account auth token resolved by reference only; unsigned or unverifiable callbacks are rejected fail-closed.',
+    status: 'Available',
+  },
+  {
     name: 'omni-comms-test-delivery',
     kind: 'edge_function',
     ownership: 'omni_comms',
