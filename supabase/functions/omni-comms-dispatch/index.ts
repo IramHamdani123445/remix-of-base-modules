@@ -38,6 +38,9 @@ import {
   type WhatsAppClaimParseSuccess,
 } from "../_shared/omni-comms/whatsappClaim.ts";
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
+import { sendFcmPush, type PushDeviceTarget } from "../_shared/omni-comms/fcmPushAdapter.ts";
+import { sendOutboundWebhook } from "../_shared/omni-comms/outboundWebhookAdapter.ts";
+import { sendTwilioVoice } from "../_shared/omni-comms/twilioVoiceAdapter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
