@@ -159,7 +159,7 @@ describe('CG1 — approved per-channel workflow', () => {
 describe('CG1 — invalid tab handling and cross-channel resource clearing', () => {
   it('an out-of-capability tab resolves to Overview', () => {
     expect(resolveApplicableTab('push', 'identities')).toBe('overview');
-    expect(resolveApplicableTab('whatsapp', 'release-control')).toBe('overview');
+    expect(resolveApplicableTab('whatsapp', 'release-control')).toBe('release-control');
     expect(resolveApplicableTab('sms', 'release-control')).toBe('release-control');
     expect(resolveApplicableTab('email', 'release-control')).toBe('release-control');
   });
@@ -217,8 +217,7 @@ describe('CG1 — truthful counts and readiness', () => {
   it('readiness is two independent facets', () => {
     const projection = projectChannelReadiness({ channel: 'whatsapp', configurationSummary: null });
     expect(projection.configuration.state).toBe('unknown');
-    expect(projection.delivery.state).toBe('adapter_not_installed');
-    expect(projection.delivery.label).toBe('Delivery adapter not installed');
+    expect(projection.delivery.state).toBe('adapter_installed_delivery_disabled');
   });
 
   it('configuration ready never implies delivery ready', () => {
@@ -230,7 +229,7 @@ describe('CG1 — truthful counts and readiness', () => {
       channel: 'whatsapp',
       configurationSummary: summary,
     });
-    expect(projection.delivery.state).toBe('adapter_not_installed');
+    expect(projection.delivery.state).toBe('adapter_installed_delivery_disabled');
   });
 
   it('partial data yields unavailable, not a readiness verdict', () => {

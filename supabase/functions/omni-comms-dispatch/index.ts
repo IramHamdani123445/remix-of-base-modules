@@ -31,6 +31,8 @@ import {
   canonicalProviderPayloadHash,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
+import { resolveTwilioCredentials } from "../_shared/omni-comms/twilioSmsAdapter.ts";
+import { sendTwilioWhatsApp } from "../_shared/omni-comms/twilioWhatsAppAdapter.ts";
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
 
 const corsHeaders = {
@@ -287,15 +289,31 @@ Deno.serve(async (req) => {
     const claimToken = String(claim.claim_token ?? "");
     if (!attemptId || !claimToken) continue;
 
-    const providerPayload = {
-      fromAddress: String(claim.from_address ?? ""),
-      fromName: (claim.from_name as string | null) ?? null,
-      replyTo: (claim.reply_to_address as string | null) ?? null,
-      to: String(claim.recipient ?? ""),
-      subject: String(claim.subject ?? ""),
-      text: String(claim.text_body ?? ""),
-      html: (claim.html_body as string | null) ?? null,
-    };
+    // The claim itself declares its channel, so a claim can never be routed
+    // through the wrong provider adapter.
+    const claimChannel = String(claim.channel ?? DISPATCHABLE_CHANNEL);
+    const storageMode = typeof claim.credential_storage_mode === "string"
+      ? claim.credential_storage_mode
+      : "edge_env";
+    const secretResolver = createVaultSecretResolver(service);
+
+    const providerPayload = claimChannel === "whatsapp"
+      ? {
+        from: String(claim.from_number ?? ""),
+        to: String(claim.recipient ?? ""),
+        body: (claim.body as string | null) ?? null,
+        contentSid: (claim.content_sid as string | null) ?? null,
+        mediaUrl: (claim.media_url as string | null) ?? null,
+      }
+      : {
+        fromAddress: String(claim.from_address ?? ""),
+        fromName: (claim.from_name as string | null) ?? null,
+        replyTo: (claim.reply_to_address as string | null) ?? null,
+        to: String(claim.recipient ?? ""),
+        subject: String(claim.subject ?? ""),
+        text: String(claim.text_body ?? ""),
+        html: (claim.html_body as string | null) ?? null,
+      };
 
     // ── Payload fingerprint gate — MUST succeed before the provider is
     //    contacted. A retry that carries different content under the same
@@ -325,6 +343,7 @@ Deno.serve(async (req) => {
       });
       results.push({
         attempt_id: attemptId,
+        channel: claimChannel,
         attempt_number: claim.attempt_number ?? null,
         outcome: "blocked",
         result_code: gateCode,
@@ -334,18 +353,49 @@ Deno.serve(async (req) => {
       continue;
     }
 
-    const outcome = await sendResendEmail({
-      secretRef: String(claim.secret_ref ?? ""),
-      ...providerPayload,
-      // Deterministic: identical on every safe retry of this message.
-      idempotencyKey: String(claim.provider_idempotency_key ?? ""),
-      // Strict single-source credential resolution: the account's explicitly
-      // selected credential store decides where the value is read from.
-      secretResolver: createVaultSecretResolver(service),
-      storageMode: typeof claim.credential_storage_mode === "string"
-        ? claim.credential_storage_mode
-        : "edge_env",
-    });
+    const outcome = claimChannel === "whatsapp"
+      ? await (async () => {
+        const resolved = await resolveTwilioCredentials({
+          accountSidRef: String(claim.account_sid_ref ?? ""),
+          authTokenRef: String(claim.auth_token_ref ?? ""),
+          storageMode,
+          secretResolver,
+        });
+        if (!resolved.ok) {
+          // A credential that cannot be resolved is a definite configuration
+          // failure, recorded WITHOUT contacting the provider.
+          return {
+            status: "failed" as const,
+            resultCode: "configuration_invalid",
+            providerMessageId: null,
+            providerStatusCode: null,
+            providerResponse: { channel: "whatsapp" },
+            errorCode: resolved.errorCode,
+            errorDetail: resolved.detail,
+          };
+        }
+        return await sendTwilioWhatsApp({
+          credentials: resolved.credentials,
+          from: String(claim.from_number ?? ""),
+          to: String(claim.recipient ?? ""),
+          body: (claim.body as string | null) ?? null,
+          contentSid: (claim.content_sid as string | null) ?? null,
+          mediaUrl: (claim.media_url as string | null) ?? null,
+          // Deterministic: identical on every safe retry of this message.
+          idempotencyKey: String(claim.provider_idempotency_key ?? ""),
+        });
+      })()
+      : await sendResendEmail({
+        secretRef: String(claim.secret_ref ?? ""),
+        ...(providerPayload as Record<string, unknown>),
+        // Deterministic: identical on every safe retry of this message.
+        idempotencyKey: String(claim.provider_idempotency_key ?? ""),
+        // Strict single-source credential resolution: the account's explicitly
+        // selected credential store decides where the value is read from.
+        secretResolver,
+        storageMode,
+        // deno-lint-ignore no-explicit-any
+      } as any);
 
     const completion = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
       p_attempt_id: attemptId,
@@ -372,10 +422,11 @@ Deno.serve(async (req) => {
 
     results.push({
       attempt_id: attemptId,
+      channel: claimChannel,
       attempt_number: claim.attempt_number ?? null,
       outcome: outcome.status,
       result_code: outcome.resultCode,
-      provider_contacted: true,
+      provider_contacted: outcome.resultCode !== "configuration_invalid",
       recorded: !completion.error,
     });
   }
@@ -390,6 +441,8 @@ Deno.serve(async (req) => {
     blocker: plan.blocker ?? null,
     blockers: plan.blockers ?? [],
     results,
+    in_app: plan.in_app ?? null,
+    whatsapp: plan.whatsapp ?? null,
     live_delivery_enabled: false,
     release_live_state_available: false,
   });

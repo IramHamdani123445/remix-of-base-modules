@@ -253,7 +253,10 @@ const SEEDS: readonly CatalogueSeed[] = [
     description: 'Template-governed WhatsApp Business messaging.',
     kind: 'addressed',
     chunk: 'C8',
-    implemented: false,
+    // A real server-only Twilio WhatsApp adapter ships in
+    // `_shared/omni-comms/twilioWhatsAppAdapter.ts`, with signed callback
+    // verification and structured (ContentSid) template support.
+    implemented: true,
     databaseSupported: true,
     capabilities: matrix({
       providers: cap(true, true),
@@ -264,11 +267,12 @@ const SEEDS: readonly CatalogueSeed[] = [
       endpoints: cap(true, true),
       bindings: cap(true, true),
       policies: cap(true, true),
-      'release-control': cap(false, false, RELEASE_CONTROL_EMAIL_ONLY),
+      // Release Control is channel-generic; WhatsApp has a deployed adapter.
+      'release-control': cap(true, true),
       'test-centre': cap(true, true),
       diagnostics: cap(true, true),
     }),
-    reservedProviders: [],
+    reservedProviders: ['twilio_whatsapp'],
   },
   {
     channel: 'push',

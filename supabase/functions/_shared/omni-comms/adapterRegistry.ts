@@ -58,6 +58,17 @@ export const OMNI_COMMS_ADAPTERS: readonly OmniCommsAdapterDescriptor[] = [
     usesSendingDomain: false,
   },
   {
+    channel: "whatsapp",
+    adapterKey: "twilio_whatsapp",
+    label: "Twilio (WhatsApp)",
+    deliveryImplemented: true,
+    verificationImplemented: true,
+    requiredCredentialPurposes: ["account_sid", "auth_token"],
+    optionalCredentialPurposes: ["messaging_service_sid", "webhook_signing"],
+    secretRefPattern: OMNI_COMMS_TWILIO_SECRET_REF_PATTERN,
+    usesSendingDomain: false,
+  },
+  {
     // Internal production channel: the recipient portal inbox is the
     // "provider", so no external credential exists and no secret reference is
     // ever accepted. Delivery is a governed, exactly-once projection.
