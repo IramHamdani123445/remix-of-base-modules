@@ -18,12 +18,17 @@ import * as releaseService from '@/platform/omni-comms/application/channelReleas
 
 const MIGRATIONS_DIR = 'supabase/migrations';
 
-function latestMigrationContaining(needle: string): string {
+/**
+ * The release-preparation migration is the FIRST migration that rewrote the
+ * prerequisite evaluator. Later generalisation passes legitimately touch the
+ * same predicate, so the pin must be to the earliest match, never the latest.
+ */
+function firstMigrationContaining(needle: string): string {
   const files = readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith('.sql'))
     .sort();
-  for (let i = files.length - 1; i >= 0; i -= 1) {
-    const body = readFileSync(`${MIGRATIONS_DIR}/${files[i]}`, 'utf8');
+  for (const file of files) {
+    const body = readFileSync(`${MIGRATIONS_DIR}/${file}`, 'utf8');
     if (body.includes(needle)) return body;
   }
   throw new Error(`No migration contains ${needle}`);
@@ -32,7 +37,7 @@ function latestMigrationContaining(needle: string): string {
 // Pinned to the release-preparation migration itself (the only migration that
 // rewrites the prerequisite evaluator through the v_old/v_new replacement),
 // so later unrelated migrations touching sequence 10 cannot shadow it.
-const PREREQ_MIGRATION = latestMigrationContaining(
+const PREREQ_MIGRATION = firstMigrationContaining(
   'replace(v_src, v_old, v_new)',
 );
 

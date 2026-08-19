@@ -440,6 +440,29 @@ Deno.serve(async (req) => {
       continue;
     }
 
+    // ── D1: deterministic per-installation target evidence ────────────────
+    // One target row per governed installation is established BEFORE the
+    // provider is contacted, so an outcome can never be lost and a retry
+    // reuses the same target instead of creating a second one.
+    if (claimChannel === "push") {
+      for (const device of pushDevices) {
+        if (!device.deviceId) continue;
+        const pending = await service.rpc("omni_comms_priv_push_target_record", {
+          p_message_id: claim.message_id,
+          p_push_device_id: device.deviceId,
+          p_attempt_status: "pending",
+          p_provider_message_id: null,
+          p_rejection_classification: null,
+          p_error_code: null,
+        });
+        if (pending.error) {
+          console.error(
+            `omni-comms-dispatch push_target_pending_failed correlation=${correlationId ?? "none"} attempt=${attemptId}`,
+          );
+        }
+      }
+    }
+
     const outcome = claimChannel === "whatsapp"
       ? await (async () => {
         const resolved = await resolveTwilioCredentials({
@@ -561,14 +584,23 @@ Deno.serve(async (req) => {
 
     // A device the push provider permanently rejected is retired from the
     // governed register so it can never be targeted again.
-    const retired = (outcome as { retiredTokens?: { token: string; reason: string }[] })
-      .retiredTokens ?? [];
+    const retired = (outcome as {
+      retiredTokens?: { token: string; reason: string; deviceId: string | null }[];
+    }).retiredTokens ?? [];
     for (const entry of retired) {
-      await service.rpc("omni_comms_priv_push_device_feedback", {
+      const feedback = await service.rpc("omni_comms_priv_push_device_feedback", {
         p_device_token: entry.token,
         p_outcome: entry.reason,
         p_provider_code: "firebase_push",
       });
+      if (feedback.error) {
+        // Bounded correlation only: the token is never logged. The governed
+        // installation is named by its registration id, which is the same
+        // installation the delivery-target evidence refers to.
+        console.error(
+          `omni-comms-dispatch push_device_retire_failed correlation=${correlationId ?? "none"} registration=${entry.deviceId ?? "unknown"}`,
+        );
+      }
     }
 
     // Per-installation delivery evidence. One governed row per targeted

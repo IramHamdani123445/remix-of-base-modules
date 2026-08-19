@@ -4,7 +4,6 @@ import {
   normalizeEmail,
   normalizeLocale,
   normalizePhone,
-  normalizePush,
   sha256Hex,
 } from "./destinationNormalization.ts";
 
@@ -19,7 +18,6 @@ export async function normalizeRecipients(
     const blockers: string[] = [];
     const email = normalizeEmail(inp.destinations?.email);
     const phone = normalizePhone(inp.destinations?.phone);
-    const push = normalizePush(inp.destinations?.push);
     const locale = normalizeLocale(inp.locale);
 
     if (
@@ -43,10 +41,11 @@ export async function normalizeRecipients(
       ? inp.destinations.print.trim()
       : null;
 
+    // No `push` key: a device token is never a business-supplied recipient
+    // destination. Push resolves through governed registrations instead.
     const normalizedDestinations: Record<string, string | null> = {
       email,
       phone,
-      push,
       print,
     };
 

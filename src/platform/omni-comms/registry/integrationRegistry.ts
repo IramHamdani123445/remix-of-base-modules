@@ -99,6 +99,27 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     purpose: 'Governed Print production worker. Drains claimed print items, renders and archives the PDF artefact into the shared documents bucket and records artefact provenance through the print production RPCs. Contacts no external provider and sends nothing.',
     status: 'Available',
   },
+  {
+    name: 'omni-comms-provider-template-refresh',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Server-authoritative provider template reconciliation. Asks the provider for the current registration state of a submitted template variant and writes the reconciled status back through the governed registration RPC. Sends no business communication.',
+    status: 'Available',
+  },
+  {
+    name: 'omni-comms-webhook-twilio-voice-status',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Receives signature-verified Twilio Voice call status callbacks and records normalized delivery evidence for Voice messages. Carries no IVR semantics and accepts no keypad input.',
+    status: 'Available',
+  },
+  {
+    name: 'omni-comms-webhook-twilio-voice-ivr',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Signed server-owned Basic IVR action endpoint. Resolves the caller keypad input against the template gather map and records one immutable IVR result, including a truthful no-response outcome. It never sends and never returns business data to the provider.',
+    status: 'Available',
+  },
   // Shared platform assets (3) — reused, not re-created
   {
     name: 'core-documents',

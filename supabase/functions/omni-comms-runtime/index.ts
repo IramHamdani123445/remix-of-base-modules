@@ -670,7 +670,9 @@ Deno.serve(async (req: Request) => {
     destinations: {
       ...(r.email ? { email: r.email } : {}),
       ...(r.phone ? { phone: r.phone } : {}),
-      ...(r.pushDestination ? { push: r.pushDestination } : {}),
+      // DEPRECATED: a business-supplied push destination is deliberately NOT
+      // mapped. Push resolves through governed Push registrations; a token
+      // arriving on the wire is ignored for channel authority.
       ...(r.postalAddress ? { print: r.postalAddress } : {}),
     },
   }));
@@ -743,7 +745,9 @@ Deno.serve(async (req: Request) => {
       locale: r.normalizedLocale,
       email_destination: r.normalizedDestinations.email,
       phone_destination: r.normalizedDestinations.phone,
-      push_destination: r.normalizedDestinations.push,
+      // Never persisted from caller input: Push targets are governed
+      // registrations, and a device token is never recipient evidence.
+      push_destination: null,
       destination_snapshot: r.normalizedDestinations,
       eligibility_status: status,
       resolved_channels: r.resolvedChannels,

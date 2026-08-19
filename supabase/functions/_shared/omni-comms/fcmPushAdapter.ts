@@ -76,8 +76,16 @@ export interface FcmSendResult {
   readonly errorCode: string | null;
   readonly errorDetail: string | null;
   readonly latencyMs: number;
-  /** Device tokens the provider permanently rejected. */
-  readonly retiredTokens: readonly { token: string; reason: string }[];
+  /**
+   * Installations the provider permanently rejected. `deviceId` is the
+   * governed registration the delivery target evidence also refers to, so
+   * retirement and evidence can never diverge onto different installations.
+   */
+  readonly retiredTokens: readonly {
+    token: string;
+    reason: string;
+    deviceId: string | null;
+  }[];
   /** One entry per targeted installation, in the order they were attempted. */
   readonly deviceOutcomes: readonly PushDeviceOutcome[];
 }
@@ -244,7 +252,7 @@ export async function sendFcmPush(input: FcmSendInput): Promise<FcmSendResult> {
   let firstMessageId: string | null = null;
   let lastStatus: number | null = null;
   let lastErrorCode: string | null = null;
-  const retiredTokens: { token: string; reason: string }[] = [];
+  const retiredTokens: { token: string; reason: string; deviceId: string | null }[] = [];
   const deviceOutcomes: PushDeviceOutcome[] = [];
 
   for (const device of devices) {
@@ -315,7 +323,11 @@ export async function sendFcmPush(input: FcmSendInput): Promise<FcmSendResult> {
       lastErrorCode = providerCode || `http_${res.status}`;
 
       if (res.status === 404 || FCM_PERMANENT_TOKEN_ERRORS.has(providerCode)) {
-        retiredTokens.push({ token: device.token, reason: providerCode || "unregistered" });
+        retiredTokens.push({
+          token: device.token,
+          reason: providerCode || "unregistered",
+          deviceId: device.deviceId ?? null,
+        });
         deviceOutcomes.push({
           deviceId: device.deviceId ?? null,
           platform,

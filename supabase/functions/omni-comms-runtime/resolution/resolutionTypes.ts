@@ -2,13 +2,21 @@
 // The RuntimeResolutionResult and its parts stay inside the Edge Function;
 // only a bounded, PII-safe projection is returned to the caller.
 
+/**
+ * The CANONICAL runtime channel vocabulary. There is exactly one enum: this
+ * one. Kind classification (addressed / device / internal / endpoint /
+ * physical) lives in channelKind.ts and mirrors
+ * `omni_comms_priv_channel_kind()` on the server.
+ */
 export type Channel =
   | "email"
   | "sms"
   | "whatsapp"
   | "push"
   | "in_app"
-  | "print";
+  | "webhook"
+  | "print"
+  | "voice";
 
 export interface RuntimeValidationIssue {
   path: string;
@@ -171,6 +179,40 @@ export interface AggregateSnapshot {
     adapter_key: string;
     status: string;
   }>;
+  /**
+   * Governed Push registrations for the recipients in scope. Supplied by the
+   * snapshot RPC; absence means "no governed installation", never "unknown".
+   * The token is NEVER part of the snapshot.
+   */
+  push_registrations?: Array<{
+    id: string;
+    organization_id: string;
+    recipient_reference: string | null;
+    platform: string;
+    status: string;
+  }>;
+  /** Governed Webhook subscriptions bound to a Communication Action. */
+  webhook_subscriptions?: Array<{
+    id: string;
+    organization_id: string;
+    department_id: string | null;
+    communication_action_id: string | null;
+    event_definition_id: string | null;
+    endpoint_id: string | null;
+    endpoint_checksum: string | null;
+    status: string;
+  }>;
+  /** Verified Voice originating identities (caller numbers). */
+  voice_identities?: Array<{
+    id: string;
+    organization_id: string;
+    department_id: string | null;
+    originating_number: string;
+    verification_status: string;
+    provider_account_id: string | null;
+    provider_id: string | null;
+    status: string;
+  }>;
 }
 
 export interface RecipientInput {
@@ -178,11 +220,17 @@ export interface RecipientInput {
   recipientReference?: string;
   displayName?: string;
   locale?: string;
+  /**
+   * Human destinations for ADDRESSED and PHYSICAL channels only.
+   *
+   * There is deliberately no `push` and no `inApp` key: a device token is
+   * never supplied by a business caller. Push resolves through governed Push
+   * registrations and In-App resolves through the application user, both
+   * derived from the recipient identity server-side.
+   */
   destinations?: Partial<{
     email: string;
     phone: string;
-    push: string;
-    inApp: string;
     print: string;
   }>;
 }
@@ -229,6 +277,16 @@ export interface ChannelResolution {
   providerAccountId?: string;
   senderChannelReady: boolean;
   liveDeliveryReady: boolean;
+  /** Kind-specific resolution truth. Absent when the kind does not apply. */
+  channelKind?: "addressed" | "device" | "internal" | "endpoint" | "physical";
+  /** device (push): number of governed active installations resolved. */
+  pushRegistrationCount?: number;
+  /** endpoint (webhook): governed subscription and its exact endpoint. */
+  webhookSubscriptionId?: string;
+  webhookEndpointId?: string;
+  webhookEndpointChecksum?: string;
+  /** addressed (voice): verified originating identity. */
+  voiceOriginatingIdentityId?: string;
   blockers: string[];
 }
 
@@ -273,6 +331,16 @@ export interface ResolvedDeliveryLeg {
   eventRouteId?: string;
   senderChannelReady: boolean;
   liveDeliveryReady: boolean;
+  /** Kind-specific resolution truth. Absent when the kind does not apply. */
+  channelKind?: "addressed" | "device" | "internal" | "endpoint" | "physical";
+  /** device (push): number of governed active installations resolved. */
+  pushRegistrationCount?: number;
+  /** endpoint (webhook): governed subscription and its exact endpoint. */
+  webhookSubscriptionId?: string;
+  webhookEndpointId?: string;
+  webhookEndpointChecksum?: string;
+  /** addressed (voice): verified originating identity. */
+  voiceOriginatingIdentityId?: string;
   blockers: string[];
 }
 
