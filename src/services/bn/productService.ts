@@ -15,7 +15,10 @@ async function actor(): Promise<string> {
 // ---- Product CRUD ----
 
 export async function fetchProducts(): Promise<BnProduct[]> {
-  const { data, error } = await db.from('bn_product').select('*').order('sort_order', { ascending: true });
+  // Embed the live branch name via branch_id — the flat `branch` text column
+  // is a denormalized legacy copy (kept in sync on save) and can drift if a
+  // branch is renamed later; prefer this join wherever the name is displayed.
+  const { data, error } = await db.from('bn_product').select('*, bn_branch:branch_id(branch_name)').order('sort_order', { ascending: true });
   if (error) throw error;
   return (data ?? []) as BnProduct[];
 }
