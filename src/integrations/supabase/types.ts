@@ -122824,14 +122824,19 @@ export type Database = {
         }
         Returns: Json
       }
-      omni_comms_communication_action_list: {
-        Args: {
-          p_department_id?: string
-          p_event_code?: string
-          p_organization_id: string
-        }
-        Returns: Json
-      }
+      omni_comms_communication_action_list:
+        | {
+            Args: { p_department_id?: string; p_organization_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_department_id?: string
+              p_event_code?: string
+              p_organization_id: string
+            }
+            Returns: Json
+          }
       omni_comms_communication_action_upsert:
         | {
             Args: {
@@ -125227,6 +125232,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_webhook_subscription_list: {
+        Args: {
+          p_actor_id: string
+          p_department_id?: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_write_audit: {
         Args: {
           p_action: string
@@ -125366,9 +125379,21 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: Json
       }
+      omni_comms_push_delivery_target_list: {
+        Args: { p_message_id: string }
+        Returns: Json
+      }
       omni_comms_push_delivery_targets: {
         Args: { p_message_id: string }
         Returns: Json
+      }
+      omni_comms_push_device_admin_list: {
+        Args: { p_include_retired?: boolean; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_push_device_admin_retire: {
+        Args: { p_id: string; p_reason?: string }
+        Returns: string
       }
       omni_comms_push_device_deregister: {
         Args: { p_device_token: string; p_reason?: string }
@@ -125765,18 +125790,41 @@ export type Database = {
         Args: { p_department_id?: string; p_organization_id: string }
         Returns: Json
       }
-      omni_comms_webhook_subscription_upsert: {
+      omni_comms_webhook_subscription_set_lifecycle: {
         Args: {
-          p_action_id: string
-          p_department_id?: string
-          p_endpoint_id: string
-          p_organization_id: string
-          p_payload_template_family_id?: string
-          p_signing_secret_ref: string
-          p_status?: string
+          p_action: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
         }
         Returns: string
       }
+      omni_comms_webhook_subscription_upsert:
+        | {
+            Args: {
+              p_action_id: string
+              p_department_id: string
+              p_endpoint_id: string
+              p_expected_updated_at: string
+              p_id: string
+              p_organization_id: string
+              p_payload_template_family_id?: string
+              p_signing_secret_ref?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_action_id: string
+              p_department_id?: string
+              p_endpoint_id: string
+              p_organization_id: string
+              p_payload_template_family_id?: string
+              p_signing_secret_ref: string
+              p_status?: string
+            }
+            Returns: string
+          }
       open_comm_hub_live_window: {
         Args: {
           p_duration_minutes: number

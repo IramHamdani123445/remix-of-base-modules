@@ -63,6 +63,7 @@ import {
   type OmniCommsIdentityChannel,
   type OmniCommsIdentityType,
 } from '@/platform/omni-comms/application/channelIdentityTypes';
+import { PushRegistrationsSection } from './PushRegistrationsSection';
 import { DeferredCapabilityCard, Field, SelectField, toastError } from './channelFormPrimitives';
 import { isReferenceSenderIdentity, visibleRecords } from './channelReferenceData';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
@@ -123,6 +124,13 @@ export const ChannelIdentitiesTab: React.FC<{
   departmentName?: string | null;
   onChanged: () => Promise<void> | void;
 }> = ({ definition, client, orgId, departmentId = null, departmentName = null, onChanged }) => {
+  // Push has no operator-authored identity: the "identity" of a Push target IS
+  // the governed installation registration, which only the installation itself
+  // can create. Operators inspect and retire it here.
+  if (definition.code === 'push') {
+    return <PushRegistrationsSection client={client} orgId={orgId} />;
+  }
+
   if (!identityChannelSupported(definition.code)) {
     return (
       <DeferredCapabilityCard
@@ -137,6 +145,7 @@ export const ChannelIdentitiesTab: React.FC<{
       />
     );
   }
+
 
   // Email uses the dedicated operator-facing "Sender Addresses" screen plus
   // the module → sender profile assignment layer.
