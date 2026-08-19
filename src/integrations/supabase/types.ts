@@ -125047,6 +125047,10 @@ export type Database = {
         Args: { p_provider_account_id: string }
         Returns: Json
       }
+      omni_comms_provider_registration_refresh_authorize: {
+        Args: { p_id: string }
+        Returns: Json
+      }
       omni_comms_provider_secret_configuration: {
         Args: { p_organization_id: string }
         Returns: Json
