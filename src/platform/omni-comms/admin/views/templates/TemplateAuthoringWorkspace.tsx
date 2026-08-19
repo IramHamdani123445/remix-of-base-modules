@@ -25,6 +25,7 @@ import {
 } from "@/platform/omni-comms/domain/templateAuthoring";
 import TemplateContentEditor from "./TemplateContentEditor";
 import TemplatePreviewPanel from "./TemplatePreviewPanel";
+import TemplateProviderRegistrationPanel from "./TemplateProviderRegistrationPanel";
 
 export interface TemplateAuthoringWorkspaceProps {
   /** Breadcrumb-style context: Module → Object → Event → Action. */
@@ -139,6 +140,11 @@ export const TemplateAuthoringWorkspace: React.FC<TemplateAuthoringWorkspaceProp
                 testId="authoring-preview"
               />
             </div>
+            {version.channel === "whatsapp" && (
+              <div className="mt-4">
+                <TemplateProviderRegistrationPanel templateVersionId={version.id} />
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
