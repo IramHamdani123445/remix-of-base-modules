@@ -33,6 +33,10 @@ import {
 } from "../_shared/omni-comms/resendAdapter.ts";
 import { resolveTwilioCredentials } from "../_shared/omni-comms/twilioSmsAdapter.ts";
 import { sendTwilioWhatsApp } from "../_shared/omni-comms/twilioWhatsAppAdapter.ts";
+import {
+  parseWhatsAppClaim,
+  type WhatsAppClaimParseSuccess,
+} from "../_shared/omni-comms/whatsappClaim.ts";
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
 
 const corsHeaders = {

@@ -126,8 +126,8 @@ export async function sendTwilioWhatsApp(
   if (typeof input.mediaUrl === "string" && /^https:\/\/[^\s"']+$/.test(input.mediaUrl.trim())) {
     form.set("MediaUrl", input.mediaUrl.trim());
   }
-  if (input.statusCallbackUrl && /^https:\/\/[A-Za-z0-9._\-/]+$/.test(input.statusCallbackUrl)) {
-    form.set("StatusCallback", input.statusCallbackUrl);
+  if (input.statusCallbackUrl && /^https:\/\/[^\s"'<>]+$/.test(input.statusCallbackUrl.trim())) {
+    form.set("StatusCallback", input.statusCallbackUrl.trim());
   }
 
   const endpoint =
