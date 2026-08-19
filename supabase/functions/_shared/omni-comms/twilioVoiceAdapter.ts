@@ -39,6 +39,8 @@ export interface TwilioVoiceSendInput {
   readonly gatherDigits?: string | null;
   readonly gatherPrompt?: string | null;
   readonly statusCallbackUrl?: string | null;
+  /** Separate governed endpoint that receives the keypad answer. */
+  readonly ivrActionUrl?: string | null;
   readonly idempotencyKey: string;
 }
 
@@ -85,6 +87,7 @@ export function buildVoiceTwiml(input: {
   readonly gatherDigits?: string | null;
   readonly gatherPrompt?: string | null;
   readonly statusCallbackUrl?: string | null;
+  readonly ivrActionUrl?: string | null;
 }): string | null {
   const script = (input.script ?? "").trim();
   const audioUrl = (input.audioUrl ?? "").trim();
@@ -107,7 +110,8 @@ export function buildVoiceTwiml(input: {
     const promptSay = prompt === ""
       ? ""
       : `<Say language="${language}"${voiceAttr}>${escapeTwiml(prompt)}</Say>`;
-    const action = (input.statusCallbackUrl ?? "").trim();
+    // The keypad answer NEVER goes to the status callback endpoint.
+    const action = (input.ivrActionUrl ?? "").trim();
     const actionAttr = /^https:\/\/\S+$/.test(action)
       ? ` action="${escapeTwiml(action)}" method="POST"`
       : "";

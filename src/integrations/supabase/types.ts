@@ -95610,6 +95610,10 @@ export type Database = {
           unresolved_required_slots: Json
           unresolved_tokens: Json
           updated_at: string
+          webhook_endpoint_checksum: string | null
+          webhook_endpoint_id: string | null
+          webhook_payload_template_family_id: string | null
+          webhook_subscription_id: string | null
         }
         Insert: {
           action_channel_option_id?: string | null
@@ -95649,6 +95653,10 @@ export type Database = {
           unresolved_required_slots?: Json
           unresolved_tokens?: Json
           updated_at?: string
+          webhook_endpoint_checksum?: string | null
+          webhook_endpoint_id?: string | null
+          webhook_payload_template_family_id?: string | null
+          webhook_subscription_id?: string | null
         }
         Update: {
           action_channel_option_id?: string | null
@@ -95688,6 +95696,10 @@ export type Database = {
           unresolved_required_slots?: Json
           unresolved_tokens?: Json
           updated_at?: string
+          webhook_endpoint_checksum?: string | null
+          webhook_endpoint_id?: string | null
+          webhook_payload_template_family_id?: string | null
+          webhook_subscription_id?: string | null
         }
         Relationships: [
           {
@@ -97116,6 +97128,69 @@ export type Database = {
           },
         ]
       }
+      omni_comms_push_delivery_target: {
+        Row: {
+          attempt_status: string
+          attempted_at: string | null
+          created_at: string
+          error_code: string | null
+          id: string
+          message_id: string
+          organization_id: string
+          platform: string
+          provider_message_id: string | null
+          push_device_id: string
+          rejection_classification: string | null
+          settled_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempt_status?: string
+          attempted_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          message_id: string
+          organization_id: string
+          platform: string
+          provider_message_id?: string | null
+          push_device_id: string
+          rejection_classification?: string | null
+          settled_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempt_status?: string
+          attempted_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          id?: string
+          message_id?: string
+          organization_id?: string
+          platform?: string
+          provider_message_id?: string | null
+          push_device_id?: string
+          rejection_classification?: string | null
+          settled_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_push_delivery_target_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_push_delivery_target_push_device_id_fkey"
+            columns: ["push_device_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_push_device"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_push_device: {
         Row: {
           app_identifier: string | null
@@ -97131,6 +97206,7 @@ export type Database = {
           organization_id: string
           platform: string
           recipient_reference: string | null
+          recipient_reference_verified: boolean
           revoked_reason: string | null
           state: string
           timezone: string | null
@@ -97151,6 +97227,7 @@ export type Database = {
           organization_id: string
           platform: string
           recipient_reference?: string | null
+          recipient_reference_verified?: boolean
           revoked_reason?: string | null
           state?: string
           timezone?: string | null
@@ -97171,6 +97248,7 @@ export type Database = {
           organization_id?: string
           platform?: string
           recipient_reference?: string | null
+          recipient_reference_verified?: boolean
           revoked_reason?: string | null
           state?: string
           timezone?: string | null
@@ -98149,6 +98227,48 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_voice_ivr_result: {
+        Row: {
+          attempt_number: number
+          delivery_attempt_id: string | null
+          digit: string | null
+          id: string
+          message_id: string | null
+          organization_id: string | null
+          provider_call_sid: string
+          received_at: string
+          semantic_result: string
+          signature_verified: boolean
+          template_version_id: string | null
+        }
+        Insert: {
+          attempt_number?: number
+          delivery_attempt_id?: string | null
+          digit?: string | null
+          id?: string
+          message_id?: string | null
+          organization_id?: string | null
+          provider_call_sid: string
+          received_at?: string
+          semantic_result: string
+          signature_verified?: boolean
+          template_version_id?: string | null
+        }
+        Update: {
+          attempt_number?: number
+          delivery_attempt_id?: string | null
+          digit?: string | null
+          id?: string
+          message_id?: string | null
+          organization_id?: string | null
+          provider_call_sid?: string
+          received_at?: string
+          semantic_result?: string
+          signature_verified?: boolean
+          template_version_id?: string | null
+        }
+        Relationships: []
+      }
       omni_comms_webhook_event: {
         Row: {
           created_at: string
@@ -98220,6 +98340,72 @@ export type Database = {
             columns: ["message_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_message"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_webhook_subscription: {
+        Row: {
+          action_id: string
+          created_at: string
+          created_by: string | null
+          data_origin: string
+          department_id: string | null
+          endpoint_config_checksum: string
+          endpoint_id: string
+          id: string
+          organization_id: string
+          payload_template_family_id: string | null
+          signing_secret_ref: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          action_id: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          endpoint_config_checksum?: string
+          endpoint_id: string
+          id?: string
+          organization_id: string
+          payload_template_family_id?: string | null
+          signing_secret_ref: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          action_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_origin?: string
+          department_id?: string | null
+          endpoint_config_checksum?: string
+          endpoint_id?: string
+          id?: string
+          organization_id?: string
+          payload_template_family_id?: string | null
+          signing_secret_ref?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_webhook_subscription_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_communication_action"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_webhook_subscription_endpoint_id_fkey"
+            columns: ["endpoint_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_channel_endpoint"
             referencedColumns: ["id"]
           },
         ]
@@ -123581,6 +123767,10 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_priv_channel_kind: {
+        Args: { p_channel: string }
+        Returns: string
+      }
       omni_comms_priv_channel_policy_json: {
         Args: {
           p_row: Database["public"]["Tables"]["omni_comms_channel_setting"]["Row"]
@@ -123969,6 +124159,29 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_dispatch_claim_generic:
+        | {
+            Args: {
+              p_batch_limit: number
+              p_channel: string
+              p_correlation_id: string
+              p_deployed_revision: string
+              p_execution_context: string
+              p_worker: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_batch_limit?: number
+              p_channel: string
+              p_correlation_id?: string
+              p_deployed_revision?: string
+              p_execution_context?: string
+              p_worker?: string
+            }
+            Returns: Json
+          }
       omni_comms_priv_dispatch_claim_safety_suspend: {
         Args: {
           p_code: string
@@ -124610,6 +124823,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      omni_comms_priv_push_target_record: {
+        Args: {
+          p_attempt_status: string
+          p_error_code?: string
+          p_message_id: string
+          p_provider_message_id?: string
+          p_push_device_id: string
+          p_rejection_classification?: string
+        }
+        Returns: string
+      }
       omni_comms_priv_reconcile_business_event_handoff: {
         Args: { p_id: string }
         Returns: Json
@@ -124766,6 +124990,14 @@ export type Database = {
       }
       omni_comms_priv_resolve_webhook_signing_source: {
         Args: { p_provider_account_id: string }
+        Returns: Json
+      }
+      omni_comms_priv_resolve_webhook_subscription: {
+        Args: {
+          p_department_id: string
+          p_message_id: string
+          p_organization_id: string
+        }
         Returns: Json
       }
       omni_comms_priv_retire_held_job: {
@@ -124981,6 +125213,18 @@ export type Database = {
         Args: { p_department_id: string; p_organization_id: string }
         Returns: boolean
       }
+      omni_comms_priv_voice_ivr_record: {
+        Args: {
+          p_digits: string
+          p_provider_call_sid: string
+          p_signature_verified: boolean
+        }
+        Returns: Json
+      }
+      omni_comms_priv_webhook_endpoint_checksum: {
+        Args: { p_endpoint_id: string }
+        Returns: string
+      }
       omni_comms_priv_webhook_record_rejection: {
         Args: {
           p_payload_digest: string
@@ -125128,6 +125372,10 @@ export type Database = {
       }
       omni_comms_provider_secret_configuration: {
         Args: { p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_push_delivery_targets: {
+        Args: { p_message_id: string }
         Returns: Json
       }
       omni_comms_push_device_deregister: {
@@ -125520,6 +125768,22 @@ export type Database = {
           p_payload?: Json
         }
         Returns: Json
+      }
+      omni_comms_webhook_subscription_list: {
+        Args: { p_department_id?: string; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_webhook_subscription_upsert: {
+        Args: {
+          p_action_id: string
+          p_department_id?: string
+          p_endpoint_id: string
+          p_organization_id: string
+          p_payload_template_family_id?: string
+          p_signing_secret_ref: string
+          p_status?: string
+        }
+        Returns: string
       }
       open_comm_hub_live_window: {
         Args: {
