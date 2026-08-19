@@ -186,8 +186,11 @@ export const OMNI_COMMS_PROVIDER_ADAPTERS: readonly ProviderAdapterDescriptor[] 
     adapterKey: 'firebase_push',
     label: 'Firebase Cloud Messaging',
     channel: 'push',
-    deliveryImplemented: false,
-    verificationImplemented: false,
+    // Real server-only FCM adapter: `_shared/omni-comms/fcmPushAdapter.ts`.
+    // Targets the recipient's governed installations; tokens never leave the
+    // server and are never persisted in delivery evidence.
+    deliveryImplemented: true,
+    verificationImplemented: true,
     credentials: [
       {
         purpose: 'service_account',
@@ -196,7 +199,46 @@ export const OMNI_COMMS_PROVIDER_ADAPTERS: readonly ProviderAdapterDescriptor[] 
         secretRefPattern: KEY('push', 'firebase'),
       },
     ],
-    notes: 'Registration and configuration only — no push adapter is deployed.',
+    notes:
+      'Push delivery is implemented. The runtime resolves the recipient to governed device registrations; business modules never supply a device token. Business Push dispatch remains governed by Release Control.',
+  },
+  {
+    adapterKey: 'outbound_webhook',
+    label: 'Outbound webhook (HMAC signed)',
+    channel: 'webhook',
+    // Real server-only adapter: `_shared/omni-comms/outboundWebhookAdapter.ts`,
+    // with SSRF protection (IPv4/IPv6 range blocking and repeated DNS
+    // resolution / rebinding checks) and a stable delivery identifier.
+    deliveryImplemented: true,
+    verificationImplemented: false,
+    credentials: [],
+    notes:
+      'Outbound webhook delivery is implemented. The destination is resolved from the governed Communication Action → subscription → exact active endpoint; there is no sender identity and the signing secret is held on the subscription, not on a provider account.',
+  },
+  {
+    adapterKey: 'twilio_voice',
+    label: 'Twilio (Voice / Basic IVR)',
+    channel: 'voice',
+    // Real server-only adapter: `_shared/omni-comms/twilioVoiceAdapter.ts`,
+    // with separate signed status and IVR action callbacks.
+    deliveryImplemented: true,
+    verificationImplemented: true,
+    credentials: [
+      {
+        purpose: 'account_sid',
+        displayName: 'Twilio account SID secret',
+        required: true,
+        secretRefPattern: '^OMNI_COMMS_TWILIO_[A-Z0-9_]+$',
+      },
+      {
+        purpose: 'auth_token',
+        displayName: 'Twilio auth token secret',
+        required: true,
+        secretRefPattern: '^OMNI_COMMS_TWILIO_[A-Z0-9_]+$',
+      },
+    ],
+    notes:
+      'Voice delivery is implemented, including Basic IVR: one governed keypad question with a bounded digit-to-outcome map. The originating caller number is resolved from the active Voice identity binding — business modules never supply a caller number or TwiML.',
   },
   {
     adapterKey: 'internal_in_app',
@@ -231,7 +273,10 @@ export const PROVIDER_REGISTRABLE_CHANNELS: readonly OmniCommsChannel[] = [
   'push',
   'whatsapp',
   'print',
+  'webhook',
+  'voice',
 ];
+
 
 export function providerRegistrationSupported(channel: OmniCommsChannel): boolean {
   return PROVIDER_REGISTRABLE_CHANNELS.includes(channel);

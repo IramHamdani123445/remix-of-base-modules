@@ -18,7 +18,7 @@ import {
 
 /** Channel order used by every business row so the grid never shifts. */
 export const CATALOGUE_CHANNEL_ORDER: readonly TemplateChannel[] = [
-  'email', 'sms', 'whatsapp', 'print', 'in_app', 'push',
+  'email', 'sms', 'whatsapp', 'print', 'in_app', 'push', 'webhook', 'voice',
 ];
 
 export const CHANNEL_LABEL: Record<TemplateChannel, string> = {
@@ -28,7 +28,10 @@ export const CHANNEL_LABEL: Record<TemplateChannel, string> = {
   print: 'Print',
   in_app: 'In-App',
   push: 'Push',
+  webhook: 'Webhook',
+  voice: 'Voice',
 };
+
 
 export interface CatalogueChannelVariant {
   channel: TemplateChannel;

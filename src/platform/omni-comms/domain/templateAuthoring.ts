@@ -132,16 +132,58 @@ export const CHANNEL_AUTHORING: Record<TemplateChannel, ChannelAuthoringSpec> = 
   },
   push: {
     title: "Push notification",
-    description: "Device push notification.",
+    description: "Device push notification delivered to the recipient's governed installations.",
     fields: [
       { key: "title", label: "Title", kind: "text", required: true },
       { key: "body", label: "Body", kind: "textarea", required: true },
+      { key: "image_url", label: "Image URL", kind: "text", required: false, help: "Optional rich image shown with the notification." },
+      { key: "action_url", label: "Action link", kind: "text", required: false, help: "In-product destination opened when the notification is tapped." },
+      { key: "collapse_key", label: "Collapse key", kind: "text", required: false, help: "Notifications sharing a collapse key replace one another on the device." },
+      { key: "priority", label: "Priority", kind: "text", required: false, help: "normal or high." },
+      { key: "badge", label: "Badge count", kind: "text", required: false },
+      { key: "sound", label: "Sound", kind: "text", required: false },
+      { key: "ttl_seconds", label: "Time to live (seconds)", kind: "text", required: false, help: "How long the provider may retry before discarding." },
     ],
     presentationNotes: [
-      "Icon, image, category and deep link come from the push presentation profile.",
+      "Device tokens are never authored or supplied: the runtime resolves the recipient's governed installations.",
+      "Application identity and icon come from the Push application configuration, not from this template.",
+    ],
+  },
+  webhook: {
+    title: "Webhook payload",
+    description: "Machine-readable payload posted to the governed subscriber endpoint.",
+    fields: [
+      { key: "schema_version", label: "Schema version", kind: "text", required: true, placeholder: "1" },
+      { key: "payload", label: "JSON payload template", kind: "textarea", required: true, help: "JSON body with {{variables}}. Rendered and signed by the runtime." },
+      { key: "content_type", label: "Content type", kind: "text", required: false, placeholder: "application/json" },
+    ],
+    presentationNotes: [
+      "The destination URL is NEVER authored here — it is resolved from the Communication Action's active subscription and its exact active endpoint.",
+      "HMAC signing, delivery identifier and endpoint checksum are applied by the runtime.",
+    ],
+  },
+  voice: {
+    title: "Voice call (Basic IVR)",
+    description:
+      "Spoken notification, optionally with one governed keypad question. Basic IVR only: a single Gather with a bounded digit-to-outcome map.",
+    fields: [
+      { key: "script", label: "Spoken script", kind: "textarea", required: false, help: "Text read to the recipient. Leave empty when using an audio recording." },
+      { key: "audio_url", label: "Audio recording URL", kind: "text", required: false },
+      { key: "language", label: "Language", kind: "text", required: false, placeholder: "en-GB" },
+      { key: "voice_name", label: "Voice profile", kind: "text", required: false },
+      { key: "speech_rate", label: "Speech rate", kind: "text", required: false },
+      { key: "gather_prompt", label: "Keypad question", kind: "textarea", required: false, help: "Basic IVR prompt read before collecting one keypress." },
+      { key: "gather_digits", label: "Allowed digits", kind: "text", required: false, placeholder: "1,2" },
+      { key: "gather_map", label: "Digit outcomes", kind: "textarea", required: false, help: "JSON map of digit to semantic outcome, e.g. {\"1\":\"confirmed\",\"2\":\"declined\"}." },
+      { key: "max_attempts", label: "Maximum attempts", kind: "text", required: false, placeholder: "2" },
+    ],
+    presentationNotes: [
+      "Raw TwiML is never authored: the runtime generates the call flow from these fields.",
+      "The originating caller number, provider account and signed status/IVR callbacks are resolved by the runtime.",
     ],
   },
 };
+
 
 /** Content object with every allowed key present (empty string when unset). */
 export function normaliseContentForChannel(

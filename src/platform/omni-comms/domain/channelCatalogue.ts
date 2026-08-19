@@ -77,6 +77,55 @@ export type OmniCommsChannelKind =
   | 'endpoint' // posts to a configured remote endpoint (webhook)
   | 'physical'; // produces a physical artefact (print)
 
+/**
+ * CANONICAL runtime channel kind. These values are byte-identical to the
+ * server function `omni_comms_priv_channel_kind`, so the client and the
+ * database can never disagree about how a channel is resolved.
+ *
+ *   addressed → email, sms, whatsapp, voice   (recipient address + resolved sender identity)
+ *   device    → push                          (recipient → governed installations)
+ *   internal  → in_app                        (recipient → application/portal user)
+ *   endpoint  → webhook                       (action → subscription → exact endpoint)
+ *   physical  → print                         (postal artefact)
+ */
+export type OmniCommsCanonicalChannelKind =
+  | 'addressed'
+  | 'device'
+  | 'internal'
+  | 'endpoint'
+  | 'physical'
+  | 'unsupported';
+
+const CANONICAL_CHANNEL_KIND: Record<OmniCommsChannel, OmniCommsCanonicalChannelKind> = {
+  email: 'addressed',
+  sms: 'addressed',
+  whatsapp: 'addressed',
+  voice: 'addressed',
+  push: 'device',
+  in_app: 'internal',
+  webhook: 'endpoint',
+  print: 'physical',
+};
+
+/** Canonical channel-kind resolver. Mirrors `omni_comms_priv_channel_kind`. */
+export function channelKind(channel: string): OmniCommsCanonicalChannelKind {
+  const key = (channel ?? '').trim().toLowerCase() as OmniCommsChannel;
+  return CANONICAL_CHANNEL_KIND[key] ?? 'unsupported';
+}
+
+/** True when the channel addresses a human destination with a sender identity. */
+export function channelUsesSenderIdentity(channel: string): boolean {
+  const kind = channelKind(channel);
+  return kind === 'addressed' || kind === 'physical';
+}
+
+/** True when the destination is resolved by the runtime, not supplied by business code. */
+export function channelDestinationIsRuntimeResolved(channel: string): boolean {
+  const kind = channelKind(channel);
+  return kind === 'device' || kind === 'internal' || kind === 'endpoint';
+}
+
+
 /** Build chunk that owns delivery for this channel. */
 export type OmniCommsChannelChunk = 'C6' | 'C7' | 'C8' | 'C9' | 'C10';
 
