@@ -8,6 +8,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import type { BuilderCanvas } from '@/components/bn/config-builder/types';
+import { assertVersionMutable } from './config/configImpactService';
 
 const db = supabase as any;
 const BLD = 'BLD_';
@@ -26,6 +27,7 @@ function buildEligRuleCode(kind: string, idx: number): string {
 }
 
 export async function syncCanvasToNormalized(versionId: string, canvas: BuilderCanvas, userCode: string): Promise<SyncResult> {
+  await assertVersionMutable(versionId);
   const warnings: string[] = [];
 
   // ---- 1. Eligibility rules ----
