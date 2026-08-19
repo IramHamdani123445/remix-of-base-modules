@@ -16,6 +16,15 @@ import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
 import { usePendingApprovalCount } from "@/hooks/useWorkflowPendingApprovals";
+import { useToast } from "@/hooks/use-toast";
+import { useInAppNotificationRpcClient } from "@/platform/omni-comms/admin/hooks/useInAppNotificationRpcClient";
+import {
+  isOmniCommsNotification,
+  isSafeInternalActionUrl,
+  markAllOmniUnread,
+  recordEngagement,
+  splitBySource,
+} from "@/platform/omni-comms/application/inAppNotificationService";
 
 interface InAppNotification {
   id: string;
@@ -50,6 +59,8 @@ export function InAppNotificationBell() {
   
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const rpcClient = useInAppNotificationRpcClient();
   
   // Get pending approval count
   const { count: pendingApprovalCount, overdueCount } = usePendingApprovalCount();
