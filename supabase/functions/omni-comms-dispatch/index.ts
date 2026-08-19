@@ -336,6 +336,15 @@ Deno.serve(async (req) => {
       whatsappClaim = parsed;
     }
 
+    // The claim is immutable and authoritative for every channel: the payload
+    // below only re-shapes fields the database already resolved.
+    const pushDevices: PushDeviceTarget[] = Array.isArray(claim.devices)
+      ? (claim.devices as Record<string, unknown>[]).map((d) => ({
+        token: String(d?.token ?? ""),
+        platform: String(d?.platform ?? ""),
+      })).filter((d) => d.token !== "")
+      : [];
+
     const providerPayload = claimChannel === "whatsapp"
       ? {
         from: String(claim.from_number ?? ""),
@@ -348,6 +357,37 @@ Deno.serve(async (req) => {
         contentVariables: whatsappClaim?.contentVariables ?? {},
         mediaUrl: (claim.media_url as string | null) ?? null,
         statusCallbackUrl: whatsappClaim?.statusCallbackUrl ?? null,
+      }
+      : claimChannel === "push"
+      ? {
+        title: String(claim.title ?? ""),
+        body: String(claim.body ?? ""),
+        imageUrl: (claim.image_url as string | null) ?? null,
+        actionUrl: (claim.action_url as string | null) ?? null,
+        collapseKey: (claim.collapse_key as string | null) ?? null,
+        priority: (claim.priority as string | null) ?? "high",
+        ttlSeconds: claim.ttl_seconds ?? null,
+        // Device identity is hashed into the fingerprint, never the raw token.
+        deviceCount: pushDevices.length,
+      }
+      : claimChannel === "webhook"
+      ? {
+        endpointUrl: String(claim.endpoint_url ?? ""),
+        httpMethod: String(claim.http_method ?? "POST"),
+        schemaVersion: String(claim.schema_version ?? "1.0"),
+        payload: String(claim.payload ?? ""),
+      }
+      : claimChannel === "voice"
+      ? {
+        from: String(claim.from_number ?? ""),
+        to: String(claim.recipient ?? ""),
+        script: (claim.script as string | null) ?? null,
+        audioUrl: (claim.audio_url as string | null) ?? null,
+        language: (claim.language as string | null) ?? null,
+        voiceName: (claim.voice_name as string | null) ?? null,
+        gatherDigits: (claim.gather_digits as string | null) ?? null,
+        gatherPrompt: (claim.gather_prompt as string | null) ?? null,
+        statusCallbackUrl: (claim.status_callback_url as string | null) ?? null,
       }
       : {
         fromAddress: String(claim.from_address ?? ""),
