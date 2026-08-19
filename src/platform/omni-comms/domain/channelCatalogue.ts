@@ -385,10 +385,23 @@ const SEEDS: readonly CatalogueSeed[] = [
     description: 'Outbound voice / IVR notification calls.',
     kind: 'addressed',
     chunk: 'C10',
-    implemented: false,
-    databaseSupported: false,
-    capabilities: plannedMatrix(),
-    reservedProviders: [],
+    // A real server-only Twilio Programmable Voice adapter ships in
+    // `_shared/omni-comms/twilioVoiceAdapter.ts`, with inline governed TwiML
+    // and an optional keypad (IVR) question.
+    implemented: true,
+    databaseSupported: true,
+    capabilities: matrix({
+      providers: cap(true, true),
+      accounts: cap(true, true),
+      identities: cap(true, true),
+      endpoints: cap(true, true),
+      bindings: cap(true, true),
+      policies: cap(true, true),
+      'release-control': cap(true, true),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
+    reservedProviders: ['twilio_voice'],
   },
 ];
 
