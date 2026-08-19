@@ -280,7 +280,10 @@ const SEEDS: readonly CatalogueSeed[] = [
     description: 'Mobile and web push notifications to registered devices.',
     kind: 'device',
     chunk: 'C9',
-    implemented: false,
+    // A real server-only Firebase Cloud Messaging adapter ships in
+    // `_shared/omni-comms/fcmPushAdapter.ts`, targeting the governed device
+    // register and retiring tokens the provider permanently rejects.
+    implemented: true,
     databaseSupported: true,
     capabilities: matrix({
       providers: cap(true, true),
@@ -291,11 +294,12 @@ const SEEDS: readonly CatalogueSeed[] = [
       endpoints: cap(false, false, NO_SCHEMA),
       bindings: cap(true, true),
       policies: cap(true, true),
-      'release-control': cap(false, false, RELEASE_CONTROL_EMAIL_ONLY),
+      // Release Control is channel-generic; Push has a deployed adapter.
+      'release-control': cap(true, true),
       'test-centre': cap(true, true),
       diagnostics: cap(true, true),
     }),
-    reservedProviders: [],
+    reservedProviders: ['firebase_push'],
   },
   {
     channel: 'in_app',
