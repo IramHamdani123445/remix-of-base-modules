@@ -13,6 +13,8 @@
 
 import { OMNI_COMMS_SECRET_REF_PATTERN } from "./resendAdapter.ts";
 import { OMNI_COMMS_TWILIO_SECRET_REF_PATTERN } from "./twilioSmsAdapter.ts";
+import { OMNI_COMMS_FCM_SECRET_REF_PATTERN } from "./fcmPushAdapter.ts";
+import { OMNI_COMMS_WEBHOOK_SECRET_REF_PATTERN } from "./outboundWebhookAdapter.ts";
 
 export interface OmniCommsAdapterDescriptor {
   /** Canonical channel value used by the database. */
