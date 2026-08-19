@@ -62,8 +62,12 @@ export interface ConfiguredBusinessEventRecipient {
   /** Physical destination. Presence NEVER means "print"; it means print is
    *  technically possible if configuration/policy selects it. */
   postalAddress?: import('../../sendCommunication').SendCommunicationRecipientInput['postalAddress'];
-  /** Push destination token, when the recipient has one. */
-  pushDestination?: string | null;
+  /*
+   * There is deliberately NO push field here. A Push message is addressed to
+   * the recipient's governed application registrations, which the Hub
+   * resolves server-side from the recipient identity. A business module never
+   * holds, forwards or asserts a device token.
+   */
   locale?: string | null;
   /**
    * Whether the recipient is outside the organisation. Defaults to
@@ -229,7 +233,6 @@ export async function emitConfiguredBusinessEvent(
       email: r.email ?? null,
       phone: r.phone ?? null,
       postalAddress: r.postalAddress ?? null,
-      pushDestination: r.pushDestination ?? null,
     };
   });
 

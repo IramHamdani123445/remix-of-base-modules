@@ -14,6 +14,7 @@ import { validatePayload } from "./contractValidator.ts";
 import { resolveRoutes } from "./routeResolver.ts";
 import { normalizeRecipients } from "./recipientResolver.ts";
 import { evaluateChannel } from "./channelEligibility.ts";
+import { destinationKeyFor } from "./channelKind.ts";
 import { resolveTemplateForFamilyChannel } from "./templateResolver.ts";
 import {
   EMPTY_ACTION_SNAPSHOT,
@@ -210,12 +211,14 @@ export async function orchestrateResolution(
       const readyChannels = resolution.channelResolutions
         .filter((c) => (isLive ? c.liveDeliveryReady : c.senderChannelReady))
         .map((c) => c.channel);
+      // Destination availability is a CHANNEL-KIND question. Only addressed
+      // channels have a human destination; device, internal and endpoint
+      // channels resolve their own target and are never "destination-less".
       const destinationFor = (channel: string): boolean => {
-        if (channel === "email") return Boolean(r.normalizedDestinations.email);
-        if (channel === "sms") return Boolean(r.normalizedDestinations.phone);
-        if (channel === "push") return Boolean(r.normalizedDestinations.push);
-        // Print/correspondence uses the postal identity of the recipient.
-        return true;
+        const key = destinationKeyFor(channel);
+        if (!key) return true;
+        if (key === "print") return true;
+        return Boolean(r.normalizedDestinations[key]);
       };
 
       // Authoritative ACTION template binding, resolved per option so that two
@@ -269,8 +272,7 @@ export async function orchestrateResolution(
           readyChannels,
           channelsWithVariant,
           digitalDestinationAvailable: Boolean(
-            r.normalizedDestinations.email || r.normalizedDestinations.phone ||
-              r.normalizedDestinations.push,
+            r.normalizedDestinations.email || r.normalizedDestinations.phone,
           ),
           optionFulfilment,
         },
@@ -316,6 +318,14 @@ export async function orchestrateResolution(
           eventRouteId: cr?.eventRouteId,
           senderChannelReady: Boolean(cr?.senderChannelReady),
           liveDeliveryReady: Boolean(cr?.liveDeliveryReady),
+          // Kind-specific truth travels with the leg. Nothing is invented:
+          // an absent field means the kind does not apply to this channel.
+          channelKind: cr?.channelKind,
+          pushRegistrationCount: cr?.pushRegistrationCount,
+          webhookSubscriptionId: cr?.webhookSubscriptionId,
+          webhookEndpointId: cr?.webhookEndpointId,
+          webhookEndpointChecksum: cr?.webhookEndpointChecksum,
+          voiceOriginatingIdentityId: cr?.voiceOriginatingIdentityId,
           blockers: cr?.blockers ?? [],
         };
       });

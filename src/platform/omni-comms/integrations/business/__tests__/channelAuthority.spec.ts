@@ -70,8 +70,33 @@ const FORBIDDEN: Array<{ pattern: RegExp; reason: string }> = [
     reason: 'business code must not test runnable channels before submission',
   },
   {
-    pattern: /channel\s*===\s*['"](email|sms|print|whatsapp|push)['"]/i,
+    pattern: /channel\s*===\s*['"](email|sms|print|whatsapp|push|in_app|webhook|voice)['"]/i,
     reason: 'business code must not branch on a specific channel',
+  },
+  // ── Transport facts a business producer may NEVER supply ───────────────
+  {
+    pattern: /\bpushDestination\b|\b(device|registration|fcm)_?[Tt]oken\b/,
+    reason: 'business code must not supply a Push device token',
+  },
+  {
+    pattern: /\bwebhook(Url|Endpoint)\b|\bendpoint_?url\b/i,
+    reason: 'business code must not supply a webhook URL or endpoint',
+  },
+  {
+    pattern: /\bsigning_?secret\b|\bwebhookSecret\b/i,
+    reason: 'business code must not supply a webhook signing secret',
+  },
+  {
+    pattern: /\boriginating_?[Nn]umber\b|\bcallerId\b|\bfrom_?[Nn]umber\b/,
+    reason: 'business code must not supply a Voice originating number',
+  },
+  {
+    pattern: /\bfirebase\b|\bmessaging_?sender_?id\b|\baccountSid\b|\bauthToken\b/i,
+    reason: 'business code must not name a provider account or credential',
+  },
+  {
+    pattern: /<Response>|<Say>|<Gather>|\bTwiML\b/i,
+    reason: 'business code must not author raw TwiML',
   },
 ];
 

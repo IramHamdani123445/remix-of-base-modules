@@ -24,13 +24,6 @@ export function normalizePhone(input: unknown): string | null {
   return hasPlus ? `+${digits}` : digits;
 }
 
-export function normalizePush(input: unknown): string | null {
-  if (typeof input !== "string") return null;
-  const trimmed = input.trim();
-  if (trimmed.length === 0 || trimmed.length > 512) return null;
-  return trimmed;
-}
-
 export function normalizeLocale(input: unknown): {
   normalized: string;
   fallbacks: string[];

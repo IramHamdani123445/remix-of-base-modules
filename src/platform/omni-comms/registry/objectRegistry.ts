@@ -565,7 +565,70 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Communication Action layer — channel-neutral obligations',
   },
 
+  // ─── Push / Webhook / Voice closure objects ──────────────────────────
+  {
+    name: 'omni_comms_template_provider_registration',
+    category: 'events_and_content',
+    epic: 6,
+    writeAuthority: 'admin_rpc_or_service_role',
+    purpose:
+      'Provider-side registration state for a template variant that a provider must approve before it can be used (for example a WhatsApp message template). Holds the provider template name, submitted content checksum, approval status and the server-reconciled provider response. Registration never sends anything.',
+    status: 'AVAILABLE',
+    introductionStory: 'WhatsApp + In-App final wiring — provider registration truth',
+  },
+  {
+    name: 'omni_comms_runtime_endpoint',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Server-owned register of runtime callback endpoints (provider status callbacks, Basic IVR action endpoints). The platform owns the URL and its signing expectations; business code and providers never supply a callback URL.',
+    status: 'AVAILABLE',
+    introductionStory: 'Push / Webhook / Voice — server-owned callback endpoints',
+  },
+  {
+    name: 'omni_comms_push_device',
+    category: 'channels_senders_preferences',
+    epic: 6,
+    writeAuthority: 'admin_rpc_or_service_role',
+    purpose:
+      'Governed Push registration for one application installation. The recipient binding is derived server-side from the authenticated user; business code never supplies a device token. Retired and invalid registrations are preserved as evidence.',
+    status: 'AVAILABLE',
+    introductionStory: 'Push / Webhook / Voice — governed Push ownership',
+  },
+  {
+    name: 'omni_comms_push_delivery_target',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Per-installation Push delivery evidence: exactly one row per message and governed registration, carrying the provider outcome, bounded provider message id, rejection classification and error code. It never stores a device token.',
+    status: 'AVAILABLE',
+    introductionStory: 'Push / Webhook / Voice — per-installation delivery evidence',
+  },
+  {
+    name: 'omni_comms_webhook_subscription',
+    category: 'channels_senders_preferences',
+    epic: 6,
+    writeAuthority: 'admin_rpc',
+    purpose:
+      'Governed binding of a Communication Action to one exact subscriber endpoint for the Webhook channel. The endpoint and its checksum are snapshotted onto the message so a later endpoint change cannot silently redirect delivery.',
+    status: 'AVAILABLE',
+    introductionStory: 'Push / Webhook / Voice — webhook subscription governance',
+  },
+  {
+    name: 'omni_comms_voice_ivr_result',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Immutable Basic IVR outcome for a Voice message: the keypad input resolved against the template gather map, or a truthful no-response record. Recorded only by the signed server-owned IVR action endpoint.',
+    status: 'AVAILABLE',
+    introductionStory: 'Push / Webhook / Voice — Basic IVR truth',
+  },
+
 ] as const;
+
 
 
 

@@ -69,6 +69,12 @@ export interface SendCommunicationRecipientInput {
   locale?: string | null;
   email?: string | null;
   phone?: string | null;
+  /**
+   * @deprecated Never supply a device token. Push resolves server-side from
+   * the recipient identity to governed Push registrations; anything passed
+   * here is ignored by the runtime and is prohibited in business code by the
+   * business-boundary guardrails.
+   */
   pushDestination?: string | null;
   /**
    * Physical postal destination for the Print / Correspondence channel.
