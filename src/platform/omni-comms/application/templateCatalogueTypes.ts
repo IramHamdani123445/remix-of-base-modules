@@ -24,7 +24,11 @@ export const TEMPLATE_CHANNEL_KEYS: Record<TemplateChannel, {
   in_app:   { allowed: ['title','body','severity','category','action_label','action_url'],
                                                              required: ['title','body'],   html: [] },
   push:     { allowed: ['title','body'],                     required: ['title','body'],   html: [] },
-  whatsapp: { allowed: ['body'],                             required: ['body'],           html: [] },
+  // Provider-neutral. Twilio ContentSid is NOT content — it lives on the
+  // template provider registration. `buttons` is a JSON-encoded array of
+  // { label, url? } objects (max 3) held as a string.
+  whatsapp: { allowed: ['header','body','footer','media_url','buttons','button_label','button_url'],
+                                                             required: ['body'],           html: [] },
   print:    { allowed: ['subject','html','text'],            required: ['subject'],        html: ['html'] },
 };
 
