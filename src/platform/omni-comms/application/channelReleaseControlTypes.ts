@@ -207,10 +207,11 @@ export interface ChannelReleaseControlSummary {
 
 /**
  * Blocking prerequisites are every governance check (1–31) plus the
- * channel-kind-specific checks (33+) that are neither `passed` nor
- * `not_applicable`. A Push release is never blocked by an Email sending
- * domain, and a Webhook release is never blocked by a sender identity —
- * those report `not_applicable`, which is a truthful pass.
+ * channel-kind-specific checks (33+) that are not `passed`, excluding checks
+ * the channel kind genuinely does not have. A Push release is never blocked by
+ * an Email sending domain, and a Webhook release is never blocked by a sender
+ * identity — those report `not_applicable`, which is a truthful pass.
+ * Warnings stay blocking: Release Control fails closed.
  */
 export function releaseBlockers(
   checks: readonly ReleasePrerequisiteCheck[] | null | undefined,
@@ -219,10 +220,10 @@ export function releaseBlockers(
     (c) =>
       (c.sequence <= 31 || c.sequence >= 33) &&
       c.state !== 'passed' &&
-      c.state !== 'not_applicable' &&
-      c.state !== 'warning',
+      c.state !== 'not_applicable',
   );
 }
+
 
 
 export function releaseWarnings(
