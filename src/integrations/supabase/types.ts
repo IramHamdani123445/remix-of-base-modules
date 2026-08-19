@@ -122856,6 +122856,10 @@ export type Database = {
         Args: { p_engagement: string; p_notification_id: string }
         Returns: boolean
       }
+      omni_comms_in_app_record_engagement_bulk: {
+        Args: { p_notification_ids?: string[] }
+        Returns: Json
+      }
       omni_comms_list_producer_event_bindings: {
         Args: {
           p_department_id?: string
