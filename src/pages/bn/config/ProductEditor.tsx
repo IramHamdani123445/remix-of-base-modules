@@ -146,13 +146,19 @@ export default function ProductEditor() {
         return;
       }
     }
+    // Keep the legacy `branch` text column in sync with `branch_id` — both are
+    // written together in the original seed data, but the UI only ever set branch_id.
+    const resolvedBranchName = form.branch_id
+      ? (branches as any[]).find(b => b.id === form.branch_id)?.branch_name ?? 'GENERAL'
+      : 'GENERAL';
+    const payload = { ...form, branch: resolvedBranchName };
     try {
       if (isNew) {
-        const created = await createMutation.mutateAsync(form);
+        const created = await createMutation.mutateAsync(payload);
         toast({ title: 'Success', description: 'Benefit product created.' });
         navigate(`/bn/config/products/${created.id}`);
       } else {
-        await updateMutation.mutateAsync({ id: id!, updates: form });
+        await updateMutation.mutateAsync({ id: id!, updates: payload });
         toast({ title: 'Success', description: 'Benefit product updated.' });
       }
     } catch (err: any) {
