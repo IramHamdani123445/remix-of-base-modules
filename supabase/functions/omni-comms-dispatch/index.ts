@@ -388,6 +388,7 @@ Deno.serve(async (req) => {
         gatherDigits: (claim.gather_digits as string | null) ?? null,
         gatherPrompt: (claim.gather_prompt as string | null) ?? null,
         statusCallbackUrl: (claim.status_callback_url as string | null) ?? null,
+        ivrActionUrl: (claim.ivr_action_url as string | null) ?? null,
       }
       : {
         fromAddress: String(claim.from_address ?? ""),
@@ -540,6 +541,8 @@ Deno.serve(async (req) => {
           gatherPrompt: (claim.gather_prompt as string | null) ?? null,
           // Exclusively from omni_comms_runtime_endpoint via the claim.
           statusCallbackUrl: (claim.status_callback_url as string | null) ?? null,
+          // Keypad answers go to their own signed endpoint, never the status one.
+          ivrActionUrl: (claim.ivr_action_url as string | null) ?? null,
           idempotencyKey: String(claim.provider_idempotency_key ?? ""),
         });
       })()
