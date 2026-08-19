@@ -19,6 +19,8 @@ import {
   smsMetrics,
 } from "@/platform/omni-comms/domain/templateAuthoring";
 import { extractTokenPaths } from "@/platform/omni-comms/rendering";
+import { validateWhatsAppContent } from "@/platform/omni-comms/domain/whatsappAuthoring";
+import { WhatsAppButtonsEditor } from "./WhatsAppButtonsEditor";
 
 export interface TemplateContentEditorProps {
   channel: TemplateChannel;
@@ -90,6 +92,24 @@ export const TemplateContentEditor: React.FC<TemplateContentEditorProps> = ({
           {f.help && <p className="text-xs text-muted-foreground">{f.help}</p>}
         </div>
       ))}
+
+      {channel === "whatsapp" && (
+        <>
+          <WhatsAppButtonsEditor content={content} onChange={onChange} disabled={disabled} />
+          {(() => {
+            const issues = validateWhatsAppContent(content);
+            return issues.length === 0 ? null : (
+              <Alert variant="destructive" data-testid="whatsapp-content-issues">
+                <AlertDescription>
+                  <ul className="list-disc pl-4 text-xs">
+                    {issues.map((i) => <li key={i}>{i}</li>)}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            );
+          })()}
+        </>
+      )}
 
       {channel === "sms" && (() => {
         const m = smsMetrics(content.body ?? "");

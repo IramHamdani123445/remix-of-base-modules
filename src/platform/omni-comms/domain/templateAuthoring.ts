@@ -73,13 +73,17 @@ export const CHANNEL_AUTHORING: Record<TemplateChannel, ChannelAuthoringSpec> = 
   },
   whatsapp: {
     title: "WhatsApp message",
-    description: "Conversational message body. Header, footer, media and buttons are governed by the WhatsApp presentation profile.",
+    description: "Conversational message with an optional header, media, footer and buttons.",
     fields: [
-      { key: "body", label: "Body", kind: "textarea", required: true },
+      { key: "header", label: "Header", kind: "text", required: false, help: "Optional short heading, up to 60 characters." },
+      { key: "body", label: "Body", kind: "textarea", required: true, placeholder: "Your claim {{claim.reference}} has been approved." },
+      { key: "footer", label: "Footer", kind: "text", required: false, help: "Optional small print, up to 60 characters." },
+      { key: "media_url", label: "Media", kind: "text", required: false, help: "Secure https link to an image or document.", placeholder: "https://…" },
     ],
     presentationNotes: [
-      "Header, footer, media and buttons are supplied by the approved WhatsApp presentation profile.",
-      "Provider template approval still applies before sending.",
+      "Buttons are authored below and travel with the message content.",
+      "The sending business number comes from the WhatsApp channel configuration.",
+      "Provider template registration and approval are managed separately from this content.",
     ],
   },
   in_app: {
