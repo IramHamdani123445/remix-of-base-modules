@@ -353,26 +353,27 @@ Deno.serve(async (req) => {
 
     const outcome = claimChannel === "whatsapp"
       ? await (async () => {
-        const credentials = await resolveTwilioCredentials({
+        const resolved = await resolveTwilioCredentials({
           accountSidRef: String(claim.account_sid_ref ?? ""),
           authTokenRef: String(claim.auth_token_ref ?? ""),
-          messagingServiceRef: (claim.messaging_service_ref as string | null) ?? null,
           storageMode,
           secretResolver,
         });
-        if (!credentials) {
+        if (!resolved.ok) {
+          // A credential that cannot be resolved is a definite configuration
+          // failure, recorded WITHOUT contacting the provider.
           return {
             status: "failed" as const,
             resultCode: "configuration_invalid",
             providerMessageId: null,
             providerStatusCode: null,
             providerResponse: { channel: "whatsapp" },
-            errorCode: "credentials_unavailable",
-            errorDetail: "The WhatsApp provider credentials could not be resolved.",
+            errorCode: resolved.errorCode,
+            errorDetail: resolved.detail,
           };
         }
         return await sendTwilioWhatsApp({
-          credentials,
+          credentials: resolved.credentials,
           from: String(claim.from_number ?? ""),
           to: String(claim.recipient ?? ""),
           body: (claim.body as string | null) ?? null,
