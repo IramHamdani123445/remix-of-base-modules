@@ -59,6 +59,8 @@ project_id = "xynceskeiiisiefqlgxo"
     verify_jwt = true
   [functions.omni-comms-webhook-resend]
     verify_jwt = false
+  [functions.omni-comms-webhook-twilio]
+    verify_jwt = false
   [functions.bn-award-suspension-runner]
     verify_jwt = false
   [functions.bn-life-certificate-runner]
