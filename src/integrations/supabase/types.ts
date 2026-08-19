@@ -123789,6 +123789,16 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_dispatch_claim_whatsapp: {
+        Args: {
+          p_batch_limit?: number
+          p_correlation_id?: string
+          p_deployed_revision?: string
+          p_execution_context?: string
+          p_worker?: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_dispatch_deliver_in_app: {
         Args: {
           p_batch_limit?: number
@@ -124545,6 +124555,10 @@ export type Database = {
       omni_comms_priv_resolve_managed_secret: {
         Args: { p_secret_ref: string }
         Returns: string
+      }
+      omni_comms_priv_resolve_provider_credential_source: {
+        Args: { p_provider_account_id: string; p_purpose: string }
+        Returns: Json
       }
       omni_comms_priv_resolve_webhook_signing_secret: {
         Args: { p_adapter_key?: string }
