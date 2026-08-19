@@ -31,6 +31,8 @@ import {
   canonicalProviderPayloadHash,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
+import { resolveTwilioCredentials } from "../_shared/omni-comms/twilioSmsAdapter.ts";
+import { sendTwilioWhatsApp } from "../_shared/omni-comms/twilioWhatsAppAdapter.ts";
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
 
 const corsHeaders = {
