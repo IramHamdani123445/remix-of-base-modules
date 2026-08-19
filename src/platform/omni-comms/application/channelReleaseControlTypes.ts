@@ -61,15 +61,48 @@ export const RELEASE_LIMITS = {
   maxProposalHours: 24,
 } as const;
 
+/**
+ * Pilot allowlist target kinds, by channel kind. Raw values never appear here:
+ * the server masks and hashes every target before it reaches the browser, and
+ * device tokens / signing secrets are never allowlist targets at all.
+ */
+export const RELEASE_RECIPIENT_TARGET_TYPES = [
+  'email_address',
+  'phone_number',
+  'whatsapp_number',
+  'voice_number',
+  'recipient_reference',
+  'user_reference',
+  'endpoint_url',
+] as const;
+export type ReleaseRecipientTargetType = (typeof RELEASE_RECIPIENT_TARGET_TYPES)[number];
+
 /** Masked projection of one approved pilot recipient. Never the raw address. */
 export interface ReleaseRecipientRule {
-  readonly target_type: 'email_address';
+  readonly target_type: ReleaseRecipientTargetType;
   readonly target_masked: string;
   /** Short prefix only — the full digest is never returned to the browser. */
   readonly target_hash_prefix: string;
 }
 
-export type ReleaseControlChannel = 'email' | 'sms' | 'print';
+/** Every production-capable canonical channel is governed by Release Control. */
+export const RELEASE_CONTROL_CHANNELS = [
+  'email',
+  'sms',
+  'whatsapp',
+  'push',
+  'in_app',
+  'print',
+  'webhook',
+  'voice',
+] as const;
+
+export type ReleaseControlChannel = (typeof RELEASE_CONTROL_CHANNELS)[number];
+
+export function isReleaseControlChannel(value: string): value is ReleaseControlChannel {
+  return (RELEASE_CONTROL_CHANNELS as readonly string[]).includes(value);
+}
+
 
 export interface ChannelReleaseControl {
   readonly id: string;
