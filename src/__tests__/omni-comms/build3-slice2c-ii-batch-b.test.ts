@@ -45,6 +45,11 @@ const REQUIRED_MODULES = [
   'channelEligibility.ts',
   'snapshotOrchestrator.ts',
   'actionResolver.ts',
+  // Canonical channel-kind closure: the runtime resolves by channel KIND
+  // (addressed / device / internal / endpoint / physical) rather than
+  // assuming every channel has a human destination and a sender identity.
+  'channelKind.ts',
+  'channelKindResolvers.ts',
 ];
 
 
