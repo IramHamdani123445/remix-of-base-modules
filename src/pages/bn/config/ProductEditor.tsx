@@ -162,7 +162,17 @@ export default function ProductEditor() {
         toast({ title: 'Success', description: 'Benefit product updated.' });
       }
     } catch (err: any) {
-      toast({ title: 'Error', description: err?.message || 'Failed to save.', variant: 'destructive' });
+      // Shielded error per docs/bn/BENEFITS_MODULE_COMPLETE.md §12.4 — log the raw
+      // technical detail, never show it directly to the user.
+      console.error('Product save failed:', err);
+      const raw = String(err?.message || '');
+      let friendly = 'Something went wrong while saving this product. Please try again.';
+      if (/duplicate key value|unique constraint/i.test(raw)) {
+        friendly = 'A product with this code already exists for the selected country. Choose a different code.';
+      } else if (/permission denied/i.test(raw)) {
+        friendly = 'You do not have permission to save this change.';
+      }
+      toast({ title: 'Error', description: friendly, variant: 'destructive' });
     }
   };
 
