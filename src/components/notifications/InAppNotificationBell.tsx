@@ -145,20 +145,23 @@ export function InAppNotificationBell() {
   // Combined count: unread notifications + pending approvals
   const totalBadgeCount = unreadCount + pendingApprovalCount;
 
-  // Omni-Comms notifications record engagement through the governed RPC so
-  // the read / action becomes delivery evidence on the originating message.
+  // Omni-Comms notifications are mutated ONLY through the governed engagement
+  // RPCs so the read / action becomes delivery evidence on the originating
+  // message. There is deliberately no direct-write fallback for them: if the
+  // governed call fails we surface the error and leave the state unchanged.
   const markAsRead = useMutation({
     mutationFn: async (
       input: string | { id: string; engagement: 'read' | 'action' },
     ) => {
       const notificationId = typeof input === 'string' ? input : input.id;
       const engagement = typeof input === 'string' ? 'read' : input.engagement;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: rpcError } = await (supabase as any).rpc(
-        'omni_comms_in_app_record_engagement',
-        { p_notification_id: notificationId, p_engagement: engagement },
-      );
-      if (!rpcError) return;
+      const target = notifications.find((n) => n.id === notificationId);
+
+      if (isOmniCommsNotification(target)) {
+        await recordEngagement(rpcClient, notificationId, engagement);
+        return;
+      }
+
       const { error } = await supabase
         .from('in_app_notifications')
         .update({ is_read: true, read_at: new Date().toISOString() })
@@ -168,31 +171,58 @@ export function InAppNotificationBell() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['in-app-notifications', user?.id] });
     },
+    onError: (error: unknown) => {
+      toast({
+        variant: 'destructive',
+        title: 'Notification not updated',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      });
+    },
   });
 
   const markAllAsRead = useMutation({
     mutationFn: async () => {
       if (!user?.id) return;
-      const { error } = await supabase
-        .from('in_app_notifications')
-        .update({ is_read: true, read_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-      if (error) throw error;
+      const unread = notifications.filter((n) => !n.is_read);
+      const { omni, legacy } = splitBySource(unread);
+
+      if (omni.length > 0) {
+        // Server resolves the owner's unread Omni set from auth.uid().
+        await markAllOmniUnread(rpcClient);
+      }
+      if (legacy.length > 0) {
+        const { error } = await supabase
+          .from('in_app_notifications')
+          .update({ is_read: true, read_at: new Date().toISOString() })
+          .in('id', legacy.map((n) => n.id));
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['in-app-notifications', user?.id] });
     },
+    onError: (error: unknown) => {
+      toast({
+        variant: 'destructive',
+        title: 'Notifications not updated',
+        description: error instanceof Error ? error.message : 'Please try again.',
+      });
+    },
   });
 
+  /** Only safe internal portal routes may be opened from a notification. */
+  const openTarget = (notification: InAppNotification): string | null =>
+    isSafeInternalActionUrl(notification.link) ? (notification.link as string) : null;
+
   const handleNotificationClick = (notification: InAppNotification) => {
+    const target = openTarget(notification);
     markAsRead.mutate({
       id: notification.id,
-      engagement: notification.link ? 'action' : 'read',
+      engagement: target ? 'action' : 'read',
     });
-    if (notification.link) {
+    if (target) {
       setOpen(false);
-      navigate(notification.link);
+      navigate(target);
     }
   };
 
