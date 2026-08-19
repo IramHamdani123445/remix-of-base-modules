@@ -342,6 +342,7 @@ Deno.serve(async (req) => {
       ? (claim.devices as Record<string, unknown>[]).map((d) => ({
         token: String(d?.token ?? ""),
         platform: String(d?.platform ?? ""),
+        deviceId: d?.device_id ? String(d.device_id) : null,
       })).filter((d) => d.token !== "")
       : [];
 
@@ -568,6 +569,34 @@ Deno.serve(async (req) => {
         p_outcome: entry.reason,
         p_provider_code: "firebase_push",
       });
+    }
+
+    // Per-installation delivery evidence. One governed row per targeted
+    // registration — the raw device token is never written as evidence.
+    const deviceOutcomes = (outcome as {
+      deviceOutcomes?: {
+        deviceId: string | null;
+        status: string;
+        providerMessageId: string | null;
+        rejectionClassification: string | null;
+        errorCode: string | null;
+      }[];
+    }).deviceOutcomes ?? [];
+    for (const target of deviceOutcomes) {
+      if (!target.deviceId) continue;
+      const recorded = await service.rpc("omni_comms_priv_push_target_record", {
+        p_message_id: claim.message_id,
+        p_push_device_id: target.deviceId,
+        p_attempt_status: target.status,
+        p_provider_message_id: target.providerMessageId,
+        p_rejection_classification: target.rejectionClassification,
+        p_error_code: target.errorCode,
+      });
+      if (recorded.error) {
+        console.error(
+          `omni-comms-dispatch push_target_record_failed correlation=${correlationId ?? "none"} attempt=${attemptId}`,
+        );
+      }
     }
 
     const completion = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
