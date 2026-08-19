@@ -392,9 +392,9 @@ describe('C3A — reference data', () => {
 });
 
 describe('C3A — boundaries', () => {
-  it('41. Webhook and Voice expose no identity Create action', () => {
+  it('41. Webhook exposes no identity Create action; Voice owns an originating number', () => {
     expect(identityChannelSupported('webhook')).toBe(false);
-    expect(identityChannelSupported('voice')).toBe(false);
+    expect(identityChannelSupported('voice')).toBe(true);
     expect(OMNI_COMMS_IDENTITY_CHANNELS).not.toContain('webhook' as never);
     expect(read(IDENTITY_TAB)).toContain('if (!identityChannelSupported(definition.code))');
   });

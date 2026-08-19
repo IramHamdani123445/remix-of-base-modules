@@ -37,6 +37,7 @@ export const OMNI_COMMS_IDENTITY_CHANNELS = [
   'push',
   'in_app',
   'print',
+  'voice',
 ] as const;
 
 export type OmniCommsIdentityChannel = (typeof OMNI_COMMS_IDENTITY_CHANNELS)[number];
@@ -54,6 +55,7 @@ export const OMNI_COMMS_IDENTITY_TYPES_BY_CHANNEL: Record<
 > = {
   email: ['email_sender'],
   sms: ['sender_id', 'originating_number'],
+  voice: ['originating_number'],
   whatsapp: ['business_number'],
   push: ['application'],
   in_app: ['application'],
