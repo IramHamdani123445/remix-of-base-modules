@@ -97116,6 +97116,69 @@ export type Database = {
           },
         ]
       }
+      omni_comms_push_device: {
+        Row: {
+          app_identifier: string | null
+          app_version: string | null
+          created_at: string
+          device_model: string | null
+          device_token: string
+          failure_count: number
+          id: string
+          last_seen_at: string
+          last_success_at: string | null
+          locale: string | null
+          organization_id: string
+          platform: string
+          recipient_reference: string | null
+          revoked_reason: string | null
+          state: string
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          app_identifier?: string | null
+          app_version?: string | null
+          created_at?: string
+          device_model?: string | null
+          device_token: string
+          failure_count?: number
+          id?: string
+          last_seen_at?: string
+          last_success_at?: string | null
+          locale?: string | null
+          organization_id: string
+          platform: string
+          recipient_reference?: string | null
+          revoked_reason?: string | null
+          state?: string
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          app_identifier?: string | null
+          app_version?: string | null
+          created_at?: string
+          device_model?: string | null
+          device_token?: string
+          failure_count?: number
+          id?: string
+          last_seen_at?: string
+          last_success_at?: string | null
+          locale?: string | null
+          organization_id?: string
+          platform?: string
+          recipient_reference?: string | null
+          revoked_reason?: string | null
+          state?: string
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       omni_comms_recipient: {
         Row: {
           blockers: Json
@@ -124539,6 +124602,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_push_device_feedback: {
+        Args: {
+          p_device_token: string
+          p_outcome: string
+          p_provider_code?: string
+        }
+        Returns: undefined
+      }
       omni_comms_priv_reconcile_business_event_handoff: {
         Args: { p_id: string }
         Returns: Json
@@ -124683,6 +124754,10 @@ export type Database = {
       }
       omni_comms_priv_resolve_provider_credential_source: {
         Args: { p_provider_account_id: string; p_purpose: string }
+        Returns: Json
+      }
+      omni_comms_priv_resolve_push_devices: {
+        Args: { p_organization_id: string; p_recipient_id: string }
         Returns: Json
       }
       omni_comms_priv_resolve_webhook_signing_secret: {
@@ -125054,6 +125129,24 @@ export type Database = {
       omni_comms_provider_secret_configuration: {
         Args: { p_organization_id: string }
         Returns: Json
+      }
+      omni_comms_push_device_deregister: {
+        Args: { p_device_token: string; p_reason?: string }
+        Returns: number
+      }
+      omni_comms_push_device_register: {
+        Args: {
+          p_app_identifier?: string
+          p_app_version?: string
+          p_device_model?: string
+          p_device_token: string
+          p_locale?: string
+          p_organization_id: string
+          p_platform: string
+          p_recipient_reference?: string
+          p_timezone?: string
+        }
+        Returns: string
       }
       omni_comms_recipient_channel_preference_set: {
         Args: {
