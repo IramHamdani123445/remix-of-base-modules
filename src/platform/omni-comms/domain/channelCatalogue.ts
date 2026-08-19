@@ -331,10 +331,28 @@ const SEEDS: readonly CatalogueSeed[] = [
     description: 'Machine-to-machine delivery to a configured remote endpoint.',
     kind: 'endpoint',
     chunk: 'C10',
-    implemented: false,
-    databaseSupported: false,
-    capabilities: plannedMatrix(),
-    reservedProviders: [],
+    // A real server-only signed outbound adapter ships in
+    // `_shared/omni-comms/outboundWebhookAdapter.ts`.
+    implemented: true,
+    databaseSupported: true,
+    capabilities: matrix({
+      providers: cap(true, true),
+      accounts: cap(true, true),
+      // The subscriber endpoint IS the destination: there is no sender
+      // identity to resolve for a machine-to-machine delivery.
+      identities: cap(
+        true,
+        false,
+        'Webhook delivery addresses a configured subscriber endpoint, so no sender identity is resolved.',
+      ),
+      endpoints: cap(true, true),
+      bindings: cap(true, true),
+      policies: cap(true, true),
+      'release-control': cap(true, true),
+      'test-centre': cap(true, true),
+      diagnostics: cap(true, true),
+    }),
+    reservedProviders: ['outbound_webhook'],
   },
   {
     channel: 'print',
