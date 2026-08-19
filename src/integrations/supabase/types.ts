@@ -97373,6 +97373,27 @@ export type Database = {
         }
         Relationships: []
       }
+      omni_comms_runtime_endpoint: {
+        Row: {
+          description: string | null
+          endpoint_key: string
+          endpoint_url: string
+          updated_at: string
+        }
+        Insert: {
+          description?: string | null
+          endpoint_key: string
+          endpoint_url: string
+          updated_at?: string
+        }
+        Update: {
+          description?: string | null
+          endpoint_key?: string
+          endpoint_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       omni_comms_runtime_environment: {
         Row: {
           created_at: string
@@ -97820,6 +97841,90 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "core_organization"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_template_provider_registration: {
+        Row: {
+          adapter_key: string
+          approved_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_checked_at: string | null
+          organization_id: string
+          provider_account_id: string
+          provider_category: string
+          provider_language: string
+          provider_status: string
+          provider_template_ref: string | null
+          rejected_at: string | null
+          rejection_code: string | null
+          rejection_reason: string | null
+          submitted_at: string | null
+          template_version_id: string
+          updated_at: string
+          updated_by: string | null
+          variable_mapping: Json
+        }
+        Insert: {
+          adapter_key: string
+          approved_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_checked_at?: string | null
+          organization_id: string
+          provider_account_id: string
+          provider_category?: string
+          provider_language?: string
+          provider_status?: string
+          provider_template_ref?: string | null
+          rejected_at?: string | null
+          rejection_code?: string | null
+          rejection_reason?: string | null
+          submitted_at?: string | null
+          template_version_id: string
+          updated_at?: string
+          updated_by?: string | null
+          variable_mapping?: Json
+        }
+        Update: {
+          adapter_key?: string
+          approved_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_checked_at?: string | null
+          organization_id?: string
+          provider_account_id?: string
+          provider_category?: string
+          provider_language?: string
+          provider_status?: string
+          provider_template_ref?: string | null
+          rejected_at?: string | null
+          rejection_code?: string | null
+          rejection_reason?: string | null
+          submitted_at?: string | null
+          template_version_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          variable_mapping?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_template_provider_registrat_provider_account_id_fkey"
+            columns: ["provider_account_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_provider_account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_template_provider_registrat_template_version_id_fkey"
+            columns: ["template_version_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_template_version"
             referencedColumns: ["id"]
           },
         ]
@@ -123246,6 +123351,10 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_build_variable_mapping: {
+        Args: { p_channel: string; p_content: Json }
+        Returns: Json
+      }
       omni_comms_priv_business_context_valid: {
         Args: { p_ctx: Json }
         Returns: boolean
@@ -125111,6 +125220,45 @@ export type Database = {
           p_expected_updated_at: string
           p_id: string
           p_name: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_provider_registration_approve: {
+        Args: {
+          p_correlation_id?: string
+          p_id: string
+          p_provider_template_ref: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_provider_registration_list: {
+        Args: { p_template_version_id: string }
+        Returns: Json
+      }
+      omni_comms_template_provider_registration_reject: {
+        Args: {
+          p_correlation_id?: string
+          p_id: string
+          p_rejection_code: string
+          p_rejection_reason: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_provider_registration_submit: {
+        Args: {
+          p_correlation_id?: string
+          p_id: string
+          p_provider_template_ref: string
+        }
+        Returns: Json
+      }
+      omni_comms_template_provider_registration_upsert: {
+        Args: {
+          p_correlation_id?: string
+          p_provider_account_id: string
+          p_provider_category?: string
+          p_provider_language?: string
+          p_template_version_id: string
         }
         Returns: Json
       }
