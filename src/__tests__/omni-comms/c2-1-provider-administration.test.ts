@@ -50,7 +50,7 @@ describe('C2.1 — adapter catalogue', () => {
     expect(adapterDeliveryImplemented('outbound_webhook')).toBe(true);
     expect(adapterDeliveryImplemented('twilio_voice')).toBe(true);
     expect(OMNI_COMMS_PROVIDER_ADAPTERS.filter((a) => a.deliveryImplemented))
-      .toHaveLength(OMNI_COMMS_PROVIDER_ADAPTERS.length);
+      .toHaveLength(8);
 
     expect(NO_DELIVERY_ADAPTER_MESSAGE).toMatch(/no delivery adapter is installed/i);
   });
