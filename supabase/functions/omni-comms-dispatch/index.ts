@@ -422,10 +422,11 @@ Deno.serve(async (req) => {
 
     results.push({
       attempt_id: attemptId,
+      channel: claimChannel,
       attempt_number: claim.attempt_number ?? null,
       outcome: outcome.status,
       result_code: outcome.resultCode,
-      provider_contacted: true,
+      provider_contacted: outcome.resultCode !== "configuration_invalid",
       recorded: !completion.error,
     });
   }
@@ -440,6 +441,8 @@ Deno.serve(async (req) => {
     blocker: plan.blocker ?? null,
     blockers: plan.blockers ?? [],
     results,
+    in_app: plan.in_app ?? null,
+    whatsapp: plan.whatsapp ?? null,
     live_delivery_enabled: false,
     release_live_state_available: false,
   });
