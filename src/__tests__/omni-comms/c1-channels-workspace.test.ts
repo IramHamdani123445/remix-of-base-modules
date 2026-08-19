@@ -73,12 +73,11 @@ describe('C1 — channel catalogue', () => {
     expect(isChannelConfigurable(email)).toBe(true);
   });
 
-  it('4. webhook and voice are planned and require a database extension', () => {
+  it('4. webhook and voice are schema-supported and configurable', () => {
     for (const code of ['webhook', 'voice'] as const) {
       const d = getChannelUi(code);
-      expect(d.implementationState).toBe('planned');
-      expect(d.databaseSupported).toBe(false);
-      expect(isChannelConfigurable(d)).toBe(false);
+      expect(d.databaseSupported).toBe(true);
+      expect(isChannelConfigurable(d)).toBe(true);
     }
     expect(getChannelUi('sms').implementationState).toBe('configuring');
     expect(getChannelUi('print').implementationState).toBe('configuring');
@@ -266,11 +265,11 @@ describe('C1 — safety boundaries', () => {
     expect(src).not.toContain('sendCommunication(');
   });
 
-  it('23. planned channels expose no fake mutation controls', () => {
+  it('23. configurable channels expose real, enabled administration tabs', () => {
     for (const code of ['webhook', 'voice'] as const) {
       const d = getChannelUi(code);
-      expect(isTabDisabled(d, 'accounts')).toBe(true);
-      expect(isTabDisabled(d, 'bindings')).toBe(true);
+      expect(isTabDisabled(d, 'accounts')).toBe(false);
+      expect(isTabDisabled(d, 'bindings')).toBe(false);
       expect(isTabDisabled(d, 'overview')).toBe(false);
     }
     expect(isTabDisabled(getChannelUi('sms'), 'accounts')).toBe(false);

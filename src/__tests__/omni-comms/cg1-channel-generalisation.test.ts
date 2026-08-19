@@ -147,11 +147,12 @@ describe('CG1 — approved per-channel workflow', () => {
     }
   });
 
-  it('Webhook and Voice are planned states with no configuration surface', () => {
+  it('Webhook and Voice are schema-supported and configurable', () => {
     for (const channel of ['webhook', 'voice'] as const) {
       const d = getChannelDescriptor(channel);
-      expect(d.databaseSupported).toBe(false);
-      expect(d.tabs).toEqual(['overview']);
+      expect(d.databaseSupported).toBe(true);
+      expect(d.tabs).toContain('endpoints');
+      expect(d.tabs).toContain('release-control');
     }
   });
 });

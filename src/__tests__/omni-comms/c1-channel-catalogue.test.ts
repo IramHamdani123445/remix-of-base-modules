@@ -35,9 +35,9 @@ describe('C1 — channel catalogue', () => {
     expect(byChunk('C10')).toEqual(['webhook', 'print', 'voice']);
   });
 
-  it('email, sms, in-app and print have implemented administration surfaces', () => {
+  it('every canonical channel now has an implemented administration surface', () => {
     expect(getImplementedChannels().map((d) => d.channel))
-      .toEqual(['email', 'sms', 'whatsapp', 'in_app', 'print']);
+      .toEqual(['email', 'sms', 'whatsapp', 'push', 'in_app', 'webhook', 'print', 'voice']);
   });
 
   it('exposes no provider adapters for unimplemented channels', () => {
@@ -58,13 +58,12 @@ describe('C1 — channel catalogue', () => {
     }
   });
 
-  it('CG1 — webhook is planned, so it exposes overview only', () => {
-    // The shared database objects do not represent webhook yet. Schema support
-    // and UI applicability are separate concerns: nothing configurable may be
-    // offered for a channel the shared objects cannot store.
+  it('webhook is schema-supported but exposes no sender identity', () => {
+    // Webhook delivery addresses a governed subscriber endpoint, so the
+    // channel is fully configurable but has no sender identity to resolve.
     const d = getChannelDescriptor('webhook');
-    expect(d.databaseSupported).toBe(false);
-    expect(d.tabs).toEqual(['overview']);
+    expect(d.databaseSupported).toBe(true);
+    expect(d.tabs).toContain('endpoints');
     expect(d.tabs).not.toContain('identities');
   });
 

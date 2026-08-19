@@ -45,19 +45,21 @@ describe('C2.1 — adapter catalogue', () => {
     expect(adapterDeliveryImplemented('print_spool')).toBe(true);
     // The internal in-app adapter is deployed too.
     expect(adapterDeliveryImplemented('internal_in_app')).toBe(true);
+    // Push, Webhook and Voice adapters are deployed too.
+    expect(adapterDeliveryImplemented('firebase_push')).toBe(true);
+    expect(adapterDeliveryImplemented('outbound_webhook')).toBe(true);
+    expect(adapterDeliveryImplemented('twilio_voice')).toBe(true);
     expect(OMNI_COMMS_PROVIDER_ADAPTERS.filter((a) => a.deliveryImplemented))
-      .toHaveLength(5);
+      .toHaveLength(OMNI_COMMS_PROVIDER_ADAPTERS.length);
 
     expect(NO_DELIVERY_ADAPTER_MESSAGE).toMatch(/no delivery adapter is installed/i);
   });
 
   it('offers at least one adapter for every schema-supported channel', () => {
-    for (const c of ['email', 'sms', 'whatsapp', 'push', 'in_app', 'print'] as const) {
+    for (const c of ['email', 'sms', 'whatsapp', 'push', 'in_app', 'print', 'webhook', 'voice'] as const) {
       expect(providerRegistrationSupported(c)).toBe(true);
       expect(adaptersForChannel(c).length).toBeGreaterThan(0);
     }
-    expect(providerRegistrationSupported('webhook')).toBe(false);
-    expect(providerRegistrationSupported('voice')).toBe(false);
   });
 
   it('declares only secret reference patterns, never values', () => {
