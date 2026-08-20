@@ -6964,6 +6964,24 @@ export type Database = {
           },
         ]
       }
+      bn_calc_boundary_secret: {
+        Row: {
+          created_at: string
+          id: boolean
+          secret: string
+        }
+        Insert: {
+          created_at?: string
+          id?: boolean
+          secret?: string
+        }
+        Update: {
+          created_at?: string
+          id?: boolean
+          secret?: string
+        }
+        Relationships: []
+      }
       bn_calc_legacy_snapshot: {
         Row: {
           benefit_code: string | null
@@ -113951,6 +113969,7 @@ export type Database = {
         Returns: Json
       }
       _bn_calc_boundary_enter: { Args: never; Returns: undefined }
+      _bn_calc_boundary_token: { Args: never; Returns: string }
       _bn_calc_dim_match: {
         Args: { p_input: Json; p_match_type: string; p_row_val: Json }
         Returns: boolean
@@ -116163,6 +116182,23 @@ export type Database = {
           p_dimension_values: Json
           p_effective_from: string
           p_effective_to: string
+          p_output_key: string
+          p_output_text: string
+          p_output_type: string
+          p_output_value: number
+          p_rate_table_id: string
+          p_row_id: string
+          p_row_order: number
+          p_user_code: string
+        }
+        Returns: string
+      }
+      bn_calc_config_save_rate_table_row_v2: {
+        Args: {
+          p_dimension_values: Json
+          p_effective_from: string
+          p_effective_to: string
+          p_notes: string
           p_output_key: string
           p_output_text: string
           p_output_type: string

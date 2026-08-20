@@ -53,6 +53,10 @@ DECLARE
   v_issue_before       bigint;
   v_failed     boolean;
   v_msg        text;
+  v_draft_ver  uuid;
+  v_draft_tbl  uuid;
+  v_draft_row  uuid;
+
 BEGIN
   RAISE NOTICE '--- BN_ELIG_CALC harness starting ---';
 
@@ -535,7 +539,97 @@ BEGIN
     RAISE EXCEPTION 'J6 FAIL: ACTIVE rate table row was directly mutable (%)', v_msg;
   END IF;
 
+  -- =====================================================================
+  -- Journey K — BUG-14: the immutability guards must actually EXECUTE.
+  -- Before the fix, every write aborted with 42501 on _bn_calc_in_boundary
+  -- and no business rule was ever evaluated.
+  -- =====================================================================
+
+  -- K1 the guard trigger functions must run with owner privileges so that
+  --    the boundary check itself is never a permission failure.
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname IN ('_bn_calc_guard_formula_version', '_bn_calc_guard_rate_table_row')
+      AND (NOT p.prosecdef
+           OR p.proconfig IS NULL
+           OR NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) c WHERE c LIKE 'search\_path=%'))
+  ) THEN
+    RAISE EXCEPTION 'K1 FAIL: calculation guards are not SECURITY DEFINER with a pinned search_path';
+  END IF;
+
+  -- K2 a DRAFT formula version saves through the governed RPC
+  SELECT id INTO v_draft_ver FROM public.bn_formula_version
+  WHERE formula_code = c_code || '_DRAFTONLY' AND upper(governance_status) = 'DRAFT'
+  LIMIT 1;
+  IF v_draft_ver IS NULL THEN RAISE EXCEPTION 'K2 FAIL: draft fixture missing'; END IF;
+  PERFORM public.bn_calc_config_save_formula_version_v1(
+    v_draft_ver, 'SIMPLE_EXPRESSION', '{"expression":"{AVG_INSURABLE_WAGE}"}'::jsonb,
+    '{AVG_INSURABLE_WAGE}', 'HARNESS');
+  IF (SELECT expression FROM public.bn_formula_version WHERE id = v_draft_ver)
+     <> '{AVG_INSURABLE_WAGE}' THEN
+    RAISE EXCEPTION 'K2 FAIL: DRAFT formula version did not save through the governed RPC';
+  END IF;
+
+  -- K3 a DRAFT formula version is directly editable, and the failure mode is
+  --    never a permission error
+  v_failed := false;
+  BEGIN
+    UPDATE public.bn_formula_version SET modified_by = 'HARNESS' WHERE id = v_draft_ver;
+  EXCEPTION WHEN others THEN v_failed := true; v_msg := SQLERRM; END;
+  IF v_failed THEN
+    RAISE EXCEPTION 'K3 FAIL: DRAFT formula version write was refused (%)', v_msg;
+  END IF;
+
+  -- K4 deleting a non-DRAFT version is refused with the business message
+  v_failed := false;
+  BEGIN
+    DELETE FROM public.bn_formula_version WHERE id = v_v1;
+  EXCEPTION WHEN others THEN v_failed := true; v_msg := SQLERRM; END;
+  IF NOT v_failed OR v_msg NOT LIKE 'BN_CALC_IMMUTABLE_FORMULA_VERSION%' THEN
+    RAISE EXCEPTION 'K4 FAIL: non-DRAFT version deletion was not refused with the business message (%)', v_msg;
+  END IF;
+
+  -- K5 DRAFT rate table rows save and delete through the governed RPCs
+  INSERT INTO public.bn_rate_table (
+    id, table_code, table_name, table_type, lookup_strategy, country_code,
+    version_no, effective_from, status, entered_by
+  ) VALUES (
+    gen_random_uuid(), 'ZZ_EPIC0_DRAFT_RATE', 'Epic 0 draft rate table', 'RATE_TABLE',
+    'EXACT_MATCH', 'KN', 1, DATE '2020-01-01', 'DRAFT', 'HARNESS'
+  ) RETURNING id INTO v_draft_tbl;
+
+  v_draft_row := public.bn_calc_config_save_rate_table_row_v2(
+    NULL, v_draft_tbl, 1, '{"benefit_code":"SICK"}'::jsonb, 'RATE_PCT', 0.55,
+    NULL, 'RATE', DATE '2020-01-01', NULL, 'harness note', 'HARNESS');
+  IF v_draft_row IS NULL THEN RAISE EXCEPTION 'K5 FAIL: DRAFT rate row insert did not return an id'; END IF;
+
+  PERFORM public.bn_calc_config_save_rate_table_row_v2(
+    v_draft_row, v_draft_tbl, 1, '{"benefit_code":"SICK"}'::jsonb, 'RATE_PCT', 0.66,
+    NULL, 'RATE', DATE '2020-01-01', NULL, 'harness note', 'HARNESS');
+  IF (SELECT output_value FROM public.bn_rate_table_row WHERE id = v_draft_row) <> 0.66 THEN
+    RAISE EXCEPTION 'K5 FAIL: DRAFT rate row update did not persist';
+  END IF;
+
+  PERFORM public.bn_calc_config_delete_rate_table_row_v1(v_draft_row, 'HARNESS');
+  IF EXISTS (SELECT 1 FROM public.bn_rate_table_row WHERE id = v_draft_row) THEN
+    RAISE EXCEPTION 'K5 FAIL: DRAFT rate row delete did not persist';
+  END IF;
+
+  -- K6 the boundary signal cannot be forged by the caller
+  PERFORM set_config('bn.calc_boundary', 'on', true);
+  v_failed := false;
+  BEGIN
+    UPDATE public.bn_rate_table_row SET output_value = 9.99
+    WHERE rate_table_id = c_rate_tbl AND row_order = 1;
+  EXCEPTION WHEN others THEN v_failed := true; v_msg := SQLERRM; END;
+  PERFORM set_config('bn.calc_boundary', '', true);
+  IF NOT v_failed OR v_msg NOT LIKE 'BN_CALC_IMMUTABLE_RATE_TABLE%' THEN
+    RAISE EXCEPTION 'K6 FAIL: a forged boundary flag bypassed the immutability guard (%)', v_msg;
+  END IF;
+
   RAISE NOTICE 'BN_ELIG_CALC_HARNESS_RESULT: PASS';
+
 END
 $harness$;
 
