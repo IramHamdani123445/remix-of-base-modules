@@ -287,8 +287,10 @@ export const ChannelTestDeliveryCard: React.FC<{
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() => newDeliveryIdempotencyKey());
   const [lastDelivery, setLastDelivery] = useState<ChannelTestDelivery | null>(null);
   const isSms = channel === 'sms';
-  const ChannelIcon = isSms ? MessageSquareText : MailCheck;
-  const recipientPlural = isSms ? 'recipients' : 'addresses';
+  const isWhatsApp = channel === 'whatsapp';
+  const isMessaging = isSms || isWhatsApp;
+  const ChannelIcon = isMessaging ? MessageSquareText : MailCheck;
+  const recipientPlural = isMessaging ? 'recipients' : 'addresses';
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -476,7 +478,7 @@ export const ChannelTestDeliveryCard: React.FC<{
              label={`Approved test ${recipientPlural} (comma separated)`}
             value={recipientsText}
             onChange={setRecipientsText}
-             placeholder={isSms ? '+15551234567' : 'qa.mailbox@example.com'}
+             placeholder={isMessaging ? '+15551234567' : 'qa.mailbox@example.com'}
           />
           <div className="grid gap-3 md:grid-cols-3">
             <Field
@@ -516,8 +518,8 @@ export const ChannelTestDeliveryCard: React.FC<{
         </div>
 
          <div className="grid gap-3 md:grid-cols-2" data-testid="omni-comms-test-delivery-content">
-           {!isSms ? <Detail label="Preflight subject" value={subject || '—'} /> : null}
-           <Detail label={isSms ? 'Preflight message' : 'Preflight body'} value={bodyText || '—'} />
+           {!isMessaging ? <Detail label="Preflight subject" value={subject || '—'} /> : null}
+           <Detail label={isMessaging ? 'Preflight message' : 'Preflight body'} value={bodyText || '—'} />
          </div>
         <p className="text-xs text-muted-foreground">
            The provider message must carry exactly the content that passed the configuration
