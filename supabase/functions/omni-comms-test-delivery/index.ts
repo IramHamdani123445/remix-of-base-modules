@@ -32,6 +32,7 @@ import {
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
 import {
+  fetchTwilioMessageStatus,
   resolveTwilioCredentials,
   resolveTwilioSecret,
   sendTwilioSms,
@@ -166,25 +167,48 @@ Deno.serve(async (req) => {
       return json({ ok: false, errorCode: "no_provider_message", lastEvent: null });
     }
 
+    const purpose = row.channel === "sms" || row.channel === "whatsapp"
+      ? "account_sid"
+      : "api_key";
     const { data: ref } = await serviceClient
       .from("omni_comms_provider_account_secret_ref")
       .select("secret_ref, storage_mode")
       .eq("provider_account_id", row.provider_account_id)
-      // Accounts can hold multiple independent credentials (for example the
-      // Resend API key and the webhook signing secret). Delivery-status reads
-      // must always resolve the sending credential, never an arbitrary row.
-      .eq("purpose", "api_key")
+      .eq("purpose", purpose)
       .maybeSingle();
     if (!ref?.secret_ref) {
       return json({ ok: false, errorCode: "credential_missing", lastEvent: null });
     }
 
-    const probe = await fetchResendEmailStatus({
-      secretRef: ref.secret_ref,
-      storageMode: ref.storage_mode,
-      secretResolver: createVaultSecretResolver(serviceClient),
-      providerMessageId: row.provider_message_id,
-    });
+    let probe;
+    if (row.channel === "sms" || row.channel === "whatsapp") {
+      const { data: tokenRef } = await serviceClient
+        .from("omni_comms_provider_account_secret_ref")
+        .select("secret_ref")
+        .eq("provider_account_id", row.provider_account_id)
+        .eq("purpose", "auth_token")
+        .maybeSingle();
+      if (!tokenRef?.secret_ref) {
+        return json({ ok: false, errorCode: "credential_missing", lastEvent: null });
+      }
+      const resolved = await resolveTwilioCredentials({
+        accountSidRef: ref.secret_ref,
+        authTokenRef: tokenRef.secret_ref,
+        storageMode: ref.storage_mode,
+        secretResolver: createVaultSecretResolver(serviceClient),
+      });
+      if (!resolved.ok) {
+        return json({ ok: false, errorCode: resolved.errorCode, errorDetail: resolved.detail, lastEvent: null });
+      }
+      probe = await fetchTwilioMessageStatus(resolved.credentials, row.provider_message_id);
+    } else {
+      probe = await fetchResendEmailStatus({
+        secretRef: ref.secret_ref,
+        storageMode: ref.storage_mode,
+        secretResolver: createVaultSecretResolver(serviceClient),
+        providerMessageId: row.provider_message_id,
+      });
+    }
     return json({
       ok: probe.ok,
       lastEvent: probe.lastEvent,
