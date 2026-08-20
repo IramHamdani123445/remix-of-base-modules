@@ -380,6 +380,86 @@ export interface TwilioVerificationResult {
   readonly detail: string;
 }
 
+export interface TwilioMessageStatusResult {
+  readonly ok: boolean;
+  readonly lastEvent: string | null;
+  readonly createdAt: string | null;
+  readonly providerStatusCode: number | null;
+  readonly errorCode: string | null;
+  readonly errorDetail: string | null;
+}
+
+/**
+ * Reads the current status of one previously accepted Twilio message.
+ * This is read-only and returns only bounded delivery evidence.
+ */
+export async function fetchTwilioMessageStatus(
+  credentials: TwilioCredentials,
+  providerMessageId: string,
+): Promise<TwilioMessageStatusResult> {
+  const sid = boundedProviderMessageId(providerMessageId);
+  if (!sid || !/^SM[0-9a-fA-F]{32}$/.test(sid)) {
+    return {
+      ok: false,
+      lastEvent: null,
+      createdAt: null,
+      providerStatusCode: null,
+      errorCode: "provider_message_id_invalid",
+      errorDetail: "The Twilio message reference is invalid.",
+    };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TWILIO_TIMEOUT_MS);
+  try {
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${credentials.accountSid}/Messages/${sid}.json`,
+      {
+        method: "GET",
+        signal: controller.signal,
+        headers: { Authorization: basicAuth(credentials), Accept: "application/json" },
+      },
+    );
+    const body = await response.json().catch(() => null) as Record<string, unknown> | null;
+    if (!response.ok) {
+      return {
+        ok: false,
+        lastEvent: null,
+        createdAt: null,
+        providerStatusCode: response.status,
+        errorCode: typeof body?.code === "number" ? `twilio_${body.code}` : "provider_status_unavailable",
+        errorDetail: "Twilio could not return the message status.",
+      };
+    }
+
+    const status = boundedProviderCode(body?.status);
+    const createdAt = typeof body?.date_created === "string" ? body.date_created.slice(0, 80) : null;
+    const providerError = typeof body?.error_code === "number" ? `twilio_${body.error_code}` : null;
+    return {
+      ok: status === "delivered" || status === "sent" || status === "queued" || status === "sending" || status === "accepted",
+      lastEvent: status,
+      createdAt,
+      providerStatusCode: response.status,
+      errorCode: providerError,
+      errorDetail: providerError ? "Twilio reported that the message was not delivered." : null,
+    };
+  } catch (error) {
+    const timedOut = error instanceof DOMException && error.name === "AbortError";
+    return {
+      ok: false,
+      lastEvent: null,
+      createdAt: null,
+      providerStatusCode: null,
+      errorCode: timedOut ? "provider_timeout" : "provider_status_unavailable",
+      errorDetail: timedOut
+        ? "The Twilio status request timed out."
+        : "Twilio could not be reached for a status check.",
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Read-only credential verification. Fetches the account record; it never
  * sends and never mutates anything at the provider.
