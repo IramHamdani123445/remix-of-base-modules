@@ -511,6 +511,46 @@ Deno.serve(async (req) => {
         });
 
       })()
+      : claimChannel === "sms"
+      ? await (async () => {
+        const resolved = await resolveTwilioCredentials({
+          accountSidRef: String(claim.account_sid_ref ?? ""),
+          authTokenRef: String(claim.auth_token_ref ?? ""),
+          storageMode,
+          secretResolver,
+        });
+        if (!resolved.ok) {
+          // A credential that cannot be resolved is a definite configuration
+          // failure, recorded WITHOUT contacting the provider.
+          return {
+            status: "failed" as const,
+            resultCode: "configuration_invalid",
+            providerMessageId: null,
+            providerStatusCode: null,
+            providerResponse: { channel: "sms" },
+            errorCode: resolved.errorCode,
+            errorDetail: resolved.detail,
+          };
+        }
+        // Optional Messaging Service: resolved by bounded reference name only.
+        let messagingServiceSid: string | null = null;
+        const serviceRef = String(claim.messaging_service_secret_ref ?? "");
+        if (serviceRef !== "") {
+          const svc = await resolveTwilioSecret(serviceRef, storageMode, secretResolver);
+          if (svc.ok) messagingServiceSid = svc.value.trim();
+        }
+        return await sendTwilioSms({
+          credentials: resolved.credentials,
+          from: String(claim.from_number ?? "") || null,
+          messagingServiceSid,
+          to: String(claim.recipient ?? ""),
+          body: String(claim.body ?? ""),
+          // Exclusively from omni_comms_runtime_endpoint via the claim.
+          statusCallbackUrl: (claim.status_callback_url as string | null) ?? null,
+          // Deterministic: identical on every safe retry of this message.
+          idempotencyKey: String(claim.provider_idempotency_key ?? ""),
+        });
+      })()
       : claimChannel === "push"
       ? await sendFcmPush({
         serviceAccountRef: String(claim.service_account_ref ?? ""),
