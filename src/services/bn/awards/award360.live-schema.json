@@ -5,7 +5,7 @@
     "capturedBy": "AW360-WAVE-1-C1 Slice B.1",
     "source": "information_schema.columns (live Supabase)",
     "schema": "public",
-    "tableCount": 34
+    "tableCount": 36
   },
   "tables": {
     "bn_approval_policy": [
@@ -129,6 +129,17 @@
       "workflow_instance_id",
       "correlation_id",
       "row_version"
+    ],
+    "bn_branch": [
+      "id",
+      "scheme_id",
+      "branch_code",
+      "branch_name",
+      "description",
+      "is_active",
+      "sort_order",
+      "entered_by",
+      "entered_at"
     ],
     "bn_claim": [
       "id",
@@ -760,6 +771,20 @@
       "rounding_rule",
       "effective_date_rule",
       "calculation_config_legacy"
+    ],
+    "bn_scheme": [
+      "id",
+      "country_code",
+      "scheme_code",
+      "scheme_name",
+      "description",
+      "governing_legislation",
+      "sort_order",
+      "status",
+      "entered_by",
+      "entered_at",
+      "modified_by",
+      "modified_at"
     ],
     "core_audit_log": [
       "id",

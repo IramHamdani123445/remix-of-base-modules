@@ -91,7 +91,8 @@ export const AWARD360_LOADER_MANIFEST: readonly Award360ExportEntry[] = [
     sourceFile: F_SVC,
     classification: 'QUERY_LOADER',
     category: 'PRODUCT',
-    expectedTables: ['bn_award', 'bn_product', 'bn_claim', 'bn_product_version'],
+    // BUG-011 — bn_scheme/bn_branch resolve scheme_id/branch_id to names.
+    expectedTables: ['bn_award', 'bn_product', 'bn_scheme', 'bn_branch', 'bn_claim', 'bn_product_version'],
     scenarioIds: certificationScenariosFor('getAwardProduct'),
   },
   {
@@ -305,6 +306,8 @@ export const AWARD360_LOADER_MANIFEST: readonly Award360ExportEntry[] = [
     expectedTables: [
       'bn_award',
       'bn_product',
+      'bn_scheme',
+      'bn_branch',
       'bn_claim',
       'bn_product_version',
       'bn_product_formula_binding',
