@@ -9,7 +9,6 @@
  * Pure presentation: no provider SDK, no send facade, no network call.
  */
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Field } from './channelFormPrimitives';
