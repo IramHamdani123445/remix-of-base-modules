@@ -242,8 +242,8 @@ export async function probeResendDomains(
   };
 }
 
-export interface VerificationDeps {
 /**
+
  * Bounded Twilio credential reference name shape. Only Twilio-scoped
  * Omni-Comms references may ever be resolved from the credential store.
  */
