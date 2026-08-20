@@ -157,7 +157,7 @@ export default function RulesAdministration() {
                 <SelectContent>
                   <SelectItem value="all">All Products</SelectItem>
                   {products.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id}>{p.product_name}</SelectItem>
+                    <SelectItem key={p.id} value={p.id}>{p.benefit_code} — {p.benefit_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

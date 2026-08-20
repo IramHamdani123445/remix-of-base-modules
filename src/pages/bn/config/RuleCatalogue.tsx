@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Edit, Copy, Trash2, Power, Search, AlertTriangle, CheckCircle2, FlaskConical, Database, ListChecks, Activity, ShieldCheck, XCircle, PlayCircle, LayoutDashboard, BadgeCheck, GitBranch } from 'lucide-react';
+import { Plus, Edit, Copy, Trash2, Power, Search, AlertTriangle, CheckCircle2, FlaskConical, Database, ListChecks, Activity, ShieldCheck, XCircle, PlayCircle, LayoutDashboard, BadgeCheck, GitBranch, Sigma } from 'lucide-react';
 import { BNDataGrid, type BNColumnDef } from '@/components/bn/grid';
 import { resolveFact } from '@/services/bn/eligibility/eligibilityFactResolver';
 import { computeRuleCoverage, type CoverageRow } from '@/services/bn/eligibility/factCoverageService';
@@ -38,6 +38,7 @@ import { CoverageTypesTab } from '@/components/bn/ruleCatalogue/CoverageTypesTab
 import { ValidationTab } from '@/components/bn/ruleCatalogue/ValidationTab';
 import { ImpactTab } from '@/components/bn/ruleCatalogue/ImpactTab';
 import { FactsTab } from '@/components/bn/ruleCatalogue/FactsTab';
+import { DerivedFactsTab } from '@/pages/bn/config/DerivedFactRegistry';
 import { RuntimeTestTab } from '@/components/bn/ruleCatalogue/RuntimeTestTab';
 import { AuditTab } from '@/components/bn/ruleCatalogue/AuditTab';
 import { validateAllRules } from '@/services/bn/ruleValidationService';
@@ -214,6 +215,7 @@ export default function RuleCatalogue() {
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="overview" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Overview</TabsTrigger>
           <TabsTrigger value="facts" className="gap-2"><Database className="h-4 w-4" /> Facts</TabsTrigger>
+          <TabsTrigger value="derived-facts" className="gap-2"><Sigma className="h-4 w-4" /> Derived Facts</TabsTrigger>
           <TabsTrigger value="rules" className="gap-2"><ListChecks className="h-4 w-4" /> Rules</TabsTrigger>
           <TabsTrigger value="coverage-types" className="gap-2"><GitBranch className="h-4 w-4" /> Coverage Types</TabsTrigger>
           <TabsTrigger value="coverage" className="gap-2"><ShieldCheck className="h-4 w-4" /> Implementation Coverage</TabsTrigger>
@@ -346,6 +348,12 @@ export default function RuleCatalogue() {
         {/* FACTS TAB */}
         <TabsContent value="facts">
           <FactsTab />
+        </TabsContent>
+
+        {/* DERIVED FACTS TAB — same registry as /bn/config/derived-facts, which
+            had no route into it from anywhere in the application. */}
+        <TabsContent value="derived-facts">
+          <DerivedFactsTab />
         </TabsContent>
 
         {/* USAGE TAB */}

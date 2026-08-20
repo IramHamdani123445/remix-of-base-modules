@@ -74,11 +74,17 @@ interface Props {
   onClose: () => void;
   rateTableId?: string | null;
   onSaved?: (id: string) => void;
+  /**
+   * Which kind of table is being created. The Rate / Tier and Matrix tabs open
+   * this same dialog, so without this the Matrix tab showed "New Rate Table".
+   * Ignored when editing, where the stored table type is authoritative.
+   */
+  kind?: 'RATE' | 'MATRIX';
 }
 
 const db = supabase as any;
 
-export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved }: Props) {
+export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved, kind = 'RATE' }: Props) {
   const { profile } = useSupabaseAuth();
   const { data: countries = [] } = useBnCountries();
   const { options: TABLE_TYPES } = useReferenceValues(BN_REF_GROUPS.RATE_TABLE_TYPE, TABLE_TYPES_FALLBACK);
@@ -268,7 +274,7 @@ export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved }: Pro
     <BNModalShell
       open={open}
       onOpenChange={(o) => !o && onClose()}
-      title={rateTableId ? 'Edit Rate Table' : 'New Rate Table'}
+      title={rateTableId ? 'Edit Table' : kind === 'MATRIX' ? 'Create Matrix' : 'Create Rate Table'}
       size="4xl"
       mode="edit"
       footer={footer}

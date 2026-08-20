@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useRuleCatalogue } from '@/hooks/bn/useRuleCatalogue';
 import { supabase } from '@/integrations/supabase/client';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
+import { catalogueLegalSnapshot } from '@/lib/bn/catalogueLegalSnapshot';
 import type { RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
 
 interface Props {
@@ -68,8 +69,13 @@ export function CataloguePickerDialog({ open, onOpenChange, versionId, onAdded }
         },
         fail_action: r.default_fail_action,
         fail_message: r.failure_message_text,
+        fact_key: r.fact_key,
+        catalogue_rule_id: r.id,
         catalogue_rule_code: r.rule_code,
         catalogue_rule_version: r.version,
+        // Legal approval must travel with the copy — the publish gate reads
+        // these fields on the product rule, not on the catalogue row.
+        ...catalogueLegalSnapshot(r as any),
         is_active: true,
         sort_order: i,
         entered_by: userCode,

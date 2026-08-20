@@ -33,6 +33,7 @@ import { useBnFormulaVariableRegistry } from '@/hooks/bn/useBnFormulaVariableReg
 import { useUserCode } from '@/hooks/useUserCode';
 import { createFormulaWithDraftVersion } from '@/services/bn/createFormulaWithDraftVersion';
 import { parseFormula } from '@/lib/bn/formulaParser';
+import { useVariableResolver } from '@/hooks/bn/useVariableResolver';
 import CountryFieldSelector from '@/components/bn/selectors/CountryFieldSelector';
 import LegalReferenceSelector from '@/components/bn/selectors/LegalReferenceSelector';
 
@@ -91,7 +92,30 @@ export function AddFormulaWizard({ open, onClose, existingCodes, onCreated }: Pr
   const [validation, setValidation] = useState<{ ok: boolean; errors: string[]; warnings: string[] } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const variables = useMemo(() => registry.map((r: any) => r.variable_code), [registry]);
+  /**
+   * BUG-19 — the wizard offered one list of variables and validated against
+   * another.
+   *
+   * Step 3 listed the database variable registry (~40 entries). Step 7 called
+   * parseFormula() with no resolver, so the parser fell back to its in-code
+   * list (~23 entries) and rejected variables the wizard had just offered.
+   * Neither derived facts nor product parameters were consulted at all, so no
+   * amount of configuration could make a rejected variable acceptable — the
+   * only fix was editing code, which contradicts the module's own rule that
+   * this kind of list must be data.
+   *
+   * Both now come from the same place: the resolver map, which is built from
+   * facts, approved derived facts, product parameters and prior formula
+   * results — the same resolver every other formula screen already uses.
+   */
+  const { data: resolver, isLoading: resolverLoading, error: resolverError } = useVariableResolver();
+
+  const variables = useMemo(() => {
+    const codes = new Set<string>(registry.map((r: any) => r.variable_code).filter(Boolean));
+    // Anything the resolver accepts is offerable, so the two lists cannot diverge.
+    if (resolver) for (const code of resolver.keys()) codes.add(code);
+    return [...codes].sort();
+  }, [registry, resolver]);
   const codeUpper = code.trim().toUpperCase();
   const codeDuplicate = !!codeUpper && existingCodes.map((c) => c.toUpperCase()).includes(codeUpper);
 
@@ -146,12 +170,22 @@ export function AddFormulaWizard({ open, onClose, existingCodes, onCreated }: Pr
     if (codeDuplicate) errs.push('Duplicate code.');
     if (!name.trim()) errs.push('Missing name.');
 
-    // 2. Variables registered (best-effort static parse)
+    // 2. Variables must resolve against the same list step 3 offered.
     if (type === 'SIMPLE_EXPRESSION') {
-      const parsed = parseFormula(steps.expression ?? '', null);
-      if (!parsed.valid) errs.push(`Expression error: ${parsed.errors.join('; ')}`);
-      for (const v of parsed.variablesUsed ?? []) {
-        if (!variables.includes(v)) warns.push(`Variable "${v}" not in registry.`);
+      if (resolverError) {
+        errs.push(
+          'Cannot check the expression: the variable list could not be loaded. ' +
+          'Validation is refused rather than checked against an incomplete list.',
+        );
+      } else if (resolverLoading || !resolver) {
+        errs.push('Still loading the variable list — run validation again in a moment.');
+      } else {
+        const parsed = parseFormula(steps.expression ?? '', resolver);
+        if (!parsed.valid) errs.push(`Expression error: ${parsed.errors.join('; ')}`);
+        // No separate "not in registry" warning: the resolver is the registry,
+        // so a variable that parsed successfully is by definition registered.
+        // The old warning compared against a different list and fired on
+        // variables that were perfectly valid.
       }
     }
 
