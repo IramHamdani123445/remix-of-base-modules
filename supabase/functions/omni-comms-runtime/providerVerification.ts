@@ -292,6 +292,9 @@ export async function probeTwilioCredential(
   return { resultCode, detail: DETAIL[resultCode] };
 }
 
+export interface VerificationDeps {
+
+
 
   /** service-role supabase client */
   admin: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
