@@ -115,7 +115,7 @@ describe('C5A.1 — idempotency retry safety', () => {
   it('starts a fresh immutable test when submitted target or content changes', () => {
     const tab = read(TAB);
     expect(tab).toContain('submittedDraft.current');
-    expect(tab).toContain('draftSignature');
+    expect(tab).toContain('startFreshTestAfterEdit');
     expect(tab).toContain('Editing either starts a fresh test automatically.');
   });
 

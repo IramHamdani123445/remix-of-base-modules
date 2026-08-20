@@ -215,12 +215,7 @@ export const ChannelTestCentreTab: React.FC<{
     () => buildTestPayload(channel as TestCentreChannel, content),
     [channel, content],
   );
-  const draftSignature = JSON.stringify({ target: target.trim(), payload });
-  const previousDraftSignature = useRef(draftSignature);
-
-  useEffect(() => {
-    if (previousDraftSignature.current === draftSignature) return;
-    previousDraftSignature.current = draftSignature;
+  const startFreshTestAfterEdit = useCallback(() => {
     if (!submittedDraft.current) return;
 
     // An immutable idempotency key may only be replayed with the exact same
@@ -229,7 +224,7 @@ export const ChannelTestCentreTab: React.FC<{
     setIdempotencyKey(newIdempotencyKey());
     setReplayed(false);
     setLastRun(null);
-  }, [draftSignature]);
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!client || !orgId || !supported) return;
@@ -355,13 +350,19 @@ export const ChannelTestCentreTab: React.FC<{
           <Field
             label={TEST_TARGET_LABEL_BY_CHANNEL[channel as TestCentreChannel]}
             value={target}
-            onChange={setTarget}
+            onChange={(next) => {
+              startFreshTestAfterEdit();
+              setTarget(next);
+            }}
             placeholder="Stored masked and hashed only"
           />
           <TestContentFields
             channel={channel as TestCentreChannel}
             value={content}
-            onChange={setContent}
+            onChange={(next) => {
+              startFreshTestAfterEdit();
+              setContent(next);
+            }}
           />
           <p className="text-xs text-muted-foreground">
             Only a summary (counts and titles) and a one-way hash are stored.
