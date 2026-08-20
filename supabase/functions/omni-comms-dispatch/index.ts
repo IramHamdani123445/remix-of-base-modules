@@ -363,6 +363,13 @@ Deno.serve(async (req) => {
         mediaUrl: (claim.media_url as string | null) ?? null,
         statusCallbackUrl: whatsappClaim?.statusCallbackUrl ?? null,
       }
+      : claimChannel === "sms"
+      ? {
+        from: String(claim.from_number ?? ""),
+        to: String(claim.recipient ?? ""),
+        body: String(claim.body ?? ""),
+        statusCallbackUrl: (claim.status_callback_url as string | null) ?? null,
+      }
       : claimChannel === "push"
       ? {
         title: String(claim.title ?? ""),
