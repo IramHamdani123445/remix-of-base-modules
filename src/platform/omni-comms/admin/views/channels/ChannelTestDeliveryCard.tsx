@@ -289,6 +289,7 @@ export const ChannelTestDeliveryCard: React.FC<{
   const isSms = channel === 'sms';
   const ChannelIcon = isSms ? MessageSquareText : MailCheck;
   const recipientLabel = isSms ? 'recipient' : 'address';
+  const recipientPlural = isSms ? 'recipients' : 'addresses';
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -461,7 +462,7 @@ export const ChannelTestDeliveryCard: React.FC<{
             <div>
               <p className="text-sm font-medium">Approve provider test delivery</p>
               <p className="text-xs text-muted-foreground">
-                 Up to {MAX_APPROVED_TEST_RECIPIENTS} technical test {recipientLabel}es. Approval never
+                 Up to {MAX_APPROVED_TEST_RECIPIENTS} technical test {recipientPlural}. Approval never
                 enables live delivery.
               </p>
             </div>
@@ -473,7 +474,7 @@ export const ChannelTestDeliveryCard: React.FC<{
             />
           </div>
           <Field
-             label={`Approved test ${recipientLabel}es (comma separated)`}
+             label={`Approved test ${recipientPlural} (comma separated)`}
             value={recipientsText}
             onChange={setRecipientsText}
              placeholder={isSms ? '+15551234567' : 'qa.mailbox@example.com'}
