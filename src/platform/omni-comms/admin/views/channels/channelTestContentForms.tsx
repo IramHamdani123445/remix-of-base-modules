@@ -9,11 +9,9 @@
  * Pure presentation: no provider SDK, no send facade, no network call.
  */
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, Plus } from 'lucide-react';
 import { Field } from './channelFormPrimitives';
 import type { TestCentreChannel } from '@/platform/omni-comms/application/channelTestCentreTypes';
 
@@ -94,46 +92,6 @@ const TextAreaField: React.FC<{
       data-testid={testId}
       onChange={(e) => onChange(e.target.value)}
     />
-  </div>
-);
-
-const SampleVariables: React.FC<{
-  value: string[];
-  onChange: (next: string[]) => void;
-}> = ({ value, onChange }) => (
-  <div className="space-y-2" data-testid="omni-comms-test-content-whatsapp-variables">
-    <Label>Sample variables (maximum {WHATSAPP_MAX_SAMPLE_VARIABLES})</Label>
-    {value.map((v, idx) => (
-      <div key={idx} className="flex items-center gap-2">
-        <Input
-          value={v}
-          aria-label={`Sample variable ${idx + 1}`}
-          onChange={(e) => {
-            const next = [...value];
-            next[idx] = e.target.value;
-            onChange(next);
-          }}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Remove sample variable ${idx + 1}`}
-          onClick={() => onChange(value.filter((_, i) => i !== idx))}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    ))}
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      disabled={value.length >= WHATSAPP_MAX_SAMPLE_VARIABLES}
-      onClick={() => onChange([...value, ''])}
-    >
-      <Plus className="h-4 w-4 mr-1" /> Add sample variable
-    </Button>
   </div>
 );
 
