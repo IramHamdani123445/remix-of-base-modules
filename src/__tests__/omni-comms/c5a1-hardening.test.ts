@@ -61,8 +61,7 @@ describe('C5A.1 — typed test content (no raw JSON editor)', () => {
     const f = defaultTestContentForm('email');
     expect(Object.keys(buildTestPayload('email', f)).sort()).toEqual(['body', 'subject']);
     expect(Object.keys(buildTestPayload('sms', f))).toEqual(['text']);
-    expect(Object.keys(buildTestPayload('whatsapp', f)).sort())
-      .toEqual(['language_code', 'template_code', 'variables']);
+    expect(Object.keys(buildTestPayload('whatsapp', f))).toEqual(['text']);
     expect(Object.keys(buildTestPayload('push', f)).sort()).toEqual(['body', 'title']);
     expect(Object.keys(buildTestPayload('in_app', f)).sort()).toEqual(['body', 'title']);
     expect(Object.keys(buildTestPayload('print', f)).sort())
@@ -74,14 +73,10 @@ describe('C5A.1 — typed test content (no raw JSON editor)', () => {
     expect(buildTestPayload('in_app', f)).toMatchObject({ deep_link: '/cases/1' });
   });
 
-  it('trims, drops blanks and caps WhatsApp sample variables', () => {
-    const f = {
-      ...defaultTestContentForm('whatsapp'),
-      variables: [' a ', '', ...Array.from({ length: 30 }, (_, i) => `v${i}`)],
-    };
-    const vars = (buildTestPayload('whatsapp', f) as { variables: string[] }).variables;
-    expect(vars).toHaveLength(WHATSAPP_MAX_SAMPLE_VARIABLES);
-    expect(vars[0]).toBe('a');
+  it('sends the WhatsApp session message exactly as authored', () => {
+    const f = { ...defaultTestContentForm('whatsapp'), text: 'Preflight only.' };
+    expect(buildTestPayload('whatsapp', f)).toEqual({ text: 'Preflight only.' });
+    expect(WHATSAPP_MAX_SAMPLE_VARIABLES).toBe(20);
   });
 
   it('renders typed fields and never a raw JSON editor', () => {
