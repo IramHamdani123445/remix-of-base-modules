@@ -111,6 +111,19 @@ describe('C5A.1 — idempotency retry safety', () => {
     expect(tab).toContain('omni-comms-test-centre-new-test');
     expect(tab).toContain('CHANNEL_TEST_REPLAY_NOTICE');
   });
+
+  it('starts a fresh immutable test when submitted target or content changes', () => {
+    const tab = read(TAB);
+    expect(tab).toContain('submittedDraft.current');
+    expect(tab).toContain('draftSignature');
+    expect(tab).toContain('Editing either starts a fresh test automatically.');
+  });
+
+  it('exposes provider test delivery for both email and SMS', () => {
+    const tab = read(TAB);
+    expect(tab).toContain("channel === 'email' || channel === 'sms'");
+    expect(tab).toContain("channel === 'email' ? content.body : content.text");
+  });
 });
 
 describe('C5A.1 — candidate binding labels', () => {
