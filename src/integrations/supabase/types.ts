@@ -116193,6 +116193,23 @@ export type Database = {
         }
         Returns: string
       }
+      bn_calc_config_save_rate_table_row_v2: {
+        Args: {
+          p_dimension_values: Json
+          p_effective_from: string
+          p_effective_to: string
+          p_notes: string
+          p_output_key: string
+          p_output_text: string
+          p_output_type: string
+          p_output_value: number
+          p_rate_table_id: string
+          p_row_id: string
+          p_row_order: number
+          p_user_code: string
+        }
+        Returns: string
+      }
       bn_calc_finalise_run_v1: {
         Args: { p_calc_run_id: string; p_outputs?: Json; p_status: string }
         Returns: Json
