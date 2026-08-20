@@ -16,7 +16,7 @@
  * mirrors them so the operator can see why the action is unavailable.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, MailCheck, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, MailCheck, MessageSquareText, RefreshCw, Send } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -132,8 +132,8 @@ export const PROVIDER_STATUS_ERROR_GUIDANCE: Record<string, string> = {
 
 
 export const DELIVERY_SAFETY_BULLETS: readonly string[] = [
-  'One real technical email is sent to an approved test address only.',
-  'The subject and body must be the exact content that passed the preflight.',
+  'One real technical message is sent to an approved test recipient only.',
+  'The message content must exactly match the content that passed the preflight.',
   'The live sending path is not used and live delivery stays switched off.',
   'The provider credential never reaches the browser.',
   'Each attempt carries a persistent provider idempotency key, so a retry '
@@ -286,6 +286,9 @@ export const ChannelTestDeliveryCard: React.FC<{
   const [minIntervalSeconds, setMinIntervalSeconds] = useState('60');
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() => newDeliveryIdempotencyKey());
   const [lastDelivery, setLastDelivery] = useState<ChannelTestDelivery | null>(null);
+  const isSms = channel === 'sms';
+  const ChannelIcon = isSms ? MessageSquareText : MailCheck;
+  const recipientPlural = isSms ? 'recipients' : 'addresses';
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -438,7 +441,7 @@ export const ChannelTestDeliveryCard: React.FC<{
     <Card data-testid="omni-comms-test-delivery">
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center gap-2">
-          <MailCheck className="h-4 w-4" /> Provider test delivery
+           <ChannelIcon className="h-4 w-4" /> Provider test delivery
           <Badge variant={diagnostics?.controlled_test_delivery_enabled ? 'default' : 'secondary'}>
             {diagnostics?.controlled_test_delivery_enabled ? 'approved' : 'not approved'}
           </Badge>
@@ -458,7 +461,7 @@ export const ChannelTestDeliveryCard: React.FC<{
             <div>
               <p className="text-sm font-medium">Approve provider test delivery</p>
               <p className="text-xs text-muted-foreground">
-                Up to {MAX_APPROVED_TEST_RECIPIENTS} technical test addresses. Approval never
+                 Up to {MAX_APPROVED_TEST_RECIPIENTS} technical test {recipientPlural}. Approval never
                 enables live delivery.
               </p>
             </div>
@@ -470,10 +473,10 @@ export const ChannelTestDeliveryCard: React.FC<{
             />
           </div>
           <Field
-            label="Approved test addresses (comma separated)"
+             label={`Approved test ${recipientPlural} (comma separated)`}
             value={recipientsText}
             onChange={setRecipientsText}
-            placeholder="qa.mailbox@example.com"
+             placeholder={isSms ? '+15551234567' : 'qa.mailbox@example.com'}
           />
           <div className="grid gap-3 md:grid-cols-3">
             <Field
@@ -512,13 +515,13 @@ export const ChannelTestDeliveryCard: React.FC<{
           </Button>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2" data-testid="omni-comms-test-delivery-content">
-          <Detail label="Preflight subject" value={subject || '—'} />
-          <Detail label="Preflight body" value={bodyText || '—'} />
-        </div>
+         <div className="grid gap-3 md:grid-cols-2" data-testid="omni-comms-test-delivery-content">
+           {!isSms ? <Detail label="Preflight subject" value={subject || '—'} /> : null}
+           <Detail label={isSms ? 'Preflight message' : 'Preflight body'} value={bodyText || '—'} />
+         </div>
         <p className="text-xs text-muted-foreground">
-          The provider message must carry exactly the subject and body that passed the
-          configuration preflight; the server rejects any other content.
+           The provider message must carry exactly the content that passed the configuration
+           preflight; the server rejects any other content.
         </p>
 
         <div className="text-xs text-muted-foreground" data-testid="omni-comms-test-delivery-idempotency">
@@ -571,7 +574,7 @@ export const ChannelTestDeliveryCard: React.FC<{
 
         {providerStatus ? (
           <Alert data-testid="omni-comms-test-delivery-provider-status-result">
-            <MailCheck className="h-4 w-4" />
+             <ChannelIcon className="h-4 w-4" />
             <AlertTitle>
               {providerStatus.ok && providerStatus.lastEvent
                 ? `Provider outcome: ${providerStatus.lastEvent}`

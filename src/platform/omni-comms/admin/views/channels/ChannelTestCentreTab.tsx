@@ -191,6 +191,7 @@ export const ChannelTestCentreTab: React.FC<{
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() => newIdempotencyKey());
   const [replayed, setReplayed] = useState(false);
   const [lastRun, setLastRun] = useState<ChannelTestRun | null>(null);
+  const submittedDraft = useRef(false);
 
   /**
    * The key is regenerated only when the identity of the test changes
@@ -206,8 +207,24 @@ export const ChannelTestCentreTab: React.FC<{
       setIdempotencyKey(newIdempotencyKey());
       setReplayed(false);
       setLastRun(null);
+      submittedDraft.current = false;
     }
   }, [scope]);
+
+  const payload = useMemo(
+    () => buildTestPayload(channel as TestCentreChannel, content),
+    [channel, content],
+  );
+  const startFreshTestAfterEdit = useCallback(() => {
+    if (!submittedDraft.current) return;
+
+    // An immutable idempotency key may only be replayed with the exact same
+    // target and content. Editing either starts a fresh test automatically.
+    submittedDraft.current = false;
+    setIdempotencyKey(newIdempotencyKey());
+    setReplayed(false);
+    setLastRun(null);
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!client || !orgId || !supported) return;
@@ -243,6 +260,7 @@ export const ChannelTestCentreTab: React.FC<{
     setIdempotencyKey(newIdempotencyKey());
     setReplayed(false);
     setLastRun(null);
+    submittedDraft.current = false;
     toast.info('New test started. Previous history is unchanged.');
   }, []);
 
@@ -257,9 +275,10 @@ export const ChannelTestCentreTab: React.FC<{
         channel: channel as TestCentreChannel,
         bindingId,
         target,
-        payload: buildTestPayload(channel as TestCentreChannel, content),
+        payload,
         idempotencyKey,
       });
+      submittedDraft.current = true;
       setReplayed(res.replayed);
       setLastRun(res.run);
       toast.success(
@@ -277,7 +296,7 @@ export const ChannelTestCentreTab: React.FC<{
       setRunning(false);
     }
   }, [
-    client, orgId, departmentId, channel, supported, bindingId, target, content,
+    client, orgId, departmentId, channel, supported, bindingId, target, payload,
     idempotencyKey, refresh, onChanged,
   ]);
 
@@ -331,13 +350,19 @@ export const ChannelTestCentreTab: React.FC<{
           <Field
             label={TEST_TARGET_LABEL_BY_CHANNEL[channel as TestCentreChannel]}
             value={target}
-            onChange={setTarget}
+            onChange={(next) => {
+              startFreshTestAfterEdit();
+              setTarget(next);
+            }}
             placeholder="Stored masked and hashed only"
           />
           <TestContentFields
             channel={channel as TestCentreChannel}
             value={content}
-            onChange={setContent}
+            onChange={(next) => {
+              startFreshTestAfterEdit();
+              setContent(next);
+            }}
           />
           <p className="text-xs text-muted-foreground">
             Only a summary (counts and titles) and a one-way hash are stored.
@@ -388,17 +413,17 @@ export const ChannelTestCentreTab: React.FC<{
         </Card>
       )}
 
-      {channel === 'email' && bindingId && deliveryTransport ? (
+      {(channel === 'email' || channel === 'sms') && bindingId && deliveryTransport ? (
         <ChannelTestDeliveryCard
           client={client}
           transport={deliveryTransport}
           orgId={orgId}
           departmentId={departmentId ?? null}
-          channel="email"
+          channel={channel}
           bindingId={bindingId}
           target={target}
-          subject={content.subject}
-          bodyText={content.body}
+          subject={channel === 'email' ? content.subject : ''}
+          bodyText={channel === 'email' ? content.body : content.text}
           run={currentRun}
           runIsCurrent={!currentStale}
           configurationFingerprint={summary?.configuration_fingerprint ?? null}
