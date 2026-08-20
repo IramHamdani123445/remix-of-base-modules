@@ -249,12 +249,30 @@ export const ChannelTestCentreTab: React.FC<{
   useEffect(() => { void refresh(); }, [refresh]);
 
   const bindingOptions = useMemo(
-    () => (summary?.candidate_bindings ?? []).map((b) => ({
+    () => (summary?.candidate_bindings ?? [])
+      .filter((b) => b.status === 'active')
+      .map((b) => ({
       value: b.binding_id,
       label: describeCandidateBinding(b, departmentName),
     })),
     [summary, departmentName],
   );
+
+  useEffect(() => {
+    if (!summary) return;
+
+    const activeBindings = summary.candidate_bindings.filter((candidate) =>
+      candidate.status === 'active');
+    const selectedIsActive = activeBindings.some((candidate) =>
+      candidate.binding_id === bindingId);
+    if (selectedIsActive) return;
+
+    const preferredBinding = activeBindings.find((candidate) =>
+      candidate.endpoint_status === 'active'
+      && candidate.endpoint_verification_status === 'verified')
+      ?? activeBindings[0];
+    if (preferredBinding) setBindingId(preferredBinding.binding_id);
+  }, [summary, bindingId]);
 
   const onNewTest = useCallback(() => {
     setIdempotencyKey(newIdempotencyKey());
@@ -313,7 +331,8 @@ export const ChannelTestCentreTab: React.FC<{
   }
 
   const canConfigure = summary?.can_configure ?? false;
-  const currentRun = lastRun ?? summary?.latest_run ?? null;
+  const candidateRun = lastRun ?? summary?.latest_run ?? null;
+  const currentRun = candidateRun?.binding_id === bindingId ? candidateRun : null;
   const currentStale = lastRun
     ? Boolean(summary?.configuration_fingerprint
       && lastRun.configuration_fingerprint !== summary.configuration_fingerprint)
