@@ -413,7 +413,7 @@ export const ChannelTestCentreTab: React.FC<{
         </Card>
       )}
 
-      {(channel === 'email' || channel === 'sms') && bindingId && deliveryTransport ? (
+      {(channel === 'email' || channel === 'sms' || channel === 'whatsapp') && bindingId && deliveryTransport ? (
         <ChannelTestDeliveryCard
           client={client}
           transport={deliveryTransport}

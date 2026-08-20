@@ -287,8 +287,10 @@ export const ChannelTestDeliveryCard: React.FC<{
   const [idempotencyKey, setIdempotencyKey] = useState<string>(() => newDeliveryIdempotencyKey());
   const [lastDelivery, setLastDelivery] = useState<ChannelTestDelivery | null>(null);
   const isSms = channel === 'sms';
-  const ChannelIcon = isSms ? MessageSquareText : MailCheck;
-  const recipientPlural = isSms ? 'recipients' : 'addresses';
+  const isWhatsApp = channel === 'whatsapp';
+  const isMessaging = isSms || isWhatsApp;
+  const ChannelIcon = isMessaging ? MessageSquareText : MailCheck;
+  const recipientPlural = isMessaging ? 'recipients' : 'addresses';
 
   const refresh = useCallback(async () => {
     setLoading(true);
