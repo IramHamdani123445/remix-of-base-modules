@@ -174,22 +174,21 @@ export const TestContentFields: React.FC<{
   if (channel === 'whatsapp') {
     return (
       <div className="space-y-3" data-testid="omni-comms-test-content-whatsapp">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field
-            label="Template code"
-            value={value.templateCode}
-            onChange={(v) => set({ templateCode: v })}
-          />
-          <Field
-            label="Language code"
-            value={value.languageCode}
-            onChange={(v) => set({ languageCode: v })}
-          />
-        </div>
-        <SampleVariables value={value.variables} onChange={(v) => set({ variables: v })} />
+        <TextAreaField
+          label="Message text"
+          value={value.text}
+          onChange={(v) => set({ text: v })}
+          rows={4}
+          testId="omni-comms-test-content-whatsapp-text"
+        />
+        <p className="text-xs text-muted-foreground">
+          Technical session message. The recipient must have an open WhatsApp session
+          with the sender; approved provider templates are used for business sending.
+        </p>
       </div>
     );
   }
+
   if (channel === 'push') {
     return (
       <div className="space-y-3" data-testid="omni-comms-test-content-push">
