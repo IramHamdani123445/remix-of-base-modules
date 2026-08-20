@@ -478,7 +478,7 @@ export const ChannelTestDeliveryCard: React.FC<{
              label={`Approved test ${recipientPlural} (comma separated)`}
             value={recipientsText}
             onChange={setRecipientsText}
-             placeholder={isSms ? '+15551234567' : 'qa.mailbox@example.com'}
+             placeholder={isMessaging ? '+15551234567' : 'qa.mailbox@example.com'}
           />
           <div className="grid gap-3 md:grid-cols-3">
             <Field
@@ -518,8 +518,8 @@ export const ChannelTestDeliveryCard: React.FC<{
         </div>
 
          <div className="grid gap-3 md:grid-cols-2" data-testid="omni-comms-test-delivery-content">
-           {!isSms ? <Detail label="Preflight subject" value={subject || '—'} /> : null}
-           <Detail label={isSms ? 'Preflight message' : 'Preflight body'} value={bodyText || '—'} />
+           {!isMessaging ? <Detail label="Preflight subject" value={subject || '—'} /> : null}
+           <Detail label={isMessaging ? 'Preflight message' : 'Preflight body'} value={bodyText || '—'} />
          </div>
         <p className="text-xs text-muted-foreground">
            The provider message must carry exactly the content that passed the configuration
