@@ -70,14 +70,15 @@ export function FormulaVersionEditor({ open, versionId, onClose, onSaved }: Prop
     catch (e: any) { toast.error(e.message); return; }
     setSaving(true);
     try {
-      const payload: any = {
-        expression_type: expressionType,
-        steps_json: steps,
+      // Governed path only — direct table writes are refused by the
+      // calculation immutability guard.
+      await saveFormulaVersion({
+        versionId,
+        expressionType,
+        stepsJson: steps as Record<string, unknown>,
         expression: expressionType === 'SIMPLE_EXPRESSION' ? (steps.expression ?? '') : null,
-        modified_by: userCode,
-      };
-      const { error } = await db.from('bn_formula_version').update(payload).eq('id', versionId);
-      if (error) throw error;
+        userCode,
+      });
       toast.success('Version saved');
       onSaved?.();
       onClose();
@@ -85,6 +86,7 @@ export function FormulaVersionEditor({ open, versionId, onClose, onSaved }: Prop
       toast.error(e.message ?? 'Save failed');
     } finally { setSaving(false); }
   };
+
 
   const variables = registry.map((r: any) => r.variable_code);
 
