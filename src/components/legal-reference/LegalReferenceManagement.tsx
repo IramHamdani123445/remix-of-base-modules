@@ -82,7 +82,11 @@ export const LegalReferenceManagement: React.FC<LegalReferenceManagementProps> =
   countryCode, defaultTag, title = 'Legal References',
   subtitle = 'Shared master of acts, chapters, sections and regulations',
 }) => {
-  const { data: refs = [], isLoading } = useLegalReferences(countryCode, { includeInactive: true });
+  const [showAllModules, setShowAllModules] = useState(false);
+  const { data: refs = [], isLoading } = useLegalReferences(countryCode, {
+    includeInactive: true,
+    tags: defaultTag && !showAllModules ? [defaultTag] : undefined,
+  });
   const { data: types = [] } = useLegalReferenceTypes();
   const upsert = useUpsertLegalReference();
   const remove = useDeleteLegalReference();
@@ -153,9 +157,19 @@ export const LegalReferenceManagement: React.FC<LegalReferenceManagementProps> =
           <h2 className="text-lg font-semibold">{title}</h2>
           <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        <Button size="sm" onClick={openNew} disabled={!countryCode}>
-          <Plus className="h-4 w-4 mr-1" />New Reference
-        </Button>
+        <div className="flex items-center gap-4">
+          {defaultTag && (
+            <div className="flex items-center gap-2">
+              <Switch id="show-all-modules" checked={showAllModules} onCheckedChange={setShowAllModules} />
+              <Label htmlFor="show-all-modules" className="text-sm text-muted-foreground">
+                Show all modules (not just {defaultTag})
+              </Label>
+            </div>
+          )}
+          <Button size="sm" onClick={openNew} disabled={!countryCode}>
+            <Plus className="h-4 w-4 mr-1" />New Reference
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -273,7 +287,9 @@ export const LegalReferenceManagement: React.FC<LegalReferenceManagementProps> =
               {!refs.length && !isLoading && (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                    No legal references configured
+                    {defaultTag && !showAllModules
+                      ? `No ${defaultTag} legal references configured for this country yet`
+                      : 'No legal references configured'}
                   </TableCell>
                 </TableRow>
               )}
