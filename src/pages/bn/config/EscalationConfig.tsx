@@ -245,17 +245,41 @@ export default function EscalationConfig() {
     if (!form.breach_after_hours || Number(form.breach_after_hours) < 1) {
       toast.error('Breach After Hours must be a positive number'); return;
     }
+    // Warning/Due/Breach are three checkpoints on the same clock (hours since the
+    // task was created) — blank Warning/Due just means that checkpoint is skipped,
+    // but whichever are set must not run later than the ones after them.
+    const warnH = form.warning_before_hours ? Number(form.warning_before_hours) : null;
+    const dueH = form.due_after_hours ? Number(form.due_after_hours) : null;
+    const breachH = Number(form.breach_after_hours);
+    if (dueH != null && dueH > breachH) {
+      toast.error('Due After cannot be later than Breach After'); return;
+    }
+    if (warnH != null) {
+      const ceiling = dueH ?? breachH;
+      if (warnH > ceiling) {
+        toast.error(dueH != null
+          ? 'Warning Before cannot be later than Due After'
+          : 'Warning Before cannot be later than Breach After'); return;
+      }
+    }
     if (form.effective_from && form.effective_to && form.effective_from > form.effective_to) {
       toast.error('Effective From must be on or before Effective To'); return;
     }
     if (isNew && policies.some(x => x.policy_code.toUpperCase() === form.policy_code.toUpperCase())) {
       toast.error('Policy code already exists'); return;
     }
-    // Level validation: unique level_no
+    // Level validation: unique level_no, and trigger hours must increase with level number
     const visible = levels.filter(l => !l._deleted);
     const nums = visible.map(l => Number(l.level_no));
     if (new Set(nums).size !== nums.length) {
       toast.error('Escalation level numbers must be unique'); return;
+    }
+    const byLevel = visible.slice().sort((a, b) => Number(a.level_no) - Number(b.level_no));
+    for (let i = 1; i < byLevel.length; i++) {
+      if (Number(byLevel[i].trigger_after_hours) <= Number(byLevel[i - 1].trigger_after_hours)) {
+        toast.error(`Escalation level ${byLevel[i].level_no}'s "After (h)" must be greater than level ${byLevel[i - 1].level_no}'s`);
+        return;
+      }
     }
     saveMutation.mutate();
   };
@@ -396,9 +420,20 @@ export default function EscalationConfig() {
               </div>
 
               {/* SLA timing */}
+              <p className="text-xs text-muted-foreground">
+                All three are hours counted from when the task is created. Due After and Breach After should increase in that order; Breach After alone is required — leave Warning Before and/or Due After blank to skip that checkpoint.
+              </p>
               <div className="grid grid-cols-4 gap-3">
-                <div className="space-y-1"><label className="text-sm font-medium">Warning Before (h)</label><Input type="number" min={0} value={form.warning_before_hours} onChange={e => setForm(p => ({ ...p, warning_before_hours: e.target.value }))} /></div>
-                <div className="space-y-1"><label className="text-sm font-medium">Due After (h)</label><Input type="number" min={0} value={form.due_after_hours} onChange={e => setForm(p => ({ ...p, due_after_hours: e.target.value }))} /></div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Warning Before (h)</label>
+                  <Input type="number" min={0} value={form.warning_before_hours} onChange={e => setForm(p => ({ ...p, warning_before_hours: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground">Blank = no reminder sent before it's due.</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium">Due After (h)</label>
+                  <Input type="number" min={0} value={form.due_after_hours} onChange={e => setForm(p => ({ ...p, due_after_hours: e.target.value }))} />
+                  <p className="text-xs text-muted-foreground">Blank = no separate due date; only Breach After applies.</p>
+                </div>
                 <div className="space-y-1"><label className="text-sm font-medium">Breach After (h) *</label><Input type="number" min={1} value={form.breach_after_hours} onChange={e => setForm(p => ({ ...p, breach_after_hours: e.target.value }))} /></div>
                 <div className="space-y-1"><label className="text-sm font-medium">Calendar Code</label><Input value={form.calendar_code} placeholder="e.g. SKN_OFFICE" onChange={e => setForm(p => ({ ...p, calendar_code: e.target.value }))} /></div>
               </div>
@@ -453,6 +488,9 @@ export default function EscalationConfig() {
                 </div>
                 {isNew && (
                   <p className="text-xs text-muted-foreground">Save the policy first, then add escalation levels.</p>
+                )}
+                {levels.filter(l => !l._deleted).length > 0 && (
+                  <p className="text-xs text-muted-foreground">Each level's "After (h)" must be greater than the previous level's — they fire in sequence, not in parallel.</p>
                 )}
                 {levels.filter(l => !l._deleted).length === 0 && !isNew && (
                   <p className="text-xs text-muted-foreground">No levels configured. Add one or more to define multi-stage escalation.</p>

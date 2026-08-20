@@ -44,7 +44,7 @@ export default function ProductCatalog() {
     { accessorKey: 'benefit_code', header: 'Code', meta: { label: 'Code', pinLeft: true, width: 140 }, cell: ({ getValue }) => <span className="font-mono">{String(getValue() ?? '')}</span> },
     { accessorKey: 'benefit_name', header: 'Name', meta: { label: 'Name', width: 280 }, cell: ({ getValue }) => <span className="font-medium">{String(getValue() ?? '')}</span> },
     { accessorKey: 'category', header: 'Category', meta: { label: 'Category', width: 140 } },
-    { accessorKey: 'branch', header: 'Branch', meta: { label: 'Branch', width: 140 } },
+    { accessorKey: 'branch', header: 'Branch', meta: { label: 'Branch', width: 140 }, cell: ({ row }) => <span>{(row.original as any).bn_branch?.branch_name ?? row.original.branch}</span> },
     { accessorKey: 'payment_type', header: 'Payment', meta: { label: 'Payment', width: 120 } },
     {
       accessorKey: 'country_code',
