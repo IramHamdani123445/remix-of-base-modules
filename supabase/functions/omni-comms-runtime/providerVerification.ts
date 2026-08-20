@@ -243,6 +243,56 @@ export async function probeResendDomains(
 }
 
 export interface VerificationDeps {
+/**
+ * Bounded Twilio credential reference name shape. Only Twilio-scoped
+ * Omni-Comms references may ever be resolved from the credential store.
+ */
+export const TWILIO_SECRET_REF_PATTERN = /^OMNI_COMMS_TWILIO_[A-Z0-9]+(?:_[A-Z0-9]+)*$/;
+
+/** Pure classifier for a bounded Twilio account-read probe response. */
+export function classifyTwilioResponse(httpStatus: number): VerificationResultCode {
+  if (httpStatus === 200) return "verified";
+  if (httpStatus === 401) return "invalid_credentials";
+  if (httpStatus === 403) return "restricted_api_key";
+  if (httpStatus === 429) return "rate_limited";
+  if (httpStatus === 404) return "invalid_credentials";
+  if (httpStatus === 400 || httpStatus === 405 || httpStatus === 422) return "request_rejected";
+  return "provider_unavailable";
+}
+
+/**
+ * Safe, non-sending Twilio credential probe: reads the account resource only.
+ * Sends no SMS and never returns or logs credential material.
+ */
+export async function probeTwilioCredential(
+  accountSid: string,
+  authToken: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<ProbeOutcome> {
+  if (!/^AC[0-9a-fA-F]{32}$/.test(accountSid)) {
+    return { resultCode: "configuration_incomplete", detail: DETAIL.configuration_incomplete };
+  }
+  let res: Response;
+  try {
+    res = await fetchImpl(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}.json`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+          Accept: "application/json",
+          "User-Agent": OMNI_COMMS_USER_AGENT,
+        },
+      },
+    );
+  } catch {
+    return { resultCode: "provider_unavailable", detail: DETAIL.provider_unavailable };
+  }
+  const resultCode = classifyTwilioResponse(res.status);
+  return { resultCode, detail: DETAIL[resultCode] };
+}
+
+
   /** service-role supabase client */
   admin: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
   /**
@@ -320,8 +370,26 @@ export async function runProviderVerification(
   }
 
   const secretRef = String(ctx.secret_ref ?? "");
+  const adapterKey = String(ctx.adapter_key ?? "resend");
   let outcome: ProbeOutcome;
-  if (!SECRET_REF_PATTERN.test(secretRef)) {
+  if (adapterKey === "twilio") {
+    // Twilio SMS: two bounded references (Account SID + Auth Token).
+    const tokenRef = String(ctx.auth_token_secret_ref ?? "");
+    if (!TWILIO_SECRET_REF_PATTERN.test(secretRef) || !TWILIO_SECRET_REF_PATTERN.test(tokenRef)) {
+      outcome = {
+        resultCode: "configuration_incomplete",
+        detail: DETAIL.configuration_incomplete,
+      };
+    } else {
+      const sid = await deps.getSecret(secretRef);
+      const token = await deps.getSecret(tokenRef);
+      if (!sid || sid.trim() === "" || !token || token.trim() === "") {
+        outcome = { resultCode: "secret_missing", detail: DETAIL.secret_missing };
+      } else {
+        outcome = await probeTwilioCredential(sid.trim(), token.trim(), deps.fetchImpl ?? fetch);
+      }
+    }
+  } else if (!SECRET_REF_PATTERN.test(secretRef)) {
     outcome = {
       resultCode: "configuration_incomplete",
       detail: DETAIL.configuration_incomplete,
@@ -334,6 +402,7 @@ export async function runProviderVerification(
       outcome = await probeResendCredential(key, deps.fetchImpl ?? fetch);
     }
   }
+
 
   const recRes = await deps.admin.rpc(
     "omni_comms_priv_record_provider_verification",
