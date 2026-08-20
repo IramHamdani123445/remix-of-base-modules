@@ -31,7 +31,11 @@ import {
   canonicalProviderPayloadHash,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
-import { resolveTwilioCredentials } from "../_shared/omni-comms/twilioSmsAdapter.ts";
+import {
+  resolveTwilioCredentials,
+  resolveTwilioSecret,
+  sendTwilioSms,
+} from "../_shared/omni-comms/twilioSmsAdapter.ts";
 import { sendTwilioWhatsApp } from "../_shared/omni-comms/twilioWhatsAppAdapter.ts";
 import {
   parseWhatsAppClaim,
