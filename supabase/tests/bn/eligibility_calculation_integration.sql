@@ -53,6 +53,10 @@ DECLARE
   v_issue_before       bigint;
   v_failed     boolean;
   v_msg        text;
+  v_draft_ver  uuid;
+  v_draft_tbl  uuid;
+  v_draft_row  uuid;
+
 BEGIN
   RAISE NOTICE '--- BN_ELIG_CALC harness starting ---';
 
