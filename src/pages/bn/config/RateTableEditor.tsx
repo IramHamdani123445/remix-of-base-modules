@@ -22,6 +22,8 @@ import { RateTableSimulator } from '@/components/bn/config/RateTableSimulator';
 import { RateTableValidator } from '@/components/bn/config/RateTableValidator';
 import { RateTableImportExport } from '@/components/bn/config/RateTableImportExport';
 import { clearRateTableCache } from '@/services/bn/calc/rateTableLookup';
+import { deleteRateTableRow, saveRateTableRow } from '@/services/bn/calc/governedCalcConfigService';
+
 
 const db = supabase as any;
 
