@@ -26,16 +26,19 @@ DECLARE
     'bn_calc_finalise_run_v1',
     'bn_calc_config_save_formula_version_v1',
     'bn_calc_config_save_rate_table_row_v1',
+    'bn_calc_config_save_rate_table_row_v2',
     'bn_calc_config_delete_rate_table_row_v1'
   ];
   v_internal constant text[] := ARRAY[
     '_bn_calc_boundary_enter',
+    '_bn_calc_boundary_token',
     '_bn_calc_in_boundary',
     '_bn_calc_num',
     '_bn_calc_dim_match',
     '_bn_calc_guard_formula_version',
     '_bn_calc_guard_rate_table_row'
   ];
+
 BEGIN
   -- 1. every boundary function must exist -----------------------------
   SELECT string_agg(f, ', ') INTO v_missing
