@@ -29,6 +29,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   canonicalProviderPayloadHash,
+  normalizeStorageMode,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
 import {
@@ -536,7 +537,11 @@ Deno.serve(async (req) => {
         let messagingServiceSid: string | null = null;
         const serviceRef = String(claim.messaging_service_secret_ref ?? "");
         if (serviceRef !== "") {
-          const svc = await resolveTwilioSecret(serviceRef, storageMode, secretResolver);
+          const svc = await resolveTwilioSecret(
+            serviceRef,
+            normalizeStorageMode(storageMode),
+            secretResolver,
+          );
           if (svc.ok) messagingServiceSid = svc.value.trim();
         }
         return await sendTwilioSms({
@@ -728,6 +733,7 @@ Deno.serve(async (req) => {
     results,
     in_app: plan.in_app ?? null,
     whatsapp: plan.whatsapp ?? null,
+    sms: plan.sms ?? null,
     push: plan.push ?? null,
     webhook: plan.webhook ?? null,
     voice: plan.voice ?? null,
