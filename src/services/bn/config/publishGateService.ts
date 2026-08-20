@@ -5,9 +5,11 @@
  * bn_product_version to ACTIVE (publish) or pushing a config change
  * that would affect a live product version.
  *
- * It composes the three existing checks so callers don't have to
- * remember to run them individually:
+ * It composes the checks so callers don't have to remember to run them
+ * individually:
  *
+ *   0. Version substance — at least one active eligibility rule and one
+ *      active formula binding. Blocks. (BUG-02)
  *   1. Cross-tab conflict detection  → ERROR-level conflicts block.
  *   2. Channel readiness (staff/public) → disabled channels are OK;
  *      mis-configured enabled channels block.
@@ -35,7 +37,72 @@ export interface PublishGateReport {
     staffChannel?: { ok: boolean; issues: string[] };
     baseline?: { status: string; failures: string[] };
     legal?: { ok: boolean; blocking: LegalIssue[]; warnings: LegalIssue[]; total_rules: number };
+    substance?: { eligibilityRules: number; formulaBindings: number };
   };
+}
+
+/**
+ * BUG-02 — a version must actually contain something before it can go live.
+ *
+ * Publishing a version with every eligibility rule deleted used to succeed.
+ * The legal/coverage gate inspects each rule in turn, so with no rules it found
+ * no problems and reported success; nothing else required rules to exist. The
+ * baseline check would have caught it, but runs only for products whose code
+ * matches a built-in SKN baseline — so for any product created in the
+ * application it never ran at all. Deleting all the rules was therefore the
+ * easiest way to get past the publish checks, which is exactly backwards.
+ *
+ * A version with no eligibility rules passes every claim without a single
+ * check. A version with no formula binding cannot calculate an amount at all —
+ * the Calculation screen already warns that every calculation will fail, so
+ * publishing in that state must not be allowed either.
+ *
+ * Deliberately NOT wrapped in a try/catch that downgrades to a warning, as the
+ * checks above are. If we cannot count the rules we cannot claim the version is
+ * safe, and a gate that passes when it fails to run is not a gate.
+ */
+async function checkVersionHasSubstance(versionId: string): Promise<{
+  errors: string[];
+  eligibilityRules: number;
+  formulaBindings: number;
+}> {
+  const errors: string[] = [];
+
+  const { count: ruleCount, error: ruleError } = await db
+    .from('bn_eligibility_rule')
+    .select('id', { count: 'exact', head: true })
+    .eq('product_version_id', versionId)
+    .eq('is_active', true);
+  if (ruleError) {
+    throw new Error(`could not count eligibility rules — ${ruleError.message}`);
+  }
+
+  const { count: bindingCount, error: bindingError } = await db
+    .from('bn_product_formula_binding')
+    .select('id', { count: 'exact', head: true })
+    .eq('product_version_id', versionId)
+    .eq('is_active', true);
+  if (bindingError) {
+    throw new Error(`could not count formula bindings — ${bindingError.message}`);
+  }
+
+  const rules = ruleCount ?? 0;
+  const bindings = bindingCount ?? 0;
+
+  if (rules === 0) {
+    errors.push(
+      'This version has no active eligibility rules. Every claim would pass eligibility ' +
+      'without any check. Add at least one rule on the Eligibility tab before publishing.',
+    );
+  }
+  if (bindings === 0) {
+    errors.push(
+      'This version has no active formula binding, so no benefit amount can be calculated. ' +
+      'Bind an ACTIVE formula version on the Calculation tab before publishing.',
+    );
+  }
+
+  return { errors, eligibilityRules: rules, formulaBindings: bindings };
 }
 
 
@@ -43,6 +110,24 @@ export async function assertSafeToPublish(versionId: string): Promise<PublishGat
   const errors: string[] = [];
   const warnings: string[] = [];
   const details: PublishGateReport['details'] = {};
+
+  // 0. The version must contain rules and a formula binding at all. Checked
+  //    first: if there is nothing in the version, the more detailed checks
+  //    below have nothing to inspect and would each report success.
+  try {
+    const substance = await checkVersionHasSubstance(versionId);
+    details.substance = {
+      eligibilityRules: substance.eligibilityRules,
+      formulaBindings: substance.formulaBindings,
+    };
+    errors.push(...substance.errors);
+  } catch (e) {
+    // A check that could not run must block, not warn.
+    errors.push(
+      `Cannot confirm this version has eligibility rules and a formula binding: ${(e as Error).message}. ` +
+      `Publishing is refused until the check can run.`,
+    );
+  }
 
   // 1. Cross-tab conflicts
   try {

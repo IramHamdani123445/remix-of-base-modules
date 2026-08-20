@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRuleCatalogue } from '@/hooks/bn/useRuleCatalogue';
 import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
+import { catalogueLegalSnapshot } from '@/lib/bn/catalogueLegalSnapshot';
 import { RULE_CATEGORIES, type RuleCatalogueItem } from '@/services/bn/ruleCatalogueService';
 
 interface Props {
@@ -110,6 +111,9 @@ export function AddRulesByCategoryDialog({ open, onOpenChange, versionId, onAdde
         },
         fail_action: r.default_fail_action,
         fail_message: r.failure_message_text,
+        // Legal approval must travel with the copy — the publish gate reads
+        // these fields on the product rule, not on the catalogue row.
+        ...catalogueLegalSnapshot(r as any),
         sort_order: i,
         is_active: true,
         entered_by: userCode,

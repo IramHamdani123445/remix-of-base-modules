@@ -21,7 +21,7 @@ import type {
 import { calculateReimbursement } from '@/lib/bn/medicalCalculator';
 import { useUserCode } from '@/hooks/useUserCode';
 import LegalReferenceSelector from '@/components/bn/selectors/LegalReferenceSelector';
-import { useBnCountry } from '@/contexts/BnCountryContext';
+import { BnCountryProvider, useBnCountry } from '@/contexts/BnCountryContext';
 
 const CAP_TYPES = ['PER_CLAIM', 'PER_PROCEDURE', 'PER_EXPENSE', 'ANNUAL', 'LIFETIME'] as const;
 const JURISDICTIONS = ['LOCAL', 'REGIONAL', 'INTERNATIONAL', 'ANY'] as const;
@@ -32,7 +32,7 @@ const METHODS: MedicalReimbursementMethod[] = [
 const PROVIDER_TYPES = ['PUBLIC_HOSPITAL', 'PRIVATE_HOSPITAL', 'CLINIC', 'PHARMACY', 'SPECIALIST', 'ANY'];
 const BENEFICIARY_TYPES = ['INSURED', 'SPOUSE', 'DEPENDANT', 'ANY'];
 
-export default function ReimbursementLimitsPage() {
+function ReimbursementLimitsContent() {
   const { toast } = useToast();
   const { userCode } = useUserCode();
   const { activeCountryCode } = useBnCountry();
@@ -359,5 +359,19 @@ export default function ReimbursementLimitsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * The page reads the active country through `useBnCountry`, which throws by
+ * design when no provider is present. The Country Pack pages each supply the
+ * provider themselves; this page did not, so it crashed on load. Wrapping it
+ * the same way keeps the pattern consistent across both areas.
+ */
+export default function ReimbursementLimitsPage() {
+  return (
+    <BnCountryProvider>
+      <ReimbursementLimitsContent />
+    </BnCountryProvider>
   );
 }

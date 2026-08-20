@@ -49,6 +49,8 @@ export type RuleVersionStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'PUBLI
 export interface RuleVersionSummary {
   id: string;
   productId: string;
+  /** Benefit code — products are more easily identified by code than by name. */
+  productCode: string;
   productName: string;
   versionNumber: number;
   versionLabel: string;
@@ -98,11 +100,16 @@ export interface RuleVersionCompareResult {
 export async function fetchRuleVersions(productId?: string): Promise<RuleVersionSummary[]> {
   let q = db
     .from('bn_product_version')
+    // BUG-08 — four of these columns did not exist on bn_product_version:
+    // version_label, effective_date, expiry_date and change_notes. PostgREST
+    // rejected the whole request, so the screen showed no versions at all.
+    // The real date columns are effective_from / effective_to; the table has
+    // no version label and no change notes, so those are derived/omitted below.
     .select(`
-      id, product_id, version_number, version_label, status,
-      effective_date, expiry_date, entered_by, entered_at,
-      modified_by, modified_at, change_notes,
-      bn_product!inner(product_name)
+      id, product_id, version_number, status,
+      effective_from, effective_to, entered_by, entered_at,
+      modified_by, modified_at, description,
+      bn_product!inner(benefit_code, benefit_name)
     `)
     .order('version_number', { ascending: false });
 
@@ -113,26 +120,37 @@ export async function fetchRuleVersions(productId?: string): Promise<RuleVersion
   const { data, error } = await q;
   if (error) throw error;
 
-  // Enrich with rule counts
   const versions = (data ?? []) as any[];
   const enriched: RuleVersionSummary[] = [];
 
+  // Rule counts, three requests instead of three per version. The previous
+  // loop issued one count query per rule table per version, one version at a
+  // time — 156 sequential round trips for 52 versions, which left the screen
+  // showing "Checking permissions…" for around twenty seconds. A spinner that
+  // long is indistinguishable from a broken screen.
+  const versionIds = versions.map(v => v.id);
+  const [eligCounts, calcCounts, timeCounts] = await Promise.all([
+    countRulesByVersion('bn_eligibility_rule', versionIds),
+    countRulesByVersion('bn_calculation_rule', versionIds),
+    countRulesByVersion('bn_timeline_rule', versionIds),
+  ]);
+
   for (const v of versions) {
-    const [eligCount, calcCount, timeCount] = await Promise.all([
-      countRules('bn_eligibility_rule', v.id),
-      countRules('bn_calculation_rule', v.id),
-      countRules('bn_timeline_rule', v.id),
-    ]);
+    const eligCount = eligCounts.get(v.id) ?? 0;
+    const calcCount = calcCounts.get(v.id) ?? 0;
+    const timeCount = timeCounts.get(v.id) ?? 0;
 
     enriched.push({
       id: v.id,
       productId: v.product_id,
-      productName: v.bn_product?.product_name || '',
+      productCode: v.bn_product?.benefit_code || '',
+      productName: v.bn_product?.benefit_name || '',
       versionNumber: v.version_number,
-      versionLabel: v.version_label || `v${v.version_number}`,
+      // The table carries no label column — the version number is the label.
+      versionLabel: `v${v.version_number}`,
       status: mapVersionStatus(v.status),
-      effectiveDate: v.effective_date,
-      expiryDate: v.expiry_date,
+      effectiveDate: v.effective_from,
+      expiryDate: v.effective_to,
       eligibilityRuleCount: eligCount,
       calculationRuleCount: calcCount,
       timelineRuleCount: timeCount,
@@ -144,20 +162,37 @@ export async function fetchRuleVersions(productId?: string): Promise<RuleVersion
       approvedAt: null,
       publishedBy: null,
       publishedAt: null,
-      changeNotes: v.change_notes,
+      // No change_notes column on this table; the version description is the
+      // nearest equivalent the schema actually holds.
+      changeNotes: v.description ?? null,
     });
   }
 
   return enriched;
 }
 
-async function countRules(table: string, versionId: string): Promise<number> {
-  const { count, error } = await db
+/**
+ * Rule counts for many versions in one request, keyed by product_version_id.
+ * Only the key column is fetched, so the payload stays small.
+ */
+async function countRulesByVersion(
+  table: string,
+  versionIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (versionIds.length === 0) return counts;
+
+  const { data, error } = await db
     .from(table)
-    .select('id', { count: 'exact', head: true })
-    .eq('product_version_id', versionId);
-  if (error) return 0;
-  return count ?? 0;
+    .select('product_version_id')
+    .in('product_version_id', versionIds);
+  if (error) return counts;   // a missing count is shown as 0, as before
+
+  for (const row of (data ?? []) as any[]) {
+    const key = row.product_version_id;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function mapVersionStatus(status: string): RuleVersionStatus {
@@ -344,9 +379,12 @@ export async function submitVersionForApproval(
   if (ver.status !== 'draft') return { success: false, error: `Cannot submit version in ${ver.status} status` };
 
   // Validate at least one rule exists
-  const totalRules = (await countRules('bn_eligibility_rule', versionId)) +
-    (await countRules('bn_calculation_rule', versionId)) +
-    (await countRules('bn_timeline_rule', versionId));
+  const [elig, calc, time] = await Promise.all([
+    countRulesByVersion('bn_eligibility_rule', [versionId]),
+    countRulesByVersion('bn_calculation_rule', [versionId]),
+    countRulesByVersion('bn_timeline_rule', [versionId]),
+  ]);
+  const totalRules = (elig.get(versionId) ?? 0) + (calc.get(versionId) ?? 0) + (time.get(versionId) ?? 0);
   if (totalRules === 0) return { success: false, error: 'Version must have at least one rule before submission' };
 
   // Update status

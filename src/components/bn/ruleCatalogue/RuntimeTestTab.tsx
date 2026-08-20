@@ -156,8 +156,52 @@ function SingleRulePanel({ rules, factByKey }: { rules: RuleCatalogueItem[]; fac
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
 
+  // Claim lookup, so no one has to type a UUID by hand.
+  const [claimSearch, setClaimSearch] = useState('');
+  const [claimResults, setClaimResults] = useState<ClaimOption[]>([]);
+  const [claimSearched, setClaimSearched] = useState(false);
+  const [claimBusy, setClaimBusy] = useState(false);
+
   const rule = rules.find(r => r.id === ruleId);
   const fact = rule?.fact_key ? factByKey.get(rule.fact_key) : null;
+
+  const searchClaims = async () => {
+    const term = claimSearch.trim();
+    if (!term) { toast.info('Enter an SSN or claim number to search'); return; }
+    setClaimBusy(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from('bn_claim')
+        .select('id, claim_number, ssn, claim_date, product:bn_product(benefit_code)')
+        // Either identifier works — people quote whichever they have to hand.
+        .or(`ssn.ilike.%${term}%,claim_number.ilike.%${term}%`)
+        .order('claim_date', { ascending: false })
+        .limit(25);
+      if (error) { toast.error('Claim search failed', { description: error.message }); return; }
+      const found: ClaimOption[] = ((data as any[]) ?? []).map(c => ({
+        id: c.id, claim_number: c.claim_number, ssn: c.ssn,
+        claim_date: c.claim_date, product_code: c.product?.benefit_code ?? null,
+      }));
+      setClaimResults(found);
+      setClaimId('');
+      setClaimSearched(true);
+      if (found.length === 0) {
+        toast.info('No claims matched', { description: 'Try a different SSN or claim number.' });
+      }
+    } finally {
+      setClaimBusy(false);
+    }
+  };
+
+  /** Choosing a claim fills every field it implies, so they cannot disagree. */
+  const pickClaim = (id: string) => {
+    setClaimId(id);
+    const c = claimResults.find(x => x.id === id);
+    if (c) {
+      if (c.ssn) setSsn(c.ssn);
+      if (c.claim_date) setClaimDate(c.claim_date);
+    }
+  };
 
   const run = async () => {
     if (!rule) { toast.error('Pick a rule'); return; }
@@ -167,6 +211,25 @@ function SingleRulePanel({ rules, factByKey }: { rules: RuleCatalogueItem[]; fac
         details: [`Source: ${fact.source_table}.${fact.source_column}`, `Resolver: ${fact.resolver_function}`] });
       return;
     }
+    // A fact that reads claim data cannot be judged without a claim. The
+    // resolvers return false in that case ("if (!ctx.claimId) return false"),
+    // which the panel then reported as FAIL — telling the user the rule was
+    // broken when in truth it was never evaluated. Say so instead: a check with
+    // no input has no verdict to give.
+    const needsClaim = /claim/i.test(fact.source_table ?? '') || !!fact.requires_snapshot;
+    if (needsClaim && !claimId) {
+      setResult({
+        outcome: 'WARN',
+        title: 'Cannot test this rule without a claim',
+        details: [
+          `Fact: ${fact.fact_key}`,
+          `Reads from: ${fact.source_table}`,
+          'Search for a claim above and pick one, then run the test again.',
+        ],
+      });
+      return;
+    }
+
     setBusy(true);
     try {
       if (fact.requires_snapshot && claimId) await ensureContributionSnapshot(claimId);
@@ -226,10 +289,56 @@ function SingleRulePanel({ rules, factByKey }: { rules: RuleCatalogueItem[]; fac
               </div>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            <div className="space-y-2"><Label>SSN</Label><Input value={ssn} onChange={e => setSsn(e.target.value)} placeholder="6-digit" /></div>
-            <div className="space-y-2"><Label>Claim ID</Label><Input value={claimId} onChange={e => setClaimId(e.target.value)} placeholder="uuid (opt)" /></div>
-            <div className="space-y-2"><Label>Claim Date</Label><Input type="date" value={claimDate} onChange={e => setClaimDate(e.target.value)} /></div>
+          {/* The claim used to be identified by typing a raw UUID, which is
+              unusable in practice — a partly-pasted id resolves nothing and the
+              result reads as a rule failure rather than a mistyped claim.
+              Search by SSN or claim number and pick the claim instead; choosing
+              one fills the SSN, the claim id and the claim date together. */}
+          <div className="space-y-2">
+            <Label>Find a claim</Label>
+            <div className="flex gap-2">
+              <Input
+                value={claimSearch}
+                onChange={e => setClaimSearch(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') searchClaims(); }}
+                placeholder="SSN or claim number"
+              />
+              <Button variant="outline" onClick={searchClaims} disabled={claimBusy} className="gap-1">
+                <Search className="h-4 w-4" /> {claimBusy ? 'Finding…' : 'Find'}
+              </Button>
+            </div>
+            <Select value={claimId} onValueChange={pickClaim}>
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    claimResults.length ? 'Pick a claim'
+                      : claimSearched ? 'No claims matched'
+                      : 'Search, or leave empty for rules that need only an SSN'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                {claimResults.map(c => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.claim_number ?? c.id.slice(0, 8)} • SSN {c.ssn} • {c.claim_date}
+                    {c.product_code ? ` • ${c.product_code}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="space-y-1">
+                <Label className="text-xs">SSN</Label>
+                <Input value={ssn} onChange={e => setSsn(e.target.value)} placeholder="6-digit" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Claim date</Label>
+                <Input type="date" value={claimDate} onChange={e => setClaimDate(e.target.value)} />
+              </div>
+            </div>
+            {claimId && (
+              <p className="text-xs text-muted-foreground font-mono">claim {claimId}</p>
+            )}
           </div>
         </div>
         <Button onClick={run} disabled={busy} className="gap-2"><FlaskConical className="h-4 w-4" /> {busy ? 'Resolving…' : 'Run Test'}</Button>
@@ -258,9 +367,13 @@ function SingleRulePanel({ rules, factByKey }: { rules: RuleCatalogueItem[]; fac
 /* ---------------- Product Eligibility (Runtime) ---------------- */
 function ProductTestPanel() {
   const [versions, setVersions] = useState<ProductVersionOption[]>([]);
+  /** Claims per product version. null when the count could not be loaded. */
+  const [claimCounts, setClaimCounts] = useState<Map<string, number> | null>(null);
   const [versionId, setVersionId] = useState('');
   const [ssnSearch, setSsnSearch] = useState('');
   const [claims, setClaims] = useState<ClaimOption[]>([]);
+  // Distinguishes "not searched yet" from "searched, nothing found".
+  const [searched, setSearched] = useState(false);
   const [claimId, setClaimId] = useState('');
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<ProductTestResult | null>(null);
@@ -268,42 +381,90 @@ function ProductTestPanel() {
   // Load active product versions on mount.
   useEffect(() => {
     (async () => {
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from('bn_product_version')
-        .select('id, version_number, status, product:bn_product(code, name)')
+        .select('id, version_number, status, product:bn_product(id, benefit_code, benefit_name)')
         .in('status', ['ACTIVE', 'DRAFT', 'PUBLISHED'])
         .order('modified_at', { ascending: false })
         .limit(100);
+      if (error) {
+        // Surface the failure — an empty dropdown must not be how a broken
+        // query presents itself.
+        toast.error('Could not load product versions', { description: error.message });
+        setVersions([]);
+        return;
+      }
       const rows: ProductVersionOption[] = ((data as any[]) ?? []).map(d => ({
         id: d.id,
         product_id: d.product?.id ?? '',
-        product_code: d.product?.code ?? '',
-        product_name: d.product?.name ?? '—',
+        product_code: d.product?.benefit_code ?? '',
+        product_name: d.product?.benefit_name ?? '—',
         version_number: d.version_number,
         status: d.status,
       }));
       setVersions(rows);
+
+      // BUG-42 — how many claims each version has.
+      //
+      // Only a minority of product versions have any claims against them, and
+      // the dropdown gave no way to tell which. Users picked a version, pressed
+      // Find, got nothing, and concluded the screen was broken — when it was
+      // correctly reporting that the version has no claims to test with.
+      // One query for the whole list; only the key column is fetched.
+      const { data: claimRows, error: claimError } = await (supabase as any)
+        .from('bn_claim')
+        .select('product_version_id');
+      if (claimError) {
+        // Not fatal: the dropdown still works, it just cannot show counts.
+        setClaimCounts(null);
+        return;
+      }
+      const counts = new Map<string, number>();
+      for (const c of (claimRows as any[]) ?? []) {
+        if (!c.product_version_id) continue;
+        counts.set(c.product_version_id, (counts.get(c.product_version_id) ?? 0) + 1);
+      }
+      setClaimCounts(counts);
     })();
   }, []);
 
   const searchClaims = async () => {
     if (!ssnSearch.trim() && !versionId) {
-      toast.error('Enter an SSN or pick a product version');
+      // Guidance, not a failure — the user has simply not narrowed the search yet.
+      toast.info('Enter an SSN, or pick a product version, to search for claims');
       return;
     }
     let q = (supabase as any)
       .from('bn_claim')
-      .select('id, claim_number, ssn, claim_date, product:bn_product(code)')
+      .select('id, claim_number, ssn, claim_date, product:bn_product(benefit_code)')
       .order('claim_date', { ascending: false })
       .limit(25);
     if (ssnSearch.trim()) q = q.ilike('ssn', `%${ssnSearch.trim()}%`);
     if (versionId) q = q.eq('product_version_id', versionId);
     const { data, error } = await q;
     if (error) { toast.error('Claim search failed', { description: error.message }); return; }
-    setClaims(((data as any[]) ?? []).map(c => ({
+    const found = ((data as any[]) ?? []).map(c => ({
       id: c.id, claim_number: c.claim_number, ssn: c.ssn,
-      claim_date: c.claim_date, product_code: c.product?.code ?? null,
-    })));
+      claim_date: c.claim_date, product_code: c.product?.benefit_code ?? null,
+    }));
+    setClaims(found);
+    setClaimId('');
+    setSearched(true);
+    if (found.length === 0) {
+      // No matches is a valid outcome, not a failure — but say which kind of
+      // "none", because "this version has no claims at all" and "your SSN did
+      // not match" call for different next steps.
+      const versionHasNoClaims =
+        !!versionId && !!claimCounts && (claimCounts.get(versionId) ?? 0) === 0;
+      toast.info(
+        versionHasNoClaims ? 'This product version has no claims' : 'No matching claims found',
+        {
+          description: versionHasNoClaims
+            ? 'Pick a version showing a claim count to run an eligibility test.'
+            : 'No claim on this version matches that SSN.',
+        },
+      );
+    }
   };
 
   const run = async () => {
@@ -330,11 +491,22 @@ function ProductTestPanel() {
             <Select value={versionId} onValueChange={setVersionId}>
               <SelectTrigger><SelectValue placeholder="Pick a product version" /></SelectTrigger>
               <SelectContent className="max-h-72">
-                {versions.map(v => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.product_code} v{v.version_number} — {v.product_name} <span className="text-muted-foreground">({v.status})</span>
-                  </SelectItem>
-                ))}
+                {versions.map(v => {
+                  // The claim count is the whole point of choosing a version
+                  // here: a version with none cannot be tested against a claim.
+                  const n = claimCounts?.get(v.id) ?? 0;
+                  return (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.product_code} v{v.version_number} — {v.product_name}{' '}
+                      <span className="text-muted-foreground">({v.status})</span>
+                      {claimCounts && (
+                        <span className={n > 0 ? 'text-emerald-600' : 'text-muted-foreground'}>
+                          {' · '}{n > 0 ? `${n} claim${n === 1 ? '' : 's'}` : 'no claims'}
+                        </span>
+                      )}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
@@ -348,7 +520,22 @@ function ProductTestPanel() {
           <div className="space-y-2 md:col-span-1">
             <Label>Claim</Label>
             <Select value={claimId} onValueChange={setClaimId}>
-              <SelectTrigger><SelectValue placeholder={claims.length ? 'Pick a claim' : 'Search first'} /></SelectTrigger>
+              {/* Say which of the three situations this is. "No claims found"
+                  after a search on a version that has none was indistinguishable
+                  from a broken screen. */}
+              <SelectTrigger>
+                <SelectValue
+                  placeholder={
+                    claims.length
+                      ? 'Pick a claim'
+                      : versionId && claimCounts && (claimCounts.get(versionId) ?? 0) === 0
+                        ? 'This version has no claims'
+                        : searched
+                          ? 'No claims matched'
+                          : 'Press Find'
+                  }
+                />
+              </SelectTrigger>
               <SelectContent className="max-h-72">
                 {claims.map(c => (
                   <SelectItem key={c.id} value={c.id}>

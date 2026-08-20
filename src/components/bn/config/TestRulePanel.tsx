@@ -45,14 +45,14 @@ export function TestRulePanel({ rule, productCode }: Props) {
     (async () => {
       let q = db
         .from('bn_claim')
-        .select('id, claim_number, ssn, claim_date, submission_date, product_id, bn_product:product_id(product_code)')
+        .select('id, claim_number, ssn, claim_date, submission_date, product_id, bn_product:product_id(benefit_code)')
         .order('submission_date', { ascending: false })
         .limit(25);
       const { data, error } = await q;
       if (cancelled) return;
       if (error) { setError(error.message); return; }
       const filtered = productCode
-        ? (data ?? []).filter((r: any) => r.bn_product?.product_code === productCode)
+        ? (data ?? []).filter((r: any) => r.bn_product?.benefit_code === productCode)
         : (data ?? []);
       setClaims(filtered as ClaimOpt[]);
     })();

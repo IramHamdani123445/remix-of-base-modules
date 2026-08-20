@@ -70,14 +70,10 @@ export default function PublicFormRulesTab({ versionId, isReadOnly }: Props) {
     }
   }, [data, versionId]);
 
-  if (!versionId) {
-    return <Card><CardContent className="p-6 text-sm text-muted-foreground">Select a product version to configure participant rules.</CardContent></Card>;
-  }
-  if (isLoading || !draft) {
-    return <Card><CardContent className="p-6 text-sm text-muted-foreground">Loading participant rules…</CardContent></Card>;
-  }
-
-  // Resolve country for this product version, then load ACTIVE country participant types
+  // Resolve country for this product version, then load ACTIVE country
+  // participant types. These must be declared before any early return —
+  // hooks have to run in the same order on every render, and the two
+  // early returns below fire on the first pass while data is still loading.
   const { data: versionRow } = useQuery({
     queryKey: ['bn-pv-country', versionId],
     enabled: !!versionId,
@@ -96,6 +92,14 @@ export default function PublicFormRulesTab({ versionId, isReadOnly }: Props) {
     queryFn: () => fetchActiveCountryParticipantTypes(countryCode!),
     staleTime: 5 * 60_000,
   });
+
+  if (!versionId) {
+    return <Card><CardContent className="p-6 text-sm text-muted-foreground">Select a product version to configure participant rules.</CardContent></Card>;
+  }
+  if (isLoading || !draft) {
+    return <Card><CardContent className="p-6 text-sm text-muted-foreground">Loading participant rules…</CardContent></Card>;
+  }
+
   const participantOptions = activeTypes.map(t => ({ value: t.type_code, label: t.type_name }));
   const refMissing = participantOptions.length === 0;
   const toggleArray = (list: string[], role: string): string[] =>

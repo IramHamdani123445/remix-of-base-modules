@@ -8,6 +8,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import type { BuilderCanvas } from '@/components/bn/config-builder/types';
+import { assertVersionMutable } from './config/configImpactService';
 
 const db = supabase as any;
 const BLD = 'BLD_';
@@ -25,7 +26,79 @@ function buildEligRuleCode(kind: string, idx: number): string {
   return `${BLD}${short}_${idx}`.slice(0, 30);
 }
 
+/**
+ * Map a Visual Builder block to the fields a manually-created rule (via
+ * Add Rule / Rule Catalogue) would have: a top-level fact_key/operator/
+ * value_from/value_to (validated by the Conflict Checker and the real
+ * eligibility engine) and a matching rule_definition.field_key/operator/
+ * value shape (read by the friendly-sentence renderer and the Product
+ * Parameters missing-value panel). Without this mapping, Sync only wrote
+ * the block's own raw props, which none of those consumers understand.
+ *
+ * Fact keys are taken from the same catalogue Add Rule reads from
+ * (`eligibilityFactRegistry.ts`); confidence on the last two is lower —
+ * see notes — because the builder block doesn't carry enough detail to
+ * pick an exact fact.
+ */
+function mapBlockToRuleFields(kind: string, props: Record<string, any>): {
+  fact_key: string | null;
+  operator: string;
+  value_from: string | number | null;
+  value_to: string | number | null;
+  rd: Record<string, unknown>;
+} {
+  switch (kind) {
+    case 'eligibility.age':
+      return {
+        fact_key: 'person.age_at_claim_date', operator: 'BETWEEN',
+        value_from: props.min_age ?? null, value_to: props.max_age ?? null,
+        rd: { field_key: 'person.age_at_claim_date', operator: 'BETWEEN', range_from: props.min_age, range_to: props.max_age },
+      };
+    case 'eligibility.contribution':
+      return {
+        fact_key: 'contribution.paid_weeks', operator: 'GREATER_OR_EQUAL',
+        value_from: props.min_contributions ?? null, value_to: null,
+        rd: { field_key: 'contribution.paid_weeks', operator: '>=', value: props.min_contributions },
+      };
+    case 'eligibility.document':
+      // Best-effort: only matches if `document.<code>_received` exists in the
+      // fact catalogue for this document_code (confirmed to exist for at
+      // least medical_certificate/death_certificate/birth_certificate/employer_report).
+      return {
+        fact_key: props.document_code ? `document.${props.document_code}_received` : null, operator: 'EQUALS',
+        value_from: 'true', value_to: null,
+        rd: { field_key: props.document_code ? `document.${props.document_code}_received` : null, operator: '==', value: true },
+      };
+    case 'eligibility.medical_board':
+      return {
+        fact_key: 'medical_board.decision', operator: 'EQUALS',
+        value_from: props.decision ?? 'APPROVED', value_to: null,
+        rd: { field_key: 'medical_board.decision', operator: '==', value: props.decision ?? 'APPROVED' },
+      };
+    case 'eligibility.survivor_relationship':
+      // Lower confidence: the catalogue only has a boolean "relationship is
+      // valid" fact, not a per-relationship-type check, so the block's
+      // specific `relationship` choice (e.g. SPOUSE) isn't separately
+      // enforced by this mapping — flagged for follow-up if that distinction
+      // turns out to matter.
+      return {
+        fact_key: 'beneficiary.relationship_valid', operator: 'EQUALS',
+        value_from: 'true', value_to: null,
+        rd: { field_key: 'beneficiary.relationship_valid', operator: '==', value: true },
+      };
+    case 'eligibility.duplicate_claim':
+      return {
+        fact_key: 'existing.duplicate_claim_same_period', operator: 'EQUALS',
+        value_from: 'false', value_to: null,
+        rd: { field_key: 'existing.duplicate_claim_same_period', operator: '==', value: false },
+      };
+    default:
+      return { fact_key: null, operator: 'EQUALS', value_from: null, value_to: null, rd: {} };
+  }
+}
+
 export async function syncCanvasToNormalized(versionId: string, canvas: BuilderCanvas, userCode: string): Promise<SyncResult> {
+  await assertVersionMutable(versionId);
   const warnings: string[] = [];
 
   // ---- 1. Eligibility rules ----
@@ -34,17 +107,26 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
     .eq('product_version_id', versionId)
     .like('rule_code', `${BLD}%`);
   const eligBlocks = canvas.sections.eligibility ?? [];
-  const eligRows = eligBlocks.map((b, idx) => ({
-    product_version_id: versionId,
-    rule_code: buildEligRuleCode(b.kind, idx + 1),
-    rule_name: (b.kind || 'rule').slice(0, 100),
-    rule_type: b.kind.replace(/^eligibility\./, '').toUpperCase().slice(0, 30),
-    rule_definition: { block_id: b.id, kind: b.kind, ...b.props },
-    fail_action: 'BLOCK',
-    sort_order: idx + 1,
-    is_active: true,
-    entered_by: userCode,
-  }));
+  const eligRows = eligBlocks.map((b, idx) => {
+    const mapped = mapBlockToRuleFields(b.kind, b.props ?? {});
+    return {
+      product_version_id: versionId,
+      rule_code: buildEligRuleCode(b.kind, idx + 1),
+      rule_name: (b.kind || 'rule').slice(0, 100),
+      rule_type: b.kind.replace(/^eligibility\./, '').toUpperCase().slice(0, 30),
+      fact_key: mapped.fact_key,
+      operator: mapped.operator,
+      value_from: mapped.value_from,
+      value_to: mapped.value_to,
+      // Keep the raw block props alongside the proper field_key/operator/value
+      // shape — nothing from the canvas is lost, it's just no longer the only thing saved.
+      rule_definition: { block_id: b.id, kind: b.kind, ...b.props, ...mapped.rd },
+      fail_action: 'BLOCK',
+      sort_order: idx + 1,
+      is_active: true,
+      entered_by: userCode,
+    };
+  });
   if (eligRows.length) {
     const { error } = await db.from('bn_eligibility_rule').insert(eligRows);
     if (error) warnings.push(`Eligibility: ${error.message}`);
