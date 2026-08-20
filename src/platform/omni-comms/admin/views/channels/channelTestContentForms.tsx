@@ -63,14 +63,10 @@ export function buildTestPayload(
     case 'sms':
       return { text: f.text };
     case 'whatsapp':
-      return {
-        template_code: f.templateCode,
-        language_code: f.languageCode,
-        variables: f.variables
-          .map((v) => v.trim())
-          .filter((v) => v.length > 0)
-          .slice(0, WHATSAPP_MAX_SAMPLE_VARIABLES),
-      };
+      // Session (free-form) message. The technical test centre sends exactly the
+      // content that passed the preflight, so the same shape is used end to end.
+      return { text: f.text };
+
     case 'push':
       return { title: f.title, body: f.body };
     case 'in_app':
