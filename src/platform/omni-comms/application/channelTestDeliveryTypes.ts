@@ -149,7 +149,7 @@ export const APPROVAL_MIN_INTERVAL_SECONDS = { min: 30, max: 3600 } as const;
 
 /** Copy shown above every controlled delivery control. */
 export const CONTROLLED_DELIVERY_NOTICE =
-  'Provider test delivery sends one real technical email through the bound '
+  'Provider test delivery sends one real technical message through the bound '
   + 'provider. It is available only to approved test recipients, only after a '
   + 'current configuration preflight has passed for the same recipient and the '
   + 'same content, and it never uses the live sending path.';
