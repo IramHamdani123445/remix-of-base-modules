@@ -120,8 +120,19 @@ export function RateTableEditor({ open, onClose, rateTable }: Props) {
   const removeRow = async (idx: number) => {
     const row = rows[idx];
     if (row.id) {
-      const { error } = await db.from('bn_rate_table_row').delete().eq('id', row.id);
-      if (error) { toast.error(error.message); return; }
+      let userCode: string;
+      try {
+        userCode = requireUserCode(profile?.user_code, 'edit rate table');
+      } catch (e: any) {
+        toast.error(e.message);
+        return;
+      }
+      try {
+        await deleteRateTableRow(row.id, userCode);
+      } catch (e: any) {
+        toast.error(e.message ?? 'Delete failed');
+        return;
+      }
     }
     setRows((rs) => rs.filter((_, i) => i !== idx));
   };
@@ -140,25 +151,20 @@ export function RateTableEditor({ open, onClose, rateTable }: Props) {
     setSaving(true);
     try {
       for (const r of dirty) {
-        const payload: any = {
-          rate_table_id: rateTable.id,
-          row_order: r.row_order,
-          dimension_values_json: r.dimension_values_json,
-          output_value: r.output_value,
-          output_type: r.output_type,
-          effective_from: r.effective_from || null,
-          effective_to: r.effective_to || null,
+        // Governed path only — direct table writes are refused by the
+        // calculation immutability guard.
+        await saveRateTableRow({
+          rowId: r._new ? null : r.id ?? null,
+          rateTableId: rateTable.id,
+          rowOrder: r.row_order,
+          dimensionValues: r.dimension_values_json,
+          outputValue: r.output_value,
+          outputType: r.output_type,
+          effectiveFrom: r.effective_from || null,
+          effectiveTo: r.effective_to || null,
           notes: r.notes || null,
-          modified_by: userCode,
-        };
-        if (r._new || !r.id) {
-          payload.entered_by = userCode;
-          const { error } = await db.from('bn_rate_table_row').insert(payload);
-          if (error) throw error;
-        } else {
-          const { error } = await db.from('bn_rate_table_row').update(payload).eq('id', r.id);
-          if (error) throw error;
-        }
+          userCode,
+        });
       }
       toast.success(`Saved ${dirty.length} row(s)`);
       // refresh
@@ -175,6 +181,7 @@ export function RateTableEditor({ open, onClose, rateTable }: Props) {
       setSaving(false);
     }
   };
+
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
