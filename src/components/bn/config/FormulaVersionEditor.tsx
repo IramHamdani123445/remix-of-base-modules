@@ -16,6 +16,8 @@ import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { requireUserCode } from '@/lib/bn/requireUserCode';
 import { FormulaStepsBuilder, type ExpressionType, type StepsJson } from '@/components/bn/config/FormulaStepsBuilder';
 import { useBnFormulaVariableRegistry } from '@/hooks/bn/useBnFormulaVariableRegistry';
+import { saveFormulaVersion } from '@/services/bn/calc/governedCalcConfigService';
+
 
 const db = supabase as any;
 
