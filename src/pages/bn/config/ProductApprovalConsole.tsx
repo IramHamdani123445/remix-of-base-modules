@@ -1,10 +1,14 @@
 /**
  * Product Approval Console
  *
- * Lists product versions currently in IN_REVIEW or APPROVED status,
- * shows the configurable per-product approval chain (CONFIG_PUBLISH
- * rows in bn_approval_policy), and lets a user holding the role for
- * the next pending level approve / reject / publish.
+ * Lists every product version awaiting approval (PENDING_APPROVAL, plus
+ * legacy IN_REVIEW), shows the configurable per-product approval chain
+ * (CONFIG_PUBLISH rows in bn_approval_policy), and lets a user holding the
+ * role for the next pending level approve / reject / publish.
+ *
+ * Versions the signed-in user cannot act on are listed too, marked with the
+ * role they are waiting for — otherwise a version stuck behind a role nobody
+ * holds is invisible to everyone.
  *
  * Route: /bn/config/product-approvals
  */
@@ -17,12 +21,12 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Loader2, ShieldCheck, XCircle, Rocket, Inbox } from 'lucide-react';
+import { Loader2, ShieldCheck, XCircle, Rocket, Inbox, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import {
   listPendingForRoles, getApprovalChain, getApprovalHistory, recordDecision,
-  type ApprovalLevelPolicy, type ApprovalEvent,
+  type ApprovalLevelPolicy, type ApprovalEvent, type PendingApprovalRow,
 } from '@/services/bn/productApprovalService';
 
 export default function ProductApprovalConsole() {
@@ -50,7 +54,16 @@ export default function ProductApprovalConsole() {
             Approval levels are configured per product.
           </p>
         </div>
-        <Badge variant="outline">{userRoles.length} role(s)</Badge>
+        {/* Naming the roles, not counting them. On a screen where every action
+            is gated by role matching, "6 role(s)" tells the user nothing about
+            why they can or cannot act. */}
+        <div className="flex flex-wrap items-center justify-end gap-1 max-w-md">
+          {userRoles.length === 0 ? (
+            <Badge variant="destructive">No roles — you cannot approve anything</Badge>
+          ) : (
+            userRoles.map(r => <Badge key={r} variant="outline">{r}</Badge>)
+          )}
+        </div>
       </header>
 
       <Card>
@@ -65,7 +78,13 @@ export default function ProductApprovalConsole() {
           ) : !data?.length ? (
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
               <Inbox className="h-8 w-8 mb-2" />
-              <p>No product versions awaiting approval.</p>
+              {/* "Nothing pending" and "nothing pending for me" are different
+                  facts. The queue lists every pending version now, so an empty
+                  list really does mean nothing is waiting. */}
+              <p>No product versions are awaiting approval.</p>
+              <p className="text-xs mt-1">
+                Versions appear here once they are submitted for approval from a product's Versions tab.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -91,14 +110,25 @@ export default function ProductApprovalConsole() {
                     <Badge variant={row.productVersion.status === 'APPROVED' ? 'default' : 'secondary'}>
                       {row.productVersion.status}
                     </Badge>
-                    {row.nextLevel ? (
+                    {/* The three readiness cases are distinct. "No approval
+                        chain" used to render as "Ready to Publish", which made
+                        a version nobody can approve look finished. */}
+                    {row.readiness === 'AWAITING_LEVEL' && row.nextLevel ? (
                       <Badge variant="outline">
                         L{row.nextLevel.level}: {row.nextLevel.approval_role}
                       </Badge>
-                    ) : (
+                    ) : row.readiness === 'READY_TO_PUBLISH' ? (
                       <Badge>Ready to Publish</Badge>
+                    ) : (
+                      <Badge variant="destructive" className="gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        No approval chain configured
+                      </Badge>
                     )}
                     {row.canAct && <Badge className="bg-emerald-600">Your turn</Badge>}
+                    {!row.canAct && row.readiness === 'AWAITING_LEVEL' && (
+                      <span className="text-xs text-muted-foreground">not your turn</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -126,7 +156,7 @@ export default function ProductApprovalConsole() {
 function DecisionDialog({
   row, userRoles, userCode, onClose, onActed,
 }: {
-  row: { productVersion: any; nextLevel: ApprovalLevelPolicy | null; canAct: boolean };
+  row: PendingApprovalRow;
   userRoles: string[];
   userCode: string;
   onClose: () => void;
@@ -148,7 +178,11 @@ function DecisionDialog({
     })();
   }, [row.productVersion.id]);
 
-  const isPublishable = row.productVersion.status === 'APPROVED';
+  // Publish was gated on status === 'APPROVED', a state the version lifecycle
+  // never reaches, so the button could never appear. It is now gated on every
+  // configured level having signed off, which is what "approved" actually means
+  // here.
+  const isPublishable = row.readiness === 'READY_TO_PUBLISH';
   const canPublish = isPublishable && userRoles.some(r =>
     ['BN_DIRECTOR', 'BN_CONFIG_ADMIN', 'admin'].includes(r),
   );

@@ -38,7 +38,8 @@ import {
 import { toast } from 'sonner';
 import { useBnFormulaTemplates, useUpsertBnFormulaTemplate } from '@/hooks/bn/useBnConfig';
 import { useUserCode } from '@/hooks/useUserCode';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { PageHeader } from '@/components/common/PageHeader';
 import { BnScreenRoleBanner } from '@/components/bn/shared';
@@ -122,19 +123,91 @@ export default function FormulaConfiguration() {
   const { data: resolver } = useVariableResolver();
   const qc = useQueryClient();
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ['bn', 'formula-templates'] });
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['bn', 'formula-templates'] });
+    // The grid's statuses come from the versions now, so they must be
+    // refetched too or the screen shows the pre-transition state.
+    qc.invalidateQueries({ queryKey: ['bn', 'formula-versions', 'all'] });
+  };
+
+  /**
+   * BUG-20 — the status was held twice and drifted apart.
+   *
+   * A formula's status lived on the version (which the Submit/Activate rules
+   * read) and was also copied onto the template (which the grid, tabs and row
+   * actions read). Submit changed the version through an RPC, then wrote the
+   * template in a second, separate request. When the second write did not
+   * happen the two disagreed permanently: the version said IN_REVIEW, the
+   * template still said DRAFT, so the grid filed the formula under Drafts, the
+   * editor locked it as under review, and Activate never appeared because that
+   * action was keyed off the template. The formula could be neither edited nor
+   * advanced. Four formulas are in that state right now.
+   *
+   * The versions are the real record, so everything here is derived from them
+   * and the template's copy is no longer read. That removes the possibility of
+   * drift rather than trying to keep two copies in step, and it un-strands the
+   * existing formulas without a data migration.
+   */
+  const { data: allVersions = [] } = useQuery({
+    queryKey: ['bn', 'formula-versions', 'all'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('bn_formula_version')
+        .select('formula_template_id, version_no, governance_status')
+        .order('version_no', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Array<{ formula_template_id: string; version_no: number; governance_status: string }>;
+    },
+  });
+
+  /**
+   * What each template's versions actually say. The effective status is not
+   * simply the newest version's: a template with a live ACTIVE version and a
+   * DRAFT in progress is Active — the draft is work in hand, not a demotion.
+   * The action flags are per-version-state rather than per-template, because a
+   * template can legitimately offer Submit (it has a draft) and Retire (it has
+   * a live version) at the same time.
+   */
+  const versionFacts = useMemo(() => {
+    const m = new Map<string, {
+      hasDraft: boolean; hasInReview: boolean; hasActive: boolean; hasRetired: boolean;
+      effective: 'ACTIVE' | 'IN_REVIEW' | 'DRAFT' | 'RETIRED';
+    }>();
+    for (const v of allVersions) {
+      const f = m.get(v.formula_template_id) ??
+        { hasDraft: false, hasInReview: false, hasActive: false, hasRetired: false, effective: 'DRAFT' as const };
+      const s = String(v.governance_status ?? '').toUpperCase();
+      if (s === 'DRAFT') f.hasDraft = true;
+      else if (s === 'IN_REVIEW') f.hasInReview = true;
+      else if (s === 'ACTIVE') f.hasActive = true;
+      else if (s === 'RETIRED') f.hasRetired = true;
+      m.set(v.formula_template_id, f);
+    }
+    for (const f of m.values()) {
+      f.effective = f.hasActive ? 'ACTIVE'
+        : f.hasInReview ? 'IN_REVIEW'
+        : f.hasDraft ? 'DRAFT'
+        : 'RETIRED';
+    }
+    return m;
+  }, [allVersions]);
+
+  /** A template with no versions at all falls back to its own column. */
+  const statusOf = (f: BnFormulaTemplate) =>
+    versionFacts.get(f.id)?.effective ?? normalizeStatus(f.governance_status);
+  const factsOf = (f: BnFormulaTemplate) => versionFacts.get(f.id);
 
   const filtered = useMemo(() => {
     const rows = formulas as BnFormulaTemplate[];
     if (tab === 'ALL') return rows;
-    return rows.filter((f) => normalizeStatus(f.governance_status) === tab);
-  }, [formulas, tab]);
+    return rows.filter((f) => statusOf(f) === tab);
+  }, [formulas, tab, versionFacts]);
 
   const counts = useMemo(() => {
     const c = { ACTIVE: 0, DRAFT: 0, IN_REVIEW: 0, RETIRED: 0 } as Record<string, number>;
-    (formulas as BnFormulaTemplate[]).forEach((f) => { c[normalizeStatus(f.governance_status)] += 1; });
+    (formulas as BnFormulaTemplate[]).forEach((f) => { c[statusOf(f)] += 1; });
     return c;
-  }, [formulas]);
+  }, [formulas, versionFacts]);
 
 
   const otherCodes = formulas
@@ -306,13 +379,28 @@ export default function FormulaConfiguration() {
           const predecessor = next === 'IN_REVIEW' ? 'DRAFT'
             : next === 'ACTIVE' ? 'IN_REVIEW'
             : next === 'RETIRED' ? 'ACTIVE' : null;
-          const candidate = versions.find((v: any) => v.governance_status === predecessor) ?? versions[0];
+          // No arbitrary fallback. Falling back to versions[0] asked the
+          // database for an illegal transition and surfaced it as
+          // "Illegal transition IN_REVIEW → IN_REVIEW", which explains nothing.
+          const candidate = versions.find((v: any) => v.governance_status === predecessor);
+          if (!candidate) {
+            const have = versions.map((v: any) => `v${v.version_no} ${v.governance_status}`).join(', ');
+            throw new Error(
+              `No ${predecessor} version to ${label.toLowerCase()}. This formula has: ${have}.`,
+            );
+          }
           await transitionVersion({ versionId: candidate.id, newStatus: next, userCode: u });
-          // Mirror the latest status onto the template header so the grid reflects it immediately.
-          await upsert.mutateAsync({
-            id: row.id, governance_status: next, modified_by: u,
-            ...(next === 'RETIRED' ? { is_active: false } : {}),
-          } as Partial<BnFormulaTemplate>);
+          // The template's own governance_status is deliberately no longer
+          // written here. It was a second, non-transactional copy of the
+          // version's status and the sole cause of the drift in BUG-20; the
+          // grid, tabs and actions now derive everything from the versions.
+          // is_active on the template is a template-level flag, not a status
+          // mirror, so it is still maintained on retirement.
+          if (next === 'RETIRED') {
+            await upsert.mutateAsync({
+              id: row.id, is_active: false, modified_by: u,
+            } as Partial<BnFormulaTemplate>);
+          }
           audit.log({ entityType: 'bn_formula_template', entityId: row.id, action: (next === 'ACTIVE' ? 'APPROVE' : next === 'RETIRED' ? 'RETIRE' : 'UPDATE') as any });
           toast.success(`${row.template_code} → ${next}`);
           refresh();
@@ -360,22 +448,24 @@ export default function FormulaConfiguration() {
       onClick: (r) => handleEditFormulaSteps(r) },
     { key: 'edit', label: 'Edit header (draft)', icon: <Edit className="h-3.5 w-3.5" />,
       onClick: (r) => openRow(r),
-      hidden: (r) => (r.governance_status ?? 'DRAFT') !== 'DRAFT' },
+      // Each action is offered when a version exists in the state it acts on,
+      // not when the template's copy happens to say so.
+      hidden: (r) => !factsOf(r)?.hasDraft },
     { key: 'view', label: 'View header', icon: <Eye className="h-3.5 w-3.5" />,
       onClick: (r) => openRow(r),
-      hidden: (r) => (r.governance_status ?? 'DRAFT') === 'DRAFT' },
+      hidden: (r) => !!factsOf(r)?.hasDraft },
     { key: 'submit', label: 'Submit for review', icon: <Send className="h-3.5 w-3.5" />,
       onClick: (r) => handleTransition(r, 'IN_REVIEW', 'Submit for review'),
-      hidden: (r) => (r.governance_status ?? 'DRAFT') !== 'DRAFT' },
+      hidden: (r) => !factsOf(r)?.hasDraft },
     { key: 'activate', label: 'Activate', icon: <CheckCircle2 className="h-3.5 w-3.5" />,
       onClick: (r) => handleTransition(r, 'ACTIVE', 'Activate'),
-      hidden: (r) => r.governance_status !== 'IN_REVIEW' },
+      hidden: (r) => !factsOf(r)?.hasInReview },
     { key: 'retire', label: 'Retire', icon: <Archive className="h-3.5 w-3.5" />,
       onClick: (r) => handleTransition(r, 'RETIRED', 'Retire'),
-      hidden: (r) => r.governance_status !== 'ACTIVE' },
+      hidden: (r) => !factsOf(r)?.hasActive },
     { key: 'version', label: 'New version', icon: <GitBranch className="h-3.5 w-3.5" />,
       onClick: (r) => handleNewVersion(r),
-      hidden: (r) => !(r.governance_status === 'ACTIVE' || r.governance_status === 'RETIRED') },
+      hidden: (r) => { const f = factsOf(r); return !(f?.hasActive || f?.hasRetired); } },
     { key: 'clone', label: 'Clone', icon: <Copy className="h-3.5 w-3.5" />,
       onClick: (r) => handleClone(r) },
     { key: 'usage', label: 'View usage', icon: <Eye className="h-3.5 w-3.5" />,
@@ -390,10 +480,21 @@ export default function FormulaConfiguration() {
       cell: ({ getValue }) => <span className="font-mono text-sm">{String(getValue() ?? '')}</span> },
     { accessorKey: 'template_name', header: 'Name', meta: { label: 'Name', width: 260 },
       cell: ({ getValue }) => <span className="font-medium text-sm">{String(getValue() ?? '')}</span> },
-    { accessorKey: 'governance_status', header: 'Status', meta: { label: 'Status', width: 120 },
-      cell: ({ getValue }) => {
-        const s = String(getValue() ?? 'DRAFT');
-        return <Badge variant={STATUS_VARIANTS[s] ?? 'outline'}>{s}</Badge>;
+    { accessorKey: 'governance_status', header: 'Status', meta: { label: 'Status', width: 150 },
+      cell: ({ row }) => {
+        // Derived from the versions, so this can never contradict the tab the
+        // row is filed under or the actions offered on it.
+        const s = statusOf(row.original);
+        const f = factsOf(row.original);
+        return (
+          <div className="flex items-center gap-1.5">
+            <Badge variant={STATUS_VARIANTS[s] ?? 'outline'}>{s}</Badge>
+            {/* A live formula with a draft in progress is worth seeing at a glance. */}
+            {s === 'ACTIVE' && f?.hasDraft && (
+              <span className="text-xs text-muted-foreground">+ draft</span>
+            )}
+          </div>
+        );
       } },
     { accessorKey: 'output_type', header: 'Output', meta: { label: 'Output', width: 110 },
       cell: ({ getValue }) => <Badge variant="outline">{String(getValue() ?? '—')}</Badge> },

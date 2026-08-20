@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,11 +13,21 @@ import { BindingEditor, type BindingRow } from './BindingEditor';
 import { SimulationPanel } from './SimulationPanel';
 import { ValidationPanel } from './ValidationPanel';
 import { Plus, Pencil } from 'lucide-react';
+import { useVariableResolver } from '@/hooks/bn/useVariableResolver';
 
 type Formula = { id: string; template_code: string; template_name: string; category: string | null; governance_status: string };
 type RateTable = { id: string; table_code: string; table_name: string; table_type: string; lookup_mode: string; status: string; country_code: string; version_no: number };
 type Binding = BindingRow;
 type Variable = { id: string; variable_code: string; display_name: string; category: string | null; data_type: string | null; unit: string | null; is_active: boolean };
+
+/** Plain wording for where a variable comes from. */
+const SOURCE_LABELS: Record<string, string> = {
+  FACT: 'Fact',
+  DERIVED_FACT: 'Derived fact',
+  PRODUCT_PARAMETER: 'Product parameter',
+  PRIOR_RESULT: 'Earlier formula result',
+  REGISTRY: 'Registry only',
+};
 
 const TAB_KEYS = ['formulas','variables','rate-tables','matrix','parameters','bindings','simulation','validation'] as const;
 type TabKey = typeof TAB_KEYS[number];
@@ -35,6 +45,8 @@ export default function CalculationSetup() {
   const [editingBinding, setEditingBinding] = useState<BindingRow | null>(null);
   const [bindingOpen, setBindingOpen] = useState(false);
   const [headerFormOpen, setHeaderFormOpen] = useState(false);
+  // Which tab opened the shared table dialog, so its title matches.
+  const [headerFormKind, setHeaderFormKind] = useState<'RATE' | 'MATRIX'>('RATE');
   const [editingHeaderId, setEditingHeaderId] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const nav = useNavigate();
@@ -60,6 +72,59 @@ export default function CalculationSetup() {
     })();
     return () => { alive = false; };
   }, [reloadKey]);
+
+  /**
+   * The Variables tab listed only bn_formula_variable_registry, so a derived
+   * fact — or a fact, or a product parameter — never appeared here even though
+   * formulas can use it. Users added a derived fact and had no way to see it on
+   * the screen that claims to list variables.
+   *
+   * It now shows everything the formula validator accepts, from the same
+   * resolver, with the source named. What is offered and what is accepted stay
+   * in step (see BUG-19).
+   */
+  const { data: resolver } = useVariableResolver();
+
+  const allVariables = useMemo(() => {
+    type Row = {
+      key: string; variable_code: string; display_name: string;
+      source: string; category: string | null; data_type: string | null; unit: string | null;
+    };
+    const byCode = new Map<string, Row>();
+
+    // Resolver first: it carries the authoritative source and sample metadata.
+    for (const [code, v] of resolver?.entries() ?? []) {
+      byCode.set(code, {
+        key: `resolver:${code}`,
+        variable_code: code,
+        display_name: v.displayName ?? code,
+        source: v.source,
+        category: null,
+        data_type: v.dataType ?? null,
+        unit: v.unit ?? null,
+      });
+    }
+    // Registry rows fill in category, and cover any registry-only entries.
+    for (const v of variables) {
+      const existing = byCode.get(v.variable_code);
+      if (existing) {
+        existing.category = existing.category ?? v.category;
+        existing.data_type = existing.data_type ?? v.data_type;
+        existing.unit = existing.unit ?? v.unit;
+        continue;
+      }
+      byCode.set(v.variable_code, {
+        key: `registry:${v.id}`,
+        variable_code: v.variable_code,
+        display_name: v.display_name,
+        source: 'REGISTRY',
+        category: v.category,
+        data_type: v.data_type,
+        unit: v.unit,
+      });
+    }
+    return [...byCode.values()].sort((a, b) => a.variable_code.localeCompare(b.variable_code));
+  }, [resolver, variables]);
 
   const switchTab = (t: TabKey) => {
     setTab(t);
@@ -119,20 +184,31 @@ export default function CalculationSetup() {
             </TabsContent>
 
             <TabsContent value="variables">
-              <ListCard title="Variable Registry" count={variables.length}>
+              <ListCard title="Variables available to formulas" count={allVariables.length}>
+                <p className="px-1 pb-3 text-sm text-muted-foreground">
+                  Everything a formula may refer to, from every source — registry entries, facts,
+                  derived facts, product parameters and earlier formula results. This is the same
+                  list the formula validator accepts, so anything shown here can be used in a
+                  formula, and anything missing cannot.
+                </p>
                 <Table>
-                  <TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead>Type</TableHead><TableHead>Unit</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Name</TableHead><TableHead>Source</TableHead><TableHead>Category</TableHead><TableHead>Type</TableHead><TableHead>Unit</TableHead></TableRow></TableHeader>
                   <TableBody>
-                    {variables.map((v) => (
-                      <TableRow key={v.id}>
+                    {allVariables.map((v) => (
+                      <TableRow key={v.key}>
                         <TableCell className="font-mono text-xs">{v.variable_code}</TableCell>
                         <TableCell>{v.display_name}</TableCell>
+                        <TableCell>
+                          <Badge variant={v.source === 'DERIVED_FACT' ? 'default' : 'secondary'}>
+                            {SOURCE_LABELS[v.source] ?? v.source}
+                          </Badge>
+                        </TableCell>
                         <TableCell><Badge variant="outline">{v.category ?? '—'}</Badge></TableCell>
                         <TableCell>{v.data_type ?? '—'}</TableCell>
                         <TableCell>{v.unit ?? '—'}</TableCell>
                       </TableRow>
                     ))}
-                    {!variables.length && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">No variables seeded</TableCell></TableRow>}
+                    {!allVariables.length && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No variables available</TableCell></TableRow>}
                   </TableBody>
                 </Table>
               </ListCard>
@@ -142,7 +218,7 @@ export default function CalculationSetup() {
               <ListCard
                 title="Rate / Tier Tables"
                 count={rateTables.filter((r) => ['TIER','RATE_TABLE','LOOKUP','CAP_TABLE','CONDITION_TABLE'].includes(r.table_type)).length}
-                action={<Button size="sm" onClick={() => { setEditingHeaderId(null); setHeaderFormOpen(true); }}><Plus className="h-4 w-4 mr-1" />New table</Button>}
+                action={<Button size="sm" onClick={() => { setEditingHeaderId(null); setHeaderFormKind('RATE'); setHeaderFormOpen(true); }}><Plus className="h-4 w-4 mr-1" />New table</Button>}
               >
                 <RateTablesList
                   rows={rateTables.filter((r) => ['TIER','RATE_TABLE','LOOKUP','CAP_TABLE','CONDITION_TABLE'].includes(r.table_type))}
@@ -156,7 +232,7 @@ export default function CalculationSetup() {
               <ListCard
                 title="Matrix / Share Tables"
                 count={rateTables.filter((r) => ['MATRIX','SHARE_TABLE'].includes(r.table_type)).length}
-                action={<Button size="sm" onClick={() => { setEditingHeaderId(null); setHeaderFormOpen(true); }}><Plus className="h-4 w-4 mr-1" />New table</Button>}
+                action={<Button size="sm" onClick={() => { setEditingHeaderId(null); setHeaderFormKind('MATRIX'); setHeaderFormOpen(true); }}><Plus className="h-4 w-4 mr-1" />New matrix</Button>}
               >
                 <RateTablesList
                   rows={rateTables.filter((r) => ['MATRIX','SHARE_TABLE'].includes(r.table_type))}
@@ -230,6 +306,7 @@ export default function CalculationSetup() {
 
       <RateTableHeaderForm
         open={headerFormOpen}
+        kind={headerFormKind}
         rateTableId={editingHeaderId}
         onClose={() => { setHeaderFormOpen(false); setEditingHeaderId(null); }}
         onSaved={() => setReloadKey((k) => k + 1)}

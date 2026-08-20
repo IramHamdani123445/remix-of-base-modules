@@ -27,6 +27,43 @@ export async function getChannelConfig(
   return (data ?? null) as BnProductChannelConfig | null;
 }
 
+/**
+ * The currency for a product's amounts, taken from the country the product is
+ * registered in. A product whose country has no currency on file is a data
+ * fault worth reporting, not something to paper over with a guessed default —
+ * a wrong currency on a benefit payment is worse than a refused save.
+ */
+async function resolveProductCurrency(productId: string): Promise<string> {
+  // Two lookups rather than an embedded join: there is no foreign key between
+  // bn_product.country_code and bn_country.country_code, so PostgREST cannot
+  // relate the two tables.
+  const { data: product, error: productError } = await db
+    .from('bn_product')
+    .select('country_code')
+    .eq('id', productId)
+    .maybeSingle();
+  if (productError) {
+    throw new Error(`Cannot determine the channel currency: ${productError.message}`);
+  }
+
+  const countryCode = (product as any)?.country_code;
+  if (countryCode) {
+    const { data: country } = await db
+      .from('bn_country')
+      .select('currency_code')
+      .eq('country_code', countryCode)
+      .maybeSingle();
+    const currency = (country as any)?.currency_code;
+    if (currency) return currency;
+  }
+
+  throw new Error(
+    `Cannot determine the channel currency: this product is registered in country ` +
+    `"${countryCode ?? 'unknown'}", which has no currency set. ` +
+    `Set the currency for that country under Reference Data → Country Packs first.`,
+  );
+}
+
 export async function upsertChannelConfig(
   cfg: Partial<BnProductChannelConfig>,
   actor?: { userCode: string } | null,
@@ -39,7 +76,19 @@ export async function upsertChannelConfig(
     } catch { /* ignore — audit will record null before */ }
   }
 
-  const payload = { ...cfg, modified_at: new Date().toISOString() };
+  const payload: Record<string, any> = { ...cfg, modified_at: new Date().toISOString() };
+
+  // bn_product_channel_config.currency_code is NOT NULL with no default, so
+  // creating the first channel row for a version failed outright:
+  //   null value in column "currency_code" ... violates not-null constraint
+  // Nothing in the application set it, because the column exists only in the
+  // live database — it is not declared in any migration in this repository.
+  // The currency is not a free choice: it belongs to the country the product
+  // is registered in, so it is derived rather than asked for.
+  if (!payload.currency_code && payload.product_id) {
+    payload.currency_code = await resolveProductCurrency(payload.product_id);
+  }
+
   const { data, error } = await db
     .from('bn_product_channel_config')
     .upsert(payload, { onConflict: 'product_version_id,channel_code' })

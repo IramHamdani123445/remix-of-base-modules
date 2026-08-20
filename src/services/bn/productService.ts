@@ -5,6 +5,7 @@ import { auditConfigChange } from './audit/bnAuditService';
 import { getCurrentUserCode } from './audit/getCurrentUserCode';
 import { assertSafeToPublish } from './config/publishGateService';
 import { findUngovernedAttachedRules, activateAttachedRules } from './governance/ruleGovernanceService';
+import { registerProductRuleInCatalogue, type RegisterResult } from './governance/registerRuleInCatalogue';
 
 const db = supabase as any;
 
@@ -145,7 +146,12 @@ export async function copyVersionRules(
   const eligRules = await fetchEligibilityRules(sourceVersionId);
   for (const rule of eligRules) {
     const { id, product_version_id, entered_at, modified_at, ...rest } = rule as any;
-    await upsertEligibilityRule({ ...rest, product_version_id: targetVersionId });
+    // A clone keeps the source's catalogue links; it must not create catalogue
+    // entries in bulk as a side effect of copying a version.
+    await upsertEligibilityRule(
+      { ...rest, product_version_id: targetVersionId },
+      { registerInCatalogue: false },
+    );
     counts.eligibility++;
   }
 
@@ -305,14 +311,31 @@ export async function publishProductVersion(
   // LEGAL_CONFIRMED, READY_FOR_PRODUCT_USE, or ACTIVE.
   const ungoverned = await findUngovernedAttachedRules(versionId);
   if (ungoverned.length > 0) {
-    const list = ungoverned
-      .slice(0, 5)
-      .map(r => `${r.rule_code} (${r.governance_status})`)
-      .join(', ');
-    const more = ungoverned.length > 5 ? ` (+${ungoverned.length - 5} more)` : '';
-    throw new Error(
-      `Publish blocked: ${ungoverned.length} attached rule(s) have not completed Rule Governance — ${list}${more}. Open Rule Library to advance them to Legal Confirmed or Ready.`,
-    );
+    // BUG-13 — report the two cases separately. A rule that was never entered
+    // in the Rule Catalogue needs registering and approving; a rule already in
+    // the catalogue only needs advancing. One combined message sent the user to
+    // the wrong screen for half the rules listed.
+    const names = (rs: typeof ungoverned) => {
+      const shown = rs.slice(0, 5).map(r => r.rule_code).join(', ');
+      return rs.length > 5 ? `${shown} (+${rs.length - 5} more)` : shown;
+    };
+    const unregistered = ungoverned.filter(r => r.reason === 'NOT_REGISTERED');
+    const notApproved = ungoverned.filter(r => r.reason === 'NOT_APPROVED');
+
+    const parts: string[] = [];
+    if (unregistered.length > 0) {
+      parts.push(
+        `${unregistered.length} rule(s) are not registered in the Rule Catalogue and have never been approved — ${names(unregistered)}. ` +
+        `Add each one to the Rule Catalogue, then take it through Rule Governance to Legal Confirmed or Ready.`,
+      );
+    }
+    if (notApproved.length > 0) {
+      parts.push(
+        `${notApproved.length} rule(s) are in the Rule Catalogue but have not completed Rule Governance — ${names(notApproved)}. ` +
+        `Open Rule Catalogue → Governance and advance them to Legal Confirmed or Ready.`,
+      );
+    }
+    throw new Error(`Publish blocked:\n• ${parts.join('\n• ')}`);
   }
 
   const existingActive = (await fetchVersionsByProduct(version.product_id))
@@ -359,6 +382,30 @@ export async function publishProductVersion(
     afterValue: { status: 'ACTIVE', effective_from: newEffectiveFrom, gate: gate.details },
     performedBy: await actor(), critical: true,
   });
+
+  // Promote the product itself once it has a live version. Nothing wrote
+  // bn_product.status before, so a product running on an ACTIVE version still
+  // read DRAFT in the Product Catalogue — indefinitely, and misleadingly.
+  // Only DRAFT and PENDING_APPROVAL are promoted: a SUSPENDED or ARCHIVED
+  // product is in that state deliberately and publishing a version must not
+  // quietly bring it back into service.
+  const { data: productRow } = await db
+    .from('bn_product')
+    .select('status')
+    .eq('id', version.product_id)
+    .maybeSingle();
+  const productStatus = String(productRow?.status ?? '').toUpperCase();
+  if (productStatus === 'DRAFT' || productStatus === 'PENDING_APPROVAL') {
+    await db.from('bn_product')
+      .update({ status: 'ACTIVE', modified_at: new Date().toISOString() })
+      .eq('id', version.product_id);
+    await auditConfigChange({
+      action: 'UPDATE', entityType: 'bn_product', entityId: version.product_id,
+      beforeValue: { status: productStatus },
+      afterValue: { status: 'ACTIVE', reason: `version ${version.version_number} published` },
+      performedBy: await actor(), critical: true,
+    });
+  }
 
   // ─── POST-PUBLISH: promote READY_FOR_PRODUCT_USE attached rules to ACTIVE.
   try {
@@ -407,14 +454,69 @@ export async function fetchEligibilityRules(versionId: string): Promise<BnEligib
   return (data ?? []) as BnEligibilityRule[];
 }
 
-export async function upsertEligibilityRule(rule: Partial<BnEligibilityRule>): Promise<BnEligibilityRule> {
+export interface UpsertEligibilityRuleOptions {
+  /**
+   * Register the rule in the Rule Catalogue when it is not linked to one yet,
+   * and link it (GAP-01 / BUG-13). On by default: a rule created on a product
+   * with no catalogue entry can never be approved or published.
+   *
+   * Cloning a version passes false — the copied rules keep whatever catalogue
+   * link the source had, and a clone should not quietly create catalogue
+   * entries in bulk.
+   */
+  registerInCatalogue?: boolean;
+}
+
+export async function upsertEligibilityRule(
+  rule: Partial<BnEligibilityRule>,
+  options: UpsertEligibilityRuleOptions = {},
+): Promise<BnEligibilityRule> {
   if (rule.product_version_id) await assertVersionMutable(rule.product_version_id);
-  const { data, error } = await db.from('bn_eligibility_rule').upsert(rule).select().single();
+
+  const performedBy = await actor();
+
+  // The row itself was never stamped with who made it, so rules created on a
+  // product showed "created by NULL" while the audit trail recorded the actor.
+  let payload: Partial<BnEligibilityRule> = rule.id
+    ? rule
+    : ({ entered_by: performedBy, ...rule } as Partial<BnEligibilityRule>);
+  let registration: RegisterResult | null = null;
+
+  // Register before saving the rule, so a refusal (a code already taken by a
+  // different catalogue entry) stops the whole operation rather than leaving
+  // another unregistered rule behind.
+  const shouldRegister =
+    options.registerInCatalogue !== false && !(rule as any).catalogue_rule_id;
+  if (shouldRegister) {
+    registration = await registerProductRuleInCatalogue(rule, performedBy ?? null);
+    payload = {
+      ...payload,
+      catalogue_rule_id: registration.catalogueRuleId,
+      catalogue_rule_code: registration.catalogueRuleCode,
+    } as Partial<BnEligibilityRule>;
+  }
+
+  const { data, error } = await db.from('bn_eligibility_rule').upsert(payload).select().single();
   if (error) throw error;
   await auditConfigChange({
     action: rule.id ? 'UPDATE' : 'CREATE', entityType: 'bn_eligibility_rule', entityId: data.id,
-    afterValue: data, performedBy: await actor(),
+    afterValue: data, performedBy,
   });
+
+  if (registration) {
+    await auditConfigChange({
+      action: registration.outcome === 'CREATED' ? 'CREATE' : 'UPDATE',
+      entityType: 'bn_rule_catalogue',
+      entityId: registration.catalogueRuleId,
+      afterValue: {
+        rule_code: registration.catalogueRuleCode,
+        registered_from_product_rule: data.id,
+        outcome: registration.outcome,
+      },
+      performedBy,
+    });
+  }
+
   return data as BnEligibilityRule;
 }
 

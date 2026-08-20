@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Eye, AlertTriangle } from 'lucide-react';
 import { BnScreenRoleBanner } from '@/components/bn/shared';
@@ -35,6 +37,39 @@ export default function ProductCatalog() {
     return (products as BnProduct[]).filter(p => p.country_code === filterCode);
   }, [products, filterCode]);
 
+  /**
+   * The live version of each product, if it has one.
+   *
+   * bn_product.status was never written when a version went live, so a product
+   * running on an ACTIVE version still read DRAFT here — the catalogue said a
+   * benefit was a draft while it was in service. Publishing now promotes the
+   * product, but products published before that fix still hold the stale value,
+   * so the displayed status is derived from the versions rather than trusted
+   * from the product row.
+   */
+  const { data: liveVersions = new Map<string, number>() } = useQuery({
+    queryKey: ['bn-product-live-versions'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('bn_product_version')
+        .select('product_id, version_number, status')
+        .eq('status', 'ACTIVE');
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const v of (data ?? []) as any[]) {
+        // Keep the highest version number where a product has more than one
+        // ACTIVE version — itself a data fault, but not one to hide here.
+        const prev = map.get(v.product_id);
+        if (prev === undefined || v.version_number > prev) map.set(v.product_id, v.version_number);
+      }
+      return map;
+    },
+  });
+
+  /** ACTIVE if the product has a live version; otherwise the product's own status. */
+  const effectiveStatus = (p: BnProduct): BnProductStatus =>
+    liveVersions.has(p.id) ? 'ACTIVE' : (p.status as BnProductStatus);
+
   const orphanCount = useMemo(
     () => (products as BnProduct[]).filter(p => !p.country_code || !validCodes.has(p.country_code)).length,
     [products, validCodes]
@@ -61,21 +96,33 @@ export default function ProductCatalog() {
     {
       accessorKey: 'status',
       header: 'Status',
-      meta: { label: 'Status', width: 140 },
-      cell: ({ getValue }) => {
-        const s = getValue<BnProductStatus>();
-        return <Badge variant={statusVariant[s] || 'outline'}>{BN_PRODUCT_STATUS_LABELS[s] || s}</Badge>;
+      meta: { label: 'Status', width: 170 },
+      cell: ({ row }) => {
+        const p = row.original;
+        const s = effectiveStatus(p);
+        const liveVersion = liveVersions.get(p.id);
+        return (
+          <div className="flex items-center gap-1.5">
+            <Badge variant={statusVariant[s] || 'outline'}>{BN_PRODUCT_STATUS_LABELS[s] || s}</Badge>
+            {/* Which version is live, so "Active" is not just an assertion. */}
+            {liveVersion !== undefined && (
+              <span className="text-xs text-muted-foreground">v{liveVersion}</span>
+            )}
+          </div>
+        );
       },
     },
   ];
 
   const summary = [
     { label: 'Total', value: filteredProducts.length, tone: 'default' as const },
-    { label: 'Active', value: filteredProducts.filter(p => p.status === 'ACTIVE').length, tone: 'success' as const },
-    { label: 'Draft', value: filteredProducts.filter(p => p.status === 'DRAFT').length, tone: 'warning' as const },
-    { label: 'Pending', value: filteredProducts.filter(p => p.status === 'PENDING_APPROVAL').length, tone: 'info' as const },
-    { label: 'Suspended', value: filteredProducts.filter(p => p.status === 'SUSPENDED').length, tone: 'danger' as const },
-    { label: 'Archived', value: filteredProducts.filter(p => p.status === 'ARCHIVED').length, tone: 'muted' as const },
+    // Counted on the same derived status as the column, so the tiles and the
+    // rows cannot disagree.
+    { label: 'Active', value: filteredProducts.filter(p => effectiveStatus(p) === 'ACTIVE').length, tone: 'success' as const },
+    { label: 'Draft', value: filteredProducts.filter(p => effectiveStatus(p) === 'DRAFT').length, tone: 'warning' as const },
+    { label: 'Pending', value: filteredProducts.filter(p => effectiveStatus(p) === 'PENDING_APPROVAL').length, tone: 'info' as const },
+    { label: 'Suspended', value: filteredProducts.filter(p => effectiveStatus(p) === 'SUSPENDED').length, tone: 'danger' as const },
+    { label: 'Archived', value: filteredProducts.filter(p => effectiveStatus(p) === 'ARCHIVED').length, tone: 'muted' as const },
   ];
 
   return (
