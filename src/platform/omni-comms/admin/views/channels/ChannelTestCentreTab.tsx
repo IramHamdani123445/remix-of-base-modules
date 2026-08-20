@@ -331,7 +331,8 @@ export const ChannelTestCentreTab: React.FC<{
   }
 
   const canConfigure = summary?.can_configure ?? false;
-  const currentRun = lastRun ?? summary?.latest_run ?? null;
+  const candidateRun = lastRun ?? summary?.latest_run ?? null;
+  const currentRun = candidateRun?.binding_id === bindingId ? candidateRun : null;
   const currentStale = lastRun
     ? Boolean(summary?.configuration_fingerprint
       && lastRun.configuration_fingerprint !== summary.configuration_fingerprint)
