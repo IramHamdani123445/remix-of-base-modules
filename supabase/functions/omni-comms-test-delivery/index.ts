@@ -36,6 +36,7 @@ import {
   resolveTwilioSecret,
   sendTwilioSms,
 } from "../_shared/omni-comms/twilioSmsAdapter.ts";
+import { sendTwilioWhatsApp } from "../_shared/omni-comms/twilioWhatsAppAdapter.ts";
 import { producePrintArtefact } from "../_shared/omni-comms/printArtefactAdapter.ts";
 
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
@@ -381,9 +382,9 @@ Deno.serve(async (req) => {
     return await finish(printOutcome);
   }
 
-  // ---- SMS (Twilio) ------------------------------------------------------
+  // ---- SMS / WhatsApp (Twilio) ------------------------------------------
 
-  if (channel === "sms") {
+  if (channel === "sms" || channel === "whatsapp") {
     const authTokenRef =
       typeof plan.auth_token_secret_ref === "string" ? plan.auth_token_secret_ref : "";
     const messagingServiceRef =
@@ -433,6 +434,24 @@ Deno.serve(async (req) => {
         errorDetail: "No sender number or messaging service is configured.",
       });
       return json({ error: "OC409", detail: "sms_sender_missing", delivery }, 409);
+    }
+
+    if (channel === "whatsapp") {
+      if (!smsSender) {
+        const delivery = await complete("failed", "configuration_invalid", {
+          errorCode: "whatsapp_sender_missing",
+          errorDetail: "No WhatsApp sender number is configured.",
+        });
+        return json({ error: "OC409", detail: "whatsapp_sender_missing", delivery }, 409);
+      }
+      const whatsappOutcome = await sendTwilioWhatsApp({
+        credentials: resolved.credentials,
+        from: smsSender,
+        to: target,
+        body: providerText,
+        idempotencyKey: providerIdempotencyKey,
+      });
+      return await finish(whatsappOutcome);
     }
 
     const smsOutcome = await sendTwilioSms({
