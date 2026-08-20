@@ -288,7 +288,6 @@ export const ChannelTestDeliveryCard: React.FC<{
   const [lastDelivery, setLastDelivery] = useState<ChannelTestDelivery | null>(null);
   const isSms = channel === 'sms';
   const ChannelIcon = isSms ? MessageSquareText : MailCheck;
-  const recipientLabel = isSms ? 'recipient' : 'address';
   const recipientPlural = isSms ? 'recipients' : 'addresses';
 
   const refresh = useCallback(async () => {
