@@ -34,6 +34,7 @@ import {
   formatResourceCount,
   type ChannelConfigurationSummary,
 } from '@/platform/omni-comms/application/channelConfigurationTypes';
+import { adaptersForChannel } from '@/platform/omni-comms/domain/providerAdapterCatalogue';
 
 
 const StateIcon: React.FC<{ state: EmailReadinessCheckState }> = ({ state }) => {
@@ -82,6 +83,9 @@ export const ChannelOverviewTab: React.FC<{
     const resources = OMNI_COMMS_CHANNEL_RESOURCES.filter(
       (r) => channelCapability(definition.code, r).uiApplicable
         && r !== 'release-control' && r !== 'diagnostics' && r !== 'test-centre',
+    );
+    const installedAdapters = adaptersForChannel(definition.code).filter(
+      (a) => a.deliveryImplemented,
     );
 
     return (
@@ -137,12 +141,21 @@ export const ChannelOverviewTab: React.FC<{
             )}
           </CardContent>
         </Card>
-        <DeferredCapabilityCard
-          title="Provider adapters"
-          description={`No provider adapter is installed for ${definition.name}.`}
-          bullets={definition.accounts.examples}
-          footer={`Delivery will be implemented in ${definition.accounts.futureBuild}.`}
-        />
+        {installedAdapters.length > 0 ? (
+          <DeferredCapabilityCard
+            title="Provider adapters"
+            description={`${installedAdapters.length === 1 ? 'A provider adapter is' : 'Provider adapters are'} installed for ${definition.name}.`}
+            bullets={installedAdapters.map((a) => a.label)}
+            footer="Delivery remains governed by Release Control for this scope."
+          />
+        ) : (
+          <DeferredCapabilityCard
+            title="Provider adapters"
+            description={`No provider adapter is installed for ${definition.name}.`}
+            bullets={definition.accounts.examples}
+            footer={`Delivery will be implemented in ${definition.accounts.futureBuild}.`}
+          />
+        )}
       </div>
     );
   }
