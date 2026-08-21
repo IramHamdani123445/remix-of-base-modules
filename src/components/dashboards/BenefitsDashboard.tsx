@@ -6,17 +6,17 @@ import { Badge } from '@/components/ui/badge';
 import { Heart, DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { fetchAdminKPIs, fetchBenefitsDistribution, fetchRecentClaims } from '@/services/dashboardDataService';
+import { DASHBOARD_QUERY_KEYS, fetchAdminKPIs, fetchBenefitsDistribution, fetchRecentClaims } from '@/services/dashboardDataService';
 
 export const BenefitsDashboard = () => {
   const navigate = useNavigate();
   const { data: kpis, isLoading: kpisLoading } = useQuery({
-    queryKey: ['benefits_dashboard_kpis'],
+    queryKey: DASHBOARD_QUERY_KEYS.adminKpis,
     queryFn: fetchAdminKPIs,
   });
 
   const { data: distribution = [], isLoading: distLoading } = useQuery({
-    queryKey: ['benefits_dashboard_distribution'],
+    queryKey: DASHBOARD_QUERY_KEYS.benefitsDistribution,
     queryFn: fetchBenefitsDistribution,
   });
 

@@ -1,5 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 
+/** One cache identity per database view so every dashboard shares results. */
+export const DASHBOARD_QUERY_KEYS = {
+  adminKpis: ['dashboard-view', 'admin-kpis'] as const,
+  financialSummary: ['dashboard-view', 'financial-summary'] as const,
+  contributionTrend: ['dashboard-view', 'contribution-trend'] as const,
+  benefitsDistribution: ['dashboard-view', 'benefits-distribution'] as const,
+};
+
 // ── Types ──
 
 export interface AdminKPIs {
