@@ -18,12 +18,13 @@ export const POLICY_CHANNELS = [
   'push',
   'in_app',
   'print',
+  'voice',
 ] as const;
 
 export type PolicyChannel = (typeof POLICY_CHANNELS)[number];
 
 /** Channels whose values are NOT supported by the DB channel constraint. */
-export const POLICY_PLANNED_CHANNELS = ['webhook', 'voice'] as const;
+export const POLICY_PLANNED_CHANNELS = ['webhook'] as const;
 
 export function isPolicyChannel(value: string): value is PolicyChannel {
   return (POLICY_CHANNELS as readonly string[]).includes(value);
