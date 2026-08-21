@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Play, Save, FlaskConical } from 'lucide-react';
 import { useRunCalculation, useBnSimulationPresets, useSaveSimulationPreset } from '@/hooks/bn/useBnCalcEngine';
 import { useBnProducts, useBnProductVersions } from '@/hooks/bn/useBnProduct';
+import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import CalcResultSummary from './CalcResultSummary';
 import CalcTraceViewer from './CalcTraceViewer';
 import type { BnCalcEngineInput, BnCalcEngineOutput, BnCalcRunMode } from '@/types/bnCalcEngine';
@@ -34,14 +35,34 @@ export default function CalcSimulationPanel() {
       return;
     }
     try {
+      // The engine stamps every run with the actor for audit and refuses to
+      // run without one (requireUserCode in runCalculationEngine). This panel
+      // never supplied it, so every Run failed with
+      //   Cannot perform "runCalculationEngine" — authenticated user_code is required
+      // regardless of who was signed in. Read from the session rather than the
+      // auth context, so it does not depend on the profile having loaded.
+      const userCode = await getCurrentUserCode();
+      if (!userCode) {
+        toast.error('Cannot run the simulation', {
+          description: 'Your user code could not be read from the session. Sign out and in again.',
+        });
+        return;
+      }
+
+      const product = (products ?? []).find((p: any) => p.id === productId);
+
       const input: BnCalcEngineInput = {
         claimId: crypto.randomUUID(), // Simulation uses a temporary claim ID
         ssn,
         productId,
         productVersionId: versionId,
         claimDate,
-        countryCode: 'KN',
+        // The product's own country pack. 'KN' was hard-coded here and does not
+        // exist — the country codes in use are SKN, AG and BB — so the run used
+        // the wrong pack for its rates, currency and legal references.
+        countryCode: product?.country_code ?? 'SKN',
         mode,
+        triggeredBy: userCode,
       };
       const res = await runCalc.mutateAsync(input);
       setResult(res);
