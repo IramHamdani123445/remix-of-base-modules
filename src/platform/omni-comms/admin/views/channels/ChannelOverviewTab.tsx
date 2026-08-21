@@ -34,6 +34,7 @@ import {
   formatResourceCount,
   type ChannelConfigurationSummary,
 } from '@/platform/omni-comms/application/channelConfigurationTypes';
+import { adaptersForChannel } from '@/platform/omni-comms/domain/providerAdapterCatalogue';
 
 
 const StateIcon: React.FC<{ state: EmailReadinessCheckState }> = ({ state }) => {
@@ -82,6 +83,9 @@ export const ChannelOverviewTab: React.FC<{
     const resources = OMNI_COMMS_CHANNEL_RESOURCES.filter(
       (r) => channelCapability(definition.code, r).uiApplicable
         && r !== 'release-control' && r !== 'diagnostics' && r !== 'test-centre',
+    );
+    const installedAdapters = adaptersForChannel(definition.code).filter(
+      (a) => a.deliveryImplemented,
     );
 
     return (
