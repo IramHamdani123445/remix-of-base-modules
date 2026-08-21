@@ -115,10 +115,12 @@ Deno.serve(async (req) => {
 
   const authToken = await resolveAuthToken(client, providerAccountId);
   if (!authToken) {
-    return new Response(JSON.stringify({ error: "signature_unverifiable" }), {
-      status: 401,
-      headers: { ...CORS, "Content-Type": "application/json" },
-    });
+    // No token available at all: the caller must still hear something rather
+    // than silence while Twilio waits for TwiML.
+    console.error("omni-comms-inbound-voice signature_unverifiable: no auth token available");
+    return sayHangup(
+      "Sorry, self service is unavailable right now. Please contact the Social Security Board office. Goodbye.",
+    );
   }
 
   const verified = await verifyTwilioSignature({
@@ -137,12 +139,17 @@ Deno.serve(async (req) => {
   const callSid = (params.CallSid ?? "").trim();
   if (!callSid) return sayHangup("Sorry, this call cannot be handled. Goodbye.", 400);
 
-  const { data, error } = await client.rpc("omni_comms_priv_inbound_voice_step", {
-    p_call_sid: callSid,
-    p_from: params.From ?? null,
-    p_to: params.To ?? null,
-    p_digits: params.Digits ?? null,
-  });
+  const { data, error } = await withTimeout(
+    client.rpc("omni_comms_priv_inbound_voice_step", {
+      p_call_sid: callSid,
+      p_from: params.From ?? null,
+      p_to: params.To ?? null,
+      p_digits: params.Digits ?? null,
+    }),
+    8000,
+    { data: null, error: { message: "timeout" } },
+  );
+
 
   if (error) {
     console.error(`omni-comms-inbound-voice step_failed call=${callSid}`);
