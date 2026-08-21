@@ -38,6 +38,7 @@ import {
   sendTwilioSms,
 } from "../_shared/omni-comms/twilioSmsAdapter.ts";
 import { sendTwilioWhatsApp } from "../_shared/omni-comms/twilioWhatsAppAdapter.ts";
+import { sendTwilioVoice } from "../_shared/omni-comms/twilioVoiceAdapter.ts";
 import { producePrintArtefact } from "../_shared/omni-comms/printArtefactAdapter.ts";
 
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
