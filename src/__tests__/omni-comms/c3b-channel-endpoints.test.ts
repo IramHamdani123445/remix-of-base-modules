@@ -65,7 +65,13 @@ const SQL = readdirSync(MIGRATIONS)
   .join('\n');
 
 function fnBody(name: string, size = 12000): string {
-  const start = SQL.indexOf(`FUNCTION public.${name}`);
+  // The LAST *definition* is the effective one: later migrations replace the
+  // function, so an earlier slice would assert against superseded SQL. GRANT /
+  // REVOKE statements mention the same name and must not be mistaken for it.
+  const marker = `CREATE OR REPLACE FUNCTION public.${name}`;
+  const start = SQL.lastIndexOf(marker) >= 0
+    ? SQL.lastIndexOf(marker)
+    : SQL.indexOf(`FUNCTION public.${name}`);
   expect(start).toBeGreaterThan(-1);
   return SQL.slice(start, start + size);
 }
@@ -187,9 +193,9 @@ describe('C3B — schema contract', () => {
 
 // ─── 3. Channel and endpoint-type mapping ──────────────────────────────────
 describe('C3B — channel and type mapping', () => {
-  it('13. supports exactly the five endpoint-owning channels', () => {
+  it('13. supports exactly the endpoint-owning channels', () => {
     expect([...OMNI_COMMS_ENDPOINT_CHANNELS]).toEqual([
-      'email', 'sms', 'whatsapp', 'in_app', 'print',
+      'email', 'sms', 'whatsapp', 'in_app', 'print', 'webhook', 'voice',
     ]);
   });
   it('14. excludes push (its configuration lives in Accounts and Identities)', () => {
@@ -210,6 +216,12 @@ describe('C3B — channel and type mapping', () => {
   });
   it('18. maps in_app to an internal realtime endpoint', () => {
     expect([...OMNI_COMMS_ENDPOINT_TYPES_BY_CHANNEL.in_app]).toEqual(['realtime_endpoint']);
+  });
+  it('19a. maps webhook to a subscriber endpoint and voice to its callbacks', () => {
+    expect([...OMNI_COMMS_ENDPOINT_TYPES_BY_CHANNEL.webhook]).toEqual(['subscriber_endpoint']);
+    expect([...OMNI_COMMS_ENDPOINT_TYPES_BY_CHANNEL.voice]).toEqual([
+      'status_callback', 'ivr_action_callback',
+    ]);
   });
   it('19. maps print to a render service', () => {
     expect([...OMNI_COMMS_ENDPOINT_TYPES_BY_CHANNEL.print]).toEqual(['render_service']);

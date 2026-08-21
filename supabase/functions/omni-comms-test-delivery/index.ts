@@ -32,10 +32,13 @@ import {
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
 import {
+  fetchTwilioMessageStatus,
   resolveTwilioCredentials,
   resolveTwilioSecret,
   sendTwilioSms,
 } from "../_shared/omni-comms/twilioSmsAdapter.ts";
+import { sendTwilioWhatsApp } from "../_shared/omni-comms/twilioWhatsAppAdapter.ts";
+import { sendTwilioVoice } from "../_shared/omni-comms/twilioVoiceAdapter.ts";
 import { producePrintArtefact } from "../_shared/omni-comms/printArtefactAdapter.ts";
 
 import { createVaultSecretResolver } from "../_shared/omni-comms/managedSecrets.ts";
@@ -165,25 +168,54 @@ Deno.serve(async (req) => {
       return json({ ok: false, errorCode: "no_provider_message", lastEvent: null });
     }
 
+    // Voice outcomes arrive asynchronously through the governed Twilio call
+    // status callback; there is no read-only message probe for a call.
+    if (row.channel === "voice") {
+      return json({ ok: false, errorCode: "probe_not_supported_for_voice", lastEvent: null });
+    }
+
+    const purpose = row.channel === "sms" || row.channel === "whatsapp"
+      ? "account_sid"
+      : "api_key";
     const { data: ref } = await serviceClient
       .from("omni_comms_provider_account_secret_ref")
       .select("secret_ref, storage_mode")
       .eq("provider_account_id", row.provider_account_id)
-      // Accounts can hold multiple independent credentials (for example the
-      // Resend API key and the webhook signing secret). Delivery-status reads
-      // must always resolve the sending credential, never an arbitrary row.
-      .eq("purpose", "api_key")
+      .eq("purpose", purpose)
       .maybeSingle();
     if (!ref?.secret_ref) {
       return json({ ok: false, errorCode: "credential_missing", lastEvent: null });
     }
 
-    const probe = await fetchResendEmailStatus({
-      secretRef: ref.secret_ref,
-      storageMode: ref.storage_mode,
-      secretResolver: createVaultSecretResolver(serviceClient),
-      providerMessageId: row.provider_message_id,
-    });
+    let probe;
+    if (row.channel === "sms" || row.channel === "whatsapp") {
+      const { data: tokenRef } = await serviceClient
+        .from("omni_comms_provider_account_secret_ref")
+        .select("secret_ref")
+        .eq("provider_account_id", row.provider_account_id)
+        .eq("purpose", "auth_token")
+        .maybeSingle();
+      if (!tokenRef?.secret_ref) {
+        return json({ ok: false, errorCode: "credential_missing", lastEvent: null });
+      }
+      const resolved = await resolveTwilioCredentials({
+        accountSidRef: ref.secret_ref,
+        authTokenRef: tokenRef.secret_ref,
+        storageMode: ref.storage_mode,
+        secretResolver: createVaultSecretResolver(serviceClient),
+      });
+      if (!resolved.ok) {
+        return json({ ok: false, errorCode: resolved.errorCode, errorDetail: resolved.detail, lastEvent: null });
+      }
+      probe = await fetchTwilioMessageStatus(resolved.credentials, row.provider_message_id);
+    } else {
+      probe = await fetchResendEmailStatus({
+        secretRef: ref.secret_ref,
+        storageMode: ref.storage_mode,
+        secretResolver: createVaultSecretResolver(serviceClient),
+        providerMessageId: row.provider_message_id,
+      });
+    }
     return json({
       ok: probe.ok,
       lastEvent: probe.lastEvent,
@@ -381,9 +413,70 @@ Deno.serve(async (req) => {
     return await finish(printOutcome);
   }
 
-  // ---- SMS (Twilio) ------------------------------------------------------
+  // ---- Voice (Twilio Programmable Voice) ---------------------------------
+  if (channel === "voice") {
+    const authTokenRef =
+      typeof plan.auth_token_secret_ref === "string" ? plan.auth_token_secret_ref : "";
+    const callerNumber = typeof plan.sms_sender === "string" ? plan.sms_sender : "";
 
-  if (channel === "sms") {
+    if (
+      !secretReferenceAcceptable(channel, secretRef)
+      || !secretReferenceAcceptable(channel, authTokenRef)
+    ) {
+      const delivery = await complete("failed", "configuration_invalid", {
+        errorCode: "secret_reference_invalid",
+        errorDetail: "The configured credential reference name is not permitted.",
+      });
+      return json({ error: "OC409", detail: "secret_reference_invalid", delivery }, 409);
+    }
+
+    const resolvedVoice = await resolveTwilioCredentials({
+      accountSidRef: secretRef,
+      authTokenRef,
+      storageMode,
+      secretResolver,
+    });
+    if (!resolvedVoice.ok) {
+      const delivery = await complete("failed", "credential_missing", {
+        errorCode: resolvedVoice.errorCode,
+        errorDetail: resolvedVoice.detail,
+      });
+      return json({ error: "OC409", detail: resolvedVoice.errorCode, delivery }, 409);
+    }
+
+    if (!callerNumber) {
+      const delivery = await complete("failed", "configuration_invalid", {
+        errorCode: "voice_caller_number_missing",
+        errorDetail: "No outbound caller number is configured for the Voice channel.",
+      });
+      return json({ error: "OC409", detail: "voice_caller_number_missing", delivery }, 409);
+    }
+
+    // The keypad question is optional: it is present only when the operator
+    // supplied one, and the answer is recorded through the governed IVR
+    // endpoint, never through the status callback.
+    const gatherPrompt =
+      typeof plan.provider_subject === "string" && plan.provider_subject.trim() !== ""
+        ? plan.provider_subject.trim()
+        : null;
+
+    const voiceOutcome = await sendTwilioVoice({
+      credentials: resolvedVoice.credentials,
+      from: callerNumber,
+      to: target,
+      script: providerText,
+      gatherPrompt,
+      gatherDigits: gatherPrompt ? "1234567890" : null,
+      statusCallbackUrl: `${SUPABASE_URL}/functions/v1/omni-comms-webhook-twilio-voice-status`,
+      ivrActionUrl: `${SUPABASE_URL}/functions/v1/omni-comms-webhook-twilio-voice-ivr`,
+      idempotencyKey: providerIdempotencyKey,
+    });
+    return await finish(voiceOutcome);
+  }
+
+  // ---- SMS / WhatsApp (Twilio) ------------------------------------------
+
+  if (channel === "sms" || channel === "whatsapp") {
     const authTokenRef =
       typeof plan.auth_token_secret_ref === "string" ? plan.auth_token_secret_ref : "";
     const messagingServiceRef =
@@ -433,6 +526,24 @@ Deno.serve(async (req) => {
         errorDetail: "No sender number or messaging service is configured.",
       });
       return json({ error: "OC409", detail: "sms_sender_missing", delivery }, 409);
+    }
+
+    if (channel === "whatsapp") {
+      if (!smsSender) {
+        const delivery = await complete("failed", "configuration_invalid", {
+          errorCode: "whatsapp_sender_missing",
+          errorDetail: "No WhatsApp sender number is configured.",
+        });
+        return json({ error: "OC409", detail: "whatsapp_sender_missing", delivery }, 409);
+      }
+      const whatsappOutcome = await sendTwilioWhatsApp({
+        credentials: resolved.credentials,
+        from: smsSender,
+        to: target,
+        body: providerText,
+        idempotencyKey: providerIdempotencyKey,
+      });
+      return await finish(whatsappOutcome);
     }
 
     const smsOutcome = await sendTwilioSms({

@@ -160,15 +160,15 @@ describe('C5A — canonical checklist', () => {
 });
 
 describe('C5A — channel coverage and target typing', () => {
-  it('supports the six implemented channels', () => {
+  it('supports the seven implemented channels', () => {
     expect([...TEST_CENTRE_CHANNELS]).toEqual([
-      'email', 'sms', 'whatsapp', 'push', 'in_app', 'print',
+      'email', 'sms', 'whatsapp', 'push', 'in_app', 'print', 'voice',
     ]);
   });
 
   it('rejects unsupported channels', () => {
     expect(isTestCentreChannel('email')).toBe(true);
-    expect(isTestCentreChannel('voice')).toBe(false);
+    expect(isTestCentreChannel('voice')).toBe(true);
     expect(isTestCentreChannel('webhook')).toBe(false);
   });
 

@@ -153,13 +153,13 @@ describe('C4A — endpoint requirement per channel', () => {
 
   it('covers every supported identity channel', () => {
     expect(Object.keys(OMNI_COMMS_BINDING_ENDPOINT_REQUIREMENT).sort()).toEqual(
-      ['email', 'in_app', 'print', 'push', 'sms', 'whatsapp'],
+      ['email', 'in_app', 'print', 'push', 'sms', 'voice', 'whatsapp'],
     );
   });
 
   it('falls back to forbidden for an unknown channel', () => {
     expect(
-      bindingEndpointRequirement('voice' as never),
+      bindingEndpointRequirement('carrier_pigeon' as never),
     ).toBe('forbidden');
   });
 });
