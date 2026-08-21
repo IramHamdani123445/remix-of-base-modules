@@ -74,6 +74,16 @@ export function VisualBuilderTab({ versionId, versionStatus }: Props) {
     if (!versionId) return;
     setSyncing(true);
     try {
+      // Sync writes the rule tables from whatever is in memory right now, but
+      // never touched the canvas draft itself — a refresh right after Sync
+      // could show an older saved draft while the tables already had the
+      // newer data. Save the draft first so the two can never diverge.
+      try {
+        await save(canvas);
+      } catch (e: any) {
+        toast.error('Could not save canvas before sync', { description: e?.message });
+        return;
+      }
       const r = await syncCanvasToNormalized(versionId, canvas, userCode);
       // Only report what was actually produced — a list of zeroes tells the
       // user nothing about what happened.
