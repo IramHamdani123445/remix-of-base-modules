@@ -425,7 +425,7 @@ export const ChannelTestDeliveryCard: React.FC<{
         // The stale reference can never succeed again, so a fresh one is issued
         // immediately and the operator simply sends again.
         const nextKey = newDeliveryIdempotencyKey();
-        lastFingerprint.current = `${deliveryFingerprint}|${nextKey}`;
+        lastFingerprint.current = deliveryFingerprint;
         setIdempotencyKey(nextKey);
         setLastDelivery(null);
         setProviderStatus(null);
@@ -450,7 +450,10 @@ export const ChannelTestDeliveryCard: React.FC<{
     } finally {
       setSending(false);
     }
-  }, [transport, run, target, idempotencyKey, subject, bodyText, refresh, onChanged]);
+  }, [
+    transport, run, target, idempotencyKey, subject, bodyText, deliveryFingerprint,
+    refresh, onChanged,
+  ]);
 
   const onCheckProviderStatus = useCallback(async () => {
     if (!current?.id) return;
