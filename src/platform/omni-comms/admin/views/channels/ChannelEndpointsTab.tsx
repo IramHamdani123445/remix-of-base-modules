@@ -71,6 +71,8 @@ import {
 } from '@/platform/omni-comms/application/channelEndpointTypes';
 import { DeferredCapabilityCard, Field, SelectField, toastError } from './channelFormPrimitives';
 import { SendingDomainVerificationSection } from './SendingDomainVerificationSection';
+import { WebhookSubscriptionsSection } from './WebhookSubscriptionsSection';
+import { PushRegistrationsSection } from './PushRegistrationsSection';
 
 import { visibleRecords } from './channelReferenceData';
 import { ReferenceDataBadge, ReferenceDataControls } from './ReferenceDataControls';
@@ -371,6 +373,20 @@ const GenericEndpointsPanel: React.FC<{
             .filter((a) => a.data_origin === 'user')
             .map((a) => ({ id: a.id, code: a.code, display_name: a.display_name }))}
           onChanged={refreshAll}
+        />
+      ) : null}
+
+      {channel === 'webhook' ? (
+        <WebhookSubscriptionsSection
+          client={client}
+          orgId={orgId}
+          departmentId={departmentId}
+          endpoints={genuine.map((e) => ({
+            id: e.id,
+            code: e.code,
+            display_name: e.display_name,
+            status: e.status,
+          }))}
         />
       ) : null}
 

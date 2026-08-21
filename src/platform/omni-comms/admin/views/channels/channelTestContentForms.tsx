@@ -9,11 +9,8 @@
  * Pure presentation: no provider SDK, no send facade, no network call.
  */
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, Plus } from 'lucide-react';
 import { Field } from './channelFormPrimitives';
 import type { TestCentreChannel } from '@/platform/omni-comms/application/channelTestCentreTypes';
 
@@ -63,14 +60,19 @@ export function buildTestPayload(
     case 'sms':
       return { text: f.text };
     case 'whatsapp':
-      return {
-        template_code: f.templateCode,
-        language_code: f.languageCode,
-        variables: f.variables
-          .map((v) => v.trim())
-          .filter((v) => v.length > 0)
-          .slice(0, WHATSAPP_MAX_SAMPLE_VARIABLES),
-      };
+      // Session (free-form) message. The technical test centre sends exactly the
+      // content that passed the preflight, so the same shape is used end to end.
+      return { text: f.text };
+
+    case 'voice': {
+      // Spoken script, plus an optional keypad question (IVR). The shape must
+      // match the controlled test delivery mapping exactly so the preflight
+      // payload and the placed call are provably identical.
+      const prompt = f.subject.trim();
+      return prompt === ''
+        ? { script: f.text }
+        : { script: f.text, gather_prompt: prompt, gather_digits: '1234567890' };
+    }
     case 'push':
       return { title: f.title, body: f.body };
     case 'in_app':
@@ -98,46 +100,6 @@ const TextAreaField: React.FC<{
       data-testid={testId}
       onChange={(e) => onChange(e.target.value)}
     />
-  </div>
-);
-
-const SampleVariables: React.FC<{
-  value: string[];
-  onChange: (next: string[]) => void;
-}> = ({ value, onChange }) => (
-  <div className="space-y-2" data-testid="omni-comms-test-content-whatsapp-variables">
-    <Label>Sample variables (maximum {WHATSAPP_MAX_SAMPLE_VARIABLES})</Label>
-    {value.map((v, idx) => (
-      <div key={idx} className="flex items-center gap-2">
-        <Input
-          value={v}
-          aria-label={`Sample variable ${idx + 1}`}
-          onChange={(e) => {
-            const next = [...value];
-            next[idx] = e.target.value;
-            onChange(next);
-          }}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={`Remove sample variable ${idx + 1}`}
-          onClick={() => onChange(value.filter((_, i) => i !== idx))}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-    ))}
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      disabled={value.length >= WHATSAPP_MAX_SAMPLE_VARIABLES}
-      onClick={() => onChange([...value, ''])}
-    >
-      <Plus className="h-4 w-4 mr-1" /> Add sample variable
-    </Button>
   </div>
 );
 
@@ -178,22 +140,46 @@ export const TestContentFields: React.FC<{
   if (channel === 'whatsapp') {
     return (
       <div className="space-y-3" data-testid="omni-comms-test-content-whatsapp">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field
-            label="Template code"
-            value={value.templateCode}
-            onChange={(v) => set({ templateCode: v })}
-          />
-          <Field
-            label="Language code"
-            value={value.languageCode}
-            onChange={(v) => set({ languageCode: v })}
-          />
-        </div>
-        <SampleVariables value={value.variables} onChange={(v) => set({ variables: v })} />
+        <TextAreaField
+          label="Message text"
+          value={value.text}
+          onChange={(v) => set({ text: v })}
+          rows={4}
+          testId="omni-comms-test-content-whatsapp-text"
+        />
+        <p className="text-xs text-muted-foreground">
+          Technical session message. The recipient must have an open WhatsApp session
+          with the sender; approved provider templates are used for business sending.
+        </p>
       </div>
     );
   }
+
+  if (channel === 'voice') {
+    return (
+      <div className="space-y-3" data-testid="omni-comms-test-content-voice">
+        <TextAreaField
+          label="Spoken script"
+          value={value.text}
+          onChange={(v) => set({ text: v })}
+          rows={4}
+          testId="omni-comms-test-content-voice-script"
+        />
+        <Field
+          label="Keypad question (optional)"
+          value={value.subject}
+          onChange={(v) => set({ subject: v })}
+          placeholder="For example: press any key to confirm you heard this call"
+        />
+        <p className="text-xs text-muted-foreground">
+          The script is spoken by the provider. When a keypad question is supplied the
+          call waits for one digit and the answer is recorded through the governed IVR
+          endpoint, never through the call status callback.
+        </p>
+      </div>
+    );
+  }
+
   if (channel === 'push') {
     return (
       <div className="space-y-3" data-testid="omni-comms-test-content-push">

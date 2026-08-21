@@ -29,8 +29,9 @@ export type OmniCommsEndpointLifecycleAction = 'activate' | 'disable' | 'retire'
  * `push` is intentionally absent: its provider project belongs to Accounts and
  * its application metadata belongs to Identities, so a Push endpoint record
  * would be a meaningless duplicate.
- * `webhook` and `voice` are absent because the database `channel` values are
- * still not supported.
+ * `webhook` and `voice` ARE endpoint-owning channels: a webhook subscriber
+ * address and the Voice status / IVR action callbacks are genuine endpoint
+ * records governed exactly like every other channel endpoint.
  */
 export const OMNI_COMMS_ENDPOINT_CHANNELS = [
   'email',
@@ -38,6 +39,8 @@ export const OMNI_COMMS_ENDPOINT_CHANNELS = [
   'whatsapp',
   'in_app',
   'print',
+  'webhook',
+  'voice',
 ] as const;
 
 export type OmniCommsEndpointChannel = (typeof OMNI_COMMS_ENDPOINT_CHANNELS)[number];
@@ -55,7 +58,10 @@ export type OmniCommsEndpointType =
   | 'inbound_callback'
   | 'business_webhook'
   | 'realtime_endpoint'
-  | 'render_service';
+  | 'render_service'
+  | 'subscriber_endpoint'
+  | 'status_callback'
+  | 'ivr_action_callback';
 
 /** Mirrors the server-side channel → endpoint-type mapping exactly. */
 export const OMNI_COMMS_ENDPOINT_TYPES_BY_CHANNEL: Record<
@@ -67,6 +73,8 @@ export const OMNI_COMMS_ENDPOINT_TYPES_BY_CHANNEL: Record<
   whatsapp: ['business_webhook'],
   in_app: ['realtime_endpoint'],
   print: ['render_service'],
+  webhook: ['subscriber_endpoint'],
+  voice: ['status_callback', 'ivr_action_callback'],
 };
 
 export const OMNI_COMMS_ENDPOINT_TYPE_LABEL: Record<OmniCommsEndpointType, string> = {
@@ -77,6 +85,9 @@ export const OMNI_COMMS_ENDPOINT_TYPE_LABEL: Record<OmniCommsEndpointType, strin
   business_webhook: 'Business webhook',
   realtime_endpoint: 'Realtime endpoint',
   render_service: 'Render service',
+  subscriber_endpoint: 'Subscriber endpoint',
+  status_callback: 'Status callback',
+  ivr_action_callback: 'IVR action callback',
 };
 
 /** Allowed Email provider event types (server allowlist mirror). */
@@ -110,6 +121,9 @@ export const OMNI_COMMS_ENDPOINT_SECRET_PURPOSES: Record<
   business_webhook: ['verify_token'],
   realtime_endpoint: [],
   render_service: ['auth_token'],
+  subscriber_endpoint: ['signing_secret'],
+  status_callback: ['signature_secret'],
+  ivr_action_callback: ['signature_secret'],
 };
 
 /** Secret purposes that MUST be present before activation. */
@@ -124,6 +138,9 @@ export const OMNI_COMMS_ENDPOINT_REQUIRED_SECRETS: Record<
   business_webhook: ['verify_token'],
   realtime_endpoint: [],
   render_service: [],
+  subscriber_endpoint: ['signing_secret'],
+  status_callback: [],
+  ivr_action_callback: [],
 };
 
 /** Endpoint types that must reference a genuine external provider account. */

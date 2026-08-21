@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,70 @@ const CHANNEL_META: Record<BnChannelCode, { label: string; description: string; 
     defaultSource: 'ONLINE',
   },
 };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Text input that commits when editing finishes — on blur, or Enter — rather
+ * than on every keystroke.
+ *
+ * Every free-text field on this tab previously saved per character, so typing
+ * a value wrote a row and a critical audit entry for each letter. The stored
+ * value was also echoed straight back into the input, so a save returning
+ * mid-edit fought the user's typing.
+ *
+ * `validate` is optional; when it rejects the draft, the value is not saved
+ * and the message is shown beneath the field.
+ */
+function DeferredInput({
+  value,
+  onCommit,
+  disabled,
+  type,
+  className,
+  placeholder,
+  validate,
+}: {
+  value: string;
+  onCommit: (next: string) => void;
+  disabled?: boolean;
+  type?: string;
+  className?: string;
+  placeholder?: string;
+  validate?: (draft: string) => string | null;
+}) {
+  const [draft, setDraft] = useState(value);
+  const [error, setError] = useState<string | null>(null);
+
+  // Follow the stored value when it changes from outside this field.
+  useEffect(() => { setDraft(value); setError(null); }, [value]);
+
+  const commit = () => {
+    const next = draft.trim();
+    if (next === (value ?? '')) return;
+    const problem = validate ? validate(next) : null;
+    if (problem) { setError(problem); return; }
+    setError(null);
+    onCommit(next);
+  };
+
+  return (
+    <>
+      <Input
+        type={type}
+        className={className}
+        value={draft}
+        disabled={disabled}
+        placeholder={placeholder}
+        aria-invalid={error ? true : undefined}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } }}
+      />
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </>
+  );
+}
 
 export function ChannelsTab({ productId, versionId, isReadOnly, versionStatus }: Props) {
   const { toast } = useToast();
@@ -182,10 +246,13 @@ export function ChannelsTab({ productId, versionId, isReadOnly, versionStatus }:
 
                   <div className="space-y-1">
                     <Label className="text-xs">Workflow Definition ID (central engine)</Label>
-                    <Input
+                    <DeferredInput
                       value={cfg?.workflow_definition_id ?? ''}
+                      disabled={isReadOnly}
                       placeholder="UUID of workflow_definitions row"
-                      onChange={e => save(channel, { workflow_definition_id: e.target.value || null })}
+                      validate={v => (!v || UUID_RE.test(v)) ? null
+                        : 'Not a valid workflow definition id. Enter the full identifier, or clear the field.'}
+                      onCommit={v => save(channel, { workflow_definition_id: v || null })}
                     />
                   </div>
 
@@ -207,9 +274,10 @@ export function ChannelsTab({ productId, versionId, isReadOnly, versionStatus }:
 
                   <div className="space-y-1">
                     <Label className="text-xs">Default Source</Label>
-                    <Input
+                    <DeferredInput
                       value={cfg?.default_source ?? meta.defaultSource}
-                      onChange={e => save(channel, { default_source: e.target.value })}
+                      disabled={isReadOnly}
+                      onCommit={v => save(channel, { default_source: v })}
                     />
                   </div>
                 </div>
@@ -253,12 +321,14 @@ export function ChannelsTab({ productId, versionId, isReadOnly, versionStatus }:
                   </div>
                   <div className="flex items-center justify-between gap-2">
                     <Label className="text-sm">Correction Deadline (days)</Label>
-                    <Input
+                    <DeferredInput
                       type="number"
                       className="w-28"
-                      value={cfg?.correction_deadline_days ?? ''}
-                      onChange={e => save(channel, {
-                        correction_deadline_days: e.target.value === '' ? null : parseInt(e.target.value),
+                      value={cfg?.correction_deadline_days == null ? '' : String(cfg.correction_deadline_days)}
+                      disabled={isReadOnly}
+                      validate={v => (!v || /^\d+$/.test(v)) ? null : 'Enter a whole number of days, or clear the field.'}
+                      onCommit={v => save(channel, {
+                        correction_deadline_days: v === '' ? null : parseInt(v, 10),
                       })}
                     />
                   </div>

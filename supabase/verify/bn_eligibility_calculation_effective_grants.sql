@@ -26,16 +26,19 @@ DECLARE
     'bn_calc_finalise_run_v1',
     'bn_calc_config_save_formula_version_v1',
     'bn_calc_config_save_rate_table_row_v1',
+    'bn_calc_config_save_rate_table_row_v2',
     'bn_calc_config_delete_rate_table_row_v1'
   ];
   v_internal constant text[] := ARRAY[
     '_bn_calc_boundary_enter',
+    '_bn_calc_boundary_token',
     '_bn_calc_in_boundary',
     '_bn_calc_num',
     '_bn_calc_dim_match',
     '_bn_calc_guard_formula_version',
     '_bn_calc_guard_rate_table_row'
   ];
+
 BEGIN
   -- 1. every boundary function must exist -----------------------------
   SELECT string_agg(f, ', ') INTO v_missing
@@ -98,6 +101,28 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'trg_bn_calc_guard_rate_table_row' AND NOT tgisinternal) THEN
     RAISE EXCEPTION 'BN_ELIG_CALC_GRANTS_FAIL: rate-table-row governance trigger missing';
   END IF;
+
+  -- 6b. guards must be SECURITY DEFINER (BUG-14) -----------------------
+  -- A guard that runs as the caller cannot evaluate the boundary check,
+  -- because the boundary helpers are revoked from every client role: the
+  -- write dies with 42501 and the immutability rule never executes.
+  SELECT string_agg(p.proname, ', ') INTO v_bad
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname IN ('_bn_calc_guard_formula_version', '_bn_calc_guard_rate_table_row')
+    AND (NOT p.prosecdef
+         OR p.proconfig IS NULL
+         OR NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) c WHERE c LIKE 'search\_path=%'));
+  IF v_bad IS NOT NULL THEN
+    RAISE EXCEPTION 'BN_ELIG_CALC_GRANTS_FAIL: guard(s) not SECURITY DEFINER with pinned search_path: %', v_bad;
+  END IF;
+
+  -- 6c. the boundary secret must be unreachable from client roles -------
+  IF has_table_privilege('anon', 'public.bn_calc_boundary_secret', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.bn_calc_boundary_secret', 'SELECT') THEN
+    RAISE EXCEPTION 'BN_ELIG_CALC_GRANTS_FAIL: bn_calc_boundary_secret is readable by a client role';
+  END IF;
+
 
   -- 7. trace provenance columns ----------------------------------------
   SELECT string_agg(c, ', ') INTO v_missing

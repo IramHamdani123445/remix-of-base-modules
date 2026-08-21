@@ -6964,6 +6964,24 @@ export type Database = {
           },
         ]
       }
+      bn_calc_boundary_secret: {
+        Row: {
+          created_at: string
+          id: boolean
+          secret: string
+        }
+        Insert: {
+          created_at?: string
+          id?: boolean
+          secret?: string
+        }
+        Update: {
+          created_at?: string
+          id?: boolean
+          secret?: string
+        }
+        Relationships: []
+      }
       bn_calc_legacy_snapshot: {
         Row: {
           benefit_code: string | null
@@ -95571,6 +95589,54 @@ export type Database = {
           },
         ]
       }
+      omni_comms_inbound_voice_call: {
+        Row: {
+          attempts: number
+          call_sid: string
+          created_at: string
+          from_number: string | null
+          id: string
+          outcome: string | null
+          spoken_text: string | null
+          step: string
+          subject_key: string | null
+          subject_kind: string | null
+          to_number: string | null
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          attempts?: number
+          call_sid: string
+          created_at?: string
+          from_number?: string | null
+          id?: string
+          outcome?: string | null
+          spoken_text?: string | null
+          step?: string
+          subject_key?: string | null
+          subject_kind?: string | null
+          to_number?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          attempts?: number
+          call_sid?: string
+          created_at?: string
+          from_number?: string | null
+          id?: string
+          outcome?: string | null
+          spoken_text?: string | null
+          step?: string
+          subject_key?: string | null
+          subject_kind?: string | null
+          to_number?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       omni_comms_message: {
         Row: {
           action_channel_option_id: string | null
@@ -113951,6 +114017,7 @@ export type Database = {
         Returns: Json
       }
       _bn_calc_boundary_enter: { Args: never; Returns: undefined }
+      _bn_calc_boundary_token: { Args: never; Returns: string }
       _bn_calc_dim_match: {
         Args: { p_input: Json; p_match_type: string; p_row_val: Json }
         Returns: boolean
@@ -116163,6 +116230,23 @@ export type Database = {
           p_dimension_values: Json
           p_effective_from: string
           p_effective_to: string
+          p_output_key: string
+          p_output_text: string
+          p_output_type: string
+          p_output_value: number
+          p_rate_table_id: string
+          p_row_id: string
+          p_row_order: number
+          p_user_code: string
+        }
+        Returns: string
+      }
+      bn_calc_config_save_rate_table_row_v2: {
+        Args: {
+          p_dimension_values: Json
+          p_effective_from: string
+          p_effective_to: string
+          p_notes: string
           p_output_key: string
           p_output_text: string
           p_output_type: string
@@ -122824,14 +122908,19 @@ export type Database = {
         }
         Returns: Json
       }
-      omni_comms_communication_action_list: {
-        Args: {
-          p_department_id?: string
-          p_event_code?: string
-          p_organization_id: string
-        }
-        Returns: Json
-      }
+      omni_comms_communication_action_list:
+        | {
+            Args: { p_department_id?: string; p_organization_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_department_id?: string
+              p_event_code?: string
+              p_organization_id: string
+            }
+            Returns: Json
+          }
       omni_comms_communication_action_upsert:
         | {
             Args: {
@@ -124397,6 +124486,27 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_inbound_voice_digits: {
+        Args: { p_value: string }
+        Returns: string
+      }
+      omni_comms_priv_inbound_voice_money: {
+        Args: { p_value: number }
+        Returns: string
+      }
+      omni_comms_priv_inbound_voice_step: {
+        Args: {
+          p_call_sid: string
+          p_digits?: string
+          p_from?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_inbound_voice_summary: {
+        Args: { p_subject_key: string; p_subject_kind: string }
+        Returns: string
+      }
       omni_comms_priv_is_resend_secret_ref: {
         Args: { p_ref: string }
         Returns: boolean
@@ -125227,6 +125337,14 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_webhook_subscription_list: {
+        Args: {
+          p_actor_id: string
+          p_department_id?: string
+          p_organization_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_write_audit: {
         Args: {
           p_action: string
@@ -125366,9 +125484,21 @@ export type Database = {
         Args: { p_organization_id: string }
         Returns: Json
       }
+      omni_comms_push_delivery_target_list: {
+        Args: { p_message_id: string }
+        Returns: Json
+      }
       omni_comms_push_delivery_targets: {
         Args: { p_message_id: string }
         Returns: Json
+      }
+      omni_comms_push_device_admin_list: {
+        Args: { p_include_retired?: boolean; p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_push_device_admin_retire: {
+        Args: { p_id: string; p_reason?: string }
+        Returns: string
       }
       omni_comms_push_device_deregister: {
         Args: { p_device_token: string; p_reason?: string }
@@ -125765,18 +125895,41 @@ export type Database = {
         Args: { p_department_id?: string; p_organization_id: string }
         Returns: Json
       }
-      omni_comms_webhook_subscription_upsert: {
+      omni_comms_webhook_subscription_set_lifecycle: {
         Args: {
-          p_action_id: string
-          p_department_id?: string
-          p_endpoint_id: string
-          p_organization_id: string
-          p_payload_template_family_id?: string
-          p_signing_secret_ref: string
-          p_status?: string
+          p_action: string
+          p_expected_updated_at: string
+          p_id: string
+          p_reason?: string
         }
         Returns: string
       }
+      omni_comms_webhook_subscription_upsert:
+        | {
+            Args: {
+              p_action_id: string
+              p_department_id: string
+              p_endpoint_id: string
+              p_expected_updated_at: string
+              p_id: string
+              p_organization_id: string
+              p_payload_template_family_id?: string
+              p_signing_secret_ref?: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_action_id: string
+              p_department_id?: string
+              p_endpoint_id: string
+              p_organization_id: string
+              p_payload_template_family_id?: string
+              p_signing_secret_ref: string
+              p_status?: string
+            }
+            Returns: string
+          }
       open_comm_hub_live_window: {
         Args: {
           p_duration_minutes: number

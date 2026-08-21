@@ -124,8 +124,10 @@ export async function recordDecision(input: DecisionInput): Promise<void> {
   let toStatus = fromStatus;
   let decision: string | null = null;
   switch (input.action) {
+    // PENDING_APPROVAL, not IN_REVIEW: one vocabulary for the lifecycle, and it
+    // is the one the Versions tab and the type definitions already use.
     case 'SUBMIT':
-      toStatus = 'IN_REVIEW'; decision = 'SUBMITTED'; break;
+      toStatus = 'PENDING_APPROVAL'; decision = 'SUBMITTED'; break;
     case 'REVIEW':
     case 'APPROVE':
       decision = 'APPROVED';
@@ -138,16 +140,11 @@ export async function recordDecision(input: DecisionInput): Promise<void> {
       toStatus = 'ACTIVE'; decision = 'PUBLISHED'; break;
   }
 
-  // For APPROVE/REVIEW: if this was the last pending level, move to APPROVED
-  if (decision === 'APPROVED' && input.level != null) {
-    const next = await getNextPendingLevel(input.productVersionId);
-    // The current decision is not yet persisted, so getNextPendingLevel still
-    // returns the level we're approving now. Treat it as "no remaining" when
-    // that level matches the input level AND there is no level above it.
-    const chain = await getApprovalChain(input.productVersionId);
-    const isLast = chain.every(l => l.level <= input.level!);
-    if (isLast && next?.level === input.level) toStatus = 'APPROVED';
-  }
+  // Approving the last level does NOT change the version's status. The
+  // lifecycle has no APPROVED state, and inventing one here produced a value
+  // the rest of the application never recognises. The version stays at
+  // PENDING_APPROVAL until it is published; "fully approved" is derived from
+  // the approval history instead — see isFullyApproved().
 
   const { error: insertErr } = await (supabase.from('bn_version_approval') as any).insert({
     product_version_id: input.productVersionId,
@@ -174,28 +171,82 @@ export async function recordDecision(input: DecisionInput): Promise<void> {
   }
 }
 
-/** List versions awaiting a decision from the roles the current user holds. */
-export async function listPendingForRoles(userRoles: string[]) {
+/**
+ * Why a version cannot be acted on, when it cannot.
+ *
+ * getNextPendingLevel() returns null in two completely different situations —
+ * every level has signed off, and no approval chain exists at all. Both used to
+ * render as "Ready to Publish", so a version nobody can ever approve looked
+ * finished. They are now told apart.
+ */
+export type ApprovalReadiness =
+  | 'AWAITING_LEVEL'    // a level is pending; nextLevel names the role
+  | 'READY_TO_PUBLISH'  // every configured level has approved
+  | 'NO_CHAIN';         // no CONFIG_PUBLISH policy — stuck, nobody can approve
+
+export interface PendingApprovalRow {
+  productVersion: any;
+  nextLevel: ApprovalLevelPolicy | null;
+  canAct: boolean;
+  readiness: ApprovalReadiness;
+}
+
+/**
+ * Every product version awaiting approval, with the role each is waiting on.
+ *
+ * BUG-22 — this queried status IN_REVIEW / APPROVED. The Versions tab, which is
+ * the route people actually use, submits a version as PENDING_APPROVAL, so the
+ * console's queue was always empty while versions sat waiting. (Contrary to the
+ * original write-up, recordDecision below *does* write IN_REVIEW and APPROVED —
+ * the problem is two paths using two different vocabularies for one lifecycle,
+ * not a value nothing writes. IN_REVIEW is still accepted here so anything
+ * submitted through the old path stays visible.)
+ *
+ * Every pending version is returned, not only the ones the caller can act on:
+ * a version waiting on a role nobody holds, or with no chain configured, was
+ * invisible to everyone and so could sit unnoticed indefinitely. `canAct` tells
+ * the UI which ones this user may decide.
+ */
+export async function listPendingForRoles(userRoles: string[]): Promise<PendingApprovalRow[]> {
   const { data: pvs, error } = await supabase
     .from('bn_product_version')
     .select(`
       id, version_number, status, effective_from, effective_to, description,
       bn_product:product_id ( benefit_code, benefit_name, category )
     `)
-    .in('status', ['IN_REVIEW', 'APPROVED'])
+    .in('status', ['PENDING_APPROVAL', 'IN_REVIEW'])
     .order('modified_at', { ascending: false })
     .limit(500);
   if (error) throw error;
 
-  const result: Array<{
-    productVersion: any;
-    nextLevel: ApprovalLevelPolicy | null;
-    canAct: boolean;
-  }> = [];
+  const result: PendingApprovalRow[] = [];
   for (const pv of pvs ?? []) {
-    const next = await getNextPendingLevel(pv.id);
+    const chain = await getApprovalChain(pv.id);
+    const next = chain.length === 0 ? null : await getNextPendingLevel(pv.id);
+    const readiness: ApprovalReadiness =
+      chain.length === 0 ? 'NO_CHAIN' : next ? 'AWAITING_LEVEL' : 'READY_TO_PUBLISH';
     const canAct = !!next?.approval_role && userRoles.includes(next.approval_role);
-    result.push({ productVersion: pv, nextLevel: next, canAct });
+    result.push({ productVersion: pv, nextLevel: next, canAct, readiness });
   }
   return result;
+}
+
+/**
+ * Whether every configured approval level has signed off, so the version may be
+ * published.
+ *
+ * Derived from the approval history rather than from a status, because the
+ * version lifecycle deliberately has no separate APPROVED state — it is
+ * DRAFT → PENDING_APPROVAL → ACTIVE → ARCHIVED. Publish used to be gated on
+ * status === 'APPROVED', which the lifecycle never reaches, so the button could
+ * never become available.
+ *
+ * A version with no configured chain is NOT publishable here: nobody has
+ * approved it, and treating "no rule" as "no objection" is how an unapproved
+ * version reaches production.
+ */
+export async function isFullyApproved(productVersionId: string): Promise<boolean> {
+  const chain = await getApprovalChain(productVersionId);
+  if (chain.length === 0) return false;
+  return (await getNextPendingLevel(productVersionId)) === null;
 }

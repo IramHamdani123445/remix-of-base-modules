@@ -167,6 +167,42 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     [],
   );
 
+  /**
+   * BUG-41 — identity gate for data loaded immediately after a session change.
+   *
+   * `loadUserDataInBackground` runs synchronously right after
+   * dispatchAuth({ BOOTSTRAP_SESSION | AUTH_EVENT }), before React has
+   * re-rendered. `generationRef` therefore still holds the value from *before*
+   * the session was registered. By the time the profile/roles requests resolve
+   * the ref has advanced, so `identityGuardPasses` compared a stale captured
+   * generation against a newer one and failed — every time, for every user.
+   * The loaded profile and roles were then discarded, leaving `profile` null
+   * and `roles` empty for the whole session. Every audited BN write failed for
+   * want of a user_code, and every role-gated control treated the signed-in
+   * user as having no permissions at all.
+   *
+   * The generation comparison cannot be used here, because it is read before
+   * the change it is meant to detect is visible. Identity is the right test
+   * instead: the request is keyed by one user id and the reply is that user's
+   * own row, so if the same user is still signed in, the data cannot belong to
+   * anyone else. That is a more direct guarantee than a counter, not a weaker
+   * one. Sign-out and user-switch are still caught, by the user id and status
+   * checks below.
+   *
+   * `identityGuardPasses` above is left alone: its other callers capture the
+   * generation after the state has settled, where the comparison is valid.
+   */
+  const loadedUserDataIsStillCurrent = useCallback(
+    (requestedUserId: string): boolean => {
+      return (
+        mountedRef.current &&
+        currentUserIdRef.current === requestedUserId &&
+        authRuntimeStatusRef.current === 'AUTHENTICATED'
+      );
+    },
+    [],
+  );
+
 
   // Session policy from DB
   const policyRef = useRef<SessionPolicy>({
@@ -566,12 +602,13 @@ export const SupabaseAuthProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const BOOTSTRAP_TIMEOUT_MS = 5_000;
 
     const loadUserDataInBackground = (userId: string) => {
-      // BN-MORT-UI-RECOVERY-2F §1 — capture identity guards at request time.
-      // The composite gate consults canonical refs, NOT the stale authState
-      // closure captured by this effect at registration time.
-      const startGen = generationRef.current;
+      // BUG-41 — this runs in the same tick as the dispatch that registers the
+      // session, so the generation cannot be captured meaningfully here (see
+      // loadedUserDataIsStillCurrent). The gate matches on the user the request
+      // was made for instead, which is what actually distinguishes a stale
+      // reply from a current one.
       const requestedUserId = userId;
-      const passesGate = () => identityGuardPasses(startGen, requestedUserId);
+      const passesGate = () => loadedUserDataIsStillCurrent(requestedUserId);
 
       const dataPromise = Promise.all([fetchProfile(requestedUserId), fetchRoles(requestedUserId)])
         .then(([profileData, rolesData]) => {

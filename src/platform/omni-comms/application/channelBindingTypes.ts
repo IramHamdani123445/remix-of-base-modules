@@ -54,6 +54,9 @@ export const OMNI_COMMS_BINDING_ENDPOINT_REQUIREMENT: Record<
   push: 'forbidden',
   in_app: 'required',
   print: 'required',
+  // Voice callbacks are governed endpoints but are not mandatory for a
+  // one-way announcement call, so a binding may omit them.
+  voice: 'optional',
 };
 
 export function bindingEndpointRequirement(

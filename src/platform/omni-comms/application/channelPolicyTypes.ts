@@ -18,12 +18,13 @@ export const POLICY_CHANNELS = [
   'push',
   'in_app',
   'print',
+  'voice',
 ] as const;
 
 export type PolicyChannel = (typeof POLICY_CHANNELS)[number];
 
 /** Channels whose values are NOT supported by the DB channel constraint. */
-export const POLICY_PLANNED_CHANNELS = ['webhook', 'voice'] as const;
+export const POLICY_PLANNED_CHANNELS = ['webhook'] as const;
 
 export function isPolicyChannel(value: string): value is PolicyChannel {
   return (POLICY_CHANNELS as readonly string[]).includes(value);
@@ -157,6 +158,8 @@ export const CHANNEL_POLICY_KEYS: Record<PolicyChannel, readonly string[]> = {
   push: ['max_ttl_seconds', 'max_data_payload_bytes'],
   in_app: ['expiry_hours', 'acknowledgement_mode', 'max_visible_per_user'],
   print: ['max_document_bytes', 'batch_size_limit', 'archive_retention_days'],
+  // Voice carries no channel-specific policy keys; the common policy governs it.
+  voice: [],
 };
 
 export const CHANNEL_POLICY_FIELD_LABEL: Record<string, string> = {

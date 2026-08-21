@@ -23,7 +23,7 @@ const sb = supabase as any;
 
 interface ProductVersionOpt {
   id: string;
-  version_no: number;
+  version_number: number;
   product_id: string;
   benefit_code: string;
   benefit_name: string;
@@ -47,14 +47,22 @@ export function SimulationPanel() {
     let alive = true;
     (async () => {
       setLoading(true);
-      const { data } = await sb
+      const { data, error } = await sb
         .from('bn_product_version')
-        .select('id, version_no, product_id, bn_product:product_id(benefit_code, benefit_name)')
-        .order('version_no', { ascending: false })
+        .select('id, version_number, product_id, bn_product:product_id(benefit_code, benefit_name)')
+        .order('version_number', { ascending: false })
         .limit(200);
       if (!alive) return;
-      const rows = (data ?? []).map((v: { id: string; version_no: number; product_id: string; bn_product?: { benefit_code?: string; benefit_name?: string } }) => ({
-        id: v.id, version_no: v.version_no, product_id: v.product_id,
+      if (error) {
+        // Surface the failure — silently rendering an empty dropdown makes a
+        // broken query indistinguishable from a product list with no entries.
+        toast.error('Could not load product versions', { description: error.message });
+        setVersions([]);
+        setLoading(false);
+        return;
+      }
+      const rows = (data ?? []).map((v: { id: string; version_number: number; product_id: string; bn_product?: { benefit_code?: string; benefit_name?: string } }) => ({
+        id: v.id, version_number: v.version_number, product_id: v.product_id,
         benefit_code: v.bn_product?.benefit_code ?? '?', benefit_name: v.bn_product?.benefit_name ?? '?',
       })) as ProductVersionOpt[];
       setVersions(rows);
@@ -120,7 +128,7 @@ export function SimulationPanel() {
                   <SelectTrigger><SelectValue placeholder="Select product version" /></SelectTrigger>
                   <SelectContent>
                     {versions.map((v) => (
-                      <SelectItem key={v.id} value={v.id}>{v.benefit_code} — {v.benefit_name} (v{v.version_no})</SelectItem>
+                      <SelectItem key={v.id} value={v.id}>{v.benefit_code} — {v.benefit_name} (v{v.version_number})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

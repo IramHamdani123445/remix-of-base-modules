@@ -396,33 +396,120 @@ export async function activateAttachedRules(productVersionId: string, userCode: 
 }
 
 /**
- * Pre-activation guard for product versions: returns blocking rule list.
+ * Why an attached rule fails the governance gate. The two cases need
+ * different actions from the user, so they are reported separately rather
+ * than collapsed into one message.
+ *
+ *  NOT_REGISTERED — the rule was never entered in the Rule Catalogue, so it
+ *                   has not been through the governance chain at all. It must
+ *                   be registered and approved before it can be published.
+ *  NOT_APPROVED   — the rule is in the catalogue but has not reached
+ *                   Legal Confirmed / Ready / Active yet. It only needs
+ *                   advancing.
  */
-export async function findUngovernedAttachedRules(productVersionId: string): Promise<
-  { rule_id: string; rule_code: string; rule_name: string; governance_status: string }[]
-> {
-  const { data: attached } = await db
+export type UngovernedRuleReason = 'NOT_REGISTERED' | 'NOT_APPROVED';
+
+export interface UngovernedAttachedRule {
+  rule_id: string;
+  rule_code: string;
+  rule_name: string;
+  governance_status: string;
+  reason: UngovernedRuleReason;
+}
+
+/**
+ * Pre-activation guard for product versions: returns blocking rule list.
+ *
+ * BUG-13 — this previously discarded every rule with no catalogue link
+ * (`.filter(Boolean)`), so a rule created directly on a product's Eligibility
+ * tab passed the gate without ever having been approved. Where no rule on the
+ * version had a catalogue link, the gate had an empty list and reported no
+ * problems at all. A missing catalogue link means "never approved", not
+ * "nothing to check".
+ *
+ * A rule row carries its own `governance_status` column, but that is not
+ * evidence of approval: it can be set by whoever created the rule, without
+ * legal review. The Rule Catalogue is the authority, so an unregistered rule
+ * is ungoverned no matter what its own row claims.
+ *
+ * Inactive rules are excluded — they are not evaluated against claims, so
+ * requiring their approval would block publishing for no benefit.
+ *
+ * Query failures now throw. Returning an empty list on error would make a
+ * broken gate indistinguishable from a clean one.
+ */
+export async function findUngovernedAttachedRules(
+  productVersionId: string,
+): Promise<UngovernedAttachedRule[]> {
+  const { data: attached, error: attachedError } = await db
     .from('bn_eligibility_rule')
-    .select('catalogue_rule_id, catalogue_rule_code, rule_name')
-    .eq('product_version_id', productVersionId);
+    .select('id, rule_code, rule_name, catalogue_rule_id, catalogue_rule_code, is_active')
+    .eq('product_version_id', productVersionId)
+    .eq('is_active', true);
+  if (attachedError) {
+    throw new Error(
+      `Cannot verify rule governance: ${attachedError.message}. Publishing is blocked until the check can run.`,
+    );
+  }
+
+  const rules = (attached ?? []) as any[];
+  if (rules.length === 0) return [];
+
+  // Rules never registered in the catalogue — ungoverned by definition.
+  const unregistered: UngovernedAttachedRule[] = rules
+    .filter(r => !r.catalogue_rule_id)
+    .map(r => ({
+      rule_id: r.id,
+      rule_code: r.rule_code || r.catalogue_rule_code || '(no code)',
+      rule_name: r.rule_name || '(unnamed rule)',
+      governance_status: 'NOT_IN_CATALOGUE',
+      reason: 'NOT_REGISTERED' as const,
+    }));
 
   const ids = Array.from(new Set(
-    (attached ?? []).map((r: any) => r.catalogue_rule_id).filter(Boolean),
+    rules.map(r => r.catalogue_rule_id).filter(Boolean),
   )) as string[];
-  if (ids.length === 0) return [];
+  if (ids.length === 0) return unregistered;
 
-  const { data: cat } = await db
+  const { data: cat, error: catError } = await db
     .from('bn_rule_catalogue')
     .select('id, rule_code, rule_name, governance_status')
     .in('id', ids);
+  if (catError) {
+    throw new Error(
+      `Cannot verify rule governance: ${catError.message}. Publishing is blocked until the check can run.`,
+    );
+  }
 
+  const catalogue = new Map<string, any>(((cat ?? []) as any[]).map(r => [r.id, r]));
   const allowed = new Set(['LEGAL_CONFIRMED','READY_FOR_PRODUCT_USE','ACTIVE']);
-  return ((cat ?? []) as any[])
-    .filter(r => !allowed.has(r.governance_status))
-    .map(r => ({
-      rule_id: r.id,
-      rule_code: r.rule_code,
-      rule_name: r.rule_name,
-      governance_status: r.governance_status,
-    }));
+
+  const linked: UngovernedAttachedRule[] = [];
+  for (const r of rules) {
+    if (!r.catalogue_rule_id) continue;
+    const entry = catalogue.get(r.catalogue_rule_id);
+    if (!entry) {
+      // The link points at a catalogue entry that no longer exists. Treated as
+      // unregistered — there is nothing left to approve.
+      linked.push({
+        rule_id: r.id,
+        rule_code: r.rule_code || r.catalogue_rule_code || '(no code)',
+        rule_name: r.rule_name || '(unnamed rule)',
+        governance_status: 'CATALOGUE_ENTRY_MISSING',
+        reason: 'NOT_REGISTERED',
+      });
+      continue;
+    }
+    if (!allowed.has(entry.governance_status)) {
+      linked.push({
+        rule_id: entry.id,
+        rule_code: entry.rule_code,
+        rule_name: entry.rule_name,
+        governance_status: entry.governance_status,
+        reason: 'NOT_APPROVED',
+      });
+    }
+  }
+
+  return [...unregistered, ...linked];
 }

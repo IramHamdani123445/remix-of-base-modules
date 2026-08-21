@@ -29,9 +29,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   canonicalProviderPayloadHash,
+  normalizeStorageMode,
   sendResendEmail,
 } from "../_shared/omni-comms/resendAdapter.ts";
-import { resolveTwilioCredentials } from "../_shared/omni-comms/twilioSmsAdapter.ts";
+import {
+  resolveTwilioCredentials,
+  resolveTwilioSecret,
+  sendTwilioSms,
+} from "../_shared/omni-comms/twilioSmsAdapter.ts";
 import { sendTwilioWhatsApp } from "../_shared/omni-comms/twilioWhatsAppAdapter.ts";
 import {
   parseWhatsAppClaim,
@@ -359,6 +364,13 @@ Deno.serve(async (req) => {
         mediaUrl: (claim.media_url as string | null) ?? null,
         statusCallbackUrl: whatsappClaim?.statusCallbackUrl ?? null,
       }
+      : claimChannel === "sms"
+      ? {
+        from: String(claim.from_number ?? ""),
+        to: String(claim.recipient ?? ""),
+        body: String(claim.body ?? ""),
+        statusCallbackUrl: (claim.status_callback_url as string | null) ?? null,
+      }
       : claimChannel === "push"
       ? {
         title: String(claim.title ?? ""),
@@ -499,6 +511,50 @@ Deno.serve(async (req) => {
           idempotencyKey: String(claim.provider_idempotency_key ?? ""),
         });
 
+      })()
+      : claimChannel === "sms"
+      ? await (async () => {
+        const resolved = await resolveTwilioCredentials({
+          accountSidRef: String(claim.account_sid_ref ?? ""),
+          authTokenRef: String(claim.auth_token_ref ?? ""),
+          storageMode,
+          secretResolver,
+        });
+        if (!resolved.ok) {
+          // A credential that cannot be resolved is a definite configuration
+          // failure, recorded WITHOUT contacting the provider.
+          return {
+            status: "failed" as const,
+            resultCode: "configuration_invalid",
+            providerMessageId: null,
+            providerStatusCode: null,
+            providerResponse: { channel: "sms" },
+            errorCode: resolved.errorCode,
+            errorDetail: resolved.detail,
+          };
+        }
+        // Optional Messaging Service: resolved by bounded reference name only.
+        let messagingServiceSid: string | null = null;
+        const serviceRef = String(claim.messaging_service_secret_ref ?? "");
+        if (serviceRef !== "") {
+          const svc = await resolveTwilioSecret(
+            serviceRef,
+            normalizeStorageMode(storageMode),
+            secretResolver,
+          );
+          if (svc.ok) messagingServiceSid = svc.value.trim();
+        }
+        return await sendTwilioSms({
+          credentials: resolved.credentials,
+          from: String(claim.from_number ?? "") || null,
+          messagingServiceSid,
+          to: String(claim.recipient ?? ""),
+          body: String(claim.body ?? ""),
+          // Exclusively from omni_comms_runtime_endpoint via the claim.
+          statusCallbackUrl: (claim.status_callback_url as string | null) ?? null,
+          // Deterministic: identical on every safe retry of this message.
+          idempotencyKey: String(claim.provider_idempotency_key ?? ""),
+        });
       })()
       : claimChannel === "push"
       ? await sendFcmPush({
@@ -677,6 +733,7 @@ Deno.serve(async (req) => {
     results,
     in_app: plan.in_app ?? null,
     whatsapp: plan.whatsapp ?? null,
+    sms: plan.sms ?? null,
     push: plan.push ?? null,
     webhook: plan.webhook ?? null,
     voice: plan.voice ?? null,

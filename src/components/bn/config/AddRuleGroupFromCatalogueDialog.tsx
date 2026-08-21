@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBnRuleGroups } from '@/hooks/bn/useBnConfig';
 import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
+import { catalogueLegalSnapshot } from '@/lib/bn/catalogueLegalSnapshot';
 import { recommendedGroupsForProduct } from '@/services/bn/eligibility/recommendedGroups';
 
 interface Props {
@@ -48,7 +49,7 @@ export function AddRuleGroupFromCatalogueDialog({ open, onOpenChange, versionId,
           bn_rule_catalogue:catalogue_rule_id (
             id, rule_code, rule_name, fact_key, operator, value_from, value_to, values,
             default_fail_action, failure_message_text, version, is_active, category, group_type,
-            governance_status
+            governance_status, legal_reference
           )
         `)
         .eq('rule_group_id', groupId)
@@ -110,6 +111,9 @@ export function AddRuleGroupFromCatalogueDialog({ open, onOpenChange, versionId,
         },
         fail_action: r.default_fail_action,
         fail_message: r.failure_message_text,
+        // Legal approval must travel with the copy — the publish gate reads
+        // these fields on the product rule, not on the catalogue row.
+        ...catalogueLegalSnapshot(r as any),
         sort_order: i,
         is_active: true,
         entered_by: userCode,

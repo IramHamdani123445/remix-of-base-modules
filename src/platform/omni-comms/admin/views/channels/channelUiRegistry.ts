@@ -236,7 +236,8 @@ const COPY: Record<OmniCommsChannel, ChannelUiCopy> = {
     name: 'Voice and IVR',
     description: 'Outbound voice and IVR notification calls.',
     icon: 'PhoneCall',
-    statusText: PLANNED_STATUS,
+    statusText:
+      'Configuration in progress. A Twilio Programmable Voice adapter is installed; outbound calls and keypad (IVR) answers are governed by Release Control.',
     accounts: {
       meaning:
         'A voice carrier account permitted to place outbound calls for the organisation.',

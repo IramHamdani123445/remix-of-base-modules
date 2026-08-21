@@ -182,6 +182,14 @@ export const ChannelPolicyConfigFields: React.FC<{
       </div>
     );
   }
+  if (channel === 'voice') {
+    return (
+      <div className="text-sm text-muted-foreground" data-testid="omni-comms-policy-config-voice">
+        Voice and IVR has no channel-specific options. Call volume, quiet hours, retries and cost
+        limits are governed by the shared policy settings above.
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="omni-comms-policy-config-print">
       <NumberField k="max_document_bytes" {...common} hint="1–52428800. No PDF is generated." />

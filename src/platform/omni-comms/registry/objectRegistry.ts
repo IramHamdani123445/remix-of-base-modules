@@ -627,6 +627,17 @@ export const OMNI_COMMS_OBJECT_REGISTRY: readonly ObjectRegistryEntry[] = [
     introductionStory: 'Push / Webhook / Voice — Basic IVR truth',
   },
 
+  {
+    name: 'omni_comms_inbound_voice_call',
+    category: 'runtime',
+    epic: 6,
+    writeAuthority: 'service_role_only',
+    purpose:
+      'Governed state and evidence record for one inbound Voice self-service call: calling line, resolved subject (person or employer), verification attempts and the exact wording spoken back. Written only by the signature-verified inbound Voice endpoint.',
+    status: 'AVAILABLE',
+    introductionStory: 'Voice — inbound dynamic self-service IVR',
+  },
+
 ] as const;
 
 

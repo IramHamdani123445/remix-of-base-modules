@@ -42,7 +42,12 @@ const empty = {
   description: '', effective_from: new Date().toISOString().slice(0, 10),
 };
 
-export default function DerivedFactRegistry() {
+/**
+ * The registry body, with no page chrome. Rendered both as the standalone
+ * route below and as the "Derived Facts" tab on the Rule Catalogue screen,
+ * so the two stay in step instead of drifting apart.
+ */
+export function DerivedFactsTab() {
   const qc = useQueryClient();
   const { userCode } = useUserCode();
   const [search] = useSearchParams();
@@ -135,17 +140,7 @@ export default function DerivedFactRegistry() {
   ], [approve]);
 
   return (
-    <PermissionWrapper moduleName="bn_configuration">
-      <div className="space-y-6 p-6">
-        <PageHeader
-          title="Derived Fact Registry"
-          subtitle="Computed facts (expression-based) usable by Formula Library"
-          breadcrumbs={[
-            { label: 'Benefit Management', href: '/bn/claims' },
-            { label: 'Configuration' },
-            { label: 'Derived Facts' },
-          ]}
-        />
+    <div className="space-y-4">
         <BNDataGrid
           id="bn.derived-fact"
           columns={columns}
@@ -185,6 +180,25 @@ export default function DerivedFactRegistry() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+    </div>
+  );
+}
+
+/** Standalone route — /bn/config/derived-facts. */
+export default function DerivedFactRegistry() {
+  return (
+    <PermissionWrapper moduleName="bn_configuration">
+      <div className="space-y-6 p-6">
+        <PageHeader
+          title="Derived Fact Registry"
+          subtitle="Computed facts (expression-based) usable by Formula Library"
+          breadcrumbs={[
+            { label: 'Benefit Management', href: '/bn/claims' },
+            { label: 'Configuration' },
+            { label: 'Derived Facts' },
+          ]}
+        />
+        <DerivedFactsTab />
       </div>
     </PermissionWrapper>
   );
