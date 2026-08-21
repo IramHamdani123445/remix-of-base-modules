@@ -174,9 +174,44 @@ function describeMissingFact(kind: string, props: Record<string, any>): string {
   return `this block type is not yet mapped to a fact (${kind}).`;
 }
 
+/**
+ * Reduce a token stream of plain numbers and +-*\/% operators, left to right —
+ * safe to evaluate at sync time (no eval, no runtime facts) only because the
+ * caller has already confirmed no Variable block is involved. Returns null on
+ * anything malformed rather than guessing.
+ */
+function evalPureArithmetic(tokens: string[]): number | null {
+  if (!tokens.length || tokens.length % 2 === 0) return null;
+  let acc = Number(tokens[0]);
+  if (!Number.isFinite(acc)) return null;
+  for (let i = 1; i < tokens.length; i += 2) {
+    const rhs = Number(tokens[i + 1]);
+    if (!Number.isFinite(rhs)) return null;
+    switch (tokens[i]) {
+      case '+': acc += rhs; break;
+      case '-': acc -= rhs; break;
+      case '*': acc *= rhs; break;
+      case '/': if (rhs === 0) return null; acc /= rhs; break;
+      case '%': if (rhs === 0) return null; acc %= rhs; break;
+      default: return null;
+    }
+  }
+  return Number.isFinite(acc) ? acc : null;
+}
+
 export async function syncCanvasToNormalized(versionId: string, canvas: BuilderCanvas, userCode: string): Promise<SyncResult> {
   await assertVersionMutable(versionId);
   const warnings: string[] = [];
+
+  // bn_doc_requirement rows need product_id, not just product_version_id — the
+  // global Documents tab (fetchDocumentRulesByProduct) filters strictly on
+  // product_id, so a row missing it is saved but permanently invisible there.
+  const { data: versionRow } = await db
+    .from('bn_product_version')
+    .select('product_id')
+    .eq('id', versionId)
+    .maybeSingle();
+  const productId = versionRow?.product_id ?? null;
   /**
    * Per-block reasons, so every block on the canvas ends in one of exactly two
    * states: applied, or reported with a reason. Never silently dropped, and
@@ -328,6 +363,7 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
   }
   const docRows = dedupedDocBlocks.map((b, idx) => ({
     product_version_id: versionId,
+    product_id: productId,
     document_type_code: b.props.document_code,
     stage: b.props.stage ?? 'INTAKE',
     channel_code: b.props.channel_code ?? (b.props.public_upload ? 'PUBLIC' : 'BOTH'),
@@ -406,17 +442,22 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
       .filter(b => b.kind === 'formula.variable' && b.props?.variable_key)
       .map(b => String(b.props.variable_key));
     const share = calcBlocks.find(b => b.kind === 'formula.share_percentage');
-    const constant = calcBlocks.find(b => b.kind === 'formula.constant');
     const cap = calcBlocks.find(b => b.kind === 'formula.cap');
     const min = calcBlocks.find(b => b.kind === 'formula.minimum');
     const max = calcBlocks.find(b => b.kind === 'formula.maximum');
     const tier = calcBlocks.find(b => b.kind === 'formula.tier');
 
+    // calculationEngine.ts's min/max cap logic reads limits.min_amount /
+    // limits.max_amount specifically — the previous min_weekly/max_weekly/cap
+    // keys are never read by anything, so a Minimum/Maximum/Cap block was
+    // silently ignored at claim time regardless of whether Sync "succeeded".
     const limits: Record<string, unknown> = {};
-    if (min?.props?.min !== undefined && min.props.min !== null) limits.min_weekly = Number(min.props.min);
-    if (max?.props?.max !== undefined && max.props.max !== null) limits.max_weekly = Number(max.props.max);
+    if (min?.props?.min !== undefined && min.props.min !== null) limits.min_amount = Number(min.props.min);
+    if (max?.props?.max !== undefined && max.props.max !== null) limits.max_amount = Number(max.props.max);
     if (cap?.props?.cap !== undefined && cap.props.cap !== null) {
-      limits.cap = Number(cap.props.cap);
+      // The real engine has no separate "cap" concept, only a maximum — a Cap
+      // block is folded into max_amount when no explicit Maximum block set one.
+      if (limits.max_amount === undefined) limits.max_amount = Number(cap.props.cap);
       limits.cap_type = cap.props.cap_type ?? 'WEEKLY';
     }
 
@@ -436,44 +477,62 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
     }
     const expression = expressionTokens.join(' ');
 
+    // calculationEngine.ts (the real claim-time engine) only recognizes a fixed
+    // enum of calc_types, each tied to specific inputs — it has no generic
+    // arithmetic evaluator. 'TIERED'/'FIXED' aren't recognized at all (no
+    // `default:` case either, so the result silently stays 0); calc_type
+    // 'FORMULA' IS recognized, but means "rate% × average weekly wage" using
+    // config.rate — it does not evaluate config.expression at all. Writing
+    // 'FORMULA' for an arbitrary Variable × Operator canvas would not error —
+    // it would silently pay ~66.67% of average weekly wage regardless of what
+    // was actually built. Only the cases below have a real, honest match.
+    let calcType: string | null = null;
     const definition: Record<string, unknown> = {};
-    let calcType: string;
+    let skipReason: string | null = null;
+
     if (Array.isArray(tier?.props?.tiers) && tier!.props.tiers.length) {
-      calcType = 'TIERED';
+      // Matches TIER_TABLE/LOOKUP exactly: tiers keyed by fromWeeks/toWeeks/
+      // flatAmount/rate. No inspector exists yet to build this on the canvas
+      // (see findings-log) so this path is currently unreachable in practice,
+      // but is written correctly for when it is.
+      calcType = 'TIER_TABLE';
       definition.tiers = tier!.props.tiers;
       if (expression) definition.expression = expression;
     } else if (share?.props?.percentage) {
+      // Genuinely matches the real engine: a percentage of average weekly wage.
       calcType = 'PERCENTAGE';
       definition.rate = Number(share.props.percentage);
       if (share.props.applies_to) definition.applies_to = share.props.applies_to;
       if (expression) definition.expression = expression;
-    } else if (expressionTokens.length > 1) {
-      // More than one token means real arithmetic, not a fixed amount.
-      calcType = 'FORMULA';
-      definition.expression = expression;
-    } else if (variables.length === 1 && expressionTokens.length === 1) {
-      calcType = 'FORMULA';
-      definition.expression = expression;
-    } else if (constant?.props?.value !== undefined) {
-      calcType = 'FIXED';
-      definition.value = Number(constant.props.value);
-    } else {
-      calcType = 'FORMULA';
-    }
-    definition.builder_blocks = calcBlocks.map(b => ({ id: b.id, kind: b.kind, props: b.props ?? {} }));
-
-    // A calculation with nothing to compute cannot produce an amount. Caps and
-    // floors alone are not a calculation — they only bound one.
-    if (!expressionTokens.length && calcType !== 'TIERED' && calcType !== 'PERCENTAGE') {
-      skipped.push(
-        'Calculation: not applied — add a Variable, Constant, Share % or Tier block, so an amount can be produced. Cap, Minimum and Maximum only limit a calculation, they do not make one.',
-      );
-    } else if (expressionTokens.length > 1 && expressionTokens.length % 2 === 0) {
+    } else if (!expressionTokens.length) {
+      // Caps and floors alone are not a calculation — they only bound one.
+      skipReason = 'add a Variable, Constant, Share % or Tier block, so an amount can be produced. Cap, Minimum and Maximum only limit a calculation, they do not make one.';
+    } else if (expressionTokens.length % 2 === 0) {
       // e.g. "paid_weeks +" — an operator with nothing after it.
-      skipped.push(
-        `Calculation: not applied — the expression is incomplete ("${expression}"). Every operator needs a value on both sides.`,
-      );
+      skipReason = `the expression is incomplete ("${expression}"). Every operator needs a value on both sides.`;
+    } else if (variables.length > 0) {
+      // A real Variable block is involved and this isn't Share %/Tier — there
+      // is no calc_type the real engine can evaluate this against honestly.
+      skipReason =
+        `this canvas uses a custom Variable formula ("${expression}"), which the real calculation engine cannot evaluate yet. ` +
+        `Only a Constant (or arithmetic of constants), a Share % of average weekly wage, or a Tier table can be synced today. ` +
+        `Configure this calculation directly on the product's Calculation tab instead.`;
     } else {
+      // No Variable involved — pure arithmetic over constants, safe to reduce
+      // to a single number now rather than needing any runtime fact.
+      const flat = evalPureArithmetic(expressionTokens);
+      if (flat === null) {
+        skipReason = `the expression could not be evaluated ("${expression}").`;
+      } else {
+        calcType = 'FLAT_RATE';
+        definition.flatAmount = flat;
+      }
+    }
+
+    if (skipReason) {
+      skipped.push(`Calculation: not applied — ${skipReason}`);
+    } else if (calcType) {
+      definition.builder_blocks = calcBlocks.map(b => ({ id: b.id, kind: b.kind, props: b.props ?? {} }));
       const { error } = await db.from('bn_calculation_rule').insert([{
         product_version_id: versionId,
         rule_code: `${BLD}CALC_1`,
