@@ -75,7 +75,11 @@ describe('Principle 4 — one explicitly selected credential store', () => {
   });
 
   it('uses the API key, not the webhook secret, for delivery-status checks', () => {
-    expect(TEST_FN).toContain('.eq("purpose", "api_key")');
+    // The purpose is selected per channel; email/Resend status checks must
+    // still read the API key and never the webhook signing secret.
+    expect(TEST_FN).toContain('? "account_sid"');
+    expect(TEST_FN).toContain(': "api_key"');
+    expect(TEST_FN).toContain('.eq("purpose", purpose)');
   });
 });
 
