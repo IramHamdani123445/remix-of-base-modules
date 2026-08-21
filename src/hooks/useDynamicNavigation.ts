@@ -326,13 +326,33 @@ export function useDynamicNavigation() {
     refetch
   } = useQuery({
     queryKey: ['dynamic-navigation', user?.id],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!user?.id) return [];
 
       const startTime = performance.now();
-      
-      const { data, error } = await supabase
-        .rpc('get_user_accessible_modules' as any, { _user_id: user.id });
+      const requestController = new AbortController();
+      const timeoutId = window.setTimeout(() => requestController.abort(), 8_000);
+      const cancelRequest = () => requestController.abort();
+      signal.addEventListener('abort', cancelRequest, { once: true });
+
+      let data: unknown;
+      let error: { code?: string; message: string; details?: string; hint?: string } | null;
+
+      try {
+        const result = await supabase
+          .rpc('get_user_accessible_modules' as any, { _user_id: user.id })
+          .abortSignal(requestController.signal);
+        data = result.data;
+        error = result.error;
+      } catch (requestError) {
+        if (requestController.signal.aborted && !signal.aborted) {
+          throw new Error('Navigation request timed out. Please retry.');
+        }
+        throw requestError;
+      } finally {
+        window.clearTimeout(timeoutId);
+        signal.removeEventListener('abort', cancelRequest);
+      }
 
       const executionTime = Math.round(performance.now() - startTime);
 
