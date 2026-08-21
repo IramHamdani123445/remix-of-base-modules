@@ -64,6 +64,15 @@ export function buildTestPayload(
       // content that passed the preflight, so the same shape is used end to end.
       return { text: f.text };
 
+    case 'voice': {
+      // Spoken script, plus an optional keypad question (IVR). The shape must
+      // match the controlled test delivery mapping exactly so the preflight
+      // payload and the placed call are provably identical.
+      const prompt = f.subject.trim();
+      return prompt === ''
+        ? { script: f.text }
+        : { script: f.text, gather_prompt: prompt, gather_digits: '1234567890' };
+    }
     case 'push':
       return { title: f.title, body: f.body };
     case 'in_app':
@@ -141,6 +150,31 @@ export const TestContentFields: React.FC<{
         <p className="text-xs text-muted-foreground">
           Technical session message. The recipient must have an open WhatsApp session
           with the sender; approved provider templates are used for business sending.
+        </p>
+      </div>
+    );
+  }
+
+  if (channel === 'voice') {
+    return (
+      <div className="space-y-3" data-testid="omni-comms-test-content-voice">
+        <TextAreaField
+          label="Spoken script"
+          value={value.text}
+          onChange={(v) => set({ text: v })}
+          rows={4}
+          testId="omni-comms-test-content-voice-script"
+        />
+        <Field
+          label="Keypad question (optional)"
+          value={value.subject}
+          onChange={(v) => set({ subject: v })}
+          placeholder="For example: press any key to confirm you heard this call"
+        />
+        <p className="text-xs text-muted-foreground">
+          The script is spoken by the provider. When a keypad question is supplied the
+          call waits for one digit and the answer is recorded through the governed IVR
+          endpoint, never through the call status callback.
         </p>
       </div>
     );

@@ -288,7 +288,8 @@ export const ChannelTestDeliveryCard: React.FC<{
   const [lastDelivery, setLastDelivery] = useState<ChannelTestDelivery | null>(null);
   const isSms = channel === 'sms';
   const isWhatsApp = channel === 'whatsapp';
-  const isMessaging = isSms || isWhatsApp;
+  const isVoice = channel === 'voice';
+  const isMessaging = isSms || isWhatsApp || isVoice;
   const ChannelIcon = isMessaging ? MessageSquareText : MailCheck;
   const recipientPlural = isMessaging ? 'recipients' : 'addresses';
 
