@@ -346,7 +346,7 @@ export function useDynamicNavigation() {
         error = result.error;
       } catch (requestError) {
         if (requestController.signal.aborted && !signal.aborted) {
-          throw new Error('Navigation request timed out. Please retry.');
+          throw new Error('NAVIGATION_TIMEOUT: Menu request did not respond.');
         }
         throw requestError;
       } finally {
@@ -409,7 +409,9 @@ export function useDynamicNavigation() {
     },
     enabled: isAuthReady && isAuthenticated && !!user?.id,
     staleTime: 5 * 60 * 1000,
-    retry: 2,
+    retry: (failureCount, queryError) =>
+      !String(queryError instanceof Error ? queryError.message : queryError).includes('NAVIGATION_TIMEOUT')
+      && failureCount < 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     refetchOnWindowFocus: false,
   });
