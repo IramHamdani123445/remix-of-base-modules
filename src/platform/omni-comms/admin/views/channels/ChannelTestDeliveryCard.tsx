@@ -293,6 +293,25 @@ export const ChannelTestDeliveryCard: React.FC<{
   const ChannelIcon = isMessaging ? MessageSquareText : MailCheck;
   const recipientPlural = isMessaging ? 'recipients' : 'addresses';
 
+  /**
+   * The delivery key is immutable for a given (preflight run, target, content)
+   * triple: retrying that exact test safely replays instead of sending twice.
+   * As soon as any of those change — a fresh preflight, a new destination, or
+   * edited technical content — a new key is issued automatically so the
+   * operator is never blocked by a stale test reference.
+   */
+  const deliveryFingerprint = `${run?.id ?? ''}|${target}|${subject}|${bodyText}`;
+  const lastFingerprint = useRef(deliveryFingerprint);
+  useEffect(() => {
+    if (lastFingerprint.current === deliveryFingerprint) return;
+    lastFingerprint.current = deliveryFingerprint;
+    setIdempotencyKey(newDeliveryIdempotencyKey());
+    setLastDelivery(null);
+    setProviderStatus(null);
+  }, [deliveryFingerprint]);
+
+
+
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
