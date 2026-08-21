@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Heart, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchBenefitsDistribution } from '@/services/dashboardDataService';
+import { DASHBOARD_QUERY_KEYS, fetchBenefitsDistribution } from '@/services/dashboardDataService';
 
 const barColors = [
   'hsl(217 91% 60%)',
@@ -16,7 +16,7 @@ const barColors = [
 
 export function BenefitsDistribution({ onTitleClick }: { onTitleClick?: () => void } = {}) {
   const { data: rawData, isLoading } = useQuery({
-    queryKey: ['dashboard_benefits_distribution'],
+    queryKey: DASHBOARD_QUERY_KEYS.benefitsDistribution,
     queryFn: fetchBenefitsDistribution,
   });
 
