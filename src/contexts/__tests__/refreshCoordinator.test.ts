@@ -143,6 +143,20 @@ describe('refreshCoordinator', () => {
     expect(result.error).toContain('fetch failed');
   });
 
+  it('settles with an error when refreshSession never responds', async () => {
+    vi.useFakeTimers();
+    refreshSessionMock.mockImplementationOnce(() => new Promise(() => {}));
+
+    const resultPromise = runRefreshOnce();
+    await vi.advanceTimersByTimeAsync(8_000);
+    const result = await resultPromise;
+
+    expect(result.session).toBeNull();
+    expect(result.expired).toBeUndefined();
+    expect(result.error).toBe('refresh_session_timeout');
+    vi.useRealTimers();
+  });
+
   it('test reset hook clears in-flight state', async () => {
     let hangResolve!: (v: unknown) => void;
     refreshSessionMock.mockImplementationOnce(() => new Promise((r) => { hangResolve = r; }));
