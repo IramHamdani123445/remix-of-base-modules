@@ -793,6 +793,28 @@ export async function getAwardProductDeep(
     return null;
   }
 
+  // BUG-011: bn_product only stores scheme_id/branch_id (FKs). Resolve the
+  // readable names from bn_scheme/bn_branch instead of surfacing raw UUIDs.
+  let schemeName: string | null = null;
+  if (prod.scheme_id) {
+    const { data: scheme } = await db
+      .from('bn_scheme')
+      .select('scheme_name')
+      .eq('id', prod.scheme_id)
+      .maybeSingle();
+    schemeName = scheme?.scheme_name ?? null;
+  }
+
+  let branchName: string | null = null;
+  if (prod.branch_id) {
+    const { data: branchRow } = await db
+      .from('bn_branch')
+      .select('branch_name')
+      .eq('id', prod.branch_id)
+      .maybeSingle();
+    branchName = branchRow?.branch_name ?? null;
+  }
+
   // Version resolution: claim.product_version_id.
   // BN-AWARD360-B3D-C1: select all columns the readiness resolver reads. The
   // typed row eliminates the "field omitted → readiness MISSING" defect class.
@@ -1009,8 +1031,8 @@ export async function getAwardProductDeep(
       productCode: prod.benefit_code ?? null,
       productName: prod.benefit_name ?? null,
       benefitCode: prod.benefit_code ?? null,
-      scheme: prod.scheme_id ?? null,
-      branch: prod.branch_id ?? null,
+      scheme: schemeName,
+      branch: branchName,
       category: prod.category ?? null,
       paymentType: prod.payment_type ?? null,
       country: prod.country_code ?? null,

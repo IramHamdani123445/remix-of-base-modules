@@ -148,6 +148,39 @@ export default function RuleCatalogue() {
 
   const selectedFact = editing.fact_key ? factByKey.get(editing.fact_key) : null;
 
+  /**
+   * BUG-43 — rule_code is NOT NULL UNIQUE, but nothing checked it. The only
+   * check was the database constraint, whose message ("duplicate key value
+   * violates unique constraint bn_rule_catalogue_rule_code_key") reached the
+   * user unchanged, after they had completed the whole form. It also names the
+   * constraint rather than the field, so a user who had changed the name but
+   * not the code could not tell what was wrong.
+   *
+   * The rule list is already loaded, so this costs nothing. An existing rule
+   * must not be compared against itself, or saving it unchanged would report it
+   * as its own duplicate.
+   */
+  const duplicateCode = useMemo(() => {
+    const code = (editing.rule_code ?? '').trim().toUpperCase();
+    if (!code) return null;
+    return (rules as RuleCatalogueItem[]).find(
+      r => r.rule_code?.toUpperCase() === code && r.id !== editing.id,
+    ) ?? null;
+  }, [editing.rule_code, editing.id, rules]);
+
+  /** Next free numeric suffix, so the user is offered a way forward. */
+  const suggestedCode = useMemo(() => {
+    if (!duplicateCode) return null;
+    const code = (editing.rule_code ?? '').trim().toUpperCase();
+    const taken = new Set((rules as RuleCatalogueItem[]).map(r => r.rule_code?.toUpperCase()));
+    const base = code.replace(/_(\d+)$/, '');
+    for (let n = 2; n <= 99; n++) {
+      const candidate = `${base}_${String(n).padStart(2, '0')}`;
+      if (!taken.has(candidate)) return candidate;
+    }
+    return null;
+  }, [duplicateCode, editing.rule_code, rules]);
+
   const onSave = async () => {
     const payload = { ...editing };
     if (payload.operator === 'IN' || payload.operator === 'NOT_IN') {
@@ -162,11 +195,33 @@ export default function RuleCatalogue() {
     if (fact.allowed_operators?.length && !fact.allowed_operators.includes(payload.operator)) {
       toast.error('Operator not allowed for this fact', { description: `Allowed: ${fact.allowed_operators.join(', ')}` }); return;
     }
+    if (duplicateCode) {
+      toast.error('This rule code is already in use', {
+        description: `${duplicateCode.rule_code} belongs to “${duplicateCode.rule_name}”.`
+          + (suggestedCode ? ` Try ${suggestedCode}.` : ''),
+      });
+      return;
+    }
     const err = validateRuleCatalogue(payload);
     if (err) { toast.error(err); return; }
     const userCode = await getCurrentUserCode();
     if (!userCode) { toast.error('Authenticated user_code required'); return; }
-    await upsert.mutateAsync({ input: payload, userCode });
+    try {
+      await upsert.mutateAsync({ input: payload, userCode });
+    } catch (e: any) {
+      // Safety net: two people can submit the same code within the same second,
+      // so the constraint remains the final arbiter — but its wording must never
+      // reach the user.
+      const msg = String(e?.message ?? '');
+      if (/bn_rule_catalogue_rule_code_key|duplicate key/i.test(msg)) {
+        toast.error('This rule code is already in use', {
+          description: 'Another rule with this code was created just now. Choose a different code.',
+        });
+        return;
+      }
+      toast.error('Could not save the rule', { description: msg || 'Unknown error' });
+      return;
+    }
     setDialogOpen(false);
   };
 
@@ -398,7 +453,18 @@ export default function RuleCatalogue() {
               <Label>Rule Code *</Label>
               <Input value={editing.rule_code}
                 onChange={e => setEditing({ ...editing, rule_code: e.target.value.toUpperCase() })}
-                disabled={!!editing.id} placeholder="MIN_TOTAL_CONTRIBUTIONS" />
+                disabled={!!editing.id} placeholder="MIN_TOTAL_CONTRIBUTIONS"
+                aria-invalid={!!duplicateCode}
+                className={duplicateCode ? 'border-destructive' : undefined} />
+              {/* BUG-43 — the code must be unique, and nothing said so until the
+                  database refused the finished form with a constraint name. */}
+              {duplicateCode && (
+                <p className="text-xs text-destructive">
+                  A rule with code <span className="font-mono">{duplicateCode.rule_code}</span> already
+                  exists{duplicateCode.rule_name ? ` — “${duplicateCode.rule_name}”` : ''}.
+                  {suggestedCode && <> Try <span className="font-mono">{suggestedCode}</span>.</>}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Rule Name *</Label>
@@ -546,7 +612,9 @@ export default function RuleCatalogue() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={onSave} disabled={upsert.isPending}>{upsert.isPending ? 'Saving…' : 'Save'}</Button>
+            <Button onClick={onSave} disabled={upsert.isPending || !!duplicateCode}>
+              {upsert.isPending ? 'Saving…' : 'Save'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -723,11 +723,24 @@ export async function validatePayable(instructionId: string): Promise<PayableVal
     blockers.push({ code: 'NO_CLAIM_LINK', message: 'Payable is not linked to a claim' });
   }
 
-  // Mandatory document check — only enforced if bn_claim_evidence carries
-  // an is_mandatory column; otherwise silently skipped.
-  // (Schema-defensive: column does not currently exist in all envs.)
-  // To re-enable, restore the query below once the column is present.
-
+  // Documents flagged "Blocks Payment" on the product must be fulfilled or
+  // waived before this payable can be paid — checked against the claim's
+  // actual evidence checklist, not just the product's static requirement list.
+  if (pi.claim_id) {
+    const { data: checklist } = await db
+      .from('bn_evidence_checklist')
+      .select('status, bn_doc_requirement(document_type_code, blocks_payment)')
+      .eq('claim_id', pi.claim_id);
+    const outstanding = (checklist ?? []).filter((c: any) =>
+      c.bn_doc_requirement?.blocks_payment && !['FULFILLED', 'WAIVED'].includes(c.status),
+    );
+    if (outstanding.length) {
+      blockers.push({
+        code: 'DOCUMENT_BLOCKS_PAYMENT',
+        message: `Payment-blocking document(s) not yet fulfilled: ${outstanding.map((c: any) => c.bn_doc_requirement?.document_type_code).join(', ')}`,
+      });
+    }
+  }
 
   return {
     payableId: pi.id,

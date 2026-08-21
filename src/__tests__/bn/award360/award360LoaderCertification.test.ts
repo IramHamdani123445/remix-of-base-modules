@@ -202,7 +202,7 @@ describe('AW360 Slice B.1a · getAwardClaim', () => {
 
 // ─── getAwardProduct ──────────────────────────────────────────────────────
 describe('AW360 Slice B.1a · getAwardProduct', () => {
-  it('scenario `product-with-version` reads bn_award → bn_product → bn_claim → bn_product_version', async () => {
+  it('scenario `product-with-version` reads bn_award → bn_product → bn_scheme → bn_branch → bn_claim → bn_product_version', async () => {
     setResponses({
       bn_award: { bn_product_id: 'p-1', bn_claim_id: 'c-1' },
       bn_product: {
@@ -210,6 +210,9 @@ describe('AW360 Slice B.1a · getAwardProduct', () => {
         scheme_id: 'sch', branch_id: 'br', category: 'cat', branch: null,
         payment_type: 'PT', status: 'ACTIVE', country_code: 'US',
       },
+      // BUG-011 — scheme_id/branch_id are resolved to readable names.
+      bn_scheme: { scheme_name: 'Short-Term Benefits' },
+      bn_branch: { branch_name: 'Main Branch' },
       bn_claim: { product_version_id: 'pv-1' },
       bn_product_version: {
         id: 'pv-1', version_number: 2, status: 'ACTIVE',
@@ -222,8 +225,10 @@ describe('AW360 Slice B.1a · getAwardProduct', () => {
     );
     expect(p?.versionNumber).toBe('2');
     expect(p?.benefitDurationType).toBe('LIFETIME');
+    expect(p?.scheme).toBe('Short-Term Benefits');
+    expect(p?.branch).toBe('Main Branch');
     expect(recorder.queries.map((q) => q.table)).toEqual([
-      'bn_award', 'bn_product', 'bn_claim', 'bn_product_version',
+      'bn_award', 'bn_product', 'bn_scheme', 'bn_branch', 'bn_claim', 'bn_product_version',
     ]);
   });
 

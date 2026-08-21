@@ -55,6 +55,20 @@ export default function ProductEditor() {
   const { data: branches = [] } = useBnBranches();
   const { data: countries = [] } = useBnCountries();
   const activeCountries = useMemo(() => (countries as any[]).filter(c => c.is_active), [countries]);
+
+  /**
+   * The highest version number that is live, or null when none is.
+   * Publishing a version did not write bn_product.status, so the stored value
+   * cannot be trusted for display.
+   */
+  const liveVersionNumber = useMemo(() => {
+    const live = (versions as any[])
+      .filter(v => String(v.status).toUpperCase() === 'ACTIVE')
+      .map(v => Number(v.version_number))
+      .filter(n => Number.isFinite(n));
+    return live.length ? Math.max(...live) : null;
+  }, [versions]);
+
   
   const createMutation = useCreateBnProduct();
   const updateMutation = useUpdateBnProduct();
@@ -66,6 +80,14 @@ export default function ProductEditor() {
   });
   const [selectedVersionId, setSelectedVersionId] = useState<string | undefined>();
   const [omniCommsOrganizationId, setOmniCommsOrganizationId] = useState<string | null>(null);
+
+  /**
+   * Active when a version is live; otherwise the product's own status. Display
+   * only — the Status dropdown keeps the stored value, because it writes, and
+   * showing a derived value in a field that saves would push ACTIVE into
+   * bn_product.status on the next unrelated edit.
+   */
+  const effectiveProductStatus = liveVersionNumber !== null ? 'ACTIVE' : form.status;
 
   useEffect(() => {
     let cancelled = false;
@@ -252,10 +274,20 @@ export default function ProductEditor() {
               <h1 className="t-page-title">
                 {isNew ? 'Create Benefit Product' : form.benefit_name}
               </h1>
-              {!isNew && form.status && (
-                <Badge variant={statusBadge[form.status] || 'outline'}>
-                  {BN_PRODUCT_STATUS_LABELS[form.status as BnProductStatus] || form.status}
+              {/* Derived, exactly as the Product Catalogue derives it: a product
+                  with a live version is Active, whatever bn_product.status still
+                  says. The stored column was never written when a version was
+                  published, so a live product read "Draft" here while the
+                  catalogue read "Active" — the same product, two answers. The
+                  Status dropdown below is deliberately left on the stored value,
+                  because it writes. */}
+              {!isNew && effectiveProductStatus && (
+                <Badge variant={statusBadge[effectiveProductStatus] || 'outline'}>
+                  {BN_PRODUCT_STATUS_LABELS[effectiveProductStatus as BnProductStatus] || effectiveProductStatus}
                 </Badge>
+              )}
+              {!isNew && liveVersionNumber !== null && (
+                <span className="text-xs text-muted-foreground">live on v{liveVersionNumber}</span>
               )}
             </div>
             <p className="text-sm text-muted-foreground">
@@ -347,7 +379,7 @@ export default function ProductEditor() {
         <ConflictDetectionPanel versionId={selectedVersionId} compact />
       )}
 
-      {!isNew && <BnPlatformConsumptionPanel />}
+      {/* Commented per manager request — display-only panel, not consumed by any claim/product-creation logic. {!isNew && <BnPlatformConsumptionPanel />} */}
 
 
       {/* Tabs */}
@@ -449,6 +481,15 @@ export default function ProductEditor() {
                     {Object.entries(BN_PRODUCT_STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {/* Explains the difference between this field and the badge
+                    above, so the mismatch does not look like a fault and nobody
+                    sets ACTIVE by hand to "correct" it. */}
+                {liveVersionNumber !== null && form.status !== 'ACTIVE' && (
+                  <p className="text-xs text-muted-foreground">
+                    This product is already live on <span className="font-medium">v{liveVersionNumber}</span>.
+                    A product becomes Active by publishing a version — you do not need to set it here.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Sort Order</Label>

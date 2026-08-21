@@ -125,6 +125,15 @@ const bn_award_suspension_event: Award360TableContract = {
   allowedOrderColumns: ['entered_at'],
 };
 
+// BUG-011 — resolves bn_product.branch_id to a readable name.
+const bn_branch: Award360TableContract = {
+  allowedColumns: [
+    'id', 'scheme_id', 'branch_code', 'branch_name', 'description',
+    'is_active', 'sort_order', 'entered_by', 'entered_at',
+  ],
+  requiredScope: { column: 'id', description: "Branch primary key" },
+};
+
 const bn_claim: Award360TableContract = {
   allowedColumns: [
     'id', 'claim_number', 'ssn', 'product_id', 'product_version_id',
@@ -481,6 +490,16 @@ const bn_product_version: Award360TableContract = {
   requiredScope: { column: 'id', description: "Product version primary key" },
 };
 
+// BUG-011 — resolves bn_product.scheme_id to a readable name.
+const bn_scheme: Award360TableContract = {
+  allowedColumns: [
+    'id', 'country_code', 'scheme_code', 'scheme_name', 'description',
+    'governing_legislation', 'sort_order', 'status',
+    'entered_by', 'entered_at', 'modified_by', 'modified_at',
+  ],
+  requiredScope: { column: 'id', description: "Scheme primary key" },
+};
+
 const core_audit_log: Award360TableContract = {
   allowedColumns: [
     'id', 'event_time', 'event_code', 'event_name', 'event_category',
@@ -566,6 +585,7 @@ export const AWARD360_SCHEMA_CONTRACT = {
   bn_award_rate_history,
   bn_award_status_event,
   bn_award_suspension_event,
+  bn_branch,
   bn_claim,
   bn_claim_calculation,
   bn_claim_decision,
@@ -590,6 +610,7 @@ export const AWARD360_SCHEMA_CONTRACT = {
   bn_product,
   bn_product_formula_binding,
   bn_product_version,
+  bn_scheme,
   core_audit_log,
   core_workflow_task,
   ip_depend,

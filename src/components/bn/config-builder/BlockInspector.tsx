@@ -13,6 +13,7 @@ import { FORMULA_VARIABLES } from '@/services/bn/registries/formulaVariableRegis
 import { SMART_FIELD_TYPES } from '@/services/bn/registries/smartFieldRegistry';
 import { BN_ESCALATION_TRIGGERS, BN_ESCALATION_SEVERITIES } from '@/services/bn/registries/workflowRolesRegistry';
 import { useWorkflowRoles } from '@/hooks/bn/useWorkflowRoles';
+import { useBnDocumentProfiles } from '@/hooks/bn/useBnConfig';
 import { BLOCK_REGISTRY } from './blockRegistry';
 import type { BuilderBlock } from './types';
 
@@ -23,6 +24,12 @@ interface Props {
 }
 
 export function BlockInspector({ block, onChange, disabled }: Props) {
+  // Hooks must run on every render regardless of whether a block is selected —
+  // calling them after the early return below would change the hook count
+  // between "nothing selected" and "block selected" renders.
+  const { roles: workflowRoles } = useWorkflowRoles();
+  const { data: documentProfiles = [] } = useBnDocumentProfiles();
+
   if (!block) {
     return (
       <Card className="h-full">
@@ -33,7 +40,6 @@ export function BlockInspector({ block, onChange, disabled }: Props) {
   }
   const def = BLOCK_REGISTRY[block.kind];
   const setProp = (k: string, v: any) => onChange({ ...block, props: { ...block.props, [k]: v } });
-  const { roles: workflowRoles } = useWorkflowRoles();
 
   return (
     <Card className="h-full">
@@ -45,13 +51,30 @@ export function BlockInspector({ block, onChange, disabled }: Props) {
         {def?.description && <CardDescription className="text-xs">{def.description}</CardDescription>}
       </CardHeader>
       <CardContent className="space-y-3">
-        {renderEditor(block, setProp, workflowRoles, disabled)}
+        {renderEditor(block, setProp, workflowRoles, documentProfiles, disabled)}
       </CardContent>
     </Card>
   );
 }
 
-function renderEditor(block: BuilderBlock, setProp: (k: string, v: any) => void, workflowRoles: string[], disabled?: boolean) {
+/** Document-code options sourced from the Document Library, plus the block's
+ * current value if it was typed before this picker existed — so an old
+ * free-text code doesn't just disappear from the dropdown. */
+function documentCodeOptions(profiles: { profile_code: string; profile_name: string }[], current: unknown) {
+  const opts = profiles.map((p) => ({ value: p.profile_code, label: `${p.profile_code} — ${p.profile_name}` }));
+  if (current && !profiles.some((p) => p.profile_code === current)) {
+    opts.push({ value: String(current), label: `${current} (not in Document Library)` });
+  }
+  return opts;
+}
+
+function renderEditor(
+  block: BuilderBlock,
+  setProp: (k: string, v: any) => void,
+  workflowRoles: string[],
+  documentProfiles: { profile_code: string; profile_name: string }[],
+  disabled?: boolean,
+) {
   const p = block.props;
   switch (block.kind) {
     // ---------------- Eligibility ----------------
@@ -74,7 +97,8 @@ function renderEditor(block: BuilderBlock, setProp: (k: string, v: any) => void,
     case 'eligibility.document':
       return (
         <>
-          <TextField label="Document code" value={p.document_code} onChange={(v) => setProp('document_code', v)} placeholder="e.g. BIRTH_CERT" disabled={disabled} />
+          <SelectField label="Document code" value={p.document_code} onChange={(v) => setProp('document_code', v)}
+            options={documentCodeOptions(documentProfiles, p.document_code)} disabled={disabled} />
           <SwitchField label="Verification required" value={p.verification_required} onChange={(v) => setProp('verification_required', v)} disabled={disabled} />
         </>
       );
@@ -121,7 +145,8 @@ function renderEditor(block: BuilderBlock, setProp: (k: string, v: any) => void,
     case 'document.required':
       return (
         <>
-          <TextField label="Document code" value={p.document_code} onChange={(v) => setProp('document_code', v)} placeholder="From Document Library" disabled={disabled} />
+          <SelectField label="Document code" value={p.document_code} onChange={(v) => setProp('document_code', v)}
+            options={documentCodeOptions(documentProfiles, p.document_code)} disabled={disabled} />
           <SelectField label="Requirement" value={p.requirement} onChange={(v) => setProp('requirement', v)} options={['REQUIRED', 'OPTIONAL', 'CONDITIONAL']} disabled={disabled} />
           <SelectField label="Stage" value={p.stage} onChange={(v) => setProp('stage', v)} options={['INTAKE', 'EVIDENCE_REVIEW', 'DECISION', 'POST_AWARD']} disabled={disabled} />
           <SwitchField label="Public upload allowed" value={p.public_upload} onChange={(v) => setProp('public_upload', v)} disabled={disabled} />
