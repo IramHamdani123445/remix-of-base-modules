@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
   }
 
   const callSid = (params.CallSid ?? "").trim();
-  if (!callSid) return sayHangup("Sorry, this call cannot be handled. Goodbye.", 400);
+  if (!callSid) return sayHangup("Sorry, this call cannot be handled. Goodbye.");
 
   const { data, error } = await withTimeout(
     client.rpc("omni_comms_priv_inbound_voice_step", {
