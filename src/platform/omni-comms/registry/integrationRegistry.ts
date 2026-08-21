@@ -120,6 +120,14 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     purpose: 'Signed server-owned Basic IVR action endpoint. Resolves the caller keypad input against the template gather map and records one immutable IVR result, including a truthful no-response outcome. It never sends and never returns business data to the provider.',
     status: 'Available',
   },
+  {
+    name: 'omni-comms-inbound-voice',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Signature-verified inbound Voice self-service endpoint. Identifies the caller by calling line or keyed reference, verifies date of birth or registration date, and speaks a summary composed server-side from live claim, payment and arrears data. It sends nothing and stores no caller-supplied content beyond the governed call record.',
+    status: 'Available',
+  },
+
   // Shared platform assets (3) — reused, not re-created
   {
     name: 'core-documents',
