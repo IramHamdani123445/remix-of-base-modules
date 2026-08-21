@@ -124503,6 +124503,15 @@ export type Database = {
         }
         Returns: Json
       }
+      omni_comms_priv_inbound_voice_step_core: {
+        Args: {
+          p_call_sid: string
+          p_digits?: string
+          p_from?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_inbound_voice_summary: {
         Args: { p_subject_key: string; p_subject_kind: string }
         Returns: string
