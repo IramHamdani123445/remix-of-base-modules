@@ -149,15 +149,14 @@ Deno.serve(async (req) => {
     8000,
     { data: null, error: { message: "timeout" } },
   );
-
-
   if (error) {
     console.error(`omni-comms-inbound-voice step_failed call=${callSid}`);
+    // Must stay HTTP 200: Twilio only plays TwiML from a successful response.
     return sayHangup(
       "Sorry, self service is unavailable right now. Please contact the Social Security Board office. Goodbye.",
-      500,
     );
   }
+
 
   const step = (data ?? {}) as Record<string, unknown>;
   const text = typeof step.text === "string" && step.text.trim() !== ""
