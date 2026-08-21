@@ -432,7 +432,7 @@ export const ChannelTestCentreTab: React.FC<{
         </Card>
       )}
 
-      {(channel === 'email' || channel === 'sms' || channel === 'whatsapp') && bindingId && deliveryTransport ? (
+      {(channel === 'email' || channel === 'sms' || channel === 'whatsapp' || channel === 'voice') && bindingId && deliveryTransport ? (
         <ChannelTestDeliveryCard
           client={client}
           transport={deliveryTransport}
@@ -441,7 +441,7 @@ export const ChannelTestCentreTab: React.FC<{
           channel={channel}
           bindingId={bindingId}
           target={target}
-          subject={channel === 'email' ? content.subject : ''}
+          subject={channel === 'email' || channel === 'voice' ? content.subject : ''}
           bodyText={channel === 'email' ? content.body : content.text}
           run={currentRun}
           runIsCurrent={!currentStale}
