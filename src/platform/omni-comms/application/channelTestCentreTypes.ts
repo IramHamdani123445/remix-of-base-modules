@@ -19,6 +19,7 @@ export const TEST_CENTRE_CHANNELS = [
   'push',
   'in_app',
   'print',
+  'voice',
 ] as const;
 
 export type TestCentreChannel = (typeof TEST_CENTRE_CHANNELS)[number];
@@ -36,7 +37,8 @@ export type ChannelTestTargetType =
   | 'whatsapp_number'
   | 'device_token'
   | 'user_reference'
-  | 'recipient_reference';
+  | 'recipient_reference'
+  | 'voice_number';
 
 export const TEST_TARGET_TYPE_BY_CHANNEL: Record<
   TestCentreChannel,
@@ -48,6 +50,7 @@ export const TEST_TARGET_TYPE_BY_CHANNEL: Record<
   push: 'device_token',
   in_app: 'user_reference',
   print: 'recipient_reference',
+  voice: 'voice_number',
 };
 
 export const TEST_TARGET_LABEL_BY_CHANNEL: Record<TestCentreChannel, string> = {
@@ -57,6 +60,7 @@ export const TEST_TARGET_LABEL_BY_CHANNEL: Record<TestCentreChannel, string> = {
   push: 'Test device token',
   in_app: 'Test user reference',
   print: 'Test recipient reference',
+  voice: 'Test phone number (E.164)',
 };
 
 /** C5A.1 check states. `not_implemented` can never count as a pass. */
