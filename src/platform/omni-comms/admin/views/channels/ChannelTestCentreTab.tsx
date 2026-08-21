@@ -33,6 +33,8 @@ import {
 import type { ChannelTestDeliveryTransport } from '@/platform/omni-comms/application/channelTestDeliveryService';
 import { DeferredCapabilityCard, Detail, Field, SelectField, toastError } from './channelFormPrimitives';
 import { ChannelTestDeliveryCard } from './ChannelTestDeliveryCard';
+import { InboundIvrSimulatorCard } from './InboundIvrSimulatorCard';
+
 import {
   buildTestPayload,
   defaultTestContentForm,
@@ -449,6 +451,9 @@ export const ChannelTestCentreTab: React.FC<{
           onChanged={onChanged}
         />
       ) : null}
+
+      {channel === 'voice' ? <InboundIvrSimulatorCard /> : null}
+
 
 
       <Card data-testid="omni-comms-test-centre-history">

@@ -127,6 +127,14 @@ export const OMNI_COMMS_INTEGRATION_REGISTRY: readonly IntegrationRegistryEntry[
     purpose: 'Signature-verified inbound Voice self-service endpoint. Identifies the caller by calling line or keyed reference, verifies date of birth or registration date, and speaks a summary composed server-side from live claim, payment and arrears data. It sends nothing and stores no caller-supplied content beyond the governed call record.',
     status: 'Available',
   },
+  {
+    name: 'omni-comms-inbound-voice-simulate',
+    kind: 'edge_function',
+    ownership: 'omni_comms',
+    purpose: 'Authenticated operator simulator for the inbound Voice self-service flow. It forwards simulated call parameters to the same governed inbound state machine so the flow can be proven without placing a phone call. It never dials, never sends, and marks simulated call evidence distinctly.',
+    status: 'Available',
+  },
+
 
   // Shared platform assets (3) — reused, not re-created
   {
