@@ -316,7 +316,7 @@ function groupInternalAuditNavigation(items: MenuItem[]): MenuItem[] {
 }
 
 export function useDynamicNavigation() {
-  const { user, isAdmin, isAuthReady, isAuthenticated } = useSupabaseAuth();
+  const { user, isAdmin, isAuthReady } = useSupabaseAuth();
 
   const {
     data: menuItems = [],
@@ -407,7 +407,9 @@ export function useDynamicNavigation() {
 
       return groupInternalAuditNavigation(buildMenuTree(modulesData));
     },
-    enabled: isAuthReady && isAuthenticated && !!user?.id,
+    // Keep the user's cached/available navigation usable during a transient
+    // token refresh. The RPC still validates the bearer token server-side.
+    enabled: isAuthReady && !!user?.id,
     staleTime: 5 * 60 * 1000,
     retry: (failureCount, queryError) =>
       !String(queryError instanceof Error ? queryError.message : queryError).includes('NAVIGATION_TIMEOUT')
