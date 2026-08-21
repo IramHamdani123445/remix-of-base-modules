@@ -601,7 +601,7 @@ describe('C4B Email readiness integration', () => {
 // ── UI and architecture ──────────────────────────────────────────────
 describe('C4B UI and architecture boundaries', () => {
   it('renders typed policy forms for all six database-supported channels', () => {
-    expect(POLICY_CHANNELS).toEqual(['email', 'sms', 'whatsapp', 'push', 'in_app', 'print']);
+    expect(POLICY_CHANNELS).toEqual(['email', 'sms', 'whatsapp', 'push', 'in_app', 'print', 'voice']);
     for (const ch of POLICY_CHANNELS) {
       expect(POLICY_FORMS).toContain(`omni-comms-policy-config-${ch}`);
       expect(isPolicyChannel(ch)).toBe(true);
@@ -609,7 +609,7 @@ describe('C4B UI and architecture boundaries', () => {
   });
 
   it('offers no policy mutation for Webhook or Voice', () => {
-    expect(POLICY_PLANNED_CHANNELS).toEqual(['webhook', 'voice']);
+    expect(POLICY_PLANNED_CHANNELS).toEqual(['webhook']);
     expect(isPolicyChannel('webhook')).toBe(false);
     expect(isPolicyChannel('voice')).toBe(false);
     expect(POLICIES_TAB).toContain('omni-comms-policies-planned-state');
