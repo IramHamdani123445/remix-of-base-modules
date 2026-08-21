@@ -95589,6 +95589,54 @@ export type Database = {
           },
         ]
       }
+      omni_comms_inbound_voice_call: {
+        Row: {
+          attempts: number
+          call_sid: string
+          created_at: string
+          from_number: string | null
+          id: string
+          outcome: string | null
+          spoken_text: string | null
+          step: string
+          subject_key: string | null
+          subject_kind: string | null
+          to_number: string | null
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          attempts?: number
+          call_sid: string
+          created_at?: string
+          from_number?: string | null
+          id?: string
+          outcome?: string | null
+          spoken_text?: string | null
+          step?: string
+          subject_key?: string | null
+          subject_kind?: string | null
+          to_number?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          attempts?: number
+          call_sid?: string
+          created_at?: string
+          from_number?: string | null
+          id?: string
+          outcome?: string | null
+          spoken_text?: string | null
+          step?: string
+          subject_key?: string | null
+          subject_kind?: string | null
+          to_number?: string | null
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       omni_comms_message: {
         Row: {
           action_channel_option_id: string | null
@@ -124437,6 +124485,27 @@ export type Database = {
           p_organization_id: string
         }
         Returns: Json
+      }
+      omni_comms_priv_inbound_voice_digits: {
+        Args: { p_value: string }
+        Returns: string
+      }
+      omni_comms_priv_inbound_voice_money: {
+        Args: { p_value: number }
+        Returns: string
+      }
+      omni_comms_priv_inbound_voice_step: {
+        Args: {
+          p_call_sid: string
+          p_digits?: string
+          p_from?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_inbound_voice_summary: {
+        Args: { p_subject_key: string; p_subject_kind: string }
+        Returns: string
       }
       omni_comms_priv_is_resend_secret_ref: {
         Args: { p_ref: string }

@@ -65,6 +65,8 @@ project_id = "xynceskeiiisiefqlgxo"
     verify_jwt = false
   [functions.omni-comms-webhook-twilio-voice-ivr]
     verify_jwt = false
+  [functions.omni-comms-inbound-voice]
+    verify_jwt = false
   [functions.bn-award-suspension-runner]
     verify_jwt = false
   [functions.bn-life-certificate-runner]
