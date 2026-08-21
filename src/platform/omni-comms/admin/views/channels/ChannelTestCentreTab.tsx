@@ -450,6 +450,9 @@ export const ChannelTestCentreTab: React.FC<{
         />
       ) : null}
 
+      {channel === 'voice' ? <InboundIvrSimulatorCard /> : null}
+
+
 
       <Card data-testid="omni-comms-test-centre-history">
         <CardHeader>
