@@ -9,7 +9,7 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, RefreshCw, Copy, Download } from 'lucide-react';
+import { Loader2, Save, RefreshCw, Copy, Download, AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
@@ -20,6 +20,25 @@ import {
 import { BLOCK_REGISTRY } from '@/components/bn/config-builder/blockRegistry';
 import { syncCanvasToNormalized, cloneVersionToDraft } from '@/services/bn/canvasSyncService';
 import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
+
+/**
+ * Sections syncCanvasToNormalized() can actually persist. The remaining five
+ * are drawn but never written — see BUG-005.
+ */
+const SYNC_SUPPORTED: BuilderSectionKey[] = [
+  'eligibility', 'documents', 'communications',
+  // Implemented after BUG-005.
+  'calculation', 'workflow', 'screen',
+];
+
+/** Where the user should go instead, for each section Sync cannot apply. */
+const SECTION_TAB_HINT: Partial<Record<BuilderSectionKey, string>> = {
+  calculation: 'Calculation',
+  screen: 'Screens',
+  workflow: 'Workflow',
+  payments: 'Application Channels',
+  servicing: 'Interactions',
+};
 
 const SECTIONS: { key: BuilderSectionKey; label: string }[] = [
   { key: 'eligibility', label: 'Eligibility' },
@@ -56,9 +75,35 @@ export function VisualBuilderTab({ versionId, versionStatus }: Props) {
     setSyncing(true);
     try {
       const r = await syncCanvasToNormalized(versionId, canvas, userCode);
-      const msg = `Eligibility: ${r.eligibilityRules}, Documents: ${r.documentRequirements}, Comms: ${r.commMappings}`;
-      if (r.warnings.length) toast.warning('Sync completed with warnings', { description: `${msg} · ${r.warnings.join('; ')}` });
-      else toast.success('Synced to normalized tables', { description: msg });
+      // Only report what was actually produced — a list of zeroes tells the
+      // user nothing about what happened.
+      const parts = [
+        r.eligibilityRules && `Eligibility: ${r.eligibilityRules}`,
+        r.calculationRules && `Calculation: ${r.calculationRules}`,
+        r.documentRequirements && `Documents: ${r.documentRequirements}`,
+        r.screenTemplates && `Screen template: ${r.screenTemplates}`,
+        r.workflowTemplates && `Workflow template: ${r.workflowTemplates}`,
+        r.commMappings && `Comms: ${r.commMappings}`,
+      ].filter(Boolean);
+      const msg = parts.length ? parts.join(', ') : 'Nothing was applied';
+      // BUG-005 — a partial sync must not report unqualified success. Sections
+      // the user has built but this sync cannot apply are named, with where to
+      // configure them instead.
+      const skipped = r.notApplied ?? [];
+      if (skipped.length) {
+        // Each entry already carries its own reason, so it is quoted as-is
+        // rather than wrapped in a single blanket explanation.
+        toast.warning('Synced in part', {
+          description:
+            `${msg}. Not applied — ${skipped.join(' · ')}` +
+            (r.warnings.length ? ` · ${r.warnings.join('; ')}` : ''),
+          duration: 12_000,
+        });
+      } else if (r.warnings.length) {
+        toast.warning('Sync completed with warnings', { description: `${msg} · ${r.warnings.join('; ')}` });
+      } else {
+        toast.success('Synced to normalized tables', { description: msg });
+      }
     } catch (e: any) {
       toast.error('Sync failed', { description: e?.message });
     } finally { setSyncing(false); }
@@ -172,6 +217,25 @@ export function VisualBuilderTab({ versionId, versionStatus }: Props) {
                 ))}
               </TabsList>
             </Tabs>
+
+            {/* BUG-005 — told before the work, not after it. Sync only writes
+                eligibility, documents and communications; the other five
+                sections produce nothing, and users had no way to know until
+                they checked the destination tab and found it empty. */}
+            {!SYNC_SUPPORTED.includes(section) && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900/60 dark:bg-amber-950/30">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <div>
+                  <p className="font-medium">Nothing can be built in this section yet</p>
+                  <p className="text-muted-foreground">
+                    This section has no blocks available, and Sync does not write anything for it.
+                    Use the{' '}
+                    <span className="font-medium">{SECTION_TAB_HINT[section] ?? 'dedicated'}</span>{' '}
+                    tab instead.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
