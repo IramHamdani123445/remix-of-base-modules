@@ -119,6 +119,18 @@ export function AddFormulaWizard({ open, onClose, existingCodes, onCreated }: Pr
   const codeUpper = code.trim().toUpperCase();
   const codeDuplicate = !!codeUpper && existingCodes.map((c) => c.toUpperCase()).includes(codeUpper);
 
+  /** Next free numeric suffix, so a clash comes with a way forward. */
+  const suggestedCode = useMemo(() => {
+    if (!codeDuplicate) return null;
+    const taken = new Set(existingCodes.map((x) => x.toUpperCase()));
+    const base = codeUpper.replace(/_(\d+)$/, '');
+    for (let n = 2; n <= 99; n++) {
+      const candidate = `${base}_${String(n).padStart(2, '0')}`;
+      if (!taken.has(candidate)) return candidate;
+    }
+    return null;
+  }, [codeDuplicate, codeUpper, existingCodes]);
+
   const reset = () => {
     setStep(0); setType('SIMPLE_EXPRESSION');
     setCode(''); setName(''); setCategory('PENSION'); setCountry('');
@@ -282,8 +294,17 @@ export function AddFormulaWizard({ open, onClose, existingCodes, onCreated }: Pr
                 <Label>Code *</Label>
                 <Input value={code} maxLength={50}
                   placeholder="AGE_PENSION_RATE_LOOKUP"
-                  onChange={(e) => setCode(e.target.value.toUpperCase())} />
-                {codeDuplicate && <p className="text-xs text-destructive">Code already used.</p>}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  aria-invalid={codeDuplicate}
+                  className={codeDuplicate ? 'border-destructive' : undefined} />
+                {/* Name the clash and offer a free code, rather than "Code
+                    already used" which leaves the user to guess one. */}
+                {codeDuplicate && (
+                  <p className="text-xs text-destructive">
+                    A formula with code <span className="font-mono">{codeUpper}</span> already exists.
+                    {suggestedCode && <> Try <span className="font-mono">{suggestedCode}</span>.</>}
+                  </p>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label>Name *</Label>
