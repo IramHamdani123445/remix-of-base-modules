@@ -137,12 +137,21 @@ export const ChannelOverviewTab: React.FC<{
             )}
           </CardContent>
         </Card>
-        <DeferredCapabilityCard
-          title="Provider adapters"
-          description={`No provider adapter is installed for ${definition.name}.`}
-          bullets={definition.accounts.examples}
-          footer={`Delivery will be implemented in ${definition.accounts.futureBuild}.`}
-        />
+        {installedAdapters.length > 0 ? (
+          <DeferredCapabilityCard
+            title="Provider adapters"
+            description={`${installedAdapters.length === 1 ? 'A provider adapter is' : 'Provider adapters are'} installed for ${definition.name}.`}
+            bullets={installedAdapters.map((a) => a.label)}
+            footer="Delivery remains governed by Release Control for this scope."
+          />
+        ) : (
+          <DeferredCapabilityCard
+            title="Provider adapters"
+            description={`No provider adapter is installed for ${definition.name}.`}
+            bullets={definition.accounts.examples}
+            footer={`Delivery will be implemented in ${definition.accounts.futureBuild}.`}
+          />
+        )}
       </div>
     );
   }
