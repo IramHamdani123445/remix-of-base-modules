@@ -45,9 +45,24 @@ const TABLE_TYPES_FALLBACK = [
   { value: 'SHARE_TABLE', label: 'Share Table', description: 'Beneficiary % shares' },
   { value: 'CONDITION_TABLE', label: 'Condition Table', description: 'Flag / boolean lookup' },
 ];
+/**
+ * The database permits exactly these four:
+ *   CHECK (lookup_mode IN ('FIRST_MATCH','EXACT_MATCH','RANGE_MATCH','MATRIX_MATCH'))
+ *
+ * This list previously offered SINGLE and COMPOSITE — neither of which is
+ * allowed — so every rate table and matrix save was rejected with
+ * "violates check constraint bn_rate_table_lookup_mode_check", whichever
+ * button was pressed. The reference-data group these options are meant to come
+ * from does not exist in this database, so the fallback is always what the user
+ * sees; it therefore has to be right.
+ *
+ * Labels describe the behaviour, since the codes do not explain themselves.
+ */
 const LOOKUP_MODES_FALLBACK = [
-  { value: 'SINGLE', label: 'Single dimension lookup' },
-  { value: 'COMPOSITE', label: 'Multi-dimension / matrix lookup' },
+  { value: 'EXACT_MATCH', label: 'Exact match', description: 'Row value must equal the input exactly' },
+  { value: 'RANGE_MATCH', label: 'Range match', description: 'Input falls between the row’s from/to values' },
+  { value: 'FIRST_MATCH', label: 'First match', description: 'First row whose conditions are met wins' },
+  { value: 'MATRIX_MATCH', label: 'Matrix match', description: 'Cross-lookup on two or more dimensions' },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -94,7 +109,8 @@ export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved, kind 
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
   const [header, setHeader] = useState({
     table_code: '', table_name: '', table_type: 'TIER' as string,
-    lookup_mode: 'SINGLE' as string, country_code: 'SKN', version_no: 1,
+    // A permitted value — 'SINGLE' was rejected by the table's CHECK constraint.
+    lookup_mode: 'EXACT_MATCH' as string, country_code: 'SKN', version_no: 1,
     status: 'DRAFT', description: '', effective_from: '',
   });
   const [dims, setDims] = useState<DimDraft[]>([]);
@@ -115,7 +131,7 @@ export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved, kind 
     if (!open) return;
     if (!rateTableId) {
       setHeader({
-        table_code: '', table_name: '', table_type: 'TIER', lookup_mode: 'SINGLE',
+        table_code: '', table_name: '', table_type: 'TIER', lookup_mode: 'EXACT_MATCH',
         country_code: 'SKN', version_no: 1, status: 'DRAFT', description: '', effective_from: '',
       });
       setDims([]);
@@ -170,10 +186,63 @@ export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved, kind 
     setDims((arr) => arr.filter((_, i) => i !== idx));
   };
 
+  /**
+   * Existing tables, so a clash is caught at the field rather than by the
+   * database at the end of the form.
+   *
+   * Uniqueness is UNIQUE(table_code, country_code, version_no) — the same code
+   * is legitimate for a different version or a different country pack, which is
+   * how rate tables are versioned. So all three are compared, and the message
+   * points at the version number, since bumping it is usually what the user
+   * actually wants.
+   */
+  const [existing, setExisting] = useState<Array<{
+    id: string; table_code: string; country_code: string; version_no: number; table_name: string; status: string;
+  }>>([]);
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    (async () => {
+      const { data } = await db.from('bn_rate_table')
+        .select('id, table_code, country_code, version_no, table_name, status');
+      if (alive) setExisting((data ?? []) as any[]);
+    })();
+    return () => { alive = false; };
+  }, [open]);
+
+  const duplicate = useMemo(() => {
+    const code = header.table_code.trim().toUpperCase();
+    if (!code) return null;
+    return existing.find(t =>
+      t.table_code?.toUpperCase() === code &&
+      t.country_code === header.country_code &&
+      Number(t.version_no) === Number(header.version_no) &&
+      t.id !== rateTableId,          // editing a table is not a clash with itself
+    ) ?? null;
+  }, [existing, header.table_code, header.country_code, header.version_no, rateTableId]);
+
+  /** Next free version number for this code and country. */
+  const suggestedVersion = useMemo(() => {
+    if (!duplicate) return null;
+    const code = header.table_code.trim().toUpperCase();
+    const taken = existing
+      .filter(t => t.table_code?.toUpperCase() === code && t.country_code === header.country_code)
+      .map(t => Number(t.version_no))
+      .filter(n => Number.isFinite(n));
+    return taken.length ? Math.max(...taken) + 1 : null;
+  }, [duplicate, existing, header.table_code, header.country_code]);
+
   const validationErrors = useMemo(() => {
     const errs: string[] = [];
     if (!header.table_code.trim()) errs.push('Code is required');
     if (!header.table_name.trim()) errs.push('Name is required');
+    if (duplicate) {
+      errs.push(
+        `${duplicate.table_code} v${duplicate.version_no} already exists for ${duplicate.country_code}` +
+        ` — “${duplicate.table_name}” (${duplicate.status})` +
+        (suggestedVersion ? `. Use version ${suggestedVersion}, or edit the existing table.` : '.'),
+      );
+    }
     if (!header.country_code || !countries.some((c: any) => c.country_code === header.country_code)) {
       errs.push('Pick a valid country pack');
     }
@@ -232,7 +301,17 @@ export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved, kind 
       onSaved?.(id!);
       onClose();
     } catch (e: any) {
-      toast.error(e.message ?? 'Save failed');
+      // Safety net: two users can submit the same code, country and version at
+      // the same moment, so the constraint stays the final arbiter — but its
+      // wording must never reach the user.
+      const msg = String(e?.message ?? '');
+      if (/duplicate key|bn_rate_table_table_code/i.test(msg)) {
+        toast.error('This table already exists', {
+          description: `${header.table_code} v${header.version_no} for ${header.country_code} was just created. Use a different version number.`,
+        });
+      } else {
+        toast.error(msg || 'Save failed');
+      }
     } finally {
       setSaving(false);
       setPendingStatus(null);
@@ -293,7 +372,20 @@ export function RateTableHeaderForm({ open, onClose, rateTableId, onSaved, kind 
               <Label>Code *</Label>
               <Input value={header.table_code}
                 onChange={(e) => setHeader({ ...header, table_code: e.target.value.toUpperCase() })}
-                placeholder="AGE_PENSION_RATE_TABLE" />
+                placeholder="AGE_PENSION_RATE_TABLE"
+                aria-invalid={!!duplicate}
+                className={duplicate ? 'border-destructive' : undefined} />
+              {/* Told at the field, not by the database after the whole form is
+                  filled in. The version number is named because bumping it is
+                  usually what the user wants — the same code with a new version
+                  is legitimate. */}
+              {duplicate && (
+                <p className="mt-1 text-xs text-destructive">
+                  <span className="font-mono">{duplicate.table_code}</span> v{duplicate.version_no} already
+                  exists for {duplicate.country_code} — “{duplicate.table_name}” ({duplicate.status}).
+                  {suggestedVersion && <> Use version <span className="font-medium">{suggestedVersion}</span>, or edit the existing table.</>}
+                </p>
+              )}
             </div>
             <div>
               <Label>Name *</Label>

@@ -8,12 +8,14 @@
  *   - bn_calculation_rule   (rule_code prefix "BLD_")
  *   - bn_workflow_template / bn_screen_template  (upserted by builder code)
  *
- * Rows that came from elsewhere are never deleted or duplicated. A block that
- * Import brought in carries `_origin: 'LEGACY'` and `_source_id`; such a block
- * updates its original row in place rather than being inserted under a new
- * BLD_ code, which would leave a governed rule beside an ungoverned copy.
- * A rule removed from the canvas is left alone and reported, because the
- * builder must not delete a rule created and approved on another screen.
+ * Rows that came from elsewhere are never touched at all. A block that Import
+ * brought in carries `_origin: 'LEGACY'`; it is neither duplicated under a BLD_
+ * code nor rewritten, and is reported as left unchanged. Rewriting it would be
+ * unsafe: Import picks a block kind from keywords in `rule_type` and falls back
+ * to "Contribution Condition" for anything it does not recognise, which covers
+ * most rules in practice. The Builder has six block kinds and cannot represent
+ * rules built on the other screens, so it must not write to them — and it must
+ * not delete them either.
  */
 import { supabase } from '@/integrations/supabase/client';
 import type { BuilderCanvas } from '@/components/bn/config-builder/types';
@@ -208,13 +210,24 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
 
   const eligBlocks = canvas.sections.eligibility ?? [];
   const eligRows: Record<string, unknown>[] = [];
-  /** LEGACY blocks to update in place, keyed by their existing row id. */
-  const eligUpdates: { id: string; ruleCode: string; patch: Record<string, unknown> }[] = [];
 
   eligBlocks.forEach((b, idx) => {
     const props = (b.props ?? {}) as Record<string, any>;
-    const mapped = mapBlockToRuleFields(b.kind, props);
     const label = BLOCK_LABELS[b.kind] ?? b.kind;
+
+    // Checked first, before anything is mapped. A rule from elsewhere is not
+    // the builder's to write, so the mapping is irrelevant to it — and running
+    // the mapping first produced a misleading reason ("no value set") for a
+    // rule that was simply never the builder's.
+    if (props._origin === 'LEGACY') {
+      skipped.push(
+        `${props.rule_code ?? label}: left unchanged — created outside the Builder, ` +
+        `which cannot represent it faithfully. Edit it on the Eligibility tab.`,
+      );
+      return;
+    }
+
+    const mapped = mapBlockToRuleFields(b.kind, props);
 
     // A block that cannot become a usable rule is reported, not written. A row
     // with no fact resolves nothing and fails every claim silently.
@@ -237,23 +250,6 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
       builder_props: { block_id: b.id, kind: b.kind, ...props },
     };
 
-    // A block that Import brought in from an existing rule keeps that rule's
-    // identity. Giving it a fresh BLD_ code would insert a second rule for the
-    // same condition, leaving the original — governed and approved — alongside
-    // an ungoverned copy. The original row is updated instead.
-    if (props._origin === 'LEGACY' && props._source_id) {
-      eligUpdates.push({
-        id: String(props._source_id),
-        ruleCode: String(props.rule_code ?? label),
-        patch: {
-          fact_key: mapped.fact_key,
-          rule_definition: condition,
-          sort_order: idx + 1,
-        },
-      });
-      return;
-    }
-
     eligRows.push({
       product_version_id: versionId,
       rule_code: buildEligRuleCode(b.kind, idx + 1),
@@ -268,20 +264,6 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
       entered_by: userCode,
     });
   });
-
-  // Update the rules that came from elsewhere, one row at a time so a single
-  // failure names the rule it belongs to.
-  let eligUpdated = 0;
-  for (const u of eligUpdates) {
-    const { error } = await db.from('bn_eligibility_rule')
-      .update({ ...u.patch, modified_by: userCode })
-      .eq('id', u.id);
-    if (error) {
-      warnings.push(`${u.ruleCode} could not be updated: ${error.message}`);
-    } else {
-      eligUpdated++;
-    }
-  }
 
   // A rule that was imported and then removed from the canvas is deliberately
   // left in place. The Builder must not delete a rule created and governed
@@ -438,26 +420,58 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
       limits.cap_type = cap.props.cap_type ?? 'WEEKLY';
     }
 
-    // The calculation's shape, in the same style the Calculation tab writes.
+    // The arithmetic, read left to right in canvas order — the same reading the
+    // preview panel shows. Taking only the first Constant (as this did before)
+    // silently dropped the variable and the operator, so "paid_weeks + 13" was
+    // stored as a fixed amount of 13.
+    const expressionTokens: string[] = [];
+    for (const b of calcBlocks) {
+      if (b.kind === 'formula.variable' && b.props?.variable_key) {
+        expressionTokens.push(String(b.props.variable_key));
+      } else if (b.kind === 'formula.constant' && b.props?.value !== undefined) {
+        expressionTokens.push(String(Number(b.props.value)));
+      } else if (b.kind === 'formula.operator') {
+        expressionTokens.push(String(b.props?.operator ?? '+'));
+      }
+    }
+    const expression = expressionTokens.join(' ');
+
     const definition: Record<string, unknown> = {};
-    let calcType = 'FORMULA';
-    if (share?.props?.percentage) {
+    let calcType: string;
+    if (Array.isArray(tier?.props?.tiers) && tier!.props.tiers.length) {
+      calcType = 'TIERED';
+      definition.tiers = tier!.props.tiers;
+      if (expression) definition.expression = expression;
+    } else if (share?.props?.percentage) {
       calcType = 'PERCENTAGE';
       definition.rate = Number(share.props.percentage);
       if (share.props.applies_to) definition.applies_to = share.props.applies_to;
-    } else if (Array.isArray(tier?.props?.tiers) && tier!.props.tiers.length) {
-      calcType = 'TIERED';
-      definition.tiers = tier!.props.tiers;
+      if (expression) definition.expression = expression;
+    } else if (expressionTokens.length > 1) {
+      // More than one token means real arithmetic, not a fixed amount.
+      calcType = 'FORMULA';
+      definition.expression = expression;
+    } else if (variables.length === 1 && expressionTokens.length === 1) {
+      calcType = 'FORMULA';
+      definition.expression = expression;
     } else if (constant?.props?.value !== undefined) {
       calcType = 'FIXED';
       definition.value = Number(constant.props.value);
+    } else {
+      calcType = 'FORMULA';
     }
     definition.builder_blocks = calcBlocks.map(b => ({ id: b.id, kind: b.kind, props: b.props ?? {} }));
 
-    // A calculation with no variable and no shape cannot produce an amount.
-    if (!variables.length && calcType === 'FORMULA') {
+    // A calculation with nothing to compute cannot produce an amount. Caps and
+    // floors alone are not a calculation — they only bound one.
+    if (!expressionTokens.length && calcType !== 'TIERED' && calcType !== 'PERCENTAGE') {
       skipped.push(
-        'Calculation: not applied — add at least one Variable block, or a Share %, Tier or Constant block, so an amount can be produced.',
+        'Calculation: not applied — add a Variable, Constant, Share % or Tier block, so an amount can be produced. Cap, Minimum and Maximum only limit a calculation, they do not make one.',
+      );
+    } else if (expressionTokens.length > 1 && expressionTokens.length % 2 === 0) {
+      // e.g. "paid_weeks +" — an operator with nothing after it.
+      skipped.push(
+        `Calculation: not applied — the expression is incomplete ("${expression}"). Every operator needs a value on both sides.`,
       );
     } else {
       const { error } = await db.from('bn_calculation_rule').insert([{
@@ -467,7 +481,11 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
         calc_type: calcType,
         formula_definition: definition,
         variables,
-        limits: Object.keys(limits).length ? limits : null,
+        // limits is NOT NULL on this table — every one of the 25 existing rows
+        // has a value. An empty object means "no caps or floors", which is a
+        // different statement from "unknown", and null was rejected outright:
+        //   null value in column "limits" ... violates not-null constraint
+        limits,
         rounding_rule: 'ROUND_HALF_UP',
         sort_order: 1,
         is_active: true,
@@ -608,7 +626,7 @@ export async function syncCanvasToNormalized(versionId: string, canvas: BuilderC
 
   return {
     // Rules written by the builder plus existing rules updated in place.
-    eligibilityRules: eligRows.length + eligUpdated,
+    eligibilityRules: eligRows.length,
     documentRequirements: docRows.length,
     commMappings: commRows.length,
     calculationRules: calcRules,
