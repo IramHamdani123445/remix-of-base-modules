@@ -168,6 +168,12 @@ Deno.serve(async (req) => {
       return json({ ok: false, errorCode: "no_provider_message", lastEvent: null });
     }
 
+    // Voice outcomes arrive asynchronously through the governed Twilio call
+    // status callback; there is no read-only message probe for a call.
+    if (row.channel === "voice") {
+      return json({ ok: false, errorCode: "probe_not_supported_for_voice", lastEvent: null });
+    }
+
     const purpose = row.channel === "sms" || row.channel === "whatsapp"
       ? "account_sid"
       : "api_key";
