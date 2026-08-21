@@ -192,10 +192,12 @@ describe('AW360 B2-c.2 · getAwardProductDeep — primary-source semantics', () 
     expect(recorder.queries.map((q) => q.table)).toEqual(['bn_award', 'bn_product']);
   });
 
-  it('scenario `product-deep-identity-mapping` maps benefit_code / benefit_name / scheme_id / branch_id (never product_code)', async () => {
+  it('scenario `product-deep-identity-mapping` maps benefit_code / benefit_name (never product_code); resolves scheme_id/branch_id to names (BUG-011)', async () => {
     setResponses({
       bn_award: { ...AWARD_ROW, bn_claim_id: null },
       bn_product: PRODUCT_ROW,
+      bn_scheme: { scheme_name: 'Short-Term Benefits' },
+      bn_branch: { branch_name: 'Main Branch' },
     });
     const v = await recorder.runAs('getAwardProductDeep', 'product-deep-identity-mapping', () =>
       getAwardProductDeep(A_ID, FULL_ACCESS),
@@ -204,8 +206,8 @@ describe('AW360 B2-c.2 · getAwardProductDeep — primary-source semantics', () 
     expect(v!.identity.productCode).toBe('RET');
     expect(v!.identity.productName).toBe('Retirement');
     expect(v!.identity.benefitCode).toBe('RET');
-    expect(v!.identity.scheme).toBe('S-1');
-    expect(v!.identity.branch).toBe('B-1');
+    expect(v!.identity.scheme).toBe('Short-Term Benefits');
+    expect(v!.identity.branch).toBe('Main Branch');
     const pq = recorder.queries.find((q) => q.table === 'bn_product')!;
     expect(pq.selectedColumns).not.toContain('product_code');
     expect(pq.selectedColumns).not.toContain('product_name');
@@ -678,7 +680,7 @@ describe('AW360 B2-c.2 · getAwardProductDeep — scope / contract guards (negat
 // B2-c.2 — Promotion + suite reconciliation.
 // ═════════════════════════════════════════════════════════════════════════
 describe('AW360 B2-c.2 · Product Deep promotion + suite reconciliation', () => {
-  it('manifest promotes getAwardProductDeep (no pendingExecution) with 8 expected tables', async () => {
+  it('manifest promotes getAwardProductDeep (no pendingExecution) with 10 expected tables', async () => {
     const { AWARD360_LOADER_MANIFEST } = await import(
       '@/services/bn/awards/award360LoaderManifest'
     );
@@ -688,12 +690,14 @@ describe('AW360 B2-c.2 · Product Deep promotion + suite reconciliation', () => 
       [
         'bn_approval_policy',
         'bn_award',
+        'bn_branch',
         'bn_claim',
         'bn_comm_mapping',
         'bn_eligibility_rule',
         'bn_product',
         'bn_product_formula_binding',
         'bn_product_version',
+        'bn_scheme',
       ].sort(),
     );
     expect([...(entry.scenarioIds ?? [])].length).toBe(22);
@@ -728,7 +732,7 @@ describe('AW360 B2-c.2 · Product Deep promotion + suite reconciliation', () => 
     });
   });
 
-  it('observed table union for getAwardProductDeep equals all 8 expected tables', () => {
+  it('observed table union for getAwardProductDeep equals all 10 expected tables', () => {
     const observed = new Set<string>();
     for (const e of capturedExecutions) {
       for (const t of e.tables) observed.add(t);
@@ -737,12 +741,14 @@ describe('AW360 B2-c.2 · Product Deep promotion + suite reconciliation', () => 
       [
         'bn_approval_policy',
         'bn_award',
+        'bn_branch',
         'bn_claim',
         'bn_comm_mapping',
         'bn_eligibility_rule',
         'bn_product',
         'bn_product_formula_binding',
         'bn_product_version',
+        'bn_scheme',
       ].sort(),
     );
   });

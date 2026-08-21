@@ -11,11 +11,11 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Trash2, Edit, Copy, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useBnDocumentRules, useUpsertBnDocumentRule, useDeleteBnDocumentRule } from '@/hooks/bn/useBnConfig';
+import { useBnDocumentRules, useUpsertBnDocumentRule, useDeleteBnDocumentRule, useBnDocumentProfiles } from '@/hooks/bn/useBnConfig';
 import { useBnProductVersions } from '@/hooks/bn/useBnProduct';
 import { copyDocumentRequirements } from '@/services/bn/configService';
 import { useQueryClient } from '@tanstack/react-query';
-import type { BnDocumentRule } from '@/types/bn';
+import type { BnDocumentRule, BnDocumentProfile } from '@/types/bn';
 import { ReadOnlyVersionBanner } from './ReadOnlyVersionBanner';
 
 interface Props { productId: string | undefined; versionId?: string | undefined; isReadOnly?: boolean; versionStatus?: string | null; }
@@ -32,6 +32,7 @@ export function DocumentRulesTab({ productId, versionId, isReadOnly, versionStat
   const qc = useQueryClient();
   const { data: rules = [], isLoading } = useBnDocumentRules(productId, versionId);
   const { data: versions = [] } = useBnProductVersions(productId);
+  const { data: documentProfiles = [] } = useBnDocumentProfiles();
   const upsertMutation = useUpsertBnDocumentRule();
   const deleteMutation = useDeleteBnDocumentRule();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -214,7 +215,27 @@ export function DocumentRulesTab({ productId, versionId, isReadOnly, versionStat
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Document Type Code *</Label>
-              <Input value={editing.document_type_code || ''} onChange={e => update('document_type_code', e.target.value.toUpperCase())} />
+              <Select
+                value={editing.document_type_code || ''}
+                onValueChange={(v) => {
+                  const profile = documentProfiles.find((p: BnDocumentProfile) => p.profile_code === v);
+                  setEditing(prev => ({
+                    ...prev,
+                    document_type_code: v,
+                    document_name: prev.document_name || profile?.profile_name || prev.document_name,
+                  }));
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select from Document Library" /></SelectTrigger>
+                <SelectContent>
+                  {editing.document_type_code && !documentProfiles.some((p: BnDocumentProfile) => p.profile_code === editing.document_type_code) && (
+                    <SelectItem value={editing.document_type_code}>{editing.document_type_code} (not in Document Library)</SelectItem>
+                  )}
+                  {documentProfiles.map((p: BnDocumentProfile) => (
+                    <SelectItem key={p.profile_code} value={p.profile_code}>{p.profile_code} — {p.profile_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Document Name *</Label>

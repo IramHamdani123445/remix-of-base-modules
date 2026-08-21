@@ -379,7 +379,7 @@ export default function ProductEditor() {
         <ConflictDetectionPanel versionId={selectedVersionId} compact />
       )}
 
-      {!isNew && <BnPlatformConsumptionPanel />}
+      {/* Commented per manager request — display-only panel, not consumed by any claim/product-creation logic. {!isNew && <BnPlatformConsumptionPanel />} */}
 
 
       {/* Tabs */}

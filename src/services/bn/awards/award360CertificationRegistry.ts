@@ -194,7 +194,7 @@ export const AWARD360_CERTIFICATION_REGISTRY: Readonly<Record<string, Award360Lo
       { id: 'product-deep-award-query-error', description: 'bn_award primary lookup fails — loader rejects; no downstream queries.' },
       { id: 'product-deep-product-not-found', description: 'bn_product row absent — MISSING_PRODUCT warning; loader returns null.' },
       { id: 'product-deep-product-query-error', description: 'bn_product primary lookup fails — loader rejects after bn_award succeeds.' },
-      { id: 'product-deep-identity-mapping', description: 'Identity maps benefit_code / benefit_name / scheme_id / branch_id (never legacy product_code).' },
+      { id: 'product-deep-identity-mapping', description: 'Identity maps benefit_code / benefit_name (never legacy product_code); scheme_id/branch_id resolved to bn_scheme.scheme_name / bn_branch.branch_name (BUG-011).' },
       { id: 'product-deep-no-linked-claim', description: 'Award without bn_claim_id — skips bn_claim / bn_product_version; readiness NOT_APPLICABLE.' },
       { id: 'product-deep-claim-without-version', description: 'bn_claim carries no product_version_id — bn_product_version skipped; MISSING_VERSION.' },
       { id: 'product-deep-version-select-contract', description: 'bn_product_version .select() exactly equals the 19 readiness fields.' },
