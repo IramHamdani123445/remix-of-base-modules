@@ -47,24 +47,47 @@ function gather(actionUrl: string, digits: number, text: string): Response {
   );
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
+/**
+ * Resolve the Twilio auth token used for signature verification.
+ *
+ * The governed credential RPC is preferred, but it must never be able to hang
+ * the call: Twilio waits for TwiML and the caller only hears ringing. The
+ * lookup is time-boxed and falls back to the edge secret so inbound Voice keeps
+ * answering even when the database is unreachable.
+ */
 async function resolveAuthToken(client: Rpc, providerAccountId: string): Promise<string> {
-  if (!providerAccountId) return "";
+  const envToken = (Deno.env.get("OMNI_COMMS_TWILIO_AUTH_TOKEN") ?? "").trim();
+  if (!providerAccountId) return envToken;
   try {
-    const { data, error } = await client.rpc(
-      "omni_comms_priv_resolve_provider_credential_source",
-      { p_provider_account_id: providerAccountId, p_purpose: "auth_token" },
+    const { data, error } = await withTimeout(
+      client.rpc(
+        "omni_comms_priv_resolve_provider_credential_source",
+        { p_provider_account_id: providerAccountId, p_purpose: "auth_token" },
+      ),
+      3000,
+      { data: null, error: { message: "timeout" } },
     );
-    if (error) return "";
+    if (error) return envToken;
     const source = (data ?? {}) as Record<string, unknown>;
-    if (source.found === true && typeof source.value === "string") return source.value.trim();
-    if (source.storageMode === "edge_env" && typeof source.envVar === "string" && source.envVar) {
-      return (Deno.env.get(source.envVar) ?? "").trim();
+    if (source.found === true && typeof source.value === "string" && source.value.trim()) {
+      return source.value.trim();
     }
-    return "";
+    if (source.storageMode === "edge_env" && typeof source.envVar === "string" && source.envVar) {
+      return (Deno.env.get(source.envVar) ?? "").trim() || envToken;
+    }
+    return envToken;
   } catch {
-    return "";
+    return envToken;
   }
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
