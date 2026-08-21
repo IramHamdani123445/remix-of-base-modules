@@ -72,9 +72,8 @@ describe('refreshCoordinator', () => {
     const p2 = runRefreshOnce();
     const p3 = runRefreshOnce();
 
-    // performRefresh first awaits the non-destructive current-token check.
-    await Promise.resolve();
-    await Promise.resolve();
+    // performRefresh first awaits the bounded non-destructive session check.
+    await vi.waitUntil(() => refreshSessionMock.mock.calls.length === 1);
     expect(refreshSessionMock).toHaveBeenCalledTimes(1);
     resolveInner({ data: { session: okSession() }, error: null });
 
