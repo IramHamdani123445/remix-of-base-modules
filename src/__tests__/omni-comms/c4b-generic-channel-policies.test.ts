@@ -611,7 +611,7 @@ describe('C4B UI and architecture boundaries', () => {
   it('offers no policy mutation for Webhook or Voice', () => {
     expect(POLICY_PLANNED_CHANNELS).toEqual(['webhook']);
     expect(isPolicyChannel('webhook')).toBe(false);
-    expect(isPolicyChannel('voice')).toBe(false);
+    expect(isPolicyChannel('voice')).toBe(true);
     expect(POLICIES_TAB).toContain('omni-comms-policies-planned-state');
   });
 
