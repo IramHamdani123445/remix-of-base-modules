@@ -407,6 +407,67 @@ Deno.serve(async (req) => {
     return await finish(printOutcome);
   }
 
+  // ---- Voice (Twilio Programmable Voice) ---------------------------------
+  if (channel === "voice") {
+    const authTokenRef =
+      typeof plan.auth_token_secret_ref === "string" ? plan.auth_token_secret_ref : "";
+    const callerNumber = typeof plan.sms_sender === "string" ? plan.sms_sender : "";
+
+    if (
+      !secretReferenceAcceptable(channel, secretRef)
+      || !secretReferenceAcceptable(channel, authTokenRef)
+    ) {
+      const delivery = await complete("failed", "configuration_invalid", {
+        errorCode: "secret_reference_invalid",
+        errorDetail: "The configured credential reference name is not permitted.",
+      });
+      return json({ error: "OC409", detail: "secret_reference_invalid", delivery }, 409);
+    }
+
+    const resolvedVoice = await resolveTwilioCredentials({
+      accountSidRef: secretRef,
+      authTokenRef,
+      storageMode,
+      secretResolver,
+    });
+    if (!resolvedVoice.ok) {
+      const delivery = await complete("failed", "credential_missing", {
+        errorCode: resolvedVoice.errorCode,
+        errorDetail: resolvedVoice.detail,
+      });
+      return json({ error: "OC409", detail: resolvedVoice.errorCode, delivery }, 409);
+    }
+
+    if (!callerNumber) {
+      const delivery = await complete("failed", "configuration_invalid", {
+        errorCode: "voice_caller_number_missing",
+        errorDetail: "No outbound caller number is configured for the Voice channel.",
+      });
+      return json({ error: "OC409", detail: "voice_caller_number_missing", delivery }, 409);
+    }
+
+    // The keypad question is optional: it is present only when the operator
+    // supplied one, and the answer is recorded through the governed IVR
+    // endpoint, never through the status callback.
+    const gatherPrompt =
+      typeof plan.provider_subject === "string" && plan.provider_subject.trim() !== ""
+        ? plan.provider_subject.trim()
+        : null;
+
+    const voiceOutcome = await sendTwilioVoice({
+      credentials: resolvedVoice.credentials,
+      from: callerNumber,
+      to: target,
+      script: providerText,
+      gatherPrompt,
+      gatherDigits: gatherPrompt ? "1234567890" : null,
+      statusCallbackUrl: `${SUPABASE_URL}/functions/v1/omni-comms-webhook-twilio-voice-status`,
+      ivrActionUrl: `${SUPABASE_URL}/functions/v1/omni-comms-webhook-twilio-voice-ivr`,
+      idempotencyKey: providerIdempotencyKey,
+    });
+    return await finish(voiceOutcome);
+  }
+
   // ---- SMS / WhatsApp (Twilio) ------------------------------------------
 
   if (channel === "sms" || channel === "whatsapp") {
