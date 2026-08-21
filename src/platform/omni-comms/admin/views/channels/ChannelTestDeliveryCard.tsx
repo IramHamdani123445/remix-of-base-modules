@@ -420,6 +420,22 @@ export const ChannelTestDeliveryCard: React.FC<{
       onChanged?.();
     } catch (e) {
       const detail = e instanceof OmniCommsRpcError ? e.detail ?? '' : '';
+      if (detail === 'idempotency_payload_mismatch'
+        || detail === 'test_delivery_identity_immutable') {
+        // The stale reference can never succeed again, so a fresh one is issued
+        // immediately and the operator simply sends again.
+        const nextKey = newDeliveryIdempotencyKey();
+        lastFingerprint.current = `${deliveryFingerprint}|${nextKey}`;
+        setIdempotencyKey(nextKey);
+        setLastDelivery(null);
+        setProviderStatus(null);
+        toast.error(
+          'That test reference was already used. A new technical test message has '
+          + 'been started — press Send provider test message again.',
+        );
+        await refresh();
+        return;
+      }
       const friendly = e instanceof OmniCommsRpcError && e.code === 'OC429'
         ? TEST_DELIVERY_MESSAGES[detail] ?? TEST_DELIVERY_MESSAGES.delivery_rate_limited
         : TEST_DELIVERY_MESSAGES[detail];
@@ -429,6 +445,7 @@ export const ChannelTestDeliveryCard: React.FC<{
         toastError(e, 'Test delivery could not be completed');
       }
       await refresh();
+
 
     } finally {
       setSending(false);
