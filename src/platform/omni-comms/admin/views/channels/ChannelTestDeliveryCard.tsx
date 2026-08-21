@@ -15,7 +15,7 @@
  * Every one of those conditions is re-checked in the database; this screen only
  * mirrors them so the operator can see why the action is unavailable.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, MailCheck, MessageSquareText, RefreshCw, Send } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -293,6 +293,25 @@ export const ChannelTestDeliveryCard: React.FC<{
   const ChannelIcon = isMessaging ? MessageSquareText : MailCheck;
   const recipientPlural = isMessaging ? 'recipients' : 'addresses';
 
+  /**
+   * The delivery key is immutable for a given (preflight run, target, content)
+   * triple: retrying that exact test safely replays instead of sending twice.
+   * As soon as any of those change — a fresh preflight, a new destination, or
+   * edited technical content — a new key is issued automatically so the
+   * operator is never blocked by a stale test reference.
+   */
+  const deliveryFingerprint = `${run?.id ?? ''}|${target}|${subject}|${bodyText}`;
+  const lastFingerprint = useRef(deliveryFingerprint);
+  useEffect(() => {
+    if (lastFingerprint.current === deliveryFingerprint) return;
+    lastFingerprint.current = deliveryFingerprint;
+    setIdempotencyKey(newDeliveryIdempotencyKey());
+    setLastDelivery(null);
+    setProviderStatus(null);
+  }, [deliveryFingerprint]);
+
+
+
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -401,6 +420,22 @@ export const ChannelTestDeliveryCard: React.FC<{
       onChanged?.();
     } catch (e) {
       const detail = e instanceof OmniCommsRpcError ? e.detail ?? '' : '';
+      if (detail === 'idempotency_payload_mismatch'
+        || detail === 'test_delivery_identity_immutable') {
+        // The stale reference can never succeed again, so a fresh one is issued
+        // immediately and the operator simply sends again.
+        const nextKey = newDeliveryIdempotencyKey();
+        lastFingerprint.current = deliveryFingerprint;
+        setIdempotencyKey(nextKey);
+        setLastDelivery(null);
+        setProviderStatus(null);
+        toast.error(
+          'That test reference was already used. A new technical test message has '
+          + 'been started — press Send provider test message again.',
+        );
+        await refresh();
+        return;
+      }
       const friendly = e instanceof OmniCommsRpcError && e.code === 'OC429'
         ? TEST_DELIVERY_MESSAGES[detail] ?? TEST_DELIVERY_MESSAGES.delivery_rate_limited
         : TEST_DELIVERY_MESSAGES[detail];
@@ -411,10 +446,14 @@ export const ChannelTestDeliveryCard: React.FC<{
       }
       await refresh();
 
+
     } finally {
       setSending(false);
     }
-  }, [transport, run, target, idempotencyKey, subject, bodyText, refresh, onChanged]);
+  }, [
+    transport, run, target, idempotencyKey, subject, bodyText, deliveryFingerprint,
+    refresh, onChanged,
+  ]);
 
   const onCheckProviderStatus = useCallback(async () => {
     if (!current?.id) return;
