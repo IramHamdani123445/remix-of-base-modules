@@ -15,7 +15,7 @@
  * Every one of those conditions is re-checked in the database; this screen only
  * mirrors them so the operator can see why the action is unavailable.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, MailCheck, MessageSquareText, RefreshCw, Send } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
