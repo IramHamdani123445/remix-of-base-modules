@@ -9,9 +9,27 @@ Work proceeds phase by phase, stopping for your confirmation after each phase.
 Live data checked now (Test backend):
 
 - `bn_product_version.status` distinct values: `ACTIVE` (26), `DRAFT` (22), `ARCHIVED` (6), `PENDING_APPROVAL` (1). No lowercase or `PENDING_REVIEW`/`PUBLISHED` rows exist yet, so the Phase 1 migration is a constraint-and-code cleanup rather than a data rescue — but the mapping step stays in, because the lowercase writers are still live code.
-- `bn_approval_policy.approval_role` values in use: `BN_DIRECTOR` (stage `CONFIG_APPROVE`, 27 rows), `BN_SUPERVISOR` (stage `CONFIG_REVIEW`, 27), `ADMIN` (no stage, 9), and **273 rows with a NULL approval_role** — those levels can never be satisfied by a role check and must be resolved before Phase 4 enforcement.
-- `user_roles.role` holds both enum-style names (`Admin`, `Supervisor`, `Clerk`, …) and free-text BN roles (`BN_DIRECTOR`, `BN_SUPERVISOR`, `BN_CONFIG_ADMIN`, `BN_PRODUCT_APPROVER`, `BN_RULE_LEGAL_APPROVER`, …). Note `ADMIN` in the policy table does not match `Admin` in `user_roles` — a case/spelling mismatch that would silently deny.
-- Roughly 70 source files reference `bn_product_version`; the write-capable ones are enumerated in Phase 9 before RLS is switched on.
+- **`approval_role` re-run, scoped and broken down by `policy_area`.** The earlier "273 NULLs" figure was an unscoped count and it misled us both. Actual state:
+
+| policy_area | enabled | rows | NULL role | versions |
+| --- | --- | --- | --- | --- |
+| CONFIG_PUBLISH | yes | 54 | **0** | 27 |
+| ELIGIBILITY | yes | 12 | 8 | 12 |
+| CALCULATION | yes | 9 | 8 | 9 |
+| PAYMENT | yes | 8 | 8 | 8 |
+| AWARD | yes | 8 | 8 | 8 |
+| COMMUNICATION | yes | 4 | 0 | 4 |
+| DOCUMENTS | yes | 2 | 2 | 2 |
+| AWARD / CALCULATION / AMENDMENTS / COMMUNICATION / PARTICIPANTS / PAYMENT / WORKFLOW | no | 27 each | 27 each | 27 each |
+| DOCUMENTS / ELIGIBILITY | no | 25 each | 25 each | 25 each |
+
+  So: **CONFIG_PUBLISH — the only area Phase 4/5 enforces — has zero NULL roles.** All 54 rows are enabled and form a clean two-level chain across 27 versions: level 1 `BN_SUPERVISOR` (27), level 2 `BN_DIRECTOR` (27). The NULLs are 261 rows on *disabled* policy areas plus 34 enabled rows in non-publish areas (ELIGIBILITY, CALCULATION, PAYMENT, AWARD, DOCUMENTS). None of them gate publishing today.
+- Both chain roles are actually granted: `user_roles` holds one `BN_SUPERVISOR` and one `BN_DIRECTOR`, so the configured chain is satisfiable end to end. `ADMIN` no longer appears as an `approval_role` on any CONFIG_PUBLISH row, so the earlier `ADMIN` vs `Admin` case mismatch is not a publish blocker — it remains a data-hygiene item for the other areas.
+- `bn_approval_policy` already has `non_waivable`, `self_approval_allowed`, `requires_reason_code`, `requires_justification`, `requires_document`, `level` and `stage_code` — Phase 4 and ADMIN_OVERRIDE need no new columns.
+- `bn_version_approval` real columns: `product_version_id` (NOT NULL), `action` (NOT NULL), `from_status`, `to_status` (NOT NULL), `comments`, `performed_by` (NOT NULL), `level`, `stage_code`, `approver_role`, `decision`, `reason_code`, `rule_diff_snapshot`.
+- `user_roles.role` holds both enum-style names (`Admin`, `Supervisor`, `Clerk`, …) and free-text BN roles (`BN_DIRECTOR`, `BN_SUPERVISOR`, `BN_CONFIG_ADMIN`, `BN_PRODUCT_APPROVER`, …).
+- Roughly 70 source files reference `bn_product_version`; the write-capable ones are enumerated mechanically in Phase 9.
+
 
 ## Phase 1 — One vocabulary
 
@@ -44,22 +62,31 @@ Canonical lifecycle: `DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVE
 
 Writes the `bn_version_approval` row and the status change in one transaction, and snapshots the approver's full name and role title as they were at that moment.
 
-### Second and third writers to the approval ledger (must be closed in Phase 4)
+### Other writers to the approval ledger
 
-You are right that "one entry point" is not currently true. A mechanical scan of write calls finds three writers to `bn_version_approval`, not one:
+- `productApprovalService` — the real writer; re-pointed at the RPC.
+- `governance/approvalRoutingService.ts` — **dead code, delete the file.** Confirmed: nothing under `src/` imports it, and it could not work if it did. Its primary insert writes `entity_type`, `entity_id`, `approval_role`, `reason` and `payload`, none of which exist on `bn_version_approval` (the real columns are `approver_role` and `reason_code`), so it always fails; its fallback omits `product_version_id` and `to_status`, both NOT NULL, so that fails too and rethrows. No RPC sibling for its config-entity path — that path has never executed, so there is no behaviour to preserve.
+- `configService.createVersionApproval` — a thin generic `insert(approval)` pass-through with no validation. Removed or re-pointed at the RPC.
 
-- `productApprovalService` — the known one.
-- `governance/approvalRoutingService.ts` (`submitForApproval`) — maps a config entity's governance class to an approval role and **inserts a `SUBMIT` row directly**, with `performed_by` taken from its caller, `from_status: 'DRAFT'`, `to_status: 'IN_REVIEW'` (a sixth status vocabulary), plus a bare-insert fallback "tolerating column drift" that writes an approval row with no version, no action context and no role. It routes generic BN config entities (not only product versions) and sets `product_version_id` when one is supplied.
-  **Verdict: it must route through the new RPC** for anything carrying a `product_version_id` — same derived level, same role check, same `auth.uid()` actor, and `IN_REVIEW` folded into `PENDING_APPROVAL`. Its non-version config-entity path can keep a ledger row, but only via the RPC (or an RPC sibling) so `performed_by` is never client-supplied, and the silent bare-insert fallback is deleted — a fallback that drops the role and the target is worse than a failure.
-- `configService.createVersionApproval` — a thin generic `insert(approval)` pass-through with no validation at all. It is a bypass by construction and is removed or re-pointed at the RPC in Phase 4.
+### ADMIN_OVERRIDE — one explicit, audited admin path
 
+`ruleGovernanceService.userHasRole` returns true immediately when `isAdmin`, so catalogue rule transitions already have a silent admin bypass, while Phase 5 as written would remove every admin path for products. Neither a silent bypass nor a deadlock is acceptable, so the RPC gains a single named action:
+
+- `action = 'ADMIN_OVERRIDE'`, allowed only for a defined admin role (`BN_CONFIG_ADMIN`, plus platform `Admin` — the exact list is fixed in Phase 5 and stored, not hardcoded in React).
+- Writes a normal `bn_version_approval` row with `action='ADMIN_OVERRIDE'`, the derived `level`, `stage_code` and the acting role in `approver_role`.
+- Always requires a reason code and a justification, regardless of the level's `requires_*` flags.
+- **Refused when the level's `non_waivable` flag is set** — no override, no exception.
+- Rendered in the approval history as an override (distinct styling and label), never as a normal approval.
+- The implicit `isAdmin` shortcut in `ruleGovernanceService.userHasRole` is removed at the same time, so admin power exists only through this audited action.
 
 ## Phase 5 — Reconcile the role namespaces
 
-- Produce the full match/mismatch report between `user_roles.role` and `bn_approval_policy.approval_role` (already partly visible: `ADMIN` vs `Admin`, plus 273 NULL roles).
+- Produce the full match/mismatch report between `user_roles.role` and `bn_approval_policy.approval_role`, per policy area.
+- **Resolve the NULL `approval_role` rows before enforcement.** Order: (a) for `CONFIG_PUBLISH` — already zero NULLs, so this is a re-verify at migration time; (b) for the other enabled areas (34 rows across ELIGIBILITY, CALCULATION, PAYMENT, AWARD, DOCUMENTS) either backfill the intended role or set `is_enabled = false`, decided with you row by row; (c) for the 261 disabled rows, backfill or leave disabled. Then `ALTER TABLE bn_approval_policy ALTER COLUMN approval_role SET NOT NULL` with a partial guard for enabled rows if any disabled NULLs are kept. An FK on a nullable column still permits NULL, so without this step any level with a NULL role is unsatisfiable and every version behind it is frozen.
 - Add a text-based `has_bn_role(_user_id uuid, _role text)` alongside the enum `has_role`, so both namespaces are checkable.
 - Add an FK or validating trigger so `approval_role` must be a real role; make the Approval Policies editor a dropdown.
-- Delete the hardcoded `['BN_DIRECTOR','BN_CONFIG_ADMIN','admin']` publish check — publish rights come from a `CONFIG_PUBLISH` policy row like every other level.
+- Delete the hardcoded `['BN_DIRECTOR','BN_CONFIG_ADMIN','admin']` publish check — publish rights come from a `CONFIG_PUBLISH` policy row like every other level, with ADMIN_OVERRIDE as the only escape hatch.
+
 
 ## Phase 6 — Publishing
 
@@ -83,11 +110,12 @@ The earlier writer list was name-matched and wrong. Regenerated mechanically (sc
 | Table | Actual writers |
 | --- | --- |
 | `bn_product_version` | `productApprovalService`, `rulesAdminService`, `productService`, `canvasSyncService`, `components/bn/config/CalculationBuilder.tsx`, `components/bn/config-builder/useBuilderCanvas.ts` |
-| `bn_version_approval` | `productApprovalService`, `configService`, `governance/approvalRoutingService` |
+| `bn_version_approval` | `productApprovalService`, `configService` (`approvalRoutingService` is dead code and is deleted in Phase 4) |
 
 `CalculationBuilder` (writes calculation config onto the version) and `useBuilderCanvas` (writes `builder_canvas`) are legitimate non-status writers and must keep working. `postApprovalOrchestrator`, `productAcceptanceService`, `approvalConsoleService`, `countryPackageService` and `migrateLegacyPolicies` only read these tables — dropped from the list.
 
-Enforcement mechanism, corrected: **RLS filters rows, not columns**, so an RLS policy cannot deny an UPDATE of `status` alone. This matters because `useUpdateBnProductVersion` (`n()` in `useBnProduct.ts`) is shared by `VersionHistoryTab` (writes status — must be blocked), `ScreenTemplateTab` and `WorkflowTab` (write config fields — must keep working). A blanket UPDATE deny breaks the latter two.
+Enforcement mechanism, corrected: **RLS filters rows, not columns**, so an RLS policy cannot deny an UPDATE of `status` alone. This matters because the shared update path is used both to write status (`VersionHistoryTab` — must be blocked) and to write config fields (`ScreenTemplateTab`, `WorkflowTab` — must keep working). A blanket UPDATE deny breaks the latter two. The client-side guard that strips/rejects a `status` key goes in **`productService.updateProductVersion`**, which is where the write actually happens — not in the `useUpdateBnProductVersion` hook, which only forwards a payload.
+
 
 So enforcement uses, in order:
 
