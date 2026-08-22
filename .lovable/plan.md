@@ -44,6 +44,16 @@ Canonical lifecycle: `DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVE
 
 Writes the `bn_version_approval` row and the status change in one transaction, and snapshots the approver's full name and role title as they were at that moment.
 
+### Second and third writers to the approval ledger (must be closed in Phase 4)
+
+You are right that "one entry point" is not currently true. A mechanical scan of write calls finds three writers to `bn_version_approval`, not one:
+
+- `productApprovalService` — the known one.
+- `governance/approvalRoutingService.ts` (`submitForApproval`) — maps a config entity's governance class to an approval role and **inserts a `SUBMIT` row directly**, with `performed_by` taken from its caller, `from_status: 'DRAFT'`, `to_status: 'IN_REVIEW'` (a sixth status vocabulary), plus a bare-insert fallback "tolerating column drift" that writes an approval row with no version, no action context and no role. It routes generic BN config entities (not only product versions) and sets `product_version_id` when one is supplied.
+  **Verdict: it must route through the new RPC** for anything carrying a `product_version_id` — same derived level, same role check, same `auth.uid()` actor, and `IN_REVIEW` folded into `PENDING_APPROVAL`. Its non-version config-entity path can keep a ledger row, but only via the RPC (or an RPC sibling) so `performed_by` is never client-supplied, and the silent bare-insert fallback is deleted — a fallback that drops the role and the target is worse than a failure.
+- `configService.createVersionApproval` — a thin generic `insert(approval)` pass-through with no validation at all. It is a bypass by construction and is removed or re-pointed at the RPC in Phase 4.
+
+
 ## Phase 5 — Reconcile the role namespaces
 
 - Produce the full match/mismatch report between `user_roles.role` and `bn_approval_policy.approval_role` (already partly visible: `ADMIN` vs `Admin`, plus 273 NULL roles).
@@ -68,9 +78,25 @@ Use the existing `stage_code` (`ELIGIBILITY`, `CALCULATION`, `TIMELINE`, `DOCUME
 
 ## Phase 9 — Enforce in the database (last, with prior notice)
 
-Before enabling anything I list every code path that writes `bn_product_version` or `bn_version_approval` directly (candidates already identified: `productApprovalService`, `rulesAdminService`, `productService`, `postApprovalOrchestrator`, `productAcceptanceService`, `canvasSyncService`, `approvalConsoleService`, `countryPackageService`, `migrateLegacyPolicies`, plus the catalogue pages). You confirm, then RLS goes on: status changes only through the Phase 4 RPC, direct status UPDATE denied to app roles.
+The earlier writer list was name-matched and wrong. Regenerated mechanically (scan for `.from('<table>') … .update/.insert/.upsert/.delete`):
 
-Note: this project's standing rule is RLS-off (`docs/ARCHITECTURE-NO-RLS-RULE.md`). Phase 9 is a deliberate, scoped exception for these two governance tables and will be recorded as such.
+| Table | Actual writers |
+| --- | --- |
+| `bn_product_version` | `productApprovalService`, `rulesAdminService`, `productService`, `canvasSyncService`, `components/bn/config/CalculationBuilder.tsx`, `components/bn/config-builder/useBuilderCanvas.ts` |
+| `bn_version_approval` | `productApprovalService`, `configService`, `governance/approvalRoutingService` |
+
+`CalculationBuilder` (writes calculation config onto the version) and `useBuilderCanvas` (writes `builder_canvas`) are legitimate non-status writers and must keep working. `postApprovalOrchestrator`, `productAcceptanceService`, `approvalConsoleService`, `countryPackageService` and `migrateLegacyPolicies` only read these tables — dropped from the list.
+
+Enforcement mechanism, corrected: **RLS filters rows, not columns**, so an RLS policy cannot deny an UPDATE of `status` alone. This matters because `useUpdateBnProductVersion` (`n()` in `useBnProduct.ts`) is shared by `VersionHistoryTab` (writes status — must be blocked), `ScreenTemplateTab` and `WorkflowTab` (write config fields — must keep working). A blanket UPDATE deny breaks the latter two.
+
+So enforcement uses, in order:
+
+1. `REVOKE UPDATE (status) ON bn_product_version FROM authenticated, anon;` — column-level, surgical, leaves other columns writable.
+2. A `BEFORE UPDATE` trigger comparing `OLD.status` to `NEW.status` and raising unless the Phase 4 RPC set a transaction-local marker — belt-and-braces, and it also catches writes arriving through any SECURITY DEFINER path that bypasses the grant.
+3. `bn_version_approval`: `REVOKE INSERT/UPDATE/DELETE` from app roles once all three writers route through the RPC; reads stay open.
+
+RLS itself is enabled on both tables only for read scoping, not as the status guard. This project's standing rule is RLS-off (`docs/ARCHITECTURE-NO-RLS-RULE.md`) — the grant/trigger route above stays within that rule, so RLS enablement is optional and I will confirm with you before turning it on rather than assuming the exception.
+
 
 ## Constraints honoured
 
