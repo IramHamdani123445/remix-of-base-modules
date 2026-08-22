@@ -110,11 +110,12 @@ The earlier writer list was name-matched and wrong. Regenerated mechanically (sc
 | Table | Actual writers |
 | --- | --- |
 | `bn_product_version` | `productApprovalService`, `rulesAdminService`, `productService`, `canvasSyncService`, `components/bn/config/CalculationBuilder.tsx`, `components/bn/config-builder/useBuilderCanvas.ts` |
-| `bn_version_approval` | `productApprovalService`, `configService`, `governance/approvalRoutingService` |
+| `bn_version_approval` | `productApprovalService`, `configService` (`approvalRoutingService` is dead code and is deleted in Phase 4) |
 
 `CalculationBuilder` (writes calculation config onto the version) and `useBuilderCanvas` (writes `builder_canvas`) are legitimate non-status writers and must keep working. `postApprovalOrchestrator`, `productAcceptanceService`, `approvalConsoleService`, `countryPackageService` and `migrateLegacyPolicies` only read these tables — dropped from the list.
 
-Enforcement mechanism, corrected: **RLS filters rows, not columns**, so an RLS policy cannot deny an UPDATE of `status` alone. This matters because `useUpdateBnProductVersion` (`n()` in `useBnProduct.ts`) is shared by `VersionHistoryTab` (writes status — must be blocked), `ScreenTemplateTab` and `WorkflowTab` (write config fields — must keep working). A blanket UPDATE deny breaks the latter two.
+Enforcement mechanism, corrected: **RLS filters rows, not columns**, so an RLS policy cannot deny an UPDATE of `status` alone. This matters because the shared update path is used both to write status (`VersionHistoryTab` — must be blocked) and to write config fields (`ScreenTemplateTab`, `WorkflowTab` — must keep working). A blanket UPDATE deny breaks the latter two. The client-side guard that strips/rejects a `status` key goes in **`productService.updateProductVersion`**, which is where the write actually happens — not in the `useUpdateBnProductVersion` hook, which only forwards a payload.
+
 
 So enforcement uses, in order:
 
