@@ -268,7 +268,7 @@ export default function RulesAdministration() {
                                   <ArrowRight className="h-3 w-3 mr-1" /> Publish
                                 </Button>
                               )}
-                              {v.status === 'PUBLISHED' && (
+                              {v.status === 'ACTIVE' && (
                                 <Badge variant="outline" className="text-green-600 border-green-300"><Shield className="h-3 w-3 mr-1" /> Active</Badge>
                               )}
                             </div>
