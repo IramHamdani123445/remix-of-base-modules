@@ -124494,6 +124494,14 @@ export type Database = {
         Args: { p_value: number }
         Returns: string
       }
+      omni_comms_priv_inbound_voice_section: {
+        Args: {
+          p_section: string
+          p_subject_key: string
+          p_subject_kind: string
+        }
+        Returns: string
+      }
       omni_comms_priv_inbound_voice_step: {
         Args: {
           p_call_sid: string
