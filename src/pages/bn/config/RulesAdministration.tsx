@@ -247,7 +247,7 @@ export default function RulesAdministration() {
                                   </Button>
                                 </>
                               )}
-                              {v.status === 'PENDING_REVIEW' && (
+                              {v.status === 'PENDING_APPROVAL' && (
                                 <>
                                   <Button size="sm" variant="outline" className="text-green-600" onClick={(e) => {
                                     e.stopPropagation(); setSelectedVersion(v); setActionType('approve'); setShowActionSheet(true);
