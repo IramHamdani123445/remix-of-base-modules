@@ -143,9 +143,15 @@ export async function runCalculationEngine(input: BnCalcEngineInput): Promise<Bn
     // Persist trace
     await persistTrace(runId, trace);
 
+    // Does this SSN exist, and does it have any contribution history? A flat
+    // amount formula does not touch member data, so without this the engine
+    // reported a confident figure for an SSN that is not in the register at all.
+    const subject = await describeSubject(input.ssn);
+
     const output: BnCalcEngineOutput = {
       runId,
       status: status as any,
+      subject,
       eligibility,
       contributionWindow,
       wageAggregation,
@@ -904,6 +910,29 @@ async function createCalcRun(input: BnCalcEngineInput): Promise<BnCalcRun> {
 async function updateCalcRun(id: string, updates: Partial<BnCalcRun>) {
   const { error } = await db.from('bn_calc_run').update({ ...updates, modified_at: new Date().toISOString() }).eq('id', id);
   if (error) throw error;
+}
+
+/**
+ * Whether the SSN is a known member and has contribution history. Used to
+ * label the figures — the simulator is a test bench, so the amount is still
+ * shown, but it must not look authoritative for someone who does not exist.
+ */
+async function describeSubject(ssn: string): Promise<{ ssn: string; memberFound: boolean; hasContributionHistory: boolean }> {
+  try {
+    const [member, wages] = await Promise.all([
+      db.from('ip_master').select('ssn').eq('ssn', ssn).limit(1),
+      db.from('ip_wages').select('id').eq('ssn', ssn).limit(1),
+    ]);
+    return {
+      ssn,
+      memberFound: Array.isArray(member.data) && member.data.length > 0,
+      hasContributionHistory: Array.isArray(wages.data) && wages.data.length > 0,
+    };
+  } catch {
+    // Unknown rather than false — a failed lookup must not be reported as
+    // "this member does not exist".
+    return { ssn, memberFound: true, hasContributionHistory: true };
+  }
 }
 
 async function persistTrace(runId: string, trace: BnCalcTraceEntry[]) {

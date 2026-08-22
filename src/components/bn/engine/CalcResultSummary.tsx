@@ -11,7 +11,20 @@ interface Props {
 }
 
 export default function CalcResultSummary({ result }: Props) {
-  const { eligibility, contributionWindow, wageAggregation, formulaResult, beneficiarySplits, paymentSchedule, validation } = result;
+  const { eligibility, contributionWindow, wageAggregation, formulaResult, beneficiarySplits, paymentSchedule, validation, subject } = result;
+
+  /**
+   * The simulator is a test bench, so the amount is always shown — hiding it
+   * would defeat the purpose of asking "what would this pay?". But it must not
+   * look authoritative when its basis is missing: an SSN with no member record
+   * still produced a confident figure, because a flat-amount formula never
+   * touches member data.
+   */
+  const memberMissing = subject?.memberFound === false;
+  const noHistory = subject?.hasContributionHistory === false;
+  const indicative = memberMissing || noHistory || eligibility?.passed === false;
+  const failedCount = (eligibility?.rules ?? []).filter((r: any) => !r.passed).length;
+  const totalCount = (eligibility?.rules ?? []).length;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -90,13 +103,46 @@ export default function CalcResultSummary({ result }: Props) {
         </CardContent>
       </Card>
 
+      {/* Why the figures below may not mean what they appear to mean. */}
+      {(memberMissing || noHistory) && (
+        <div className="md:col-span-2 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900/60 dark:bg-amber-950/30">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-medium">
+              {memberMissing
+                ? `No member found for SSN ${subject?.ssn}`
+                : `No contribution history for SSN ${subject?.ssn}`}
+            </p>
+            <p className="text-muted-foreground">
+              {memberMissing
+                ? 'This SSN is not in the member register, so the figures below are illustrative only — they are not this person’s entitlement. Check the number, or register the member first.'
+                : 'Wage and contribution data is needed for a real calculation. The figures below come from the formula alone.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Formula Result */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-emerald-600" />
             Calculated Amounts
+            {indicative && (
+              <Badge variant="outline" className="border-amber-400 text-amber-700 dark:text-amber-300">
+                Indicative
+              </Badge>
+            )}
           </CardTitle>
+          {indicative && (
+            <p className="pt-1 text-xs text-muted-foreground">
+              {memberMissing
+                ? 'No member record — this is what the formula produces, not an entitlement.'
+                : eligibility?.passed === false
+                  ? `Not payable as configured — ${failedCount} of ${totalCount} eligibility conditions not met.`
+                  : 'No contribution history — figure comes from the formula alone.'}
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between"><span className="text-muted-foreground">Calc Type</span><Badge variant="outline">{formulaResult.calcType}</Badge></div>

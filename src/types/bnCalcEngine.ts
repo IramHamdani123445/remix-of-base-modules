@@ -41,6 +41,18 @@ export interface BnCalcEngineInput {
 export interface BnCalcEngineOutput {
   runId: string;
   status: BnCalcRunStatus;
+  /**
+   * Whether the SSN exists in the member register, and whether it has any
+   * contribution history. The simulator showed a confident amount for an SSN
+   * with no member record at all, because a flat-amount formula does not
+   * depend on member data and so never noticed. Reported so the figures can be
+   * labelled for what they are.
+   */
+  subject?: {
+    ssn: string;
+    memberFound: boolean;
+    hasContributionHistory: boolean;
+  };
   eligibility: BnEligibilityResult;
   contributionWindow: BnContributionWindow;
   wageAggregation: BnWageAggregation;
