@@ -44,7 +44,31 @@ const db = supabase as any;
 
 // ─── Types ─────────────────────────────────────────────────────────
 
-export type RuleVersionStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'PUBLISHED' | 'RETIRED' | 'REJECTED';
+/**
+ * Canonical version lifecycle — one vocabulary for the whole platform:
+ *
+ *   DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVED
+ *
+ * Reject returns the version to DRAFT. APPROVED is only ever set by the system
+ * once the last configured approval level has signed. The earlier
+ * PENDING_REVIEW / PUBLISHED / RETIRED names, and the lowercase variants this
+ * file used to write, are legacy and are mapped on read.
+ */
+export type RuleVersionStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'ACTIVE'
+  | 'ARCHIVED';
+
+/** Canonical statuses, in lifecycle order. */
+export const RULE_VERSION_STATUSES: RuleVersionStatus[] = [
+  'DRAFT',
+  'PENDING_APPROVAL',
+  'APPROVED',
+  'ACTIVE',
+  'ARCHIVED',
+];
 
 export interface RuleVersionSummary {
   id: string;
