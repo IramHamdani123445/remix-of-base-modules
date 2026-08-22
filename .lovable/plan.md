@@ -78,9 +78,25 @@ Use the existing `stage_code` (`ELIGIBILITY`, `CALCULATION`, `TIMELINE`, `DOCUME
 
 ## Phase 9 — Enforce in the database (last, with prior notice)
 
-Before enabling anything I list every code path that writes `bn_product_version` or `bn_version_approval` directly (candidates already identified: `productApprovalService`, `rulesAdminService`, `productService`, `postApprovalOrchestrator`, `productAcceptanceService`, `canvasSyncService`, `approvalConsoleService`, `countryPackageService`, `migrateLegacyPolicies`, plus the catalogue pages). You confirm, then RLS goes on: status changes only through the Phase 4 RPC, direct status UPDATE denied to app roles.
+The earlier writer list was name-matched and wrong. Regenerated mechanically (scan for `.from('<table>') … .update/.insert/.upsert/.delete`):
 
-Note: this project's standing rule is RLS-off (`docs/ARCHITECTURE-NO-RLS-RULE.md`). Phase 9 is a deliberate, scoped exception for these two governance tables and will be recorded as such.
+| Table | Actual writers |
+| --- | --- |
+| `bn_product_version` | `productApprovalService`, `rulesAdminService`, `productService`, `canvasSyncService`, `components/bn/config/CalculationBuilder.tsx`, `components/bn/config-builder/useBuilderCanvas.ts` |
+| `bn_version_approval` | `productApprovalService`, `configService`, `governance/approvalRoutingService` |
+
+`CalculationBuilder` (writes calculation config onto the version) and `useBuilderCanvas` (writes `builder_canvas`) are legitimate non-status writers and must keep working. `postApprovalOrchestrator`, `productAcceptanceService`, `approvalConsoleService`, `countryPackageService` and `migrateLegacyPolicies` only read these tables — dropped from the list.
+
+Enforcement mechanism, corrected: **RLS filters rows, not columns**, so an RLS policy cannot deny an UPDATE of `status` alone. This matters because `useUpdateBnProductVersion` (`n()` in `useBnProduct.ts`) is shared by `VersionHistoryTab` (writes status — must be blocked), `ScreenTemplateTab` and `WorkflowTab` (write config fields — must keep working). A blanket UPDATE deny breaks the latter two.
+
+So enforcement uses, in order:
+
+1. `REVOKE UPDATE (status) ON bn_product_version FROM authenticated, anon;` — column-level, surgical, leaves other columns writable.
+2. A `BEFORE UPDATE` trigger comparing `OLD.status` to `NEW.status` and raising unless the Phase 4 RPC set a transaction-local marker — belt-and-braces, and it also catches writes arriving through any SECURITY DEFINER path that bypasses the grant.
+3. `bn_version_approval`: `REVOKE INSERT/UPDATE/DELETE` from app roles once all three writers route through the RPC; reads stay open.
+
+RLS itself is enabled on both tables only for read scoping, not as the status guard. This project's standing rule is RLS-off (`docs/ARCHITECTURE-NO-RLS-RULE.md`) — the grant/trigger route above stays within that rule, so RLS enablement is optional and I will confirm with you before turning it on rather than assuming the exception.
+
 
 ## Constraints honoured
 
