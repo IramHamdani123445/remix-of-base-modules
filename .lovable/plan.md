@@ -44,6 +44,16 @@ Canonical lifecycle: `DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVE
 
 Writes the `bn_version_approval` row and the status change in one transaction, and snapshots the approver's full name and role title as they were at that moment.
 
+### Second and third writers to the approval ledger (must be closed in Phase 4)
+
+You are right that "one entry point" is not currently true. A mechanical scan of write calls finds three writers to `bn_version_approval`, not one:
+
+- `productApprovalService` — the known one.
+- `governance/approvalRoutingService.ts` (`submitForApproval`) — maps a config entity's governance class to an approval role and **inserts a `SUBMIT` row directly**, with `performed_by` taken from its caller, `from_status: 'DRAFT'`, `to_status: 'IN_REVIEW'` (a sixth status vocabulary), plus a bare-insert fallback "tolerating column drift" that writes an approval row with no version, no action context and no role. It routes generic BN config entities (not only product versions) and sets `product_version_id` when one is supplied.
+  **Verdict: it must route through the new RPC** for anything carrying a `product_version_id` — same derived level, same role check, same `auth.uid()` actor, and `IN_REVIEW` folded into `PENDING_APPROVAL`. Its non-version config-entity path can keep a ledger row, but only via the RPC (or an RPC sibling) so `performed_by` is never client-supplied, and the silent bare-insert fallback is deleted — a fallback that drops the role and the target is worse than a failure.
+- `configService.createVersionApproval` — a thin generic `insert(approval)` pass-through with no validation at all. It is a bypass by construction and is removed or re-pointed at the RPC in Phase 4.
+
+
 ## Phase 5 — Reconcile the role namespaces
 
 - Produce the full match/mismatch report between `user_roles.role` and `bn_approval_policy.approval_role` (already partly visible: `ADMIN` vs `Admin`, plus 273 NULL roles).
