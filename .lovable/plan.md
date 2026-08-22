@@ -9,9 +9,27 @@ Work proceeds phase by phase, stopping for your confirmation after each phase.
 Live data checked now (Test backend):
 
 - `bn_product_version.status` distinct values: `ACTIVE` (26), `DRAFT` (22), `ARCHIVED` (6), `PENDING_APPROVAL` (1). No lowercase or `PENDING_REVIEW`/`PUBLISHED` rows exist yet, so the Phase 1 migration is a constraint-and-code cleanup rather than a data rescue — but the mapping step stays in, because the lowercase writers are still live code.
-- `bn_approval_policy.approval_role` values in use: `BN_DIRECTOR` (stage `CONFIG_APPROVE`, 27 rows), `BN_SUPERVISOR` (stage `CONFIG_REVIEW`, 27), `ADMIN` (no stage, 9), and **273 rows with a NULL approval_role** — those levels can never be satisfied by a role check and must be resolved before Phase 4 enforcement.
-- `user_roles.role` holds both enum-style names (`Admin`, `Supervisor`, `Clerk`, …) and free-text BN roles (`BN_DIRECTOR`, `BN_SUPERVISOR`, `BN_CONFIG_ADMIN`, `BN_PRODUCT_APPROVER`, `BN_RULE_LEGAL_APPROVER`, …). Note `ADMIN` in the policy table does not match `Admin` in `user_roles` — a case/spelling mismatch that would silently deny.
-- Roughly 70 source files reference `bn_product_version`; the write-capable ones are enumerated in Phase 9 before RLS is switched on.
+- **`approval_role` re-run, scoped and broken down by `policy_area`.** The earlier "273 NULLs" figure was an unscoped count and it misled us both. Actual state:
+
+| policy_area | enabled | rows | NULL role | versions |
+| --- | --- | --- | --- | --- |
+| CONFIG_PUBLISH | yes | 54 | **0** | 27 |
+| ELIGIBILITY | yes | 12 | 8 | 12 |
+| CALCULATION | yes | 9 | 8 | 9 |
+| PAYMENT | yes | 8 | 8 | 8 |
+| AWARD | yes | 8 | 8 | 8 |
+| COMMUNICATION | yes | 4 | 0 | 4 |
+| DOCUMENTS | yes | 2 | 2 | 2 |
+| AWARD / CALCULATION / AMENDMENTS / COMMUNICATION / PARTICIPANTS / PAYMENT / WORKFLOW | no | 27 each | 27 each | 27 each |
+| DOCUMENTS / ELIGIBILITY | no | 25 each | 25 each | 25 each |
+
+  So: **CONFIG_PUBLISH — the only area Phase 4/5 enforces — has zero NULL roles.** All 54 rows are enabled and form a clean two-level chain across 27 versions: level 1 `BN_SUPERVISOR` (27), level 2 `BN_DIRECTOR` (27). The NULLs are 261 rows on *disabled* policy areas plus 34 enabled rows in non-publish areas (ELIGIBILITY, CALCULATION, PAYMENT, AWARD, DOCUMENTS). None of them gate publishing today.
+- Both chain roles are actually granted: `user_roles` holds one `BN_SUPERVISOR` and one `BN_DIRECTOR`, so the configured chain is satisfiable end to end. `ADMIN` no longer appears as an `approval_role` on any CONFIG_PUBLISH row, so the earlier `ADMIN` vs `Admin` case mismatch is not a publish blocker — it remains a data-hygiene item for the other areas.
+- `bn_approval_policy` already has `non_waivable`, `self_approval_allowed`, `requires_reason_code`, `requires_justification`, `requires_document`, `level` and `stage_code` — Phase 4 and ADMIN_OVERRIDE need no new columns.
+- `bn_version_approval` real columns: `product_version_id` (NOT NULL), `action` (NOT NULL), `from_status`, `to_status` (NOT NULL), `comments`, `performed_by` (NOT NULL), `level`, `stage_code`, `approver_role`, `decision`, `reason_code`, `rule_diff_snapshot`.
+- `user_roles.role` holds both enum-style names (`Admin`, `Supervisor`, `Clerk`, …) and free-text BN roles (`BN_DIRECTOR`, `BN_SUPERVISOR`, `BN_CONFIG_ADMIN`, `BN_PRODUCT_APPROVER`, …).
+- Roughly 70 source files reference `bn_product_version`; the write-capable ones are enumerated mechanically in Phase 9.
+
 
 ## Phase 1 — One vocabulary
 
