@@ -223,7 +223,7 @@ export default function RulesAdministration() {
                           </TableCell>
                           <TableCell>
                             <Badge className={STATUS_COLORS[v.status] || ''} variant="secondary">
-                              {v.status.replace('_', ' ')}
+                              {STATUS_LABELS[v.status] || v.status.replace('_', ' ')}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
