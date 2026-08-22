@@ -479,7 +479,7 @@ export async function submitVersionForApproval(
 
   await logRuleAudit('RULE_VERSION_SUBMITTED', 'bn_product_version', versionId, {
     from_status: 'DRAFT',
-    to_status: 'PENDING_REVIEW',
+    to_status: 'PENDING_APPROVAL',
     workflow_instance_id: workflowInstanceId,
   }, userCode);
 
@@ -495,7 +495,9 @@ export async function approveVersion(
 ): Promise<{ success: boolean; error?: string }> {
   const { data: ver } = await db.from('bn_product_version').select('status, entered_by').eq('id', versionId).single();
   if (!ver) return { success: false, error: 'Version not found' };
-  if (ver.status !== 'pending') return { success: false, error: `Cannot approve version in ${ver.status} status` };
+  if (mapVersionStatus(ver.status) !== 'PENDING_APPROVAL') {
+    return { success: false, error: `Cannot approve version in ${ver.status} status` };
+  }
 
   // Maker-checker: approver must differ from author
   if (ver.entered_by === approverCode) {
@@ -504,7 +506,7 @@ export async function approveVersion(
 
   await db.from('bn_product_version')
     .update({
-      status: 'approved',
+      status: 'APPROVED',
       modified_by: approverCode,
       modified_at: new Date().toISOString(),
     })
@@ -525,16 +527,20 @@ export async function rejectVersion(
   rejectorCode: string,
   reason: string
 ): Promise<{ success: boolean; error?: string }> {
-  const { data: ver } = await db.from('bn_product_version').select('status').eq('id', versionId).single();
+  const { data: ver } = await db.from('bn_product_version').select('status, description').eq('id', versionId).single();
   if (!ver) return { success: false, error: 'Version not found' };
-  if (ver.status !== 'pending') return { success: false, error: `Cannot reject version in ${ver.status} status` };
+  if (mapVersionStatus(ver.status) !== 'PENDING_APPROVAL') {
+    return { success: false, error: `Cannot reject version in ${ver.status} status` };
+  }
 
   await db.from('bn_product_version')
     .update({
-      status: 'draft', // Return to draft for revision
+      status: 'DRAFT', // Return to draft for revision
       modified_by: rejectorCode,
       modified_at: new Date().toISOString(),
-      change_notes: `REJECTED: ${reason}`,
+      // No change_notes column exists; the rejection reason is appended to the
+      // description, which is what the Versions list reads back.
+      description: `${ver.description ? `${ver.description}\n` : ''}REJECTED: ${reason}`,
     })
     .eq('id', versionId);
 
@@ -558,7 +564,7 @@ export async function publishVersion(
     .eq('id', versionId)
     .single();
   if (!ver) return { success: false, error: 'Version not found' };
-  if (!['approved'].includes(ver.status)) {
+  if (mapVersionStatus(ver.status) !== 'APPROVED') {
     return { success: false, error: `Only APPROVED versions can be published (current: ${ver.status})` };
   }
 
@@ -570,20 +576,20 @@ export async function publishVersion(
     }
   } catch { /* non-fatal */ }
 
-  // Retire current active version for this product (no overlapping active)
+  // Archive the current ACTIVE version for this product (no overlapping active)
   const { data: currentActive } = await db
     .from('bn_product_version')
     .select('id')
     .eq('product_id', ver.product_id)
-    .eq('status', 'active')
+    .eq('status', 'ACTIVE')
     .limit(1)
     .maybeSingle();
 
   if (currentActive) {
     await db.from('bn_product_version')
       .update({
-        status: 'retired',
-        expiry_date: effectiveDate,
+        status: 'ARCHIVED',
+        effective_to: effectiveDate,
         modified_by: publisherCode,
         modified_at: new Date().toISOString(),
       })
@@ -598,8 +604,8 @@ export async function publishVersion(
   // Publish new version
   await db.from('bn_product_version')
     .update({
-      status: 'active',
-      effective_date: effectiveDate,
+      status: 'ACTIVE',
+      effective_from: effectiveDate,
       modified_by: publisherCode,
       modified_at: new Date().toISOString(),
     })
@@ -613,6 +619,7 @@ export async function publishVersion(
 
   return { success: true };
 }
+
 
 // ─── Simulate Version ──────────────────────────────────────────────
 
