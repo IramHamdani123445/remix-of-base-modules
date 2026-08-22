@@ -62,22 +62,31 @@ Canonical lifecycle: `DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVE
 
 Writes the `bn_version_approval` row and the status change in one transaction, and snapshots the approver's full name and role title as they were at that moment.
 
-### Second and third writers to the approval ledger (must be closed in Phase 4)
+### Other writers to the approval ledger
 
-You are right that "one entry point" is not currently true. A mechanical scan of write calls finds three writers to `bn_version_approval`, not one:
+- `productApprovalService` — the real writer; re-pointed at the RPC.
+- `governance/approvalRoutingService.ts` — **dead code, delete the file.** Confirmed: nothing under `src/` imports it, and it could not work if it did. Its primary insert writes `entity_type`, `entity_id`, `approval_role`, `reason` and `payload`, none of which exist on `bn_version_approval` (the real columns are `approver_role` and `reason_code`), so it always fails; its fallback omits `product_version_id` and `to_status`, both NOT NULL, so that fails too and rethrows. No RPC sibling for its config-entity path — that path has never executed, so there is no behaviour to preserve.
+- `configService.createVersionApproval` — a thin generic `insert(approval)` pass-through with no validation. Removed or re-pointed at the RPC.
 
-- `productApprovalService` — the known one.
-- `governance/approvalRoutingService.ts` (`submitForApproval`) — maps a config entity's governance class to an approval role and **inserts a `SUBMIT` row directly**, with `performed_by` taken from its caller, `from_status: 'DRAFT'`, `to_status: 'IN_REVIEW'` (a sixth status vocabulary), plus a bare-insert fallback "tolerating column drift" that writes an approval row with no version, no action context and no role. It routes generic BN config entities (not only product versions) and sets `product_version_id` when one is supplied.
-  **Verdict: it must route through the new RPC** for anything carrying a `product_version_id` — same derived level, same role check, same `auth.uid()` actor, and `IN_REVIEW` folded into `PENDING_APPROVAL`. Its non-version config-entity path can keep a ledger row, but only via the RPC (or an RPC sibling) so `performed_by` is never client-supplied, and the silent bare-insert fallback is deleted — a fallback that drops the role and the target is worse than a failure.
-- `configService.createVersionApproval` — a thin generic `insert(approval)` pass-through with no validation at all. It is a bypass by construction and is removed or re-pointed at the RPC in Phase 4.
+### ADMIN_OVERRIDE — one explicit, audited admin path
 
+`ruleGovernanceService.userHasRole` returns true immediately when `isAdmin`, so catalogue rule transitions already have a silent admin bypass, while Phase 5 as written would remove every admin path for products. Neither a silent bypass nor a deadlock is acceptable, so the RPC gains a single named action:
+
+- `action = 'ADMIN_OVERRIDE'`, allowed only for a defined admin role (`BN_CONFIG_ADMIN`, plus platform `Admin` — the exact list is fixed in Phase 5 and stored, not hardcoded in React).
+- Writes a normal `bn_version_approval` row with `action='ADMIN_OVERRIDE'`, the derived `level`, `stage_code` and the acting role in `approver_role`.
+- Always requires a reason code and a justification, regardless of the level's `requires_*` flags.
+- **Refused when the level's `non_waivable` flag is set** — no override, no exception.
+- Rendered in the approval history as an override (distinct styling and label), never as a normal approval.
+- The implicit `isAdmin` shortcut in `ruleGovernanceService.userHasRole` is removed at the same time, so admin power exists only through this audited action.
 
 ## Phase 5 — Reconcile the role namespaces
 
-- Produce the full match/mismatch report between `user_roles.role` and `bn_approval_policy.approval_role` (already partly visible: `ADMIN` vs `Admin`, plus 273 NULL roles).
+- Produce the full match/mismatch report between `user_roles.role` and `bn_approval_policy.approval_role`, per policy area.
+- **Resolve the NULL `approval_role` rows before enforcement.** Order: (a) for `CONFIG_PUBLISH` — already zero NULLs, so this is a re-verify at migration time; (b) for the other enabled areas (34 rows across ELIGIBILITY, CALCULATION, PAYMENT, AWARD, DOCUMENTS) either backfill the intended role or set `is_enabled = false`, decided with you row by row; (c) for the 261 disabled rows, backfill or leave disabled. Then `ALTER TABLE bn_approval_policy ALTER COLUMN approval_role SET NOT NULL` with a partial guard for enabled rows if any disabled NULLs are kept. An FK on a nullable column still permits NULL, so without this step any level with a NULL role is unsatisfiable and every version behind it is frozen.
 - Add a text-based `has_bn_role(_user_id uuid, _role text)` alongside the enum `has_role`, so both namespaces are checkable.
 - Add an FK or validating trigger so `approval_role` must be a real role; make the Approval Policies editor a dropdown.
-- Delete the hardcoded `['BN_DIRECTOR','BN_CONFIG_ADMIN','admin']` publish check — publish rights come from a `CONFIG_PUBLISH` policy row like every other level.
+- Delete the hardcoded `['BN_DIRECTOR','BN_CONFIG_ADMIN','admin']` publish check — publish rights come from a `CONFIG_PUBLISH` policy row like every other level, with ADMIN_OVERRIDE as the only escape hatch.
+
 
 ## Phase 6 — Publishing
 
