@@ -175,26 +175,25 @@ export default function RulesAdministration() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="PUBLISHED">Published</SelectItem>
-                  <SelectItem value="RETIRED">Retired</SelectItem>
+                  {RULE_VERSION_STATUSES.map(s => (
+                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {(['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PUBLISHED', 'RETIRED'] as const).map(s => (
+              {RULE_VERSION_STATUSES.map(s => (
                 <Card key={s} className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={() => setStatusFilter(s)}>
                   <CardContent className="p-3 text-center">
                     <div className="text-2xl font-bold">{versions.filter(v => v.status === s).length}</div>
-                    <div className="text-xs text-muted-foreground">{s.replace('_', ' ')}</div>
+                    <div className="text-xs text-muted-foreground">{STATUS_LABELS[s]}</div>
                   </CardContent>
                 </Card>
               ))}
             </div>
+
 
             {/* Version Table */}
             <Card>
