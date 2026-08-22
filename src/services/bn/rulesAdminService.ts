@@ -219,16 +219,27 @@ async function countRulesByVersion(
   return counts;
 }
 
-function mapVersionStatus(status: string): RuleVersionStatus {
+/**
+ * Map any stored value — canonical, legacy or lowercase — onto the canonical
+ * lifecycle. Kept on the read path because legacy rows may survive until the
+ * Phase 1 migration has run everywhere.
+ */
+export function mapVersionStatus(status: string): RuleVersionStatus {
   const map: Record<string, RuleVersionStatus> = {
     draft: 'DRAFT',
-    pending: 'PENDING_REVIEW',
-    pending_review: 'PENDING_REVIEW',
+    pending: 'PENDING_APPROVAL',
+    pending_review: 'PENDING_APPROVAL',
+    pending_approval: 'PENDING_APPROVAL',
+    in_review: 'PENDING_APPROVAL',
     approved: 'APPROVED',
-    active: 'PUBLISHED',
-    published: 'PUBLISHED',
-    retired: 'RETIRED',
-    rejected: 'REJECTED',
+    active: 'ACTIVE',
+    published: 'ACTIVE',
+    retired: 'ARCHIVED',
+    archived: 'ARCHIVED',
+    superseded: 'ARCHIVED',
+    // A rejected version is returned to DRAFT — rejection is an event in the
+    // approval history, not a resting state of the version.
+    rejected: 'DRAFT',
   };
   return map[status?.toLowerCase()] || 'DRAFT';
 }
