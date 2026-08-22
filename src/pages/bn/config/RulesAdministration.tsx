@@ -32,15 +32,23 @@ import {
   useBnPublishVersion,
 } from '@/hooks/bn/useBnRulesAdmin';
 
-import type { RuleVersionSummary } from '@/services/bn/rulesAdminService';
+import { RULE_VERSION_STATUSES, type RuleVersionSummary } from '@/services/bn/rulesAdminService';
 
+// Canonical lifecycle: DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVED
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
-  PENDING_REVIEW: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  PENDING_APPROVAL: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   APPROVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  PUBLISHED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  RETIRED: 'bg-secondary text-secondary-foreground',
-  REJECTED: 'bg-destructive/10 text-destructive',
+  ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  ARCHIVED: 'bg-secondary text-secondary-foreground',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Draft',
+  PENDING_APPROVAL: 'Pending Approval',
+  APPROVED: 'Approved',
+  ACTIVE: 'Active',
+  ARCHIVED: 'Archived',
 };
 
 export default function RulesAdministration() {
@@ -167,26 +175,25 @@ export default function RulesAdministration() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="PUBLISHED">Published</SelectItem>
-                  <SelectItem value="RETIRED">Retired</SelectItem>
+                  {RULE_VERSION_STATUSES.map(s => (
+                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {(['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PUBLISHED', 'RETIRED'] as const).map(s => (
+              {RULE_VERSION_STATUSES.map(s => (
                 <Card key={s} className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={() => setStatusFilter(s)}>
                   <CardContent className="p-3 text-center">
                     <div className="text-2xl font-bold">{versions.filter(v => v.status === s).length}</div>
-                    <div className="text-xs text-muted-foreground">{s.replace('_', ' ')}</div>
+                    <div className="text-xs text-muted-foreground">{STATUS_LABELS[s]}</div>
                   </CardContent>
                 </Card>
               ))}
             </div>
+
 
             {/* Version Table */}
             <Card>
@@ -216,7 +223,7 @@ export default function RulesAdministration() {
                           </TableCell>
                           <TableCell>
                             <Badge className={STATUS_COLORS[v.status] || ''} variant="secondary">
-                              {v.status.replace('_', ' ')}
+                              {STATUS_LABELS[v.status] || v.status.replace('_', ' ')}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
@@ -240,7 +247,7 @@ export default function RulesAdministration() {
                                   </Button>
                                 </>
                               )}
-                              {v.status === 'PENDING_REVIEW' && (
+                              {v.status === 'PENDING_APPROVAL' && (
                                 <>
                                   <Button size="sm" variant="outline" className="text-green-600" onClick={(e) => {
                                     e.stopPropagation(); setSelectedVersion(v); setActionType('approve'); setShowActionSheet(true);
@@ -261,7 +268,7 @@ export default function RulesAdministration() {
                                   <ArrowRight className="h-3 w-3 mr-1" /> Publish
                                 </Button>
                               )}
-                              {v.status === 'PUBLISHED' && (
+                              {v.status === 'ACTIVE' && (
                                 <Badge variant="outline" className="text-green-600 border-green-300"><Shield className="h-3 w-3 mr-1" /> Active</Badge>
                               )}
                             </div>
