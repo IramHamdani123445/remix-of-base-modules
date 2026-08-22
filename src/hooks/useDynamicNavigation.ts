@@ -316,7 +316,7 @@ function groupInternalAuditNavigation(items: MenuItem[]): MenuItem[] {
 }
 
 export function useDynamicNavigation() {
-  const { user, isAdmin, isAuthenticated, authRuntimeStatus } = useSupabaseAuth();
+  const { user, isAdmin, isAuthenticated } = useSupabaseAuth();
 
   const {
     data: menuItems = [],
@@ -325,7 +325,10 @@ export function useDynamicNavigation() {
     error,
     refetch
   } = useQuery({
-    queryKey: ['dynamic-navigation', user?.id, authRuntimeStatus],
+    // Navigation is identity-scoped, not refresh-state-scoped. Including the
+    // transient auth status here created a new cache entry and repeated this
+    // expensive RPC for every AUTHENTICATED -> REFRESHING -> AUTHENTICATED cycle.
+    queryKey: ['dynamic-navigation', user?.id],
     queryFn: async ({ signal }) => {
       if (!user?.id) return [];
 
