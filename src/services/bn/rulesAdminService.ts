@@ -270,18 +270,22 @@ export async function cloneVersionAsDraft(
     .single();
   const nextVersion = (maxRow?.version_number || 0) + 1;
 
-  // 3. Create new version
+  // 3. Create new version.
+  //     version_label / effective_date / expiry_date / change_notes do not
+  //     exist on this table (BUG-08). The real columns are effective_from /
+  //     effective_to, and the label plus the change notes are folded into the
+  //     description, which is what the list screen reads back.
+  const description = [newLabel, changeNotes].filter(Boolean).join(' — ') || null;
   const { data: newVer, error: newErr } = await db
     .from('bn_product_version')
     .insert({
       product_id: source.product_id,
       version_number: nextVersion,
-      version_label: newLabel,
-      status: 'draft',
+      status: 'DRAFT',
       country_code: source.country_code,
-      effective_date: null,
-      expiry_date: null,
-      change_notes: changeNotes,
+      effective_from: null,
+      effective_to: null,
+      description,
       entered_by: userCode,
       entered_at: new Date().toISOString(),
     })
