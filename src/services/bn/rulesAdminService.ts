@@ -412,10 +412,13 @@ export async function submitVersionForApproval(
   versionId: string,
   userCode: string
 ): Promise<{ success: boolean; workflowInstanceId?: string; error?: string }> {
-  // Validate version is DRAFT
+  // Validate version is DRAFT (comparison is on the canonical value, so a
+  // legacy lowercase row is normalised first rather than silently refused).
   const { data: ver } = await db.from('bn_product_version').select('status, product_id, version_number').eq('id', versionId).single();
   if (!ver) return { success: false, error: 'Version not found' };
-  if (ver.status !== 'draft') return { success: false, error: `Cannot submit version in ${ver.status} status` };
+  if (mapVersionStatus(ver.status) !== 'DRAFT') {
+    return { success: false, error: `Cannot submit version in ${ver.status} status` };
+  }
 
   // Validate at least one rule exists
   const [elig, calc, time] = await Promise.all([
@@ -428,7 +431,7 @@ export async function submitVersionForApproval(
 
   // Update status
   await db.from('bn_product_version')
-    .update({ status: 'pending', modified_by: userCode, modified_at: new Date().toISOString() })
+    .update({ status: 'PENDING_APPROVAL', modified_by: userCode, modified_at: new Date().toISOString() })
     .eq('id', versionId);
 
   // Try to start workflow
