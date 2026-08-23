@@ -260,13 +260,16 @@ export default function CaseDetailView() {
   const caseIsClosed = ['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status);
 
   // Waiver-adjusted financials (approved waivers reduce the balance on read).
-  const caseGrossTotal = Number(c.total_amount) || 0;
-  const caseCollected = Number(c.amount_collected) || 0;
-  const caseWaived = Math.max(
+  // Authoritative case money comes from ce_v_case_financials via the shared
+  // read layer; the raw columns are only a fallback while the query loads.
+  const caseGrossTotal = caseFinancials?.gross ?? (Number(c.total_amount) || 0);
+  const caseCollected = caseFinancials?.paid ?? (Number(c.amount_collected) || 0);
+  const caseWaived = caseFinancials?.waived ?? Math.max(
     Number(waivedAmounts?.caseTotal ?? 0),
     Number(c.amount_waived ?? 0),
   );
-  const caseOutstanding = computeOutstanding(caseGrossTotal, caseCollected, caseWaived);
+  const caseOutstanding = caseFinancials?.outstanding
+    ?? computeOutstanding(caseGrossTotal, caseCollected, caseWaived);
   const violationWaivedMap = waivedAmounts?.byViolation ?? {};
 
   const noticesFeatureEnabled = isComplianceFeatureEnabled('notices.generate');
@@ -721,9 +724,10 @@ export default function CaseDetailView() {
                         </TableCell>
                         <TableCell>
                           {(() => {
-                            const gross = Number(v.total_amount) || 0;
-                            const vWaived = Number(violationWaivedMap[v.id] ?? 0);
-                            const net = computeOutstanding(gross, 0, vWaived);
+                            const vf = caseViolationFinancials[v.id];
+                            const gross = vf?.gross ?? (Number(v.total_amount) || 0);
+                            const vWaived = vf?.waived ?? Number(violationWaivedMap[v.id] ?? 0);
+                            const net = vf?.outstanding ?? computeOutstanding(gross, 0, vWaived);
                             return (
                               <div>
                                 <div>{formatCurrency(net)}</div>
