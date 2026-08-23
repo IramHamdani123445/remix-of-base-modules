@@ -194,9 +194,28 @@ export default function Employer360() {
             <div className="flex items-center gap-2 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg text-sm text-orange-700">
               <Briefcase className="h-4 w-4" />
               <span className="font-medium">Enforcement outstanding: {formatCurrency(enforcementOutstanding)}</span>
-              <span className="text-xs text-muted-foreground">({openCaseCount} open case{openCaseCount === 1 ? '' : 's'})</span>
+              <span className="text-xs text-muted-foreground">
+                ({openCaseCount} open case{openCaseCount === 1 ? '' : 's'}
+                {(exposure?.open_unlinked_violations ?? 0) > 0 &&
+                  ` + ${exposure!.open_unlinked_violations} unlinked violation${exposure!.open_unlinked_violations === 1 ? '' : 's'}`})
+              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm text-xs">
+                    Enforcement exposure = outstanding on open cases ({formatCurrency(exposure?.case_outstanding ?? 0)})
+                    plus outstanding on open violations not linked to any case
+                    ({formatCurrency(exposure?.unlinked_violation_outstanding ?? 0)}).
+                    A violation attached to a case is counted once only, through its case roll-up.
+                    Collections and approved waivers are already deducted.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
+
           {legal?.has_active_legal && (
             <div className="flex items-center gap-2 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg text-sm text-orange-700">
               <Gavel className="h-4 w-4" />
