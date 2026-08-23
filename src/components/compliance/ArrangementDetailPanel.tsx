@@ -353,9 +353,9 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
     ? ((arr.installments_paid ?? 0) / arr.number_of_installments) * 100
     : 0;
 
-  const breachHealthInfo = getBreachHealth(arr);
-  const hCfg = healthConfig[breachHealthInfo.health];
   const unresolvedBreaches = breaches.filter((b: any) => !b.resolution).length;
+  const breachHealthInfo = getBreachHealth(arr, breaches.length > 0 ? unresolvedBreaches : undefined);
+  const hCfg = healthConfig[breachHealthInfo.health];
 
   return (
     <div className="space-y-6">
@@ -374,7 +374,7 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
           )}
         </div>
         <Badge className={statusColor(arr.status)}>{arr.status}</Badge>
-        {arr.breach_detected && (
+        {arr.breach_detected && (breaches.length === 0 || unresolvedBreaches > 0) && (
           <Badge variant="destructive" className="gap-1">
             <AlertTriangle className="h-3 w-3" />BREACH
           </Badge>
