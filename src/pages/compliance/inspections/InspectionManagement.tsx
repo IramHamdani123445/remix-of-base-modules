@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchInspections, InspectionRecord } from '@/services/complianceReportingService';
 import { supabase } from '@/integrations/supabase/client';
 import ReferToLegalButton from '@/components/legal/lg/ReferToLegalButton';
+import { Link } from 'react-router-dom';
 
 export default function InspectionManagement() {
   const [statusFilter, setStatusFilter] = useState('All');
