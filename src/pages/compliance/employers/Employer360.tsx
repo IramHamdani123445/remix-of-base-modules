@@ -173,7 +173,7 @@ export default function Employer360() {
       />
 
       {/* Warning Banners */}
-      {(arrears?.has_arrears || enforcementOutstanding > 0 || activeViolations.length > 0 || legal?.has_active_legal) && (
+      {(arrears?.has_arrears || enforcementOutstanding > 0 || activeViolationCount > 0 || legal?.has_active_legal) && (
         <div className="space-y-2">
           {arrears?.has_arrears && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">
@@ -186,7 +186,7 @@ export default function Employer360() {
             <div className="flex items-center gap-2 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg text-sm text-orange-700">
               <Briefcase className="h-4 w-4" />
               <span className="font-medium">Enforcement outstanding: {formatCurrency(enforcementOutstanding)}</span>
-              <span className="text-xs text-muted-foreground">({activeCases.length} open case{activeCases.length === 1 ? '' : 's'})</span>
+              <span className="text-xs text-muted-foreground">({openCaseCount} open case{openCaseCount === 1 ? '' : 's'})</span>
             </div>
           )}
           {legal?.has_active_legal && (
@@ -204,8 +204,8 @@ export default function Employer360() {
           { label: 'Risk', content: <Badge className={`${RISK_BAND_COLORS[riskBand] || 'bg-muted text-muted-foreground'}`}>{riskBand}</Badge> },
           { label: 'C3 Arrears', content: <span className="text-xs font-bold text-destructive">{formatCurrency(c3Outstanding)}</span> },
           { label: 'Enforcement', content: <span className="text-xs font-bold text-orange-600">{formatCurrency(enforcementOutstanding)}</span> },
-          { label: 'Violations', content: <span className="text-xl font-bold">{activeViolations.length}</span> },
-          { label: 'Cases', content: <span className="text-xl font-bold">{activeCases.length}</span> },
+          { label: 'Violations', content: <span className="text-xl font-bold">{activeViolationCount}</span> },
+          { label: 'Cases', content: <span className="text-xl font-bold">{openCaseCount}</span> },
           { label: 'Missed Filings', content: <span className="text-xl font-bold">{filing?.missed_filings_12m ?? '—'}</span> },
           { label: 'Workforce', content: <span className="text-lg font-bold">{workforce?.registered_total ?? '—'}</span> },
           { label: 'Paid YTD', content: <span className="text-xs font-bold text-green-600">{formatCurrency(payments?.total_amount_12m ?? 0)}</span> },
@@ -225,7 +225,7 @@ export default function Employer360() {
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="overview"><Building2 className="h-3.5 w-3.5 mr-1" />Overview</TabsTrigger>
           <TabsTrigger value="financial"><DollarSign className="h-3.5 w-3.5 mr-1" />Financials</TabsTrigger>
-          <TabsTrigger value="violations"><AlertTriangle className="h-3.5 w-3.5 mr-1" />Violations ({violations.length})</TabsTrigger>
+          <TabsTrigger value="violations"><AlertTriangle className="h-3.5 w-3.5 mr-1" />Violations ({violationTotal})</TabsTrigger>
           <TabsTrigger value="cases"><Briefcase className="h-3.5 w-3.5 mr-1" />Cases ({cases.length})</TabsTrigger>
           <TabsTrigger value="payments"><DollarSign className="h-3.5 w-3.5 mr-1" />Payments</TabsTrigger>
           <TabsTrigger value="statement"><FileText className="h-3.5 w-3.5 mr-1" />Statement</TabsTrigger>
@@ -386,7 +386,15 @@ export default function Employer360() {
         {/* ═══ VIOLATIONS TAB ═══ */}
         <TabsContent value="violations">
           <Card>
-            <CardHeader><CardTitle>Violations ({violations.length})</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Violations ({violationTotal})</CardTitle>
+              {violationsTruncated && (
+                <p className="text-xs text-muted-foreground">
+                  Showing the {violations.length} most recent of {violationTotal} violations.
+                  Open the Violations register for the full list.
+                </p>
+              )}
+            </CardHeader>
             <CardContent>
               {violations.length === 0 ? <div className="text-center py-8 text-muted-foreground">No violations on record</div> : (
                 <Table>
