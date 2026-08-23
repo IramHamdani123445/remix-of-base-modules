@@ -599,9 +599,12 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
 
       {/* ── Tabs ────────────────────────────────────────── */}
       <Tabs defaultValue="installments" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="installments">
             Installments ({installments.length})
+          </TabsTrigger>
+          <TabsTrigger value="allocations">
+            Allocations
           </TabsTrigger>
           <TabsTrigger value="coverage">
             Coverage
