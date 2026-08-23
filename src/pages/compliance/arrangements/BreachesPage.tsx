@@ -14,12 +14,16 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { detectBreaches } from '@/services/arrangementWorkflowService';
 import { useUserCode } from '@/hooks/useUserCode';
+import { useNavigate } from 'react-router-dom';
+import { fetchArrangementRegister } from '@/services/compliance/arrangementRegisterService';
+import { formatXCD, ArrangementHealthBadge } from '@/components/compliance/arrangements/arrangementFormat';
 
 const MODULE = 'manage_compliance';
 
 export default function BreachesPage() {
   const qc = useQueryClient();
   const { userCode } = useUserCode();
+  const navigate = useNavigate();
 
   const { data = [], isLoading } = useQuery({
     queryKey: ['ce_arrangement_breaches_full'],
