@@ -300,6 +300,22 @@ export default function CaseDetailView() {
 
   const noticesFeatureEnabled = isComplianceFeatureEnabled('notices.generate');
   const arrangementsFeatureEnabled = isComplianceFeatureEnabled('arrangements.new');
+  const waiversFeatureEnabled = isComplianceFeatureEnabled('enforcement.waivers');
+
+  // Payment arrangement availability is evaluated from configured business
+  // state, and the reason is always shown to the user (never a silently
+  // disabled or hidden button).
+  const arrangementEligibility = evaluateArrangementEligibility({
+    caseStatus: c.status,
+    outstanding: caseOutstanding,
+    featureEnabled: arrangementsFeatureEnabled,
+    hasPermission: canCreateArrangement,
+    assignedOfficerId: (c as any).assigned_officer_id ?? null,
+    arrangements: caseArrangements as Array<{ status?: string | null }>,
+    legalStatus: legalStatus?.status ?? null,
+  });
+  const arrangementBlockedReason = arrangementEligibility.reasons.join(' ');
+
   const activeViolationCount = linkedViolations.filter(
     (v: any) => ['OPEN', 'IN_PROGRESS', 'UNDER_REVIEW', 'ESCALATED'].includes(v.status)
   ).length;
