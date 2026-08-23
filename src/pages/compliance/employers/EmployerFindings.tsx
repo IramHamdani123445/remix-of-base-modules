@@ -214,10 +214,8 @@ export default function EmployerFindings() {
         </Card>
       )}
 
-      {/* Employer Context */}
-          </CardContent>
-        </Card>
-      )}
+
+
 
       {/* Organisation-wide recent findings (no employer context) */}
       {!selectedEmployer && (
