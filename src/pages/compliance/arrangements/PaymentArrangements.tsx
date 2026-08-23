@@ -238,13 +238,28 @@ export default function PaymentArrangements() {
                   {arrangements.map((arr) => (
                     <TableRow
                       key={arr.arrangement_id}
-                      className={
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Open arrangement ${arr.arrangement_number}`}
+                      className={`cursor-pointer ${
                         arr.status === 'DEFAULTED'
                           ? 'bg-destructive/5'
                           : arr.health_status === 'BREACHED'
                             ? 'bg-warning/5'
                             : ''
-                      }
+                      }`}
+                      onClick={(e) => {
+                        // Ignore clicks that originate from interactive controls inside the row
+                        if ((e.target as HTMLElement).closest('a,button,input,select,[role="button"][data-interactive]')) return;
+                        setSelectedArrangementId(arr.arrangement_id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedArrangementId(arr.arrangement_id);
+                        }
+                      }}
                     >
                       <TableCell className="font-medium">{arr.arrangement_number}</TableCell>
                       <TableCell>

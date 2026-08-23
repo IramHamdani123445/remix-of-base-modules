@@ -119094,7 +119094,17 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_arrangement_blocking_lookup: {
+        Args: { p_employer_id: string }
+        Returns: {
+          arrangement_number: string
+          case_id: string
+          id: string
+          status: string
+        }[]
+      }
       ce_arrangement_grace_days: { Args: never; Returns: number }
+      ce_arrangement_terminal_statuses: { Args: never; Returns: string[] }
       ce_batch_recompute_compliance: {
         Args: {
           p_employer_ids?: string[]
