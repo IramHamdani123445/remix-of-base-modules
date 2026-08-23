@@ -88,6 +88,12 @@ export default function EmployerFinancialLedgerTab({ employerId }: Props) {
     setFromDate(''); setToDate(''); setReference(''); setSearchTerm(''); setPage(0);
   };
 
+  const closing = Number(summary?.closing_balance ?? 0);
+  const position =
+    closing > 0 ? { label: 'Amount owed', tone: 'destructive' as const }
+      : closing < 0 ? { label: 'Employer in credit', tone: 'default' as const }
+        : { label: 'Settled', tone: 'secondary' as const };
+
   return (
     <div className="space-y-4">
       {/* Position summary */}
@@ -96,7 +102,7 @@ export default function EmployerFinancialLedgerTab({ employerId }: Props) {
           { label: 'Opening', value: money(summary?.opening_balance) },
           { label: 'Debits', value: money(summary?.total_debits) },
           { label: 'Credits', value: money(summary?.total_credits) },
-          { label: 'Closing', value: money(summary?.closing_balance) },
+          { label: 'Closing', value: money(summary?.closing_balance), badge: position },
           { label: 'Unallocated Credit', value: money(summary?.unallocated_credit) },
           { label: 'Under Arrangement', value: money(summary?.amount_under_arrangement) },
         ].map((kpi) => (
@@ -104,10 +110,14 @@ export default function EmployerFinancialLedgerTab({ employerId }: Props) {
             <CardContent className="p-3 text-center">
               <div className="text-[11px] text-muted-foreground mb-1">{kpi.label}</div>
               <div className="text-sm font-bold">{kpi.value}</div>
+              {kpi.badge && (
+                <Badge variant={kpi.badge.tone} className="mt-1 text-[10px]">{kpi.badge.label}</Badge>
+              )}
             </CardContent>
           </Card>
         ))}
       </div>
+
 
       {/* Fund position + reconciliation */}
       <Card>
