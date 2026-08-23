@@ -42,6 +42,7 @@ import {
   rejectArrangement,
   activateArrangement,
 } from '@/services/arrangementWorkflowService';
+import { ArrangementCoveragePanel } from '@/components/compliance/ArrangementCoveragePanel';
 import { useUserCode } from '@/hooks/useUserCode';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
