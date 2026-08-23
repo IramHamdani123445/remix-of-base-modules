@@ -1028,7 +1028,13 @@ export default function CaseDetailView() {
           defaultAmount: caseOutstanding,
 
         }}
-        onCreated={() => queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] })}
+        onCreated={() => {
+          // Show the request immediately on the case so the officer can track it.
+          queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] });
+          queryClient.invalidateQueries({ queryKey: ['ce_case_waivers', id] });
+          setActiveTab('waivers');
+          toast.success('Waiver request created — track it on the Waivers tab');
+        }}
       />
 
       <AssignmentDialog
