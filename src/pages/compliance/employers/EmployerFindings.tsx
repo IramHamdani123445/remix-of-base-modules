@@ -18,7 +18,10 @@ import {
   DISPOSITION_LABELS,
   FindingDisposition,
   evaluateConversionEligibility,
+  findingDispositionService,
+  ViolationTypePolicy,
 } from '@/services/compliance/findingDispositionService';
+
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
