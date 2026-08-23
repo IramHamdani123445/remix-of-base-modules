@@ -293,6 +293,45 @@ class InspectionService {
     if (error) throw error;
   }
 
+  /**
+   * Organisation-wide recent findings (all employers), used by the Inspection
+   * Findings screen when no employer context has been selected yet.
+   */
+  async getRecentFindings(limit = 200): Promise<
+    (InspectionFinding & { employerName?: string; inspectionNumber?: string })[]
+  > {
+    const { data, error } = await supabase
+      .from('ce_inspection_findings')
+      .select(
+        'id, inspection_id, finding_type, title, category, description, severity, ' +
+          'recommended_action, follow_up_required, violation_created, violation_id, ' +
+          'created_at, created_by, ce_inspections(inspection_number, employer_id, employer_name)',
+      )
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map((row: any) => ({
+      id: row.id,
+      inspectionVisitId: row.inspection_id ?? '',
+      employerId: row.ce_inspections?.employer_id ?? '',
+      employerName: row.ce_inspections?.employer_name ?? undefined,
+      inspectionNumber: row.ce_inspections?.inspection_number ?? undefined,
+      findingType: row.finding_type ?? 'INFORMATION_ONLY',
+      title: row.title ?? '',
+      category: row.category ?? '',
+      description: row.description ?? '',
+      severity: row.severity ?? 'Medium',
+      recommendedAction: row.recommended_action ?? undefined,
+      followUpRequired: !!row.follow_up_required,
+      isViolationCreated: !!row.violation_created,
+      violationId: row.violation_id ?? undefined,
+      evidenceIds: [],
+      createdAt: row.created_at,
+      createdByUserId: row.created_by ?? '',
+      createdByName: row.created_by ?? '',
+    })) as any;
+  }
+
   async getFindingsByEmployer(employerId: string): Promise<InspectionFinding[]> {
     const { data: inspections } = await supabase
       .from('ce_inspections')
