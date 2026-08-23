@@ -215,9 +215,91 @@ export default function EmployerFindings() {
       )}
 
       {/* Employer Context */}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Organisation-wide recent findings (no employer context) */}
+      {!selectedEmployer && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Findings (All Employers)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : recentFindings.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No inspection findings recorded yet</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Employer</TableHead>
+                    <TableHead>Inspection</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Violation</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentFindings.map((f: any) => (
+                    <TableRow key={f.id}>
+                      <TableCell>{safeDate(f.createdAt)}</TableCell>
+                      <TableCell className="text-sm">
+                        {f.employerName ?? f.employerId ?? '—'}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{f.inspectionNumber ?? '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant={getFindingTypeBadge(f.findingType)}>
+                          {safeLabel(f.findingType)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getSeverityBadge(f.severity)}>{f.severity ?? '—'}</Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">{f.title || '—'}</TableCell>
+                      <TableCell>
+                        {f.isViolationCreated ? (
+                          <Badge variant="default">Created</Badge>
+                        ) : (
+                          <Badge variant="outline">Pending</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {f.isViolationCreated && f.violationId ? (
+                          <Button variant="outline" size="sm" onClick={() => handleViewViolation(f.violationId)}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Violation
+                          </Button>
+                        ) : f.employerId ? (
+                          <Button variant="default" size="sm" onClick={() => loadEmployerData(f.employerId)}>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Open Employer
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Employer Context */}
       {selectedEmployer && (
         <>
           <Card>
+
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
