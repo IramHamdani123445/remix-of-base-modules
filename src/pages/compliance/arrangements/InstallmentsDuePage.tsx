@@ -30,23 +30,12 @@ export default function InstallmentsDuePage() {
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
 
-  const today = new Date().toISOString().slice(0, 10);
-  const horizon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['ce_installments_due'],
+    queryKey: ['ce_installments_due_operational'],
     enabled,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ce_installments')
-        .select('*, ce_payment_arrangements!inner(id,arrangement_number,employer_id,employer_name,status)')
-        .in('status', ['PENDING', 'PLANNED', 'PARTIAL', 'OVERDUE'])
-        .lte('due_date', horizon)
-        .order('due_date', { ascending: true }).limit(500);
-      if (error) throw error;
-      return (data || []).filter((r: any) => r.ce_payment_arrangements?.status === 'ACTIVE');
-    },
+    queryFn: () => fetchInstallmentsDue(30),
   });
+
 
   const payMut = useMutation({
     mutationFn: () => recordInstallmentPayment({
