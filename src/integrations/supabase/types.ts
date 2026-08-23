@@ -119945,6 +119945,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_apply_case_merge: {
+        Args: { p_actor?: string; p_request_id: string }
+        Returns: Json
+      }
       ce_apply_status_transition: {
         Args: {
           p_action_code: string
