@@ -510,6 +510,9 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
         </Card>
       </div>
 
+      {/* ── Operational strip (server-derived) ───────────── */}
+      <ArrangementOperationalStrip arrangementId={arrangementId} />
+
       {/* ── Breach Health Widget ─────────────────────────── */}
       <Card className={`border ${hCfg.border}`}>
         <CardContent className="pt-4 pb-3">
