@@ -43,6 +43,9 @@ import {
   activateArrangement,
 } from '@/services/arrangementWorkflowService';
 import { ArrangementCoveragePanel } from '@/components/compliance/ArrangementCoveragePanel';
+import { ArrangementInstallmentsPanel } from '@/components/compliance/arrangements/ArrangementInstallmentsPanel';
+import { ArrangementAllocationsPanel } from '@/components/compliance/arrangements/ArrangementAllocationsPanel';
+import { ArrangementOperationalStrip } from '@/components/compliance/arrangements/ArrangementOperationalStrip';
 import { useUserCode } from '@/hooks/useUserCode';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
