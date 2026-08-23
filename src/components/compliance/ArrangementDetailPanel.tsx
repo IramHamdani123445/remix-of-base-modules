@@ -15,6 +15,7 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -353,6 +354,7 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
     ? ((arr.installments_paid ?? 0) / arr.number_of_installments) * 100
     : 0;
 
+  const navigate = useNavigate();
   const unresolvedBreaches = breaches.filter((b: any) => !b.resolution).length;
   const breachHealthInfo = getBreachHealth(arr, breaches.length > 0 ? unresolvedBreaches : undefined);
   const hCfg = healthConfig[breachHealthInfo.health];
@@ -366,7 +368,16 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
         </Button>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-semibold truncate">{arr.arrangement_number}</h2>
-          <p className="text-sm text-muted-foreground">{arr.employer_name} · {arr.employer_id}</p>
+          <p className="text-sm text-muted-foreground">
+            <Button
+              variant="link"
+              className="h-auto p-0 text-sm font-normal"
+              onClick={() => navigate(`/compliance/field/employer-360/${arr.employer_id}`)}
+              title="Open Employer 360"
+            >
+              {arr.employer_name} · {arr.employer_id}
+            </Button>
+          </p>
           {linkedCase && (
             <p className="text-xs text-muted-foreground mt-0.5">
               Case: <span className="font-mono">{linkedCase.case_number}</span>
