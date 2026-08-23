@@ -105,12 +105,19 @@ export default function RequestWaiverDialog({ open, onClose, onCreated, context 
               <Select value={type} onValueChange={(v) => setType(v as WaiverType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {['PENALTY', 'INTEREST', 'PRINCIPAL', 'FULL', 'PARTIAL'].map((t) =>
+                  {/* Principal (contribution) waivers are policy-controlled: they are only
+                      available by selecting an enabled PRINCIPAL waiver rule above. */}
+                  {['PENALTY', 'INTEREST', 'FULL', 'PARTIAL'].map((t) =>
                     <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Principal (contribution) amounts cannot be waived here — they require an enabled
+                principal waiver rule under Compliance &gt; Waiver Rules.
+              </p>
             </div>
           )}
+
           <div>
             <Label className="text-xs">Amount Requested</Label>
             <Input type="number" min={0} value={amount}
