@@ -42,15 +42,73 @@ export default function BreachesPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const { data: register = [] } = useQuery({
+    queryKey: ['ce_v_arrangement_register'],
+    queryFn: fetchArrangementRegister,
+  });
+  const watchlist = register.filter(
+    (a) => a.health_status === 'BREACHED' || a.health_status === 'AT_RISK' || Number(a.overdue_count) > 0,
+  );
+
   return (
     <PermissionWrapper moduleName={MODULE}>
       <div className="container mx-auto p-6 space-y-4">
-        <PageHeader title="Breaches" subtitle="Arrangement breaches detected manually or by the automation job." />
+        <PageHeader title="Breaches & Defaults" subtitle="Arrangement breaches detected manually or by the automation job, with the current default watchlist." />
         <div className="flex justify-end">
           <PermissionButton moduleName={MODULE} actionName="edit" onClick={() => scanMut.mutate()} disabled={scanMut.isPending}>
             <ScanLine className="h-4 w-4 mr-1" /> {scanMut.isPending ? 'Scanning…' : 'Run Detection Now'}
           </PermissionButton>
         </div>
+
+        {/* Default watchlist — server-derived arrears position */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="px-4 py-3 border-b flex items-center gap-2 text-sm font-semibold">
+              <ShieldAlert className="h-4 w-4 text-destructive" />
+              Default watchlist ({watchlist.length})
+            </div>
+            {watchlist.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                No arrangement is currently in arrears.
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Arrangement</TableHead>
+                    <TableHead>Employer</TableHead>
+                    <TableHead className="text-center">Overdue</TableHead>
+                    <TableHead className="text-right">Past due</TableHead>
+                    <TableHead className="text-right">Outstanding</TableHead>
+                    <TableHead className="text-center">Health</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {watchlist.map((a) => (
+                    <TableRow key={a.arrangement_id}>
+                      <TableCell className="font-medium">{a.arrangement_number}</TableCell>
+                      <TableCell>{a.employer_name || a.employer_id}</TableCell>
+                      <TableCell className="text-center text-destructive font-semibold">{a.overdue_count}</TableCell>
+                      <TableCell className="text-right">{formatXCD(a.past_due_amount)}</TableCell>
+                      <TableCell className="text-right">{formatXCD(a.outstanding)}</TableCell>
+                      <TableCell className="text-center"><ArrangementHealthBadge health={a.health_status} /></TableCell>
+                      <TableCell className="text-right">
+                        <button
+                          className="text-primary hover:underline text-xs"
+                          onClick={() => navigate(`/compliance/enforcement/arrangements?arr=${a.arrangement_id}`)}
+                        >
+                          Open
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardContent className="p-0">
             {isLoading ? (
