@@ -26,6 +26,7 @@ import { violationLifecycleService, ViolationStatus } from '@/services/violation
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { fetchViolationById } from '@/services/complianceDataService';
 import { fetchViolationWaivedAmount, computeOutstanding } from '@/services/complianceWaiverAmounts';
+import { fetchViolationFinancials, VIOLATION_PAID_HELP } from '@/services/complianceViolationAmountService';
 
 import { confirmViolation, rejectViolation } from '@/services/verificationQueueService';
 import { supabase } from '@/integrations/supabase/client';
@@ -397,9 +398,15 @@ export default function ViolationDetails() {
   }
 
   const v = violationData as any;
-  const violationGross = Number(v.total_amount) || 0;
-  const violationWaivedAmount = Number(violationWaived) || 0;
-  const violationOutstanding = computeOutstanding(violationGross, 0, violationWaivedAmount);
+  // All money below comes from the shared read layer (ce_v_violation_financials).
+  // The raw columns are only a fallback while that query is in flight.
+  const violationGross = financials?.gross ?? (Number(v.total_amount) || 0);
+  const violationPrincipal = financials?.principal ?? (Number(v.principal_amount) || 0);
+  const violationPenalty = financials?.penalty ?? (Number(v.penalty_amount) || 0);
+  const violationInterest = financials?.interest ?? (Number(v.interest_amount) || 0);
+  const violationWaivedAmount = financials?.waived ?? (Number(violationWaived) || 0);
+  const violationOutstanding = financials?.outstanding
+    ?? computeOutstanding(violationGross, 0, violationWaivedAmount);
 
   const typeName = v.ce_violation_types?.name ?? 'Unknown Type';
   const typeCategory = v.ce_violation_types?.category ?? '';
@@ -468,13 +475,7 @@ export default function ViolationDetails() {
                 type="button"
                 variant={action.variant}
                 size="sm"
-                title={
-                  action.confirmType === 'escalate'
-                    ? 'Escalate this violation to Compliance Head / Legal for senior review, formal notice or referral. Requires a written reason and is logged on the case history.'
-                    : action.confirmType === 'de_escalate'
-                      ? 'Return this violation from ESCALATED back to UNDER_REVIEW.'
-                      : undefined
-                }
+                title={ACTION_HELP_TEXT[action.confirmType]}
                 onClick={() => handleActionClick(action)}
               >
                 {action.icon}
@@ -575,15 +576,15 @@ export default function ViolationDetails() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Principal</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{formatCurrency(Number(v.principal_amount) || 0)}</div>
+            <div className="text-xl font-bold">{formatCurrency(violationPrincipal)}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Penalties</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Penalty / Fine</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{formatCurrency(Number(v.penalty_amount) || 0)}</div>
+            <div className="text-xl font-bold">{formatCurrency(violationPenalty)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -591,20 +592,21 @@ export default function ViolationDetails() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Interest</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{formatCurrency(Number(v.interest_amount) || 0)}</div>
+            <div className="text-xl font-bold">{formatCurrency(violationInterest)}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Due</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Outstanding</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold text-destructive">{formatCurrency(violationOutstanding)}</div>
-            {violationWaivedAmount > 0 && (
-              <div className="text-xs text-muted-foreground">
-                Gross {formatCurrency(violationGross)} · Waived {formatCurrency(violationWaivedAmount)}
-              </div>
-            )}
+            <div className="text-xs text-muted-foreground">
+              Gross {formatCurrency(violationGross)} · Waived {formatCurrency(violationWaivedAmount)}
+            </div>
+            <div className="text-[11px] text-muted-foreground mt-1" title={VIOLATION_PAID_HELP}>
+              Paid: tracked at case / ledger level
+            </div>
           </CardContent>
 
         </Card>
