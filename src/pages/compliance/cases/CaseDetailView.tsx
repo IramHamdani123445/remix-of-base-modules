@@ -37,7 +37,9 @@ import { toast } from 'sonner';
 import { ComplianceTimeline } from '@/components/compliance/ComplianceTimeline';
 import { AssignmentDialog } from '@/components/compliance/AssignmentDialog';
 import { CaseLegalEscalationPanel } from '@/components/compliance/CaseLegalEscalationPanel';
+import { CaseWaiversPanel } from '@/components/compliance/CaseWaiversPanel';
 import { fetchCaseLegalStatus } from '@/services/compliance/legalEscalationFlow';
+import { evaluateArrangementEligibility } from '@/services/compliance/paymentArrangementEligibility';
 
 import { UserCheck, Send } from 'lucide-react';
 import { useHasCapability } from '@/hooks/useHasCapability';
