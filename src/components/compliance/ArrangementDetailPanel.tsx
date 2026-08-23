@@ -42,6 +42,7 @@ import {
   rejectArrangement,
   activateArrangement,
 } from '@/services/arrangementWorkflowService';
+import { ArrangementCoveragePanel } from '@/components/compliance/ArrangementCoveragePanel';
 import { useUserCode } from '@/hooks/useUserCode';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
@@ -595,9 +596,12 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
 
       {/* ── Tabs ────────────────────────────────────────── */}
       <Tabs defaultValue="installments" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="installments">
             Installments ({installments.length})
+          </TabsTrigger>
+          <TabsTrigger value="coverage">
+            Coverage
           </TabsTrigger>
           <TabsTrigger value="breaches">
             Breaches ({breaches.length})
@@ -612,6 +616,12 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
             Notices ({notices.length})
           </TabsTrigger>
         </TabsList>
+
+        {/* ── Coverage Tab ──────────────────────────────── */}
+        <TabsContent value="coverage">
+          <ArrangementCoveragePanel legacyArrangementId={arrangementId} />
+        </TabsContent>
+
 
         {/* ── Installments Tab ──────────────────────────── */}
         <TabsContent value="installments">
