@@ -27,6 +27,8 @@ import { ViolationFiltersBar, emptyViolationFilterState } from '@/components/com
 import { useRegnoParam } from '@/hooks/useRegnoParam';
 import { EmployerLinkChip, RegnoFilterBanner } from '@/components/compliance/EmployerLinkChip';
 import { RunDetectionNowButton } from '@/components/compliance/violations/RunDetectionNowButton';
+import { fetchViolationFinancialsMap } from '@/services/complianceViolationAmountService';
+
 
 
 const PAGE_SIZE = 50;
