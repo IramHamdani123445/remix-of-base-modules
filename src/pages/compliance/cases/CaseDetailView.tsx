@@ -718,6 +718,10 @@ export default function CaseDetailView() {
           <CaseInspectionsTab caseId={id!} employerId={c.employer_id} />
         </TabsContent>
 
+        <TabsContent value="waivers" className="space-y-4">
+          <CaseWaiversPanel caseId={id!} />
+        </TabsContent>
+
 
 
 
