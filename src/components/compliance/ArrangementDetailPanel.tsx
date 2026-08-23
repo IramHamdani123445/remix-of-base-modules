@@ -15,6 +15,7 @@
  */
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -116,13 +117,20 @@ const SectionEmpty: React.FC<{ message: string; icon?: React.ReactNode }> = ({ m
 
 type BreachHealth = 'healthy' | 'warning' | 'breached' | 'defaulted';
 
-function getBreachHealth(arr: any): { health: BreachHealth; label: string; description: string } {
+function getBreachHealth(arr: any, unresolvedBreaches?: number): { health: BreachHealth; label: string; description: string } {
   if (arr.status === 'DEFAULTED') {
     return { health: 'defaulted', label: 'Defaulted', description: arr.breach_reason || 'Arrangement has been defaulted due to breach conditions.' };
   }
-  if (arr.breach_detected) {
+  // A legacy breach_detected flag can remain set after every breach has been cured.
+  // Trust the server-derived unresolved breach count when it is available.
+  const hasLiveBreach = unresolvedBreaches != null ? unresolvedBreaches > 0 : !!arr.breach_detected;
+  if (hasLiveBreach) {
     return { health: 'breached', label: 'Breach Detected', description: arr.breach_reason || 'Active breach — requires attention.' };
   }
+  if (unresolvedBreaches === 0 && arr.breach_detected) {
+    return { health: 'healthy', label: 'Breaches Cured', description: 'All recorded breaches have been resolved.' };
+  }
+
   const missed = arr.missed_payments ?? 0;
   const max = arr.max_missed_before_breach ?? 2;
   if (missed > 0 && missed < max) {
@@ -145,6 +153,7 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
   onBack,
 }) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { userCode } = useUserCode();
   const canManageArrangements = useHasCapability(COMPLIANCE_CAPABILITIES.ENFORCEMENT_ARRANGEMENTS);
   const [rejectReason, setRejectReason] = React.useState('');
@@ -346,9 +355,9 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
     ? ((arr.installments_paid ?? 0) / arr.number_of_installments) * 100
     : 0;
 
-  const breachHealthInfo = getBreachHealth(arr);
-  const hCfg = healthConfig[breachHealthInfo.health];
   const unresolvedBreaches = breaches.filter((b: any) => !b.resolution).length;
+  const breachHealthInfo = getBreachHealth(arr, breaches.length > 0 ? unresolvedBreaches : undefined);
+  const hCfg = healthConfig[breachHealthInfo.health];
 
   return (
     <div className="space-y-6">
@@ -359,7 +368,16 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
         </Button>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-semibold truncate">{arr.arrangement_number}</h2>
-          <p className="text-sm text-muted-foreground">{arr.employer_name} · {arr.employer_id}</p>
+          <p className="text-sm text-muted-foreground">
+            <Button
+              variant="link"
+              className="h-auto p-0 text-sm font-normal"
+              onClick={() => navigate(`/compliance/field/employer-360/${arr.employer_id}`)}
+              title="Open Employer 360"
+            >
+              {arr.employer_name} · {arr.employer_id}
+            </Button>
+          </p>
           {linkedCase && (
             <p className="text-xs text-muted-foreground mt-0.5">
               Case: <span className="font-mono">{linkedCase.case_number}</span>
@@ -367,7 +385,7 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
           )}
         </div>
         <Badge className={statusColor(arr.status)}>{arr.status}</Badge>
-        {arr.breach_detected && (
+        {arr.breach_detected && (breaches.length === 0 || unresolvedBreaches > 0) && (
           <Badge variant="destructive" className="gap-1">
             <AlertTriangle className="h-3 w-3" />BREACH
           </Badge>

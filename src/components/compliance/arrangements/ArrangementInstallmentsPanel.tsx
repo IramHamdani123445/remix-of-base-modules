@@ -111,12 +111,13 @@ export const ArrangementInstallmentsPanel: React.FC<Props> = ({
                       {a.is_unattributed ? (
                         <span className="text-warning-foreground">Not attributable</span>
                       ) : (
-                        <>
+                        <span className="block">
                           {a.liability_type || '—'}
                           {a.source_reference_no && (
                             <span className="block text-muted-foreground font-mono">{a.source_reference_no}</span>
                           )}
-                        </>
+                        </span>
+
                       )}
                     </TableCell>
                     <TableCell className="text-xs">{a.fund_type || '—'}</TableCell>
