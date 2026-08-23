@@ -94,6 +94,7 @@ const ArrangementPendingApprovalPage = lazy(() => import('@/pages/compliance/arr
 const ActiveArrangementsPage = lazy(() => import('@/pages/compliance/arrangements/ActiveArrangementsPage'));
 const InstallmentsDuePage = lazy(() => import('@/pages/compliance/arrangements/InstallmentsDuePage'));
 const PaymentAllocationPage = lazy(() => import('@/pages/compliance/arrangements/PaymentAllocationPage'));
+const ArrangementBreachesPage = lazy(() => import('@/pages/compliance/arrangements/BreachesPage'));
 const FieldOperations = lazy(() => import('@/pages/compliance/inspections/FieldOperations'));
 const NoticesManagement = lazy(() => import('@/pages/compliance/legal/NoticesManagement'));
 const EmployerStatements = lazy(() => import('@/pages/compliance/employers/EmployerStatements'));
