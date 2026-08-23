@@ -1701,7 +1701,7 @@ export const AppRoutes = () => {
       <Route path="/compliance/arrangements/pending-approval" element={<ComplianceFeatureGate flagKey="compliance.payment.arrangement" title="Pending Arrangement Approvals"><ArrangementPendingApprovalPage /></ComplianceFeatureGate>} />
       <Route path="/compliance/arrangements/active" element={<ComplianceFeatureGate flagKey="compliance.payment.arrangement" title="Active Arrangements"><ActiveArrangementsPage /></ComplianceFeatureGate>} />
       <Route path="/compliance/arrangements/installments-due" element={<ComplianceFeatureGate flagKey="compliance.payment.arrangement" title="Installments Due"><InstallmentsDuePage /></ComplianceFeatureGate>} />
-      <Route path="/compliance/arrangements/breaches" element={<Navigate to="/compliance/enforcement/breaches" replace />} />
+      <Route path="/compliance/arrangements/breaches" element={<ComplianceFeatureGate flagKey="compliance.payment.arrangement" title="Arrangement Breaches & Defaults"><ArrangementBreachesPage /></ComplianceFeatureGate>} />
       <Route path="/compliance/arrangements/payment-allocation" element={<ComplianceFeatureGate flagKey="compliance.payment.arrangement" title="Payment Allocation"><PaymentAllocationPage /></ComplianceFeatureGate>} />
       <Route path="/compliance/waivers" element={<Navigate to="/compliance/enforcement/waivers" replace />} />
       <Route path="/compliance/penalties" element={<Navigate to="/compliance/cases/penalties" replace />} />
