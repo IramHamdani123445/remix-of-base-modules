@@ -261,6 +261,7 @@ export default function EmployerFindings() {
                     <TableHead>Type</TableHead>
                     <TableHead>Severity</TableHead>
                     <TableHead>Title</TableHead>
+                    <TableHead>Classification</TableHead>
                     <TableHead>Violation</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -283,6 +284,11 @@ export default function EmployerFindings() {
                       </TableCell>
                       <TableCell className="font-medium">{f.title || '—'}</TableCell>
                       <TableCell>
+                        <Badge variant="outline">
+                          {DISPOSITION_LABELS[(f.disposition ?? 'PENDING_REVIEW') as FindingDisposition]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         {f.isViolationCreated ? (
                           <Badge variant="default">Created</Badge>
                         ) : (
@@ -295,12 +301,19 @@ export default function EmployerFindings() {
                             <Eye className="h-4 w-4 mr-1" />
                             View Violation
                           </Button>
-                        ) : f.employerId ? (
-                          <Button variant="default" size="sm" onClick={() => loadEmployerData(f.employerId)}>
-                            <Plus className="h-4 w-4 mr-1" />
-                            Open Employer
-                          </Button>
-                        ) : null}
+                        ) : (
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="outline" size="sm" onClick={() => handleReviewFinding(f)}>
+                              Review
+                            </Button>
+                            {f.employerId && (
+                              <Button variant="default" size="sm" onClick={() => loadEmployerData(f.employerId)}>
+                                <Plus className="h-4 w-4 mr-1" />
+                                Open Employer
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -376,6 +389,7 @@ export default function EmployerFindings() {
                           <TableHead>Type</TableHead>
                           <TableHead>Severity</TableHead>
                           <TableHead>Title</TableHead>
+                          <TableHead>Classification</TableHead>
                           <TableHead>Violation Status</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -398,6 +412,11 @@ export default function EmployerFindings() {
                             </TableCell>
                             <TableCell className="font-medium">{finding.title}</TableCell>
                             <TableCell>
+                              <Badge variant="outline">
+                                {DISPOSITION_LABELS[(finding.disposition ?? 'PENDING_REVIEW') as FindingDisposition]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
                               {finding.isViolationCreated ? (
                                 <Badge variant="default">
                                   <AlertTriangle className="h-3 w-3 mr-1" />
@@ -409,19 +428,26 @@ export default function EmployerFindings() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
                                 {!finding.isViolationCreated && (
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    onClick={() => handleCreateViolation(finding)}
-                                  >
-                                    <Plus className="h-4 w-4 mr-1" />
-                                    Create Violation
+                                  <Button variant="outline" size="sm" onClick={() => handleReviewFinding(finding)}>
+                                    Review
                                   </Button>
                                 )}
+                                {!finding.isViolationCreated && (() => {
+                                  const eligibility = evaluateConversionEligibility(finding as any);
+                                  return (
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      disabled={!eligibility.allowed}
+                                      title={eligibility.reasons.join(' ')}
+                                      onClick={() => handleCreateViolation(finding)}
+                                    >
+                                      <Plus className="h-4 w-4 mr-1" />
+                                      Confirm as Violation
+                                    </Button>
+                                  );
+                                })()}
                                 {finding.isViolationCreated && finding.violationId && (
                                   <Button
                                     variant="outline"
