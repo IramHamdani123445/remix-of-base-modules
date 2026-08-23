@@ -114,6 +114,13 @@ function ViolationsManagementInner() {
   });
 
   const violations = pageData?.rows ?? [];
+  // Money for the visible page comes from the shared compliance read layer.
+  const { data: rowFinancials = {} } = useQuery({
+    queryKey: ['ce_violation_financials_map', violations.map((v: any) => v.id).join(',')],
+    queryFn: () => fetchViolationFinancialsMap(violations.map((v: any) => v.id)),
+    enabled: violations.length > 0,
+  });
+
 
   const totalCount = pageData?.totalCount ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
