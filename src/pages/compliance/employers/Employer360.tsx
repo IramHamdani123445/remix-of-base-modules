@@ -83,7 +83,13 @@ export default function Employer360() {
   const { data: legal } = useQuery({ queryKey: ['employer360_legal', employerId], queryFn: () => fetchEmployerLegal(employerId!), enabled: !!employerId });
   const { data: workforce } = useQuery({ queryKey: ['employer360_workforce', employerId], queryFn: () => fetchEmployerWorkforce(employerId!), enabled: !!employerId });
   const { data: risk } = useQuery({ queryKey: ['employer360_risk', employerId], queryFn: () => fetchEmployerRisk(employerId!), enabled: !!employerId });
-  const { data: violations = [] } = useQuery({ queryKey: ['employer360_violations', employerId], queryFn: () => fetchEmployerViolations(employerId!), enabled: !!employerId });
+  const { data: violationsPage } = useQuery({ queryKey: ['employer360_violations', employerId], queryFn: () => fetchEmployerViolations(employerId!), enabled: !!employerId });
+  const violations = violationsPage?.rows ?? [];
+  const violationTotal = violationsPage?.total ?? 0;
+  const violationsTruncated = violationsPage?.truncated ?? false;
+  // Canonical, non-double-counting enforcement exposure (open cases + open unlinked violations).
+  const { data: exposure } = useQuery({ queryKey: ['employer360_exposure', employerId], queryFn: () => fetchEmployerExposure(employerId!), enabled: !!employerId });
+
   const { data: notices = [] } = useQuery({ queryKey: ['employer360_notices', employerId], queryFn: () => fetchEmployerNotices(employerId!), enabled: !!employerId });
   const { data: followUps = [] } = useQuery({ queryKey: ['employer360_followups', employerId], queryFn: () => fetchEmployerFollowUps(employerId!), enabled: !!employerId });
   const { data: timeline = [] } = useQuery({ queryKey: ['employer360_timeline', employerId], queryFn: () => fetchEmployerTimeline(employerId!), enabled: !!employerId });
