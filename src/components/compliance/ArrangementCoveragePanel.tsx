@@ -123,11 +123,41 @@ export const ArrangementCoveragePanel: React.FC<ArrangementCoveragePanelProps> =
           <CardTitle className="text-base flex items-center gap-2">
             <Layers className="h-4 w-4" />
             Covered Liabilities
-            {cov?.balanced ? (
-              <Badge className="bg-success/10 text-success gap-1"><ShieldCheck className="h-3 w-3" /> Fully covered</Badge>
-            ) : (
-              <Badge className="bg-warning/10 text-warning-foreground gap-1"><ShieldAlert className="h-3 w-3" /> Coverage incomplete</Badge>
-            )}
+            {(() => {
+              // Financial coverage completeness — derived from amounts, independent of source mapping.
+              const diff = Number(cov?.difference ?? 0);
+              if (cov?.balanced) {
+                return (
+                  <Badge className="bg-success/10 text-success gap-1" title="Financial coverage: arranged amount is fully matched by covered liabilities.">
+                    <ShieldCheck className="h-3 w-3" /> Financial coverage: Fully covered
+                  </Badge>
+                );
+              }
+              return (
+                <Badge className="bg-warning/10 text-warning-foreground gap-1" title="Financial coverage: covered liabilities do not equal the arranged amount.">
+                  <ShieldAlert className="h-3 w-3" /> Financial coverage: {diff > 0 ? 'Under-covered' : 'Over-covered'}
+                </Badge>
+              );
+            })()}
+            {(() => {
+              // Source mapping confidence — how reliably legacy records were reconstructed.
+              const conf = String((data.arrangement as any)?.coverage_status ?? '').toUpperCase();
+              if (!conf) return null;
+              const cls = conf === 'FULL'
+                ? 'bg-success/10 text-success'
+                : conf === 'PARTIAL'
+                  ? 'bg-warning/10 text-warning-foreground'
+                  : 'bg-muted text-muted-foreground';
+              const label = conf === 'FULL' ? 'Full' : conf === 'PARTIAL' ? 'Partial' : 'Unresolved';
+              return (
+                <Badge
+                  className={`${cls} gap-1`}
+                  title="Source mapping confidence: how reliably this arrangement's liabilities were reconstructed from legacy compliance records. This is separate from financial coverage."
+                >
+                  Source mapping: {label}
+                </Badge>
+              );
+            })()}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
