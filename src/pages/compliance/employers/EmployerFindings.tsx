@@ -13,6 +13,12 @@ import { inspectionService } from '@/services/inspectionService';
 import { violationService } from '@/services/violationService';
 import { supabase } from '@/integrations/supabase/client';
 import { CreateViolationFromFindingDialog } from '@/components/compliance/CreateViolationFromFindingDialog';
+import { FindingReviewDialog } from '@/components/compliance/FindingReviewDialog';
+import {
+  DISPOSITION_LABELS,
+  FindingDisposition,
+  evaluateConversionEligibility,
+} from '@/services/compliance/findingDispositionService';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -49,6 +55,8 @@ export default function EmployerFindings() {
   const [selectedFinding, setSelectedFinding] = useState<InspectionFinding | null>(null);
   const [showCreateViolation, setShowCreateViolation] = useState(false);
   const [recentFindings, setRecentFindings] = useState<any[]>([]);
+  const [reviewFinding, setReviewFinding] = useState<any | null>(null);
+  const [showReview, setShowReview] = useState(false);
   const [recentLoading, setRecentLoading] = useState(false);
 
   useEffect(() => {
@@ -129,6 +137,16 @@ export default function EmployerFindings() {
     } finally {
       setSearching(false);
     }
+  };
+
+  const handleReviewFinding = (finding: any) => {
+    setReviewFinding(finding);
+    setShowReview(true);
+  };
+
+  const applyDisposition = (findingId: string, disposition: FindingDisposition) => {
+    setFindings((prev) => prev.map((f) => (f.id === findingId ? { ...f, disposition } : f)));
+    setRecentFindings((prev) => prev.map((f) => (f.id === findingId ? { ...f, disposition } : f)));
   };
 
   const handleCreateViolation = (finding: InspectionFinding) => {
