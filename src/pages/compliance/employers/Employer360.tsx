@@ -29,8 +29,9 @@ import {
   useEmployerStatement, useEmployerArrears as useLedgerArrears,
 } from '@/hooks/useComplianceLedger';
 import {
-  fetchEmployerExposure, formatComplianceCurrency,
+  fetchEmployerExposure, fetchViolationFinancialsMap, formatComplianceCurrency,
 } from '@/services/complianceViolationAmountService';
+
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info } from 'lucide-react';
 
