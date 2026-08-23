@@ -31,7 +31,10 @@ export async function listCaseRequests(
   status: CaseRequestStatus = 'PENDING'
 ): Promise<CaseRequestRow[]> {
   const { data, error } = await (supabase.from(TABLE) as any)
-    .select('*, ce_cases!ce_case_requests_case_id_fkey(case_number, employer_name)')
+    .select(
+      '*, ce_cases!ce_case_requests_case_id_fkey(case_number, employer_name), ' +
+      'target:ce_cases!ce_case_requests_target_case_id_fkey(case_number, employer_name)'
+    )
     .eq('request_type', type)
     .eq('status', status)
     .order('requested_at', { ascending: false })
@@ -41,8 +44,10 @@ export async function listCaseRequests(
     ...r,
     case_number: r.ce_cases?.case_number,
     employer_name: r.ce_cases?.employer_name,
+    target_case_number: r.target?.case_number,
   }));
 }
+
 
 export async function createCaseRequest(input: {
   caseId: string;
