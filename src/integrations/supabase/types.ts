@@ -39891,9 +39891,12 @@ export type Database = {
       ce_inspection_findings: {
         Row: {
           category: string | null
+          converted_at: string | null
+          converted_by: string | null
           created_at: string | null
           created_by: string | null
           description: string
+          disposition: string
           evidence_documents: Json | null
           explanation_if_no_violation: string | null
           finding_type: string | null
@@ -39902,6 +39905,9 @@ export type Database = {
           id: string
           inspection_id: string | null
           recommended_action: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           severity: string | null
           title: string | null
           updated_at: string | null
@@ -39911,9 +39917,12 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
           created_at?: string | null
           created_by?: string | null
           description: string
+          disposition?: string
           evidence_documents?: Json | null
           explanation_if_no_violation?: string | null
           finding_type?: string | null
@@ -39922,6 +39931,9 @@ export type Database = {
           id?: string
           inspection_id?: string | null
           recommended_action?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           severity?: string | null
           title?: string | null
           updated_at?: string | null
@@ -39931,9 +39943,12 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string
+          disposition?: string
           evidence_documents?: Json | null
           explanation_if_no_violation?: string | null
           finding_type?: string | null
@@ -39942,6 +39957,9 @@ export type Database = {
           id?: string
           inspection_id?: string | null
           recommended_action?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           severity?: string | null
           title?: string | null
           updated_at?: string | null
@@ -45329,6 +45347,7 @@ export type Database = {
           resolved_at: string | null
           resolved_by: string | null
           severity: string | null
+          source_finding_id: string | null
           source_rule_id: string | null
           source_type: string | null
           split_from_id: string | null
@@ -45398,6 +45417,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
+          source_finding_id?: string | null
           source_rule_id?: string | null
           source_type?: string | null
           split_from_id?: string | null
@@ -45467,6 +45487,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
+          source_finding_id?: string | null
           source_rule_id?: string | null
           source_type?: string | null
           split_from_id?: string | null

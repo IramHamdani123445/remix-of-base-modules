@@ -193,8 +193,9 @@ class ViolationService {
         assigned_to_user_id: request.assignedToUserId,
         due_date: request.dueDate,
         discovered_date: new Date().toISOString().slice(0, 10),
-        discovered_by: 'MANUAL',
-        source_type: 'MANUAL',
+        discovered_by: request.inspectionFindingId ? 'INSPECTION' : 'MANUAL',
+        source_type: request.inspectionFindingId ? 'INSPECTION_FINDING' : 'MANUAL',
+        source_finding_id: request.inspectionFindingId ?? null,
         created_by: 'SYSTEM',
         // Strong linkage (Phase 4)
         linked_evidence_ids: request.linkedEvidenceIds && request.linkedEvidenceIds.length
