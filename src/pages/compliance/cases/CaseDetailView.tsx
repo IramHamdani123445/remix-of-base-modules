@@ -36,7 +36,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ComplianceTimeline } from '@/components/compliance/ComplianceTimeline';
 import { AssignmentDialog } from '@/components/compliance/AssignmentDialog';
-import { ForwardToLegalDialog } from '@/components/compliance/ForwardToLegalDialog';
+import { CaseLegalEscalationPanel } from '@/components/compliance/CaseLegalEscalationPanel';
+import { fetchCaseLegalStatus } from '@/services/compliance/legalEscalationFlow';
+
 import { UserCheck, Send } from 'lucide-react';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { useComplianceRole } from '@/hooks/useComplianceRole';
