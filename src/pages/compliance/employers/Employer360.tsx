@@ -401,22 +401,31 @@ export default function Employer360() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Violation #</TableHead><TableHead>Type</TableHead><TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead><TableHead>Amount</TableHead><TableHead>Created</TableHead><TableHead></TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead className="text-right">Gross</TableHead>
+                      <TableHead className="text-right">Waived</TableHead>
+                      <TableHead className="text-right">Outstanding</TableHead>
+                      <TableHead>Created</TableHead><TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {violations.map((v: any) => (
+                    {violations.map((v: any) => {
+                      const f = violationFinancials[v.id];
+                      return (
                       <TableRow key={v.id}>
                         <TableCell className="font-mono text-xs">{v.violation_number}</TableCell>
                         <TableCell className="text-xs">{v.ce_violation_types?.name || '—'}</TableCell>
                         <TableCell><Badge className={`text-xs ${STATUS_COLORS[v.status] || ''}`}>{v.status?.replace(/_/g, ' ')}</Badge></TableCell>
                         <TableCell className="text-xs">{v.priority}</TableCell>
-                        <TableCell className="text-xs">{formatCurrency(Number(v.total_amount) || 0)}</TableCell>
+                        <TableCell className="text-xs text-right">{formatCurrency(f?.gross ?? null)}</TableCell>
+                        <TableCell className="text-xs text-right">{formatCurrency(f?.waived ?? null)}</TableCell>
+                        <TableCell className="text-xs text-right font-medium">{formatCurrency(f?.outstanding ?? null)}</TableCell>
                         <TableCell className="text-xs">{formatDate(v.created_at)}</TableCell>
                         <TableCell><Button size="sm" variant="ghost" onClick={() => navigate(`/compliance/violations/${v.id}`)}><Eye className="h-3.5 w-3.5" /></Button></TableCell>
                       </TableRow>
-                    ))}
+                    );})}
                   </TableBody>
+
                 </Table>
               )}
             </CardContent>
