@@ -254,6 +254,9 @@ class InspectionService {
         followUpRequired: !!row.follow_up_required,
         isViolationCreated: !!row.violation_created,
         violationId: row.violation_id ?? undefined,
+        disposition: row.disposition ?? 'PENDING_REVIEW',
+        reviewNotes: row.review_notes ?? undefined,
+        reviewedBy: row.reviewed_by ?? undefined,
         evidenceIds: [],
         createdAt: row.created_at,
         createdByUserId: row.created_by ?? '',
@@ -286,6 +289,8 @@ class InspectionService {
       .update({
         violation_created: true,
         violation_id: violationId,
+        converted_by: userCode,
+        converted_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         updated_by: userCode,
       } as any)
@@ -305,6 +310,7 @@ class InspectionService {
       .select(
         'id, inspection_id, finding_type, title, category, description, severity, ' +
           'recommended_action, follow_up_required, violation_created, violation_id, ' +
+          'disposition, review_notes, reviewed_by, ' +
           'created_at, created_by, ce_inspections(inspection_number, employer_id, employer_name)',
       )
       .order('created_at', { ascending: false })
@@ -325,6 +331,9 @@ class InspectionService {
       followUpRequired: !!row.follow_up_required,
       isViolationCreated: !!row.violation_created,
       violationId: row.violation_id ?? undefined,
+      disposition: row.disposition ?? 'PENDING_REVIEW',
+      reviewNotes: row.review_notes ?? undefined,
+      reviewedBy: row.reviewed_by ?? undefined,
       evidenceIds: [],
       createdAt: row.created_at,
       createdByUserId: row.created_by ?? '',
@@ -358,6 +367,9 @@ class InspectionService {
       followUpRequired: !!row.follow_up_required,
       isViolationCreated: !!row.violation_created,
       violationId: row.violation_id ?? undefined,
+      disposition: row.disposition ?? 'PENDING_REVIEW',
+      reviewNotes: row.review_notes ?? undefined,
+      reviewedBy: row.reviewed_by ?? undefined,
       evidenceIds: [],
       createdAt: row.created_at,
       createdByUserId: row.created_by ?? '',
