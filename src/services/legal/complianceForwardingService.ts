@@ -1,17 +1,26 @@
 /**
  * Compliance → Legal forwarding service
  * --------------------------------------
- * Flow (numbered, end-to-end linked, no data duplication):
+ * The controlled two-phase hand-off (no uncontrolled shortcut exists):
  *
- *   1. Generate Compliance Legal Referral No  (CMP-LR-SKN-{YYYY}-{SEQ})
- *      via coreNumberingService.
- *   2. Insert source-of-truth record into `ce_legal_referrals`.
- *   3. Generate Legal Intake No (LG-INT-SKN-{YYYY}-{SEQ}) and create the
- *      `lg_case_intake` row (status = PENDING_REVIEW).
- *   4. Stamp `ce_cases` with referral / intake numbers + IDs for fast UI.
- *   5. Legal case is NOT created here — it is created when Legal accepts the
- *      intake via `lgIntakeService.acceptAndCreateCase`.
+ *   PHASE 1 — createComplianceLegalReferral()
+ *     1. Generate Compliance Legal Referral No (CMP-LR-SKN-{YYYY}-{SEQ}).
+ *     2. Insert the source-of-truth record into `ce_legal_referrals` as DRAFT.
+ *     3. Attach selected referral items + supporting documents.
+ *     4. Stamp `ce_cases.lg_referral_no` only — the case is NOT escalated yet.
+ *
+ *   (legal pack checklist + `legal.escalation_approval` approval happen in
+ *    src/services/compliance/legalEscalationFlow.ts)
+ *
+ *   PHASE 2 — submitReferralToLegal()
+ *     5. Requires status APPROVED_FOR_SUBMISSION.
+ *     6. Generate Legal Intake No (LG-INT-SKN-{YYYY}-{SEQ}) and create the
+ *        `lg_case_intake` row (status = PENDING_REVIEW).
+ *     7. Stamp `ce_cases` with intake ids and set status ESCALATED_LEGAL.
+ *     8. Legal case is created later, when Legal accepts the intake via
+ *        `lgIntakeService.acceptAndCreateCase`.
  */
+
 import { supabase } from "@/integrations/supabase/client";
 import { generateNumber } from "@/services/core/coreNumberingService";
 import { createIntake } from "@/services/legal/lgIntakeService";
@@ -27,9 +36,10 @@ import {
   triggerLgWorkflow,
   LG_WORKFLOW_MODULES,
 } from "@/services/legal/lgWorkflowIntegrationService";
-
-
-
+import {
+  REFERRAL_STATUS,
+  ACTIVE_REFERRAL_STATUSES,
+} from "@/services/compliance/legalEscalationFlow";
 
 const sb = supabase as any;
 
@@ -41,24 +51,38 @@ export interface ForwardComplianceCaseInput {
   payment_arrangement_id?: string | null;
   user_code?: string | null;
   notify_team_code?: string | null;
+  /** Where the referral was raised from, for traceability. */
+  created_via?: string | null;
   /** Selected items to refer — empty array means "refer entire case balance". */
   items?: ReferralItemDraft[];
   /** Selected/uploaded documents to attach to the referral packet. */
   documents?: ReferralDocumentDraft[];
 }
 
-export interface ForwardComplianceCaseResult {
+
+export interface CreateComplianceReferralResult {
+  referral_id: string;
+  referral_no: string;
+  items_count: number;
+  documents_count: number;
+  total_referred_amount: number;
+  status: string;
+}
+
+export interface SubmitReferralResult {
   referral_id: string;
   referral_no: string;
   lg_intake_id: string;
   lg_intake_no: string;
-  items_count: number;
-  total_referred_amount: number;
 }
 
-export async function forwardComplianceCaseToLegal(
-  input: ForwardComplianceCaseInput
-): Promise<ForwardComplianceCaseResult> {
+/**
+ * PHASE 1 — prepare a referral. Creates the DRAFT referral packet only; it does
+ * not touch Legal and does not escalate the compliance case.
+ */
+export async function createComplianceLegalReferral(
+  input: ForwardComplianceCaseInput,
+): Promise<CreateComplianceReferralResult> {
   const { data: ceCase, error: ceErr } = await sb
     .from("ce_cases")
     .select("*")
@@ -70,14 +94,13 @@ export async function forwardComplianceCaseToLegal(
     throw new Error("This compliance case has already been forwarded to Legal");
   }
 
-  // Guard against uq_ce_legal_ref_source_active: an active (non-REJECTED/CLOSED)
-  // referral on the same source case would raise a raw Postgres unique-violation
-  // at insert time. Detect it early and surface a friendly, actionable message.
+  // Guard against uq_ce_legal_ref_source_active: an active referral on the same
+  // source case would raise a raw unique-violation. Surface it early.
   const { data: existingActive } = await sb
     .from("ce_legal_referrals")
     .select("id, referral_number, status")
     .eq("source_case_id", input.ce_case_id)
-    .not("status", "in", "(REJECTED,CLOSED)")
+    .in("status", ACTIVE_REFERRAL_STATUSES as unknown as string[])
     .maybeSingle();
   if (existingActive) {
     throw new Error(
@@ -90,20 +113,6 @@ export async function forwardComplianceCaseToLegal(
     Number(ceCase.amount_collected ?? 0) -
     Number((ceCase as any).amount_waived ?? 0);
 
-  // Resolve linked payment arrangement (reference only)
-  let paymentArrangementId = input.payment_arrangement_id ?? null;
-  if (!paymentArrangementId) {
-    const { data: pa } = await sb
-      .from("ce_payment_arrangements")
-      .select("id")
-      .eq("case_id", input.ce_case_id)
-      .in("status", ["ACTIVE", "DRAFT", "DEFAULTED"])
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    paymentArrangementId = pa?.id ?? null;
-  }
-
   // 1. Compliance Legal Referral number (CMP-LR-SKN-{YYYY}-{SEQ})
   const refNo = await generateNumber({
     moduleCode: "COMPLIANCE",
@@ -112,7 +121,7 @@ export async function forwardComplianceCaseToLegal(
     userCode: input.user_code ?? null,
   });
 
-  // 2. Source referral record (ce_legal_referrals) — header with new packet fields
+  // 2. Source referral record — created as DRAFT, never pre-approved.
   const { data: ref, error: refErr } = await sb
     .from("ce_legal_referrals")
     .insert({
@@ -132,8 +141,8 @@ export async function forwardComplianceCaseToLegal(
       total_penalties: ceCase.total_penalties ?? 0,
       total_interest: ceCase.total_interest ?? 0,
       grand_total: ceCase.total_amount ?? 0,
-      status: "SUBMITTED_TO_LEGAL",
-      submitted_date: new Date().toISOString(),
+      status: REFERRAL_STATUS.DRAFT,
+      created_via: input.created_via ?? "REFERRAL_WIZARD",
       created_by: input.user_code ?? "SYSTEM",
       updated_by: input.user_code ?? null,
     })
@@ -148,8 +157,7 @@ export async function forwardComplianceCaseToLegal(
     throw refErr;
   }
 
-  // 2b. Insert selected referral items (if any). Header totals are auto-synced
-  //     by the trigger core_lri_sync_header_totals.
+  // 3. Referral items. Header totals are auto-synced by core_lri_sync_header_totals.
   const insertedItems = await insertReferralItems(
     ref.id,
     "COMPLIANCE",
@@ -166,111 +174,188 @@ export async function forwardComplianceCaseToLegal(
   const totalReferred = insertedItems.reduce((s, x) => s + Number(x.amount_referred ?? 0), 0);
   const referredSnapshot = insertedItems.length ? totalReferred : outstanding;
 
-  // 2c. Insert referral document links (existing Compliance docs + new uploads).
+  // 4. Supporting documentation (inspector notes, notices, arrangements, etc.)
   const insertedDocs = await insertReferralDocuments(
     ref.id,
     (input.documents ?? []).map((d) => ({ ...d, source_module: "COMPLIANCE" })),
     input.user_code ?? null,
   );
 
-  // 3. Legal Intake (PENDING_REVIEW)
-  const intake = await createIntake({
-    source_module: "COMPLIANCE",
-    source_type: "COMPLIANCE_CASE",
-    source_record_id: input.ce_case_id,
-    source_reference_no: refNo.generatedNumber,
-    matter_type_code: "CONTRIBUTION_RECOVERY",
-    recommended_case_type_code: "NON_COMPLIANCE",
-    primary_entity_type: ceCase.employer_id ? "EMPLOYER" : "COMPLIANCE_CASE",
-    primary_entity_id: ceCase.employer_id ? null : input.ce_case_id,
-    legacy_primary_entity_name: ceCase.employer_name ?? null,
-    summary:
-      `Forwarded from Compliance case ${ceCase.case_number}. ${input.referral_reason}`.slice(0, 2000),
-    exposure_amount: Number.isFinite(referredSnapshot) ? referredSnapshot : null,
-    priority_code: input.priority_code ?? mapPriority(ceCase.priority),
-    intake_status: "PENDING_REVIEW",
-    submitted_by: input.user_code ?? null,
-    recommended_team_code: input.notify_team_code ?? "LEGAL_INTAKE",
-    payload: {
-      ce_case_id: input.ce_case_id,
-      ce_case_number: ceCase.case_number,
-      ce_referral_id: ref.id,
-      ce_referral_no: refNo.generatedNumber,
-      payment_arrangement_id: paymentArrangementId,
-      outstanding_snapshot: outstanding,
-      referred_amount: referredSnapshot,
-      retained_amount: Math.max(0, outstanding - referredSnapshot),
-      items_count: insertedItems.length,
-      referral_reason: input.referral_reason,
-    },
-  });
-
-  // 4. Cross-link source referral row with the intake
-  await sb
-    .from("ce_legal_referrals")
-    .update({ lg_intake_id: intake.id, lg_intake_no: intake.intake_no })
-    .eq("id", ref.id);
-
-  // 5. Stamp ce_cases for fast UI lookup
+  // 5. Stamp the case with the referral number only — no escalation yet.
   await sb
     .from("ce_cases")
-    .update({
-      lg_intake_id: intake.id,
-      lg_intake_no: intake.intake_no,
-      lg_referral_no: refNo.generatedNumber,
-      status: "ESCALATED_LEGAL",
-      updated_by: input.user_code ?? null,
-    })
+    .update({ lg_referral_no: refNo.generatedNumber, updated_by: input.user_code ?? null })
     .eq("id", input.ce_case_id);
 
-  // 6. Fire-and-forget audit
   sb.from("system_audit_trail")
     .insert({
       module: "COMPLIANCE_TO_LEGAL",
-      action: "FORWARD_TO_LEGAL",
-      entity_type: "ce_case",
-      entity_id: input.ce_case_id,
+      action: "LEGAL_REFERRAL_CREATED",
+      entity_type: "ce_legal_referral",
+      entity_id: ref.id,
       severity: "info",
       user_name: input.user_code ?? null,
       payload_json: {
+        ce_case_id: input.ce_case_id,
         ce_case_number: ceCase.case_number,
-        referral_id: ref.id,
         referral_no: refNo.generatedNumber,
-        lg_intake_id: intake.id,
-        lg_intake_no: intake.intake_no,
+        created_via: input.created_via ?? "REFERRAL_WIZARD",
         outstanding_snapshot: outstanding,
         referred_snapshot: referredSnapshot,
         items_count: insertedItems.length,
-        payment_arrangement_id: paymentArrangementId,
+        documents_count: insertedDocs.length,
         referral_reason: input.referral_reason,
       },
     })
     .then(() => undefined, () => undefined);
 
-  // 7. Kick off central workflow on the intake (Compliance → Legal handoff).
+  return {
+    referral_id: ref.id,
+    referral_no: refNo.generatedNumber,
+    items_count: insertedItems.length,
+    documents_count: insertedDocs.length,
+    total_referred_amount: referredSnapshot,
+    status: REFERRAL_STATUS.DRAFT,
+  };
+}
+
+/**
+ * PHASE 2 — hand an APPROVED referral over to Legal. This is the only code path
+ * that creates a Legal intake and escalates the compliance case.
+ */
+export async function submitReferralToLegal(
+  referralId: string,
+  userCode: string | null,
+): Promise<SubmitReferralResult> {
+  const { data: ref, error: refErr } = await sb
+    .from("ce_legal_referrals")
+    .select("*")
+    .eq("id", referralId)
+    .single();
+  if (refErr) throw refErr;
+  if (ref.status !== REFERRAL_STATUS.APPROVED_FOR_SUBMISSION) {
+    throw new Error(
+      `Referral ${ref.referral_number} cannot be submitted from status ${ref.status}. It must be approved first.`,
+    );
+  }
+  if (ref.lg_intake_id) {
+    throw new Error(`Referral ${ref.referral_number} has already been submitted (intake ${ref.lg_intake_no}).`);
+  }
+
+  const { data: ceCase } = await sb
+    .from("ce_cases")
+    .select("*")
+    .eq("id", ref.source_case_id)
+    .maybeSingle();
+
+  const outstanding =
+    Number(ceCase?.total_amount ?? ref.grand_total ?? 0) -
+    Number(ceCase?.amount_collected ?? 0) -
+    Number((ceCase as any)?.amount_waived ?? 0);
+  const referredSnapshot = Number(ref.total_referred_amount ?? 0) || outstanding;
+
+  const { data: pa } = await sb
+    .from("ce_payment_arrangements")
+    .select("id")
+    .eq("case_id", ref.source_case_id)
+    .in("status", ["ACTIVE", "DRAFT", "DEFAULTED"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const intake = await createIntake({
+    source_module: "COMPLIANCE",
+    source_type: "COMPLIANCE_CASE",
+    source_record_id: ref.source_case_id,
+    source_reference_no: ref.referral_number,
+    matter_type_code: "CONTRIBUTION_RECOVERY",
+    recommended_case_type_code: "NON_COMPLIANCE",
+    primary_entity_type: ref.employer_id ? "EMPLOYER" : "COMPLIANCE_CASE",
+    primary_entity_id: ref.employer_id ? null : ref.source_case_id,
+    legacy_primary_entity_name: ref.employer_name ?? null,
+    summary: `Forwarded from Compliance case ${ceCase?.case_number ?? ref.source_reference_no}. ${
+      ref.referral_reason_text ?? ""
+    }`.slice(0, 2000),
+    exposure_amount: Number.isFinite(referredSnapshot) ? referredSnapshot : null,
+    priority_code: mapPriority(ceCase?.priority),
+    intake_status: "PENDING_REVIEW",
+    submitted_by: userCode ?? null,
+    recommended_team_code: "LEGAL_INTAKE",
+    payload: {
+      ce_case_id: ref.source_case_id,
+      ce_case_number: ceCase?.case_number ?? null,
+      ce_referral_id: ref.id,
+      ce_referral_no: ref.referral_number,
+      payment_arrangement_id: pa?.id ?? null,
+      outstanding_snapshot: outstanding,
+      referred_amount: referredSnapshot,
+      retained_amount: Math.max(0, outstanding - referredSnapshot),
+      items_count: ref.items_count ?? 0,
+      approved_by: ref.approved_by,
+      approved_at: ref.approved_at,
+      referral_reason: ref.referral_reason_text,
+    },
+  });
+
+  await sb
+    .from("ce_legal_referrals")
+    .update({
+      lg_intake_id: intake.id,
+      lg_intake_no: intake.intake_no,
+      status: REFERRAL_STATUS.SUBMITTED_TO_LEGAL,
+      submitted_date: new Date().toISOString(),
+      updated_by: userCode,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", ref.id);
+
+  await sb
+    .from("ce_cases")
+    .update({
+      lg_intake_id: intake.id,
+      lg_intake_no: intake.intake_no,
+      lg_referral_no: ref.referral_number,
+      status: "ESCALATED_LEGAL",
+      updated_by: userCode,
+    })
+    .eq("id", ref.source_case_id);
+
+  sb.from("system_audit_trail")
+    .insert({
+      module: "COMPLIANCE_TO_LEGAL",
+      action: "LEGAL_REFERRAL_SUBMITTED",
+      entity_type: "ce_legal_referral",
+      entity_id: ref.id,
+      severity: "info",
+      user_name: userCode,
+      payload_json: {
+        ce_case_id: ref.source_case_id,
+        referral_no: ref.referral_number,
+        lg_intake_id: intake.id,
+        lg_intake_no: intake.intake_no,
+        approved_by: ref.approved_by,
+      },
+    })
+    .then(() => undefined, () => undefined);
+
   triggerLgWorkflow({
     sourceModule: LG_WORKFLOW_MODULES.INTAKE,
     entityId: intake.id,
     entityName: intake.intake_no ?? intake.id,
     actionName: "submit",
-    userId: input.user_code ?? "system",
+    userId: userCode ?? "system",
     lgCaseId: null,
-    metadata: {
-      origin: "COMPLIANCE",
-      ce_case_id: input.ce_case_id,
-      ce_referral_id: ref.id,
-    },
+    metadata: { origin: "COMPLIANCE", ce_case_id: ref.source_case_id, ce_referral_id: ref.id },
   }).catch((err) => console.warn("[compliance-forwarding] workflow trigger failed", err));
 
   return {
     referral_id: ref.id,
-    referral_no: refNo.generatedNumber,
+    referral_no: ref.referral_number,
     lg_intake_id: intake.id,
     lg_intake_no: intake.intake_no,
-    items_count: insertedItems.length,
-    total_referred_amount: referredSnapshot,
   };
 }
+
 
 
 function mapPriority(p?: string | null): string {

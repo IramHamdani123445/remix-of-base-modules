@@ -417,31 +417,20 @@ export default function CaseDetailView() {
                 <Scale className="h-4 w-4 mr-1" />Recommend Legal
               </PermissionButton>
             )}
-            {/* Forward to Legal — full 6-step wizard vs. quick hand-off */}
+            {/* Refer to Legal — single controlled entry point (wizard → pack → approval → Legal) */}
             {!caseIsClosed && !(c as any).lg_intake_id && !(c as any).legal_case_id &&
-              isComplianceFeatureEnabled('legal.handoff') && (
-              <div className="flex items-center gap-2">
-                <PermissionButton
-                  moduleName={COMPLIANCE_MODULE}
-                  actionName="edit"
-                  size="sm"
-                  title="Full 6-step referral: select items, review history and attach documents before sending to Legal. Wizard = full referral with item selection, history and documents."
-                  onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}
-                >
-                  <Scale className="h-4 w-4 mr-1" />Refer to Legal (Wizard)
-                </PermissionButton>
-                <PermissionButton
-                  moduleName={COMPLIANCE_MODULE}
-                  actionName="edit"
-                  size="sm"
-                  variant="outline"
-                  title="Fast hand-off: sends the whole case to Legal intake without item selection. Quick Forward = immediate hand-off of the whole case to Legal intake."
-                  onClick={() => setForwardLegalOpen(true)}
-                >
-                  <Send className="h-4 w-4 mr-1" />Quick Forward
-                </PermissionButton>
-              </div>
+              !legalStatus && isComplianceFeatureEnabled('legal.handoff') && (
+              <PermissionButton
+                moduleName={COMPLIANCE_MODULE}
+                actionName="edit"
+                size="sm"
+                title="Start the legal referral: select items, review history and attach documents. The referral is created as a draft and only reaches Legal after the legal pack is complete and approved."
+                onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}
+              >
+                <Scale className="h-4 w-4 mr-1" />Refer to Legal
+              </PermissionButton>
             )}
+
 
             {(c as any).lg_intake_id && !(c as any).legal_case_id && (
               <Button variant="outline" size="sm" onClick={() => navigate(`/legal/cases/intake/${(c as any).lg_intake_id}`)}>

@@ -21,7 +21,14 @@ import {
   resolveApprovalWorkflow,
   type LegalPackItem,
 } from '@/services/legalHandoffService';
+import {
+  requestReferralApproval,
+  PREPARATION_STATUSES,
+  REFERRAL_STATUS,
+  REFERRAL_STATUS_LABEL,
+} from '@/services/compliance/legalEscalationFlow';
 import { CheckCircle2, AlertTriangle, FileCheck2, Send } from 'lucide-react';
+
 
 const PERMISSION = 'manage_compliance';
 
@@ -44,8 +51,8 @@ function Inner() {
     queryKey: ['legal-referrals-draft'],
     queryFn: async () => {
       const { data, error } = await (supabase.from('ce_legal_referrals' as any) as any)
-        .select('id, referral_number, employer_name, employer_id, grand_total, status, period_from, period_to')
-        .in('status', ['DRAFT', 'PENDING'])
+        .select('id, referral_number, employer_name, employer_id, grand_total, status, return_reason, period_from, period_to')
+        .in('status', PREPARATION_STATUSES as unknown as string[])
         .order('created_at', { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -80,24 +87,28 @@ function Inner() {
     mutationFn: async () => {
       if (!selected) throw new Error('No referral');
       if (!validation.complete) throw new Error('Pack incomplete');
-      const nextStatus = workflowInfo?.enabled ? 'PENDING' : 'SUBMITTED';
-      const { error } = await (supabase.from('ce_legal_referrals' as any) as any)
-        .update({
-          status: nextStatus,
-          submitted_date: new Date().toISOString(),
-          updated_by: userCode || 'SYSTEM',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', selected);
-      if (error) throw error;
+      return requestReferralApproval(selected, userCode || null);
     },
-    onSuccess: () => {
-      toast.success(workflowInfo?.enabled ? 'Sent for approval' : 'Marked submitted to legal');
+    onSuccess: (res) => {
+      toast.success(
+        res.status === REFERRAL_STATUS.PENDING_APPROVAL
+          ? `Sent for approval${res.workflowName ? ` — ${res.workflowName}` : ''}`
+          : 'Approved automatically — no approval workflow is mapped',
+        {
+          description:
+            res.status === REFERRAL_STATUS.PENDING_APPROVAL
+              ? 'A different officer must approve it in the Legal Queue before it reaches Legal.'
+              : 'Submit it to Legal from the Legal Queue. The auto-approval has been recorded in the audit trail.',
+        },
+      );
+      setSelected(null);
       qc.invalidateQueries({ queryKey: ['legal-referrals-draft'] });
       qc.invalidateQueries({ queryKey: ['legal-queue-referrals'] });
+      qc.invalidateQueries({ queryKey: ['ce_case_legal_status'] });
     },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   const ref = referrals.find((r: any) => r.id === selected);
 
@@ -109,28 +120,38 @@ function Inner() {
           Legal Pack Preparation
         </h1>
         <p className="text-sm text-muted-foreground">
-          Validate that every required handoff item is present before submitting a referral to Legal.
+          Stage 1 of the legal escalation. Complete every required pack item, then send the referral
+          for approval — nothing reaches Legal until it is approved.
         </p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Referral</CardTitle>
-          <CardDescription>Pick a draft referral to prepare its legal pack.</CardDescription>
+          <CardDescription>
+            Draft referrals and referrals returned by Legal for rework appear here.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <Select value={selected || ''} onValueChange={setSelected}>
             <SelectTrigger><SelectValue placeholder="Select a referral" /></SelectTrigger>
             <SelectContent>
               {referrals.map((r: any) => (
                 <SelectItem key={r.id} value={r.id}>
-                  {r.referral_number} — {r.employer_name} (${Number(r.grand_total).toLocaleString()})
+                  {r.referral_number} — {r.employer_name} (${Number(r.grand_total).toLocaleString()}) ·{' '}
+                  {REFERRAL_STATUS_LABEL[r.status] ?? r.status}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {ref?.status === REFERRAL_STATUS.RETURNED_BY_LEGAL && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+              <span className="font-medium">Returned by Legal:</span> {ref.return_reason || 'No reason recorded'}
+            </div>
+          )}
         </CardContent>
       </Card>
+
 
       {selected && ref && (
         <>
@@ -179,11 +200,11 @@ function Inner() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Approval & Submission</CardTitle>
+              <CardTitle>Send For Approval</CardTitle>
               <CardDescription>
                 {workflowInfo?.enabled
-                  ? `Approval workflow: ${workflowInfo.workflowName}`
-                  : `No approval workflow mapped — fallback: ${workflowInfo?.fallbackBehavior || 'DIRECT_APPLY'}`}
+                  ? `Approval workflow: ${workflowInfo.workflowName}. A second officer must approve before the referral can be submitted to Legal.`
+                  : 'No approval workflow is mapped for legal.escalation_approval — the referral will be auto-approved and that fact recorded in the audit trail.'}
               </CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-between">
@@ -193,15 +214,20 @@ function Inner() {
               <PermissionButton
                 moduleName={PERMISSION}
                 actionName="manage"
-               
                 onClick={() => submitMut.mutate()}
                 disabled={!validation.complete || submitMut.isPending}
+                title={
+                  validation.complete
+                    ? 'Send this referral for approval'
+                    : 'Complete every required pack item first'
+                }
               >
                 <Send className="h-4 w-4 mr-2" />
-                {workflowInfo?.enabled ? 'Send For Approval' : 'Submit To Legal'}
+                Send For Approval
               </PermissionButton>
             </CardContent>
           </Card>
+
         </>
       )}
     </div>
