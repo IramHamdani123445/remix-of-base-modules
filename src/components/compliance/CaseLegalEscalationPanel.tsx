@@ -25,7 +25,7 @@ export function CaseLegalEscalationPanel({ status }: { status: CaseLegalStatus |
     status.status === REFERRAL_STATUS.DRAFT || status.status === REFERRAL_STATUS.RETURNED_BY_LEGAL
       ? { label: 'Open Legal Pack Preparation', to: `/compliance/legal/pack-preparation?referral=${status.referral_id}` }
       : status.status === REFERRAL_STATUS.PENDING_APPROVAL || status.status === REFERRAL_STATUS.APPROVED_FOR_SUBMISSION
-        ? { label: 'Open Legal Queue', to: '/compliance/enforcement/legal-queue' }
+        ? { label: 'Open Referral Approval & Handover', to: '/compliance/enforcement/legal-queue' }
         : status.lg_intake_id
           ? { label: `View Legal Intake ${status.lg_intake_no ?? ''}`.trim(), to: `/legal/cases/intake/${status.lg_intake_id}` }
           : null;
