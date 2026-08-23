@@ -64,8 +64,15 @@ export default function InspectionManagement() {
         </div>
         <div className="flex items-center gap-2">
           <ComplianceHelpButton screenKey="inspections" />
+          <Button variant="outline" asChild>
+            <Link to="/compliance/field/findings">Findings</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/compliance/inspections/convert-finding">Convert Finding</Link>
+          </Button>
           <Button className="gap-2"><Plus className="h-4 w-4" />Schedule Inspection</Button>
           <ReferToLegalButton module="compliance" reasonCode="AUDIT_FINDING_RECOVERY" />
+
         </div>
 
       </div>
