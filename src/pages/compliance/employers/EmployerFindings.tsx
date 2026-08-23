@@ -162,12 +162,18 @@ export default function EmployerFindings() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Employer Findings</h1>
-        <p className="text-muted-foreground">
-          View all inspection findings and create violations for a specific employer
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Inspection Findings</h1>
+          <p className="text-muted-foreground">
+            Review inspection findings and convert them into violations.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => navigate('/compliance/inspections/convert-finding')}>
+          Conversion Queue
+        </Button>
       </div>
+
 
       {/* Employer Search */}
       {!selectedEmployer && (
