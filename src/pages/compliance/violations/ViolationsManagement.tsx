@@ -245,7 +245,8 @@ function ViolationsManagementInner() {
                   <TableHead className="min-w-[110px]">Status</TableHead>
                   <TableHead className="min-w-[90px]">Priority</TableHead>
                   <TableHead className="min-w-[90px]">Period</TableHead>
-                  <TableHead className="min-w-[110px]">Amount</TableHead>
+                  <TableHead className="min-w-[110px] text-right">Gross</TableHead>
+                  <TableHead className="min-w-[110px] text-right">Outstanding</TableHead>
                   <TableHead className="min-w-[100px]">Zone</TableHead>
                   <TableHead className="min-w-[130px]">Assigned To</TableHead>
                   <TableHead className="min-w-[110px]">Discovered</TableHead>
@@ -255,7 +256,7 @@ function ViolationsManagementInner() {
               <TableBody>
                 {violations.length === 0 && !isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={13} className="text-center text-muted-foreground py-8">
                       No violations found
                     </TableCell>
                   </TableRow>
@@ -287,8 +288,11 @@ function ViolationsManagementInner() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{v.period_from ?? '-'}</TableCell>
-                      <TableCell className="font-medium">
-                        {currencyFormatter.format(resolveViolationTotal(v))}
+                      <TableCell className="text-right">
+                        {currencyFormatter.format(rowFinancials[v.id]?.gross ?? resolveViolationTotal(v))}
+                      </TableCell>
+                      <TableCell className="font-medium text-right">
+                        {currencyFormatter.format(rowFinancials[v.id]?.outstanding ?? resolveViolationTotal(v))}
                       </TableCell>
                       <TableCell>
                         <div className="text-xs">
