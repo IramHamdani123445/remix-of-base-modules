@@ -112133,6 +112133,7 @@ export type Database = {
           max_missed_before_breach: number | null
           missed_payments: number | null
           next_due_date: string | null
+          overdue_installment_count: number | null
           regno: string | null
           status: string | null
           total_debt: number | null
