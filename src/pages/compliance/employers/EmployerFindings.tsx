@@ -449,7 +449,11 @@ export default function EmployerFindings() {
                                   </Button>
                                 )}
                                 {!finding.isViolationCreated && (() => {
-                                  const eligibility = evaluateConversionEligibility(finding as any);
+                                  const eligibility = evaluateConversionEligibility(
+                                    finding as any,
+                                    findingPolicies[finding.id],
+                                  );
+
                                   return (
                                     <Button
                                       variant="default"
