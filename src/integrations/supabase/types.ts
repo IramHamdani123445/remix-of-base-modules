@@ -41339,6 +41339,12 @@ export type Database = {
         Row: {
           accepted_by: string | null
           accepted_date: string | null
+          approval_notes: string | null
+          approval_requested_at: string | null
+          approval_requested_by: string | null
+          approval_workflow_definition_id: string | null
+          approved_at: string | null
+          approved_by: string | null
           audit_findings: string | null
           compliance_history: string | null
           contact_attempts: string | null
@@ -41346,6 +41352,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           created_by_name: string | null
+          created_via: string | null
           documents_count: number
           employer_id: string
           employer_name: string
@@ -41360,6 +41367,7 @@ export type Database = {
           lg_intake_id: string | null
           lg_intake_no: string | null
           notices_sent: number | null
+          pack_completed_at: string | null
           payment_plan_history: string | null
           period_from: string | null
           period_to: string | null
@@ -41373,6 +41381,9 @@ export type Database = {
           rejected_by: string | null
           rejected_date: string | null
           rejection_reason: string | null
+          return_reason: string | null
+          returned_at: string | null
+          returned_by: string | null
           source_case_id: string | null
           source_module: string | null
           source_record_id: string | null
@@ -41389,6 +41400,12 @@ export type Database = {
         Insert: {
           accepted_by?: string | null
           accepted_date?: string | null
+          approval_notes?: string | null
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approval_workflow_definition_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           audit_findings?: string | null
           compliance_history?: string | null
           contact_attempts?: string | null
@@ -41396,6 +41413,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_name?: string | null
+          created_via?: string | null
           documents_count?: number
           employer_id: string
           employer_name: string
@@ -41410,6 +41428,7 @@ export type Database = {
           lg_intake_id?: string | null
           lg_intake_no?: string | null
           notices_sent?: number | null
+          pack_completed_at?: string | null
           payment_plan_history?: string | null
           period_from?: string | null
           period_to?: string | null
@@ -41423,6 +41442,9 @@ export type Database = {
           rejected_by?: string | null
           rejected_date?: string | null
           rejection_reason?: string | null
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
           source_case_id?: string | null
           source_module?: string | null
           source_record_id?: string | null
@@ -41439,6 +41461,12 @@ export type Database = {
         Update: {
           accepted_by?: string | null
           accepted_date?: string | null
+          approval_notes?: string | null
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approval_workflow_definition_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           audit_findings?: string | null
           compliance_history?: string | null
           contact_attempts?: string | null
@@ -41446,6 +41474,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_name?: string | null
+          created_via?: string | null
           documents_count?: number
           employer_id?: string
           employer_name?: string
@@ -41460,6 +41489,7 @@ export type Database = {
           lg_intake_id?: string | null
           lg_intake_no?: string | null
           notices_sent?: number | null
+          pack_completed_at?: string | null
           payment_plan_history?: string | null
           period_from?: string | null
           period_to?: string | null
@@ -41473,6 +41503,9 @@ export type Database = {
           rejected_by?: string | null
           rejected_date?: string | null
           rejection_reason?: string | null
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
           source_case_id?: string | null
           source_module?: string | null
           source_record_id?: string | null

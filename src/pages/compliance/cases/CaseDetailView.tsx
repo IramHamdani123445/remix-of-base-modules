@@ -36,7 +36,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ComplianceTimeline } from '@/components/compliance/ComplianceTimeline';
 import { AssignmentDialog } from '@/components/compliance/AssignmentDialog';
-import { ForwardToLegalDialog } from '@/components/compliance/ForwardToLegalDialog';
+import { CaseLegalEscalationPanel } from '@/components/compliance/CaseLegalEscalationPanel';
+import { fetchCaseLegalStatus } from '@/services/compliance/legalEscalationFlow';
+
 import { UserCheck, Send } from 'lucide-react';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { useComplianceRole } from '@/hooks/useComplianceRole';
@@ -91,7 +93,7 @@ export default function CaseDetailView() {
   const [arrangementDialogOpen, setArrangementDialogOpen] = useState(false);
   const [waiverDialogOpen, setWaiverDialogOpen] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
-  const [forwardLegalOpen, setForwardLegalOpen] = useState(false);
+  
   const [breakdownDialogOpen, setBreakdownDialogOpen] = useState(false);
   const [planningDialogOpen, setPlanningDialogOpen] = useState(false);
 
@@ -201,6 +203,14 @@ export default function CaseDetailView() {
     },
     enabled: !!id,
   });
+
+  // Legal escalation status — the single tracked lifecycle for this case
+  const { data: legalStatus } = useQuery({
+    queryKey: ['ce_case_legal_status', id],
+    queryFn: () => fetchCaseLegalStatus(id!),
+    enabled: !!id,
+  });
+
 
   // Existing pending nomination (if any) for this case + officer
   const { data: existingNomination } = useQuery({
@@ -417,31 +427,20 @@ export default function CaseDetailView() {
                 <Scale className="h-4 w-4 mr-1" />Recommend Legal
               </PermissionButton>
             )}
-            {/* Forward to Legal — full 6-step wizard vs. quick hand-off */}
+            {/* Refer to Legal — single controlled entry point (wizard → pack → approval → Legal) */}
             {!caseIsClosed && !(c as any).lg_intake_id && !(c as any).legal_case_id &&
-              isComplianceFeatureEnabled('legal.handoff') && (
-              <div className="flex items-center gap-2">
-                <PermissionButton
-                  moduleName={COMPLIANCE_MODULE}
-                  actionName="edit"
-                  size="sm"
-                  title="Full 6-step referral: select items, review history and attach documents before sending to Legal. Wizard = full referral with item selection, history and documents."
-                  onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}
-                >
-                  <Scale className="h-4 w-4 mr-1" />Refer to Legal (Wizard)
-                </PermissionButton>
-                <PermissionButton
-                  moduleName={COMPLIANCE_MODULE}
-                  actionName="edit"
-                  size="sm"
-                  variant="outline"
-                  title="Fast hand-off: sends the whole case to Legal intake without item selection. Quick Forward = immediate hand-off of the whole case to Legal intake."
-                  onClick={() => setForwardLegalOpen(true)}
-                >
-                  <Send className="h-4 w-4 mr-1" />Quick Forward
-                </PermissionButton>
-              </div>
+              !legalStatus && isComplianceFeatureEnabled('legal.handoff') && (
+              <PermissionButton
+                moduleName={COMPLIANCE_MODULE}
+                actionName="edit"
+                size="sm"
+                title="Start the legal referral: select items, review history and attach documents. The referral is created as a draft and only reaches Legal after the legal pack is complete and approved."
+                onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}
+              >
+                <Scale className="h-4 w-4 mr-1" />Refer to Legal
+              </PermissionButton>
             )}
+
 
             {(c as any).lg_intake_id && !(c as any).legal_case_id && (
               <Button variant="outline" size="sm" onClick={() => navigate(`/legal/cases/intake/${(c as any).lg_intake_id}`)}>
@@ -642,7 +641,10 @@ export default function CaseDetailView() {
 
       </div>
 
+      <CaseLegalEscalationPanel status={legalStatus} />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
+
         <TabsList>
           <TabsTrigger value="violations">
             <Link2 className="h-4 w-4 mr-2" />Violations ({linkedViolations.length})
@@ -1003,14 +1005,8 @@ export default function CaseDetailView() {
         onAssigned={() => queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] })}
       />
 
-      <ForwardToLegalDialog
-        open={forwardLegalOpen}
-        onOpenChange={setForwardLegalOpen}
-        ceCaseId={c.id}
-        ceCaseNumber={c.case_number}
-        outstandingAmount={caseOutstanding}
 
-      />
+
 
       <AddToInspectionPlanningDialog
         open={planningDialogOpen}
