@@ -366,11 +366,11 @@ export default function EmployerFindings() {
                         {findings.map((finding) => (
                           <TableRow key={finding.id}>
                             <TableCell>
-                              {format(new Date(finding.createdAt), 'MMM dd, yyyy')}
+                              {safeDate(finding.createdAt)}
                             </TableCell>
                             <TableCell>
                               <Badge variant={getFindingTypeBadge(finding.findingType)}>
-                                {finding.findingType.replace(/_/g, ' ')}
+                                {safeLabel(finding.findingType)}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -456,7 +456,7 @@ export default function EmployerFindings() {
                               {violation.violationNumber}
                             </TableCell>
                             <TableCell>
-                              {violation.violationType.replace(/_/g, ' ')}
+                              {safeLabel(violation.violationType as any)}
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary">{violation.status}</Badge>
@@ -467,7 +467,7 @@ export default function EmployerFindings() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {format(new Date(violation.discoveredDate), 'MMM dd, yyyy')}
+                              {safeDate(violation.discoveredDate)}
                             </TableCell>
                             <TableCell className="text-right">
                               <Button
