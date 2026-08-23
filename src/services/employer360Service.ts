@@ -158,17 +158,49 @@ export async function fetchEmployerRisk(employerId: string): Promise<Employer360
 }
 
 // ── Violations ──
-export async function fetchEmployerViolations(employerId: string) {
-  const { data, error } = await supabase
+export interface EmployerViolationsPage {
+  /** The rows rendered in the tab (bounded page). */
+  rows: any[];
+  /** Full matching population, from a real count query — NOT rows.length. */
+  total: number;
+  /** Open/active subset of the full population. */
+  openTotal: number;
+  /** True when `rows` is a truncated view of `total`. */
+  truncated: boolean;
+}
+
+const EMPLOYER_VIOLATIONS_PAGE_SIZE = 50;
+const CLOSED_VIOLATION_STATUSES = ['RESOLVED', 'CLOSED', 'CANCELLED'];
+
+export async function fetchEmployerViolations(
+  employerId: string,
+  limit: number = EMPLOYER_VIOLATIONS_PAGE_SIZE,
+): Promise<EmployerViolationsPage> {
+  // Page of rows + exact count of the whole matching population in one request.
+  const { data, error, count } = await supabase
     .from('ce_violations')
-    .select('*, ce_violation_types(code, name, category)')
+    .select('*, ce_violation_types(code, name, category)', { count: 'exact' })
     .eq('employer_id', employerId)
     .eq('is_deleted', false)
     .order('created_at', { ascending: false })
-    .limit(50);
+    .range(0, Math.max(limit - 1, 0));
   if (error) throw error;
-  return data ?? [];
+
+  // Open count is a separate head-only count so it reflects all matching rows,
+  // not just the loaded page.
+  const { count: openCount, error: openError } = await supabase
+    .from('ce_violations')
+    .select('id', { count: 'exact', head: true })
+    .eq('employer_id', employerId)
+    .eq('is_deleted', false)
+    .not('status', 'in', `(${CLOSED_VIOLATION_STATUSES.join(',')})`);
+  if (openError) throw openError;
+
+  const rows = data ?? [];
+  const total = count ?? rows.length;
+  return { rows, total, openTotal: openCount ?? 0, truncated: total > rows.length };
 }
+
 
 // ── Notices ──
 export async function fetchEmployerNotices(employerId: string) {
