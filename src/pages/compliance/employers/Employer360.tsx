@@ -28,6 +28,12 @@ import {
 import {
   useEmployerStatement, useEmployerArrears as useLedgerArrears,
 } from '@/hooks/useComplianceLedger';
+import {
+  fetchEmployerExposure, formatComplianceCurrency,
+} from '@/services/complianceViolationAmountService';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Info } from 'lucide-react';
+
 
 const RISK_BAND_COLORS: Record<string, string> = {
   LOW: 'bg-green-500/15 text-green-700',
