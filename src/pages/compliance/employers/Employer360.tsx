@@ -216,6 +216,7 @@ export default function Employer360() {
           <TabsTrigger value="cases"><Briefcase className="h-3.5 w-3.5 mr-1" />Cases ({cases.length})</TabsTrigger>
           <TabsTrigger value="payments"><DollarSign className="h-3.5 w-3.5 mr-1" />Payments</TabsTrigger>
           <TabsTrigger value="statement"><FileText className="h-3.5 w-3.5 mr-1" />Statement</TabsTrigger>
+          <TabsTrigger value="ledger"><BookOpen className="h-3.5 w-3.5 mr-1" />Ledger</TabsTrigger>
           <TabsTrigger value="communications"><MessageSquare className="h-3.5 w-3.5 mr-1" />Comms ({communications.length})</TabsTrigger>
           <TabsTrigger value="documents"><FolderOpen className="h-3.5 w-3.5 mr-1" />Docs ({documents.length})</TabsTrigger>
           <TabsTrigger value="timeline"><Clock className="h-3.5 w-3.5 mr-1" />Timeline</TabsTrigger>
