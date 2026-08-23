@@ -16,6 +16,24 @@ import { CreateViolationFromFindingDialog } from '@/components/compliance/Create
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
+/** Safe date formatter — never throws on null/invalid values. */
+function safeDate(value?: string | null, pattern = 'MMM dd, yyyy') {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  try {
+    return format(d, pattern);
+  } catch {
+    return '—';
+  }
+}
+
+/** Safe label formatter for code-style values. */
+function safeLabel(value?: string | null, fallback = '—') {
+  if (!value) return fallback;
+  return String(value).replace(/_/g, ' ');
+}
+
 export default function EmployerFindings() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -30,12 +48,30 @@ export default function EmployerFindings() {
   const [searching, setSearching] = useState(false);
   const [selectedFinding, setSelectedFinding] = useState<InspectionFinding | null>(null);
   const [showCreateViolation, setShowCreateViolation] = useState(false);
+  const [recentFindings, setRecentFindings] = useState<any[]>([]);
+  const [recentLoading, setRecentLoading] = useState(false);
 
   useEffect(() => {
     if (employerIdParam) {
       loadEmployerData(employerIdParam);
     }
   }, [employerIdParam]);
+
+  // Organisation-wide findings so the screen is useful without employer context.
+  useEffect(() => {
+    if (selectedEmployer || employerIdParam) return;
+    let cancelled = false;
+    setRecentLoading(true);
+    inspectionService
+      .getRecentFindings(200)
+      .then((rows) => { if (!cancelled) setRecentFindings(rows); })
+      .catch((e) => {
+        console.error('[EmployerFindings] recent findings failed', e);
+        if (!cancelled) setRecentFindings([]);
+      })
+      .finally(() => { if (!cancelled) setRecentLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedEmployer, employerIdParam]);
 
   const loadEmployerData = async (employerId: string) => {
     setLoading(true);
@@ -47,29 +83,30 @@ export default function EmployerFindings() {
         .eq('regno', employerId)
         .maybeSingle();
 
-      if (emp) {
-        setSelectedEmployer({
-          id: (emp as any).regno,
-          name: (emp as any).name ?? employerId,
-          code: (emp as any).regno,
-          territory: 'St Kitts',
-        });
-      }
+      setSelectedEmployer({
+        id: (emp as any)?.regno ?? employerId,
+        name: (emp as any)?.name ?? employerId,
+        code: (emp as any)?.regno ?? employerId,
+        territory: 'St Kitts',
+      });
 
-      // Load findings and violations for this employer from DB
+      // Load findings and employer-scoped violations from DB
       const [findingsData, violationsData] = await Promise.all([
         inspectionService.getFindingsByEmployer(employerId),
-        violationService.getAll(),
+        violationService.getByEmployerId(employerId),
       ]);
-      setFindings(findingsData);
-      setViolations(violationsData.filter(v => v.employerId === employerId));
+      setFindings(findingsData ?? []);
+      setViolations(violationsData ?? []);
     } catch (error) {
       console.error('Error loading employer data:', error);
       toast.error('Failed to load employer data');
+      setFindings([]);
+      setViolations([]);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
