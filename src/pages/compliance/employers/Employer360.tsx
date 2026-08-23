@@ -64,10 +64,9 @@ const formatDate = (val: string | null) => {
   try { return new Date(val).toLocaleDateString('en-GB'); } catch { return val; }
 };
 
-const formatCurrency = (amt: number | null) => {
-  if (amt == null) return '—';
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'XCD', minimumFractionDigits: 2 }).format(amt);
-};
+// Shared compliance currency formatter — never re-implement locally.
+const formatCurrency = formatComplianceCurrency;
+
 
 export default function Employer360() {
   const { employerId } = useParams();
