@@ -43,6 +43,9 @@ import {
   activateArrangement,
 } from '@/services/arrangementWorkflowService';
 import { ArrangementCoveragePanel } from '@/components/compliance/ArrangementCoveragePanel';
+import { ArrangementInstallmentsPanel } from '@/components/compliance/arrangements/ArrangementInstallmentsPanel';
+import { ArrangementAllocationsPanel } from '@/components/compliance/arrangements/ArrangementAllocationsPanel';
+import { ArrangementOperationalStrip } from '@/components/compliance/arrangements/ArrangementOperationalStrip';
 import { useUserCode } from '@/hooks/useUserCode';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { COMPLIANCE_CAPABILITIES } from '@/lib/compliance/capabilities';
@@ -507,6 +510,9 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
         </Card>
       </div>
 
+      {/* ── Operational strip (server-derived) ───────────── */}
+      <ArrangementOperationalStrip arrangementId={arrangementId} />
+
       {/* ── Breach Health Widget ─────────────────────────── */}
       <Card className={`border ${hCfg.border}`}>
         <CardContent className="pt-4 pb-3">
@@ -596,9 +602,12 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
 
       {/* ── Tabs ────────────────────────────────────────── */}
       <Tabs defaultValue="installments" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="installments">
             Installments ({installments.length})
+          </TabsTrigger>
+          <TabsTrigger value="allocations">
+            Allocations
           </TabsTrigger>
           <TabsTrigger value="coverage">
             Coverage
@@ -623,65 +632,16 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
         </TabsContent>
 
 
-        {/* ── Installments Tab ──────────────────────────── */}
+        {/* ── Installments Tab (server-derived operational status) ── */}
         <TabsContent value="installments">
-          <Card>
-            <CardContent className="pt-4">
-              {installments.length === 0 ? (
-                <SectionEmpty message="No installments found for this arrangement." icon={<CalendarDays className="h-6 w-6 mb-2 opacity-50" />} />
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">#</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="text-right">Paid</TableHead>
-                        <TableHead className="text-right">Remaining</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Overdue</TableHead>
-                        <TableHead>Payment Ref</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {installments.map((inst: any) => {
-                        const remaining = Number(inst.amount ?? 0) - Number(inst.paid_amount ?? 0);
-                        return (
-                          <TableRow key={inst.id} className={inst.status === 'OVERDUE' ? 'bg-destructive/5' : ''}>
-                            <TableCell className="font-mono text-xs">{inst.installment_number}</TableCell>
-                            <TableCell className="flex items-center gap-1.5">
-                              <CalendarDays className="h-3 w-3 text-muted-foreground" />
-                              {inst.due_date ? formatDateForDisplay(inst.due_date) : '-'}
-                            </TableCell>
-                            <TableCell className="text-right">{formatCurrency(inst.amount)}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(inst.paid_amount)}</TableCell>
-                            <TableCell className="text-right font-medium">
-                              {remaining > 0 ? formatCurrency(remaining) : <CheckCircle2 className="h-4 w-4 text-success ml-auto" />}
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={statusColor(inst.status ?? 'PENDING')}>
-                                {inst.status ?? 'PENDING'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {inst.status === 'OVERDUE' ? (
-                                <span className="text-destructive font-medium">{inst.overdue_days ?? 0}d</span>
-                              ) : '-'}
-                            </TableCell>
-                            <TableCell className="font-mono text-xs truncate max-w-[120px]">
-                              {inst.payment_reference || '-'}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ArrangementInstallmentsPanel arrangementId={arrangementId} />
         </TabsContent>
+
+        {/* ── Allocations Tab ───────────────────────────── */}
+        <TabsContent value="allocations">
+          <ArrangementAllocationsPanel arrangementId={arrangementId} />
+        </TabsContent>
+
 
         {/* ── Breaches Tab ──────────────────────────────── */}
         <TabsContent value="breaches">
