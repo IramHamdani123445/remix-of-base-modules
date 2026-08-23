@@ -113,10 +113,12 @@ const LegalQueue = () => {
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <Scale className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-semibold text-foreground">Legal Queue</h1>
+          <h1 className="text-3xl font-semibold text-foreground">Referral Approval &amp; Handover (Compliance)</h1>
         </div>
         <p className="text-muted-foreground">
-          Stage 2 of the legal escalation — approve prepared referrals and hand approved referrals over to Legal.
+          Stage 2 of the legal escalation, owned by Compliance — a supervisor approves the prepared
+          referral and an authorised officer hands the approved referral over to Legal. Legal accepts
+          or returns it afterwards from Legal Intake.
         </p>
       </div>
 

@@ -37,7 +37,9 @@ import { toast } from 'sonner';
 import { ComplianceTimeline } from '@/components/compliance/ComplianceTimeline';
 import { AssignmentDialog } from '@/components/compliance/AssignmentDialog';
 import { CaseLegalEscalationPanel } from '@/components/compliance/CaseLegalEscalationPanel';
+import { CaseWaiversPanel } from '@/components/compliance/CaseWaiversPanel';
 import { fetchCaseLegalStatus } from '@/services/compliance/legalEscalationFlow';
+import { evaluateArrangementEligibility } from '@/services/compliance/paymentArrangementEligibility';
 
 import { UserCheck, Send } from 'lucide-react';
 import { useHasCapability } from '@/hooks/useHasCapability';
@@ -105,6 +107,7 @@ export default function CaseDetailView() {
   // Case ownership (re)assignment uses the shared capability model rather than
   // a raw role comparison, so Admin / legacy manage_compliance holders pass too.
   const canManageAssignments = useHasCapability(COMPLIANCE_CAPABILITIES.CASES_MANAGE);
+  const canCreateArrangement = useHasCapability(COMPLIANCE_CAPABILITIES.ENFORCEMENT_ARRANGEMENTS);
   const complianceRole = useComplianceRole();
 
   // Resolve the current user's officer identifiers (UUID + inspector codes) so
@@ -298,6 +301,22 @@ export default function CaseDetailView() {
 
   const noticesFeatureEnabled = isComplianceFeatureEnabled('notices.generate');
   const arrangementsFeatureEnabled = isComplianceFeatureEnabled('arrangements.new');
+  const waiversFeatureEnabled = isComplianceFeatureEnabled('enforcement.waivers');
+
+  // Payment arrangement availability is evaluated from configured business
+  // state, and the reason is always shown to the user (never a silently
+  // disabled or hidden button).
+  const arrangementEligibility = evaluateArrangementEligibility({
+    caseStatus: c.status,
+    outstanding: caseOutstanding,
+    featureEnabled: arrangementsFeatureEnabled,
+    hasPermission: canCreateArrangement,
+    assignedOfficerId: (c as any).assigned_officer_id ?? null,
+    arrangements: caseArrangements as Array<{ status?: string | null }>,
+    legalStatus: legalStatus?.status ?? null,
+  });
+  const arrangementBlockedReason = arrangementEligibility.reasons.join(' ');
+
   const activeViolationCount = linkedViolations.filter(
     (v: any) => ['OPEN', 'IN_PROGRESS', 'UNDER_REVIEW', 'ESCALATED'].includes(v.status)
   ).length;
@@ -464,22 +483,22 @@ export default function CaseDetailView() {
                 Cascade Resolve ({activeViolationCount})
               </PermissionButton>
             )}
-            {!['RESOLVED', 'CLOSED', 'COMPLETED', 'CSTG_PAYMENT_ARRANGEMENT_ACTIVE'].includes(c.status) &&
-              isComplianceFeatureEnabled('arrangements.new') &&
-              caseOutstanding > 0 && (
+            {/* Payment arrangement — always visible while the case is open so the
+                user can see WHY it is unavailable instead of hunting for it. */}
+            {!caseIsClosed && (
               <PermissionButton
                 moduleName={COMPLIANCE_MODULE}
                 actionName="create"
                 size="sm"
                 onClick={() => setArrangementDialogOpen(true)}
-                disabled={!(c as any).assigned_officer_id}
-                title={!(c as any).assigned_officer_id ? 'Assign an officer to this case before creating an arrangement' : undefined}
+                disabled={!arrangementEligibility.allowed}
+                title={arrangementBlockedReason || 'Agree instalment terms for the outstanding balance'}
               >
                 <HandshakeIcon className="h-4 w-4 mr-1" />
                 Create Payment Arrangement
               </PermissionButton>
             )}
-            {!caseIsClosed && isComplianceFeatureEnabled('enforcement.waivers') &&
+            {!caseIsClosed && waiversFeatureEnabled &&
               caseOutstanding > 0 && (
               <PermissionButton
                 moduleName={COMPLIANCE_MODULE}
@@ -659,6 +678,11 @@ export default function CaseDetailView() {
               <DollarSign className="h-4 w-4 mr-2" />Arrangements ({caseArrangements.length})
             </TabsTrigger>
           )}
+          {waiversFeatureEnabled && (
+            <TabsTrigger value="waivers">
+              <BadgePercent className="h-4 w-4 mr-2" />Waivers
+            </TabsTrigger>
+          )}
           <TabsTrigger value="documents">
             <FolderOpen className="h-4 w-4 mr-2" />Documents
           </TabsTrigger>
@@ -692,6 +716,10 @@ export default function CaseDetailView() {
 
         <TabsContent value="inspections" className="space-y-4">
           <CaseInspectionsTab caseId={id!} employerId={c.employer_id} />
+        </TabsContent>
+
+        <TabsContent value="waivers" className="space-y-4">
+          <CaseWaiversPanel caseId={id!} />
         </TabsContent>
 
 
@@ -830,20 +858,28 @@ export default function CaseDetailView() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Payment Arrangements</CardTitle>
-                {!caseIsClosed && arrangementsFeatureEnabled && caseOutstanding > 0 && (
+                {!caseIsClosed && (
                   <PermissionButton
                     moduleName={COMPLIANCE_MODULE}
                     actionName="create"
                     size="sm"
                     variant="outline"
                     onClick={() => setArrangementDialogOpen(true)}
-                    disabled={!(c as any).assigned_officer_id}
-                    title={!(c as any).assigned_officer_id ? 'Assign an officer to this case before creating an arrangement' : undefined}
+                    disabled={!arrangementEligibility.allowed}
+                    title={arrangementBlockedReason || undefined}
                   >
                     <HandshakeIcon className="h-4 w-4 mr-1" />New Arrangement
                   </PermissionButton>
                 )}
               </div>
+              {!arrangementEligibility.allowed && (
+                <div className="mt-3 rounded-md border border-amber-400 bg-amber-50 p-3 text-xs text-amber-900">
+                  <div className="font-medium">A new arrangement cannot be created right now because:</div>
+                  <ul className="mt-1 list-disc pl-4">
+                    {arrangementEligibility.reasons.map((r) => <li key={r}>{r}</li>)}
+                  </ul>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {caseArrangements.length === 0 ? (
@@ -992,7 +1028,13 @@ export default function CaseDetailView() {
           defaultAmount: caseOutstanding,
 
         }}
-        onCreated={() => queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] })}
+        onCreated={() => {
+          // Show the request immediately on the case so the officer can track it.
+          queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] });
+          queryClient.invalidateQueries({ queryKey: ['ce_case_waivers', id] });
+          setActiveTab('waivers');
+          toast.success('Waiver request created — track it on the Waivers tab');
+        }}
       />
 
       <AssignmentDialog

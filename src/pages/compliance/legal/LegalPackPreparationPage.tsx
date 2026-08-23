@@ -97,8 +97,8 @@ function Inner() {
         {
           description:
             res.status === REFERRAL_STATUS.PENDING_APPROVAL
-              ? 'A different officer must approve it in the Legal Queue before it reaches Legal.'
-              : 'Submit it to Legal from the Legal Queue. The auto-approval has been recorded in the audit trail.',
+              ? 'A different officer must approve it in Referral Approval & Handover before it reaches Legal.'
+              : 'Submit it to Legal from Referral Approval & Handover. The auto-approval has been recorded in the audit trail.',
         },
       );
       setSelected(null);
@@ -165,7 +165,10 @@ function Inner() {
                   </span>
                 ) : (
                   <span className="text-destructive flex items-center gap-1">
-                    <AlertTriangle className="h-4 w-4" /> {validation.missing.length} required item(s) missing
+                    <AlertTriangle className="h-4 w-4" /> {validation.missing.length} required item(s) missing:{' '}
+                    {validation.missing
+                      .map((m: any) => (typeof m === 'string' ? m : m.item_label ?? m.item_code))
+                      .join(', ')}
                   </span>
                 )}
               </CardDescription>
