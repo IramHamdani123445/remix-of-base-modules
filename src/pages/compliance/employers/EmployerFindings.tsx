@@ -18,7 +18,10 @@ import {
   DISPOSITION_LABELS,
   FindingDisposition,
   evaluateConversionEligibility,
+  findingDispositionService,
+  ViolationTypePolicy,
 } from '@/services/compliance/findingDispositionService';
+
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -58,6 +61,8 @@ export default function EmployerFindings() {
   const [reviewFinding, setReviewFinding] = useState<any | null>(null);
   const [showReview, setShowReview] = useState(false);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [findingPolicies, setFindingPolicies] = useState<Record<string, ViolationTypePolicy>>({});
+
 
   useEffect(() => {
     if (employerIdParam) {
@@ -105,6 +110,16 @@ export default function EmployerFindings() {
       ]);
       setFindings(findingsData ?? []);
       setViolations(violationsData ?? []);
+      try {
+        setFindingPolicies(
+          await findingDispositionService.loadPoliciesForFindings(
+            (findingsData ?? []).map((f: any) => f.id),
+          ),
+        );
+      } catch {
+        setFindingPolicies({});
+      }
+
     } catch (error) {
       console.error('Error loading employer data:', error);
       toast.error('Failed to load employer data');
@@ -434,7 +449,11 @@ export default function EmployerFindings() {
                                   </Button>
                                 )}
                                 {!finding.isViolationCreated && (() => {
-                                  const eligibility = evaluateConversionEligibility(finding as any);
+                                  const eligibility = evaluateConversionEligibility(
+                                    finding as any,
+                                    findingPolicies[finding.id],
+                                  );
+
                                   return (
                                     <Button
                                       variant="default"
@@ -569,10 +588,19 @@ export default function EmployerFindings() {
         findingId={reviewFinding?.id ?? null}
         findingTitle={reviewFinding?.title}
         currentDisposition={reviewFinding?.disposition}
+        currentCandidateViolationTypeId={
+          findingPolicies[reviewFinding?.id ?? '']?.id ?? null
+        }
         onClassified={(disposition) => {
-          if (reviewFinding?.id) applyDisposition(reviewFinding.id, disposition);
+          if (!reviewFinding?.id) return;
+          applyDisposition(reviewFinding.id, disposition);
+          findingDispositionService
+            .loadPoliciesForFindings([reviewFinding.id])
+            .then((p) => setFindingPolicies((prev) => ({ ...prev, ...p })))
+            .catch(() => undefined);
         }}
       />
+
     </div>
 
   );
