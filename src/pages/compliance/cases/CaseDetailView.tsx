@@ -28,6 +28,8 @@ import {
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { fetchCaseById } from '@/services/complianceDataService';
 import { fetchCaseWaivedAmounts, computeOutstanding } from '@/services/complianceWaiverAmounts';
+import { fetchCaseFinancials, fetchViolationFinancialsMap } from '@/services/complianceViolationAmountService';
+
 
 import { caseViolationService } from '@/services/caseViolationService';
 import { supabase } from '@/integrations/supabase/client';
