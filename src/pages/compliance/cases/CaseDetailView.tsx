@@ -1000,14 +1000,8 @@ export default function CaseDetailView() {
         onAssigned={() => queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] })}
       />
 
-      <ForwardToLegalDialog
-        open={forwardLegalOpen}
-        onOpenChange={setForwardLegalOpen}
-        ceCaseId={c.id}
-        ceCaseNumber={c.case_number}
-        outstandingAmount={caseOutstanding}
 
-      />
+
 
       <AddToInspectionPlanningDialog
         open={planningDialogOpen}
