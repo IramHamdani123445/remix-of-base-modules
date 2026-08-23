@@ -89,6 +89,13 @@ export default function Employer360() {
   const violationsTruncated = violationsPage?.truncated ?? false;
   // Canonical, non-double-counting enforcement exposure (open cases + open unlinked violations).
   const { data: exposure } = useQuery({ queryKey: ['employer360_exposure', employerId], queryFn: () => fetchEmployerExposure(employerId!), enabled: !!employerId });
+  // Money for the listed violations comes from the shared read layer, never recomputed here.
+  const { data: violationFinancials = {} } = useQuery({
+    queryKey: ['employer360_violation_financials', employerId, violations.map((v: any) => v.id).join(',')],
+    queryFn: () => fetchViolationFinancialsMap(violations.map((v: any) => v.id)),
+    enabled: violations.length > 0,
+  });
+
 
   const { data: notices = [] } = useQuery({ queryKey: ['employer360_notices', employerId], queryFn: () => fetchEmployerNotices(employerId!), enabled: !!employerId });
   const { data: followUps = [] } = useQuery({ queryKey: ['employer360_followups', employerId], queryFn: () => fetchEmployerFollowUps(employerId!), enabled: !!employerId });
