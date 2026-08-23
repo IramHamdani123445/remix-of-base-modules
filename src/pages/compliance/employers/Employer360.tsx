@@ -574,6 +574,11 @@ export default function Employer360() {
           </Card>
         </TabsContent>
 
+        {/* ═══ LEDGER (PASSBOOK) TAB ═══ */}
+        <TabsContent value="ledger" className="space-y-4">
+          <EmployerFinancialLedgerTab employerId={employerId!} />
+        </TabsContent>
+
         {/* ═══ COMMUNICATIONS TAB ═══ */}
         <TabsContent value="communications">
           <Card>
