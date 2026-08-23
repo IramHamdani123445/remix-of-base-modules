@@ -121574,6 +121574,10 @@ export type Database = {
           zone_name: string
         }[]
       }
+      fn_ce_route_unassigned_violations: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
       fn_ce_route_violation: { Args: { p_violation_id: string }; Returns: Json }
       fn_ce_route_violations_bulk: {
         Args: { p_violation_ids: string[] }
