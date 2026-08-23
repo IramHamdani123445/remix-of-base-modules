@@ -562,6 +562,18 @@ export default function EmployerFindings() {
           }}
         />
       )}
+
+      <FindingReviewDialog
+        open={showReview}
+        onOpenChange={setShowReview}
+        findingId={reviewFinding?.id ?? null}
+        findingTitle={reviewFinding?.title}
+        currentDisposition={reviewFinding?.disposition}
+        onClassified={(disposition) => {
+          if (reviewFinding?.id) applyDisposition(reviewFinding.id, disposition);
+        }}
+      />
     </div>
+
   );
 }
