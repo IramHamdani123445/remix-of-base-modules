@@ -483,22 +483,22 @@ export default function CaseDetailView() {
                 Cascade Resolve ({activeViolationCount})
               </PermissionButton>
             )}
-            {!['RESOLVED', 'CLOSED', 'COMPLETED', 'CSTG_PAYMENT_ARRANGEMENT_ACTIVE'].includes(c.status) &&
-              isComplianceFeatureEnabled('arrangements.new') &&
-              caseOutstanding > 0 && (
+            {/* Payment arrangement — always visible while the case is open so the
+                user can see WHY it is unavailable instead of hunting for it. */}
+            {!caseIsClosed && (
               <PermissionButton
                 moduleName={COMPLIANCE_MODULE}
                 actionName="create"
                 size="sm"
                 onClick={() => setArrangementDialogOpen(true)}
-                disabled={!(c as any).assigned_officer_id}
-                title={!(c as any).assigned_officer_id ? 'Assign an officer to this case before creating an arrangement' : undefined}
+                disabled={!arrangementEligibility.allowed}
+                title={arrangementBlockedReason || 'Agree instalment terms for the outstanding balance'}
               >
                 <HandshakeIcon className="h-4 w-4 mr-1" />
                 Create Payment Arrangement
               </PermissionButton>
             )}
-            {!caseIsClosed && isComplianceFeatureEnabled('enforcement.waivers') &&
+            {!caseIsClosed && waiversFeatureEnabled &&
               caseOutstanding > 0 && (
               <PermissionButton
                 moduleName={COMPLIANCE_MODULE}
