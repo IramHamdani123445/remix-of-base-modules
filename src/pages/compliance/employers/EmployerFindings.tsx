@@ -58,6 +58,8 @@ export default function EmployerFindings() {
   const [reviewFinding, setReviewFinding] = useState<any | null>(null);
   const [showReview, setShowReview] = useState(false);
   const [recentLoading, setRecentLoading] = useState(false);
+  const [findingPolicies, setFindingPolicies] = useState<Record<string, ViolationTypePolicy>>({});
+
 
   useEffect(() => {
     if (employerIdParam) {
