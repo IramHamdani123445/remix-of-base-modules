@@ -145,6 +145,18 @@ export default function CaseDetailView() {
     enabled: !!id,
   });
 
+  // Shared compliance read layer — single source of truth for case money.
+  const { data: caseFinancials } = useQuery({
+    queryKey: ['ce_case_financials', id],
+    queryFn: () => fetchCaseFinancials(id!),
+    enabled: !!id,
+  });
+  const { data: caseViolationFinancials = {} } = useQuery({
+    queryKey: ['ce_case_violation_financials', id, linkedViolations.map((v: any) => v.id).join(',')],
+    queryFn: () => fetchViolationFinancialsMap(linkedViolations.map((v: any) => v.id)),
+    enabled: linkedViolations.length > 0,
+  });
+
 
   const { data: caseHistory = [] } = useQuery({
     queryKey: ['ce_case_history', id],
