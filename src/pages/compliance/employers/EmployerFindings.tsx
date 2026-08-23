@@ -105,6 +105,16 @@ export default function EmployerFindings() {
       ]);
       setFindings(findingsData ?? []);
       setViolations(violationsData ?? []);
+      try {
+        setFindingPolicies(
+          await findingDispositionService.loadPoliciesForFindings(
+            (findingsData ?? []).map((f: any) => f.id),
+          ),
+        );
+      } catch {
+        setFindingPolicies({});
+      }
+
     } catch (error) {
       console.error('Error loading employer data:', error);
       toast.error('Failed to load employer data');
