@@ -39890,6 +39890,7 @@ export type Database = {
       }
       ce_inspection_findings: {
         Row: {
+          candidate_violation_type_id: string | null
           category: string | null
           converted_at: string | null
           converted_by: string | null
@@ -39916,6 +39917,7 @@ export type Database = {
           violation_id: string | null
         }
         Insert: {
+          candidate_violation_type_id?: string | null
           category?: string | null
           converted_at?: string | null
           converted_by?: string | null
@@ -39942,6 +39944,7 @@ export type Database = {
           violation_id?: string | null
         }
         Update: {
+          candidate_violation_type_id?: string | null
           category?: string | null
           converted_at?: string | null
           converted_by?: string | null
@@ -39968,6 +39971,13 @@ export type Database = {
           violation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ce_inspection_findings_candidate_violation_type_id_fkey"
+            columns: ["candidate_violation_type_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violation_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ce_inspection_findings_inspection_id_fkey"
             columns: ["inspection_id"]
@@ -45243,14 +45253,18 @@ export type Database = {
           auto_detect: boolean | null
           category: string | null
           code: string
+          conversion_policy: string
           created_at: string | null
           created_by: string | null
           description: string | null
           fund_type: string | null
           grace_period_days: number | null
           id: string
+          inspection_eligible: boolean
           is_active: boolean | null
+          maker_checker_required: boolean
           name: string
+          requires_supervisor_review: boolean
           severity_default: string | null
           sort_order: number | null
           updated_at: string | null
@@ -45261,14 +45275,18 @@ export type Database = {
           auto_detect?: boolean | null
           category?: string | null
           code: string
+          conversion_policy?: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           fund_type?: string | null
           grace_period_days?: number | null
           id?: string
+          inspection_eligible?: boolean
           is_active?: boolean | null
+          maker_checker_required?: boolean
           name: string
+          requires_supervisor_review?: boolean
           severity_default?: string | null
           sort_order?: number | null
           updated_at?: string | null
@@ -45279,14 +45297,18 @@ export type Database = {
           auto_detect?: boolean | null
           category?: string | null
           code?: string
+          conversion_policy?: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           fund_type?: string | null
           grace_period_days?: number | null
           id?: string
+          inspection_eligible?: boolean
           is_active?: boolean | null
+          maker_checker_required?: boolean
           name?: string
+          requires_supervisor_review?: boolean
           severity_default?: string | null
           sort_order?: number | null
           updated_at?: string | null
@@ -122223,6 +122245,15 @@ export type Database = {
       fn_ce_employer_financial_exposure: {
         Args: { p_employer_id: string }
         Returns: Json
+      }
+      fn_ce_finding_conversion_policy: {
+        Args: { p_violation_type_id: string }
+        Returns: {
+          conversion_policy: string
+          inspection_eligible: boolean
+          maker_checker_required: boolean
+          requires_supervisor_review: boolean
+        }[]
       }
       fn_ce_generate_legal_recommendations: {
         Args: { p_created_by?: string }
