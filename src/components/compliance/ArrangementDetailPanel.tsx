@@ -153,6 +153,7 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
   onBack,
 }) => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { userCode } = useUserCode();
   const canManageArrangements = useHasCapability(COMPLIANCE_CAPABILITIES.ENFORCEMENT_ARRANGEMENTS);
   const [rejectReason, setRejectReason] = React.useState('');
@@ -354,7 +355,6 @@ export const ArrangementDetailPanel: React.FC<ArrangementDetailPanelProps> = ({
     ? ((arr.installments_paid ?? 0) / arr.number_of_installments) * 100
     : 0;
 
-  const navigate = useNavigate();
   const unresolvedBreaches = breaches.filter((b: any) => !b.resolution).length;
   const breachHealthInfo = getBreachHealth(arr, breaches.length > 0 ? unresolvedBreaches : undefined);
   const hCfg = healthConfig[breachHealthInfo.health];
