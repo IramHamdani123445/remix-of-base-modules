@@ -33162,6 +33162,13 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
             columns: ["arrangement_id"]
             isOneToOne: false
@@ -33173,6 +33180,13 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -40214,6 +40228,13 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "fk_ce_installments_arrangement"
             columns: ["arrangement_id"]
             isOneToOne: false
@@ -40225,6 +40246,13 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -62236,6 +62264,13 @@ export type Database = {
           source_record_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "core_payment_allocation_allocated_to_item_id_fkey"
+            columns: ["allocated_to_item_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_allocation_trail"
+            referencedColumns: ["item_id"]
+          },
           {
             foreignKeyName: "core_payment_allocation_allocated_to_item_id_fkey"
             columns: ["allocated_to_item_id"]
@@ -111933,6 +111968,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_arrangement_allocation_trail: {
+        Row: {
+          allocation_amount: number | null
+          allocation_id: string | null
+          allocation_key: string | null
+          allocation_order: number | null
+          allocation_policy: string | null
+          amount_received: number | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          created_at: string | null
+          employer_id: string | null
+          employer_name: string | null
+          fund_type: string | null
+          installment_due_date: string | null
+          installment_id: string | null
+          installment_number: number | null
+          is_reversed: boolean | null
+          is_unattributed: boolean | null
+          item_id: string | null
+          ledger_credit_amount: number | null
+          ledger_entry_id: string | null
+          ledger_payment_reference: string | null
+          ledger_posted_at: string | null
+          ledger_status: Database["public"]["Enums"]["ce_ledger_status"] | null
+          liability_type: string | null
+          payment_date: string | null
+          period_from: string | null
+          period_to: string | null
+          receipt_id: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
+          source_reference_no: string | null
+        }
+        Relationships: []
+      }
       ce_v_arrangement_health: {
         Row: {
           arrangement_id: string | null
@@ -111951,6 +112022,143 @@ export type Database = {
           unresolved_breach_count: number | null
         }
         Relationships: []
+      }
+      ce_v_arrangement_installment_operational: {
+        Row: {
+          allocated_amount: number | null
+          allocation_count: number | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          arrangement_status: string | null
+          case_id: string | null
+          days_overdue: number | null
+          days_until_due: number | null
+          due_date: string | null
+          effective_status: string | null
+          employer_id: string | null
+          employer_name: string | null
+          grace_days: number | null
+          installment_id: string | null
+          installment_number: number | null
+          outstanding_amount: number | null
+          paid_amount: number | null
+          paid_date: string | null
+          payment_reference: string | null
+          scheduled_amount: number | null
+          stored_status: string | null
+          unattributed_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_v_arrangement_register: {
+        Row: {
+          arrangement_default_violation_id: string | null
+          arrangement_default_violation_number: string | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          breach_count: number | null
+          breach_detected: boolean | null
+          case_id: string | null
+          created_at: string | null
+          employer_id: string | null
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          health_status: string | null
+          installment_amount: number | null
+          installments_paid: number | null
+          installments_partial: number | null
+          installments_total: number | null
+          last_breach_at: string | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          next_installment_amount: number | null
+          next_installment_number: number | null
+          number_of_installments: number | null
+          outstanding: number | null
+          overdue_count: number | null
+          past_due_amount: number | null
+          start_date: string | null
+          status: string | null
+          total_arranged: number | null
+          total_paid: number | null
+          unattributed_amount: number | null
+          unresolved_breach_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_v_c3_aggregate_stats: {
         Row: {
@@ -118767,6 +118975,7 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_arrangement_grace_days: { Args: never; Returns: number }
       ce_batch_recompute_compliance: {
         Args: {
           p_employer_ids?: string[]
