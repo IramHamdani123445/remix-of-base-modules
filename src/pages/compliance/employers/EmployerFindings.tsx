@@ -16,6 +16,24 @@ import { CreateViolationFromFindingDialog } from '@/components/compliance/Create
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
+/** Safe date formatter — never throws on null/invalid values. */
+function safeDate(value?: string | null, pattern = 'MMM dd, yyyy') {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  try {
+    return format(d, pattern);
+  } catch {
+    return '—';
+  }
+}
+
+/** Safe label formatter for code-style values. */
+function safeLabel(value?: string | null, fallback = '—') {
+  if (!value) return fallback;
+  return String(value).replace(/_/g, ' ');
+}
+
 export default function EmployerFindings() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -30,12 +48,30 @@ export default function EmployerFindings() {
   const [searching, setSearching] = useState(false);
   const [selectedFinding, setSelectedFinding] = useState<InspectionFinding | null>(null);
   const [showCreateViolation, setShowCreateViolation] = useState(false);
+  const [recentFindings, setRecentFindings] = useState<any[]>([]);
+  const [recentLoading, setRecentLoading] = useState(false);
 
   useEffect(() => {
     if (employerIdParam) {
       loadEmployerData(employerIdParam);
     }
   }, [employerIdParam]);
+
+  // Organisation-wide findings so the screen is useful without employer context.
+  useEffect(() => {
+    if (selectedEmployer || employerIdParam) return;
+    let cancelled = false;
+    setRecentLoading(true);
+    inspectionService
+      .getRecentFindings(200)
+      .then((rows) => { if (!cancelled) setRecentFindings(rows); })
+      .catch((e) => {
+        console.error('[EmployerFindings] recent findings failed', e);
+        if (!cancelled) setRecentFindings([]);
+      })
+      .finally(() => { if (!cancelled) setRecentLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedEmployer, employerIdParam]);
 
   const loadEmployerData = async (employerId: string) => {
     setLoading(true);
@@ -47,29 +83,30 @@ export default function EmployerFindings() {
         .eq('regno', employerId)
         .maybeSingle();
 
-      if (emp) {
-        setSelectedEmployer({
-          id: (emp as any).regno,
-          name: (emp as any).name ?? employerId,
-          code: (emp as any).regno,
-          territory: 'St Kitts',
-        });
-      }
+      setSelectedEmployer({
+        id: (emp as any)?.regno ?? employerId,
+        name: (emp as any)?.name ?? employerId,
+        code: (emp as any)?.regno ?? employerId,
+        territory: 'St Kitts',
+      });
 
-      // Load findings and violations for this employer from DB
+      // Load findings and employer-scoped violations from DB
       const [findingsData, violationsData] = await Promise.all([
         inspectionService.getFindingsByEmployer(employerId),
-        violationService.getAll(),
+        violationService.getByEmployerId(employerId),
       ]);
-      setFindings(findingsData);
-      setViolations(violationsData.filter(v => v.employerId === employerId));
+      setFindings(findingsData ?? []);
+      setViolations(violationsData ?? []);
     } catch (error) {
       console.error('Error loading employer data:', error);
       toast.error('Failed to load employer data');
+      setFindings([]);
+      setViolations([]);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) {
@@ -125,12 +162,18 @@ export default function EmployerFindings() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Employer Findings</h1>
-        <p className="text-muted-foreground">
-          View all inspection findings and create violations for a specific employer
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Inspection Findings</h1>
+          <p className="text-muted-foreground">
+            Review inspection findings and convert them into violations.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => navigate('/compliance/inspections/convert-finding')}>
+          Conversion Queue
+        </Button>
       </div>
+
 
       {/* Employer Search */}
       {!selectedEmployer && (
@@ -171,10 +214,90 @@ export default function EmployerFindings() {
         </Card>
       )}
 
+
+
+
+      {/* Organisation-wide recent findings (no employer context) */}
+      {!selectedEmployer && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Findings (All Employers)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : recentFindings.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No inspection findings recorded yet</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Employer</TableHead>
+                    <TableHead>Inspection</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Violation</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentFindings.map((f: any) => (
+                    <TableRow key={f.id}>
+                      <TableCell>{safeDate(f.createdAt)}</TableCell>
+                      <TableCell className="text-sm">
+                        {f.employerName ?? f.employerId ?? '—'}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs">{f.inspectionNumber ?? '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant={getFindingTypeBadge(f.findingType)}>
+                          {safeLabel(f.findingType)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getSeverityBadge(f.severity)}>{f.severity ?? '—'}</Badge>
+                      </TableCell>
+                      <TableCell className="font-medium">{f.title || '—'}</TableCell>
+                      <TableCell>
+                        {f.isViolationCreated ? (
+                          <Badge variant="default">Created</Badge>
+                        ) : (
+                          <Badge variant="outline">Pending</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {f.isViolationCreated && f.violationId ? (
+                          <Button variant="outline" size="sm" onClick={() => handleViewViolation(f.violationId)}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Violation
+                          </Button>
+                        ) : f.employerId ? (
+                          <Button variant="default" size="sm" onClick={() => loadEmployerData(f.employerId)}>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Open Employer
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Employer Context */}
       {selectedEmployer && (
         <>
           <Card>
+
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -243,11 +366,11 @@ export default function EmployerFindings() {
                         {findings.map((finding) => (
                           <TableRow key={finding.id}>
                             <TableCell>
-                              {format(new Date(finding.createdAt), 'MMM dd, yyyy')}
+                              {safeDate(finding.createdAt)}
                             </TableCell>
                             <TableCell>
                               <Badge variant={getFindingTypeBadge(finding.findingType)}>
-                                {finding.findingType.replace(/_/g, ' ')}
+                                {safeLabel(finding.findingType)}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -333,7 +456,7 @@ export default function EmployerFindings() {
                               {violation.violationNumber}
                             </TableCell>
                             <TableCell>
-                              {violation.violationType.replace(/_/g, ' ')}
+                              {safeLabel(violation.violationType as any)}
                             </TableCell>
                             <TableCell>
                               <Badge variant="secondary">{violation.status}</Badge>
@@ -344,7 +467,7 @@ export default function EmployerFindings() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {format(new Date(violation.discoveredDate), 'MMM dd, yyyy')}
+                              {safeDate(violation.discoveredDate)}
                             </TableCell>
                             <TableCell className="text-right">
                               <Button
