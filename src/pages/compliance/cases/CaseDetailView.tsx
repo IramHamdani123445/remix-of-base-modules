@@ -93,7 +93,7 @@ export default function CaseDetailView() {
   const [arrangementDialogOpen, setArrangementDialogOpen] = useState(false);
   const [waiverDialogOpen, setWaiverDialogOpen] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
-  const [forwardLegalOpen, setForwardLegalOpen] = useState(false);
+  
   const [breakdownDialogOpen, setBreakdownDialogOpen] = useState(false);
   const [planningDialogOpen, setPlanningDialogOpen] = useState(false);
 
