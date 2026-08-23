@@ -107,6 +107,7 @@ export default function CaseDetailView() {
   // Case ownership (re)assignment uses the shared capability model rather than
   // a raw role comparison, so Admin / legacy manage_compliance holders pass too.
   const canManageAssignments = useHasCapability(COMPLIANCE_CAPABILITIES.CASES_MANAGE);
+  const canCreateArrangement = useHasCapability(COMPLIANCE_CAPABILITIES.ENFORCEMENT_ARRANGEMENTS);
   const complianceRole = useComplianceRole();
 
   // Resolve the current user's officer identifiers (UUID + inspector codes) so
