@@ -849,20 +849,28 @@ export default function CaseDetailView() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Payment Arrangements</CardTitle>
-                {!caseIsClosed && arrangementsFeatureEnabled && caseOutstanding > 0 && (
+                {!caseIsClosed && (
                   <PermissionButton
                     moduleName={COMPLIANCE_MODULE}
                     actionName="create"
                     size="sm"
                     variant="outline"
                     onClick={() => setArrangementDialogOpen(true)}
-                    disabled={!(c as any).assigned_officer_id}
-                    title={!(c as any).assigned_officer_id ? 'Assign an officer to this case before creating an arrangement' : undefined}
+                    disabled={!arrangementEligibility.allowed}
+                    title={arrangementBlockedReason || undefined}
                   >
                     <HandshakeIcon className="h-4 w-4 mr-1" />New Arrangement
                   </PermissionButton>
                 )}
               </div>
+              {!arrangementEligibility.allowed && (
+                <div className="mt-3 rounded-md border border-amber-400 bg-amber-50 p-3 text-xs text-amber-900">
+                  <div className="font-medium">A new arrangement cannot be created right now because:</div>
+                  <ul className="mt-1 list-disc pl-4">
+                    {arrangementEligibility.reasons.map((r) => <li key={r}>{r}</li>)}
+                  </ul>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {caseArrangements.length === 0 ? (
