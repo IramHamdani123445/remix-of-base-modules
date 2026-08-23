@@ -202,6 +202,14 @@ export default function CaseDetailView() {
     enabled: !!id,
   });
 
+  // Legal escalation status — the single tracked lifecycle for this case
+  const { data: legalStatus } = useQuery({
+    queryKey: ['ce_case_legal_status', id],
+    queryFn: () => fetchCaseLegalStatus(id!),
+    enabled: !!id,
+  });
+
+
   // Existing pending nomination (if any) for this case + officer
   const { data: existingNomination } = useQuery({
     queryKey: ['pending-nomination', id, currentUserCode],
