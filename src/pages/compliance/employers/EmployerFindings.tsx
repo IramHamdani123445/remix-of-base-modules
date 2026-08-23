@@ -588,10 +588,19 @@ export default function EmployerFindings() {
         findingId={reviewFinding?.id ?? null}
         findingTitle={reviewFinding?.title}
         currentDisposition={reviewFinding?.disposition}
+        currentCandidateViolationTypeId={
+          findingPolicies[reviewFinding?.id ?? '']?.id ?? null
+        }
         onClassified={(disposition) => {
-          if (reviewFinding?.id) applyDisposition(reviewFinding.id, disposition);
+          if (!reviewFinding?.id) return;
+          applyDisposition(reviewFinding.id, disposition);
+          findingDispositionService
+            .loadPoliciesForFindings([reviewFinding.id])
+            .then((p) => setFindingPolicies((prev) => ({ ...prev, ...p })))
+            .catch(() => undefined);
         }}
       />
+
     </div>
 
   );
