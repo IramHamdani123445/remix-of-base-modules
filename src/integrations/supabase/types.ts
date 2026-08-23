@@ -38036,16 +38036,22 @@ export type Database = {
       }
       ce_employer_financial_ledger: {
         Row: {
+          arrangement_id: string | null
+          case_id: string | null
           credit_amount: number
           debit_amount: number
           description: string
+          effective_date: string | null
           employer_id: string
           employer_name: string | null
           entry_type: Database["public"]["Enums"]["ce_ledger_entry_type"]
           fund_type: Database["public"]["Enums"]["ce_fund_type"]
           id: string
           idempotency_key: string
+          installment_id: string | null
           job_run_id: string | null
+          notes: string | null
+          payment_reference: string | null
           period: string
           posted_at: string
           posted_by: string
@@ -38058,18 +38064,25 @@ export type Database = {
           source_system: string | null
           status: Database["public"]["Enums"]["ce_ledger_status"]
           territory: string | null
+          violation_id: string | null
         }
         Insert: {
+          arrangement_id?: string | null
+          case_id?: string | null
           credit_amount?: number
           debit_amount?: number
           description: string
+          effective_date?: string | null
           employer_id: string
           employer_name?: string | null
           entry_type: Database["public"]["Enums"]["ce_ledger_entry_type"]
           fund_type: Database["public"]["Enums"]["ce_fund_type"]
           id?: string
           idempotency_key: string
+          installment_id?: string | null
           job_run_id?: string | null
+          notes?: string | null
+          payment_reference?: string | null
           period: string
           posted_at?: string
           posted_by: string
@@ -38082,18 +38095,25 @@ export type Database = {
           source_system?: string | null
           status?: Database["public"]["Enums"]["ce_ledger_status"]
           territory?: string | null
+          violation_id?: string | null
         }
         Update: {
+          arrangement_id?: string | null
+          case_id?: string | null
           credit_amount?: number
           debit_amount?: number
           description?: string
+          effective_date?: string | null
           employer_id?: string
           employer_name?: string | null
           entry_type?: Database["public"]["Enums"]["ce_ledger_entry_type"]
           fund_type?: Database["public"]["Enums"]["ce_fund_type"]
           id?: string
           idempotency_key?: string
+          installment_id?: string | null
           job_run_id?: string | null
+          notes?: string | null
+          payment_reference?: string | null
           period?: string
           posted_at?: string
           posted_by?: string
@@ -38106,6 +38126,7 @@ export type Database = {
           source_system?: string | null
           status?: Database["public"]["Enums"]["ce_ledger_status"]
           territory?: string | null
+          violation_id?: string | null
         }
         Relationships: [
           {
@@ -118761,6 +118782,67 @@ export type Database = {
           p_trigger_type?: string
         }
         Returns: string
+      }
+      ce_employer_ledger_entry_detail: {
+        Args: { p_entry_id: string }
+        Returns: Json
+      }
+      ce_employer_ledger_page: {
+        Args: {
+          p_arrangement_id?: string
+          p_direction?: string
+          p_employer_id: string
+          p_entry_type?: string
+          p_from_date?: string
+          p_fund_type?: string
+          p_limit?: number
+          p_offset?: number
+          p_period?: string
+          p_reference?: string
+          p_source_system?: string
+          p_to_date?: string
+        }
+        Returns: {
+          arrangement_id: string
+          case_id: string
+          credit_amount: number
+          debit_amount: number
+          description: string
+          effective_date: string
+          entry_id: string
+          entry_type: string
+          fund_type: string
+          installment_id: string
+          payment_reference: string
+          period: string
+          posted_at: string
+          posted_by: string
+          reference_id: string
+          reference_type: string
+          reversal_of_id: string
+          reversal_reason: string
+          reversed_by_entry_id: string
+          running_balance_fund: number
+          running_balance_total: number
+          source_pk: string
+          source_system: string
+          status: string
+          total_count: number
+          violation_id: string
+        }[]
+      }
+      ce_employer_ledger_reconcile: {
+        Args: { p_employer_id: string }
+        Returns: Json
+      }
+      ce_employer_ledger_summary: {
+        Args: {
+          p_employer_id: string
+          p_from_date?: string
+          p_fund_type?: string
+          p_to_date?: string
+        }
+        Returns: Json
       }
       ce_evaluate_arrangement_breaches: {
         Args: { p_actor?: string; p_as_of_date?: string; p_grace_days?: number }

@@ -11,10 +11,11 @@ import {
   Building2, FileText, Bell, ClipboardCheck, Shield, Clock, DollarSign,
   Users, AlertTriangle, Loader2, Eye, TrendingUp, Scale, ArrowLeft,
   Briefcase, MessageSquare, FolderOpen, Printer, Plus, Send, CalendarPlus,
-  ChevronUp, StickyNote, Gavel, History,
+  ChevronUp, StickyNote, Gavel, History, BookOpen,
 } from 'lucide-react';
 import { EmployerComplianceHistoryPanel } from '@/components/compliance/employer-history/EmployerComplianceHistoryPanel';
 import { PaymentHistoryGroupedTable } from './PaymentHistoryGroupedTable';
+import EmployerFinancialLedgerTab from './EmployerFinancialLedgerTab';
 import {
   fetchEmployerMaster, fetchEmployerFiling, fetchEmployerArrears, fetchEmployerPayments,
   fetchEmployerLegal, fetchEmployerWorkforce, fetchEmployerRisk, fetchEmployerViolations,
