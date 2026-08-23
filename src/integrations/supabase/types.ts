@@ -35971,6 +35971,13 @@ export type Database = {
             foreignKeyName: "ce_case_correspondence_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_correspondence_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -36053,6 +36060,13 @@ export type Database = {
             columns: ["violation_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_documents_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -36972,6 +36986,13 @@ export type Database = {
             foreignKeyName: "ce_case_violations_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_violations_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -36987,6 +37008,13 @@ export type Database = {
             columns: ["violation_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_violations_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -39039,6 +39067,13 @@ export type Database = {
             foreignKeyName: "ce_escalation_log_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_escalation_log_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -39087,6 +39122,13 @@ export type Database = {
             columns: ["violation_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_escalation_prerequisites_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -39416,6 +39458,13 @@ export type Database = {
             columns: ["violation_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_follow_up_actions_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -39758,6 +39807,13 @@ export type Database = {
             foreignKeyName: "ce_inspection_findings_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -39780,6 +39836,13 @@ export type Database = {
             columns: ["violation_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_inspection_findings_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -41636,6 +41699,13 @@ export type Database = {
             foreignKeyName: "ce_notice_responses_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notice_responses_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -41829,6 +41899,13 @@ export type Database = {
             foreignKeyName: "ce_notices_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -41844,6 +41921,13 @@ export type Database = {
             columns: ["violation_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -42646,6 +42730,13 @@ export type Database = {
             columns: ["violation_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_penalty_calculations_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -44237,6 +44328,13 @@ export type Database = {
             foreignKeyName: "ce_scouting_leads_linked_violation_id_fkey"
             columns: ["linked_violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_scouting_leads_linked_violation_id_fkey"
+            columns: ["linked_violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -44470,6 +44568,13 @@ export type Database = {
             foreignKeyName: "ce_violation_assignments_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violation_assignments_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -44637,6 +44742,13 @@ export type Database = {
             foreignKeyName: "ce_violation_grouping_decisions_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violation_grouping_decisions_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -44685,6 +44797,13 @@ export type Database = {
             foreignKeyName: "ce_violation_history_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violation_history_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -44720,6 +44839,42 @@ export type Database = {
           note_text?: string
           note_type?: string
           violation_id?: string
+        }
+        Relationships: []
+      }
+      ce_violation_routing_backfill_log: {
+        Row: {
+          batch_no: number
+          batch_size: number
+          failed: number
+          finished_at: string
+          id: string
+          remaining: number
+          routed: number
+          run_key: string
+          started_at: string
+        }
+        Insert: {
+          batch_no: number
+          batch_size: number
+          failed?: number
+          finished_at?: string
+          id?: string
+          remaining?: number
+          routed?: number
+          run_key: string
+          started_at?: string
+        }
+        Update: {
+          batch_no?: number
+          batch_size?: number
+          failed?: number
+          finished_at?: string
+          id?: string
+          remaining?: number
+          routed?: number
+          run_key?: string
+          started_at?: string
         }
         Relationships: []
       }
@@ -45028,6 +45183,13 @@ export type Database = {
             foreignKeyName: "ce_violations_duplicate_of_id_fkey"
             columns: ["duplicate_of_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_duplicate_of_id_fkey"
+            columns: ["duplicate_of_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -45036,6 +45198,13 @@ export type Database = {
             columns: ["duplicate_of_violation_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_duplicate_of_violation_id_fkey"
+            columns: ["duplicate_of_violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -45050,6 +45219,13 @@ export type Database = {
             columns: ["merged_into_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -45064,6 +45240,13 @@ export type Database = {
             columns: ["split_from_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_split_from_id_fkey"
+            columns: ["split_from_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -45321,6 +45504,13 @@ export type Database = {
             columns: ["violation_id"]
             isOneToOne: false
             referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -112791,6 +112981,29 @@ export type Database = {
           },
         ]
       }
+      ce_v_violation_routing_eligibility: {
+        Row: {
+          assigned_queue_id: string | null
+          assigned_to_user_id: string | null
+          assignment_method: string | null
+          eligibility: string | null
+          employer_id: string | null
+          id: string | null
+          office_code: string | null
+          status: string | null
+          village_code: string | null
+          violation_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_violations_assigned_queue_id_fkey"
+            columns: ["assigned_queue_id"]
+            isOneToOne: false
+            referencedRelation: "ce_assignment_queues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ce_v_violation_trends: {
         Row: {
           created_count: number | null
@@ -121574,6 +121787,14 @@ export type Database = {
           zone_name: string
         }[]
       }
+      fn_ce_route_unassigned_backfill: {
+        Args: {
+          p_batch_size?: number
+          p_max_batches?: number
+          p_run_key?: string
+        }
+        Returns: Json
+      }
       fn_ce_route_unassigned_violations: {
         Args: { p_limit?: number }
         Returns: Json
@@ -121583,6 +121804,7 @@ export type Database = {
         Args: { p_violation_ids: string[] }
         Returns: number
       }
+      fn_ce_routing_backfill_stats: { Args: never; Returns: Json }
       fn_ce_run_audit_priority_refresh: {
         Args: {
           p_batch_size?: number
@@ -121678,6 +121900,7 @@ export type Database = {
         Args: { p_actor: string; p_keep_id: string; p_root_id: string }
         Returns: undefined
       }
+      fn_ce_unassigned_violation_count: { Args: never; Returns: number }
       fn_ia_department_label: { Args: { p_id: string }; Returns: string }
       gen_lg_hearing_number: { Args: never; Returns: string }
       generate_application_id: { Args: never; Returns: string }
