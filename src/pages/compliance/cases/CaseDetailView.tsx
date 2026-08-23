@@ -678,6 +678,11 @@ export default function CaseDetailView() {
               <DollarSign className="h-4 w-4 mr-2" />Arrangements ({caseArrangements.length})
             </TabsTrigger>
           )}
+          {waiversFeatureEnabled && (
+            <TabsTrigger value="waivers">
+              <BadgePercent className="h-4 w-4 mr-2" />Waivers
+            </TabsTrigger>
+          )}
           <TabsTrigger value="documents">
             <FolderOpen className="h-4 w-4 mr-2" />Documents
           </TabsTrigger>
