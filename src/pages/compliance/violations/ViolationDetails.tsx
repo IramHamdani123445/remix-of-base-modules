@@ -162,6 +162,13 @@ export default function ViolationDetails() {
     enabled: !!id,
   });
 
+  // Authoritative money figures from the shared compliance read layer.
+  const { data: financials } = useQuery({
+    queryKey: ['ce_violation_financials', id],
+    queryFn: () => fetchViolationFinancials(id!),
+    enabled: !!id,
+  });
+
 
 
   const { data: otherViolations = [] } = useQuery({
