@@ -33099,6 +33099,7 @@ export type Database = {
       }
       ce_arrangement_breaches: {
         Row: {
+          amount_outstanding_at_breach: number | null
           arrangement_id: string | null
           breach_type: string | null
           created_at: string
@@ -33106,7 +33107,12 @@ export type Database = {
           description: string | null
           detected_at: string | null
           detected_by: string | null
+          due_date_at_breach: string | null
+          grace_days_at_breach: number | null
           id: string
+          installment_id: string | null
+          installment_number: number | null
+          occurrence_key: string | null
           resolution: string | null
           resolution_notes: string | null
           resolved_at: string | null
@@ -33115,6 +33121,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          amount_outstanding_at_breach?: number | null
           arrangement_id?: string | null
           breach_type?: string | null
           created_at?: string
@@ -33122,7 +33129,12 @@ export type Database = {
           description?: string | null
           detected_at?: string | null
           detected_by?: string | null
+          due_date_at_breach?: string | null
+          grace_days_at_breach?: number | null
           id?: string
+          installment_id?: string | null
+          installment_number?: number | null
+          occurrence_key?: string | null
           resolution?: string | null
           resolution_notes?: string | null
           resolved_at?: string | null
@@ -33131,6 +33143,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          amount_outstanding_at_breach?: number | null
           arrangement_id?: string | null
           breach_type?: string | null
           created_at?: string
@@ -33138,7 +33151,12 @@ export type Database = {
           description?: string | null
           detected_at?: string | null
           detected_by?: string | null
+          due_date_at_breach?: string | null
+          grace_days_at_breach?: number | null
           id?: string
+          installment_id?: string | null
+          installment_number?: number | null
+          occurrence_key?: string | null
           resolution?: string | null
           resolution_notes?: string | null
           resolved_at?: string | null
@@ -33167,6 +33185,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_register"
             referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_installment_operational"
+            referencedColumns: ["installment_id"]
           },
           {
             foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
@@ -112004,6 +112036,92 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_arrangement_breach_occurrence: {
+        Row: {
+          amount_outstanding_at_breach: number | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          arrangement_status: string | null
+          breach_id: string | null
+          breach_type: string | null
+          description: string | null
+          detected_at: string | null
+          detected_by: string | null
+          due_date: string | null
+          employer_id: string | null
+          employer_name: string | null
+          grace_days_at_breach: number | null
+          installment_amount: number | null
+          installment_id: string | null
+          installment_number: number | null
+          installment_paid_amount: number | null
+          installment_status: string | null
+          is_cured: boolean | null
+          occurrence_key: string | null
+          resolution: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_installment_operational"
+            referencedColumns: ["installment_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+        ]
+      }
       ce_v_arrangement_health: {
         Row: {
           arrangement_id: string | null
@@ -112015,6 +112133,7 @@ export type Database = {
           max_missed_before_breach: number | null
           missed_payments: number | null
           next_due_date: string | null
+          overdue_installment_count: number | null
           regno: string | null
           status: string | null
           total_debt: number | null
@@ -119033,6 +119152,42 @@ export type Database = {
           p_trigger_type?: string
         }
         Returns: string
+      }
+      ce_detect_arrangement_breaches: {
+        Args: { p_actor?: string }
+        Returns: Json
+      }
+      ce_e2e__activate: {
+        Args: { p_actor: string; p_arr_id: string; p_items: Json }
+        Returns: undefined
+      }
+      ce_e2e__mk_arrangement: {
+        Args: {
+          p_actor: string
+          p_amounts: number[]
+          p_arrno: string
+          p_emp: string
+          p_empname: string
+          p_key: string
+          p_offsets: number[]
+        }
+        Returns: string
+      }
+      ce_e2e__pay: {
+        Args: {
+          p_actor: string
+          p_amount: number
+          p_arr_id: string
+          p_emp: string
+          p_empname: string
+          p_fund: Database["public"]["Enums"]["ce_fund_type"]
+          p_key: string
+        }
+        Returns: string
+      }
+      ce_e2e_provision_payment_arrangement_fixtures: {
+        Args: { p_actor?: string }
+        Returns: Json
       }
       ce_employer_ledger_entry_detail: {
         Args: { p_entry_id: string }
