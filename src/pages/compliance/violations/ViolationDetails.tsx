@@ -55,6 +55,28 @@ interface ActionButtonDef {
   useResolutionDialog?: 'resolve' | 'close';
 }
 
+/**
+ * Help text for each lifecycle action, matching the transitions the workflow
+ * engine actually permits (see STATUS_ACTIONS below).
+ */
+const ACTION_HELP_TEXT: Partial<Record<string, string>> = {
+  start_work:
+    'Take ownership and begin working this violation. Enforcement severity is unchanged.',
+  move_to_review:
+    'Send this violation for supervisory / internal review without advancing enforcement severity. '
+    + 'It moves to UNDER_REVIEW and waits for a verification decision. It cannot be returned '
+    + 'directly to OPEN afterwards — resume work, resolve or cancel it instead.',
+  escalate:
+    'Advance this violation through the configured enforcement / escalation process to '
+    + 'Compliance Head / Legal for senior review, formal notice or referral. Requires a written '
+    + 'reason and is logged on the case history.',
+  de_escalate:
+    'Return this violation from ESCALATED back to UNDER_REVIEW, reversing the escalation step only.',
+  cancel: 'Cancel this violation as raised in error or no longer applicable. Requires a reason.',
+  reopen: 'Reopen a resolved or cancelled violation for further enforcement work.',
+};
+
+
 const STATUS_ACTIONS: Record<string, ActionButtonDef[]> = {
   OPEN: [
     { label: 'Start Work', icon: <Play className="h-4 w-4" />, targetStatus: 'IN_PROGRESS', confirmType: 'start_work', variant: 'default' },
