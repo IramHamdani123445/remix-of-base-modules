@@ -13,9 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Calendar, Loader2, Receipt } from 'lucide-react';
+import { Loader2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchInstallmentsDue } from '@/services/compliance/arrangementRegisterService';
+import { formatXCD, InstallmentStatusBadge } from '@/components/compliance/arrangements/arrangementFormat';
+import { formatDateForDisplay } from '@/lib/format-config';
 import { recordInstallmentPayment } from '@/services/arrangementWorkflowService';
 import { useUserCode } from '@/hooks/useUserCode';
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
@@ -39,14 +41,14 @@ export default function InstallmentsDuePage() {
 
   const payMut = useMutation({
     mutationFn: () => recordInstallmentPayment({
-      installmentId: payDialog.id,
+      installmentId: payDialog.installment_id,
       amount: Number(amount),
       paymentReference: reference,
       userCode: userCode || 'system',
     }),
     onSuccess: () => {
       toast.success('Payment recorded');
-      qc.invalidateQueries({ queryKey: ['ce_installments_due'] });
+      qc.invalidateQueries({ queryKey: ['ce_installments_due_operational'] });
       setPayDialog(null); setAmount(''); setReference('');
     },
     onError: (e: any) => toast.error(e.message),
@@ -121,7 +123,7 @@ export default function InstallmentsDuePage() {
             </DialogHeader>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                {payDialog?.ce_payment_arrangements?.arrangement_number} — Installment #{payDialog?.installment_number}
+                {payDialog?.arrangement_number} — Installment #{payDialog?.installment_number}
               </p>
               <div>
                 <Label>Amount *</Label>
