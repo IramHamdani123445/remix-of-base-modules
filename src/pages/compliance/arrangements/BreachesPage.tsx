@@ -26,11 +26,11 @@ export default function BreachesPage() {
   const navigate = useNavigate();
 
   const { data = [], isLoading } = useQuery({
-    queryKey: ['ce_arrangement_breaches_full'],
+    queryKey: ['ce_v_arrangement_breach_occurrence'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('ce_arrangement_breaches')
-        .select('*, ce_payment_arrangements!inner(arrangement_number,employer_id,employer_name,status,case_id)')
+        .from('ce_v_arrangement_breach_occurrence' as any)
+        .select('*')
         .order('detected_at', { ascending: false }).limit(500);
       if (error) throw error;
       return data || [];
@@ -41,7 +41,7 @@ export default function BreachesPage() {
     mutationFn: () => detectBreaches({ userCode: userCode || 'system' }),
     onSuccess: (results) => {
       toast.success(results.length ? `Detected ${results.length} new breach(es)` : 'No new breaches detected');
-      qc.invalidateQueries({ queryKey: ['ce_arrangement_breaches_full'] });
+      qc.invalidateQueries({ queryKey: ['ce_v_arrangement_breach_occurrence'] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -125,22 +125,34 @@ export default function BreachesPage() {
                     <TableHead>Arrangement</TableHead>
                     <TableHead>Employer</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead className="text-center">Installment</TableHead>
+                    <TableHead>Due</TableHead>
+                    <TableHead className="text-right">Outstanding at breach</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Resolution</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.length === 0 && (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">No breaches on record.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">No breaches on record.</TableCell></TableRow>
                   )}
                   {data.map((b: any) => (
-                    <TableRow key={b.id}>
+                    <TableRow key={b.breach_id}>
                       <TableCell className="text-xs">{b.detected_at ? new Date(b.detected_at).toLocaleString('en-GB') : '—'}</TableCell>
-                      <TableCell className="font-medium">{b.ce_payment_arrangements?.arrangement_number}</TableCell>
-                      <TableCell>{b.ce_payment_arrangements?.employer_name || b.ce_payment_arrangements?.employer_id}</TableCell>
+                      <TableCell className="font-medium">{b.arrangement_number}</TableCell>
+                      <TableCell>{b.employer_name || b.employer_id}</TableCell>
                       <TableCell><Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30">{b.breach_type}</Badge></TableCell>
+                      <TableCell className="text-center">{b.installment_number ?? '—'}</TableCell>
+                      <TableCell className="text-xs">{b.due_date ? new Date(b.due_date).toLocaleDateString('en-GB') : '—'}</TableCell>
+                      <TableCell className="text-right">{b.amount_outstanding_at_breach != null ? formatXCD(b.amount_outstanding_at_breach) : '—'}</TableCell>
                       <TableCell className="text-sm max-w-md truncate">{b.description}</TableCell>
-                      <TableCell className="text-xs">{b.resolution || '—'}</TableCell>
+                      <TableCell className="text-xs">
+                        {b.is_cured ? (
+                          <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                            {b.resolution || 'CURED'}
+                          </Badge>
+                        ) : 'Open'}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
