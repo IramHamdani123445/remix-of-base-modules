@@ -641,7 +641,10 @@ export default function CaseDetailView() {
 
       </div>
 
+      <CaseLegalEscalationPanel status={legalStatus} />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
+
         <TabsList>
           <TabsTrigger value="violations">
             <Link2 className="h-4 w-4 mr-2" />Violations ({linkedViolations.length})
