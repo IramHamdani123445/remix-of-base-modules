@@ -116,13 +116,20 @@ const SectionEmpty: React.FC<{ message: string; icon?: React.ReactNode }> = ({ m
 
 type BreachHealth = 'healthy' | 'warning' | 'breached' | 'defaulted';
 
-function getBreachHealth(arr: any): { health: BreachHealth; label: string; description: string } {
+function getBreachHealth(arr: any, unresolvedBreaches?: number): { health: BreachHealth; label: string; description: string } {
   if (arr.status === 'DEFAULTED') {
     return { health: 'defaulted', label: 'Defaulted', description: arr.breach_reason || 'Arrangement has been defaulted due to breach conditions.' };
   }
-  if (arr.breach_detected) {
+  // A legacy breach_detected flag can remain set after every breach has been cured.
+  // Trust the server-derived unresolved breach count when it is available.
+  const hasLiveBreach = unresolvedBreaches != null ? unresolvedBreaches > 0 : !!arr.breach_detected;
+  if (hasLiveBreach) {
     return { health: 'breached', label: 'Breach Detected', description: arr.breach_reason || 'Active breach — requires attention.' };
   }
+  if (unresolvedBreaches === 0 && arr.breach_detected) {
+    return { health: 'healthy', label: 'Breaches Cured', description: 'All recorded breaches have been resolved.' };
+  }
+
   const missed = arr.missed_payments ?? 0;
   const max = arr.max_missed_before_breach ?? 2;
   if (missed > 0 && missed < max) {
