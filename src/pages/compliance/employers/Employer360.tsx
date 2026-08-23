@@ -119,18 +119,20 @@ export default function Employer360() {
     );
   }
 
-  const activeViolations = violations.filter((v: any) => !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(v.status));
+  // Open-violation count comes from a real count query, not the loaded page.
+  const activeViolationCount = exposure?.open_violations ?? violationsPage?.openTotal ?? 0;
   const activeCases = cases.filter((c: any) => !['RESOLVED', 'CLOSED'].includes(c.status));
   const riskBand = risk?.override_band || risk?.risk_band || 'N/A';
   const totalLedgerArrears = ledgerArrears.reduce((sum, a) => sum + (a.net_balance || 0), 0);
   const activeArrangement = arrangements.find((a: any) => a.status === 'ACTIVE');
-  // Enforcement outstanding = sum of (total_amount − amount_collected − amount_waived) across open cases.
+  // Enforcement exposure is resolved server-side by fn_ce_employer_financial_exposure:
+  //   open case outstanding + open UNLINKED violation outstanding.
+  // A case-linked violation is counted exactly once, through its case.
   // This is distinct from C3 arrears (dues vs payments in cn_c3_reported / cn_payment).
-  const enforcementOutstanding = activeCases.reduce(
-    (sum: number, c: any) => sum + Math.max(Number(c.total_amount || 0) - Number(c.amount_collected || 0) - Number(c.amount_waived || 0), 0),
-    0,
-  );
+  const enforcementOutstanding = exposure?.enforcement_exposure ?? 0;
+  const openCaseCount = exposure?.open_cases ?? activeCases.length;
   const c3Outstanding = arrears?.total_outstanding ?? 0;
+
 
   return (
     <div className="container mx-auto p-6 space-y-6">
