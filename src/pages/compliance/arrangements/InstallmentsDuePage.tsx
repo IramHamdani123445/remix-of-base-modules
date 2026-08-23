@@ -81,26 +81,32 @@ export default function InstallmentsDuePage() {
                     {rows.length === 0 && (
                       <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No installments due in horizon.</TableCell></TableRow>
                     )}
-                    {rows.map((r: any) => {
-                      const overdue = r.due_date < today;
-                      return (
-                        <TableRow key={r.id} className={overdue ? 'bg-destructive/5' : ''}>
-                          <TableCell className="text-xs">{r.due_date}</TableCell>
-                          <TableCell className="font-medium">{r.ce_payment_arrangements?.arrangement_number}</TableCell>
-                          <TableCell>{r.ce_payment_arrangements?.employer_name || r.ce_payment_arrangements?.employer_id}</TableCell>
-                          <TableCell>{r.installment_number}</TableCell>
-                          <TableCell className="text-right">{Number(r.amount).toLocaleString('en-US', { style: 'currency', currency: 'XCD' })}</TableCell>
-                          <TableCell className="text-right">{Number(r.paid_amount || 0).toLocaleString('en-US', { style: 'currency', currency: 'XCD' })}</TableCell>
-                          <TableCell><Badge variant="outline" className={overdue ? 'bg-destructive/10 text-destructive border-destructive/30' : ''}>{overdue ? 'OVERDUE' : r.status}</Badge></TableCell>
-                          <TableCell>
-                            <PermissionButton moduleName={MODULE} actionName="edit" size="sm" variant="outline"
-                              onClick={() => { setPayDialog(r); setAmount(String(Number(r.amount) - Number(r.paid_amount || 0))); }}>
-                              <Receipt className="h-4 w-4 mr-1" /> Record
-                            </PermissionButton>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {rows.map((r) => (
+                      <TableRow key={r.installment_id} className={r.effective_status === 'OVERDUE' ? 'bg-destructive/5' : ''}>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {r.due_date ? formatDateForDisplay(r.due_date) : '—'}
+                          {r.days_overdue > 0 && (
+                            <span className="block text-destructive">{r.days_overdue}d overdue</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{r.arrangement_number}</TableCell>
+                        <TableCell>{r.employer_name || r.employer_id}</TableCell>
+                        <TableCell>{r.installment_number}</TableCell>
+                        <TableCell className="text-right">{formatXCD(r.scheduled_amount)}</TableCell>
+                        <TableCell className="text-right">{formatXCD(r.paid_amount)}</TableCell>
+                        <TableCell><InstallmentStatusBadge status={r.effective_status} /></TableCell>
+                        <TableCell>
+                          <PermissionButton moduleName={MODULE} actionName="edit" size="sm" variant="outline"
+                            onClick={() => {
+                              setPayDialog(r);
+                              setAmount(String(Number(r.outstanding_amount ?? 0)));
+                            }}>
+                            <Receipt className="h-4 w-4 mr-1" /> Record
+                          </PermissionButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+
                   </TableBody>
                 </Table>
               )}
