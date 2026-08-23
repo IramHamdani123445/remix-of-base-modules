@@ -62172,45 +62172,66 @@ export type Database = {
         Row: {
           allocated_to_item_id: string | null
           allocation_amount: number
+          allocation_key: string | null
           allocation_order: number
+          allocation_policy: string | null
           amount_received: number
           arrangement_id: string
           created_at: string
           created_by: string | null
+          fund_type: string | null
           id: string
           installment_id: string | null
+          is_reversed: boolean
+          ledger_entry_id: string | null
           payment_date: string
           receipt_id: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
           source_module: string | null
           source_record_id: string | null
         }
         Insert: {
           allocated_to_item_id?: string | null
           allocation_amount?: number
+          allocation_key?: string | null
           allocation_order?: number
+          allocation_policy?: string | null
           amount_received?: number
           arrangement_id: string
           created_at?: string
           created_by?: string | null
+          fund_type?: string | null
           id?: string
           installment_id?: string | null
+          is_reversed?: boolean
+          ledger_entry_id?: string | null
           payment_date: string
           receipt_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
           source_module?: string | null
           source_record_id?: string | null
         }
         Update: {
           allocated_to_item_id?: string | null
           allocation_amount?: number
+          allocation_key?: string | null
           allocation_order?: number
+          allocation_policy?: string | null
           amount_received?: number
           arrangement_id?: string
           created_at?: string
           created_by?: string | null
+          fund_type?: string | null
           id?: string
           installment_id?: string | null
+          is_reversed?: boolean
+          ledger_entry_id?: string | null
           payment_date?: string
           receipt_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
           source_module?: string | null
           source_record_id?: string | null
         }
@@ -62295,6 +62316,8 @@ export type Database = {
           approved_by: string | null
           arrangement_no: string
           arrangement_type: string
+          coverage_notes: string | null
+          coverage_status: string | null
           created_at: string
           created_by: string | null
           debtor_id: string
@@ -62325,6 +62348,8 @@ export type Database = {
           approved_by?: string | null
           arrangement_no: string
           arrangement_type?: string
+          coverage_notes?: string | null
+          coverage_status?: string | null
           created_at?: string
           created_by?: string | null
           debtor_id: string
@@ -62355,6 +62380,8 @@ export type Database = {
           approved_by?: string | null
           arrangement_no?: string
           arrangement_type?: string
+          coverage_notes?: string | null
+          coverage_status?: string | null
           created_at?: string
           created_by?: string | null
           debtor_id?: string
@@ -62417,8 +62444,10 @@ export type Database = {
           arrangement_id: string
           benefit_claim_id: string | null
           compliance_case_id: string | null
-          cost_amount: number
+          cost_amount: number | null
           court_proceeding_id: string | null
+          coverage_confidence: string | null
+          coverage_evidence: Json | null
           created_at: string
           created_by: string | null
           finance_debt_id: string | null
@@ -62429,10 +62458,11 @@ export type Database = {
           notes: string | null
           outstanding_amount: number
           paid_amount: number
-          penalty_amount: number
+          penalty_amount: number | null
           period_from: string | null
           period_to: string | null
-          principal_amount: number
+          principal_amount: number | null
+          reconstruction_key: string | null
           source_module: string
           source_record_id: string
           source_record_type: string
@@ -62445,8 +62475,10 @@ export type Database = {
           arrangement_id: string
           benefit_claim_id?: string | null
           compliance_case_id?: string | null
-          cost_amount?: number
+          cost_amount?: number | null
           court_proceeding_id?: string | null
+          coverage_confidence?: string | null
+          coverage_evidence?: Json | null
           created_at?: string
           created_by?: string | null
           finance_debt_id?: string | null
@@ -62457,10 +62489,11 @@ export type Database = {
           notes?: string | null
           outstanding_amount?: number
           paid_amount?: number
-          penalty_amount?: number
+          penalty_amount?: number | null
           period_from?: string | null
           period_to?: string | null
-          principal_amount?: number
+          principal_amount?: number | null
+          reconstruction_key?: string | null
           source_module: string
           source_record_id: string
           source_record_type: string
@@ -62473,8 +62506,10 @@ export type Database = {
           arrangement_id?: string
           benefit_claim_id?: string | null
           compliance_case_id?: string | null
-          cost_amount?: number
+          cost_amount?: number | null
           court_proceeding_id?: string | null
+          coverage_confidence?: string | null
+          coverage_evidence?: Json | null
           created_at?: string
           created_by?: string | null
           finance_debt_id?: string | null
@@ -62485,10 +62520,11 @@ export type Database = {
           notes?: string | null
           outstanding_amount?: number
           paid_amount?: number
-          penalty_amount?: number
+          penalty_amount?: number | null
           period_from?: string | null
           period_to?: string | null
-          principal_amount?: number
+          principal_amount?: number | null
+          reconstruction_key?: string | null
           source_module?: string
           source_record_id?: string
           source_record_type?: string
@@ -62569,6 +62605,8 @@ export type Database = {
           due_date: string
           id: string
           installment_no: number
+          legacy_ce_installment_id: string | null
+          legacy_source_system: string | null
           notes: string | null
           paid_amount: number
           paid_date: string | null
@@ -62583,6 +62621,8 @@ export type Database = {
           due_date: string
           id?: string
           installment_no: number
+          legacy_ce_installment_id?: string | null
+          legacy_source_system?: string | null
           notes?: string | null
           paid_amount?: number
           paid_date?: string | null
@@ -62597,6 +62637,8 @@ export type Database = {
           due_date?: string
           id?: string
           installment_no?: number
+          legacy_ce_installment_id?: string | null
+          legacy_source_system?: string | null
           notes?: string | null
           paid_amount?: number
           paid_date?: string | null
@@ -120088,6 +120130,56 @@ export type Database = {
         }
         Returns: string
       }
+      core_arrangement_add_item: {
+        Args: {
+          p_actor?: string
+          p_arranged_amount: number
+          p_arrangement_id: string
+          p_cost?: number
+          p_liability_type: string
+          p_penalty?: number
+          p_period_from?: string
+          p_period_to?: string
+          p_principal?: number
+          p_source_module?: string
+          p_source_record_id?: string
+          p_source_record_type?: string
+          p_source_reference_no?: string
+        }
+        Returns: string
+      }
+      core_arrangement_detail: {
+        Args: { p_arrangement_id: string }
+        Returns: Json
+      }
+      core_arrangement_detail_by_legacy: {
+        Args: { p_legacy_id: string }
+        Returns: Json
+      }
+      core_arrangement_liability_coverage: {
+        Args: { p_employer_id: string }
+        Returns: Json
+      }
+      core_arrangement_set_status: {
+        Args: {
+          p_actor?: string
+          p_arrangement_id: string
+          p_new_status: string
+        }
+        Returns: Json
+      }
+      core_arrangement_validate_coverage: {
+        Args: { p_arrangement_id: string }
+        Returns: Json
+      }
+      core_arrangement_verify_invariants: {
+        Args: { p_arrangement_id: string }
+        Returns: Json
+      }
+      core_backfill_ce_arrangements: {
+        Args: { p_actor?: string; p_dry_run?: boolean }
+        Returns: Json
+      }
       core_comm_asset_get: { Args: { p_id: string }; Returns: Json }
       core_comm_asset_list_active: {
         Args: { p_asset_type?: string; p_organization_id: string }
@@ -120220,6 +120312,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      core_map_ce_arrangement_status: {
+        Args: { p_status: string }
+        Returns: string
+      }
+      core_map_ce_installment_status: {
+        Args: { p_status: string }
+        Returns: string
+      }
+      core_map_ledger_fund_to_liability: {
+        Args: { p_fund: string }
+        Returns: string
+      }
       core_preview_next_number: {
         Args: {
           p_branch_code?: string
@@ -120233,6 +120337,15 @@ export type Database = {
       core_priv_verify_department_ownership: {
         Args: { p_department_id: string; p_organization_id: string }
         Returns: undefined
+      }
+      core_record_ledger_allocation: {
+        Args: {
+          p_actor?: string
+          p_amount: number
+          p_ce_installment_id: string
+          p_ledger_entry_id: string
+        }
+        Returns: number
       }
       core_record_number_override: {
         Args: {
