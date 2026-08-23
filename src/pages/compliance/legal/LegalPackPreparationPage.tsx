@@ -165,7 +165,10 @@ function Inner() {
                   </span>
                 ) : (
                   <span className="text-destructive flex items-center gap-1">
-                    <AlertTriangle className="h-4 w-4" /> {validation.missing.length} required item(s) missing
+                    <AlertTriangle className="h-4 w-4" /> {validation.missing.length} required item(s) missing:{' '}
+                    {validation.missing
+                      .map((m: any) => (typeof m === 'string' ? m : m.item_label ?? m.item_code))
+                      .join(', ')}
                   </span>
                 )}
               </CardDescription>
