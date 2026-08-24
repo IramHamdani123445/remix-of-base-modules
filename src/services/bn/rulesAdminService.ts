@@ -576,45 +576,24 @@ export async function publishVersion(
     }
   } catch { /* non-fatal */ }
 
-  // Archive the current ACTIVE version for this product (no overlapping active)
-  const { data: currentActive } = await db
-    .from('bn_product_version')
-    .select('id')
-    .eq('product_id', ver.product_id)
-    .eq('status', 'ACTIVE')
-    .limit(1)
-    .maybeSingle();
-
-  if (currentActive) {
-    await db.from('bn_product_version')
-      .update({
-        status: 'ARCHIVED',
-        effective_to: effectiveDate,
-        modified_by: publisherCode,
-        modified_at: new Date().toISOString(),
-      })
-      .eq('id', currentActive.id);
-
-    await logRuleAudit('RULE_VERSION_RETIRED', 'bn_product_version', currentActive.id, {
-      retired_by: publisherCode,
-      superseded_by: versionId,
-    }, publisherCode);
+  // Delegate the actual publish to the single canonical routine used by the
+  // Product Editor. Governance previously ran its own partial update, which
+  // skipped the Configuration Validation gate, the catalogue-rule governance
+  // gate and — critically — the promotion of bn_product to ACTIVE. A product
+  // published only from Governance therefore never became selectable in Claim
+  // Registration. One routine now serves both entry points.
+  const { publishProductVersion } = await import('@/services/bn/productService');
+  try {
+    await publishProductVersion(versionId, effectiveDate);
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Publish failed' };
   }
-
-  // Publish new version
-  await db.from('bn_product_version')
-    .update({
-      status: 'ACTIVE',
-      effective_from: effectiveDate,
-      modified_by: publisherCode,
-      modified_at: new Date().toISOString(),
-    })
-    .eq('id', versionId);
 
   await logRuleAudit('RULE_VERSION_PUBLISHED', 'bn_product_version', versionId, {
     published_by: publisherCode,
     effective_date: effectiveDate,
-    supersedes: currentActive?.id,
+    product_id: ver.product_id,
+    version_number: ver.version_number,
   }, publisherCode);
 
   return { success: true };
