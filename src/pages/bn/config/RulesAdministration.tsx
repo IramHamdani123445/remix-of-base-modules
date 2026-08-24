@@ -51,7 +51,67 @@ const STATUS_LABELS: Record<string, string> = {
   ARCHIVED: 'Archived',
 };
 
+/**
+ * Per-row readiness. The governance registry used to expose Submit / Approve /
+ * Publish with no indication of whether the version could actually pass the
+ * gate, so failures only surfaced at the final click with an opaque message.
+ * Each actionable row now runs the same gate the service runs and names its
+ * blocking issues up front.
+ */
+function useVersionReadiness(versions: RuleVersionSummary[]) {
+  const actionable = versions.filter((v) => v.status !== 'ACTIVE' && v.status !== 'ARCHIVED');
+  const results = useQueries({
+    queries: actionable.map((v) => ({
+      queryKey: ['bn', 'version-readiness', v.id],
+      queryFn: () => assertVersionReadiness(v.id),
+      staleTime: 60_000,
+      retry: false,
+    })),
+  });
+  const map = new Map<string, { loading: boolean; ok: boolean; errors: string[] }>();
+  actionable.forEach((v, i) => {
+    const r = results[i];
+    map.set(v.id, {
+      loading: r.isLoading,
+      ok: !!r.data?.ok,
+      errors: r.data?.errors ?? [],
+    });
+  });
+  return map;
+}
+
+function ReadinessCell({
+  state,
+  productId,
+}: {
+  state?: { loading: boolean; ok: boolean; errors: string[] };
+  productId: string;
+}) {
+  if (!state) return <span className="text-muted-foreground text-xs">—</span>;
+  if (state.loading) return <span className="text-muted-foreground text-xs">Checking…</span>;
+  if (state.ok) {
+    return (
+      <Badge variant="outline" className="text-green-600 border-green-300">
+        <CheckCircle className="h-3 w-3 mr-1" /> Ready to publish
+      </Badge>
+    );
+  }
+  return (
+    <Link to={`/bn/config/products/${productId}`} onClick={(e) => e.stopPropagation()}>
+      <Badge
+        variant="outline"
+        className="text-destructive border-destructive/40 hover:bg-destructive/10"
+        title={state.errors.join('\n')}
+      >
+        <AlertTriangle className="h-3 w-3 mr-1" />
+        {state.errors.length} blocking issue{state.errors.length === 1 ? '' : 's'}
+      </Badge>
+    </Link>
+  );
+}
+
 export default function RulesAdministration() {
+
   const { userCode } = useUserCode();
   const { data: products = [] } = useBnProducts();
   const [productFilter, setProductFilter] = useState<string>('all');
