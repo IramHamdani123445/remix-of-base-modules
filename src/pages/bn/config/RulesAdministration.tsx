@@ -324,7 +324,7 @@ export default function RulesAdministration() {
                           <TableCell className="text-sm">{v.effectiveDate || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{v.enteredBy || '—'}</TableCell>
                           <TableCell>
-                            <ReadinessCell state={readiness.get(v.id)} productId={v.productId} />
+                            <ReadinessCell state={readiness.get(v.id)} productId={v.productId} versionId={v.id} />
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
