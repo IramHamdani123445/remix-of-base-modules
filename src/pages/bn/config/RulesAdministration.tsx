@@ -35,7 +35,7 @@ import {
   useBnPublishVersion,
 } from '@/hooks/bn/useBnRulesAdmin';
 
-import { RULE_VERSION_STATUSES, type RuleVersionSummary } from '@/services/bn/rulesAdminService';
+import { RULE_VERSION_STATUSES, assertVersionReadiness, type RuleVersionSummary } from '@/services/bn/rulesAdminService';
 
 // Canonical lifecycle: DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVED
 const STATUS_COLORS: Record<string, string> = {
