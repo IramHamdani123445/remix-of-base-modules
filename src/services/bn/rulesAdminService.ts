@@ -527,6 +527,13 @@ export async function approveVersion(
     return { success: false, error: 'Maker-checker violation: approver cannot be the same as the author' };
   }
 
+  // Configuration can change between submission and approval, so the gate is
+  // re-run here rather than trusted from submit time.
+  const gate = await assertVersionReadiness(versionId);
+  if (!gate.ok) return { success: false, error: formatGateErrors('approved', gate.errors) };
+
+
+
   await db.from('bn_product_version')
     .update({
       status: 'APPROVED',
