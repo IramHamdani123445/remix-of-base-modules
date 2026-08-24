@@ -7,13 +7,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CheckCircle, XCircle, Clock, Send, Copy, Loader2, Info } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Clock, Send, Copy, Loader2, Info, ShieldCheck, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUpdateBnProductVersion, useCopyBnVersionRules, usePublishBnProductVersion, useRetireBnProductVersion } from '@/hooks/bn/useBnProduct';
+import { useUpdateBnProductVersion, useCopyBnVersionRules, useRetireBnProductVersion } from '@/hooks/bn/useBnProduct';
 import { useCreateBnVersionApproval } from '@/hooks/bn/useBnConfig';
 import { BN_PRODUCT_STATUS_LABELS } from '@/types/bn';
 import type { BnProductVersion, BnProductStatus } from '@/types/bn';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { useUserCode } from '@/hooks/useUserCode';
 
