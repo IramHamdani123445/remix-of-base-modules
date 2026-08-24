@@ -35,6 +35,11 @@ import { CommunicationsTab } from '@/components/bn/config/CommunicationsTab';
 import { ProductOmniCommsPanel } from '@/components/bn/config/ProductOmniCommsPanel';
 import { resolveOrganizationContext } from '@/lib/org/organizationContextResolver';
 import { ReadOnlyVersionBanner } from '@/components/bn/smart';
+import { useQuery } from '@tanstack/react-query';
+import { assertVersionReadiness } from '@/services/bn/rulesAdminService';
+import { useBnReturnToDraft } from '@/hooks/bn/useBnRulesAdmin';
+import { useUserCode } from '@/hooks/useUserCode';
+
 import { VisualBuilderTab } from '@/components/bn/config/VisualBuilderTab';
 import { ConflictDetectionPanel } from '@/components/bn/config/ConflictDetectionPanel';
 import { BnPlatformConsumptionPanel } from '@/components/bn/config/BnPlatformConsumptionPanel';
