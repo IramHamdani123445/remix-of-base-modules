@@ -199,28 +199,33 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
       {/* Status Action Dialog */}
       <Dialog open={!!approvalDialog} onOpenChange={() => setApprovalDialog(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{approvalDialog?.action === 'SUBMIT' ? 'Submit for Approval' : approvalDialog?.action === 'APPROVE' ? 'Approve Version' : approvalDialog?.action === 'REJECT' ? 'Reject Version' : 'Retire Version'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{approvalDialog?.action === 'SUBMIT' ? 'Submit for Approval' : 'Retire Version'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            {approvalDialog?.action === 'SUBMIT' && (
+              <p className="text-sm text-muted-foreground">
+                The version moves to Pending Approval. Approval and publishing are then completed in Rule Version Governance by a different user.
+              </p>
+            )}
             <div className="space-y-2">
-              <Label>Comments {approvalDialog?.action === 'REJECT' ? '*' : '(optional)'}</Label>
+              <Label>Comments (optional)</Label>
               <Textarea value={comments} onChange={e => setComments(e.target.value)} rows={3} placeholder="Reason or notes..." />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setApprovalDialog(null)}>Cancel</Button>
             <Button
-              variant={approvalDialog?.action === 'REJECT' ? 'destructive' : 'default'}
               onClick={() => {
                 if (!approvalDialog) return;
-                const statusMap: Record<string, string> = { SUBMIT: 'PENDING_APPROVAL', APPROVE: 'ACTIVE', REJECT: 'DRAFT', RETIRE: 'ARCHIVED' };
+                const statusMap: Record<string, string> = { SUBMIT: 'PENDING_APPROVAL', RETIRE: 'ARCHIVED' };
                 handleStatusAction(approvalDialog.versionId, approvalDialog.action, statusMap[approvalDialog.action]);
               }}
             >
-              {approvalDialog?.action === 'SUBMIT' ? 'Submit' : approvalDialog?.action === 'APPROVE' ? 'Approve' : approvalDialog?.action === 'REJECT' ? 'Reject' : 'Retire'}
+              {approvalDialog?.action === 'SUBMIT' ? 'Submit' : 'Retire'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Copy Rules Dialog */}
       <Dialog open={!!copyDialog} onOpenChange={() => { setCopyDialog(null); setCopySourceId(''); }}>
