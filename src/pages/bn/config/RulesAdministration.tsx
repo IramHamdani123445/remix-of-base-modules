@@ -303,11 +303,20 @@ export default function RulesAdministration() {
                           </TableCell>
                           <TableCell className="text-sm">{v.effectiveDate || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{v.enteredBy || '—'}</TableCell>
+                          <TableCell>
+                            <ReadinessCell state={readiness.get(v.id)} productId={v.productId} />
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               {v.status === 'DRAFT' && (
                                 <>
-                                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleSubmit(v.id); }}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={readiness.get(v.id)?.ok === false}
+                                    title={readiness.get(v.id)?.ok === false ? readiness.get(v.id)!.errors.join('\n') : undefined}
+                                    onClick={(e) => { e.stopPropagation(); handleSubmit(v.id); }}
+                                  >
                                     <Send className="h-3 w-3 mr-1" /> Submit
                                   </Button>
                                   <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedVersion(v); setShowCloneDialog(true); }}>
@@ -317,9 +326,16 @@ export default function RulesAdministration() {
                               )}
                               {v.status === 'PENDING_APPROVAL' && (
                                 <>
-                                  <Button size="sm" variant="outline" className="text-green-600" onClick={(e) => {
-                                    e.stopPropagation(); setSelectedVersion(v); setActionType('approve'); setShowActionSheet(true);
-                                  }}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600"
+                                    disabled={readiness.get(v.id)?.ok === false}
+                                    title={readiness.get(v.id)?.ok === false ? readiness.get(v.id)!.errors.join('\n') : undefined}
+                                    onClick={(e) => {
+                                      e.stopPropagation(); setSelectedVersion(v); setActionType('approve'); setShowActionSheet(true);
+                                    }}
+                                  >
                                     <CheckCircle className="h-3 w-3 mr-1" /> Approve
                                   </Button>
                                   <Button size="sm" variant="outline" className="text-destructive" onClick={(e) => {
@@ -330,15 +346,22 @@ export default function RulesAdministration() {
                                 </>
                               )}
                               {v.status === 'APPROVED' && (
-                                <Button size="sm" variant="default" onClick={(e) => {
-                                  e.stopPropagation(); setSelectedVersion(v); setActionType('publish'); setShowActionSheet(true);
-                                }}>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  disabled={readiness.get(v.id)?.ok === false}
+                                  title={readiness.get(v.id)?.ok === false ? readiness.get(v.id)!.errors.join('\n') : undefined}
+                                  onClick={(e) => {
+                                    e.stopPropagation(); setSelectedVersion(v); setActionType('publish'); setShowActionSheet(true);
+                                  }}
+                                >
                                   <ArrowRight className="h-3 w-3 mr-1" /> Publish
                                 </Button>
                               )}
                               {v.status === 'ACTIVE' && (
                                 <Badge variant="outline" className="text-green-600 border-green-300"><Shield className="h-3 w-3 mr-1" /> Active</Badge>
                               )}
+
                             </div>
                           </TableCell>
                         </TableRow>
