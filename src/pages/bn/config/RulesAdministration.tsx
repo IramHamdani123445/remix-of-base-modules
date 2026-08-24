@@ -139,6 +139,8 @@ export default function RulesAdministration() {
   const approveMutation = useBnApproveVersion();
   const rejectMutation = useBnRejectVersion();
   const publishMutation = useBnPublishVersion();
+  const returnMutation = useBnReturnToDraft();
+
 
   const { data: compareResult } = useBnCompareVersions(
     compareBaseId || undefined,
