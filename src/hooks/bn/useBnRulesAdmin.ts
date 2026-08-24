@@ -10,7 +10,9 @@ import {
   submitVersionForApproval,
   approveVersion,
   rejectVersion,
+  returnVersionToDraft,
   publishVersion,
+
   simulateVersionRules,
   type RuleVersionSummary,
   type RuleVersionCompareResult,
