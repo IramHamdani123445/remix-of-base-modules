@@ -39,8 +39,24 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { runCalculationEngine } from './calculationEngine';
+import { assertSafeToPublish, type PublishGateReport } from './config/publishGateService';
 
 const db = supabase as any;
+
+// ─── Readiness gate ────────────────────────────────────────────────
+// One gate for the whole approval chain. Submit, approve and publish all run
+// the same checks so a version can never reach APPROVED in a state that the
+// publish step will refuse — which left approvers holding a version they had
+// no way to fix from the Governance screen.
+
+export async function assertVersionReadiness(versionId: string): Promise<PublishGateReport> {
+  return assertSafeToPublish(versionId);
+}
+
+function formatGateErrors(action: string, errors: string[]): string {
+  return `This version cannot be ${action} until the following are resolved:\n• ${errors.join('\n• ')}`;
+}
+
 
 // ─── Types ─────────────────────────────────────────────────────────
 
