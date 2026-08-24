@@ -101,12 +101,15 @@ export default function ProductEditor() {
   const [omniCommsOrganizationId, setOmniCommsOrganizationId] = useState<string | null>(null);
 
   /**
-   * Active when a version is live; otherwise the product's own status. Display
-   * only — the Status dropdown keeps the stored value, because it writes, and
-   * showing a derived value in a field that saves would push ACTIVE into
-   * bn_product.status on the next unrelated edit.
+   * Product status derived from its versions: Active when a version is live,
+   * Approved when one is approved and awaiting publish, otherwise the stored
+   * value. The Status control renders this and is read-only when derived, so
+   * the field can never contradict the versions.
    */
-  const effectiveProductStatus = liveVersionNumber !== null ? 'ACTIVE' : form.status;
+  const derivedProductStatus =
+    liveVersionNumber !== null ? 'ACTIVE' : approvedVersionNumber !== null ? 'APPROVED' : null;
+  const effectiveProductStatus = derivedProductStatus ?? form.status;
+
 
   useEffect(() => {
     let cancelled = false;
