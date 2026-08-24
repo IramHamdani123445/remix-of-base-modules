@@ -562,16 +562,19 @@ export async function detectWorkflowConflicts(versionId: string): Promise<Confli
   if (!ver) return out;
   if (!ver.workflow_template_id && ver.bn_product?.category !== 'SERVICE') {
     out.push(mk({
-      severity: 'WARNING',
+      // Blocking: a claim version with no workflow has no route through
+      // assessment or approval, so it must not reach submission/approval.
+      severity: 'ERROR',
       product_version_id: versionId,
       tab: 'Workflow',
       entity_type: 'bn_product_version',
       entity_ids: [versionId],
       conflict_type: 'NO_WORKFLOW_BOUND',
-      message: 'Version has no workflow template assigned but is not a service-only product.',
+      message: 'Version has no workflow template assigned but is not a service-only product — claims would have no processing route.',
       suggested_fix: 'Pick a workflow template on the Workflow tab.',
     }));
   }
+
   return out;
 }
 

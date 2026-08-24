@@ -2,6 +2,9 @@
  * Rules Administration — Version governance, compare, simulate, approve, publish
  */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -32,7 +35,7 @@ import {
   useBnPublishVersion,
 } from '@/hooks/bn/useBnRulesAdmin';
 
-import { RULE_VERSION_STATUSES, type RuleVersionSummary } from '@/services/bn/rulesAdminService';
+import { RULE_VERSION_STATUSES, assertVersionReadiness, type RuleVersionSummary } from '@/services/bn/rulesAdminService';
 
 // Canonical lifecycle: DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVED
 const STATUS_COLORS: Record<string, string> = {
@@ -51,7 +54,67 @@ const STATUS_LABELS: Record<string, string> = {
   ARCHIVED: 'Archived',
 };
 
+/**
+ * Per-row readiness. The governance registry used to expose Submit / Approve /
+ * Publish with no indication of whether the version could actually pass the
+ * gate, so failures only surfaced at the final click with an opaque message.
+ * Each actionable row now runs the same gate the service runs and names its
+ * blocking issues up front.
+ */
+function useVersionReadiness(versions: RuleVersionSummary[]) {
+  const actionable = versions.filter((v) => v.status !== 'ACTIVE' && v.status !== 'ARCHIVED');
+  const results = useQueries({
+    queries: actionable.map((v) => ({
+      queryKey: ['bn', 'version-readiness', v.id],
+      queryFn: () => assertVersionReadiness(v.id),
+      staleTime: 60_000,
+      retry: false,
+    })),
+  });
+  const map = new Map<string, { loading: boolean; ok: boolean; errors: string[] }>();
+  actionable.forEach((v, i) => {
+    const r = results[i];
+    map.set(v.id, {
+      loading: r.isLoading,
+      ok: !!r.data?.ok,
+      errors: r.data?.errors ?? [],
+    });
+  });
+  return map;
+}
+
+function ReadinessCell({
+  state,
+  productId,
+}: {
+  state?: { loading: boolean; ok: boolean; errors: string[] };
+  productId: string;
+}) {
+  if (!state) return <span className="text-muted-foreground text-xs">—</span>;
+  if (state.loading) return <span className="text-muted-foreground text-xs">Checking…</span>;
+  if (state.ok) {
+    return (
+      <Badge variant="outline" className="text-green-600 border-green-300">
+        <CheckCircle className="h-3 w-3 mr-1" /> Ready to publish
+      </Badge>
+    );
+  }
+  return (
+    <Link to={`/bn/config/products/${productId}`} onClick={(e) => e.stopPropagation()}>
+      <Badge
+        variant="outline"
+        className="text-destructive border-destructive/40 hover:bg-destructive/10"
+        title={state.errors.join('\n')}
+      >
+        <AlertTriangle className="h-3 w-3 mr-1" />
+        {state.errors.length} blocking issue{state.errors.length === 1 ? '' : 's'}
+      </Badge>
+    </Link>
+  );
+}
+
 export default function RulesAdministration() {
+
   const { userCode } = useUserCode();
   const { data: products = [] } = useBnProducts();
   const [productFilter, setProductFilter] = useState<string>('all');
@@ -81,6 +144,9 @@ export default function RulesAdministration() {
     compareBaseId || undefined,
     compareTargetId || undefined
   );
+
+  const readiness = useVersionReadiness(versions);
+
 
   const filtered = versions.filter((v) => {
     if (statusFilter !== 'all' && v.status !== statusFilter) return false;
@@ -210,7 +276,9 @@ export default function RulesAdministration() {
                         <TableHead className="text-center">Rules</TableHead>
                         <TableHead>Effective</TableHead>
                         <TableHead>Author</TableHead>
+                        <TableHead>Readiness</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
+
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -235,11 +303,20 @@ export default function RulesAdministration() {
                           </TableCell>
                           <TableCell className="text-sm">{v.effectiveDate || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{v.enteredBy || '—'}</TableCell>
+                          <TableCell>
+                            <ReadinessCell state={readiness.get(v.id)} productId={v.productId} />
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               {v.status === 'DRAFT' && (
                                 <>
-                                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleSubmit(v.id); }}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={readiness.get(v.id)?.ok === false}
+                                    title={readiness.get(v.id)?.ok === false ? readiness.get(v.id)!.errors.join('\n') : undefined}
+                                    onClick={(e) => { e.stopPropagation(); handleSubmit(v.id); }}
+                                  >
                                     <Send className="h-3 w-3 mr-1" /> Submit
                                   </Button>
                                   <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedVersion(v); setShowCloneDialog(true); }}>
@@ -249,9 +326,16 @@ export default function RulesAdministration() {
                               )}
                               {v.status === 'PENDING_APPROVAL' && (
                                 <>
-                                  <Button size="sm" variant="outline" className="text-green-600" onClick={(e) => {
-                                    e.stopPropagation(); setSelectedVersion(v); setActionType('approve'); setShowActionSheet(true);
-                                  }}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600"
+                                    disabled={readiness.get(v.id)?.ok === false}
+                                    title={readiness.get(v.id)?.ok === false ? readiness.get(v.id)!.errors.join('\n') : undefined}
+                                    onClick={(e) => {
+                                      e.stopPropagation(); setSelectedVersion(v); setActionType('approve'); setShowActionSheet(true);
+                                    }}
+                                  >
                                     <CheckCircle className="h-3 w-3 mr-1" /> Approve
                                   </Button>
                                   <Button size="sm" variant="outline" className="text-destructive" onClick={(e) => {
@@ -262,15 +346,22 @@ export default function RulesAdministration() {
                                 </>
                               )}
                               {v.status === 'APPROVED' && (
-                                <Button size="sm" variant="default" onClick={(e) => {
-                                  e.stopPropagation(); setSelectedVersion(v); setActionType('publish'); setShowActionSheet(true);
-                                }}>
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  disabled={readiness.get(v.id)?.ok === false}
+                                  title={readiness.get(v.id)?.ok === false ? readiness.get(v.id)!.errors.join('\n') : undefined}
+                                  onClick={(e) => {
+                                    e.stopPropagation(); setSelectedVersion(v); setActionType('publish'); setShowActionSheet(true);
+                                  }}
+                                >
                                   <ArrowRight className="h-3 w-3 mr-1" /> Publish
                                 </Button>
                               )}
                               {v.status === 'ACTIVE' && (
                                 <Badge variant="outline" className="text-green-600 border-green-300"><Shield className="h-3 w-3 mr-1" /> Active</Badge>
                               )}
+
                             </div>
                           </TableCell>
                         </TableRow>

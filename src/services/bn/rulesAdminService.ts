@@ -39,8 +39,24 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { runCalculationEngine } from './calculationEngine';
+import { assertSafeToPublish, type PublishGateReport } from './config/publishGateService';
 
 const db = supabase as any;
+
+// ─── Readiness gate ────────────────────────────────────────────────
+// One gate for the whole approval chain. Submit, approve and publish all run
+// the same checks so a version can never reach APPROVED in a state that the
+// publish step will refuse — which left approvers holding a version they had
+// no way to fix from the Governance screen.
+
+export async function assertVersionReadiness(versionId: string): Promise<PublishGateReport> {
+  return assertSafeToPublish(versionId);
+}
+
+function formatGateErrors(action: string, errors: string[]): string {
+  return `This version cannot be ${action} until the following are resolved:\n• ${errors.join('\n• ')}`;
+}
+
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -420,7 +436,7 @@ export async function submitVersionForApproval(
     return { success: false, error: `Cannot submit version in ${ver.status} status` };
   }
 
-  // Validate at least one rule exists
+  // Validate at least one rule exists (cheap first check)
   const [elig, calc, time] = await Promise.all([
     countRulesByVersion('bn_eligibility_rule', [versionId]),
     countRulesByVersion('bn_calculation_rule', [versionId]),
@@ -428,6 +444,13 @@ export async function submitVersionForApproval(
   ]);
   const totalRules = (elig.get(versionId) ?? 0) + (calc.get(versionId) ?? 0) + (time.get(versionId) ?? 0);
   if (totalRules === 0) return { success: false, error: 'Version must have at least one rule before submission' };
+
+  // Full readiness gate — the same one publish uses. Submitting an
+  // unpublishable version only pushes the failure to the last step, where the
+  // approver has no way to fix it.
+  const gate = await assertVersionReadiness(versionId);
+  if (!gate.ok) return { success: false, error: formatGateErrors('submitted for approval', gate.errors) };
+
 
   // Update status
   await db.from('bn_product_version')
@@ -504,6 +527,13 @@ export async function approveVersion(
     return { success: false, error: 'Maker-checker violation: approver cannot be the same as the author' };
   }
 
+  // Configuration can change between submission and approval, so the gate is
+  // re-run here rather than trusted from submit time.
+  const gate = await assertVersionReadiness(versionId);
+  if (!gate.ok) return { success: false, error: formatGateErrors('approved', gate.errors) };
+
+
+
   await db.from('bn_product_version')
     .update({
       status: 'APPROVED',
@@ -568,13 +598,12 @@ export async function publishVersion(
     return { success: false, error: `Only APPROVED versions can be published (current: ${ver.status})` };
   }
 
-  // Block publish on ERROR-level cross-tab conflicts
-  try {
-    const { hasBlockingConflicts } = await import('@/services/bn/config/conflictDetectionService');
-    if (await hasBlockingConflicts(versionId)) {
-      return { success: false, error: 'Cross-tab conflicts contain ERROR-level issues. Resolve them on the Product Editor before publishing.' };
-    }
-  } catch { /* non-fatal */ }
+  // The readiness gate reports every blocking item by name. The previous
+  // generic "cross-tab conflicts contain ERROR-level issues" message named
+  // nothing, so the operator had no way to know what to fix.
+  const gate = await assertVersionReadiness(versionId);
+  if (!gate.ok) return { success: false, error: formatGateErrors('published', gate.errors) };
+
 
   // Delegate the actual publish to the single canonical routine used by the
   // Product Editor. Governance previously ran its own partial update, which
