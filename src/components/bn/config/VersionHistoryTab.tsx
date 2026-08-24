@@ -26,10 +26,13 @@ interface Props {
 const statusIcons: Record<string, React.ReactNode> = {
   DRAFT: <Clock className="h-4 w-4 text-muted-foreground" />,
   PENDING_APPROVAL: <Send className="h-4 w-4 text-amber-500" />,
+  APPROVED: <ShieldCheck className="h-4 w-4 text-blue-500" />,
   ACTIVE: <CheckCircle className="h-4 w-4 text-green-500" />,
   SUSPENDED: <XCircle className="h-4 w-4 text-destructive" />,
   ARCHIVED: <XCircle className="h-4 w-4 text-muted-foreground" />,
 };
+
+const GOVERNANCE_PATH = '/bn/config/rules-administration';
 
 export function VersionHistoryTab({ productId, versions, onCreateVersion }: Props) {
   const { toast } = useToast();
