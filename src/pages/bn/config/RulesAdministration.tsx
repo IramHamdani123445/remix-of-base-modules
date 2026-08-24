@@ -276,7 +276,9 @@ export default function RulesAdministration() {
                         <TableHead className="text-center">Rules</TableHead>
                         <TableHead>Effective</TableHead>
                         <TableHead>Author</TableHead>
+                        <TableHead>Readiness</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
+
                       </TableRow>
                     </TableHeader>
                     <TableBody>
