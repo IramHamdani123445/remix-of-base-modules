@@ -393,6 +393,10 @@ export default function ProductEditor() {
           draftActionLabel="modify eligibility, calculation, documents, workflow or any assembly tab"
           onCreateDraft={activeVersion.status !== 'DRAFT' ? handleCloneToDraft : undefined}
           creatingDraft={cloneToDraftMutation.isPending}
+          blockingIssues={blockingIssues}
+          onReturnToDraft={handleReturnToDraft}
+          returningToDraft={returnToDraftMutation.isPending}
+
         />
       )}
 
