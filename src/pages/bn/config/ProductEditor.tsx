@@ -224,14 +224,16 @@ export default function ProductEditor() {
     ? readinessReport.errors
     : [];
 
+  const { userCode } = useUserCode();
   const handleReturnToDraft = () => {
     if (!activeVersion) return;
     returnToDraftMutation.mutate({
       versionId: activeVersion.id,
-      userCode: 'system',
+      userCode: userCode || 'system',
       reason: 'Returned for correction of blocking configuration issues',
     });
   };
+
 
 
   const [guard, setGuard] = useState<{ open: boolean; intent: 'EDIT' | 'DELETE' }>({ open: false, intent: 'EDIT' });
