@@ -41,7 +41,6 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
   const createApprovalMutation = useCreateBnVersionApproval();
   const copyRulesMutation = useCopyBnVersionRules();
   const retireMutation = useRetireBnProductVersion();
-  const retireMutation = useRetireBnProductVersion();
   const { userCode } = useUserCode();
   const [approvalDialog, setApprovalDialog] = useState<{ versionId: string; action: string } | null>(null);
   const [copyDialog, setCopyDialog] = useState<{ targetVersionId: string } | null>(null);
