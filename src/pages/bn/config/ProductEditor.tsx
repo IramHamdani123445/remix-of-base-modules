@@ -536,22 +536,32 @@ export default function ProductEditor() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={form.status || 'DRAFT'} onValueChange={v => updateField('status', v)}>
+                {/* Derived from the versions when one is live or approved — the
+                    field is then read-only so it can never contradict them. */}
+                <Select
+                  value={effectiveProductStatus || 'DRAFT'}
+                  onValueChange={v => updateField('status', v)}
+                  disabled={derivedProductStatus !== null}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(BN_PRODUCT_STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                {/* Explains the difference between this field and the badge
-                    above, so the mismatch does not look like a fault and nobody
-                    sets ACTIVE by hand to "correct" it. */}
-                {liveVersionNumber !== null && form.status !== 'ACTIVE' && (
+                {derivedProductStatus === 'ACTIVE' && (
                   <p className="text-xs text-muted-foreground">
-                    This product is already live on <span className="font-medium">v{liveVersionNumber}</span>.
-                    A product becomes Active by publishing a version — you do not need to set it here.
+                    This product is live on <span className="font-medium">v{liveVersionNumber}</span>.
+                    A product becomes Active by publishing a version — it cannot be set here.
+                  </p>
+                )}
+                {derivedProductStatus === 'APPROVED' && (
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium">v{approvedVersionNumber}</span> is approved and awaiting publish
+                    in Rule Version Governance. The product becomes Active when it is published.
                   </p>
                 )}
               </div>
+
               <div className="space-y-2">
                 <Label>Sort Order</Label>
                 <Input type="number" value={form.sort_order ?? 0} onChange={e => updateField('sort_order', parseInt(e.target.value) || 0)} />
