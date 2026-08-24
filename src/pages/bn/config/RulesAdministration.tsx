@@ -356,6 +356,19 @@ export default function RulesAdministration() {
                                   </Button>
                                 </>
                               )}
+                              {(v.status === 'PENDING_APPROVAL' || v.status === 'APPROVED') && (
+                                <Button
+                                  size="sm"
+                                  variant={readiness.get(v.id)?.ok === false ? 'default' : 'ghost'}
+                                  title="Unlock this version for editing on the Product Editor"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); setSelectedVersion(v); setActionType('return'); setShowActionSheet(true);
+                                  }}
+                                >
+                                  <Undo2 className="h-3 w-3 mr-1" />
+                                  {readiness.get(v.id)?.ok === false ? 'Return to Draft & Fix' : 'Return to Draft'}
+                                </Button>
+                              )}
                               {v.status === 'APPROVED' && (
                                 <Button
                                   size="sm"
@@ -368,6 +381,7 @@ export default function RulesAdministration() {
                                 >
                                   <ArrowRight className="h-3 w-3 mr-1" /> Publish
                                 </Button>
+
                               )}
                               {v.status === 'ACTIVE' && (
                                 <Badge variant="outline" className="text-green-600 border-green-300"><Shield className="h-3 w-3 mr-1" /> Active</Badge>
