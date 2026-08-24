@@ -127,7 +127,7 @@ export default function RulesAdministration() {
   const [cloneLabel, setCloneLabel] = useState('');
   const [cloneNotes, setCloneNotes] = useState('');
   const [showActionSheet, setShowActionSheet] = useState(false);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | 'publish' | null>(null);
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'publish' | 'return' | null>(null);
   const [actionComments, setActionComments] = useState('');
   const [effectiveDate, setEffectiveDate] = useState('');
 
