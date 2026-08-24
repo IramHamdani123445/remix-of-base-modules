@@ -203,6 +203,31 @@ export default function ProductEditor() {
   const isEditableVersion = activeVersion?.status === 'DRAFT';
   const copyRulesMutation = useCopyBnVersionRules();
   const cloneToDraftMutation = useCloneBnVersionToDraft();
+  const returnToDraftMutation = useBnReturnToDraft();
+
+  // Readiness for the selected version — only meaningful while it is locked
+  // awaiting approval or approved but unpublishable.
+  const readinessRelevant = activeVersion?.status === 'PENDING_APPROVAL' || activeVersion?.status === 'APPROVED';
+  const { data: readinessReport } = useQuery({
+    queryKey: ['bn', 'version-readiness', selectedVersionId],
+    queryFn: () => assertVersionReadiness(selectedVersionId!),
+    enabled: !!selectedVersionId && readinessRelevant,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const blockingIssues = readinessRelevant && readinessReport && !readinessReport.ok
+    ? readinessReport.errors
+    : [];
+
+  const handleReturnToDraft = () => {
+    if (!activeVersion) return;
+    returnToDraftMutation.mutate({
+      versionId: activeVersion.id,
+      userCode: 'system',
+      reason: 'Returned for correction of blocking configuration issues',
+    });
+  };
+
 
   const [guard, setGuard] = useState<{ open: boolean; intent: 'EDIT' | 'DELETE' }>({ open: false, intent: 'EDIT' });
 
