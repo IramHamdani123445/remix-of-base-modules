@@ -231,6 +231,18 @@ export default function RulesAdministration() {
           description="Governance only — review, compare, approve, publish, retire and roll back product rule versions. Eligibility, calculation, documents, workflow and timelines are edited inside Product Catalog against a specific draft version."
         />
 
+        {!canApprove && (
+          <Alert>
+            <Shield className="h-4 w-4" />
+            <AlertTitle>Read-only governance access</AlertTitle>
+            <AlertDescription>
+              You can review, compare and submit versions, but approving, rejecting and
+              publishing require the Benefits Configuration <strong>Approve</strong> permission.
+              Ask an approver role (for example BN_CONFIG_ADMIN) to action versions awaiting a decision.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Tabs defaultValue="versions" className="w-full">
           <TabsList>
             <TabsTrigger value="versions" className="gap-1.5"><BookOpen className="h-3.5 w-3.5" /> Version Registry</TabsTrigger>
