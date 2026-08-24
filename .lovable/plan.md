@@ -25,13 +25,16 @@ Two defects follow from this:
    - `ARCHIVED` / `SUSPENDED` — no actions (unchanged).
    - Update the explanatory note at the top of the tab to describe the DRAFT → PENDING_APPROVAL → APPROVED → ACTIVE flow and where approval happens.
 3. Make Governance's Approve and Reject invalidate the `['bn','product-versions']` cache (Publish already does), so the product screen never shows a decision that has already been taken.
+4. **Publishing from Governance must make the product usable for claim registration.** Claim Registration only lists products whose `bn_product.status = ACTIVE`, then resolves the version by claim date. The Product Editor publish path already promotes the product from DRAFT/PENDING_APPROVAL to ACTIVE and runs the pre-publish safety gates; the Governance publish path does neither — so a product published only from Governance stays invisible to claim intake. Governance publish will reuse the same publish routine as the Product Editor so both paths behave identically: validation + governance gates, archive the previous active version, activate the new one, and promote the product.
 
 ## Technical notes
 
 - `src/types/bn.ts` — extend `BnProductStatus` and `BN_PRODUCT_STATUS_LABELS` with `APPROVED`.
 - `src/components/bn/config/VersionHistoryTab.tsx` — status icon map, action column per state, governance deep link, updated helper text. The `APPROVE` / `REJECT` branches of `handleStatusAction` and their dialog entries are removed; `SUBMIT` and `RETIRE` stay.
 - `src/hooks/bn/useBnRulesAdmin.ts` — add `qc.invalidateQueries({ queryKey: ['bn','product-versions'] })` to the approve and reject mutations.
-- No database or service-layer changes; `approveVersion` / `publishVersion` already enforce maker-checker, conflict and governance gates.
+- `src/services/bn/rulesAdminService.ts` — `publishVersion` delegates to `productService.publishProductVersion(versionId, effectiveDate)` (keeping the APPROVED-status precondition and its audit entries), instead of its own partial update. That brings the configuration-validation gate, catalogue-rule governance gate, previous-version archival and `bn_product` promotion to the Governance screen.
+- No database changes.
+
 
 ## Verification
 
