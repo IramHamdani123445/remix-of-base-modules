@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   BookOpen, Copy, CheckCircle, XCircle, Send, Eye, Play,
-  GitCompare, Search, Plus, ArrowRight, Shield, Clock, AlertTriangle,
+  GitCompare, Search, Plus, ArrowRight, Shield, Clock, AlertTriangle, Undo2,
 } from 'lucide-react';
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -33,6 +33,8 @@ import {
   useBnApproveVersion,
   useBnRejectVersion,
   useBnPublishVersion,
+  useBnReturnToDraft,
+
 } from '@/hooks/bn/useBnRulesAdmin';
 
 import { RULE_VERSION_STATUSES, assertVersionReadiness, type RuleVersionSummary } from '@/services/bn/rulesAdminService';
@@ -127,7 +129,7 @@ export default function RulesAdministration() {
   const [cloneLabel, setCloneLabel] = useState('');
   const [cloneNotes, setCloneNotes] = useState('');
   const [showActionSheet, setShowActionSheet] = useState(false);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | 'publish' | null>(null);
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'publish' | 'return' | null>(null);
   const [actionComments, setActionComments] = useState('');
   const [effectiveDate, setEffectiveDate] = useState('');
 
@@ -139,6 +141,8 @@ export default function RulesAdministration() {
   const approveMutation = useBnApproveVersion();
   const rejectMutation = useBnRejectVersion();
   const publishMutation = useBnPublishVersion();
+  const returnMutation = useBnReturnToDraft();
+
 
   const { data: compareResult } = useBnCompareVersions(
     compareBaseId || undefined,
@@ -180,7 +184,14 @@ export default function RulesAdministration() {
       rejectMutation.mutate({ versionId: selectedVersion.id, rejectorCode: userCode || 'system', reason: actionComments });
     } else if (actionType === 'publish') {
       publishMutation.mutate({ versionId: selectedVersion.id, effectiveDate, publisherCode: userCode || 'system' });
+    } else if (actionType === 'return') {
+      returnMutation.mutate({
+        versionId: selectedVersion.id,
+        userCode: userCode || 'system',
+        reason: actionComments || 'Returned for correction of blocking issues',
+      });
     }
+
     setShowActionSheet(false);
     setActionType(null);
     setActionComments('');
@@ -345,6 +356,19 @@ export default function RulesAdministration() {
                                   </Button>
                                 </>
                               )}
+                              {(v.status === 'PENDING_APPROVAL' || v.status === 'APPROVED') && (
+                                <Button
+                                  size="sm"
+                                  variant={readiness.get(v.id)?.ok === false ? 'default' : 'ghost'}
+                                  title="Unlock this version for editing on the Product Editor"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); setSelectedVersion(v); setActionType('return'); setShowActionSheet(true);
+                                  }}
+                                >
+                                  <Undo2 className="h-3 w-3 mr-1" />
+                                  {readiness.get(v.id)?.ok === false ? 'Return to Draft & Fix' : 'Return to Draft'}
+                                </Button>
+                              )}
                               {v.status === 'APPROVED' && (
                                 <Button
                                   size="sm"
@@ -357,6 +381,7 @@ export default function RulesAdministration() {
                                 >
                                   <ArrowRight className="h-3 w-3 mr-1" /> Publish
                                 </Button>
+
                               )}
                               {v.status === 'ACTIVE' && (
                                 <Badge variant="outline" className="text-green-600 border-green-300"><Shield className="h-3 w-3 mr-1" /> Active</Badge>
@@ -493,12 +518,30 @@ export default function RulesAdministration() {
                 {actionType === 'approve' && 'Approve Version'}
                 {actionType === 'reject' && 'Reject Version'}
                 {actionType === 'publish' && 'Publish Version'}
+                {actionType === 'return' && 'Return Version to Draft'}
               </SheetTitle>
               <SheetDescription>
                 {selectedVersion?.productName} — {selectedVersion?.versionLabel}
               </SheetDescription>
             </SheetHeader>
             <div className="space-y-4 mt-6">
+              {actionType === 'return' && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>This unlocks the version for editing</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>
+                      The version goes back to Draft so the blocking issues can be corrected on the
+                      Product Editor. It must be submitted and approved again afterwards.
+                    </p>
+                    {(readiness.get(selectedVersion?.id ?? '')?.errors ?? []).length > 0 && (
+                      <ul className="list-disc pl-4 text-xs">
+                        {readiness.get(selectedVersion!.id)!.errors.map((e, i) => <li key={i}>{e}</li>)}
+                      </ul>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
               {actionType === 'publish' && (
                 <div>
                   <label className="text-sm font-medium">Effective Date *</label>
@@ -508,16 +551,19 @@ export default function RulesAdministration() {
               )}
               <div>
                 <label className="text-sm font-medium">
-                  {actionType === 'reject' ? 'Rejection Reason *' : 'Comments'}
+                  {actionType === 'reject' ? 'Rejection Reason *' : actionType === 'return' ? 'Reason *' : 'Comments'}
                 </label>
                 <Textarea value={actionComments} onChange={(e) => setActionComments(e.target.value)} rows={3} placeholder={
-                  actionType === 'reject' ? 'Explain what needs to be revised...' : 'Optional comments...'
+                  actionType === 'reject' ? 'Explain what needs to be revised...'
+                    : actionType === 'return' ? 'What needs to be corrected before this can be approved?'
+                    : 'Optional comments...'
                 } />
               </div>
               <Button
                 onClick={handleAction}
                 disabled={
                   (actionType === 'reject' && !actionComments) ||
+                  (actionType === 'return' && !actionComments) ||
                   (actionType === 'publish' && !effectiveDate)
                 }
                 variant={actionType === 'reject' ? 'destructive' : 'default'}
@@ -526,7 +572,9 @@ export default function RulesAdministration() {
                 {actionType === 'approve' && <><CheckCircle className="h-4 w-4 mr-2" /> Approve</>}
                 {actionType === 'reject' && <><XCircle className="h-4 w-4 mr-2" /> Reject & Return to Draft</>}
                 {actionType === 'publish' && <><ArrowRight className="h-4 w-4 mr-2" /> Publish & Activate</>}
+                {actionType === 'return' && <><Undo2 className="h-4 w-4 mr-2" /> Return to Draft</>}
               </Button>
+
             </div>
           </SheetContent>
         </Sheet>

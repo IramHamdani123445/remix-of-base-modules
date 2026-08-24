@@ -10,7 +10,9 @@ import {
   submitVersionForApproval,
   approveVersion,
   rejectVersion,
+  returnVersionToDraft,
   publishVersion,
+
   simulateVersionRules,
   type RuleVersionSummary,
   type RuleVersionCompareResult,
@@ -96,7 +98,31 @@ export function useBnRejectVersion() {
   });
 }
 
+/**
+ * Unlocks a Pending/Approved version so its blocking issues can be fixed.
+ * Readiness is invalidated too — the badge must recompute once editing starts.
+ */
+export function useBnReturnToDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { versionId: string; userCode: string; reason: string }) =>
+      returnVersionToDraft(params.versionId, params.userCode, params.reason),
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success('Version returned to draft — it can now be edited');
+        qc.invalidateQueries({ queryKey: ['bn', 'rule-versions'] });
+        qc.invalidateQueries({ queryKey: ['bn', 'product-versions'] });
+        qc.invalidateQueries({ queryKey: ['bn', 'version-readiness'] });
+      } else {
+        toast.error('Could not return to draft', { description: result.error });
+      }
+    },
+    onError: (err: any) => toast.error('Could not return to draft', { description: err.message }),
+  });
+}
+
 export function useBnPublishVersion() {
+
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (params: { versionId: string; effectiveDate: string; publisherCode: string }) =>

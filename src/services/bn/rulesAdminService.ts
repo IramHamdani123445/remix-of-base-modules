@@ -582,6 +582,60 @@ export async function rejectVersion(
   return { success: true };
 }
 
+// ─── Return Version to Draft ───────────────────────────────────────
+
+/**
+ * Unlock a version that cannot move forward.
+ *
+ * A version that reached PENDING_APPROVAL or APPROVED with blocking readiness
+ * issues used to be a dead end: publish refused it, and every Product Editor
+ * tab is read-only outside DRAFT, so there was no way to fix what publish was
+ * complaining about. Reject only accepts PENDING_APPROVAL, so an APPROVED
+ * version had no exit at all.
+ *
+ * Returning to DRAFT is the exit. ACTIVE versions are deliberately excluded —
+ * a live version is never edited in place; it is cloned to a new draft.
+ */
+export async function returnVersionToDraft(
+  versionId: string,
+  userCode: string,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!reason?.trim()) return { success: false, error: 'A reason is required to return a version to draft' };
+
+  const { data: ver } = await db.from('bn_product_version').select('status, description').eq('id', versionId).single();
+  if (!ver) return { success: false, error: 'Version not found' };
+
+  const status = mapVersionStatus(ver.status);
+  if (status !== 'PENDING_APPROVAL' && status !== 'APPROVED') {
+    return {
+      success: false,
+      error: status === 'ACTIVE'
+        ? 'A live version cannot be returned to draft — clone it to a new draft version instead'
+        : `Cannot return a version in ${ver.status} status to draft`,
+    };
+  }
+
+  await db.from('bn_product_version')
+    .update({
+      status: 'DRAFT',
+      modified_by: userCode,
+      modified_at: new Date().toISOString(),
+      description: `${ver.description ? `${ver.description}\n` : ''}RETURNED TO DRAFT: ${reason}`,
+    })
+    .eq('id', versionId);
+
+  await logRuleAudit('RULE_VERSION_RETURNED_TO_DRAFT', 'bn_product_version', versionId, {
+    returned_by: userCode,
+    previous_status: status,
+    reason,
+  }, userCode);
+
+  return { success: true };
+}
+
+
+
 // ─── Publish Version ───────────────────────────────────────────────
 
 export async function publishVersion(

@@ -35,6 +35,11 @@ import { CommunicationsTab } from '@/components/bn/config/CommunicationsTab';
 import { ProductOmniCommsPanel } from '@/components/bn/config/ProductOmniCommsPanel';
 import { resolveOrganizationContext } from '@/lib/org/organizationContextResolver';
 import { ReadOnlyVersionBanner } from '@/components/bn/smart';
+import { useQuery } from '@tanstack/react-query';
+import { assertVersionReadiness } from '@/services/bn/rulesAdminService';
+import { useBnReturnToDraft } from '@/hooks/bn/useBnRulesAdmin';
+import { useUserCode } from '@/hooks/useUserCode';
+
 import { VisualBuilderTab } from '@/components/bn/config/VisualBuilderTab';
 import { ConflictDetectionPanel } from '@/components/bn/config/ConflictDetectionPanel';
 import { BnPlatformConsumptionPanel } from '@/components/bn/config/BnPlatformConsumptionPanel';
@@ -203,6 +208,33 @@ export default function ProductEditor() {
   const isEditableVersion = activeVersion?.status === 'DRAFT';
   const copyRulesMutation = useCopyBnVersionRules();
   const cloneToDraftMutation = useCloneBnVersionToDraft();
+  const returnToDraftMutation = useBnReturnToDraft();
+
+  // Readiness for the selected version — only meaningful while it is locked
+  // awaiting approval or approved but unpublishable.
+  const readinessRelevant = activeVersion?.status === 'PENDING_APPROVAL' || activeVersion?.status === 'APPROVED';
+  const { data: readinessReport } = useQuery({
+    queryKey: ['bn', 'version-readiness', selectedVersionId],
+    queryFn: () => assertVersionReadiness(selectedVersionId!),
+    enabled: !!selectedVersionId && readinessRelevant,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const blockingIssues = readinessRelevant && readinessReport && !readinessReport.ok
+    ? readinessReport.errors
+    : [];
+
+  const { userCode } = useUserCode();
+  const handleReturnToDraft = () => {
+    if (!activeVersion) return;
+    returnToDraftMutation.mutate({
+      versionId: activeVersion.id,
+      userCode: userCode || 'system',
+      reason: 'Returned for correction of blocking configuration issues',
+    });
+  };
+
+
 
   const [guard, setGuard] = useState<{ open: boolean; intent: 'EDIT' | 'DELETE' }>({ open: false, intent: 'EDIT' });
 
@@ -361,6 +393,10 @@ export default function ProductEditor() {
           draftActionLabel="modify eligibility, calculation, documents, workflow or any assembly tab"
           onCreateDraft={activeVersion.status !== 'DRAFT' ? handleCloneToDraft : undefined}
           creatingDraft={cloneToDraftMutation.isPending}
+          blockingIssues={blockingIssues}
+          onReturnToDraft={handleReturnToDraft}
+          returningToDraft={returnToDraftMutation.isPending}
+
         />
       )}
 
