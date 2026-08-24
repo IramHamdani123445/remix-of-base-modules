@@ -12,7 +12,7 @@
  */
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Lock, FilePlus2, CheckCircle2, Clock, Archive } from 'lucide-react';
+import { Lock, FilePlus2, CheckCircle2, Clock, Archive, AlertTriangle, Undo2 } from 'lucide-react';
 
 const READ_ONLY_STATUSES = [
   'ACTIVE', 'APPROVED', 'PUBLISHED', 'PENDING_APPROVAL', 'PENDING_REVIEW',
