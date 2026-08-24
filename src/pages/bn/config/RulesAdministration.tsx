@@ -88,9 +88,11 @@ function useVersionReadiness(versions: RuleVersionSummary[]) {
 function ReadinessCell({
   state,
   productId,
+  versionId,
 }: {
   state?: { loading: boolean; ok: boolean; errors: string[] };
   productId: string;
+  versionId?: string;
 }) {
   if (!state) return <span className="text-muted-foreground text-xs">—</span>;
   if (state.loading) return <span className="text-muted-foreground text-xs">Checking…</span>;
@@ -101,8 +103,11 @@ function ReadinessCell({
       </Badge>
     );
   }
+  const href = versionId
+    ? `/bn/config/products/${productId}?versionId=${versionId}`
+    : `/bn/config/products/${productId}`;
   return (
-    <Link to={`/bn/config/products/${productId}`} onClick={(e) => e.stopPropagation()}>
+    <Link to={href} onClick={(e) => e.stopPropagation()} className="block max-w-[16rem]">
       <Badge
         variant="outline"
         className="text-destructive border-destructive/40 hover:bg-destructive/10"
@@ -111,9 +116,13 @@ function ReadinessCell({
         <AlertTriangle className="h-3 w-3 mr-1" />
         {state.errors.length} blocking issue{state.errors.length === 1 ? '' : 's'}
       </Badge>
+      <span className="mt-1 block truncate text-[10px] text-muted-foreground" title={state.errors.join('\n')}>
+        {state.errors[0]}
+      </span>
     </Link>
   );
 }
+
 
 export default function RulesAdministration() {
 
@@ -315,7 +324,7 @@ export default function RulesAdministration() {
                           <TableCell className="text-sm">{v.effectiveDate || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{v.enteredBy || '—'}</TableCell>
                           <TableCell>
-                            <ReadinessCell state={readiness.get(v.id)} productId={v.productId} />
+                            <ReadinessCell state={readiness.get(v.id)} productId={v.productId} versionId={v.id} />
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">

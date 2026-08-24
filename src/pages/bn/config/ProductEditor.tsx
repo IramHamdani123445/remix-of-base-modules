@@ -42,6 +42,8 @@ import { useUserCode } from '@/hooks/useUserCode';
 
 import { VisualBuilderTab } from '@/components/bn/config/VisualBuilderTab';
 import { ConflictDetectionPanel } from '@/components/bn/config/ConflictDetectionPanel';
+import { VersionReadinessPanel } from '@/components/bn/config/VersionReadinessPanel';
+
 import { BnPlatformConsumptionPanel } from '@/components/bn/config/BnPlatformConsumptionPanel';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -84,6 +86,8 @@ export default function ProductEditor() {
     branch: 'GENERAL', payment_type: 'PERIODIC', country_code: '', status: 'DRAFT', sort_order: 0,
   });
   const [selectedVersionId, setSelectedVersionId] = useState<string | undefined>();
+  const [activeTab, setActiveTab] = useState('definition');
+
   const [omniCommsOrganizationId, setOmniCommsOrganizationId] = useState<string | null>(null);
 
   /**
@@ -412,14 +416,18 @@ export default function ProductEditor() {
       />
 
       {!isNew && selectedVersionId && (
-        <ConflictDetectionPanel versionId={selectedVersionId} compact />
+        <>
+          <VersionReadinessPanel versionId={selectedVersionId} onJumpToTab={setActiveTab} />
+          <ConflictDetectionPanel versionId={selectedVersionId} compact onJumpToTab={setActiveTab} />
+        </>
       )}
+
 
       {/* Commented per manager request — display-only panel, not consumed by any claim/product-creation logic. {!isNew && <BnPlatformConsumptionPanel />} */}
 
 
       {/* Tabs */}
-      <Tabs defaultValue="definition" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="definition">Definition</TabsTrigger>
           <TabsTrigger value="builder" disabled={isNew}>Visual Builder</TabsTrigger>
