@@ -129,7 +129,9 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs">
-              Correct flow: create or copy into a DRAFT, submit it for approval, approve it to publish as ACTIVE, then the old active version is closed automatically to the day before the new effective date. Manual retire is only for an already closed/replaced active version.
+              Create or copy into a DRAFT here and submit it for approval. <strong>Approval and publishing happen in Rule Version Governance</strong> — that screen is the single approval authority and enforces maker-checker. Once published, the version becomes ACTIVE, the previous active version is closed to the day before the new effective date, and the product becomes available for claim registration. Manual retire here is only for an already closed or replaced active version.
+              {' '}
+              <Link to={GOVERNANCE_PATH} className="underline underline-offset-2 font-medium">Open Rule Version Governance</Link>
             </AlertDescription>
           </Alert>
           {versions.length === 0 ? (
