@@ -420,7 +420,7 @@ export async function submitVersionForApproval(
     return { success: false, error: `Cannot submit version in ${ver.status} status` };
   }
 
-  // Validate at least one rule exists
+  // Validate at least one rule exists (cheap first check)
   const [elig, calc, time] = await Promise.all([
     countRulesByVersion('bn_eligibility_rule', [versionId]),
     countRulesByVersion('bn_calculation_rule', [versionId]),
@@ -428,6 +428,13 @@ export async function submitVersionForApproval(
   ]);
   const totalRules = (elig.get(versionId) ?? 0) + (calc.get(versionId) ?? 0) + (time.get(versionId) ?? 0);
   if (totalRules === 0) return { success: false, error: 'Version must have at least one rule before submission' };
+
+  // Full readiness gate — the same one publish uses. Submitting an
+  // unpublishable version only pushes the failure to the last step, where the
+  // approver has no way to fix it.
+  const gate = await assertVersionReadiness(versionId);
+  if (!gate.ok) return { success: false, error: formatGateErrors('submitted for approval', gate.errors) };
+
 
   // Update status
   await db.from('bn_product_version')
