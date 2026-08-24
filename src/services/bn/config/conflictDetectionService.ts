@@ -262,6 +262,30 @@ export async function detectCalculationConflicts(versionId: string): Promise<Con
   const rules = data || [];
   const out: Conflict[] = [];
 
+  // (0) No active formula binding — the publish gate refuses this, so it must
+  // also appear here; otherwise the editor reports "0 error" while Governance
+  // reports a blocking issue for the very same version.
+  if (ver && ver.bn_product?.category !== 'SERVICE') {
+    const { count } = await (supabase as any)
+      .from('bn_product_formula_binding')
+      .select('id', { count: 'exact', head: true })
+      .eq('product_version_id', versionId)
+      .eq('is_active', true);
+    if ((count ?? 0) === 0) {
+      out.push(mk({
+        severity: 'ERROR',
+        product_version_id: versionId,
+        tab: 'Calculation',
+        entity_type: 'bn_product_formula_binding',
+        entity_ids: [],
+        conflict_type: 'NO_CALCULATION_BINDING',
+        message: 'Version has no active formula binding — no benefit amount can be calculated.',
+        suggested_fix: 'Bind an ACTIVE formula version on the Calculation tab.',
+      }));
+    }
+  }
+
+
   // duplicate rule_code at same version
   const codeMap = new Map<string, any[]>();
   for (const r of rules) {
