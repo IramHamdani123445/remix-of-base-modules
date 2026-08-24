@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   BookOpen, Copy, CheckCircle, XCircle, Send, Eye, Play,
-  GitCompare, Search, Plus, ArrowRight, Shield, Clock, AlertTriangle,
+  GitCompare, Search, Plus, ArrowRight, Shield, Clock, AlertTriangle, Undo2,
 } from 'lucide-react';
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { PageHeader } from '@/components/common/PageHeader';
