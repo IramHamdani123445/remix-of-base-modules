@@ -40,7 +40,7 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
   const updateVersionMutation = useUpdateBnProductVersion();
   const createApprovalMutation = useCreateBnVersionApproval();
   const copyRulesMutation = useCopyBnVersionRules();
-  const publishMutation = usePublishBnProductVersion();
+  const retireMutation = useRetireBnProductVersion();
   const retireMutation = useRetireBnProductVersion();
   const { userCode } = useUserCode();
   const [approvalDialog, setApprovalDialog] = useState<{ versionId: string; action: string } | null>(null);
