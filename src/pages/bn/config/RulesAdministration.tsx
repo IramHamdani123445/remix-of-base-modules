@@ -180,7 +180,14 @@ export default function RulesAdministration() {
       rejectMutation.mutate({ versionId: selectedVersion.id, rejectorCode: userCode || 'system', reason: actionComments });
     } else if (actionType === 'publish') {
       publishMutation.mutate({ versionId: selectedVersion.id, effectiveDate, publisherCode: userCode || 'system' });
+    } else if (actionType === 'return') {
+      returnMutation.mutate({
+        versionId: selectedVersion.id,
+        userCode: userCode || 'system',
+        reason: actionComments || 'Returned for correction of blocking issues',
+      });
     }
+
     setShowActionSheet(false);
     setActionType(null);
     setActionComments('');
