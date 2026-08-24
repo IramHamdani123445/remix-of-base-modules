@@ -57,21 +57,16 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
     return null;
   };
 
+  // Approve / Reject / Publish are NOT available here — Rule Version Governance
+  // is the single approval authority. This screen only submits drafts and
+  // retires closed active versions.
   const handleStatusAction = async (versionId: string, action: string, toStatus: string) => {
     try {
       setLifecycleError(null);
-      if (action === 'REJECT' && !comments.trim()) {
-        toast({ title: 'Validation', description: 'Comments are required when rejecting.', variant: 'destructive' });
-        return;
-      }
       const fromStatus = versions.find(v => v.id === versionId)?.status;
       const version = versions.find(v => v.id === versionId);
 
-      if (action === 'APPROVE') {
-        // Publish path — auto-closes prior ACTIVE version
-        const effFrom = version?.effective_from || new Date().toISOString().slice(0, 10);
-        await publishMutation.mutateAsync({ versionId, effectiveFrom: effFrom });
-      } else if (action === 'RETIRE') {
+      if (action === 'RETIRE') {
         if (version) {
           const reason = retireBlockReason(version);
           if (reason) throw new Error(reason);
@@ -81,7 +76,7 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
         await updateVersionMutation.mutateAsync({ id: versionId, updates: { status: toStatus } as any });
       }
       await createApprovalMutation.mutateAsync({ product_version_id: versionId, action, from_status: fromStatus, to_status: toStatus, comments, performed_by: userCode || 'system' });
-      toast({ title: 'Success', description: `Version ${action.toLowerCase()}d.` });
+      toast({ title: 'Success', description: action === 'RETIRE' ? 'Version retired.' : 'Version submitted for approval.' });
       setApprovalDialog(null);
       setComments('');
     } catch (err: any) {
