@@ -521,8 +521,8 @@ export default function RulesAdministration() {
 
         {/* ── Action Sheet (Approve/Reject/Publish) ─────────────── */}
         <Sheet open={showActionSheet} onOpenChange={setShowActionSheet}>
-          <SheetContent>
-            <SheetHeader>
+          <SheetContent className="flex flex-col max-h-screen overflow-hidden">
+            <SheetHeader className="shrink-0">
               <SheetTitle>
                 {actionType === 'approve' && 'Approve Version'}
                 {actionType === 'reject' && 'Reject Version'}
@@ -533,7 +533,8 @@ export default function RulesAdministration() {
                 {selectedVersion?.productName} — {selectedVersion?.versionLabel}
               </SheetDescription>
             </SheetHeader>
-            <div className="space-y-4 mt-6">
+            <div className="space-y-4 mt-6 flex-1 min-h-0 overflow-y-auto pr-1">
+
               {actionType === 'return' && (
                 <Alert>
                   <AlertTriangle className="h-4 w-4" />
