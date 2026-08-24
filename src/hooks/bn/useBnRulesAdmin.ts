@@ -88,6 +88,7 @@ export function useBnRejectVersion() {
       if (result.success) {
         toast.success('Version returned to draft');
         qc.invalidateQueries({ queryKey: ['bn', 'rule-versions'] });
+        qc.invalidateQueries({ queryKey: ['bn', 'product-versions'] });
       } else {
         toast.error('Rejection failed', { description: result.error });
       }
