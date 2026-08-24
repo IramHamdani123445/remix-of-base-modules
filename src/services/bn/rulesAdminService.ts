@@ -40,6 +40,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { runCalculationEngine } from './calculationEngine';
 import { assertSafeToPublish, type PublishGateReport } from './config/publishGateService';
+import { assertBnConfigApprovePermission } from './bnConfigPermissions';
 
 const db = supabase as any;
 
@@ -562,6 +563,9 @@ export async function rejectVersion(
   rejectorCode: string,
   reason: string
 ): Promise<{ success: boolean; error?: string }> {
+  const denied = await assertBnConfigApprovePermission();
+  if (denied) return { success: false, error: denied };
+
   const { data: ver } = await db.from('bn_product_version').select('status, description').eq('id', versionId).single();
   if (!ver) return { success: false, error: 'Version not found' };
   if (mapVersionStatus(ver.status) !== 'PENDING_APPROVAL') {
@@ -648,6 +652,9 @@ export async function publishVersion(
   effectiveDate: string,
   publisherCode: string
 ): Promise<{ success: boolean; error?: string }> {
+  const denied = await assertBnConfigApprovePermission();
+  if (denied) return { success: false, error: denied };
+
   const { data: ver } = await db.from('bn_product_version')
     .select('status, product_id, version_number')
     .eq('id', versionId)
