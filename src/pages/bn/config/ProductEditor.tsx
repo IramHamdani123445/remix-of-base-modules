@@ -195,7 +195,11 @@ export default function ProductEditor() {
     const resolvedBranchName = form.branch_id
       ? (branches as any[]).find(b => b.id === form.branch_id)?.branch_name ?? 'GENERAL'
       : 'GENERAL';
-    const payload = { ...form, branch: resolvedBranchName };
+    // A product with a live version is Active by definition — never let an
+    // unrelated edit write a stale DRAFT back over it.
+    const resolvedStatus = liveVersionNumber !== null ? 'ACTIVE' : form.status;
+    const payload = { ...form, branch: resolvedBranchName, status: resolvedStatus };
+
     try {
       if (isNew) {
         const created = await createMutation.mutateAsync(payload);
