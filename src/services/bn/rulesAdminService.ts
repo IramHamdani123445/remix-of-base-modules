@@ -598,13 +598,12 @@ export async function publishVersion(
     return { success: false, error: `Only APPROVED versions can be published (current: ${ver.status})` };
   }
 
-  // Block publish on ERROR-level cross-tab conflicts
-  try {
-    const { hasBlockingConflicts } = await import('@/services/bn/config/conflictDetectionService');
-    if (await hasBlockingConflicts(versionId)) {
-      return { success: false, error: 'Cross-tab conflicts contain ERROR-level issues. Resolve them on the Product Editor before publishing.' };
-    }
-  } catch { /* non-fatal */ }
+  // The readiness gate reports every blocking item by name. The previous
+  // generic "cross-tab conflicts contain ERROR-level issues" message named
+  // nothing, so the operator had no way to know what to fix.
+  const gate = await assertVersionReadiness(versionId);
+  if (!gate.ok) return { success: false, error: formatGateErrors('published', gate.errors) };
+
 
   // Delegate the actual publish to the single canonical routine used by the
   // Product Editor. Governance previously ran its own partial update, which
