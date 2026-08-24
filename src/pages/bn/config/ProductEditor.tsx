@@ -76,6 +76,16 @@ export default function ProductEditor() {
     return live.length ? Math.max(...live) : null;
   }, [versions]);
 
+  /** Highest APPROVED (awaiting publish) version number, or null. */
+  const approvedVersionNumber = useMemo(() => {
+    const approved = (versions as any[])
+      .filter(v => String(v.status).toUpperCase() === 'APPROVED')
+      .map(v => Number(v.version_number))
+      .filter(n => Number.isFinite(n));
+    return approved.length ? Math.max(...approved) : null;
+  }, [versions]);
+
+
   
   const createMutation = useCreateBnProduct();
   const updateMutation = useUpdateBnProduct();
