@@ -145,6 +145,9 @@ export default function RulesAdministration() {
     compareTargetId || undefined
   );
 
+  const readiness = useVersionReadiness(versions);
+
+
   const filtered = versions.filter((v) => {
     if (statusFilter !== 'all' && v.status !== statusFilter) return false;
     if (search && !v.versionLabel.toLowerCase().includes(search.toLowerCase()) &&
