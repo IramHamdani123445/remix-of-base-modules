@@ -516,6 +516,10 @@ export async function approveVersion(
   approverCode: string,
   comments?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // Approval is a granted right, not a side effect of holding edit.
+  const denied = await assertBnConfigApprovePermission();
+  if (denied) return { success: false, error: denied };
+
   const { data: ver } = await db.from('bn_product_version').select('status, entered_by').eq('id', versionId).single();
   if (!ver) return { success: false, error: 'Version not found' };
   if (mapVersionStatus(ver.status) !== 'PENDING_APPROVAL') {
@@ -526,6 +530,7 @@ export async function approveVersion(
   if (ver.entered_by === approverCode) {
     return { success: false, error: 'Maker-checker violation: approver cannot be the same as the author' };
   }
+
 
   // Configuration can change between submission and approval, so the gate is
   // re-run here rather than trusted from submit time.
