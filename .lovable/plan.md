@@ -40,4 +40,5 @@ Two defects follow from this:
 
 - Product with a `PENDING_APPROVAL` version: Versions tab shows no Approve/Reject, only the governance link.
 - Approve in Governance, return to the product: row reads **Approved**, no approve action, publish only available in Governance.
-- Publish in Governance: row reads **Active** with Retire; previous version reads **Archived** with a closed Effective To.
+- Publish in Governance: row reads **Active** with Retire; previous version reads **Archived** with a closed Effective To; the product shows **Active** in Product Catalog.
+- Open Claim Registration: the just-published benefit is selectable, and step 5 resolves to the new version for a claim date on or after its effective-from date.
