@@ -114,7 +114,7 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Version History</CardTitle>
-            <CardDescription>Effective-dated versions with DRAFT → PENDING_APPROVAL → ACTIVE lifecycle. Overlapping date ranges are blocked.</CardDescription>
+            <CardDescription>Effective-dated versions with DRAFT → PENDING&nbsp;APPROVAL → APPROVED → ACTIVE lifecycle. Overlapping date ranges are blocked.</CardDescription>
           </div>
           <Button onClick={onCreateVersion} className="gap-2"><Plus className="h-4 w-4" /> New Version</Button>
         </CardHeader>
