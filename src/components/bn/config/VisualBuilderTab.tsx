@@ -170,6 +170,18 @@ export function VisualBuilderTab({ versionId, versionStatus }: Props) {
     }
   };
 
+  const onImport = () => {
+    // Import replaces the whole canvas with what's actually saved in the
+    // tables — it does not merge. Anything built here but not yet synced
+    // would otherwise disappear with no warning.
+    const hasContent = Object.values(canvas.sections).some((blocks) => (blocks ?? []).length > 0);
+    if (hasContent && !window.confirm(
+      'Import from Tables replaces everything on this canvas with what is actually saved. ' +
+      'Any blocks you have added but not yet synced will be lost. Continue?',
+    )) return;
+    reimport();
+  };
+
   if (!versionId) {
     return <p className="text-sm text-muted-foreground p-4">Select a product version to use the Visual Builder.</p>;
   }
@@ -192,7 +204,7 @@ export function VisualBuilderTab({ versionId, versionStatus }: Props) {
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={reimport} disabled={loading} size="sm" variant="ghost" title="Re-import current rows from normalized tables">
+          <Button onClick={onImport} disabled={loading} size="sm" variant="ghost" title="Re-import current rows from normalized tables">
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             Import from Tables
           </Button>
