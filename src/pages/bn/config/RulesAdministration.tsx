@@ -24,6 +24,8 @@ import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { PageHeader } from '@/components/common/PageHeader';
 import { BnStatusBadge, BnEmptyState, BnScreenRoleBanner } from '@/components/bn/shared';
 import { useUserCode } from '@/hooks/useUserCode';
+import { useActionPermissions } from '@/hooks/useActionPermission';
+import { BN_CONFIG_MODULE, BN_CONFIG_APPROVE_ACTION } from '@/services/bn/bnConfigPermissions';
 import { useBnProducts } from '@/hooks/bn/useBnProduct';
 import {
   useBnRuleVersions,
@@ -127,6 +129,10 @@ function ReadinessCell({
 export default function RulesAdministration() {
 
   const { userCode } = useUserCode();
+  // Approving, rejecting and publishing require the explicit
+  // `bn_configuration.approve` right — edit alone is authoring only.
+  const { can: canBnConfig } = useActionPermissions(BN_CONFIG_MODULE);
+  const canApprove = canBnConfig(BN_CONFIG_APPROVE_ACTION);
   const { data: products = [] } = useBnProducts();
   const [productFilter, setProductFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -344,7 +350,12 @@ export default function RulesAdministration() {
                                   </Button>
                                 </>
                               )}
-                              {v.status === 'PENDING_APPROVAL' && (
+                              {v.status === 'PENDING_APPROVAL' && !canApprove && (
+                                <Badge variant="outline" className="text-muted-foreground" title="Requires the Benefits Configuration 'Approve' permission">
+                                  <Clock className="h-3 w-3 mr-1" /> Awaiting approver
+                                </Badge>
+                              )}
+                              {v.status === 'PENDING_APPROVAL' && canApprove && (
                                 <>
                                   <Button
                                     size="sm"
@@ -378,7 +389,12 @@ export default function RulesAdministration() {
                                   {readiness.get(v.id)?.ok === false ? 'Return to Draft & Fix' : 'Return to Draft'}
                                 </Button>
                               )}
-                              {v.status === 'APPROVED' && (
+                              {v.status === 'APPROVED' && !canApprove && (
+                                <Badge variant="outline" className="text-muted-foreground" title="Requires the Benefits Configuration 'Approve' permission">
+                                  <Clock className="h-3 w-3 mr-1" /> Awaiting publisher
+                                </Badge>
+                              )}
+                              {v.status === 'APPROVED' && canApprove && (
                                 <Button
                                   size="sm"
                                   variant="default"
