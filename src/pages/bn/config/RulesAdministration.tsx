@@ -500,12 +500,30 @@ export default function RulesAdministration() {
                 {actionType === 'approve' && 'Approve Version'}
                 {actionType === 'reject' && 'Reject Version'}
                 {actionType === 'publish' && 'Publish Version'}
+                {actionType === 'return' && 'Return Version to Draft'}
               </SheetTitle>
               <SheetDescription>
                 {selectedVersion?.productName} — {selectedVersion?.versionLabel}
               </SheetDescription>
             </SheetHeader>
             <div className="space-y-4 mt-6">
+              {actionType === 'return' && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>This unlocks the version for editing</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>
+                      The version goes back to Draft so the blocking issues can be corrected on the
+                      Product Editor. It must be submitted and approved again afterwards.
+                    </p>
+                    {(readiness.get(selectedVersion?.id ?? '')?.errors ?? []).length > 0 && (
+                      <ul className="list-disc pl-4 text-xs">
+                        {readiness.get(selectedVersion!.id)!.errors.map((e, i) => <li key={i}>{e}</li>)}
+                      </ul>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
               {actionType === 'publish' && (
                 <div>
                   <label className="text-sm font-medium">Effective Date *</label>
@@ -515,16 +533,19 @@ export default function RulesAdministration() {
               )}
               <div>
                 <label className="text-sm font-medium">
-                  {actionType === 'reject' ? 'Rejection Reason *' : 'Comments'}
+                  {actionType === 'reject' ? 'Rejection Reason *' : actionType === 'return' ? 'Reason *' : 'Comments'}
                 </label>
                 <Textarea value={actionComments} onChange={(e) => setActionComments(e.target.value)} rows={3} placeholder={
-                  actionType === 'reject' ? 'Explain what needs to be revised...' : 'Optional comments...'
+                  actionType === 'reject' ? 'Explain what needs to be revised...'
+                    : actionType === 'return' ? 'What needs to be corrected before this can be approved?'
+                    : 'Optional comments...'
                 } />
               </div>
               <Button
                 onClick={handleAction}
                 disabled={
                   (actionType === 'reject' && !actionComments) ||
+                  (actionType === 'return' && !actionComments) ||
                   (actionType === 'publish' && !effectiveDate)
                 }
                 variant={actionType === 'reject' ? 'destructive' : 'default'}
@@ -533,7 +554,9 @@ export default function RulesAdministration() {
                 {actionType === 'approve' && <><CheckCircle className="h-4 w-4 mr-2" /> Approve</>}
                 {actionType === 'reject' && <><XCircle className="h-4 w-4 mr-2" /> Reject & Return to Draft</>}
                 {actionType === 'publish' && <><ArrowRight className="h-4 w-4 mr-2" /> Publish & Activate</>}
+                {actionType === 'return' && <><Undo2 className="h-4 w-4 mr-2" /> Return to Draft</>}
               </Button>
+
             </div>
           </SheetContent>
         </Sheet>
