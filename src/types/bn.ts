@@ -550,6 +550,7 @@ export const BN_CLAIM_STATUS_LABELS: Record<BnClaimStatus, string> = {
 export const BN_PRODUCT_STATUS_LABELS: Record<BnProductStatus, string> = {
   DRAFT: 'Draft',
   PENDING_APPROVAL: 'Pending Approval',
+  APPROVED: 'Approved — awaiting publish',
   ACTIVE: 'Active',
   SUSPENDED: 'Suspended',
   ARCHIVED: 'Archived',
