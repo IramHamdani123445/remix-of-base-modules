@@ -167,11 +167,15 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
                             </Button>
                           </>
                         )}
-                        {v.status === 'PENDING_APPROVAL' && (
-                          <>
-                            <Button variant="default" size="sm" onClick={() => setApprovalDialog({ versionId: v.id, action: 'APPROVE' })}>Approve</Button>
-                            <Button variant="destructive" size="sm" onClick={() => setApprovalDialog({ versionId: v.id, action: 'REJECT' })}>Reject</Button>
-                          </>
+                        {(v.status === 'PENDING_APPROVAL' || v.status === 'APPROVED') && (
+                          <Button asChild variant="outline" size="sm" className="gap-1.5">
+                            <Link to={GOVERNANCE_PATH} title={v.status === 'APPROVED'
+                              ? 'Approved — publish it in Rule Version Governance'
+                              : 'Approve or reject this version in Rule Version Governance'}>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              {v.status === 'APPROVED' ? 'Publish in Governance' : 'Review in Governance'}
+                            </Link>
+                          </Button>
                         )}
                         {v.status === 'ACTIVE' && (
                           <Button
