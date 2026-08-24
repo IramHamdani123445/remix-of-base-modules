@@ -1,0 +1,112 @@
+[33m3af71ff5d[m[33m ([m[1;31mupstream/development[m[33m)[m Merge pull request #8 from iramh-ux/Benefit_Management_Second_Fix
+[33mc6706d9cb[m[33m ([m[1;31morigin/Benefit_Management_Second_Fix[m[33m, [m[1;32mBenefit_Management_Second_Fix[m[33m)[m manage sync from visual builder to Masters   issue
+[33m8b5ff7b24[m Merge pull request #7 from miplnoida/main
+[33m597956630[m Added IVR simulator to Voice
+[33mc94697d69[m Changes
+[33m633dc01d5[m Changes
+[33m5f0e9babf[m Changes
+[33m4c2f1532c[m Changes
+[33mb8402b508[m Changes
+[33ma18fef8be[m Added inbound voice IVR
+[33mbabd3f5c5[m Changes
+[33mdb5e2548d[m Changes
+[33m97d2a248e[m Changes
+[33m5d38045bd[m Changes
+[33mc9b759b18[m Changes
+[33meb2c1daf7[m Added OC409 auto-recovery
+[33m554fbaa36[m Changes
+[33m3d8b6544f[m Changes
+[33ma58be1d5a[m Changes
+[33me574cd410[m Changes
+[33m15b360378[m Added voice preflight support
+[33m1a36844a9[m Changes
+[33ma2c1dd620[m Changes
+[33m75525b9f0[m Changes
+[33m7ae8a5a83[m Changes
+[33m26ae905c0[m Changes
+[33ma9295f473[m Changes
+[33mfad8a0983[m Fixed Voice channel truth
+[33m4c8fdad41[m Changes
+[33mf68060c2d[m Changes
+[33ma2ac0ec62[m Changes
+[33m7194b495d[m Changes
+[33m420ed3b64[m Changes
+[33mda6a9b4b7[m Enabled Voice channel test flow
+[33m76589dc47[m Changes
+[33m613731b26[m Changes
+[33m65f776705[m Changes
+[33m99779baa9[m Changes
+[33m8bbf71263[m Changes
+[33meb8751523[m Changes
+[33m40c1d7833[m Changes
+[33m84e7bca55[m Changes
+[33m3ef6ddfac[m Changes
+[33m75b720de2[m Changes
+[33m7bcdb6cd5[m Guarded Bn boundary impl
+[33mdb0965d37[m Changes
+[33m839981934[m Changes
+[33m7daa6befb[m Changes
+[33mf47d3f4f4[m Changes
+[33ma73cb61da[m Changes
+[33m023071857[m Changes
+[33mb96532d11[m Changes
+[33ma37139eb5[m Changes
+[33m2882a2f1d[m Changes
+[33m8341ce434[m Changes
+[33m6ca32c0db[m Changes
+[33mee4ce8d82[m Changes
+[33madb4cfca7[m Update plan
+[33m1eb45edc5[m Changes
+[33m55e12002e[m fix issue
+[33me57cfaa91[m Fixed WhatsApp preflight shape
+[33mdff56f2a6[m Changes
+[33m8d464c04f[m Changes
+[33mde7069d2c[m Changes
+[33md966bfae8[m Changes
+[33md1d9e1a99[m Changes
+[33mc271e38a6[m Changes
+[33md6eb792a1[m Lovable update
+[33m84db8db7e[m Changes
+[33m3feb79992[m Changes
+[33m25903c605[m Enabled WhatsApp test delivery
+[33m1dc0bedd5[m Changes
+[33mb39292076[m Changes
+[33maa2b28e59[m Fixed SMS send flow
+[33md0049f9cc[m Changes
+[33md38382bb4[m Changes
+[33madf22b625[m Fixed SMS/WhatsApp config blockers
+[33m419835e88[m Changes
+[33m0511f23ec[m Work in progress
+[33m2777016ad[m Enabled SMS provider test
+[33m77cb63c20[m Changes
+[33md6d206c04[m Lovable update
+[33m3e3ba9aaa[m Changes
+[33m83c576181[m Changes
+[33m090636774[m Changes
+[33mfe60b02bd[m Changes
+[33m6894bb7aa[m Changes
+[33m277f24f71[m Changes
+[33m3381f98d4[m Enabled SMS/WhatsApp delivery
+[33m2852a19b2[m Changes
+[33meddd0f03c[m Merge pull request #6 from miplnoida/development
+[33m807834f8c[m Added Twilio SMS provider
+[33m07b883f8d[m Changes
+[33m0c4825774[m Changes
+[33m7b083b046[m Work in progress
+[33me551ffab6[m Updated README with new links
+[33mffc010698[m Changes
+[33mb0a961100[m Update plan
+[33m9f9465c8a[m Changes
+[33m79a379c3f[m Enabled Twilio SMS dispatch
+[33mb4aa3f141[m Changes
+[33m8185b6eec[m Changes
+[33m5920e0910[m Changes
+[33mfb5704373[m Changes
+[33m6f74a33b2[m Changes
+[33me2239985b[m Changes
+[33m9da28ebfe[m Changes
+[33m771840ce9[m Update plan
+[33mecbea6ab8[m Changes
+[33m8940b4b93[m Operationalized admin channels
+[33me9745c056[m Changes
+[33m1287ab37a[m Work in progress

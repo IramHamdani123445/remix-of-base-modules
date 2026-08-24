@@ -143,9 +143,15 @@ export async function runCalculationEngine(input: BnCalcEngineInput): Promise<Bn
     // Persist trace
     await persistTrace(runId, trace);
 
+    // Does this SSN exist, and does it have any contribution history? A flat
+    // amount formula does not touch member data, so without this the engine
+    // reported a confident figure for an SSN that is not in the register at all.
+    const subject = await describeSubject(input.ssn);
+
     const output: BnCalcEngineOutput = {
       runId,
       status: status as any,
+      subject,
       eligibility,
       contributionWindow,
       wageAggregation,
@@ -398,8 +404,58 @@ async function runFormulaEngine(
 ): Promise<BnFormulaResult> {
   const primaryRule = calcRules.find(r => r.is_active) || calcRules[0];
   if (!primaryRule) {
-    addTrace('FORMULA', 'FORMULA_NONE', 'No calculation rules found', { severity: 'ERROR' });
-    return emptyFormulaResult();
+    // No bn_calculation_rule — but that table is the legacy path (the Product
+    // Editor files its editor under "Legacy: visual builder & per-version
+    // rules"). The governed configuration lives on the version's
+    // formula_template_id and is run by runProductCalculation.
+    //
+    // Without this fallback the engine reported zero for every product that
+    // uses the current architecture, which is all of them: 12 of 12 ACTIVE
+    // products returned rawResult 0 while their configured formulas were
+    // perfectly good. SKN-MAT-GRANT, for instance, resolves to 1500.
+    try {
+      const { runProductCalculation } = await import('./runProductCalculation');
+      // useSamples: this engine is also used by the Simulator, where a missing
+      // claim-supplied input should show a sample rather than abort.
+      const configured = await runProductCalculation(input.productVersionId, { useSamples: true });
+      const amount = Number(configured.finalValue ?? configured.rawValue ?? 0);
+      if (Number.isFinite(amount) && amount !== 0) {
+        addTrace('FORMULA', 'FORMULA_CONFIGURED', 'Applied the product\'s configured formula', {
+          template: configured.template?.template_code,
+          expression: configured.template?.formula_expression,
+          rawValue: configured.rawValue,
+          finalValue: configured.finalValue,
+        });
+        return {
+          ...emptyFormulaResult(),
+          calcType: 'CONFIGURED_FORMULA',
+          formulaExpression: configured.template?.formula_expression ?? '',
+          steps: (configured.trace ?? []).map((t: any, i: number) => ({
+            stepNumber: i + 1,
+            description: `Resolve ${t.variable}`,
+            formula: t.resolverPath ?? String(t.source ?? ''),
+            inputs: { [t.variable]: Number(t.value) || 0 },
+            result: Number(t.value) || 0,
+          })),
+          rawResult: Number(configured.rawValue ?? amount),
+          afterMinMax: amount,
+          afterRounding: amount,
+          finalWeeklyRate: amount,
+          finalMonthlyRate: amount,
+        };
+      }
+      addTrace('FORMULA', 'FORMULA_NONE',
+        'The configured formula produced no amount', {
+          severity: 'ERROR',
+          template: configured.template?.template_code,
+          unresolved: configured.unresolved,
+        });
+      return emptyFormulaResult();
+    } catch (e: any) {
+      // Say which configuration is missing, rather than reporting a silent zero.
+      addTrace('FORMULA', 'FORMULA_NONE', e?.message ?? 'No calculation configured', { severity: 'ERROR' });
+      return emptyFormulaResult();
+    }
   }
 
   const config = primaryRule.formula_definition as unknown as BnFormulaConfig;
@@ -854,6 +910,29 @@ async function createCalcRun(input: BnCalcEngineInput): Promise<BnCalcRun> {
 async function updateCalcRun(id: string, updates: Partial<BnCalcRun>) {
   const { error } = await db.from('bn_calc_run').update({ ...updates, modified_at: new Date().toISOString() }).eq('id', id);
   if (error) throw error;
+}
+
+/**
+ * Whether the SSN is a known member and has contribution history. Used to
+ * label the figures — the simulator is a test bench, so the amount is still
+ * shown, but it must not look authoritative for someone who does not exist.
+ */
+async function describeSubject(ssn: string): Promise<{ ssn: string; memberFound: boolean; hasContributionHistory: boolean }> {
+  try {
+    const [member, wages] = await Promise.all([
+      db.from('ip_master').select('ssn').eq('ssn', ssn).limit(1),
+      db.from('ip_wages').select('id').eq('ssn', ssn).limit(1),
+    ]);
+    return {
+      ssn,
+      memberFound: Array.isArray(member.data) && member.data.length > 0,
+      hasContributionHistory: Array.isArray(wages.data) && wages.data.length > 0,
+    };
+  } catch {
+    // Unknown rather than false — a failed lookup must not be reported as
+    // "this member does not exist".
+    return { ssn, memberFound: true, hasContributionHistory: true };
+  }
 }
 
 async function persistTrace(runId: string, trace: BnCalcTraceEntry[]) {
