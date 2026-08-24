@@ -33,7 +33,7 @@ const statusIcons: Record<string, React.ReactNode> = {
   ARCHIVED: <XCircle className="h-4 w-4 text-muted-foreground" />,
 };
 
-const GOVERNANCE_PATH = '/bn/config/rules-administration';
+const GOVERNANCE_PATH = '/bn/config/rules-admin';
 
 export function VersionHistoryTab({ productId, versions, onCreateVersion }: Props) {
   const { toast } = useToast();
