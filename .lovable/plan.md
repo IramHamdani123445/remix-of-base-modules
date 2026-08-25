@@ -1,64 +1,63 @@
-# Cloud Test Backend — Escalation and Post-Recovery Stabilisation
+# Backend is partially back — finish recovery, then stabilise permanently
 
-## Where the project reference lives
+## What I measured just now (this is a change from the last few days)
 
-More → Cloud → Advanced settings. The reference shown there is `xynceskeiiisiefqlgxo`. Use that value in any support request.
+- A plain `select 1` against the Test database **succeeded**.
+- The scheduler registry (`cron.job`) reads fine — 14 jobs, 5 currently active.
+- Auth `/token` now answers properly: three sign-in probes returned a normal `400 invalid_credentials` in 9.2s, 6.6s, then 1.8s. Auth reaching the database again is the key recovery signal, and latency is falling.
+- **Still broken:** the Data API (the layer the app itself uses for reads) hangs — `app_modules` and `profiles` both timed out at 25s with no response.
+- Heavier admin SQL (a `pg_stat_activity` roll-up) also still times out.
+- Cloud lifecycle/health endpoints still return the account-privilege error, so state can't be read from here.
 
-## Confirmed current state (re-probed just now)
+Read: the database instance is coming back up but is still saturated, and the request-serving layer has not caught up. Login may start working intermittently before the dashboard does.
 
-- A plain `select 1` against the Test database fails with `544 Connection terminated due to connection timeout`.
-- The Cloud status endpoint returns an account-privilege error, so lifecycle state cannot be read from here.
-- The Cloud panel exposes no restart or pause/resume control, and the agent-side restart tool fails.
+## Answer to your question
 
-No self-serve recovery path remains. Everything below assumes support brings the instance back first.
+Do not spend the effort on a support email yet. The condition that made support unavoidable — nothing responding at all — no longer holds. Give it a short window and re-measure; escalate only if the Data API is still hanging after that.
 
-## Step 1 — Escalate (ready-to-send text)
+## Step 1 — Confirm the recovery is real, not a blip
 
-> **Subject: Cloud Test backend hard-down — no restart control available (project reference `xynceskeiiisiefqlgxo`)**
+Repeat, spaced out: plain reads, an app-table read through the Data API, and a real authenticated sign-in through the login screen in a browser. Recovery counts only when all three pass repeatedly, not once.
+
+If the Data API is still timing out after this window, send the escalation text below.
+
+## Step 2 — Reduce load while it stabilises
+
+Five recurring jobs are active, including the email queue and the Omni-Comms dispatch, ingest and print workers on 5- and 10-minute cycles. While the instance is still fragile, suspend the non-essential ones and leave the nightly jobs alone. Every prior schedule is recorded in the migration so it is exactly reversible. No queue rows, delivery records or audit history are touched.
+
+## Step 3 — Permanent worker stabilisation
+
+- Advisory-lock single-flight: a worker exits immediately if its previous run is still going.
+- Bounded batches with a hard row cap and a wall-clock budget per run.
+- No database transaction held across a Resend / Twilio / print provider call — read work, commit, call the provider, record the result separately.
+- Explicit provider timeouts with bounded backoff, recorded on the existing delivery-attempt tables.
+- Staggered start minutes so no two heavy workers collide.
+- Workers restored in small groups, verifying connection counts between groups.
+
+This reuses the existing Omni-Comms sending spine. No parallel queue, no new communication system, no legacy tables removed.
+
+## Step 4 — Login and dashboard resilience
+
+Keep the bounded retries and abort timeouts already in place, extend them to remaining unbounded dashboard fetches, de-amplify dashboard startup so one page load cannot fire a burst of concurrent queries, and show a clear message when auth is genuinely unreachable instead of an endless spinner.
+
+## Step 5 — Operational visibility
+
+A worker-health view: last run, duration, outcome, skipped-because-locked count, current lock holders — so saturation is visible before it takes the platform down again.
+
+## Step 6 — Prove it
+
+Repeated database and pooler probes, a full scheduler cycle with no start timeouts and no growing overlap, no lingering idle-in-transaction sessions, repeated real authenticated sign-ins, plus the focused test suite and change detection for any source edits.
+
+## Escalation text (only if Step 1 fails)
+
+> **Subject: Cloud Test backend degraded — Data API unresponsive (project reference `xynceskeiiisiefqlgxo`)**
 >
-> Our Lovable Cloud Test/development backend has been unreachable for several days.
+> Our Lovable Cloud Test backend was hard-down for several days and is now partially recovered: Auth `/token` responds and plain SQL reads succeed, but the Data API (PostgREST) still times out on ordinary table reads, and heavier queries hit connection timeouts. The Cloud panel shows no restart or pause/resume control, status/health endpoints return "your account does not have the necessary privileges", and automated restart fails.
 >
-> Symptoms: every SQL read fails with `544 Connection terminated due to connection timeout`; the Postgres pooler rejects connections with `FATAL: (EAUTHQUERY) authentication query failed`; Auth `/token` requests time out (504/500) while `/auth/v1/health` responds; database logs show repeated statement timeouts and cron scheduler start timeouts.
->
-> Blockers: the Cloud panel shows no restart and no pause/resume option, status/health endpoints return "your account does not have the necessary privileges", and automated restart fails.
->
-> Request: please restart or recover the Test backend instance, and confirm whether it needs a compute or disk resize (database ~9.7 GB, ~1851 tables). Production appears healthy; only Test is affected.
-
-## Step 2 — Verify recovery before touching anything
-
-Repeated plain reads, a pooler connection check, and an authenticated browser sign-in that loads the dashboard. Only proceed once all three pass consistently.
-
-## Step 3 — Inventory the real workload
-
-Read the full scheduled-job registry with schedules, active flags, commands, recent durations and overlaps. Inspect active and idle-in-transaction sessions to identify workers holding connections. Record every existing schedule before changing it.
-
-## Step 4 — Permanent worker stabilisation
-
-- Single-flight execution: every recurring worker takes a Postgres advisory lock and exits immediately if a previous run is still going.
-- Bounded batches with a hard per-run row cap and a wall-clock budget, so a run can never grow unbounded.
-- No database transaction held across an external provider call (Resend, Twilio, print). Read work, commit, call the provider, then commit the result separately.
-- Explicit provider timeouts plus bounded backoff retries, with attempts recorded on the existing delivery-attempt tables.
-- Staggered schedules so no two heavy workers start in the same minute.
-- Gradual restoration: bring workers back in small groups, verifying connection counts between groups.
-
-All of this reuses the existing Omni-Comms sending spine and worker set. No parallel queue, no new communication system, no removed legacy tables.
-
-## Step 5 — Login and dashboard resilience
-
-- Keep the bounded retry policy and abort timeouts already added, and extend the same treatment to any remaining unbounded dashboard fetches.
-- De-amplify dashboard startup so a single page load cannot issue a burst of concurrent queries.
-- Surface a clear, actionable message when auth is genuinely unreachable instead of an indefinite spinner.
-
-## Step 6 — Operational visibility
-
-A worker-health view showing last run, duration, outcome, skip-because-locked count and current lock holders, so saturation is visible before it takes the platform down.
-
-## Step 7 — Prove it
-
-Repeated database and pooler probes, a scheduler cycle with no start timeouts and no growing overlap, no lingering idle-in-transaction sessions, and a real authenticated sign-in performed repeatedly. Plus the focused test suite and change detection for any source edits.
+> Request: please complete recovery of the Test instance and confirm whether it needs a compute or disk resize (database ~9.7 GB, ~1851 tables). Production appears healthy; only Test is affected.
 
 ## Technical notes
 
-- Worker locking uses `pg_try_advisory_lock` keyed per worker name; the lock is released in a guaranteed cleanup path.
-- Schedule changes ship as a migration that documents the exact prior schedule inline so the change is reversible.
-- Stale connection documentation is corrected to reflect runtime truth as part of the same pass.
+- Worker locking uses `pg_try_advisory_lock` keyed per worker name, released in a guaranteed cleanup path.
+- Schedule changes ship as a migration documenting the exact prior schedule inline.
+- Stale connection documentation is corrected to runtime truth in the same pass.
