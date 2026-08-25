@@ -100012,6 +100012,72 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_worker_command_backup: {
+        Row: {
+          captured_at: string
+          id: string
+          jobid: number
+          jobname: string
+          prior_command: string
+          prior_schedule: string
+        }
+        Insert: {
+          captured_at?: string
+          id?: string
+          jobid: number
+          jobname: string
+          prior_command: string
+          prior_schedule: string
+        }
+        Update: {
+          captured_at?: string
+          id?: string
+          jobid?: number
+          jobname?: string
+          prior_command?: string
+          prior_schedule?: string
+        }
+        Relationships: []
+      }
+      platform_worker_lease: {
+        Row: {
+          created_at: string
+          last_finished_at: string | null
+          last_outcome: string | null
+          last_started_at: string | null
+          lease_seconds: number
+          leased_until: string
+          run_count: number
+          skipped_count: number
+          updated_at: string
+          worker_name: string
+        }
+        Insert: {
+          created_at?: string
+          last_finished_at?: string | null
+          last_outcome?: string | null
+          last_started_at?: string | null
+          lease_seconds?: number
+          leased_until?: string
+          run_count?: number
+          skipped_count?: number
+          updated_at?: string
+          worker_name: string
+        }
+        Update: {
+          created_at?: string
+          last_finished_at?: string | null
+          last_outcome?: string | null
+          last_started_at?: string | null
+          lease_seconds?: number
+          leased_until?: string
+          run_count?: number
+          skipped_count?: number
+          updated_at?: string
+          worker_name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -127497,6 +127563,18 @@ export type Database = {
             }
             Returns: Json
           }
+      platform_purge_cron_run_details: {
+        Args: { p_keep_runs?: number; p_max_rows?: number }
+        Returns: number
+      }
+      platform_release_worker: {
+        Args: { p_outcome?: string; p_worker: string }
+        Returns: undefined
+      }
+      platform_try_lease_worker: {
+        Args: { p_lease_seconds?: number; p_worker: string }
+        Returns: boolean
+      }
       prepare_comm_hub_preview: { Args: { p_payload: Json }; Returns: Json }
       preview_payment_allocation: {
         Args: {
