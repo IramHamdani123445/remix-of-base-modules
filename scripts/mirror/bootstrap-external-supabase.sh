@@ -112,18 +112,30 @@ SQL
 # --- 6. forward-only migrations --------------------------------------------
 echo "==> applying ${#PENDING[@]} migration(s) after the cutoff"
 APPLIED=0
+TOTAL=${#PENDING[@]}
+IDX=0
+progress() {
+  local n=$1 t=$2 label=$3
+  local pct=$(( t > 0 ? n * 100 / t : 0 ))
+  local filled=$(( pct * 40 / 100 ))
+  local bar
+  bar="$(printf '#%.0s' $(seq 1 $filled 2>/dev/null))$(printf '.%.0s' $(seq 1 $((40-filled)) 2>/dev/null))"
+  printf '    [%s] %3d%%  %d/%d  %s\n' "$bar" "$pct" "$n" "$t" "$label"
+}
 for path in "${PENDING[@]}"; do
   name="$(basename "$path")"
   version="${name%%_*}"
+  IDX=$((IDX + 1))
   already="$(psql "$DB_URL" -X -q -t -A \
     -c "SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '$version'")"
-  [[ -z "$already" ]] || { echo "    -- $name (already recorded)"; continue; }
-  echo "    -> $name"
+  [[ -z "$already" ]] || { progress "$IDX" "$TOTAL" "$name (already recorded)"; continue; }
+  progress "$IDX" "$TOTAL" "$name"
   run_sql "$path" >>"$LOG_DIR/migrations.log" 2>&1
   psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 \
     -c "INSERT INTO supabase_migrations.schema_migrations(version) VALUES ('$version') ON CONFLICT DO NOTHING"
   APPLIED=$((APPLIED + 1))
 done
+
 
 # --- 7. parity report ------------------------------------------------------
 echo "==> structure in the target project"
