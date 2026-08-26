@@ -13,9 +13,11 @@
  * pipeline → JSON response out.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { createGapCommandPipeline } from '../../../src/services/bn/gap/gapCommandPipeline.ts';
-import { bnGapHandlerRegistry } from '../../../src/services/bn/gap/gapHandlerRegistry.ts';
-import type { BnGapCommandEnvelope } from '../../../src/types/bn/gap/commandEnvelope.ts';
+import {
+  createBenefitsCommandPipeline,
+  benefitsCommandHandlerRegistry,
+  type BnGapCommandEnvelope,
+} from './_shared.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -56,8 +58,8 @@ Deno.serve(async (req) => {
   // Force actorUserId to match JWT — never trust the wire.
   envelope = { ...envelope, actorUserId: jwtSub };
 
-  const pipeline = createGapCommandPipeline({
-    handlers: bnGapHandlerRegistry,
+  const pipeline = createBenefitsCommandPipeline({
+    handlers: benefitsCommandHandlerRegistry,
     modules: {
       async load(moduleCode) {
         const { data } = await supabase

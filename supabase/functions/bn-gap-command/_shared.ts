@@ -979,3 +979,19 @@ export const BN_GAP_PING_HANDLER: CommandHandler<BnGapPingPayload, BnGapPingData
     };
   },
 };
+
+// ─── handler registry (edge boundary: diagnostics only) ───
+// Business handlers live in their own dedicated edge functions (e.g.
+// bn-mortality-command). Unregistered commands fail closed with
+// HANDLER_NOT_REGISTERED.
+const HANDLERS: readonly CommandHandler<any, any>[] = [BN_GAP_PING_HANDLER];
+
+export const benefitsCommandHandlerRegistry: HandlerRegistry = {
+  get(commandName: string, commandVersion: number): CommandHandler | null {
+    return (
+      HANDLERS.find(
+        (h) => h.commandName === commandName && h.commandVersion === commandVersion,
+      ) ?? null
+    );
+  },
+};
