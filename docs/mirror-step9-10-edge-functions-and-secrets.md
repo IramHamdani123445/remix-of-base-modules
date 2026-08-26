@@ -17,14 +17,19 @@ TARGET_PROJECT_REF=<target-ref> \
   scripts/mirror/deploy-edge-functions.sh
 ```
 
-The script deploys one function at a time, logs each to
-`/tmp/mirror-functions/<name>.log`, and lists any failures at the end so
+The script deploys one function at a time via `npx supabase@latest` with
+`--use-api`, so bundling happens server-side and **no local Docker
+daemon is required**. Each deploy logs to
+`/tmp/mirror-functions/<name>.log`, and failures are listed at the end so
 you can re-run just those:
 
 ```bash
 SUPABASE_ACCESS_TOKEN=... TARGET_PROJECT_REF=... \
   scripts/mirror/deploy-edge-functions.sh fn-one fn-two
 ```
+
+Set `SUPABASE_CLI_LOCAL=1` to use an already-installed `supabase` binary
+instead of `npx` (it must be recent enough to support `--use-api`).
 
 Functions will not work until step 10 is done — most read secrets at
 startup.
