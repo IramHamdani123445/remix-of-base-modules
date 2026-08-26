@@ -1,19 +1,8 @@
 /**
  * VENDORED — do not edit by hand.
  *
- * Deno-deployable copy of the portable BN gap command pipeline. Supabase Edge
- * Functions cannot import from `src/`, so the transport-neutral modules below
- * are inlined here verbatim (imports between them stripped):
- *
- *   src/types/bn/commands/commandEnvelope.ts
- *   src/types/bn/commands/commandResult.ts
- *   src/types/bn/commands/moduleCodes.ts
- *   src/services/bn/commands/benefitsCapabilityRegistry.ts
- *   src/services/bn/commands/benefitsCommandPipeline.ts
- *   src/services/bn/commands/pingCommand.ts
- *
- * Regenerate with scripts/bn/vendor-gap-command-shared.py after changing any
- * of those files.
+ * Deno-deployable copy of the portable BN gap command pipeline. Regenerate
+ * with scripts/bn/vendor-gap-command-shared.py.
  */
 
 // ─── vendored from src/types/bn/commands/commandEnvelope.ts ───
