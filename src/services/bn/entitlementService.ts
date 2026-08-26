@@ -306,13 +306,21 @@ export async function fetchEntitlements(filters: EntitlementFilters = {}): Promi
 
 // ─── Fetch Single Entitlement ───────────────────────────────────────
 
+/**
+ * Note the column names: `bn_entitlement` has `entered_at`, but
+ * `bn_payment_instruction` does not — it has `created_at`. Asking the embedded
+ * select for `entered_at` made PostgREST reject the whole query, so the
+ * Entitlement Detail drawer rendered empty. That drawer is the only place
+ * ENTITLEMENT_ACTIONS is used, so Suspend, Terminate and Cancel were all
+ * unreachable while it failed.
+ */
 export async function fetchEntitlementDetail(entitlementId: string): Promise<EntitlementWithContext | null> {
   const { data, error } = await db
     .from('bn_entitlement')
     .select(`
       *,
       bn_claim(claim_number, ssn, status, priority, bn_product(benefit_name, category)),
-      bn_payment_instruction(id, status, amount, instruction_type, entered_at)
+      bn_payment_instruction(id, status, amount, instruction_type, created_at)
     `)
     .eq('id', entitlementId)
     .single();
