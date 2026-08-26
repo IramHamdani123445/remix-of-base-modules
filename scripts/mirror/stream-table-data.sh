@@ -49,6 +49,24 @@ if [[ ! -s "$LIST" ]]; then
     ORDER BY c.reltuples DESC, c.relname" > "$LIST"
 fi
 
+# One global truncate makes per-table truncation unnecessary (and avoids
+# FK "referenced by" errors). Runs once per state dir.
+if [[ ! -f "$STATE_DIR/truncated.ok" ]]; then
+  echo "==> truncating all public tables in target (one statement)" | tee -a "$LOG"
+  psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 <<'SQL' >>"$LOG" 2>&1 && touch "$STATE_DIR/truncated.ok"
+DO $$
+DECLARE stmt text;
+BEGIN
+  SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
+  INTO stmt FROM pg_tables WHERE schemaname = 'public';
+  IF stmt IS NOT NULL THEN
+    EXECUTE 'TRUNCATE ' || stmt || ' CASCADE';
+  END IF;
+END $$;
+SQL
+  [[ -f "$STATE_DIR/truncated.ok" ]] || { echo "::error::global truncate failed" | tee -a "$LOG"; exit 1; }
+fi
+
 TOTAL=$(wc -l < "$LIST")
 echo "==> $TOTAL source tables to consider" | tee -a "$LOG"
 
@@ -102,7 +120,6 @@ while read -r tbl; do
         -c "\\copy (SELECT $common FROM public.\"$tbl\") TO STDOUT WITH (FORMAT csv)" 2>"$err" \
      | psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 \
         -c "SET session_replication_role = replica;" \
-        -c "TRUNCATE public.\"$tbl\";" \
         -c "\\copy public.\"$tbl\" ($common) FROM STDIN WITH (FORMAT csv)" 2>>"$err"
   then
     echo "[$i/$TOTAL] ok $tbl ($n rows)" >> "$LOG"
