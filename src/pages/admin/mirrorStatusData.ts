@@ -107,11 +107,17 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'data',
       title: '7. Table data load',
       detail:
-        'Export the data bundle from Lovable Cloud (Advanced settings -> Export data), then load it with the CSV loader: constraints deferred, identity sequences reset afterwards.',
-      state: 'pending',
-      progress: 0,
-      metrics: [{ label: 'Export bundle', value: 'awaiting download' }],
+        'Direct table-by-table CSV streaming from source to target (scripts/mirror/stream-table-data.sh): one global truncate, replica-role loads so order does not matter, resumable via a done-list. The run started and loaded the largest tables, then stopped: the target project switched itself into enforced read-only mode because its disk is full. Source data is ~9.7 GB; the target must be given more disk before the load can resume.',
+      state: 'blocked',
+      progress: 5,
+      metrics: [
+        { label: 'Tables loaded', value: '6 / 1,729' },
+        { label: 'Source data size', value: '~9.7 GB' },
+        { label: 'Target data size', value: '904 MB (disk full)' },
+        { label: 'Blocker', value: 'target in read-only mode' },
+      ],
     },
+
     {
       id: 'auth-users',
       title: '8. Auth users',
