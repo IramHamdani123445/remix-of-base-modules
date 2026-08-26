@@ -2984,6 +2984,7 @@ export const AppRoutes = () => {
       <Route path="/admin/data-access/role-policies" element={<RoleDataPolicies />} />
       <Route path="/admin/data-access/user-overrides" element={<UserDataOverrides />} />
       <Route path="/admin/data-access/test-console" element={<PolicyTestConsole />} />
+      <Route path="/admin/mirror-status" element={<MirrorStatus />} />
 
       {/* System Cleanup & Refactoring */}
       <Route path="/admin/system-cleanup" element={<SystemCleanupDashboard />} />
