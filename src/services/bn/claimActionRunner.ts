@@ -291,33 +291,92 @@ export async function runClaimCalculation(
 
 export type DecisionType = 'RECOMMENDATION' | 'APPROVED' | 'DENIED';
 
+/**
+ * `bn_claim_decision` action codes, taken from `bn_claim_transition_rule`,
+ * which is the runtime source of truth for claim transitions.
+ */
+const DECISION_ACTION_CODE: Record<DecisionType, string> = {
+  RECOMMENDATION: 'SUBMIT_DECISION',
+  APPROVED: 'APPROVE',
+  DENIED: 'DENY',
+};
+
+/**
+ * Writes the decision row.
+ *
+ * This used to insert `decision_type`, `decision_date`, `decision_narrative`,
+ * `reason_code`, `calculation_id`, `decided_by` and `entered_by` — none of
+ * which exist on bn_claim_decision. Every insert therefore threw, so no claim
+ * could be approved, denied, or submitted for decision at all. The real columns
+ * are action_code / from_status / to_status / performed_by / performed_at /
+ * narrative / reason_code_id, plus the snapshot columns below.
+ *
+ * The snapshots matter: they freeze WHICH eligibility result and WHICH
+ * calculation the decision was taken against, so a later re-run cannot change
+ * the basis of a decision already made.
+ */
 export async function createClaimDecision(args: {
   claimId: string;
   decisionType: DecisionType;
   userCode: string;
   narrative?: string;
   reasonCode?: string;
+  fromStatus?: string;
+  toStatus?: string;
 }): Promise<{ id: string }> {
-  // Find latest calculation for amount snapshot (best effort).
+  const actionCode = DECISION_ACTION_CODE[args.decisionType];
+
+  // Snapshot the evidence the decision rests on (best effort — the approval
+  // preconditions are what REFUSE a decision; this only records the basis).
   const { data: latestCalc } = await db
     .from('bn_claim_calculation')
-    .select('id, weekly_rate, monthly_rate, lump_sum')
+    .select('id')
     .eq('claim_id', args.claimId)
     .order('calc_date', { ascending: false })
     .limit(1)
+    .maybeSingle();
+
+  const { data: latestElig } = await db
+    .from('bn_claim_eligibility')
+    .select('id')
+    .eq('claim_id', args.claimId)
+    .order('check_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // reason_code_id is a foreign key; callers pass a human code, so resolve it.
+  // An unresolvable code is left null rather than failing the decision — the
+  // reason text is still carried in the narrative.
+  let reasonCodeId: string | null = null;
+  if (args.reasonCode) {
+    const { data: rc } = await db
+      .from('bn_reason_code')
+      .select('id')
+      .eq('reason_code', args.reasonCode)
+      .maybeSingle();
+    reasonCodeId = (rc as any)?.id ?? null;
+  }
+
+  const { data: claim } = await db
+    .from('bn_claim')
+    .select('status')
+    .eq('id', args.claimId)
     .maybeSingle();
 
   const { data, error } = await db
     .from('bn_claim_decision')
     .insert({
       claim_id: args.claimId,
-      decision_type: args.decisionType,
-      decision_date: new Date().toISOString(),
-      decision_narrative: args.narrative ?? null,
-      reason_code: args.reasonCode ?? null,
-      calculation_id: latestCalc?.id ?? null,
-      decided_by: args.userCode,
-      entered_by: args.userCode,
+      action_code: actionCode,
+      from_status: args.fromStatus ?? (claim as any)?.status ?? null,
+      to_status: args.toStatus ?? null,
+      narrative: args.narrative ?? null,
+      reason_code_id: reasonCodeId,
+      calculation_snapshot_id: latestCalc?.id ?? null,
+      eligibility_snapshot_id: latestElig?.id ?? null,
+      evidence_snapshot: {},
+      performed_by: args.userCode,
+      performed_at: new Date().toISOString(),
     })
     .select('id')
     .single();
@@ -337,9 +396,10 @@ export async function createClaimDecision(args: {
     performedBy: args.userCode,
     afterValue: {
       claim_id: args.claimId,
-      decision_type: args.decisionType,
-      reason_code: args.reasonCode ?? null,
-      calculation_id: latestCalc?.id ?? null,
+      action_code: actionCode,
+      reason_code_id: reasonCodeId,
+      calculation_snapshot_id: latestCalc?.id ?? null,
+      eligibility_snapshot_id: latestElig?.id ?? null,
     },
     notes: args.narrative ?? null,
     critical: true,
