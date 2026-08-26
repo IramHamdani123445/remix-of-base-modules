@@ -47,7 +47,7 @@ critical permissions. Submitters cannot approve their own work — in benefit
 version governance, compliance case progression, legal referral, waivers, and
 communication go-live.
 
-**Why the buyer cares. ** Audit and internal-control requirements are met by the
+**Why the buyer cares.** Audit and internal-control requirements are met by the
 platform rather than by procedure and trust.
 
 **Say this.** "Four-eyes is not a policy document here. The database enforces
