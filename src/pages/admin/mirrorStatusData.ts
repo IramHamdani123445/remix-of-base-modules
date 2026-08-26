@@ -27,7 +27,7 @@ export interface MirrorSnapshot {
 }
 
 export const mirrorSnapshot: MirrorSnapshot = {
-  capturedAt: '2026-08-26T10:20:00Z',
+  capturedAt: '2026-08-26T10:35:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
   targetLabel: 'External Supabase project (target)',
   steps: [
@@ -73,9 +73,10 @@ export const mirrorSnapshot: MirrorSnapshot = {
       detail:
         'The 348 migrations created after the baseline cutoff, applied in order and recorded in the target migration ledger. Running now; failures are logged and skipped rather than aborting the run.',
       state: 'in_progress',
-      progress: 51,
+      progress: 88,
       metrics: [
-        { label: 'Applied', value: '179 / 348' },
+        { label: 'Applied', value: '305 / 348' },
+        { label: 'Remaining', value: '43' },
         { label: 'Ledger', value: 'created' },
         { label: 'Failures', value: '8 (logged, skipped)' },
       ],
