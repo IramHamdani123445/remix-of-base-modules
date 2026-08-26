@@ -108966,6 +108966,51 @@ export type Database = {
         }
         Relationships: []
       }
+      testcustomer: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          credit_limit: number | null
+          customer_uid: string
+          email: string
+          first_name: string
+          id: number
+          is_active: boolean
+          last_name: string
+          notes: string | null
+          phone: string | null
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at: string
+          credit_limit?: number | null
+          customer_uid: string
+          email: string
+          first_name: string
+          id?: number
+          is_active: boolean
+          last_name: string
+          notes?: string | null
+          phone?: string | null
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          customer_uid?: string
+          email?: string
+          first_name?: string
+          id?: number
+          is_active?: boolean
+          last_name?: string
+          notes?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       tmp_cl_cheques: {
         Row: {
           batch_number: string | null

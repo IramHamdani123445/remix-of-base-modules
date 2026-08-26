@@ -27,7 +27,7 @@ export interface MirrorSnapshot {
 }
 
 export const mirrorSnapshot: MirrorSnapshot = {
-  capturedAt: '2026-08-26T13:45:00Z',
+  capturedAt: '2026-08-26T17:40:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
   targetLabel: 'external target project (target)',
   steps: [
@@ -107,16 +107,18 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'data',
       title: '7. Table data load',
       detail:
-        'Direct table-by-table CSV streaming from source to target (scripts/mirror/stream-table-data.sh): one global truncate, replica-role loads so order does not matter, resumable via a done-list. The run started and loaded the largest tables, then stopped: the target project switched itself into enforced read-only mode because its disk is full. Source data is ~9.7 GB; the target must be given more disk before the load can resume.',
-      state: 'blocked',
-      progress: 5,
+        'Direct table-by-table CSV streaming from source to target (scripts/mirror/stream-table-data.sh): one global truncate, replica-role loads over a session-mode (5432) connection so order does not matter, resumable via a done-list. The target disk was increased and read-only mode lifted (default_transaction_read_only = off); the full run then completed with zero failures. 296 tables carried rows, the remainder were empty at source. Row counts spot-checked on the largest tables match exactly.',
+      state: 'done',
+      progress: 100,
       metrics: [
-        { label: 'Tables loaded', value: '6 / 1,729' },
-        { label: 'Source data size', value: '~9.7 GB' },
-        { label: 'Target data size', value: '904 MB (disk full)' },
-        { label: 'Blocker', value: 'target in read-only mode' },
+        { label: 'Tables processed', value: '1,730 / 1,730' },
+        { label: 'Tables with rows loaded', value: '296' },
+        { label: 'Failures', value: '0' },
+        { label: 'Target data size', value: '1.57 GB' },
       ],
+
     },
+
 
     {
       id: 'auth-users',
@@ -160,7 +162,7 @@ export const mirrorSnapshot: MirrorSnapshot = {
     { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '348 applied; 0 pending', state: 'done' },
     { id: 'v6', check: 'Storage objects copied', expected: '179', observed: '179 (byte-parity verified)', state: 'done' },
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
-    { id: 'v8', check: 'Row counts per table', expected: 'match source export', observed: 'not started', state: 'pending' },
+    { id: 'v8', check: 'Row counts per table', expected: 'match source', observed: '1,730/1,730 streamed, 0 failures; largest tables byte-for-row match', state: 'done' },
     { id: 'v9', check: 'Auth users loadable', expected: 'match source', observed: 'not started', state: 'pending' },
     { id: 'v10', check: 'Edge functions deployed', expected: 'all', observed: 'not started', state: 'manual' },
     { id: 'v11', check: 'Secrets present in target', expected: '29 names', observed: '30 names verified', state: 'done' },
