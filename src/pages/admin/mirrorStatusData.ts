@@ -124,10 +124,17 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'auth-users',
       title: '8. Auth users',
       detail:
-        'Auth accounts are part of the export bundle and load after table data. Passwords are hashed; existing sessions do not carry over.',
-      state: 'pending',
-      progress: 0,
+        'All auth accounts and their linked sign-in identities streamed directly from source to target (scripts/mirror/stream-auth-users.sh), copying only columns present on both sides. Password hashes carried over, so existing passwords keep working; active sessions do not carry over and users sign in again. Temporary read-only views used on the source were dropped afterwards.',
+      state: 'done',
+      progress: 100,
+      metrics: [
+        { label: 'Users', value: '55 / 55' },
+        { label: 'Identities', value: '55 / 55' },
+        { label: 'Password hashes present', value: '55' },
+        { label: 'Failures', value: '0' },
+      ],
     },
+
     {
       id: 'functions',
       title: '9. Edge functions',
