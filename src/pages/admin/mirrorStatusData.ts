@@ -27,7 +27,7 @@ export interface MirrorSnapshot {
 }
 
 export const mirrorSnapshot: MirrorSnapshot = {
-  capturedAt: '2026-08-26T10:35:00Z',
+  capturedAt: '2026-08-26T10:47:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
   targetLabel: 'External Supabase project (target)',
   steps: [
@@ -73,10 +73,10 @@ export const mirrorSnapshot: MirrorSnapshot = {
       detail:
         'The 348 migrations created after the baseline cutoff, applied in order and recorded in the target migration ledger. Running now; failures are logged and skipped rather than aborting the run.',
       state: 'in_progress',
-      progress: 88,
+      progress: 90,
       metrics: [
-        { label: 'Applied', value: '305 / 348' },
-        { label: 'Remaining', value: '43' },
+        { label: 'Applied', value: '312 / 348' },
+        { label: 'Remaining', value: '36' },
         { label: 'Ledger', value: 'created' },
         { label: 'Failures', value: '8 (logged, skipped)' },
       ],
@@ -147,11 +147,11 @@ export const mirrorSnapshot: MirrorSnapshot = {
     },
   ],
   verification: [
-    { id: 'v1', check: 'Base tables in public', expected: '~1,566', observed: '1,726', state: 'done' },
+    { id: 'v1', check: 'Base tables in public', expected: '~1,566', observed: '1,728', state: 'done' },
     { id: 'v2', check: 'Views in public', expected: '~85', observed: '93', state: 'done' },
-    { id: 'v3', check: 'Functions in public', expected: '~1,368', observed: '1,996', state: 'done' },
-    { id: 'v4', check: 'Indexes in public', expected: '≥ source', observed: '4,073', state: 'done' },
-    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '305 applied, 8 failed, 43 remaining', state: 'in_progress' },
+    { id: 'v3', check: 'Functions in public', expected: '~1,368', observed: '2,004', state: 'done' },
+    { id: 'v4', check: 'Indexes in public', expected: '≥ source', observed: '4,076', state: 'done' },
+    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '312 applied, 8 failed, 36 remaining', state: 'in_progress' },
     { id: 'v6', check: 'Storage objects copied', expected: '179', observed: '179 (byte-parity verified)', state: 'done' },
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
     { id: 'v8', check: 'Row counts per table', expected: 'match source export', observed: 'not started', state: 'pending' },
