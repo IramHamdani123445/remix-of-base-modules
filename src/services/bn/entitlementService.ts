@@ -446,7 +446,7 @@ export async function executeEntitlementAction(params: ExecuteEntitlementActionP
     event_type: `ENTITLEMENT_${action}`,
     from_status: ent.status,
     to_status: newStatus,
-    description: narrative || `Entitlement action: ${action}`,
+    notes: narrative || `Entitlement action: ${action}`,
     performed_by: performedBy,
     performed_at: now,
     metadata: {
@@ -541,7 +541,7 @@ export async function updateEntitlementFields(params: UpdateEntitlementParams): 
   await db.from('bn_claim_event').insert({
     claim_id: current.claim_id,
     event_type: 'ENTITLEMENT_UPDATED',
-    description: narrative,
+    notes: narrative,
     performed_by: performedBy,
     performed_at: now,
     metadata: {

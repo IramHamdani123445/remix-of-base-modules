@@ -327,7 +327,7 @@ export async function executeApprovalAction(params: ExecuteApprovalParams): Prom
       await db.from('bn_claim_event').insert({
         claim_id: claimId,
         event_type: 'APPROVAL_BLOCKED',
-        description:
+        notes:
           `User ${performedBy} blocked from ${action} — ` +
           pre.blockers.map(b => b.code).join(', '),
         performed_by: performedBy,
@@ -340,7 +340,7 @@ export async function executeApprovalAction(params: ExecuteApprovalParams): Prom
       await db.from('bn_claim_event').insert({
         claim_id: claimId,
         event_type: 'SELF_APPROVAL_PERMITTED',
-        description:
+        notes:
           `${performedBy} approved a claim they recommended — permitted: ${pre.selfApprovalReason}`,
         performed_by: performedBy,
       });
@@ -384,7 +384,7 @@ export async function executeApprovalAction(params: ExecuteApprovalParams): Prom
     event_type: `APPROVAL_${action}`,
     from_status: claim.status,
     to_status: newStatus,
-    description: narrative || `Approval action: ${action}`,
+    notes: narrative || `Approval action: ${action}`,
     performed_by: performedBy,
     metadata: { reason_code_id: reasonCodeId },
   });

@@ -226,7 +226,7 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
       await db.from('bn_claim_event').insert({
         claim_id: selectedClaim.id,
         event_type: 'ENTITLEMENT_CREATED',
-        description: narrative || 'Entitlement created from approved claim',
+        notes: narrative || 'Entitlement created from approved claim',
         performed_by: 'CURRENT_USER',
         performed_at: now,
         metadata: {
