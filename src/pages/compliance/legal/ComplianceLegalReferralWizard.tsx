@@ -16,7 +16,7 @@ import {
   listComplianceCandidateItems,
   type ComplianceCandidateItem,
 } from "@/services/legal/coreLegalReferralItemService";
-import { forwardComplianceCaseToLegal } from "@/services/legal/complianceForwardingService";
+import { createComplianceLegalReferral } from "@/services/legal/complianceForwardingService";
 import {
   loadComplianceHistory,
   type ComplianceContext,
@@ -329,7 +329,7 @@ export default function ComplianceLegalReferralWizard() {
           source_payload: { raw: c.raw, age_days: c.age_days },
         }));
 
-      const r = await forwardComplianceCaseToLegal({
+      const r = await createComplianceLegalReferral({
         ce_case_id: ceCaseId,
         referral_reason: reasonText.trim() +
           (overrideMissingDocs ? ` [no-docs override: ${overrideMissingDocs}]` : ""),
@@ -337,13 +337,15 @@ export default function ComplianceLegalReferralWizard() {
         priority_code: priority,
         payment_arrangement_id: paymentArrangementId,
         user_code: userCode,
+        created_via: "REFERRAL_WIZARD",
         items,
         documents,
       });
-      toast.success(`Referral ${r.referral_no} submitted to Legal`, {
-        description: `${r.items_count} item(s), ${documents.length} document(s). Track status from Legal Referrals.`,
+      toast.success(`Referral ${r.referral_no} created as DRAFT`, {
+        description: `${r.items_count} item(s), ${documents.length} document(s). Next: complete the legal pack and send for approval — the case is not escalated yet.`,
       });
-      navigate(`/compliance/legal-referrals?highlight=${encodeURIComponent(r.referral_no)}`);
+      navigate(`/compliance/legal/pack-preparation?referral=${encodeURIComponent(r.referral_id)}`);
+
     } catch (e: any) {
       toast.error("Referral failed", { description: e?.message });
     } finally {

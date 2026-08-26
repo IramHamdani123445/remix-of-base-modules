@@ -2,13 +2,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchContributionTrend } from '@/services/dashboardDataService';
+import { DASHBOARD_QUERY_KEYS, fetchContributionTrend } from '@/services/dashboardDataService';
 
 const formatValue = (value: number) => `$${(value / 1000000).toFixed(1)}M`;
 
 export function ContributionTrendChart({ onTitleClick }: { onTitleClick?: () => void } = {}) {
   const { data: trendData, isLoading } = useQuery({
-    queryKey: ['dashboard_contribution_trend'],
+    queryKey: DASHBOARD_QUERY_KEYS.contributionTrend,
     queryFn: fetchContributionTrend,
   });
 

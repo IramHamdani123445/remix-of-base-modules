@@ -1,4 +1,4 @@
-import { useSyncExternalStore, useMemo } from 'react';
+import { useSyncExternalStore, useMemo, useEffect, useState } from 'react';
 import { useDynamicNavigation, MenuItem } from '@/hooks/useDynamicNavigation';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SidebarMenu } from '@/components/ui/sidebar';
@@ -34,6 +34,22 @@ const defaultMenuItems: MenuItem[] = [
 
 export default function DynamicSidebarContent({ collapsed }: DynamicSidebarContentProps) {
   const { menuItems, isLoading, isError, isEmpty, refetch } = useDynamicNavigation();
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingTimedOut(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setLoadingTimedOut(true), 10_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [isLoading]);
+
+  const handleRetry = () => {
+    setLoadingTimedOut(false);
+    void refetch();
+  };
 
   // Subscribe to compliance feature-flag cache so toggling a flag re-renders
   // the sidebar (the navigation react-query cache is keyed on user.id only).
@@ -53,7 +69,7 @@ export default function DynamicSidebarContent({ collapsed }: DynamicSidebarConte
     <ScrollArea className="flex-1 px-3">
       <SidebarMenu className="py-2 space-y-1">
         {/* Loading skeletons */}
-        {isLoading ? (
+        {isLoading && !loadingTimedOut ? (
           <div className="space-y-3 px-1">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="flex items-center gap-3">
@@ -62,15 +78,17 @@ export default function DynamicSidebarContent({ collapsed }: DynamicSidebarConte
               </div>
             ))}
           </div>
-        ) : isError ? (
+        ) : isError || loadingTimedOut ? (
           /* Error state with retry */
           <div className="px-4 py-4 text-center">
             <AlertCircle className="h-6 w-6 text-destructive mx-auto mb-2" />
-            <p className="text-xs text-muted-foreground mb-2">Failed to load menu</p>
+            <p className="text-xs text-muted-foreground mb-2">
+              {loadingTimedOut ? 'Menu is taking too long to load' : 'Failed to load menu'}
+            </p>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
+              onClick={handleRetry}
               className="gap-2"
             >
               <RefreshCw className="h-3 w-3" />
@@ -94,7 +112,7 @@ export default function DynamicSidebarContent({ collapsed }: DynamicSidebarConte
         )}
 
         {/* Separator between dynamic and default menus */}
-        {(visibleMenuItems.length > 0 || isLoading) && (
+        {(visibleMenuItems.length > 0 || (isLoading && !loadingTimedOut)) && (
           <div className="py-2">
             <Separator className="bg-border/50" />
           </div>

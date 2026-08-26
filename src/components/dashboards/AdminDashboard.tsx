@@ -10,7 +10,7 @@ import { QuickActions } from './widgets/QuickActions';
 import { AlertsWidget } from './widgets/AlertsWidget';
 import { FinancialSummaryStrip } from './widgets/FinancialSummaryStrip';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAdminKPIs } from '@/services/dashboardDataService';
+import { DASHBOARD_QUERY_KEYS, fetchAdminKPIs } from '@/services/dashboardDataService';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -18,7 +18,7 @@ export const AdminDashboard = () => {
   const greeting = today.getHours() < 12 ? 'Good Morning' : today.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
 
   const { data: kpis, isLoading: kpisLoading } = useQuery({
-    queryKey: ['dashboard_admin_kpis'],
+    queryKey: DASHBOARD_QUERY_KEYS.adminKpis,
     queryFn: fetchAdminKPIs,
   });
 

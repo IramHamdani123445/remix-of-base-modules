@@ -10,7 +10,7 @@ export type BnClaimStatus =
   | 'DENIED' | 'AWARD_SETUP' | 'PAYMENT_QUEUE' | 'IN_PAYMENT'
   | 'SUSPENDED' | 'CLOSED' | 'PENDING_INFO' | 'WITHDRAWN';
 
-export type BnProductStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
+export type BnProductStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'ACTIVE' | 'SUSPENDED' | 'ARCHIVED';
 export type BnProductCategory = 'SHORT_TERM' | 'LONG_TERM' | 'NON_CONTRIBUTORY' | 'GRANT' | 'PENSION' | 'INJURY' | 'SURVIVOR' | 'ASSISTANCE';
 export type BnPaymentType = 'PERIODIC' | 'LUMP_SUM' | 'BOTH';
 export type BnClaimPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
@@ -550,6 +550,7 @@ export const BN_CLAIM_STATUS_LABELS: Record<BnClaimStatus, string> = {
 export const BN_PRODUCT_STATUS_LABELS: Record<BnProductStatus, string> = {
   DRAFT: 'Draft',
   PENDING_APPROVAL: 'Pending Approval',
+  APPROVED: 'Approved — awaiting publish',
   ACTIVE: 'Active',
   SUSPENDED: 'Suspended',
   ARCHIVED: 'Archived',

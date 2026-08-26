@@ -48,6 +48,8 @@ export const COMPLIANCE_FEATURE_FLAG_RULES: Rule[] = [
   { prefix: '/compliance/waivers', flag: 'compliance.payment.waiver_requests' },
   // Phase 2 — Inspection
   { prefix: '/compliance/field/execution', flag: 'compliance.inspection.field' },
+  { prefix: '/compliance/field/inspections', flag: 'compliance.inspection.field' },
+  { prefix: '/compliance/field/operations', flag: 'compliance.inspection.field' },
   { prefix: '/compliance/field/employer-statements', flag: 'compliance.inspection.field' },
   { prefix: '/compliance/field/findings', flag: 'compliance.inspection.field' },
   { prefix: '/compliance/field/visit', flag: 'compliance.inspection.field' },
