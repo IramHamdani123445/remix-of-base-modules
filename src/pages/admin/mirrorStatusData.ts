@@ -162,7 +162,7 @@ export const mirrorSnapshot: MirrorSnapshot = {
     { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '348 applied; 0 pending', state: 'done' },
     { id: 'v6', check: 'Storage objects copied', expected: '179', observed: '179 (byte-parity verified)', state: 'done' },
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
-    { id: 'v8', check: 'Row counts per table', expected: 'match source export', observed: 'not started', state: 'pending' },
+    { id: 'v8', check: 'Row counts per table', expected: 'match source', observed: '1,730/1,730 streamed, 0 failures; largest tables byte-for-row match', state: 'done' },
     { id: 'v9', check: 'Auth users loadable', expected: 'match source', observed: 'not started', state: 'pending' },
     { id: 'v10', check: 'Edge functions deployed', expected: 'all', observed: 'not started', state: 'manual' },
     { id: 'v11', check: 'Secrets present in target', expected: '29 names', observed: '30 names verified', state: 'done' },
