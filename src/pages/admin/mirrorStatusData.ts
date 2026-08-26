@@ -27,7 +27,7 @@ export interface MirrorSnapshot {
 }
 
 export const mirrorSnapshot: MirrorSnapshot = {
-  capturedAt: '2026-08-26T13:45:00Z',
+  capturedAt: '2026-08-26T17:40:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
   targetLabel: 'external target project (target)',
   steps: [
