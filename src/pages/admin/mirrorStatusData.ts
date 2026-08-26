@@ -29,7 +29,7 @@ export interface MirrorSnapshot {
 export const mirrorSnapshot: MirrorSnapshot = {
   capturedAt: '2026-08-26T11:45:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
-  targetLabel: 'External Supabase project (target)',
+  targetLabel: 'external target project (target)',
   steps: [
     {
       id: 'prep',
