@@ -33,6 +33,7 @@ export interface ApprovalBlocker {
     | 'ELIGIBILITY_STALE'
     | 'CALCULATION_MISSING'
     | 'CALCULATION_STALE'
+    | 'CALCULATION_ZERO'
     | 'MAKER_CHECKER'
     | 'REASON_CODE_REQUIRED'
     | 'JUSTIFICATION_REQUIRED'
@@ -46,6 +47,31 @@ export interface ApprovalPreconditionReport {
   blockers: ApprovalBlocker[];
   /** Which controls were applied, and whether from policy or the strict default. */
   controls: ApprovalControls;
+  /**
+   * Set when the approver recommended the claim and was allowed to approve it
+   * anyway, naming why. Null when maker-checker did not arise.
+   */
+  selfApprovalReason?: 'ADMIN_EXEMPT' | 'PERMITTED_BY_POLICY' | null;
+}
+
+/**
+ * Is this approver exempt from maker-checker?
+ *
+ * Administrators are, deliberately: they are the break-glass route when no
+ * second approver is available. Recorded on the report as
+ * `selfApprovalReason` so an audit can see WHY separation of duties did not
+ * apply to a given approval, rather than finding it silently absent.
+ */
+async function approverIsAdmin(approverUserCode: string): Promise<boolean> {
+  const code = String(approverUserCode ?? '').trim();
+  if (!code) return false;
+  const { data, error } = await db
+    .from('user_roles')
+    .select('role, user_id')
+    .eq('user_id', code);
+  // A failed role lookup must not grant the exemption.
+  if (error || !Array.isArray(data)) return false;
+  return data.some((r: any) => String(r.role ?? '').toLowerCase() === 'admin');
 }
 
 /**
@@ -58,6 +84,7 @@ export async function checkApprovalPreconditions(
   decision: { reasonCode?: string | null; narrative?: string | null } = {},
 ): Promise<ApprovalPreconditionReport> {
   const blockers: ApprovalBlocker[] = [];
+  let selfApprovalReason: ApprovalPreconditionReport['selfApprovalReason'] = null;
 
   // ── the claim itself, for the staleness flags and the policy lookup ──
   const { data: claim, error: claimError } = await db
@@ -180,8 +207,9 @@ export async function checkApprovalPreconditions(
   // ── 3. calculation ──────────────────────────────────────────────────
   const { data: calc, error: calcError } = await db
     .from('bn_claim_calculation')
-    .select('id')
+    .select('id, weekly_rate, monthly_rate, lump_sum, calc_date')
     .eq('claim_id', claimId)
+    .order('calc_date', { ascending: false })
     .limit(1);
   if (calcError) {
     blockers.push({
@@ -197,6 +225,32 @@ export async function checkApprovalPreconditions(
         'No calculation exists for this claim, so there is no amount to approve. ' +
         'Run the calculation before approving.',
     });
+  } else {
+    // A calculation that produced nothing is not an entitlement. 12 of the 36
+    // calculations in this database are zero on every rate, and approving one
+    // creates an ACTIVE entitlement worth nothing — which is what happened to
+    // BN-20260606-65755.
+    //
+    // Checked as "every amount is zero", not "the weekly rate is zero": a
+    // lump-sum benefit legitimately has no weekly or monthly rate, and a
+    // periodic one legitimately has no lump sum.
+    const latest = calc[0] as any;
+    const amount = (v: unknown) => {
+      const n = Number(v ?? 0);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const weekly = amount(latest.weekly_rate);
+    const monthly = amount(latest.monthly_rate);
+    const lump = amount(latest.lump_sum);
+    if (weekly === 0 && monthly === 0 && lump === 0) {
+      blockers.push({
+        code: 'CALCULATION_ZERO',
+        message:
+          'The calculation produced no payable amount — weekly, monthly and lump sum are all ' +
+          'zero. There is nothing to award. Re-run the calculation and check the product’s ' +
+          'formula and the claimant’s contribution record before approving.',
+      });
+    }
   }
 
   if (claim.calculation_stale) {
@@ -235,16 +289,23 @@ export async function checkApprovalPreconditions(
         'so that approval is made by a second person.',
     });
   } else if (
-    !controls.selfApprovalAllowed &&
     String(recommendation.performed_by ?? '').trim().toUpperCase() ===
     String(approverUserCode ?? '').trim().toUpperCase()
   ) {
-    blockers.push({
-      code: 'MAKER_CHECKER',
-      message:
-        `Maker-checker violation: ${approverUserCode} recommended this claim and cannot also ` +
-        'approve it. It must be approved by a different officer.',
-    });
+    // The approver recommended this claim. Two things can permit it anyway:
+    // the product's policy, or the approver being an administrator.
+    if (controls.selfApprovalAllowed) {
+      selfApprovalReason = 'PERMITTED_BY_POLICY';
+    } else if (await approverIsAdmin(approverUserCode)) {
+      selfApprovalReason = 'ADMIN_EXEMPT';
+    } else {
+      blockers.push({
+        code: 'MAKER_CHECKER',
+        message:
+          `Maker-checker violation: ${approverUserCode} recommended this claim and cannot also ` +
+          'approve it. It must be approved by a different officer.',
+      });
+    }
   }
 
   // ── 5. reason code and justification, where the policy requires them ──
@@ -261,7 +322,7 @@ export async function checkApprovalPreconditions(
     });
   }
 
-  return { ok: blockers.length === 0, blockers, controls };
+  return { ok: blockers.length === 0, blockers, controls, selfApprovalReason };
 }
 
 /** One refusal sentence naming every failed condition, for the officer. */
