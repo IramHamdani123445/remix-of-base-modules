@@ -9,12 +9,19 @@ filled in by someone who owns the commercial relationship.
 
 | Situation | Use |
 |---|---|
-| First call / cold intro / one-pager to leave behind | `01-executive-brief.md` |
+| Leave-behind / single page to email | `10-one-pager.md` |
+| First call / cold intro | `01-executive-brief.md` |
 | "What does it actually do?" / RFP functional response | `02-feature-catalogue.md` |
-| "Why you and not a big vendor?" / technical due diligence | `03-platform-differentiators.md` |
-| Preparing for a discovery meeting or handling pushback | `04-discovery-and-objections.md` |
+| "Why you and not a big vendor?" | `03-platform-differentiators.md` |
+| Preparing for discovery or handling pushback | `04-discovery-and-objections.md` |
 | Live or recorded product demo | `05-demo-script.md` |
 | Writing a proposal, tender response, or MoU | `06-proposal-boilerplate.md` |
+| CIO / architect / security review | `07-technical-architecture.md` |
+| "How long, how risky, how do we migrate?" | `08-implementation-and-migration.md` |
+| Formal tender compliance grid | `09-rfp-response-matrix.md` |
+| Cold outreach and follow-up emails | `11-outreach-templates.md` |
+| Buyer questions and domain vocabulary | `12-faq-and-glossary.md` |
+
 
 ## Ground rules for anyone using this pack
 
