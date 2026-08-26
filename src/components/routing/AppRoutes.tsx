@@ -487,6 +487,7 @@ const FieldSecurity = lazy(() => import('@/pages/admin/data-access/FieldSecurity
 const RoleDataPolicies = lazy(() => import('@/pages/admin/data-access/RoleDataPolicies'));
 const UserDataOverrides = lazy(() => import('@/pages/admin/data-access/UserDataOverrides'));
 const PolicyTestConsole = lazy(() => import('@/pages/admin/data-access/PolicyTestConsole'));
+const MirrorStatus = lazy(() => import('@/pages/admin/MirrorStatus'));
 
 // System Cleanup
 const SystemCleanupDashboard = lazy(() => import('@/pages/admin/system-cleanup/SystemCleanupDashboard'));
