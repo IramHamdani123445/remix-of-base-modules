@@ -27,7 +27,7 @@ export interface MirrorSnapshot {
 }
 
 export const mirrorSnapshot: MirrorSnapshot = {
-  capturedAt: '2026-08-26T07:36:00Z',
+  capturedAt: '2026-08-26T10:20:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
   targetLabel: 'External Supabase project (target)',
   steps: [
@@ -56,27 +56,28 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'baseline',
       title: '3. Baseline schema apply',
       detail:
-        'Applying the committed baseline schema (public) into the empty target: tables, views, functions, enums, indexes, constraints.',
-      state: 'in_progress',
-      progress: 79,
+        'Committed baseline schema (public) fully applied into the target: tables, views, functions, enums, indexes, constraints.',
+      state: 'done',
+      progress: 100,
       metrics: [
-        { label: 'Lines streamed', value: '132,467 / 167,261' },
-        { label: 'Tables', value: '1,566' },
+        { label: 'Lines streamed', value: '167,261 / 167,261' },
+        { label: 'Tables', value: '1,567' },
         { label: 'Views', value: '85' },
-        { label: 'Functions', value: '1,368' },
-        { label: 'Indexes', value: '3,680' },
+        { label: 'Functions', value: '1,369' },
+        { label: 'Indexes', value: '3,681' },
       ],
     },
     {
       id: 'migrations',
       title: '4. Post-cutoff migrations',
       detail:
-        'The 348 migrations created after the baseline cutoff, applied in order and recorded in the target migration ledger. Starts automatically when the baseline finishes.',
-      state: 'pending',
-      progress: 0,
+        'The 348 migrations created after the baseline cutoff, applied in order and recorded in the target migration ledger. Running now; failures are logged and skipped rather than aborting the run.',
+      state: 'in_progress',
+      progress: 13,
       metrics: [
-        { label: 'Applied', value: '0 / 348' },
-        { label: 'Ledger', value: 'not created yet' },
+        { label: 'Applied', value: '45 / 348' },
+        { label: 'Ledger', value: 'created' },
+        { label: 'Failures', value: '0' },
       ],
     },
     {
@@ -145,11 +146,11 @@ export const mirrorSnapshot: MirrorSnapshot = {
     },
   ],
   verification: [
-    { id: 'v1', check: 'Base tables in public', expected: '~1,566', observed: '1,566', state: 'done' },
+    { id: 'v1', check: 'Base tables in public', expected: '~1,566', observed: '1,567', state: 'done' },
     { id: 'v2', check: 'Views in public', expected: '~85', observed: '85', state: 'done' },
-    { id: 'v3', check: 'Functions in public', expected: '~1,368', observed: '1,368', state: 'done' },
-    { id: 'v4', check: 'Indexes in public', expected: '≥ source', observed: '3,680 (baseline still applying)', state: 'in_progress' },
-    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '0', state: 'pending' },
+    { id: 'v3', check: 'Functions in public', expected: '~1,368', observed: '1,369', state: 'done' },
+    { id: 'v4', check: 'Indexes in public', expected: '≥ source', observed: '3,681 (baseline complete)', state: 'done' },
+    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '45 applied, 0 failed', state: 'in_progress' },
     { id: 'v6', check: 'Storage objects copied', expected: '179', observed: '179 (byte-parity verified)', state: 'done' },
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
     { id: 'v8', check: 'Row counts per table', expected: 'match source export', observed: 'not started', state: 'pending' },
