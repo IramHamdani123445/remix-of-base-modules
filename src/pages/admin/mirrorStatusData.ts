@@ -139,19 +139,27 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'functions',
       title: '9. Edge functions',
       detail:
-        'Functions live in this repository and must be deployed once against the target project with its own CLI login.',
+        'Deployment is scripted and ready (scripts/mirror/deploy-edge-functions.sh): it deploys all 142 functions one at a time, reuses the verify_jwt settings already in supabase/config.toml, logs each deploy and lists failures for re-run. It needs a personal access token for the account that owns the target project, which this environment does not hold — run it once with that token. See docs/mirror-step9-10-edge-functions-and-secrets.md.',
       state: 'manual',
       progress: 0,
+      metrics: [
+        { label: 'Functions to deploy', value: '142' },
+        { label: 'Script', value: 'ready' },
+      ],
     },
     {
       id: 'secrets-app',
       title: '10. Application secrets',
       detail:
-        '29 secret names must be re-entered in the target project. Values are encrypted at rest and cannot be exported — re-issue them from the original providers (Resend, Twilio, Turnstile, DMS) or regenerate the internal tokens.',
+        '39 secret names referenced by the function code are inventoried and grouped (provider keys, internal shared secrets, mode flags, cross-project references) in docs/mirror-step9-10-edge-functions-and-secrets.md. Values are encrypted at rest and cannot be exported — re-issue them from the original providers (Resend, Twilio, Turnstile, DMS) or regenerate the internal tokens. Keep live-sending flags off in the mirror.',
       state: 'manual',
       progress: 0,
-      metrics: [{ label: 'Secret names', value: '29' }],
+      metrics: [
+        { label: 'Secret names', value: '39' },
+        { label: 'Platform-injected', value: '3 (do not set)' },
+      ],
     },
+
     {
       id: 'cutover',
       title: '11. Parity verification & cutover decision',
@@ -171,8 +179,9 @@ export const mirrorSnapshot: MirrorSnapshot = {
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
     { id: 'v8', check: 'Row counts per table', expected: 'match source', observed: '1,730/1,730 streamed, 0 failures; largest tables byte-for-row match', state: 'done' },
     { id: 'v9', check: 'Auth users loadable', expected: 'match source', observed: '55 users + 55 identities, hashes intact', state: 'done' },
-    { id: 'v10', check: 'Edge functions deployed', expected: 'all', observed: 'not started', state: 'manual' },
-    { id: 'v11', check: 'Secrets present in target', expected: '29 names', observed: '30 names verified', state: 'done' },
+    { id: 'v10', check: 'Edge functions deployed', expected: '142', observed: 'script ready; needs target access token', state: 'manual' },
+    { id: 'v11', check: 'Secrets present in target', expected: '39 names', observed: '30 names verified; remainder to re-enter', state: 'manual' },
+
     { id: 'v12', check: 'Source database untouched', expected: 'read-only throughout', observed: 'confirmed — scripts refuse the source URL', state: 'done' },
   ],
 };
