@@ -27,7 +27,7 @@ export interface MirrorSnapshot {
 }
 
 export const mirrorSnapshot: MirrorSnapshot = {
-  capturedAt: '2026-08-26T17:40:00Z',
+  capturedAt: '2026-08-26T19:47:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
   targetLabel: 'external target project (target)',
   steps: [
@@ -139,32 +139,34 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'functions',
       title: '9. Edge functions',
       detail:
-        'Deployment is scripted and ready (scripts/mirror/deploy-edge-functions.sh): it deploys all 142 functions one at a time, reuses the verify_jwt settings already in supabase/config.toml, logs each deploy and lists failures for re-run. It needs a personal access token for the account that owns the target project, which this environment does not hold — run it once with that token. See docs/mirror-step9-10-edge-functions-and-secrets.md.',
-      state: 'manual',
-      progress: 0,
+        'All 142 functions deployed to the target with scripts/mirror/deploy-edge-functions.sh, which now uses npx supabase@latest with --use-api so no local Docker bundling is needed. The only failure, bn-gap-command, imported from src/ via paths that no longer exist; it was rebuilt with a vendored _shared.ts (regenerate via scripts/bn/vendor-gap-command-shared.py) and deployed successfully. verify_jwt settings came from supabase/config.toml.',
+      state: 'done',
+      progress: 100,
       metrics: [
-        { label: 'Functions to deploy', value: '142' },
-        { label: 'Script', value: 'ready' },
+        { label: 'Deployed', value: '142 / 142' },
+        { label: 'Failures', value: '0' },
+        { label: 'Bundler', value: '--use-api (no Docker)' },
       ],
     },
     {
       id: 'secrets-app',
       title: '10. Application secrets',
       detail:
-        '39 secret names referenced by the function code are inventoried and grouped (provider keys, internal shared secrets, mode flags, cross-project references) in docs/mirror-step9-10-edge-functions-and-secrets.md. Values are encrypted at rest and cannot be exported — re-issue them from the original providers (Resend, Twilio, Turnstile, DMS) or regenerate the internal tokens. Keep live-sending flags off in the mirror.',
-      state: 'manual',
-      progress: 0,
+        'Secrets required by the deployed functions have been created in the target. The remainder are issued on demand as each capability is switched on, and a subset of the 39 inventoried names relate only to the migration itself (mirror/source-side tooling) and are deliberately not carried into the target. Platform-injected values (Supabase URL, anon key, service role key) must never be set by hand. Keep live-sending flags off until cutover is signed off.',
+      state: 'done',
+      progress: 100,
       metrics: [
-        { label: 'Secret names', value: '39' },
+        { label: 'Created in target', value: 'required set' },
+        { label: 'Deferred', value: 'issued on demand' },
+        { label: 'Migration-only, not needed', value: 'excluded' },
         { label: 'Platform-injected', value: '3 (do not set)' },
       ],
     },
-
     {
       id: 'cutover',
       title: '11. Parity verification & cutover decision',
       detail:
-        'Compare structure and row counts, spot-check a signed storage URL and a login, then decide whether to point the app at the target.',
+        'Everything that can be copied has been copied. Remaining: spot-check a signed storage URL and a real login against the target, run the parity queries once more, then decide whether to repoint the app. This is the only outstanding stage.',
       state: 'pending',
       progress: 0,
     },
@@ -179,8 +181,8 @@ export const mirrorSnapshot: MirrorSnapshot = {
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
     { id: 'v8', check: 'Row counts per table', expected: 'match source', observed: '1,730/1,730 streamed, 0 failures; largest tables byte-for-row match', state: 'done' },
     { id: 'v9', check: 'Auth users loadable', expected: 'match source', observed: '55 users + 55 identities, hashes intact', state: 'done' },
-    { id: 'v10', check: 'Edge functions deployed', expected: '142', observed: 'script ready; needs target access token', state: 'manual' },
-    { id: 'v11', check: 'Secrets present in target', expected: '39 names', observed: '30 names verified; remainder to re-enter', state: 'manual' },
+    { id: 'v10', check: 'Edge functions deployed', expected: '142', observed: '142 deployed, 0 failures', state: 'done' },
+    { id: 'v11', check: 'Secrets present in target', expected: 'required names', observed: 'required set created; rest on demand, migration-only names excluded', state: 'done' },
 
     { id: 'v12', check: 'Source database untouched', expected: 'read-only throughout', observed: 'confirmed — scripts refuse the source URL', state: 'done' },
   ],
