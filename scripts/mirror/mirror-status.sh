@@ -9,7 +9,8 @@ psql "$MIRROR_TARGET_DATABASE_URL" -X -q -c "
     (SELECT count(*) FROM information_schema.views  WHERE table_schema='public') AS views,
     (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public') AS functions,
     (SELECT count(*) FROM pg_indexes WHERE schemaname='public') AS indexes,
-    (SELECT count(*) FROM supabase_migrations.schema_migrations) AS migrations_recorded" 2>&1
+    (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+       WHERE n.nspname='supabase_migrations' AND c.relname='schema_migrations') AS ledger_present" 2>&1
 
 echo
 echo "=== baseline apply ==="
