@@ -61,6 +61,27 @@ export interface ClaimIntakeCommunicationOutcome {
   summary: string;
 }
 
+/**
+ * How the claim reached a work queue (BUG-33).
+ *
+ *   WORKFLOW          — a workflow started and owns the routing
+ *   DIRECT_ASSIGNMENT — no executable workflow, so the claim was assigned
+ *                       straight to the workbasket already resolved for it
+ *   UNASSIGNED        — neither was possible; the claim has no owner and this
+ *                       must be reported, never left silent
+ */
+export type ClaimRoutingOutcome = 'WORKFLOW' | 'DIRECT_ASSIGNMENT' | 'UNASSIGNED';
+
+export interface ClaimIntakeRoutingResult {
+  outcome: ClaimRoutingOutcome;
+  workbasketId: string | null;
+  workbasketName: string | null;
+  /** True when the product has no executable workflow — a configuration fault. */
+  workflowMisconfigured: boolean;
+  /** User-safe sentence describing where the claim went, or why it went nowhere. */
+  summary: string;
+}
+
 export interface SubmitClaimApplicationResult {
   claimId: string;
   claimNumber: string;
@@ -68,6 +89,8 @@ export interface SubmitClaimApplicationResult {
   workflowEngine: 'CENTRAL' | 'BN_FALLBACK';
   /** Claimant acknowledgement outcome — evidence only, never fatal. */
   communication: ClaimIntakeCommunicationOutcome;
+  /** Where the claim landed. A claim with no owner is reported here (BUG-33). */
+  routing: ClaimIntakeRoutingResult;
 }
 
 const CLAIM_COMMUNICATION_SUMMARY: Record<string, string> = {
@@ -182,6 +205,18 @@ export async function submitClaimApplication(
     ? 'CENTRAL'
     : 'BN_FALLBACK';
 
+  // BUG-33 — a claim must never be left without an owner. The workbasket is
+  // resolved below whether or not a workflow can be started; if no workflow
+  // starts, the claim is assigned to that workbasket directly rather than the
+  // workbasket being discarded.
+  const routing: ClaimIntakeRoutingResult = {
+    outcome: workflowInstanceId ? 'WORKFLOW' : 'UNASSIGNED',
+    workbasketId: null,
+    workbasketName: null,
+    workflowMisconfigured: false,
+    summary: '',
+  };
+
   // ─── Central Workflow Engine Integration ──────────────────────────
   // If RPC did not bind a workflow instance, attempt the central engine here.
   try {
@@ -228,6 +263,12 @@ export async function submitClaimApplication(
         }
       }
 
+      // The workbasket is now known whatever happens next — keep it.
+      routing.workbasketId = workbasketId;
+      // A product whose workflow template has no executable definition is a
+      // configuration fault, not a normal path.
+      routing.workflowMisconfigured = !workflowDefinitionId;
+
       if (workflowDefinitionId) {
         const instanceId = await triggerBnWorkflow({
           sourceModule: BN_WORKFLOW_MODULES.CLAIM,
@@ -250,11 +291,26 @@ export async function submitClaimApplication(
         if (instanceId) {
           workflowInstanceId = instanceId;
           workflowEngine = 'CENTRAL';
+          routing.outcome = 'WORKFLOW';
           await db
             .from('bn_claim')
             .update({ workflow_instance_id: instanceId })
             .eq('id', claimId);
         }
+      }
+
+      // ─── BUG-33 fallback: assign directly when no workflow took ownership ──
+      if (!workflowInstanceId && workbasketId) {
+        const { assignClaimToWorkbasket } = await import(
+          '@/services/bn/approvalLevelService'
+        );
+        await assignClaimToWorkbasket(
+          claimId,
+          workbasketId,
+          input.submittedByUserId ?? 'SYSTEM',
+          'Assigned at intake — no executable workflow for this product/channel',
+        );
+        routing.outcome = 'DIRECT_ASSIGNMENT';
       }
     }
 
@@ -270,6 +326,67 @@ export async function submitClaimApplication(
   } catch (wfErr) {
     // Non-blocking: claim is already persisted, surface as console warning.
     console.warn('[claimIntake] Workflow integration error (non-fatal):', wfErr);
+  }
+
+  // ─── BUG-33: routing must be reported, never silent ────────────────
+  // Previously a claim with no workflow was saved and left with no owner, and
+  // the submission reported complete success. The outcome is now named, given a
+  // workbasket label for the officer, and recorded against the claim.
+  try {
+    if (routing.workbasketId) {
+      const { data: basket } = await db
+        .from('bn_workbasket')
+        .select('id, basket_name')
+        .eq('id', routing.workbasketId)
+        .maybeSingle();
+      routing.workbasketName = (basket as any)?.basket_name ?? null;
+    }
+
+    const basketLabel = routing.workbasketName ?? routing.workbasketId ?? 'a workbasket';
+    routing.summary =
+      routing.outcome === 'WORKFLOW'
+        ? `Claim routed by workflow${routing.workbasketName ? ` to ${basketLabel}` : ''}.`
+        : routing.outcome === 'DIRECT_ASSIGNMENT'
+          ? `No executable workflow is configured for this product and channel, so the claim was assigned directly to ${basketLabel}. Report this to configuration — the workflow template has no workflow definition linked.`
+          : 'This claim has NOT been placed in any work queue: no workflow could be started and no workbasket is configured for this product and channel. It has no owner and will not appear in the Claim Queue. Escalate to configuration immediately.';
+
+    await logBnWorkflowEvent({
+      entityId: claimId,
+      sourceModule: BN_WORKFLOW_MODULES.CLAIM,
+      action:
+        routing.outcome === 'UNASSIGNED'
+          ? 'CLAIM_UNASSIGNED'
+          : routing.outcome === 'DIRECT_ASSIGNMENT'
+            ? 'CLAIM_ASSIGNED_WITHOUT_WORKFLOW'
+            : 'CLAIM_ROUTED',
+      performedBy: input.submittedByUserId ?? 'PUBLIC',
+      narrative: routing.summary,
+      workflowInstanceId: workflowInstanceId ?? undefined,
+    });
+
+    // A product that cannot route a claim is a configuration defect. Recorded
+    // as a critical audit entry so it is visible outside this one submission.
+    if (routing.outcome !== 'WORKFLOW') {
+      const { auditConfigChange } = await import('@/services/bn/audit/bnAuditService');
+      await auditConfigChange({
+        action: 'UPDATE',
+        entityType: 'bn_product_channel_config',
+        entityId: row.product_version_id ?? claimId,
+        afterValue: {
+          defect: 'CLAIM_ROUTING_UNAVAILABLE',
+          product_code: input.productCode,
+          channel: input.channel,
+          claim_number: claimNumber,
+          workflow_misconfigured: routing.workflowMisconfigured,
+          routing_outcome: routing.outcome,
+          detail: routing.summary,
+        },
+        performedBy: input.submittedByUserId ?? 'PUBLIC',
+        critical: routing.outcome === 'UNASSIGNED',
+      });
+    }
+  } catch (routeErr) {
+    console.warn('[claimIntake] Routing report failed (non-fatal):', routeErr);
   }
 
   // ─── Mandatory Submission Audit ───────────────────────────────────
@@ -313,6 +430,7 @@ export async function submitClaimApplication(
     workflowInstanceId,
     workflowEngine,
     communication,
+    routing,
   };
 }
 

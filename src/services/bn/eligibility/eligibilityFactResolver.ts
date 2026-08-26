@@ -56,7 +56,7 @@ function yearsBetween(fromIso: string, toIso: string): number {
 async function loadIpMaster(ssn: string) {
   const { data } = await db
     .from('ip_master')
-    .select('ssn, dob, sex, status, date_died')
+    .select('ssn, dob, sex, status, date_died, registration_date, spouse_ssn')
     .eq('ssn', ssn)
     .maybeSingle();
   return data ?? null;
@@ -425,6 +425,26 @@ const RESOLVERS: Record<string, ResolverFn> = {
       resolveDocStatusSchoolCert: make(['SCHOOL_CERT', 'SCHOOL_CERTIFICATE']),
       resolveDocStatusLifeCert: make(['LIFE_CERT', 'LIFE_CERTIFICATE']),
       resolveDocStatusBirthCert: make(['BIRTH_CERT', 'BIRTH_CERTIFICATE']),
+      /**
+       * BUG-31 — any `document.<code>.status` fact, not only the seven named
+       * above. Products attach document rules faster than the registry gains
+       * named entries, and an unregistered one used to block every claim on
+       * that product. The document type code is derived from the fact key.
+       */
+      resolveDocStatusByPattern: async (ctx: EligibilityContext) => {
+        const factKey = String(ctx.extras?.['__fact_key'] ?? '');
+        const m = /^document\.(.+)\.status$/.exec(factKey);
+        if (!m) return null;
+        const base = m[1].toUpperCase();
+        const codes = Array.from(new Set([
+          base,
+          base.replace(/_CERTIFICATE$/, '_CERT'),
+          base.replace(/_CERT$/, '_CERTIFICATE'),
+          base.replace(/_REPORT$/, '_RPT'),
+          base.replace(/_RPT$/, '_REPORT'),
+        ]));
+        return make(codes)(ctx);
+      },
     };
   })(),
 
@@ -483,27 +503,236 @@ const RESOLVERS: Record<string, ResolverFn> = {
   },
   resolveMedicalBoardDecision: async (ctx) => {
     if (!ctx.claimId) return null;
+    // bn_medical_recommendation has no `decision` column — it is `board_decision`.
+    // Selecting the wrong name made PostgREST return 42703, so this resolver
+    // returned null for every claim and the rule could never be evaluated.
     const { data, error } = await db
       .from('bn_medical_recommendation')
-      .select('decision')
+      .select('board_decision')
       .eq('claim_id', ctx.claimId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (error) return null;
-    return (data as any)?.decision ?? null;
+    return (data as any)?.board_decision ?? null;
   },
   resolveMedicalInvalidityConfirmed: async (ctx) => {
     if (!ctx.claimId) return false;
     const { data, error } = await db
       .from('bn_medical_recommendation')
-      .select('decision')
+      .select('board_decision')
       .eq('claim_id', ctx.claimId)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (error) return false;
-    return String((data as any)?.decision ?? '').toUpperCase() === 'APPROVED';
+    return String((data as any)?.board_decision ?? '').toUpperCase() === 'APPROVED';
+  },
+
+  /**
+   * BUG-32 — the Maternity Grant may be established on the contributions of the
+   * insured husband rather than the claimant's own. SSB's own claim form asks
+   * "Are you the wife of an insured man?", and its guidance states the grant can
+   * be paid on the husband's record where the mother does not qualify herself.
+   *
+   * The claimant is still the woman; only the CONTRIBUTION BASIS moves. These
+   * facts therefore resolve the spouse's contribution record, leaving every
+   * claimant-identity fact (gender, age, status) pointed at the claimant.
+   */
+  ...(() => {
+    const spouseSummary = async (ctx: EligibilityContext, field: string) => {
+      if (!ctx.ssn || !ctx.claimDate) return null;
+      const ip = await loadIpMaster(ctx.ssn);
+      const spouseSsn = (ip as any)?.spouse_ssn ?? null;
+      // No spouse recorded is not "zero contributions" — it is unknown, and a
+      // rule on this basis must not be judged against a value we do not have.
+      if (!spouseSsn) return null;
+      const { data, error } = await db.rpc('bn_get_contribution_summary', {
+        p_ssn: spouseSsn,
+        p_from_date: '1900-01-01',
+        p_to_date: ctx.claimDate,
+      });
+      if (error) return null;
+      const row = (Array.isArray(data) ? data[0] : data) ?? null;
+      if (!row) return null;
+      const v = (row as any)[field];
+      return v === null || v === undefined ? null : Number(v);
+    };
+    return {
+      resolveSpouseContributionTotalWeeks: (ctx: EligibilityContext) =>
+        spouseSummary(ctx, 'total_weeks'),
+      resolveSpouseContributionPaidWeeks: (ctx: EligibilityContext) =>
+        spouseSummary(ctx, 'paid_weeks'),
+      resolveSpouseIsInsured: async (ctx: EligibilityContext) => {
+        if (!ctx.ssn) return null;
+        const ip = await loadIpMaster(ctx.ssn);
+        const spouseSsn = (ip as any)?.spouse_ssn ?? null;
+        if (!spouseSsn) return null;
+        const spouse = await loadIpMaster(spouseSsn);
+        if (!spouse) return false;
+        return String((spouse as any).status ?? '').toUpperCase() === 'A'
+          || String((spouse as any).status ?? '').toUpperCase() === 'ACTIVE';
+      },
+    };
+  })(),
+
+  /**
+   * Facts whose rules were already configured but had no resolver, so every
+   * claim on those products was held for manual review. Each reads a column
+   * that already exists — nothing here is derived from a table that had to be
+   * created, and none of them returns a value it cannot substantiate.
+   */
+  resolveMedicalBoardDecisionPresent: async (ctx) => {
+    if (!ctx.claimId) return false;
+    const { data, error } = await db
+      .from('bn_medical_recommendation')
+      .select('id, board_decision')
+      .eq('claim_id', ctx.claimId)
+      .limit(1);
+    if (error) return false;
+    return Array.isArray(data) && data.length > 0 && !!(data[0] as any).board_decision;
+  },
+
+  resolvePersonAgeAtFirstRegistration: async (ctx) => {
+    if (!ctx.ssn) return null;
+    const ip = await loadIpMaster(ctx.ssn);
+    if (!ip?.dob || !(ip as any).registration_date) return null;
+    return yearsBetween(ip.dob, (ip as any).registration_date);
+  },
+
+  resolveDeathConfirmed: async (ctx) => {
+    // The claim records the death date for a survivors/funeral claim; the
+    // insured person's own record is the fallback.
+    if (ctx.claimId) {
+      const { data } = await db
+        .from('bn_claim')
+        .select('id, death_date')
+        .eq('id', ctx.claimId)
+        .maybeSingle();
+      if ((data as any)?.death_date) return true;
+    }
+    if (!ctx.ssn) return null;
+    const ip = await loadIpMaster(ctx.ssn);
+    if (!ip) return null;
+    return !!(ip as any).date_died;
+  },
+
+  resolveWeeksToExpectedConfinement: async (ctx) => {
+    if (!ctx.claimId) return null;
+    const { data } = await db
+      .from('bn_claim')
+      .select('id, claim_date, expected_confinement_date')
+      .eq('id', ctx.claimId)
+      .maybeSingle();
+    const row = data as any;
+    if (!row?.expected_confinement_date || !row?.claim_date) return null;
+    const days = Math.floor(
+      (Date.parse(row.expected_confinement_date) - Date.parse(row.claim_date)) / 86_400_000,
+    );
+    return Number.isFinite(days) ? days / 7 : null;
+  },
+
+  resolveContinuousIllnessDays: async (ctx) => {
+    if (!ctx.claimId) return null;
+    const { data } = await db
+      .from('bn_claim')
+      .select('id, claim_date, sickness_start_date')
+      .eq('id', ctx.claimId)
+      .maybeSingle();
+    const row = data as any;
+    if (!row?.sickness_start_date) return null;
+    const to = row.claim_date ?? ctx.claimDate;
+    if (!to) return null;
+    const days = Math.floor((Date.parse(to) - Date.parse(row.sickness_start_date)) / 86_400_000);
+    return Number.isFinite(days) ? days : null;
+  },
+
+  resolveApprovedExpenseAmount: async (ctx) => {
+    if (!ctx.claimId) return null;
+    const { data, error } = await db
+      .from('bn_medical_claim_expense')
+      .select('approved_amount')
+      .eq('claim_id', ctx.claimId);
+    if (error || !Array.isArray(data)) return null;
+    // No expense rows means nothing has been approved yet — a real zero, not
+    // an unknown, so the rule can be compared against its threshold.
+    return data.reduce((sum: number, r: any) => sum + Number(r.approved_amount ?? 0), 0);
+  },
+
+  resolveWeeksSincePriorSickness: async (ctx) => {
+    if (!ctx.ssn || !ctx.claimDate) return null;
+    const { data } = await db
+      .from('bn_claim')
+      .select('id, ssn, claim_date, sickness_start_date')
+      .eq('ssn', ctx.ssn)
+      .neq('id', ctx.claimId ?? '')
+      .not('sickness_start_date', 'is', null)
+      .lt('claim_date', ctx.claimDate)
+      .order('claim_date', { ascending: false })
+      .limit(1);
+    const prior = Array.isArray(data) ? (data[0] as any) : null;
+    if (!prior?.claim_date) return null;
+    const days = Math.floor((Date.parse(ctx.claimDate) - Date.parse(prior.claim_date)) / 86_400_000);
+    return Number.isFinite(days) ? days / 7 : null;
+  },
+
+  resolveQualifyingSurvivor: async (ctx) => {
+    if (!ctx.claimId) return null;
+    const { data } = await db
+      .from('bn_claim_participant')
+      .select('id, relationship_to_insured, participant_role')
+      .eq('claim_id', ctx.claimId)
+      .limit(50);
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const QUALIFYING = new Set([
+      'SPOUSE', 'WIDOW', 'WIDOWER', 'CHILD', 'DEPENDENT_CHILD',
+      'PARENT', 'DEPENDENT_PARENT',
+    ]);
+    const relationships = data
+      .map((r: any) => String(r.relationship_to_insured ?? '').trim().toUpperCase())
+      .filter(Boolean);
+    // Relationship not captured on any participant — unknown, not "false".
+    if (relationships.length === 0) return null;
+    return relationships.some((r) => QUALIFYING.has(r));
+  },
+
+  resolveSpouseRelationshipValid: async (ctx) => {
+    if (!ctx.claimId) return null;
+    const { data } = await db
+      .from('bn_claim_participant')
+      .select('id, relationship_to_insured')
+      .eq('claim_id', ctx.claimId)
+      .limit(50);
+    if (!Array.isArray(data)) return null;
+    const relationships = data
+      .map((r: any) => String(r.relationship_to_insured ?? '').trim().toUpperCase())
+      .filter(Boolean);
+    if (relationships.length === 0) return null;
+    return relationships.some((r) => ['SPOUSE', 'WIDOW', 'WIDOWER'].includes(r));
+  },
+
+  resolveBeneficiaryChildAge: async (ctx) => {
+    if (!ctx.claimId || !ctx.claimDate) return null;
+    const { data } = await db
+      .from('bn_claim_participant')
+      .select('id, ssn, relationship_to_insured, participant_role')
+      .eq('claim_id', ctx.claimId)
+      .limit(50);
+    if (!Array.isArray(data)) return null;
+    const children = data.filter((r: any) => {
+      const rel = String(r.relationship_to_insured ?? '').trim().toUpperCase();
+      const role = String(r.participant_role ?? '').trim().toUpperCase();
+      return rel.includes('CHILD') || role.includes('CHILD');
+    });
+    if (children.length === 0) return null;
+    // The youngest child governs a child-age ceiling rule.
+    const ages: number[] = [];
+    for (const child of children as any[]) {
+      if (!child.ssn) continue;
+      const ip = await loadIpMaster(child.ssn);
+      if (ip?.dob) ages.push(yearsBetween(ip.dob, ctx.claimDate));
+    }
+    return ages.length > 0 ? Math.min(...ages) : null;
   },
 
   // Beneficiary / Applicant / Payment / Means test — pragmatic implementations
@@ -643,12 +872,39 @@ const RESOLVERS: Record<string, ResolverFn> = {
   },
 };
 
+/** `document.<type_code>.status` facts resolve by pattern, without a registry entry. */
+export const DOCUMENT_STATUS_FACT_PATTERN = /^document\.[a-z0-9_]+\.status$/;
+
 /** Resolve a single fact. Throws on unknown fact keys. */
 export async function resolveFact(
   factKey: string,
   ctx: EligibilityContext,
 ): Promise<FactResolution> {
   const def = getFact(factKey);
+
+  // BUG-31 — an unregistered document-status fact is resolvable from its key
+  // alone, so it must not be treated as unknown (which would block the claim).
+  if (!def && DOCUMENT_STATUS_FACT_PATTERN.test(factKey)) {
+    let value: unknown = null;
+    let reason: string | undefined;
+    try {
+      value = await RESOLVERS.resolveDocStatusByPattern({
+        ...ctx,
+        extras: { ...(ctx.extras ?? {}), __fact_key: factKey },
+      });
+    } catch (e: any) {
+      reason = e?.message ?? 'resolver failed';
+    }
+    return {
+      fact_key: factKey,
+      value,
+      source_table: 'bn_claim_document',
+      source_column: 'verification_status',
+      resolved_at: new Date().toISOString(),
+      reason,
+    };
+  }
+
   if (!def) {
     throw new Error(`Unknown eligibility fact: "${factKey}". Add it to the registry first.`);
   }
