@@ -27,7 +27,7 @@ export interface MirrorSnapshot {
 }
 
 export const mirrorSnapshot: MirrorSnapshot = {
-  capturedAt: '2026-08-26T07:20:00Z',
+  capturedAt: '2026-08-26T07:36:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
   targetLabel: 'External Supabase project (target)',
   steps: [
@@ -58,9 +58,9 @@ export const mirrorSnapshot: MirrorSnapshot = {
       detail:
         'Applying the committed baseline schema (public) into the empty target: tables, views, functions, enums, indexes, constraints.',
       state: 'in_progress',
-      progress: 72,
+      progress: 79,
       metrics: [
-        { label: 'Lines streamed', value: '121,247 / 167,261' },
+        { label: 'Lines streamed', value: '132,467 / 167,261' },
         { label: 'Tables', value: '1,566' },
         { label: 'Views', value: '85' },
         { label: 'Functions', value: '1,368' },
