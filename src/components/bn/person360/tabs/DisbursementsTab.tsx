@@ -1,8 +1,10 @@
 /**
  * Person 360 — Disbursements Tab
  * 
- * Source: cl_cheques (outbound benefit payments)
- * Fallback: bn_payment_instruction with status=PAID (pre-migration)
+ * Source: cl_cheques (outbound benefit payments), reached through
+ * cl_head.insured_ssn — cl_cheques itself is keyed by claim_number and has no
+ * ssn column. There is no fallback: a failed read is reported, not answered
+ * with bn_payment_instruction rows, which are payables and not disbursements.
  * 
  * IMPORTANT: This tab ONLY shows outbound benefit payments.
  * cn_payment/cn_receipt are NEVER used here — those are for incoming collections.
