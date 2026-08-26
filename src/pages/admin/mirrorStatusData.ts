@@ -107,16 +107,17 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'data',
       title: '7. Table data load',
       detail:
-        'Direct table-by-table CSV streaming from source to target (scripts/mirror/stream-table-data.sh): one global truncate, replica-role loads so order does not matter, resumable via a done-list. The run started and loaded the largest tables, then stopped: the target project switched itself into enforced read-only mode because its disk is full. Source data is ~9.7 GB; the target must be given more disk before the load can resume.',
-      state: 'blocked',
-      progress: 5,
+        'Direct table-by-table CSV streaming from source to target (scripts/mirror/stream-table-data.sh): one global truncate, replica-role loads over a session-mode (5432) connection so order does not matter, resumable via a done-list. The target disk was increased and read-only mode lifted (default_transaction_read_only = off), so the load is running again from the largest tables downwards.',
+      state: 'in_progress',
+      progress: 25,
       metrics: [
-        { label: 'Tables loaded', value: '6 / 1,729' },
+        { label: 'Tables processed', value: '437 / 1,730' },
         { label: 'Source data size', value: '~9.7 GB' },
-        { label: 'Target data size', value: '904 MB (disk full)' },
-        { label: 'Blocker', value: 'target in read-only mode' },
+        { label: 'Target data size', value: '1.4 GB and growing' },
+        { label: 'Failures to re-run', value: '9' },
       ],
     },
+
 
     {
       id: 'auth-users',
