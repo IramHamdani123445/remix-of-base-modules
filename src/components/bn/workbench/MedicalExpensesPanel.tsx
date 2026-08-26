@@ -20,10 +20,24 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchClaimExpenses, upsertClaimExpense, fetchProcedures } from '@/services/bn/medicalService';
 import { BnEmptyState } from '@/components/bn/shared/BnEmptyState';
+import {
+  JURISDICTION_LEVELS,
+  JURISDICTION_LEVEL_LABELS,
+  type JurisdictionLevel,
+} from '@/types/bnMedical';
 
 const db = supabase as any;
 
-const JURISDICTIONS = ['LOCAL_ST_KITTS', 'NEVIS', 'CARIBBEAN', 'INTERNATIONAL'];
+/**
+ * BUG-37 — this field offered LOCAL_ST_KITTS / NEVIS / CARIBBEAN /
+ * INTERNATIONAL, which are LOCATION codes. The column is jurisdiction_level,
+ * whose check constraint accepts only LOCAL / REGIONAL / INTERNATIONAL, so
+ * three of the four choices — including the default — failed every save.
+ *
+ * Location is a separate concept and bn_medical_claim_expense has no column
+ * for it, so it is not offered here.
+ */
+const DEFAULT_JURISDICTION: JurisdictionLevel = 'LOCAL';
 
 interface Props {
   claimId: string;
@@ -35,7 +49,7 @@ export const MedicalExpensesPanel: React.FC<Props> = ({ claimId, userCode }) => 
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({
     procedureId: '',
-    jurisdiction: 'LOCAL_ST_KITTS',
+    jurisdiction: DEFAULT_JURISDICTION,
     claimed: '',
     approved: '',
     provider: '',
@@ -63,6 +77,14 @@ export const MedicalExpensesPanel: React.FC<Props> = ({ claimId, userCode }) => 
       const approvedRaw = form.approved.trim();
       const approved = approvedRaw === '' ? claimed : Number(approvedRaw);
       if (!Number.isFinite(approved) || approved < 0) throw new Error('Enter a valid approved amount.');
+      // Caught here so the officer reads a sentence rather than the database's
+      // check-constraint name (BUG-37).
+      if (!JURISDICTION_LEVELS.includes(form.jurisdiction as JurisdictionLevel)) {
+        throw new Error(
+          `"${form.jurisdiction}" is not a valid jurisdiction. Choose one of: ` +
+          JURISDICTION_LEVELS.map(j => JURISDICTION_LEVEL_LABELS[j]).join(', ') + '.',
+        );
+      }
       return upsertClaimExpense({
         claim_id: claimId,
         procedure_id: form.procedureId || null,
@@ -78,11 +100,20 @@ export const MedicalExpensesPanel: React.FC<Props> = ({ claimId, userCode }) => 
     },
     onSuccess: () => {
       toast.success('Expense line captured — re-run the calculation to apply it.');
-      setForm({ procedureId: '', jurisdiction: 'LOCAL_ST_KITTS', claimed: '', approved: '', provider: '', serviceDate: '' });
+      setForm({ procedureId: '', jurisdiction: DEFAULT_JURISDICTION, claimed: '', approved: '', provider: '', serviceDate: '' });
       setAdding(false);
       invalidate();
     },
-    onError: (e: any) => toast.error('Could not save expense', { description: e?.message }),
+    onError: (e: any) => {
+      // A raw constraint name tells the officer nothing about what to correct.
+      const raw = String(e?.message ?? '');
+      const description = raw.includes('jurisdiction_level_check')
+        ? 'The jurisdiction selected is not one the system accepts. Choose ' +
+          JURISDICTION_LEVELS.map(j => JURISDICTION_LEVEL_LABELS[j]).join(', ') +
+          '. (Reported by the database as a check-constraint violation.)'
+        : raw;
+      toast.error('Could not save expense', { description });
+    },
   });
 
   const removeMutation = useMutation({
@@ -134,7 +165,9 @@ export const MedicalExpensesPanel: React.FC<Props> = ({ claimId, userCode }) => 
               <Select value={form.jurisdiction} onValueChange={v => setForm(f => ({ ...f, jurisdiction: v }))}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {JURISDICTIONS.map(j => <SelectItem key={j} value={j}>{j.replace(/_/g, ' ')}</SelectItem>)}
+                  {JURISDICTION_LEVELS.map(j => (
+                    <SelectItem key={j} value={j}>{JURISDICTION_LEVEL_LABELS[j]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -177,7 +210,10 @@ export const MedicalExpensesPanel: React.FC<Props> = ({ claimId, userCode }) => 
           <div className="rounded border divide-y">
             {expenses.map((e: any) => (
               <div key={e.id} className="px-3 py-2 text-xs grid grid-cols-12 items-center gap-2">
-                <span className="col-span-3 font-mono">{e.jurisdiction_level ?? '—'}</span>
+                <span className="col-span-3">
+                  {JURISDICTION_LEVEL_LABELS[e.jurisdiction_level as JurisdictionLevel]
+                    ?? e.jurisdiction_level ?? '—'}
+                </span>
                 <span className="col-span-4">{e.provider_name ?? 'Unspecified provider'}</span>
                 <span className="col-span-2 text-right font-mono">${Number(e.claimed_amount ?? 0).toFixed(2)}</span>
                 <span className="col-span-2 text-right font-mono font-semibold">
