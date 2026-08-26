@@ -130,10 +130,14 @@ for path in "${PENDING[@]}"; do
     -c "SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '$version'")"
   [[ -z "$already" ]] || { progress "$IDX" "$TOTAL" "$name (already recorded)"; continue; }
   progress "$IDX" "$TOTAL" "$name"
-  run_sql "$path" >>"$LOG_DIR/migrations.log" 2>&1
-  psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 \
-    -c "INSERT INTO supabase_migrations.schema_migrations(version) VALUES ('$version') ON CONFLICT DO NOTHING"
-  APPLIED=$((APPLIED + 1))
+  if run_sql "$path" >>"$LOG_DIR/migrations.log" 2>&1; then
+    psql "$DB_URL" -X -q -v ON_ERROR_STOP=1 \
+      -c "INSERT INTO supabase_migrations.schema_migrations(version) VALUES ('$version') ON CONFLICT DO NOTHING"
+    APPLIED=$((APPLIED + 1))
+  else
+    echo "$name" >>"$LOG_DIR/failures.log"
+    printf '    !! failed: %s (continuing)\n' "$name"
+  fi
 done
 
 
