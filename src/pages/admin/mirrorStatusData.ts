@@ -27,7 +27,7 @@ export interface MirrorSnapshot {
 }
 
 export const mirrorSnapshot: MirrorSnapshot = {
-  capturedAt: '2026-08-26T11:45:00Z',
+  capturedAt: '2026-08-26T13:45:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
   targetLabel: 'external target project (target)',
   steps: [
@@ -71,14 +71,14 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'migrations',
       title: '4. Post-cutoff migrations',
       detail:
-        'The 348 migrations created after the baseline cutoff. A bounded reconciliation seed has been generated for deterministic reference-data blockers; target database connectivity is currently timing out on both direct and pooled routes, so replay is paused safely.',
-      state: 'blocked',
-      progress: 90,
+        'All 348 migrations created after the baseline cutoff have been replayed into the target after bounded reconciliation of historical reference-data dependencies.',
+      state: 'done',
+      progress: 100,
       metrics: [
-        { label: 'Applied', value: '312 / 348' },
-        { label: 'Remaining', value: '36' },
-        { label: 'Ledger', value: 'created' },
-        { label: 'Blocker', value: 'target DB route timeout' },
+        { label: 'Applied', value: '348 / 348' },
+        { label: 'Remaining', value: '0' },
+        { label: 'Ledger', value: 'complete' },
+        { label: 'Replay failures', value: '0' },
       ],
     },
     {
@@ -147,11 +147,11 @@ export const mirrorSnapshot: MirrorSnapshot = {
     },
   ],
   verification: [
-    { id: 'v1', check: 'Base tables in public', expected: '~1,566', observed: '1,728', state: 'done' },
+    { id: 'v1', check: 'Base tables in public', expected: '~1,566+', observed: '1,730', state: 'done' },
     { id: 'v2', check: 'Views in public', expected: '~85', observed: '93', state: 'done' },
-    { id: 'v3', check: 'Functions in public', expected: '~1,368', observed: '2,004', state: 'done' },
-    { id: 'v4', check: 'Indexes in public', expected: '≥ source', observed: '4,076', state: 'done' },
-    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '312 applied; 36 pending until target DB route recovers', state: 'blocked' },
+    { id: 'v3', check: 'Functions in public', expected: '~1,368+', observed: '2,012', state: 'done' },
+    { id: 'v4', check: 'Indexes in public', expected: '≥ source', observed: '4,079', state: 'done' },
+    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '348 applied; 0 pending', state: 'done' },
     { id: 'v6', check: 'Storage objects copied', expected: '179', observed: '179 (byte-parity verified)', state: 'done' },
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
     { id: 'v8', check: 'Row counts per table', expected: 'match source export', observed: 'not started', state: 'pending' },

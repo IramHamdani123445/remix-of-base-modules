@@ -73,6 +73,10 @@ tables = [
     ('omni_comms_template_family', "true"),
     ('omni_comms_provider', "true"),
     ('omni_comms_provider_account', "true"),
+    ('core_department_profile', "upper(module_code) = 'BENEFITS'"),
+    ('comm_layout_block', "id in ('6794a5ce-beda-4a6d-9787-cca7a5016fc3'::uuid, 'c5881438-e1db-423b-8ff9-58a524ef97cb'::uuid)"),
+    ('core_template_layout', "id in ('23e471f6-afaa-47f2-860f-cfac8891cf38'::uuid, 'eabd1ecc-ca2a-4715-b36d-3bb4151eb762'::uuid, '291aefd5-970d-4c90-a9fa-e2da40eb8bd2'::uuid)"),
+    ('omni_comms_caller_module_registry', "upper(module_code) = 'BENEFITS'"),
     ('workflow_definitions', "name = 'CE Status — Trivial Transitions'"),
     ('workflow_steps', "workflow_id in (select id from public.workflow_definitions where name = 'CE Status — Trivial Transitions')"),
     ('workflow_step_actions', "step_id in (select s.id from public.workflow_steps s join public.workflow_definitions w on w.id = s.workflow_id where w.name = 'CE Status — Trivial Transitions')"),
@@ -121,6 +125,14 @@ with out_sql.open('w') as f:
     f.write("UPDATE public.omni_comms_provider_account a SET provider_id = s.id FROM public.omni_comms_provider old JOIN _seed_providers s ON s.code = old.code WHERE a.provider_id = old.id AND old.id <> s.id;\n")
     f.write("UPDATE public.omni_comms_provider old SET id = s.id FROM _seed_providers s WHERE old.code = s.code AND old.id <> s.id;\n\n")
 
+    f.write("-- Historical replay prerequisites for withdrawn/shape-changing migrations.\n")
+    f.write("CREATE TABLE IF NOT EXISTS public.omni_comms_runtime_deployment (singleton boolean PRIMARY KEY DEFAULT true, runtime_revision text, dispatcher_revision text, observed_at timestamptz NOT NULL DEFAULT now(), CONSTRAINT omni_comms_runtime_deployment_singleton_chk CHECK (singleton));\n")
+    f.write("GRANT ALL ON public.omni_comms_runtime_deployment TO service_role;\n")
+    f.write("ALTER TABLE public.omni_comms_runtime_deployment ENABLE ROW LEVEL SECURITY;\n")
+    f.write("ALTER TABLE public.omni_comms_event_route DROP CONSTRAINT IF EXISTS omni_comms_event_route_sender_resolution_policy_check;\n")
+    f.write("ALTER TABLE public.omni_comms_event_route ADD CONSTRAINT omni_comms_event_route_sender_resolution_policy_check CHECK (sender_resolution_policy = ANY (ARRAY['explicit'::text, 'event_default'::text, 'organisation_default'::text, 'resolved_default'::text]));\n")
+    f.write("DROP FUNCTION IF EXISTS public.bn_submit_claim_application(text,text,date,text,jsonb,text,text,text,text);\n\n")
+
     for table, _ in tables:
         rs = all_rows[table]
         if not rs:
@@ -140,6 +152,9 @@ with out_sql.open('w') as f:
                 f.write(f"ON CONFLICT ({conflict}) DO NOTHING;\n\n")
         else:
             f.write(";\n\n")
+
+    f.write("-- Historical replay adjustment: align dispatcher resolver to the current two-argument organization lookup.\n")
+    f.write("DO $$$$ DECLARE d text; BEGIN SELECT pg_get_functiondef('public.omni_comms_priv_enqueue_business_event(uuid,text,text,text,text,text,uuid,uuid,jsonb,jsonb,text)'::regprocedure) INTO d; IF position('public.omni_comms_priv_business_organization(v_module, p_product_id)' in d) = 0 THEN d := replace(d, 'v_org := public.omni_comms_priv_business_organization(v_module);', 'v_org := public.omni_comms_priv_business_organization(v_module, p_product_id);'); EXECUTE d; END IF; END $$$$;\n\n")
 
     f.write("-- Historical replay adjustment: 20260810112740 expects exactly one queued binding before switching pilot scope.\n")
     f.write("UPDATE public.omni_comms_producer_event_binding b\n")
