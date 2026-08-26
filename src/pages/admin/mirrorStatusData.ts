@@ -71,7 +71,7 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'migrations',
       title: '4. Post-cutoff migrations',
       detail:
-        'The 348 migrations created after the baseline cutoff, applied in order and recorded in the target migration ledger. Restarted in background after the sandbox lost the previous worker; failures are logged and skipped rather than aborting the run.',
+        'The 348 migrations created after the baseline cutoff, applied in order and recorded in the target migration ledger. Worker restarted in this sandbox; failures are logged and skipped rather than aborting the run.',
       state: 'in_progress',
       progress: 90,
       metrics: [
