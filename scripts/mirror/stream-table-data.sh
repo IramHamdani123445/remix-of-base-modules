@@ -109,7 +109,7 @@ while read -r tbl; do
     WHERE table_schema='public' AND table_name='$tbl'")
   # only stream columns that exist on both sides
   common=$(psql -X -q -t -A -c "
-    SELECT string_agg(format('%I', c), ',')
+    SELECT string_agg(c, ',')
     FROM (SELECT unnest(string_to_array('$cols', ',')) AS c) s
     WHERE replace(c, '\"', '') IN (
       SELECT replace(unnest(string_to_array('$tcols', ',')), '\"', ''))" 2>/dev/null)
