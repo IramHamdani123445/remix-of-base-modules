@@ -73,11 +73,11 @@ export const mirrorSnapshot: MirrorSnapshot = {
       detail:
         'The 348 migrations created after the baseline cutoff, applied in order and recorded in the target migration ledger. Running now; failures are logged and skipped rather than aborting the run.',
       state: 'in_progress',
-      progress: 13,
+      progress: 51,
       metrics: [
-        { label: 'Applied', value: '45 / 348' },
+        { label: 'Applied', value: '179 / 348' },
         { label: 'Ledger', value: 'created' },
-        { label: 'Failures', value: '0' },
+        { label: 'Failures', value: '8 (logged, skipped)' },
       ],
     },
     {
@@ -150,7 +150,7 @@ export const mirrorSnapshot: MirrorSnapshot = {
     { id: 'v2', check: 'Views in public', expected: '~85', observed: '85', state: 'done' },
     { id: 'v3', check: 'Functions in public', expected: '~1,368', observed: '1,369', state: 'done' },
     { id: 'v4', check: 'Indexes in public', expected: '≥ source', observed: '3,681 (baseline complete)', state: 'done' },
-    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '45 applied, 0 failed', state: 'in_progress' },
+    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '179 applied, 8 failed', state: 'in_progress' },
     { id: 'v6', check: 'Storage objects copied', expected: '179', observed: '179 (byte-parity verified)', state: 'done' },
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
     { id: 'v8', check: 'Row counts per table', expected: 'match source export', observed: 'not started', state: 'pending' },
