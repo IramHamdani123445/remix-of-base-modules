@@ -22,8 +22,12 @@ REF="${TARGET_PROJECT_REF:-}"
 [[ -n "$REF" ]] || { echo "::error::TARGET_PROJECT_REF must be set" >&2; exit 2; }
 [[ "$REF" == "xynceskeiiisiefqlgxo" ]] && { echo "::error::refusing to deploy to the source project" >&2; exit 2; }
 
-CLI=(supabase)
-command -v supabase >/dev/null 2>&1 || CLI=(nix run nixpkgs#supabase-cli --)
+# Deploys go through the hosted API bundler (--use-api) so no local Docker
+# daemon is needed. npx pins the latest CLI, which supports that flag.
+CLI=(npx --yes supabase@latest)
+if [[ -n "${SUPABASE_CLI_LOCAL:-}" ]] && command -v supabase >/dev/null 2>&1; then
+  CLI=(supabase)
+fi
 
 LOG="${STATE_DIR:-/tmp/mirror-functions}"; mkdir -p "$LOG"
 FAILED="$LOG/failed.txt"; : > "$FAILED"
@@ -37,7 +41,7 @@ echo "==> deploying ${#FNS[@]} functions to $REF"
 
 for fn in "${FNS[@]}"; do
   [[ -f "supabase/functions/$fn/index.ts" ]] || { echo "skip $fn (no index.ts)"; continue; }
-  if "${CLI[@]}" functions deploy "$fn" --project-ref "$REF" >>"$LOG/$fn.log" 2>&1; then
+  if "${CLI[@]}" functions deploy "$fn" --project-ref "$REF" --use-api >>"$LOG/$fn.log" 2>&1; then
     echo "ok   $fn"
   else
     echo "FAIL $fn (see $LOG/$fn.log)"; echo "$fn" >> "$FAILED"
