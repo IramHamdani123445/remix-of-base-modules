@@ -91,6 +91,11 @@ def cols(table):
 def pk(table):
     return json.loads(scalar(f"select coalesce(jsonb_agg(a.attname order by x.ord), '[]'::jsonb)::text from pg_constraint c join unnest(c.conkey) with ordinality as x(attnum, ord) on true join pg_attribute a on a.attrelid=c.conrelid and a.attnum=x.attnum where c.conrelid='public.{table}'::regclass and c.contype='p';") or '[]')
 
+def sql_literal(value):
+    if value is None:
+        return 'NULL'
+    return "'" + str(value).replace("'", "''") + "'"
+
 all_rows = {table: rows(table, where) for table, where in tables}
 all_cols = {table: cols(table) for table, _ in tables}
 all_pk = {table: pk(table) for table, _ in tables}
@@ -104,7 +109,7 @@ with out_sql.open('w') as f:
     app_rows = all_rows['app_modules']
     f.write("CREATE TEMP TABLE _seed_app_modules(id uuid, name text) ON COMMIT DROP;\n")
     f.write("INSERT INTO _seed_app_modules(id,name) VALUES\n")
-    f.write(',\n'.join(f"  ('{r['id']}'::uuid, {json.dumps(r['name'])})" for r in app_rows if r.get('id') and r.get('name')) + ";\n")
+    f.write(',\n'.join(f"  ('{r['id']}'::uuid, {sql_literal(r['name'])})" for r in app_rows if r.get('id') and r.get('name')) + ";\n")
     f.write("UPDATE public.app_modules t SET parent_id = s.id FROM public.app_modules old JOIN _seed_app_modules s ON s.name = old.name WHERE t.parent_id = old.id AND old.id <> s.id;\n")
     f.write("UPDATE public.workflow_definitions t SET secured_module_id = s.id FROM public.app_modules old JOIN _seed_app_modules s ON s.name = old.name WHERE t.secured_module_id = old.id AND old.id <> s.id;\n")
     f.write("UPDATE public.app_modules old SET id = s.id FROM _seed_app_modules s WHERE old.name = s.name AND old.id <> s.id;\n\n")
@@ -112,7 +117,8 @@ with out_sql.open('w') as f:
     provider_rows = all_rows['omni_comms_provider']
     f.write("CREATE TEMP TABLE _seed_providers(id uuid, code text) ON COMMIT DROP;\n")
     f.write("INSERT INTO _seed_providers(id,code) VALUES\n")
-    f.write(',\n'.join(f"  ('{r['id']}'::uuid, {json.dumps(r['code'])})" for r in provider_rows if r.get('id') and r.get('code')) + ";\n")
+    f.write(',\n'.join(f"  ('{r['id']}'::uuid, {sql_literal(r['code'])})" for r in provider_rows if r.get('id') and r.get('code')) + ";\n")
+    f.write("UPDATE public.omni_comms_provider_account a SET provider_id = s.id FROM public.omni_comms_provider old JOIN _seed_providers s ON s.code = old.code WHERE a.provider_id = old.id AND old.id <> s.id;\n")
     f.write("UPDATE public.omni_comms_provider old SET id = s.id FROM _seed_providers s WHERE old.code = s.code AND old.id <> s.id;\n\n")
 
     for table, _ in tables:
