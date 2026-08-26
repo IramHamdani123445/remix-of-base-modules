@@ -79,6 +79,7 @@ export const mirrorSnapshot: MirrorSnapshot = {
         { label: 'Remaining', value: '36' },
         { label: 'Ledger', value: 'created' },
         { label: 'Failures', value: '8 (logged, skipped)' },
+      ],
     },
     {
       id: 'storage',
