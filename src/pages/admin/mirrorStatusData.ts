@@ -124,10 +124,17 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'auth-users',
       title: '8. Auth users',
       detail:
-        'Auth accounts are part of the export bundle and load after table data. Passwords are hashed; existing sessions do not carry over.',
-      state: 'pending',
-      progress: 0,
+        'All auth accounts and their linked sign-in identities streamed directly from source to target (scripts/mirror/stream-auth-users.sh), copying only columns present on both sides. Password hashes carried over, so existing passwords keep working; active sessions do not carry over and users sign in again. Temporary read-only views used on the source were dropped afterwards.',
+      state: 'done',
+      progress: 100,
+      metrics: [
+        { label: 'Users', value: '55 / 55' },
+        { label: 'Identities', value: '55 / 55' },
+        { label: 'Password hashes present', value: '55' },
+        { label: 'Failures', value: '0' },
+      ],
     },
+
     {
       id: 'functions',
       title: '9. Edge functions',
@@ -163,7 +170,7 @@ export const mirrorSnapshot: MirrorSnapshot = {
     { id: 'v6', check: 'Storage objects copied', expected: '179', observed: '179 (byte-parity verified)', state: 'done' },
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
     { id: 'v8', check: 'Row counts per table', expected: 'match source', observed: '1,730/1,730 streamed, 0 failures; largest tables byte-for-row match', state: 'done' },
-    { id: 'v9', check: 'Auth users loadable', expected: 'match source', observed: 'not started', state: 'pending' },
+    { id: 'v9', check: 'Auth users loadable', expected: 'match source', observed: '55 users + 55 identities, hashes intact', state: 'done' },
     { id: 'v10', check: 'Edge functions deployed', expected: 'all', observed: 'not started', state: 'manual' },
     { id: 'v11', check: 'Secrets present in target', expected: '29 names', observed: '30 names verified', state: 'done' },
     { id: 'v12', check: 'Source database untouched', expected: 'read-only throughout', observed: 'confirmed — scripts refuse the source URL', state: 'done' },
