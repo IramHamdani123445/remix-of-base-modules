@@ -179,8 +179,9 @@ export const mirrorSnapshot: MirrorSnapshot = {
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
     { id: 'v8', check: 'Row counts per table', expected: 'match source', observed: '1,730/1,730 streamed, 0 failures; largest tables byte-for-row match', state: 'done' },
     { id: 'v9', check: 'Auth users loadable', expected: 'match source', observed: '55 users + 55 identities, hashes intact', state: 'done' },
-    { id: 'v10', check: 'Edge functions deployed', expected: 'all', observed: 'not started', state: 'manual' },
-    { id: 'v11', check: 'Secrets present in target', expected: '29 names', observed: '30 names verified', state: 'done' },
+    { id: 'v10', check: 'Edge functions deployed', expected: '142', observed: 'script ready; needs target access token', state: 'manual' },
+    { id: 'v11', check: 'Secrets present in target', expected: '39 names', observed: '30 names verified; remainder to re-enter', state: 'manual' },
+
     { id: 'v12', check: 'Source database untouched', expected: 'read-only throughout', observed: 'confirmed — scripts refuse the source URL', state: 'done' },
   ],
 };
