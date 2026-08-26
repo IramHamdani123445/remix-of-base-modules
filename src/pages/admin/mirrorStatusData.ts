@@ -27,7 +27,7 @@ export interface MirrorSnapshot {
 }
 
 export const mirrorSnapshot: MirrorSnapshot = {
-  capturedAt: '2026-08-26T10:55:00Z',
+  capturedAt: '2026-08-26T11:45:00Z',
   sourceLabel: 'Lovable Cloud (source, read-only)',
   targetLabel: 'External Supabase project (target)',
   steps: [
@@ -71,14 +71,14 @@ export const mirrorSnapshot: MirrorSnapshot = {
       id: 'migrations',
       title: '4. Post-cutoff migrations',
       detail:
-        'The 348 migrations created after the baseline cutoff, applied in order and recorded in the target migration ledger. Worker restarted in this sandbox; failures are logged and skipped rather than aborting the run.',
-      state: 'in_progress',
+        'The 348 migrations created after the baseline cutoff. A bounded reconciliation seed has been generated for deterministic reference-data blockers; target database connectivity is currently timing out on both direct and pooled routes, so replay is paused safely.',
+      state: 'blocked',
       progress: 90,
       metrics: [
         { label: 'Applied', value: '312 / 348' },
         { label: 'Remaining', value: '36' },
         { label: 'Ledger', value: 'created' },
-        { label: 'Failures', value: '8 (logged, skipped)' },
+        { label: 'Blocker', value: 'target DB route timeout' },
       ],
     },
     {
@@ -151,13 +151,13 @@ export const mirrorSnapshot: MirrorSnapshot = {
     { id: 'v2', check: 'Views in public', expected: '~85', observed: '93', state: 'done' },
     { id: 'v3', check: 'Functions in public', expected: '~1,368', observed: '2,004', state: 'done' },
     { id: 'v4', check: 'Indexes in public', expected: '≥ source', observed: '4,076', state: 'done' },
-    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '312 applied, 8 failed, 36 remaining', state: 'in_progress' },
+    { id: 'v5', check: 'Migration ledger versions', expected: '348 post-cutoff', observed: '312 applied; 36 pending until target DB route recovers', state: 'blocked' },
     { id: 'v6', check: 'Storage objects copied', expected: '179', observed: '179 (byte-parity verified)', state: 'done' },
     { id: 'v7', check: 'Storage policies', expected: '46', observed: '46', state: 'done' },
     { id: 'v8', check: 'Row counts per table', expected: 'match source export', observed: 'not started', state: 'pending' },
     { id: 'v9', check: 'Auth users loadable', expected: 'match source', observed: 'not started', state: 'pending' },
     { id: 'v10', check: 'Edge functions deployed', expected: 'all', observed: 'not started', state: 'manual' },
-    { id: 'v11', check: 'Secrets present in target', expected: '29 names', observed: 'not started', state: 'manual' },
+    { id: 'v11', check: 'Secrets present in target', expected: '29 names', observed: '30 names verified', state: 'done' },
     { id: 'v12', check: 'Source database untouched', expected: 'read-only throughout', observed: 'confirmed — scripts refuse the source URL', state: 'done' },
   ],
 };
