@@ -240,52 +240,65 @@ Deno.serve(async (req) => {
     // Idempotency check (skip if force=true or dry_run)
     const runKey = `VIOLATION-SCAN-${asOfDate}`;
 
-    if (!dryRun && !force) {
-      // Check for any existing run with same key (any status)
+    // A run that is still Running and was started recently is a LIVE run: a
+    // second "Run Detection Now" click must attach to it instead of deleting
+    // its row, which used to strand the first client polling a row that no
+    // longer existed (VIOLATION_DETECTION_007).
+    const liveCutoff = Date.now() - 30 * 60 * 1000;
+    const isLive = (r: any) =>
+      String(r.status || "").toLowerCase() === "running" &&
+      r.started_at && new Date(r.started_at).getTime() > liveCutoff;
+
+    if (!dryRun) {
       const { data: existingRuns } = await supabase
         .from("ce_automation_runs")
-        .select("id, status")
+        .select("id, status, started_at")
         .eq("idempotency_key", runKey);
 
       if (existingRuns && existingRuns.length > 0) {
-        const completedRun = existingRuns.find((r: any) => r.status === "Completed");
-        if (completedRun) {
+        const liveRun = existingRuns.find(isLive);
+        if (liveRun) {
           return new Response(
             JSON.stringify({
-              message: "Already completed for this date. Use force=true to re-run.",
-              run_id: completedRun.id,
+              run_id: liveRun.id,
+              status: "Running",
+              accepted: true,
+              attached: true,
               dry_run: false,
-              total_employers_scanned: 0,
-              rules_evaluated: 0,
-              violations_detected: 0,
-              violations_created: 0,
-              violations_skipped_dedupe: 0,
-              by_rule: [],
-              already_completed: true,
             }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 }
           );
         }
-        // Delete all non-completed runs (Failed, Running) to free the idempotency key
-        const idsToRemove = existingRuns.map((r: any) => r.id);
-        for (const rid of idsToRemove) {
-          await supabase.from("ce_automation_runs").delete().eq("id", rid);
-        }
-      }
-    }
 
-    // For force re-runs, clean up ALL existing records with same base key
-    if (force && !dryRun) {
-      const { data: existingForce } = await supabase
-        .from("ce_automation_runs")
-        .select("id")
-        .eq("idempotency_key", runKey);
-      if (existingForce && existingForce.length > 0) {
-        for (const r of existingForce) {
+        if (!force) {
+          const completedRun = existingRuns.find((r: any) => r.status === "Completed");
+          if (completedRun) {
+            return new Response(
+              JSON.stringify({
+                message: "Already completed for this date. Use force=true to re-run.",
+                run_id: completedRun.id,
+                dry_run: false,
+                total_employers_scanned: 0,
+                rules_evaluated: 0,
+                violations_detected: 0,
+                violations_created: 0,
+                violations_skipped_dedupe: 0,
+                by_rule: [],
+                already_completed: true,
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+            );
+          }
+        }
+
+        // Only stale/terminal runs are removed, freeing the idempotency key.
+        for (const r of existingRuns) {
+          if (isLive(r)) continue;
           await supabase.from("ce_automation_runs").delete().eq("id", r.id);
         }
       }
     }
+
 
     // Get the job record
     const { data: job } = await supabase
