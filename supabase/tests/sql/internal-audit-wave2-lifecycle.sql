@@ -424,8 +424,8 @@ BEGIN
     DELETE FROM public.ia_activities WHERE id = v_act;
     DELETE FROM public.ia_communication_stages WHERE engagement_id = v_eng;
     DELETE FROM public.ia_audit_engagements WHERE id = v_eng;
-  EXCEPTION WHEN insufficient_privilege THEN
-    RAISE NOTICE 'WAVE2 CLEANUP SKIPPED (runner lacks delete rights) — roll back this transaction';
+  EXCEPTION WHEN others THEN
+    RAISE NOTICE 'WAVE2 CLEANUP SKIPPED (%) — roll back this transaction', SQLERRM;
   END;
 END;
 $$;
