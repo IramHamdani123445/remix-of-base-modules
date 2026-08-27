@@ -323,6 +323,25 @@ export const INTERNAL_AUDIT_COMMUNICATION_CATALOGUE: IaCommunicationEntry[] = [
     repeatable: true,
     deepLink: '/audit/engagements/:id',
   },
+  {
+    eventCode: 'INTERNAL_AUDIT.REQUEST.FULFILLED',
+    entityType: 'ia_information_request',
+    domain: 'REQUEST',
+    name: 'Information request fulfilled',
+    description:
+      'Every outstanding information request for the engagement has been received by the audit team.',
+    communicationClass: 'service',
+    priority: 'normal',
+    recipientRole: 'auditee_contact',
+    channels: BOTH,
+    headline: 'All requested information received for audit {{payload.reference}}',
+    lead: 'The internal audit team has received all outstanding information requests.',
+    facts: ['requestSummary', 'engagementTitle'],
+    repeatable: true,
+    deepLink: '/audit/engagements/:id',
+  },
+
+
 
   // ── Findings ───────────────────────────────────────────────────────────
   {
