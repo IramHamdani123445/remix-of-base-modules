@@ -35,3 +35,5 @@ docs/kalash-kb/iram-index.md
 docs/kalash-kb/issue-tracker-format.md
 docs/kalash-kb/module-map.md
 vite.config.ts
+
+.env.mirror
