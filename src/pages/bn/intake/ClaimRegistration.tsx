@@ -280,7 +280,29 @@ export default function ClaimRegistration() {
     return () => { cancel = true; };
   }, [step, selectedProduct, claimDate]);
 
-  const eligSummary = useMemo(() => summariseEligibility(eligTraces), [eligTraces]);
+  // BUG-46 — 'INTAKE' holds document rules back. The claim does not exist yet,
+  // so nothing can be attached to it; a missing certificate at the counter is
+  // not a finding that the claimant does not qualify. They are judged at
+  // approval, where checkApprovalPreconditions refuses on DOCUMENTS_OUTSTANDING.
+  const eligSummary = useMemo(
+    () => summariseEligibility(eligTraces, { phase: 'INTAKE' }),
+    [eligTraces],
+  );
+  /** Rule codes held back, so the list below can label them instead of failing them. */
+  const deferredCodes = useMemo(
+    () => new Set(eligSummary.deferred.map((t) => t.rule_code)),
+    [eligSummary.deferred],
+  );
+  /**
+   * Every requirement this product carries is documentary, so there was nothing
+   * to compare at the counter. Distinguished from a genuine gap because the
+   * screen must not say "refer for manual review" about a claim it will happily
+   * register (BUG-46).
+   */
+  const onlyEvidenceRemains =
+    eligSummary.evaluatedCount === 0 &&
+    eligSummary.unevaluated.length === 0 &&
+    eligSummary.deferred.length > 0;
 
   const effectiveSsnForElig = person?.ssn ?? (pendingVerification ? ssn : '');
 
@@ -446,29 +468,27 @@ export default function ClaimRegistration() {
       case 'claim-date': return claimDate ? null : 'Enter a claim date.';
       case 'version': return resolvedVersion ? null : 'Active product version must resolve.';
       case 'eligibility': {
-        // BUG-29 — a check with no input must fail, not pass.
-        // BUG-30 — and "nothing failed" is not a pass either. Registration
-        // continues only on a PASSED verdict, never on NOT_DETERMINED.
+        // BUG-29 — a check with no input must not read as a pass.
+        // BUG-30 — nor is "nothing failed" a pass. The verdict stays honest.
+        //
+        // BUG-48 — but the verdict does not bar registration. A claim must
+        // always be lodgeable: registration is what brings the claim into
+        // existence, and a refusal has to be a formal decision the claimant can
+        // appeal. Turning someone away at the counter produces no decision to
+        // appeal against, and no record that they ever came.
+        //
+        // So the pre-check informs and is recorded, and the entitlement
+        // decision belongs to adjudication — where checkApprovalPreconditions
+        // already refuses on eligibility, documents, calculation and amount.
+        //
+        // What still blocks is only what the officer can resolve right now.
         if (eligEvaluating) return 'Eligibility pre-check is still running.';
         if (eligError) return eligError;
         if (!effectiveSsnForElig) return 'A verified SSN is required before eligibility can be checked.';
-        if (eligRules.length === 0) {
-          return 'This product version has no eligibility rules, so the claimant’s entitlement cannot be established. Refer for manual review.';
-        }
-        if (eligTraces.length === 0) return 'Run the eligibility pre-check before continuing.';
-        // The reason quotes each rule's own configured wording. A bare rule code
-        // such as "AGEG-CONTRIB-MIN" tells a counter officer nothing.
-        if (eligSummary.verdict === 'FAILED') {
-          return `Claimant does not qualify — ${summariseBlockingRules(eligSummary.failed)}. ` +
-            'A supervisor override is required to register this claim.';
-        }
-        if (eligSummary.verdict === 'NOT_DETERMINED') {
-          if (eligSummary.evaluatedCount === 0) {
-            return `Eligibility could not be determined — ${eligSummary.coverageLabel}. ` +
-              'No requirement was compared against this claimant. Refer for manual review.';
-          }
-          return `Eligibility could not be determined — ${eligSummary.coverageLabel}. ` +
-            `${summariseBlockingRules(eligSummary.unevaluated)}. Refer for manual review.`;
+        // The pre-check must have been run, so its finding is on the record and
+        // travels with the claim. Its result is not a condition of proceeding.
+        if (eligRules.length > 0 && eligTraces.length === 0) {
+          return 'Run the eligibility pre-check before continuing.';
         }
         return null;
       }
@@ -555,6 +575,22 @@ export default function ClaimRegistration() {
         },
       });
       toast.success(`Claim ${result.claimNumber} registered`);
+      // Registered is not the same as payable. The officer should leave the
+      // counter knowing what adjudication will have to resolve (BUG-48).
+      if (eligSummary.verdict === 'FAILED') {
+        toast.warning('Registered with an unmet requirement', {
+          description:
+            `${summariseBlockingRules(eligSummary.failed)}. Recorded on the claim — ` +
+            'the entitlement decision is made at adjudication.',
+          duration: 20_000,
+        });
+      } else if (eligSummary.verdict === 'NOT_DETERMINED' && eligSummary.unevaluated.length > 0) {
+        toast.warning('Registered with eligibility unproven', {
+          description:
+            `${summariseBlockingRules(eligSummary.unevaluated)}. Refer for manual review.`,
+          duration: 20_000,
+        });
+      }
       // BUG-33 — the officer must be told where the claim went. A claim that
       // reached no queue has no owner, and a successful-looking submission used
       // to be the only thing shown.
@@ -586,6 +622,18 @@ export default function ClaimRegistration() {
           workflowInstanceId: result.workflowInstanceId ?? null,
           workbasket: workbasket || null,
           priority,
+          // BUG-48 — the pre-check no longer bars registration, so its finding
+          // must travel with the claim. Recorded here rather than left on the
+          // screen the officer is about to leave: adjudication needs to know
+          // what was known at the counter, and on what it rested.
+          eligibilityPrecheck: {
+            verdict: eligSummary.verdict,
+            coverage: eligSummary.coverageLabel,
+            failed: eligSummary.failed.map((t) => t.rule_code),
+            unevaluated: eligSummary.unevaluated.map((t) => t.rule_code),
+            deferredForEvidence: eligSummary.deferred.map((t) => t.rule_code),
+            ruleCount: eligRules.length,
+          },
         },
         critical: true,
       }).catch(() => {});
@@ -803,7 +851,7 @@ export default function ClaimRegistration() {
                       const fresh = await fetchEligibilityRules(resolvedVersion.version.id).catch(() => []);
                       setEligRules(fresh);
                       const traces = await runEligibilityPrecheck(fresh);
-                      const sum = summariseEligibility(traces);
+                      const sum = summariseEligibility(traces, { phase: 'INTAKE' });
                       void auditClaimAction({
                         action: 'ELIGIBILITY_PRECHECK_RUN',
                         entityType: 'bn_claim_intake',
@@ -815,6 +863,10 @@ export default function ClaimRegistration() {
                           ssn: person?.ssn ?? (pendingVerification ? ssn : null),
                           claimDate,
                           ruleCount: fresh.length,
+                          // What the verdict rests on, and what it deliberately
+                          // did not judge (BUG-46).
+                          verdict: sum.verdict,
+                          deferredForEvidence: sum.deferred.map((t) => t.rule_code),
                         },
                         critical: false,
                       }).catch(() => {});
@@ -823,6 +875,16 @@ export default function ClaimRegistration() {
                       } else if (sum.verdict === 'FAILED') {
                         toast.error('Claimant does not qualify', {
                           description: `${sum.failed.length} rule(s) failed — ${sum.coverageLabel}.`,
+                        });
+                      } else if (
+                        sum.evaluatedCount === 0 &&
+                        sum.unevaluated.length === 0 &&
+                        sum.deferred.length > 0
+                      ) {
+                        toast.info('Evidence required later', {
+                          description:
+                            `${sum.deferred.length} document requirement(s). Registration may proceed; ` +
+                            'approval will be refused until the evidence is verified.',
                         });
                       } else {
                         toast.warning('Eligibility could not be determined', {
@@ -872,60 +934,128 @@ export default function ClaimRegistration() {
                 )}
 
                 {!eligEvaluating && eligTraces.length > 0 && (
-                  <Alert variant={eligSummary.verdict === 'PASSED' ? 'default' : 'destructive'}>
+                  <Alert
+                    variant={
+                      eligSummary.verdict === 'PASSED' || onlyEvidenceRemains
+                        ? 'default'
+                        : 'destructive'
+                    }
+                  >
                     {eligSummary.verdict === 'PASSED' ? (
                       <CheckCircle2 className="h-4 w-4" />
+                    ) : onlyEvidenceRemains ? (
+                      <FileText className="h-4 w-4" />
                     ) : eligSummary.verdict === 'FAILED' ? (
                       <AlertTriangle className="h-4 w-4" />
                     ) : (
                       <AlertCircle className="h-4 w-4" />
                     )}
-                    <AlertTitle>
+                    <AlertTitle className="mb-1">
                       {eligSummary.verdict === 'PASSED'
-                        ? 'Eligibility PASSED'
-                        : eligSummary.verdict === 'FAILED'
-                          ? 'Claimant does NOT QUALIFY'
-                          : 'Eligibility COULD NOT BE DETERMINED'}
-                      <span className="ml-2 text-xs font-normal">— {eligSummary.coverageLabel}</span>
+                        ? 'Eligibility passed'
+                        : onlyEvidenceRemains
+                          ? 'Evidence required later'
+                          : eligSummary.verdict === 'FAILED'
+                            ? 'Claimant does not qualify'
+                            : 'Eligibility could not be determined'}
                     </AlertTitle>
-                    <AlertDescription>
-                      {eligSummary.verdict === 'PASSED'
-                        ? 'Every requirement was compared against the claimant’s record and satisfied.'
-                        : eligSummary.verdict === 'FAILED'
-                          ? `${eligSummary.failed.length} rule(s) failed. Registration is blocked until a supervisor override is recorded.`
-                          : eligSummary.evaluatedCount === 0
-                            ? 'Not one requirement was compared against this claimant. This is not a pass — refer for manual review.'
-                            : `${eligSummary.unevaluated.length} rule(s) could not be evaluated, so entitlement is unproven. Refer for manual review.`}
+                    <AlertDescription className="space-y-2">
+                      <p className="leading-relaxed">
+                        {eligSummary.verdict === 'PASSED'
+                          ? 'Every requirement was compared against the claimant’s record and satisfied.'
+                          : onlyEvidenceRemains
+                            ? 'This benefit’s only requirements are documentary, so there is nothing to compare at the counter. The evidence is attached at step 7, or after submission.'
+                            : eligSummary.verdict === 'FAILED'
+                              ? 'The claimant’s record does not meet the requirements below. This is recorded on the claim; registration may still proceed, and the entitlement decision is made at adjudication.'
+                              : eligSummary.evaluatedCount === 0
+                                ? 'Not one requirement was compared against this claimant, so entitlement is unproven. This is not a pass — refer for manual review. Registration may still proceed.'
+                                : 'Some requirements could not be compared against the claimant’s record, so entitlement is unproven. Refer for manual review. Registration may still proceed.'}
+                      </p>
+
+                      {/* Counts as chips rather than run into the title, which
+                          wrapped mid-sentence and read as one broken line. */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {eligSummary.passed.length > 0 && (
+                          <Badge variant="outline" className="border-emerald-600/40 text-emerald-700">
+                            {eligSummary.passed.length} met
+                          </Badge>
+                        )}
+                        {eligSummary.failed.length > 0 && (
+                          <Badge variant="outline" className="border-destructive/40 text-destructive">
+                            {eligSummary.failed.length} not met
+                          </Badge>
+                        )}
+                        {eligSummary.unevaluated.length > 0 && (
+                          <Badge variant="outline" className="border-amber-500/40 text-amber-700">
+                            {eligSummary.unevaluated.length} not checked
+                          </Badge>
+                        )}
+                        {eligSummary.deferred.length > 0 && (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            {eligSummary.deferred.length} required later
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {eligSummary.coverageLabel}
+                        </span>
+                      </div>
+
+                      {eligSummary.deferred.length > 0 && !onlyEvidenceRemains && (
+                        <p className="text-xs leading-relaxed">
+                          Document requirements are not judged at this step. They do not block
+                          registration, but the claim cannot be approved until they are verified.
+                        </p>
+                      )}
                     </AlertDescription>
                   </Alert>
                 )}
 
                 {eligTraces.length > 0 && (
-                  <ul className="space-y-1 text-sm">
+                  <ul className="divide-y rounded-md border text-sm">
                     {eligTraces.map((t) => {
+                      // A deferred rule is neither passed nor failed at this
+                      // step, so it must not be dressed as either (BUG-46).
+                      const isDeferred = deferredCodes.has(t.rule_code);
+                      const state = isDeferred ? 'DEFERRED' : t.result_state;
                       const tone =
-                        t.result_state === 'PASS' ? 'text-emerald-600' :
-                        t.result_state === 'INFO' ? 'text-muted-foreground' :
-                        t.result_state === 'UNEVALUATED' ? 'text-amber-600' : 'text-destructive';
+                        state === 'PASS' ? 'text-emerald-700' :
+                        state === 'FAIL' ? 'text-destructive' :
+                        state === 'UNEVALUATED' ? 'text-amber-700' :
+                        'text-muted-foreground';
+                      const label =
+                        state === 'PASS' ? 'Met' :
+                        state === 'FAIL' ? 'Not met' :
+                        state === 'UNEVALUATED' ? 'Not checked' :
+                        state === 'DEFERRED' ? 'Required later' :
+                        state === 'OVERRIDDEN' ? 'Overridden' : 'Note';
+                      const Icon =
+                        state === 'PASS' ? CheckCircle2 :
+                        state === 'FAIL' ? AlertTriangle :
+                        state === 'UNEVALUATED' ? AlertCircle : FileText;
                       return (
-                        <li key={t.rule_code} className="flex items-start gap-2">
-                          {t.result_state === 'PASS' ? (
-                            <CheckCircle2 className={`h-3.5 w-3.5 mt-0.5 ${tone}`} />
-                          ) : t.result_state === 'INFO' ? (
-                            <FileText className={`h-3.5 w-3.5 mt-0.5 ${tone}`} />
-                          ) : (
-                            <AlertTriangle className={`h-3.5 w-3.5 mt-0.5 ${tone}`} />
-                          )}
-                          <span>
-                            <span className="font-medium">{t.requirement || t.rule_name || t.rule_code}</span>
-                            <span className={`ml-2 text-xs font-semibold ${tone}`}>{t.result_state}</span>
+                        <li key={t.rule_code} className="flex items-start gap-3 px-3 py-2">
+                          <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${tone}`} />
+                          {/* min-w-0 lets long requirement text wrap inside its
+                              own column instead of pushing the badge along. */}
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="font-medium leading-snug">
+                              {t.requirement || t.rule_name || t.rule_code}
+                            </p>
                             {t.detail && (
-                              <span className="block text-xs text-muted-foreground">{t.detail}</span>
+                              <p className="text-xs text-muted-foreground leading-snug">{t.detail}</p>
                             )}
                             {t.reference && (
-                              <span className="block text-[11px] text-muted-foreground/80 italic">{t.reference}</span>
+                              <p className="text-[11px] text-muted-foreground/80 italic leading-snug">
+                                {t.reference}
+                              </p>
                             )}
-                          </span>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`shrink-0 text-[11px] font-medium ${tone}`}
+                          >
+                            {label}
+                          </Badge>
                         </li>
                       );
                     })}

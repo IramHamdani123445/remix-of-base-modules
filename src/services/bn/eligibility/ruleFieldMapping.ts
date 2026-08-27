@@ -30,6 +30,8 @@ export interface EvaluableRule {
   fail_message?: string | null;
   severity?: string | null;
   rule_definition?: Record<string, unknown> | null;
+  /** Document this rule asserts, when the rule names one directly (BUG-46). */
+  document_type_code?: string | null;
 }
 
 export type RuleKeySource = 'field_key' | 'fact_key' | 'definition_fact' | 'alias' | 'none';
@@ -147,6 +149,66 @@ export function resolveRuleFieldKey(rule: EvaluableRule): ResolvedRuleKey {
     if (aliased && lookupField(aliased)) return { key: aliased, source: 'alias', rawKey: raw };
   }
   return { key: null, source: 'none', rawKey: firstRaw };
+}
+
+/**
+ * Is this fact answered by looking at a document attached to the claim?
+ *
+ * The configuration already says so, in three independent places, and any one
+ * of them is enough:
+ *
+ *   - `bn_eligibility_fact.source_type = 'DOCUMENT_CHECK'` — 10 active facts,
+ *     all of them `document.*`. Mirrored in the code registry by
+ *     `source_table = 'bn_claim_evidence'` (BUG-47 corrected it from
+ *     `bn_claim_document`, which nothing writes to; both are accepted here so
+ *     a database row still carrying the old value is classified correctly).
+ *   - `category = 'DOCUMENTS'`.
+ *   - the `document.` fact-key prefix, for the 33 rules whose fact key is not
+ *     registered as a fact at all.
+ *
+ * Note what is NOT used: `requires_claim_context`. Fifty-three facts carry it,
+ * including `contribution.total_weeks` and `person.age_at_claim_date`, which
+ * are perfectly knowable at the counter. The column is mis-seeded and would
+ * defer half the substantive rules along with the documents.
+ */
+export function isDocumentEvidenceFact(key: string | null | undefined): boolean {
+  const k = (key ?? '').trim().toLowerCase();
+  if (!k) return false;
+  if (k.startsWith('document.')) return true;
+  const fact = getFact(k);
+  if (!fact) return false;
+  return (
+    fact.source_table === 'bn_claim_evidence' ||
+    fact.source_table === 'bn_claim_document' ||
+    fact.category === 'DOCUMENTS'
+  );
+}
+
+/**
+ * A rule that cannot be satisfied until after the claim exists.
+ *
+ * BUG-46 — the intake wizard evaluates every active rule at step 6, but
+ * documents are attached at step 7 and may be supplied after submission
+ * altogether. A document rule at intake is not "the claimant does not
+ * qualify"; it is "not answerable yet". Treating it as a failure blocked
+ * registration for every product carrying an EVIDENCE rule -- 43 of 262 active
+ * rules -- which is most of them.
+ *
+ * The claimant's substantive entitlement (age, contributions, gender, existing
+ * benefits) is still judged strictly at intake. Only the evidence is deferred,
+ * and it stays blocking at approval, where `checkApprovalPreconditions`
+ * refuses on DOCUMENTS_OUTSTANDING.
+ */
+export function isDeferredAtIntake(rule: EvaluableRule): boolean {
+  if (isInformationalRule(rule)) return false;
+  const resolved = resolveRuleFieldKey(rule);
+  if (isDocumentEvidenceFact(resolved.key) || isDocumentEvidenceFact(resolved.rawKey)) return true;
+  // A rule that names a required document but resolves its condition through
+  // some other field -- SICK-MED asserts `evidence.document_verified` and
+  // carries `requires_document: 'MEDICAL_CERT'`.
+  const def = (rule.rule_definition || {}) as Record<string, unknown>;
+  if (typeof def.requires_document === 'string' && def.requires_document.trim() !== '') return true;
+  return typeof rule.document_type_code === 'string' && rule.document_type_code.trim() !== '';
 }
 
 /**

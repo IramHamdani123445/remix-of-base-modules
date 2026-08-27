@@ -1001,7 +1001,9 @@ async function describeSubject(ssn: string): Promise<{ ssn: string; memberFound:
   try {
     const [member, wages] = await Promise.all([
       db.from('ip_master').select('ssn').eq('ssn', ssn).limit(1),
-      db.from('ip_wages').select('id').eq('ssn', ssn).limit(1),
+      // BUG-48 — ip_wages has no `id`; its key is audit_id. Selecting `id`
+      // failed with 42703, so this could never report a member without history.
+      db.from('ip_wages').select('audit_id').eq('ssn', ssn).limit(1),
     ]);
     return {
       ssn,

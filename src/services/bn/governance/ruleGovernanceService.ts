@@ -156,42 +156,15 @@ export function availableTransitions(
  * A spelling in neither table is still rejected — this widens the vocabulary,
  * it does not remove the check.
  */
-const CANONICAL_OPERATORS = new Set([
-  'EQUALS','NOT_EQUALS','GREATER_THAN','GREATER_OR_EQUAL',
-  'LESS_THAN','LESS_OR_EQUAL','BETWEEN','IN','NOT_IN',
-  'BOOLEAN','EXISTS','CONTAINS',
-]);
-
-/** Symbol spelling → canonical word spelling. */
-const OPERATOR_SYNONYMS: Record<string, string> = {
-  '=': 'EQUALS',
-  '==': 'EQUALS',
-  '!=': 'NOT_EQUALS',
-  '<>': 'NOT_EQUALS',
-  '>': 'GREATER_THAN',
-  '>=': 'GREATER_OR_EQUAL',
-  '<': 'LESS_THAN',
-  '<=': 'LESS_OR_EQUAL',
-  BETWEEN: 'BETWEEN',
-  IN: 'IN',
-  NOT_IN: 'NOT_IN',
-  EXISTS: 'EXISTS',
-  BOOLEAN: 'BOOLEAN',
-  CONTAINS: 'CONTAINS',
-};
-
 /**
- * The canonical form of an operator, whichever spelling was stored.
- * Returns null when the value is in neither vocabulary.
+ * BUG-49 — the vocabulary used to be restated here, separately from the one
+ * the runtime engine used, and the two disagreed: this gate accepted BOOLEAN
+ * and GREATER_OR_EQUAL while the engine failed every rule that carried them.
+ * There is now one definition, in `operatorEvaluator`, and it is the same one
+ * the comparison is driven by. Re-exported so existing callers are unchanged.
  */
-export function canonicalOperator(raw: string | null | undefined): string | null {
-  const v = String(raw ?? '').trim();
-  if (!v) return null;
-  const upper = v.toUpperCase();
-  if (CANONICAL_OPERATORS.has(upper)) return upper;
-  // Symbols must not be upper-cased before lookup; words may be.
-  return OPERATOR_SYNONYMS[v] ?? OPERATOR_SYNONYMS[upper] ?? null;
-}
+export { canonicalOperator } from '@/services/bn/eligibility/operatorEvaluator';
+import { CANONICAL_OPERATORS } from '@/services/bn/eligibility/operatorEvaluator';
 
 export async function validateTechnical(rule: RuleSnapshot): Promise<ValidationIssue[]> {
   const issues: ValidationIssue[] = [];
