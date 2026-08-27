@@ -139,21 +139,24 @@ describe('notificationDispatchResolver', () => {
 });
 
 describe('migrated runtime callers', () => {
-  it('iaNotificationService goes through the canonical wrapper', async () => {
+  it('iaNotificationService goes through the canonical Omni-Comms producer, not the legacy wrapper', async () => {
+    // Wave-4 DEF-2: the Internal Audit notification service was cut over to the
+    // single canonical producer. It must no longer touch the legacy resolver.
+    const producer = await import(
+      '@/platform/omni-comms/integrations/business/internal-audit/internalAuditCommunicationProducer'
+    );
+    const emitSpy = vi
+      .spyOn(producer, 'emitInternalAuditCommunication')
+      .mockResolvedValue({ accepted: true, requestId: 'req-1' } as never);
+
     const { sendIANotification } = await import('@/services/iaNotificationService');
-    vi.mocked(resolveNotificationTemplateForBusinessEvent).mockResolvedValueOnce({
-      input: {} as any,
-      effective: { settings: {} } as any,
-      render: { subject: 'S', body: 'B', warnings: [] } as any,
-      resolvedTemplateCode: 'X',
-      templateSource: 'EXPLICIT',
-      warnings: [],
-    });
     await sendIANotification({ event: 'ia_plan_submitted', recipientIds: ['u1'], variables: {} });
-    expect(resolveNotificationTemplateForBusinessEvent).toHaveBeenCalled();
-    const call = vi.mocked(resolveNotificationTemplateForBusinessEvent).mock.calls[0][0] as any;
-    expect(call.businessEventCode).toBe('ia_plan_submitted');
-    expect(call.moduleCode).toBe('INTERNAL_AUDIT');
-    expect(call.channel).toBe('IN_APP');
+
+    expect(emitSpy).toHaveBeenCalled();
+    const call = emitSpy.mock.calls[0][0] as any;
+    expect(call.eventCode).toBe('INTERNAL_AUDIT.PLAN.SUBMITTED');
+    expect(resolveNotificationTemplateForBusinessEvent).not.toHaveBeenCalled();
+
+    emitSpy.mockRestore();
   });
 });
