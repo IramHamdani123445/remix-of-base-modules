@@ -397,9 +397,14 @@ export default function EngagementDetail() {
           </TabsContent>
 
 
+          <TabsContent value="quality-review">
+            <AuditQualityReviewTab auditId={id!} />
+          </TabsContent>
+
           <TabsContent value="timeline">
             <AuditTimelineTab auditId={id!} departmentId={audit?.department_id} />
           </TabsContent>
+
 
           <TabsContent value="closure">
             <AuditClosureTab auditId={id!} audit={audit} />
