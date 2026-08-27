@@ -482,6 +482,9 @@ export default function AuditActionCentre() {
           </TabsContent>
         ))}
       </Tabs>
+      </div>
+
+
 
       <ActionLifecycleDialog
         action={selectedAction}
