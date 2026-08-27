@@ -307,9 +307,14 @@ export default function EngagementDetail() {
             <TabSep />
 
             {/* === Output Group === */}
+
             <TabsTrigger value="timeline" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Clock className="h-3.5 w-3.5 mr-1.5" />Timeline
             </TabsTrigger>
+            <TabsTrigger value="closure" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <Shield className="h-3.5 w-3.5 mr-1.5" />Closure
+            </TabsTrigger>
+
 
             {/* === Report Center CTA === */}
             <Button
