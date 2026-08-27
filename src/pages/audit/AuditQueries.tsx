@@ -16,7 +16,7 @@ import { useUserCode } from '@/hooks/useUserCode';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { EngagementFilterBanner, useEngagementFilter } from '@/components/audit/EngagementFilterBanner';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { useToast, toast } from '@/hooks/use-toast';
 
 const ALLOWED_FILE_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/png', 'image/jpeg'];
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
