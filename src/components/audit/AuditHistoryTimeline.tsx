@@ -16,7 +16,7 @@ export function AuditHistoryTimeline({ audits, findings, actions, departmentName
   );
 
   const findingsForAudit = (auditId: string) => 
-    findings.filter((f: any) => f.department_audit_id === auditId);
+    findings.filter((f: any) => f.engagement_id === auditId);
 
   const actionsForAudit = (auditId: string) => {
     const auditFindings = findingsForAudit(auditId);

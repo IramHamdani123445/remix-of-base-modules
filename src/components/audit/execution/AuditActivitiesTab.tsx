@@ -441,7 +441,9 @@ export function AuditActivitiesTab({ auditId, departmentAuditId, auditors = [] }
       control_area: form.control_area || null, function_area: form.function_area || null,
       location: form.location || null, priority: form.priority || null,
       auditor_id: form.auditor_id || null, auditor_name: form.auditor_name || null,
-      engagement_id: auditId, department_audit_id: departmentAuditId || null,
+      // ADR-01: engagement_id is the canonical audit relationship. The legacy
+      // department_audit_id must not receive new operational writes (Wave 1).
+      engagement_id: auditId,
     };
     if (modal.mode === 'create') {
       create.mutate({ ...payload, ...getCreateFields() } as any, { onSuccess: () => setModal({ mode: null }) });

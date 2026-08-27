@@ -44,8 +44,8 @@ export default function AuditPreparation() {
   const handleAddChecklist = () => {
     if (!newChecklistItem.trim() || (!selectedAuditId && !engagementId)) return;
     createChecklist.mutate({
-      ...(selectedAuditId ? { department_audit_id: selectedAuditId } : {}),
-      ...(engagementId ? { engagement_id: engagementId } : {}),
+      // ADR-01: writes are anchored on the canonical engagement spine only.
+      ...(engagementId ? { engagement_id: engagementId } : { engagement_id: selectedAuditId }),
       item_text: newChecklistItem.trim(),
       category: newChecklistCategory,
       ...getCreateFields(),
@@ -60,8 +60,8 @@ export default function AuditPreparation() {
   const handleAddDocument = () => {
     if (!newDocName.trim() || (!selectedAuditId && !engagementId)) return;
     createDocument.mutate({
-      ...(selectedAuditId ? { department_audit_id: selectedAuditId } : {}),
-      ...(engagementId ? { engagement_id: engagementId } : {}),
+      // ADR-01: writes are anchored on the canonical engagement spine only.
+      ...(engagementId ? { engagement_id: engagementId } : { engagement_id: selectedAuditId }),
       file_name: newDocName.trim(),
       document_type: newDocType,
       ...getCreateFields(),
