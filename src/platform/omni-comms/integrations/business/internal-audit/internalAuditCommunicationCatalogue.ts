@@ -112,6 +112,31 @@ export const INTERNAL_AUDIT_COMMUNICATION_CATALOGUE: IaCommunicationEntry[] = [
     deepLink: '/audit/annual-plan/:id',
   },
   {
+    eventCode: 'INTERNAL_AUDIT.PLAN.DISTRIBUTED',
+    entityType: 'ia_annual_plan',
+    domain: 'PLAN',
+    name: 'Annual audit plan distributed',
+    description:
+      'A board-pack or final annual audit plan artifact has been distributed to a board, committee or oversight recipient with the governed PDF attached.',
+    communicationClass: 'operational',
+    priority: 'high',
+    recipientRole: 'audit_committee',
+    channels: BOTH,
+    headline: 'Annual audit plan {{payload.reference}} distributed',
+    lead: 'The annual internal audit plan artifact below has been distributed for your attention. The plan document is attached.',
+    facts: [
+      'planTitle',
+      'planYear',
+      'distributionPurpose',
+      'artifactName',
+      'artifactVersion',
+      'distributedOn',
+    ],
+    repeatable: true,
+    deepLink: '/audit/annual-plan/:id',
+  },
+
+  {
     eventCode: 'INTERNAL_AUDIT.PLAN.REJECTED',
     entityType: 'ia_annual_plan',
     domain: 'PLAN',
