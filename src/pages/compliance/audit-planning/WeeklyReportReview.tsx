@@ -118,8 +118,12 @@ export default function WeeklyReportReview() {
                     </TableCell>
                     <TableCell>{r.inspector_name ?? '—'}</TableCell>
                     <TableCell>
-                      {r.outcome_submitted_at
-                        ? new Date(r.outcome_submitted_at).toLocaleString()
+                      {/* Older plans were submitted through the plan workflow,
+                          which stamps submitted_date rather than
+                          outcome_submitted_at — fall back so the column is
+                          never blank for a report that is awaiting review. */}
+                      {r.outcome_submitted_at ?? r.submitted_date
+                        ? new Date(r.outcome_submitted_at ?? r.submitted_date).toLocaleString()
                         : '—'}
                     </TableCell>
                     <TableCell>
