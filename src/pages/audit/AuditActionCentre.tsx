@@ -191,15 +191,18 @@ export default function AuditActionCentre() {
     { key: 'action_ref', header: 'Action', render: r => <span className="font-mono text-xs">{r.action_ref || '—'}</span> },
     { key: 'action_description', header: 'Description', render: r => <span className="line-clamp-2 max-w-[280px]">{r.action_description}</span> },
     { key: 'engagement_code', header: 'Audit' },
+    { key: 'plan_fiscal_year', header: 'Plan year' },
     { key: 'department_name', header: 'Department' },
+    { key: 'finding_title', header: 'Finding' },
     { key: 'finding_severity', header: 'Severity', render: r => (r.finding_severity ? <StatusBadge status={r.finding_severity} /> : '—') },
     { key: 'action_owner', header: 'Owner' },
-    { key: 'current_target_date', header: 'Target', render: r => formatDateForDisplay(r.current_target_date) },
+    { key: 'original_target_date', header: 'Original target', render: r => formatDateForDisplay(r.original_target_date) },
+    { key: 'current_target_date', header: 'Current target', render: r => formatDateForDisplay(r.current_target_date) },
     { key: 'extension_count', header: 'Ext.', render: r => String(r.extension_count ?? 0) },
     { key: 'progress_pct', header: 'Progress', render: r => `${r.progress_pct ?? 0}%` },
     { key: 'evidence_state', header: 'Evidence' },
     { key: 'lifecycle_status', header: 'Status', render: r => <StatusBadge status={r.lifecycle_status || 'Open'} /> },
-    { key: 'overdue_days', header: 'Overdue', render: r => overdueCell(r.overdue_days) },
+    { key: 'overdue_days', header: 'Overdue days', render: r => overdueCell(r.overdue_days) },
   ];
 
   const findingColumns: DataTableColumn<any>[] = [
@@ -207,9 +210,12 @@ export default function AuditActionCentre() {
     { key: 'title', header: 'Title', render: r => <span className="line-clamp-2 max-w-[280px]">{r.title}</span> },
     { key: 'engagement_code', header: 'Audit' },
     { key: 'department_name', header: 'Department' },
+    { key: 'function_name', header: 'Function' },
     { key: 'severity', header: 'Severity', render: r => (r.severity ? <StatusBadge status={r.severity} /> : '—') },
+    { key: 'management_position', header: 'Management position', render: r => r.management_position || '—' },
     { key: 'lifecycle_status', header: 'Status', render: r => <StatusBadge status={r.lifecycle_status || 'Draft'} /> },
     { key: 'response_status', header: 'Response', render: r => (r.response_outstanding ? <span className="text-destructive text-xs font-semibold">Outstanding</span> : (r.management_position || r.response_status || '—')) },
+
     { key: 'open_action_count', header: 'Open actions', render: r => `${r.open_action_count ?? 0} / ${r.action_count ?? 0}` },
     { key: 'overdue_action_count', header: 'Overdue actions', render: r => overdueCell(r.overdue_action_count) },
     { key: 'reported_date', header: 'Reported', render: r => formatDateForDisplay(r.reported_date) },
