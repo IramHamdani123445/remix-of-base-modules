@@ -104,6 +104,8 @@ export interface ConfiguredBusinessEventInput {
   recipients: Record<string, ConfiguredBusinessEventRecipient>;
   /** Business facts matching the published event contract. */
   data: Record<string, unknown>;
+  /** Governed attachment references (ids from the attachment registry). */
+  attachments?: import('../../sendCommunication').SendCommunicationAttachmentInput[];
   correlationId?: string | null;
 }
 
