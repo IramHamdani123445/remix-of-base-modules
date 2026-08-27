@@ -116,10 +116,13 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
         </div>
       );
     }},
+    { key: 'management_position', header: 'Position', render: (r) => <StatusBadge status={r.management_position || 'Not stated'} /> },
     { key: 'response_text', header: 'Response', render: (r) => <span className="text-xs max-w-[200px] truncate block">{r.response_text || '—'}</span> },
     { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status || 'Pending'} /> },
+    { key: 'review_outcome', header: 'IA Review', render: (r) => <span className="text-xs">{r.review_outcome || '—'}</span> },
     { key: 'submitted_by', header: 'By', render: (r) => <span className="text-xs">{r.submitted_by || '—'}</span> },
     { key: 'submitted_date', header: 'Date', render: (r) => r.submitted_date ? formatDateForDisplay(r.submitted_date) : '—' },
+
     { key: 'attachment', header: 'Docs', render: (r) => {
       const docs = r.supporting_docs as string[] | null;
       if (!docs?.length) return <span className="text-muted-foreground text-xs">—</span>;
