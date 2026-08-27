@@ -95410,6 +95410,120 @@ export type Database = {
           },
         ]
       }
+      omni_comms_attachment: {
+        Row: {
+          byte_size: number
+          checksum_sha256: string
+          classification: string
+          content_type: string
+          created_at: string
+          created_by: string | null
+          department_id: string | null
+          file_name: string
+          id: string
+          organization_id: string
+          owner_module_code: string
+          retired_at: string | null
+          retired_by: string | null
+          retirement_reason: string | null
+          source_entity_id: string
+          source_entity_type: string
+          status: string
+          storage_bucket: string
+          storage_path: string
+          supersedes_attachment_id: string | null
+          version_number: number
+        }
+        Insert: {
+          byte_size: number
+          checksum_sha256: string
+          classification?: string
+          content_type: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          file_name: string
+          id?: string
+          organization_id: string
+          owner_module_code: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          source_entity_id: string
+          source_entity_type: string
+          status?: string
+          storage_bucket: string
+          storage_path: string
+          supersedes_attachment_id?: string | null
+          version_number?: number
+        }
+        Update: {
+          byte_size?: number
+          checksum_sha256?: string
+          classification?: string
+          content_type?: string
+          created_at?: string
+          created_by?: string | null
+          department_id?: string | null
+          file_name?: string
+          id?: string
+          organization_id?: string
+          owner_module_code?: string
+          retired_at?: string | null
+          retired_by?: string | null
+          retirement_reason?: string | null
+          source_entity_id?: string
+          source_entity_type?: string
+          status?: string
+          storage_bucket?: string
+          storage_path?: string
+          supersedes_attachment_id?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_attachment_storage_bucket_fkey"
+            columns: ["storage_bucket"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_attachment_bucket_policy"
+            referencedColumns: ["storage_bucket"]
+          },
+          {
+            foreignKeyName: "omni_comms_attachment_supersedes_attachment_id_fkey"
+            columns: ["supersedes_attachment_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_attachment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_attachment_bucket_policy: {
+        Row: {
+          allowed_content_types: string[]
+          created_at: string
+          is_enabled: boolean
+          max_byte_size: number
+          notes: string | null
+          storage_bucket: string
+        }
+        Insert: {
+          allowed_content_types?: string[]
+          created_at?: string
+          is_enabled?: boolean
+          max_byte_size?: number
+          notes?: string | null
+          storage_bucket: string
+        }
+        Update: {
+          allowed_content_types?: string[]
+          created_at?: string
+          is_enabled?: boolean
+          max_byte_size?: number
+          notes?: string | null
+          storage_bucket?: string
+        }
+        Relationships: []
+      }
       omni_comms_business_event_outbox: {
         Row: {
           attempt_count: number
@@ -95560,6 +95674,30 @@ export type Database = {
           permission_action?: string
           permission_module?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      omni_comms_channel_attachment_policy: {
+        Row: {
+          channel: string
+          created_at: string
+          max_attachments: number
+          max_total_bytes: number
+          supports_attachments: boolean
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          max_attachments?: number
+          max_total_bytes?: number
+          supports_attachments?: boolean
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          max_attachments?: number
+          max_total_bytes?: number
+          supports_attachments?: boolean
         }
         Relationships: []
       }
@@ -97422,6 +97560,76 @@ export type Database = {
           },
         ]
       }
+      omni_comms_message_attachment: {
+        Row: {
+          attachment_id: string
+          byte_size: number
+          channel: string
+          checksum_sha256: string
+          content_type: string
+          created_at: string
+          file_name: string
+          id: string
+          message_id: string
+          ordinal: number
+          outcome: string
+          outcome_reason: string | null
+          request_attachment_id: string
+        }
+        Insert: {
+          attachment_id: string
+          byte_size: number
+          channel: string
+          checksum_sha256: string
+          content_type: string
+          created_at?: string
+          file_name: string
+          id?: string
+          message_id: string
+          ordinal: number
+          outcome: string
+          outcome_reason?: string | null
+          request_attachment_id: string
+        }
+        Update: {
+          attachment_id?: string
+          byte_size?: number
+          channel?: string
+          checksum_sha256?: string
+          content_type?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          message_id?: string
+          ordinal?: number
+          outcome?: string
+          outcome_reason?: string | null
+          request_attachment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_message_attachment_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_attachment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_attachment_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_message"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_message_attachment_request_attachment_id_fkey"
+            columns: ["request_attachment_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_request_attachment"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       omni_comms_message_event: {
         Row: {
           actor_id: string | null
@@ -99112,6 +99320,60 @@ export type Database = {
             columns: ["producer_event_binding_id"]
             isOneToOne: false
             referencedRelation: "omni_comms_producer_event_binding"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      omni_comms_request_attachment: {
+        Row: {
+          attachment_id: string
+          created_at: string
+          disposition: string
+          id: string
+          ordinal: number
+          pinned_byte_size: number
+          pinned_checksum_sha256: string
+          pinned_file_name: string
+          request_id: string
+          required_for_delivery: boolean
+        }
+        Insert: {
+          attachment_id: string
+          created_at?: string
+          disposition?: string
+          id?: string
+          ordinal: number
+          pinned_byte_size: number
+          pinned_checksum_sha256: string
+          pinned_file_name: string
+          request_id: string
+          required_for_delivery?: boolean
+        }
+        Update: {
+          attachment_id?: string
+          created_at?: string
+          disposition?: string
+          id?: string
+          ordinal?: number
+          pinned_byte_size?: number
+          pinned_checksum_sha256?: string
+          pinned_file_name?: string
+          request_id?: string
+          required_for_delivery?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "omni_comms_request_attachment_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_attachment"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "omni_comms_request_attachment_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "omni_comms_request"
             referencedColumns: ["id"]
           },
         ]
@@ -125074,6 +125336,20 @@ export type Database = {
         }
         Returns: string
       }
+      omni_comms_attachment_evidence: {
+        Args: { p_request_id: string }
+        Returns: {
+          byte_size: number
+          channel: string
+          checksum_sha256: string
+          content_type: string
+          file_name: string
+          message_id: string
+          ordinal: number
+          outcome: string
+          outcome_reason: string
+        }[]
+      }
       omni_comms_automation_cron_evidence: {
         Args: { p_jobname: string }
         Returns: string
@@ -126279,6 +126555,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      omni_comms_priv_attach_request_attachments: {
+        Args: {
+          p_attachments: Json
+          p_organization_id: string
+          p_request_id: string
+        }
+        Returns: Json
+      }
       omni_comms_priv_authorize_producer_event: {
         Args: {
           p_actor_id: string
@@ -126843,6 +127127,10 @@ export type Database = {
           p_evidence?: Json
           p_reason?: string
         }
+        Returns: Json
+      }
+      omni_comms_priv_dispatch_attachment_manifest: {
+        Args: { p_message_id: string }
         Returns: Json
       }
       omni_comms_priv_dispatch_attempt_complete: {
@@ -127714,6 +128002,10 @@ export type Database = {
         Args: { p_secret_ref: string }
         Returns: string
       }
+      omni_comms_priv_resolve_message_attachments: {
+        Args: { p_message_id: string }
+        Returns: Json
+      }
       omni_comms_priv_resolve_provider_credential_source: {
         Args: { p_provider_account_id: string; p_purpose: string }
         Returns: Json
@@ -128192,6 +128484,24 @@ export type Database = {
       }
       omni_comms_reference_seed_status: {
         Args: { p_organization_id: string }
+        Returns: Json
+      }
+      omni_comms_register_attachment: {
+        Args: {
+          p_byte_size: number
+          p_checksum_sha256: string
+          p_classification?: string
+          p_content_type: string
+          p_department_id?: string
+          p_file_name: string
+          p_organization_id: string
+          p_owner_module_code: string
+          p_source_entity_id: string
+          p_source_entity_type: string
+          p_storage_bucket: string
+          p_storage_path: string
+          p_supersedes_attachment_id?: string
+        }
         Returns: Json
       }
       omni_comms_resolve_presentation: {
