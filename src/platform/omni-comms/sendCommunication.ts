@@ -126,6 +126,10 @@ export interface SendCommunicationAttachmentInput {
 /** Maximum governed attachments per request. Mirrors the DB bound. */
 export const OMNI_COMMS_MAX_ATTACHMENTS = 20;
 
+const UUID_LIKE =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+
 
 export interface SendCommunicationInput {
   eventCode: string;
