@@ -72841,6 +72841,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_comms_role_designation: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          profile_id: string
+          role_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          profile_id: string
+          role_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          profile_id?: string
+          role_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ia_communication_stages: {
         Row: {
           acknowledged_at: string | null
@@ -124148,6 +124178,14 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_comms_escalation_fact: {
+        Args: {
+          p_department_id: string
+          p_engagement_id: string
+          p_role: string
+        }
+        Returns: Json
+      }
       ia_comms_generate_reminders: {
         Args: { p_limit?: number; p_today?: string }
         Returns: Json
@@ -124156,6 +124194,7 @@ export type Database = {
         Args: { p_fallback_name?: string; p_profile_id: string; p_role: string }
         Returns: Json
       }
+      ia_comms_resolve_head_of_audit: { Args: never; Returns: string }
       ia_complete_activity: {
         Args: {
           p_activity_id: string
