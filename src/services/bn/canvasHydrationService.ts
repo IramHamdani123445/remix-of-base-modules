@@ -44,12 +44,12 @@ export async function hydrateCanvasFromNormalized(versionId: string): Promise<Bu
     sections: { ...EMPTY_CANVAS.sections },
   };
 
-  const [elig, calc, docs, comms, timeline] = await Promise.all([
+  const [elig, calc, docs, comms, version] = await Promise.all([
     db.from('bn_eligibility_rule').select('*').eq('product_version_id', versionId).order('sort_order', { ascending: true }),
     db.from('bn_calculation_rule').select('*').eq('product_version_id', versionId).order('sort_order', { ascending: true }),
     db.from('bn_doc_requirement').select('*').eq('product_version_id', versionId).order('sort_order', { ascending: true }),
     db.from('bn_comm_mapping').select('*').eq('bn_product_version_id', versionId).order('fallback_priority', { ascending: true }),
-    db.from('bn_timeline_rule').select('*').eq('product_version_id', versionId).order('sort_order', { ascending: true }),
+    db.from('bn_product_version').select('workflow_template_id, screen_template_id').eq('id', versionId).maybeSingle(),
   ]);
 
   // Eligibility
@@ -105,17 +105,75 @@ export async function hydrateCanvasFromNormalized(versionId: string): Promise<Bu
     _source_id: c.id,
   }));
 
-  // Timeline → represent as workflow blocks (read-only)
-  out.sections.workflow = (timeline.data ?? []).map((t: any) => block('workflow.step', {
-    label: t.rule_name,
-    step_code: t.rule_code,
-    timeline_type: t.timeline_type,
-    days: t.days_value,
-    weeks: t.weeks_value,
-    months: t.months_value,
-    _origin: 'LEGACY',
-    _source_id: t.id,
-  }));
+  // Workflow — read the actual bn_workflow_template this version points at
+  // (steps_config/escalation_config), the same shape canvasSyncService.ts
+  // writes. bn_timeline_rule (SLA/day-count rules) is a different concept
+  // entirely and was never what Sync produces for this section — reading it
+  // here made Import show unrelated data after Sync had already moved on.
+  const workflowTemplateId = version.data?.workflow_template_id ?? null;
+  if (workflowTemplateId) {
+    const { data: tpl } = await db
+      .from('bn_workflow_template')
+      .select('id, steps_config, escalation_config')
+      .eq('id', workflowTemplateId)
+      .maybeSingle();
+    const steps = (tpl?.steps_config ?? []) as any[];
+    const escalations = (tpl?.escalation_config ?? []) as any[];
+    out.sections.workflow = [
+      ...steps.map((s) => block('workflow.step', {
+        label: s.step,
+        step_code: s.step,
+        role: s.role,
+        sla_hours: s.sla_days != null ? Number(s.sla_days) * 24 : undefined,
+        workbasket_id: s.workbasket_id,
+        _origin: 'LEGACY',
+        _source_id: tpl?.id,
+      })),
+      ...escalations.map((e) => block('workflow.escalation', {
+        label: e.policy_code,
+        policy_code: e.policy_code,
+        target_role: e.target_role,
+        severity: e.severity,
+        trigger: e.trigger,
+        _origin: 'LEGACY',
+        _source_id: tpl?.id,
+      })),
+    ];
+  }
+
+  // Form / Screen — read the actual bn_screen_template this version points
+  // at. This section was never hydrated at all before, so Import always
+  // showed it empty regardless of what had been saved.
+  const screenTemplateId = version.data?.screen_template_id ?? null;
+  if (screenTemplateId) {
+    const { data: tpl } = await db
+      .from('bn_screen_template')
+      .select('id, sections')
+      .eq('id', screenTemplateId)
+      .maybeSingle();
+    const sections = (tpl?.sections ?? []) as any[];
+    const screenBlocks: BuilderBlock[] = [];
+    sections.forEach((s) => {
+      screenBlocks.push(block('screen.section', {
+        title: s.title ?? s.label ?? 'Section',
+        columns: s.columns ?? 2,
+        _origin: 'LEGACY',
+        _source_id: tpl?.id,
+      }));
+      (s.fields ?? []).forEach((f: any) => {
+        screenBlocks.push(block('screen.field', {
+          label: f.label,
+          field_type: f.field_type,
+          data_source: f.data_source,
+          required_condition: f.required_condition,
+          visible_channels: f.visible_channels ?? [],
+          _origin: 'LEGACY',
+          _source_id: tpl?.id,
+        }));
+      });
+    });
+    out.sections.screen = screenBlocks;
+  }
 
   out.updatedAt = new Date().toISOString();
   return out;

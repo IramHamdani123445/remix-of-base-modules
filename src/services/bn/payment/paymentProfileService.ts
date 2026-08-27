@@ -191,16 +191,25 @@ async function applyApprovedRequest(requestId: string, userCode: string): Promis
   if (error || !req) throw error || new Error('Change request not found');
 
   const draft = req.new_profile_snapshot as BnPaymentProfileDraft;
+  const nowIso = new Date().toISOString();
+  const today = nowIso.slice(0, 10);
 
-  // Deactivate any current active profile with same key
-  await db
+  // Deactivate the current active profile with the same key, including the
+  // one being edited — the unique index allows only one active row per
+  // (person, payee, method, currency), so it must be cleared before insert.
+  let deactivateQuery = db
     .from('bn_payment_profile')
-    .update({ active: false, effective_to: new Date().toISOString().slice(0, 10), modified_by: userCode, modified_at: new Date().toISOString() })
+    .update({ active: false, effective_to: today, modified_by: userCode, modified_at: nowIso })
     .eq('person_ssn', req.person_ssn)
     .eq('payment_method', draft.payment_method)
     .eq('payment_currency', draft.payment_currency ?? 'XCD')
-    .eq('active', true)
-    .or(req.profile_id ? `id.neq.${req.profile_id}` : 'id.not.is.null');
+    .eq('active', true);
+  const payeeId = draft.payee_id ?? null;
+  deactivateQuery = payeeId === null
+    ? deactivateQuery.is('payee_id', null)
+    : deactivateQuery.eq('payee_id', payeeId);
+  const { data: deactivated, error: deactivateErr } = await deactivateQuery.select('id');
+  if (deactivateErr) throw deactivateErr;
 
   // Insert new active profile
   const { data: created, error: insErr } = await db
@@ -209,13 +218,31 @@ async function applyApprovedRequest(requestId: string, userCode: string): Promis
       ...draft,
       person_ssn: req.person_ssn,
       active: true,
-      effective_from: new Date().toISOString().slice(0, 10),
+      effective_from: today,
       verification_status: draft.verification_status ?? 'UNVERIFIED',
       entered_by: userCode,
     })
     .select('*')
     .single();
-  if (insErr) throw insErr;
+
+  if (insErr) {
+    // Insert failed after we deactivated the old profile — restore it so the
+    // claimant is never left with zero active payment profiles.
+    if (deactivated?.length) {
+      try {
+        await db
+          .from('bn_payment_profile')
+          .update({ active: true, effective_to: null, modified_by: userCode, modified_at: new Date().toISOString() })
+          .in('id', deactivated.map((d: { id: string }) => d.id));
+      } catch (rollbackErr) {
+        logShielded('applyApprovedRequest:rollback', rollbackErr);
+      }
+    }
+    if (insErr.code === '23505' || String(insErr.message ?? '').includes('ux_bn_pp_active')) {
+      throw new Error('This claimant already has active bank details for this payment method and currency. Please try saving again.');
+    }
+    throw insErr;
+  }
 
   return created as BnPaymentProfile;
 }

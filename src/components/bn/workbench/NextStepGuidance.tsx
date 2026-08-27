@@ -55,7 +55,7 @@ export const NextStepGuidance: React.FC<Props> = ({
 }) => {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { userCode } = useUserCode();
+  const { userCode, isLoading: userCodeLoading } = useUserCode();
 
   const { data: downstream } = useQuery({
     queryKey: ['bn', 'next-step-downstream', claimId, status],
@@ -70,8 +70,11 @@ export const NextStepGuidance: React.FC<Props> = ({
   };
 
   const guard = () => {
+    // Still loading: the button should already be disabled for this case — stay silent rather
+    // than showing an error for a value that just hasn't arrived yet.
+    if (userCodeLoading) return false;
     if (!userCode) {
-      toast.error('Cannot perform action — your user code is not available.');
+      toast.error('Your account has no user code recorded. Please contact an administrator.');
       return false;
     }
     return true;
@@ -127,7 +130,7 @@ export const NextStepGuidance: React.FC<Props> = ({
         body: 'Send this claim to the decision queue for approval.',
         actionLabel: 'Submit for Decision',
         onAction: () => { if (guard()) submitMut.mutate(); },
-        pending: submitMut.isPending,
+        pending: submitMut.isPending || userCodeLoading,
       };
     }
 
@@ -138,7 +141,7 @@ export const NextStepGuidance: React.FC<Props> = ({
         body: 'Approve, deny or send back. Approval auto-creates the entitlement or payable.',
         actionLabel: 'Approve Claim',
         onAction: () => { if (guard()) approveMut.mutate(); },
-        pending: approveMut.isPending,
+        pending: approveMut.isPending || userCodeLoading,
       };
     }
 
@@ -149,7 +152,7 @@ export const NextStepGuidance: React.FC<Props> = ({
         body: 'Generate the entitlement / payable record so the claim can be paid.',
         actionLabel: 'Generate Payable',
         onAction: () => { if (guard()) generateMut.mutate(); },
-        pending: generateMut.isPending,
+        pending: generateMut.isPending || userCodeLoading,
       };
     }
 
@@ -182,7 +185,7 @@ export const NextStepGuidance: React.FC<Props> = ({
     }
 
     return null;
-  }, [status, hasEligibilityPass, hasCalculation, downstream, submitMut.isPending, approveMut.isPending, generateMut.isPending]);
+  }, [status, hasEligibilityPass, hasCalculation, downstream, submitMut.isPending, approveMut.isPending, generateMut.isPending, userCodeLoading]);
 
   if (!step) return null;
 

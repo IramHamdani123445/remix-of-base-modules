@@ -20,6 +20,7 @@ import {
 } from './variableResolver';
 import { runFormula, applyRounding, type FormulaVersionRow } from './formulaRunner';
 import type { LookupTraceEntry } from './rateTableLookup';
+import { resolveRealFact, type RealClaimContext } from '../runProductCalculation';
 
 const STAGE_ORDER = ['PRIMARY','CAP','ARREARS','PRORATION','BENEFICIARY_SPLIT','FINAL'] as const;
 
@@ -99,6 +100,61 @@ export async function loadMappings(bindingId: string): Promise<VariableMapping[]
     .eq('binding_id', bindingId);
   if (error) throw error;
   return (data ?? []) as VariableMapping[];
+}
+
+/**
+ * Build a real CalculationContext for an actual claim — resolves every FACT
+ * variable a set of bindings needs from this claimant's real data (the same
+ * resolver Eligibility rules already use), product parameters from their
+ * real registered default, and raw claim fields from the claim row itself.
+ *
+ * Without this, running these bindings for a real claim had no way to reach
+ * real per-claimant data at all — resolveVariables() only ever sees whatever
+ * is already in ctx.facts, and nothing populated it for a real claim.
+ */
+export async function buildRealCalculationContext(
+  bindingIds: string[],
+  claim: RealClaimContext,
+): Promise<CalculationContext> {
+  const ctx = emptyContext();
+  if (!bindingIds.length) return ctx;
+
+  const allMappings = (
+    await Promise.all(bindingIds.map((id) => loadMappings(id)))
+  ).flat();
+
+  const factKeys = [...new Set(
+    allMappings.filter((m) => m.source_type === 'FACT').map((m) => m.source_key ?? m.variable_name),
+  )];
+  await Promise.all(factKeys.map(async (k) => {
+    const v = await resolveRealFact(k, claim);
+    if (v !== null) ctx.facts[k] = v;
+  }));
+
+  const paramKeys = [...new Set(
+    allMappings.filter((m) => m.source_type === 'PRODUCT_PARAMETER').map((m) => m.source_key ?? m.variable_name),
+  )];
+  if (paramKeys.length) {
+    const { data: params } = await sb
+      .from('bn_product_parameter')
+      .select('code, default_value')
+      .in('code', paramKeys);
+    for (const p of params ?? []) {
+      if (p.default_value !== null && p.default_value !== undefined) ctx.productParameters[p.code] = Number(p.default_value);
+    }
+  }
+
+  const fieldKeys = [...new Set(
+    allMappings.filter((m) => m.source_type === 'CLAIM_FIELD').map((m) => m.source_key ?? m.variable_name),
+  )];
+  if (fieldKeys.length && claim.claimId) {
+    const { data: claimRow } = await sb.from('bn_claim').select('*').eq('id', claim.claimId).maybeSingle();
+    for (const f of fieldKeys) {
+      if (claimRow && claimRow[f] !== undefined) ctx.claimFields[f] = claimRow[f];
+    }
+  }
+
+  return ctx;
 }
 
 function sortBindings(bindings: BindingRow[]): BindingRow[] {
