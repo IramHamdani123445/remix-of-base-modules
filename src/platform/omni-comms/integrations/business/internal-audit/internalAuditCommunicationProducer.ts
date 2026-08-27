@@ -42,6 +42,12 @@ export interface InternalAuditCommunicationInput {
   recipientUserId?: string | null;
   /** Business facts for the event's declared token vocabulary. */
   values?: Record<string, unknown>;
+  /**
+   * Governed attachment references (DEF-3). Internal Audit supplies only ids
+   * already registered through the governed attachment registry — typically an
+   * audit artifact such as an issued report — never bytes or storage paths.
+   */
+  attachments?: import('../../../sendCommunication').SendCommunicationAttachmentInput[];
   organizationId?: string | null;
   departmentId?: string | null;
   correlationId?: string | null;
@@ -111,6 +117,7 @@ export async function emitInternalAuditCommunication(
     },
     recipients: { [catalogued.recipientRole]: recipient },
     data: payload,
+    attachments: input.attachments,
     correlationId:
       input.correlationId?.trim() ||
       buildInternalAuditCorrelationId(eventCode, input.entityId),
