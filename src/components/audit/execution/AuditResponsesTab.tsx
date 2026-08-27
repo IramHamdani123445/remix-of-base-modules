@@ -152,23 +152,34 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
                 </SelectContent>
               </Select>
             </div>
+            <div><Label>Management Position *</Label>
+              <Select value={form.management_position} onValueChange={(v) => setForm(f => ({ ...f, management_position: v as ManagementPosition }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{POSITIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
             <div><Label>Management Response *</Label><Textarea value={form.response_text} onChange={e => setForm(f => ({ ...f, response_text: e.target.value }))} rows={3} /></div>
             <div><Label>Action Plan</Label><Textarea value={form.action_plan} onChange={e => setForm(f => ({ ...f, action_plan: e.target.value }))} rows={2} /></div>
-            <div className="grid grid-cols-2 gap-3">
+            {form.management_position === 'Rejected' && (
+              <div><Label>Rejection Rationale *</Label><Textarea value={form.rejection_rationale} onChange={e => setForm(f => ({ ...f, rejection_rationale: e.target.value }))} rows={2} /></div>
+            )}
+            <div className="grid grid-cols-3 gap-3">
+              <div><Label>Responsible Person</Label><Input value={form.responsible_person} onChange={e => setForm(f => ({ ...f, responsible_person: e.target.value }))} /></div>
               <div><Label>Target Date</Label><Input type="date" value={form.target_date} onChange={e => setForm(f => ({ ...f, target_date: e.target.value }))} /></div>
               <div><Label>Supporting Document</Label>
                 <Input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" className="text-xs" />
               </div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSubmitResponse} disabled={create.isPending || uploading}>
-                {uploading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Uploading...</> : 'Submit Response'}
+              <Button onClick={handleSubmitResponse} disabled={recordResponse.isPending || uploading}>
+                {uploading || recordResponse.isPending ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Submitting...</> : 'Submit Response'}
               </Button>
               <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
             </div>
           </CardContent>
         </Card>
       )}
+
 
       {auditResponses.length === 0 && !showForm ? (
         <AuditEmptyState icon={MessageSquare} title="No management responses yet" description="Responses will appear here once submitted by auditees" />
