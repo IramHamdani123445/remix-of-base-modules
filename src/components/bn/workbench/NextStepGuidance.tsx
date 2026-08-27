@@ -55,7 +55,10 @@ export const NextStepGuidance: React.FC<Props> = ({
 }) => {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { userCode } = useUserCode();
+  // isLoading and error matter here: userCode starts null and the profile is
+  // fetched asynchronously, so acting on `!userCode` alone reports a missing
+  // user code while it is merely still loading.
+  const { userCode, isLoading: userCodeLoading, error: userCodeError } = useUserCode();
 
   const { data: downstream } = useQuery({
     queryKey: ['bn', 'next-step-downstream', claimId, status],
@@ -69,13 +72,36 @@ export const NextStepGuidance: React.FC<Props> = ({
     qc.invalidateQueries({ queryKey: ['bn', 'entitlements'] });
   };
 
+  /**
+   * Four different situations used to produce one message, so an officer could
+   * not tell a still-loading profile from an account that needs configuring.
+   */
   const guard = () => {
+    if (userCodeLoading) {
+      toast.error('Still loading your profile', {
+        description: 'Your user code has not arrived yet. Try again in a moment.',
+      });
+      return false;
+    }
+    if (userCodeError) {
+      toast.error('Could not read your profile', {
+        description: `${userCodeError}. Your user code is required to record this action.`,
+      });
+      return false;
+    }
     if (!userCode) {
-      toast.error('Cannot perform action — your user code is not available.');
+      toast.error('Your account has no user code', {
+        description:
+          'Every Benefits action is recorded against a user code, and none is set on your ' +
+          'profile. Ask an administrator to set one before continuing.',
+      });
       return false;
     }
     return true;
   };
+
+  /** True while no action can be taken, so buttons can be disabled rather than fail on click. */
+  const actionsBlocked = userCodeLoading || !!userCodeError || !userCode;
 
   const submitMut = useBlockingMutation({
     mutationFn: () => submitClaimForDecision(claimId, userCode!),
@@ -127,7 +153,7 @@ export const NextStepGuidance: React.FC<Props> = ({
         body: 'Send this claim to the decision queue for approval.',
         actionLabel: 'Submit for Decision',
         onAction: () => { if (guard()) submitMut.mutate(); },
-        pending: submitMut.isPending,
+        pending: submitMut.isPending || userCodeLoading,
       };
     }
 
@@ -138,7 +164,7 @@ export const NextStepGuidance: React.FC<Props> = ({
         body: 'Approve, deny or send back. Approval auto-creates the entitlement or payable.',
         actionLabel: 'Approve Claim',
         onAction: () => { if (guard()) approveMut.mutate(); },
-        pending: approveMut.isPending,
+        pending: approveMut.isPending || userCodeLoading,
       };
     }
 
@@ -149,7 +175,7 @@ export const NextStepGuidance: React.FC<Props> = ({
         body: 'Generate the entitlement / payable record so the claim can be paid.',
         actionLabel: 'Generate Payable',
         onAction: () => { if (guard()) generateMut.mutate(); },
-        pending: generateMut.isPending,
+        pending: generateMut.isPending || userCodeLoading,
       };
     }
 
@@ -182,7 +208,7 @@ export const NextStepGuidance: React.FC<Props> = ({
     }
 
     return null;
-  }, [status, hasEligibilityPass, hasCalculation, downstream, submitMut.isPending, approveMut.isPending, generateMut.isPending]);
+  }, [status, hasEligibilityPass, hasCalculation, downstream, submitMut.isPending, approveMut.isPending, generateMut.isPending, userCodeLoading]);
 
   if (!step) return null;
 
@@ -199,9 +225,20 @@ export const NextStepGuidance: React.FC<Props> = ({
           <Button
             size="sm"
             onClick={step.onAction}
-            disabled={('pending' in step) ? !!step.pending : false}
+            // Disabled while the user code is unavailable, so the action cannot
+            // be attempted and then refused.
+            disabled={actionsBlocked || (('pending' in step) ? !!step.pending : false)}
+            title={
+              userCodeLoading
+                ? 'Loading your profile…'
+                : userCodeError
+                  ? `Your profile could not be read: ${userCodeError}`
+                  : !userCode
+                    ? 'Your account has no user code — ask an administrator to set one'
+                    : undefined
+            }
           >
-            {step.actionLabel}
+            {userCodeLoading ? 'Loading…' : step.actionLabel}
             <ArrowRight className="ml-1 h-3.5 w-3.5" />
           </Button>
         )}

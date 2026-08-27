@@ -25,10 +25,9 @@ import {
   CATEGORY_LABELS,
   RULE_GROUPS,
   defaultGroupForFact,
-  getFact,
-  type EligibilityCategory,
 } from '@/services/bn/eligibility/eligibilityFactRegistry';
 import { OPERATORS } from '@/services/bn/eligibility/operators';
+import { useEligibilityFacts } from '@/hooks/bn/useEligibilityFacts';
 
 type Kind = NonNullable<BnEligibilityRule['rule_kind']>;
 const KINDS: { value: Kind; label: string; description: string }[] = [
@@ -61,6 +60,82 @@ const EMPTY: Partial<BnEligibilityRule> = {
   group_code: 'CORE_IDENTITY', rule_type: 'CONTRIBUTION', rule_group: 'GENERAL',
 };
 
+/**
+ * The two data-type vocabularies, reconciled (BUG-52).
+ *
+ * `bn_eligibility_fact.data_type` stores "boolean" on 17 facts; the operator
+ * table declares `appliesTo: [... 'bool' ...]`. Compared raw, every boolean
+ * fact matched no operator, so the operator dropdown was filtered wrongly for
+ * exactly the facts a rule most often asserts.
+ */
+function normaliseDataType(raw: unknown): string {
+  const t = String(raw ?? '').trim().toLowerCase();
+  if (t === 'boolean') return 'bool';
+  if (t === 'integer' || t === 'numeric' || t === 'decimal') return 'number';
+  if (t === 'text' || t === 'varchar') return 'string';
+  if (t === 'timestamp' || t === 'datetime') return 'date';
+  return t || 'string';
+}
+
+/** One fact option group: a category and the facts in it. */
+type FactGroup = [string, Array<{ fact_key: string; label: string; data_type: string; source_table: string | null }>];
+
+/**
+ * The fact picker, declared at module scope.
+ *
+ * BUG-52 — this used to be declared inside RuleWizardDialog's body. A
+ * component defined during render has a new function identity on every render,
+ * so React does not update it: it unmounts the old subtree and mounts a fresh
+ * one. Choosing a fact called onValueChange, which set state, which re-rendered
+ * the dialog, which gave the picker a new identity — and Radix remounted the
+ * Select with empty internal state. The fact was visible in the list and could
+ * not be selected.
+ *
+ * `grouped` is passed as a prop so the component can live out here.
+ */
+function FactSelectField({
+  value,
+  onValueChange,
+  placeholder = 'Pick a fact…',
+  dateOnly = false,
+  grouped,
+}: {
+  value?: string | null;
+  onValueChange: (v: string) => void;
+  placeholder?: string;
+  dateOnly?: boolean;
+  grouped: FactGroup[];
+}) {
+  return (
+    <Select value={value ?? ''} onValueChange={onValueChange}>
+      <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectContent className="max-h-80">
+        {grouped.map(([cat, facts]) => {
+          const filtered = dateOnly ? facts.filter((f) => f.data_type === 'date') : facts;
+          if (!filtered.length) return null;
+          return (
+            <div key={cat}>
+              <div className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                {(CATEGORY_LABELS as Record<string, string>)[cat] ?? cat}
+              </div>
+              {filtered.map((f) => (
+                <SelectItem key={f.fact_key} value={f.fact_key}>
+                  <div className="flex flex-col">
+                    <span>{f.label}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {f.fact_key}{f.source_table ? ` · ${f.source_table}` : ''}
+                    </span>
+                  </div>
+                </SelectItem>
+              ))}
+            </div>
+          );
+        })}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function RuleWizardDialog({ open, onOpenChange, productVersionId, productCode, initial, onSaved }: Props) {
   const { toast } = useToast();
   const upsert = useUpsertBnEligibilityRule();
@@ -75,13 +150,66 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
   const set = (patch: Partial<BnEligibilityRule>) => setRule((p) => ({ ...p, ...patch }));
   const setDef = (patch: Record<string, any>) => setRule((p) => ({ ...p, rule_definition: { ...(p.rule_definition as any), ...patch } }));
 
+  /**
+   * BUG-52 — the picker used to list ELIGIBILITY_FACTS, the hardcoded code
+   * registry, so a fact created through the Facts screen could never appear
+   * here: creating one writes to bn_eligibility_fact, and nothing read it.
+   * The registry holds 66 facts; the table holds 77.
+   *
+   * The table is now the source, unioned with the registry so nothing that was
+   * previously selectable disappears — the registry carries resolver bindings
+   * for facts the table may not list. The table wins on a shared key, because
+   * that is what an administrator most recently configured.
+   *
+   * `useUpsertEligibilityFact` already invalidates this query, so a newly
+   * created fact appears without a reload.
+   */
+  const { data: dbFacts = [] } = useEligibilityFacts();
+
+  const allFacts = useMemo(() => {
+    const byKey = new Map<string, { fact_key: string; label: string; category: string; data_type: string; source_table: string | null; applicable_products: string[] }>();
+    for (const f of ELIGIBILITY_FACTS) {
+      byKey.set(f.fact_key, {
+        fact_key: f.fact_key,
+        label: f.label,
+        category: String(f.category),
+        data_type: normaliseDataType(f.data_type),
+        source_table: f.source_table ?? null,
+        applicable_products: f.applicable_products ?? ['*'],
+      });
+    }
+    for (const f of dbFacts as any[]) {
+      const key = String(f?.fact_key ?? '').trim();
+      if (!key) continue;
+      byKey.set(key, {
+        fact_key: key,
+        label: String(f.label ?? key),
+        // The table stores category free-form and in mixed case — CONTRIBUTION
+        // (16 facts) alongside contribution (5), CLAIM alongside claim. Upper-
+        // casing folds those together; an unmapped category falls back to its
+        // own name rather than rendering an empty heading.
+        category: String(f.category ?? 'GENERAL').toUpperCase(),
+        data_type: normaliseDataType(f.data_type),
+        source_table: f.source_table ?? null,
+        applicable_products: Array.isArray(f.applicable_products) && f.applicable_products.length > 0
+          ? f.applicable_products
+          : ['*'],
+      });
+    }
+    return Array.from(byKey.values());
+  }, [dbFacts]);
+
   const factsForProduct = useMemo(() => {
-    if (!productCode) return ELIGIBILITY_FACTS;
-    return ELIGIBILITY_FACTS.filter((f) => f.applicable_products.includes('*') || f.applicable_products.includes(productCode));
-  }, [productCode]);
+    if (!productCode) return allFacts;
+    // A fact listing no products applies to all of them — an empty list is not
+    // a statement that it applies to none.
+    return allFacts.filter(
+      (f) => f.applicable_products.includes('*') || f.applicable_products.includes(productCode),
+    );
+  }, [allFacts, productCode]);
 
   const grouped = useMemo(() => {
-    const m = new Map<EligibilityCategory, typeof ELIGIBILITY_FACTS>();
+    const m = new Map<string, typeof factsForProduct>();
     for (const f of factsForProduct) {
       const arr = m.get(f.category) ?? [];
       arr.push(f);
@@ -90,30 +218,12 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
     return Array.from(m.entries());
   }, [factsForProduct]);
 
-  const FactSelect = ({ value, onValueChange, placeholder = 'Pick a fact…', dateOnly = false }: { value?: string | null; onValueChange: (v: string) => void; placeholder?: string; dateOnly?: boolean }) => (
-    <Select value={value ?? ''} onValueChange={onValueChange}>
-      <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
-      <SelectContent className="max-h-80">
-        {grouped.map(([cat, facts]) => {
-          const filtered = dateOnly ? facts.filter((f) => f.data_type === 'date') : facts;
-          if (!filtered.length) return null;
-          return (
-            <div key={cat}>
-              <div className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{CATEGORY_LABELS[cat]}</div>
-              {filtered.map((f) => (
-                <SelectItem key={f.fact_key} value={f.fact_key}>
-                  <div className="flex flex-col">
-                    <span>{f.label}</span>
-                    <span className="text-[10px] text-muted-foreground font-mono">{f.fact_key} · {f.source_table}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </div>
-          );
-        })}
-      </SelectContent>
-    </Select>
-  );
+  const FactSelect = (props: {
+    value?: string | null;
+    onValueChange: (v: string) => void;
+    placeholder?: string;
+    dateOnly?: boolean;
+  }) => <FactSelectField {...props} grouped={grouped} />;
 
   const onKindChange = (k: Kind) => {
     // Reset kind-specific fields cleanly
@@ -142,12 +252,18 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
       toast({ title: 'Pick both facts', variant: 'destructive' }); return;
     }
     try {
-      const factDef = rule.fact_key ? getFact(rule.fact_key) : null;
+      // BUG-52 — read `getFact` (the code registry), so a rule saved against a
+      // fact that exists only in bn_eligibility_fact carried data_source null
+      // and could not be traced back to where its value comes from. Resolved
+      // from the merged list.
+      const saveFact = rule.fact_key
+        ? allFacts.find((f) => f.fact_key === rule.fact_key) ?? null
+        : null;
       const payload: Partial<BnEligibilityRule> = {
         ...rule,
         product_version_id: productVersionId,
         group_code: rule.group_code ?? (rule.fact_key ? defaultGroupForFact(rule.fact_key) : 'CORE_IDENTITY'),
-        data_source: factDef?.source_table ?? rule.data_source ?? null,
+        data_source: saveFact?.source_table ?? rule.data_source ?? null,
       };
       await upsert.mutateAsync(payload);
       toast({ title: 'Rule saved' });
@@ -158,8 +274,22 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
     }
   };
 
-  const factDef = rule.fact_key ? getFact(rule.fact_key) : null;
-  const operators = factDef ? Object.values(OPERATORS).filter((o) => o.appliesTo.includes(factDef.data_type)) : Object.values(OPERATORS);
+  /**
+   * BUG-52 — this read `getFact`, the code registry, so for any fact that
+   * exists only in bn_eligibility_fact (11 of them today, plus every fact
+   * created since) factDef was null and the operator list fell back to ALL
+   * operators, unfiltered by the fact's type. Resolved from the merged list
+   * instead, so a fact created through the Facts screen gates its operators
+   * exactly as a registry fact does.
+   */
+  const factDef = useMemo(() => {
+    if (!rule.fact_key) return null;
+    return allFacts.find((f) => f.fact_key === rule.fact_key) ?? null;
+  }, [allFacts, rule.fact_key]);
+
+  const operators = factDef
+    ? Object.values(OPERATORS).filter((o) => (o.appliesTo as string[]).includes(factDef.data_type))
+    : Object.values(OPERATORS);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

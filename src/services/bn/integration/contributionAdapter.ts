@@ -28,36 +28,66 @@ export const bnContributionAdapter: IBnContributionAdapter = {
     };
   },
 
+  /**
+   * BUG-48 — this selected `employer_reg_no`, `wages`, `weeks` and
+   * `contributions`. None of the four exists on ip_wages, so PostgREST
+   * rejected the whole query with 42703 on every call. Every caller caught the
+   * throw and carried on with zeros: the intake wizard's Contribution Window
+   * showed Paid 0 / Credited 0 / Avg 0.00 for claimants who had contributions,
+   * and the paid-versus-credited split never worked for anybody.
+   *
+   * ip_wages is week-grained with seven wage columns per row and seven codes.
+   * A week is paid when it carries wages, and credited when it carries a code
+   * with no wages -- the same reading `contributionSnapshotService` uses.
+   */
   async getWeeklyWages(ssn, periodStart, periodEnd): Promise<WageRecord[]> {
+    const wageCols = [1, 2, 3, 4, 5, 6, 7].map((i) => `wages_paid${i}`);
+    const codeCols = [1, 2, 3, 4, 5, 6, 7].map((i) => `paid_code${i}`);
     const { data, error } = await db
       .from('ip_wages')
-      .select('period, employer_reg_no, wages, weeks, contributions')
+      .select(['period', 'payer_id', 'ip_ss_amt', ...wageCols, ...codeCols].join(', '))
       .eq('ssn', ssn.trim())
       .gte('period', periodStart)
       .lte('period', periodEnd)
       .order('period', { ascending: false });
 
     if (error) throw error;
-    return (data ?? []).map((w: any) => ({
-      period: w.period,
-      employerRegNo: w.employer_reg_no,
-      wages: w.wages ?? 0,
-      weeks: w.weeks ?? 0,
-      contributions: w.contributions ?? 0,
-    }));
+    return (data ?? []).map((w: any) => {
+      const wages = wageCols.reduce((sum, c) => sum + Number(w[c] ?? 0), 0);
+      const hasCode = codeCols.some((c) => String(w[c] ?? '').trim() !== '');
+      return {
+        period: w.period,
+        // ip_wages links the employer through payer_id, not employer_reg_no --
+        // as employerAdapter.verifyEmployment already notes.
+        employerRegNo: String(w.payer_id ?? ''),
+        wages,
+        // One ip_wages row is one week. It counts whenever it carries either
+        // wages or a contribution code; a row with neither is not a week of
+        // cover, and counting it would overstate the claimant's record.
+        weeks: wages > 0 || hasCode ? 1 : 0,
+        contributions: Number(w.ip_ss_amt ?? 0),
+      };
+    });
   },
 
+  /** BUG-48 — `weeks` and `contributions` do not exist on ip_wages either. */
   async getTotalContributions(ssn): Promise<{ weeks: number; amount: number }> {
+    const wageCols = [1, 2, 3, 4, 5, 6, 7].map((i) => `wages_paid${i}`);
+    const codeCols = [1, 2, 3, 4, 5, 6, 7].map((i) => `paid_code${i}`);
     const { data, error } = await db
       .from('ip_wages')
-      .select('weeks, contributions')
+      .select(['ip_ss_amt', ...wageCols, ...codeCols].join(', '))
       .eq('ssn', ssn.trim());
 
     if (error) throw error;
     const rows = data ?? [];
     return {
-      weeks: rows.reduce((sum: number, r: any) => sum + (r.weeks ?? 0), 0),
-      amount: rows.reduce((sum: number, r: any) => sum + (r.contributions ?? 0), 0),
+      weeks: rows.reduce((sum: number, r: any) => {
+        const wages = wageCols.reduce((t, c) => t + Number(r[c] ?? 0), 0);
+        const hasCode = codeCols.some((c) => String(r[c] ?? '').trim() !== '');
+        return sum + (wages > 0 || hasCode ? 1 : 0);
+      }, 0),
+      amount: rows.reduce((sum: number, r: any) => sum + Number(r.ip_ss_amt ?? 0), 0),
     };
   },
 

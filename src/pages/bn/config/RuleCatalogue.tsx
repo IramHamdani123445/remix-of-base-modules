@@ -31,6 +31,7 @@ import {
   validateRuleCatalogue,
   type RuleCatalogueItem, type RuleCatalogueInput, type FailAction,
 } from '@/services/bn/ruleCatalogueService';
+import { canonicalOperator } from '@/services/bn/governance/ruleGovernanceService';
 import { statusBadgeVariant, sourceTypeBadgeVariant, describeFactSource, type EligibilityFact } from '@/services/bn/eligibilityFactService';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import { OverviewTab } from '@/components/bn/ruleCatalogue/OverviewTab';
@@ -60,10 +61,18 @@ const emptyInput: RuleCatalogueInput = {
   default_group_sort_order: 0, default_rule_sort_order: 0,
 };
 
+/**
+ * BUG-02 — these compared the stored operator against canonical words only.
+ * Now that a rule keeps the spelling its fact declares, a rule saved with
+ * "between" (53 facts store it lower-case) would have fallen through to
+ * `value_from` and shown one bound of a range. Shape is judged canonically;
+ * only display keeps the configured spelling.
+ */
 function fmtValue(r: RuleCatalogueItem): string {
-  if (r.operator === 'BETWEEN') return `${r.value_from ?? ''} – ${r.value_to ?? ''}`;
-  if (r.operator === 'IN' || r.operator === 'NOT_IN') return Array.isArray(r.values) ? r.values.join(', ') : '';
-  if (r.operator === 'BOOLEAN' || r.operator === 'EXISTS') return String(r.value_from ?? 'true');
+  const op = canonicalOperator(r.operator);
+  if (op === 'BETWEEN') return `${r.value_from ?? ''} – ${r.value_to ?? ''}`;
+  if (op === 'IN' || op === 'NOT_IN') return Array.isArray(r.values) ? r.values.join(', ') : '';
+  if (op === 'BOOLEAN' || op === 'EXISTS') return String(r.value_from ?? 'true');
   return r.value_from ?? '(per product)';
 }
 
@@ -183,7 +192,8 @@ export default function RuleCatalogue() {
 
   const onSave = async () => {
     const payload = { ...editing };
-    if (payload.operator === 'IN' || payload.operator === 'NOT_IN') {
+    const payloadOp = canonicalOperator(payload.operator);
+    if (payloadOp === 'IN' || payloadOp === 'NOT_IN') {
       payload.values = valuesText.split(',').map(s => s.trim()).filter(Boolean);
     } else { payload.values = null; }
     if (!payload.fact_key) { toast.error('Fact is required', { description: 'Pick a fact from the Facts registry.' }); return; }
@@ -192,8 +202,21 @@ export default function RuleCatalogue() {
     if (payload.is_active && fact.implementation_status === 'NOT_IMPLEMENTED') {
       toast.error('Cannot activate', { description: 'The selected fact is not yet implemented.' }); return;
     }
-    if (fact.allowed_operators?.length && !fact.allowed_operators.includes(payload.operator)) {
-      toast.error('Operator not allowed for this fact', { description: `Allowed: ${fact.allowed_operators.join(', ')}` }); return;
+    // BUG-02 — compared as raw strings, this refused a rule whose operator was
+    // written in the other valid spelling: a fact listing ">=" rejected
+    // "GREATER_OR_EQUAL" and vice versa. The fact still decides WHICH operators
+    // are permitted; only the spelling is reconciled.
+    if (fact.allowed_operators?.length) {
+      const wanted = canonicalOperator(payload.operator);
+      const permitted = fact.allowed_operators
+        .map((o: unknown) => canonicalOperator(String(o ?? '')))
+        .filter((o): o is string => !!o);
+      if (!wanted || (permitted.length > 0 && !permitted.includes(wanted))) {
+        toast.error('Operator not allowed for this fact', {
+          description: `Allowed: ${fact.allowed_operators.join(', ')}`,
+        });
+        return;
+      }
     }
     if (duplicateCode) {
       toast.error('This rule code is already in use', {
@@ -242,9 +265,44 @@ export default function RuleCatalogue() {
     await toggle.mutateAsync({ id: r.id, isActive: !r.is_active, userCode });
   };
 
-  const isBetween = editing.operator === 'BETWEEN';
-  const isList = editing.operator === 'IN' || editing.operator === 'NOT_IN';
-  const isBool = editing.operator === 'BOOLEAN' || editing.operator === 'EXISTS';
+  /**
+   * The operators this fact permits, in the spelling the fact itself declares.
+   *
+   * BUG-02 (second attempt) — the first fix canonicalised these for display.
+   * `bn_eligibility_fact.allowed_operators` holds symbols on 53 facts, words on
+   * 2, and an empty list on 20; the fix mapped every one of them onto the
+   * canonical word list, so a fact configured with ">=" offered
+   * "GREATER_OR_EQUAL" instead. That is a different thing from what the
+   * administrator configured, and it is not this screen's business to restate
+   * it. Worse, the save-time check below compares against
+   * `allowed_operators` as raw strings, so the normalised value it wrote was
+   * then rejected as "Operator not allowed for this fact".
+   *
+   * The fact's configuration is the source of truth for BOTH which operators
+   * are permitted and how they are written. Acceptance is where the two
+   * spellings are reconciled — see `canonicalOperator` in the technical-review
+   * gate and in `operatorEvaluator` — never display.
+   *
+   * A fact that lists no operators permits all of them, in canonical spelling,
+   * because there is no configured spelling to preserve.
+   */
+  const operatorOptions = useMemo<string[]>(() => {
+    const allowed = selectedFact?.allowed_operators;
+    if (!Array.isArray(allowed)) return [...RULE_OPERATORS];
+    const configured = allowed
+      .map(o => String(o ?? '').trim())
+      .filter(o => o !== '' && canonicalOperator(o) !== null);
+    // An empty list, or a list of values in neither vocabulary, must not leave
+    // the dropdown with nothing selectable.
+    return configured.length > 0 ? configured : [...RULE_OPERATORS];
+  }, [selectedFact]);
+
+  // Which inputs the form needs is a question about the operator's meaning, not
+  // its spelling. A fact configuring "between" must still get two bounds.
+  const editingOp = canonicalOperator(editing.operator);
+  const isBetween = editingOp === 'BETWEEN';
+  const isList = editingOp === 'IN' || editingOp === 'NOT_IN';
+  const isBool = editingOp === 'BOOLEAN' || editingOp === 'EXISTS';
 
   return (
     <div className="container mx-auto py-6">
@@ -485,9 +543,25 @@ export default function RuleCatalogue() {
                     ...prev,
                     fact_key: v,
                     category: f?.category ?? prev.category,
-                    operator: f && f.allowed_operators?.length && !f.allowed_operators.includes(prev.operator)
-                      ? f.allowed_operators[0]
-                      : prev.operator,
+                    // Keep the current operator when the new fact still permits
+                    // it, and keep it in the spelling the fact declares.
+                    // Permission is judged canonically — ">=" and
+                    // "GREATER_OR_EQUAL" are the same requirement — but what is
+                    // stored is the configured spelling, not a rewritten one
+                    // (BUG-02).
+                    operator: (() => {
+                      const configured = (f?.allowed_operators ?? [])
+                        .map(o => String(o ?? '').trim())
+                        .filter(o => o !== '' && canonicalOperator(o) !== null);
+                      // No configured list: the fact constrains nothing, so
+                      // leave the operator exactly as the author left it.
+                      if (configured.length === 0) return prev.operator;
+                      const current = canonicalOperator(prev.operator);
+                      const match = current
+                        ? configured.find(o => canonicalOperator(o) === current)
+                        : undefined;
+                      return match ?? configured[0];
+                    })(),
                   }));
                 }}>
                 <SelectTrigger><SelectValue placeholder="Pick a fact from the Facts registry" /></SelectTrigger>
@@ -535,7 +609,7 @@ export default function RuleCatalogue() {
               <Select value={editing.operator} onValueChange={v => setEditing({ ...editing, operator: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(selectedFact?.allowed_operators?.length ? selectedFact.allowed_operators : RULE_OPERATORS).map(o =>
+                  {operatorOptions.map(o =>
                     <SelectItem key={o} value={o}>{o}</SelectItem>)}
                 </SelectContent>
               </Select>

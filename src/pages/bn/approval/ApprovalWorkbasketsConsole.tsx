@@ -49,7 +49,7 @@ interface Assignment {
   assigned_to: string | null;
   bn_claim?: {
     id: string;
-    claim_no?: string | null;
+    claim_number?: string | null;
     status?: string | null;
     total_amount?: number | null;
     bn_product?: { benefit_code?: string; benefit_name?: string; category?: string } | null;
@@ -86,7 +86,7 @@ async function fetchAssignments(): Promise<Assignment[]> {
     .select(
       `id, claim_id, workbasket_id, priority, assigned_at, due_at, assigned_to,
        bn_claim:claim_id (
-         id, claim_no, status, total_amount,
+         id, claim_number, status, total_amount,
          bn_product:product_id ( benefit_code, benefit_name, category )
        )`
     )
@@ -131,8 +131,11 @@ export default function ApprovalWorkbasketsConsole() {
   );
 
   const filteredWorkbaskets = useMemo(
-    () => role === 'ALL' ? workbaskets : workbaskets.filter((w) => w.assigned_role === role),
-    [workbaskets, role],
+    () => workbaskets.filter((w) => (
+      (role === 'ALL' || w.assigned_role === role)
+      && (workbasketId === 'ALL' || w.id === workbasketId)
+    )),
+    [workbaskets, role, workbasketId],
   );
 
   const minAmt = minAmount ? Number(minAmount) : 0;
@@ -295,7 +298,7 @@ export default function ApprovalWorkbasketsConsole() {
                       return (
                         <TableRow key={a.id}>
                           <TableCell className="font-mono text-xs">
-                            {c?.claim_no ?? a.claim_id.slice(0, 8)}
+                            {c?.claim_number ?? a.claim_id.slice(0, 8)}
                           </TableCell>
                           <TableCell>
                             {c?.bn_product?.benefit_name ?? '—'}

@@ -24,7 +24,7 @@
  *   - Workflow basket routing (permission gated)        → audit
  *   - Supervisor escalation                             → audit
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,6 +47,7 @@ import {
   StickyNote, FlagTriangleRight, Inbox, ListChecks, Stethoscope, Banknote,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { showBlockerToast } from '@/lib/bn/showBlockerToast';
 
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { useBnProducts } from '@/hooks/bn/useBnProduct';
@@ -76,6 +77,12 @@ import {
   type LegacyClaimRecord,
 } from '@/services/bn/forms/formLookupService';
 import { fetchEligibilityRules } from '@/services/bn/productService';
+import {
+  evaluateEligibilityRules,
+  summariseEligibility,
+  type EligibilityRuleTrace,
+} from '@/services/bn/eligibility/eligibilityEvaluator';
+import { summariseBlockingRules } from '@/services/bn/eligibility/ruleMessage';
 import {
   getDefaultFieldsForBenefit,
   normalizeBenefitKey,
@@ -146,6 +153,13 @@ export default function ClaimRegistration() {
 
   // Step 6: eligibility
   const [eligRules, setEligRules] = useState<any[]>([]);
+  // BUG-29 — step 6 used to list rules with a static tick and never compare a
+  // value, so an unqualified claimant read "Eligibility PASSED". The pre-check
+  // now evaluates every rule and blocks registration on any failure or on any
+  // rule that could not be evaluated.
+  const [eligTraces, setEligTraces] = useState<EligibilityRuleTrace[]>([]);
+  const [eligEvaluating, setEligEvaluating] = useState(false);
+  const [eligError, setEligError] = useState<string | null>(null);
   const [contribution, setContribution] = useState<ContributionSummaryResult | null>(null);
 
   // Step 7: documents
@@ -267,6 +281,62 @@ export default function ClaimRegistration() {
     return () => { cancel = true; };
   }, [step, selectedProduct, claimDate]);
 
+  // BUG-46 — 'INTAKE' holds document rules back. The claim does not exist yet,
+  // so nothing can be attached to it; a missing certificate at the counter is
+  // not a finding that the claimant does not qualify. They are judged at
+  // approval, where checkApprovalPreconditions refuses on DOCUMENTS_OUTSTANDING.
+  const eligSummary = useMemo(
+    () => summariseEligibility(eligTraces, { phase: 'INTAKE' }),
+    [eligTraces],
+  );
+  /** Rule codes held back, so the list below can label them instead of failing them. */
+  const deferredCodes = useMemo(
+    () => new Set(eligSummary.deferred.map((t) => t.rule_code)),
+    [eligSummary.deferred],
+  );
+  /**
+   * Every requirement this product carries is documentary, so there was nothing
+   * to compare at the counter. Distinguished from a genuine gap because the
+   * screen must not say "refer for manual review" about a claim it will happily
+   * register (BUG-46).
+   */
+  const onlyEvidenceRemains =
+    eligSummary.evaluatedCount === 0 &&
+    eligSummary.unevaluated.length === 0 &&
+    eligSummary.deferred.length > 0;
+
+  const effectiveSsnForElig = person?.ssn ?? (pendingVerification ? ssn : '');
+
+  // Evaluates every active rule for the resolved version against this claimant.
+  // Returns the traces so callers can await a fresh result.
+  const runEligibilityPrecheck = useCallback(
+    async (rules: any[]): Promise<EligibilityRuleTrace[]> => {
+      if (!resolvedVersion || !effectiveSsnForElig || rules.length === 0) {
+        setEligTraces([]);
+        return [];
+      }
+      setEligEvaluating(true);
+      setEligError(null);
+      try {
+        const traces = await evaluateEligibilityRules(rules, {
+          ssn: effectiveSsnForElig,
+          claimDate,
+          benefitType: (selectedProduct as any)?.benefit_code,
+        });
+        setEligTraces(traces);
+        return traces;
+      } catch (err: any) {
+        // A pre-check that cannot run must not read as a pass.
+        setEligTraces([]);
+        setEligError(err?.message ?? 'Eligibility pre-check could not be completed.');
+        return [];
+      } finally {
+        setEligEvaluating(false);
+      }
+    },
+    [resolvedVersion, effectiveSsnForElig, claimDate, selectedProduct],
+  );
+
   // ─── Step 6+7 — Load eligibility & documents when version known ──
   useEffect(() => {
     let cancel = false;
@@ -279,6 +349,7 @@ export default function ClaimRegistration() {
       if (cancel) return;
       setEligRules(rules);
       setDocs(docList);
+      void runEligibilityPrecheck(rules);
       setDocState(prev => {
         const n = { ...prev };
         for (const d of docList) if (!n[d.document_type_code]) n[d.document_type_code] = { status: 'PROVIDED' };
@@ -397,7 +468,31 @@ export default function ClaimRegistration() {
       case 'benefit': return productId ? null : 'Select a benefit.';
       case 'claim-date': return claimDate ? null : 'Enter a claim date.';
       case 'version': return resolvedVersion ? null : 'Active product version must resolve.';
-      case 'eligibility':
+      case 'eligibility': {
+        // BUG-29 — a check with no input must not read as a pass.
+        // BUG-30 — nor is "nothing failed" a pass. The verdict stays honest.
+        //
+        // BUG-48 — but the verdict does not bar registration. A claim must
+        // always be lodgeable: registration is what brings the claim into
+        // existence, and a refusal has to be a formal decision the claimant can
+        // appeal. Turning someone away at the counter produces no decision to
+        // appeal against, and no record that they ever came.
+        //
+        // So the pre-check informs and is recorded, and the entitlement
+        // decision belongs to adjudication — where checkApprovalPreconditions
+        // already refuses on eligibility, documents, calculation and amount.
+        //
+        // What still blocks is only what the officer can resolve right now.
+        if (eligEvaluating) return 'Eligibility pre-check is still running.';
+        if (eligError) return eligError;
+        if (!effectiveSsnForElig) return 'A verified SSN is required before eligibility can be checked.';
+        // The pre-check must have been run, so its finding is on the record and
+        // travels with the claim. Its result is not a condition of proceeding.
+        if (eligRules.length > 0 && eligTraces.length === 0) {
+          return 'Run the eligibility pre-check before continuing.';
+        }
+        return null;
+      }
       case 'documents':
       case 'facts':
         return null;
@@ -422,7 +517,13 @@ export default function ClaimRegistration() {
     const i = STEPS.findIndex(s => s.key === step);
     if (i < 0 || i === STEPS.length - 1) return;
     const block = canAdvanceFrom(step);
-    if (block) { toast.error(block); return; }
+    if (block) {
+      // A step may refuse for more than one reason, and an eligibility read
+      // error carries the database's own wording. Shown as a heading plus one
+      // line each rather than a single run-on title.
+      showBlockerToast(block, { fallbackTitle: 'Cannot continue yet' });
+      return;
+    }
     setStep(STEPS[i + 1].key);
   }
   function prevStep() {
@@ -481,7 +582,38 @@ export default function ClaimRegistration() {
         },
       });
       toast.success(`Claim ${result.claimNumber} registered`);
-      if (result.workflowInstanceId) {
+      // Registered is not the same as payable. The officer should leave the
+      // counter knowing what adjudication will have to resolve (BUG-48).
+      if (eligSummary.verdict === 'FAILED') {
+        toast.warning('Registered with an unmet requirement', {
+          description:
+            `${summariseBlockingRules(eligSummary.failed)}. Recorded on the claim — ` +
+            'the entitlement decision is made at adjudication.',
+          duration: 20_000,
+        });
+      } else if (eligSummary.verdict === 'NOT_DETERMINED' && eligSummary.unevaluated.length > 0) {
+        toast.warning('Registered with eligibility unproven', {
+          description:
+            `${summariseBlockingRules(eligSummary.unevaluated)}. Refer for manual review.`,
+          duration: 20_000,
+        });
+      }
+      // BUG-33 — the officer must be told where the claim went. A claim that
+      // reached no queue has no owner, and a successful-looking submission used
+      // to be the only thing shown.
+      if (result.routing?.outcome === 'UNASSIGNED') {
+        toast.error('Claim has no owner', {
+          description: result.routing.summary,
+          duration: 30_000,
+        });
+      } else if (result.routing?.outcome === 'DIRECT_ASSIGNMENT') {
+        toast.warning('Assigned without a workflow', {
+          description: result.routing.summary,
+          duration: 20_000,
+        });
+      } else if (result.routing?.workbasketName) {
+        toast.info(`Routed to ${result.routing.workbasketName}.`);
+      } else if (result.workflowInstanceId) {
         toast.info('Workflow started and routed to worklist.');
       }
       // Audit application-registered event (critical)
@@ -497,6 +629,18 @@ export default function ClaimRegistration() {
           workflowInstanceId: result.workflowInstanceId ?? null,
           workbasket: workbasket || null,
           priority,
+          // BUG-48 — the pre-check no longer bars registration, so its finding
+          // must travel with the claim. Recorded here rather than left on the
+          // screen the officer is about to leave: adjudication needs to know
+          // what was known at the counter, and on what it rested.
+          eligibilityPrecheck: {
+            verdict: eligSummary.verdict,
+            coverage: eligSummary.coverageLabel,
+            failed: eligSummary.failed.map((t) => t.rule_code),
+            unevaluated: eligSummary.unevaluated.map((t) => t.rule_code),
+            deferredForEvidence: eligSummary.deferred.map((t) => t.rule_code),
+            ruleCount: eligRules.length,
+          },
         },
         critical: true,
       }).catch(() => {});
@@ -701,7 +845,9 @@ export default function ClaimRegistration() {
               <StepCard title="6. Eligibility Pre-checks" desc="Loaded from the resolved product version. Editable values come later.">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">
-                    {eligRules.length} rule{eligRules.length === 1 ? '' : 's'} loaded for this product version.
+                    {eligTraces.length > 0
+                      ? eligSummary.coverageLabel
+                      : `${eligRules.length} rule${eligRules.length === 1 ? '' : 's'} loaded — none evaluated yet.`}
                   </p>
                   <Button
                     size="sm"
@@ -711,6 +857,8 @@ export default function ClaimRegistration() {
                       if (!resolvedVersion) return;
                       const fresh = await fetchEligibilityRules(resolvedVersion.version.id).catch(() => []);
                       setEligRules(fresh);
+                      const traces = await runEligibilityPrecheck(fresh);
+                      const sum = summariseEligibility(traces, { phase: 'INTAKE' });
                       void auditClaimAction({
                         action: 'ELIGIBILITY_PRECHECK_RUN',
                         entityType: 'bn_claim_intake',
@@ -722,24 +870,214 @@ export default function ClaimRegistration() {
                           ssn: person?.ssn ?? (pendingVerification ? ssn : null),
                           claimDate,
                           ruleCount: fresh.length,
+                          // What the verdict rests on, and what it deliberately
+                          // did not judge (BUG-46).
+                          verdict: sum.verdict,
+                          deferredForEvidence: sum.deferred.map((t) => t.rule_code),
                         },
                         critical: false,
                       }).catch(() => {});
-                      toast.success('Pre-check re-run', { description: `${fresh.length} rule(s) evaluated.` });
+                      if (sum.verdict === 'PASSED') {
+                        toast.success('Eligibility PASSED', { description: sum.coverageLabel });
+                      } else if (sum.verdict === 'FAILED') {
+                        toast.error('Claimant does not qualify', {
+                          description: `${sum.failed.length} rule(s) failed — ${sum.coverageLabel}.`,
+                        });
+                      } else if (
+                        sum.evaluatedCount === 0 &&
+                        sum.unevaluated.length === 0 &&
+                        sum.deferred.length > 0
+                      ) {
+                        toast.info('Evidence required later', {
+                          description:
+                            `${sum.deferred.length} document requirement(s). Registration may proceed; ` +
+                            'approval will be refused until the evidence is verified.',
+                        });
+                      } else {
+                        toast.warning('Eligibility could not be determined', {
+                          description: `${sum.coverageLabel}. This is not a pass.`,
+                        });
+                      }
                     }}
                   >
                     <ShieldCheck className="h-3.5 w-3.5 mr-1" /> Run Pre-check
                   </Button>
                 </div>
-                {eligRules.length === 0 && <p className="text-sm text-muted-foreground">No eligibility rules configured.</p>}
-                {eligRules.length > 0 && (
+                {eligRules.length === 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Eligibility COULD NOT BE DETERMINED — 0 of 0 rules evaluated</AlertTitle>
+                    <AlertDescription>
+                      This product version has no eligibility rules attached, so nothing was
+                      checked. Registration cannot proceed on an unchecked claim — refer for
+                      manual review, or attach the product’s rules before registering.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {eligRules.length > 0 && !effectiveSsnForElig && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Eligibility not checked</AlertTitle>
+                    <AlertDescription>
+                      A verified SSN is required before the claimant's age and contribution
+                      record can be compared against the product rules.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {eligError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Pre-check failed to run</AlertTitle>
+                    <AlertDescription>{eligError}</AlertDescription>
+                  </Alert>
+                )}
+
+                {eligEvaluating && (
+                  <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Evaluating rules against this claimant…
+                  </p>
+                )}
+
+                {!eligEvaluating && eligTraces.length > 0 && (
+                  <Alert
+                    variant={
+                      eligSummary.verdict === 'PASSED' || onlyEvidenceRemains
+                        ? 'default'
+                        : 'destructive'
+                    }
+                  >
+                    {eligSummary.verdict === 'PASSED' ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : onlyEvidenceRemains ? (
+                      <FileText className="h-4 w-4" />
+                    ) : eligSummary.verdict === 'FAILED' ? (
+                      <AlertTriangle className="h-4 w-4" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4" />
+                    )}
+                    <AlertTitle className="mb-1">
+                      {eligSummary.verdict === 'PASSED'
+                        ? 'Eligibility passed'
+                        : onlyEvidenceRemains
+                          ? 'Evidence required later'
+                          : eligSummary.verdict === 'FAILED'
+                            ? 'Claimant does not qualify'
+                            : 'Eligibility could not be determined'}
+                    </AlertTitle>
+                    <AlertDescription className="space-y-2">
+                      <p className="leading-relaxed">
+                        {eligSummary.verdict === 'PASSED'
+                          ? 'Every requirement was compared against the claimant’s record and satisfied.'
+                          : onlyEvidenceRemains
+                            ? 'This benefit’s only requirements are documentary, so there is nothing to compare at the counter. The evidence is attached at step 7, or after submission.'
+                            : eligSummary.verdict === 'FAILED'
+                              ? 'The claimant’s record does not meet the requirements below. This is recorded on the claim; registration may still proceed, and the entitlement decision is made at adjudication.'
+                              : eligSummary.evaluatedCount === 0
+                                ? 'Not one requirement was compared against this claimant, so entitlement is unproven. This is not a pass — refer for manual review. Registration may still proceed.'
+                                : 'Some requirements could not be compared against the claimant’s record, so entitlement is unproven. Refer for manual review. Registration may still proceed.'}
+                      </p>
+
+                      {/* Counts as chips rather than run into the title, which
+                          wrapped mid-sentence and read as one broken line. */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {eligSummary.passed.length > 0 && (
+                          <Badge variant="outline" className="border-emerald-600/40 text-emerald-700">
+                            {eligSummary.passed.length} met
+                          </Badge>
+                        )}
+                        {eligSummary.failed.length > 0 && (
+                          <Badge variant="outline" className="border-destructive/40 text-destructive">
+                            {eligSummary.failed.length} not met
+                          </Badge>
+                        )}
+                        {eligSummary.unevaluated.length > 0 && (
+                          <Badge variant="outline" className="border-amber-500/40 text-amber-700">
+                            {eligSummary.unevaluated.length} not checked
+                          </Badge>
+                        )}
+                        {eligSummary.deferred.length > 0 && (
+                          <Badge variant="outline" className="text-muted-foreground">
+                            {eligSummary.deferred.length} required later
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {eligSummary.coverageLabel}
+                        </span>
+                      </div>
+
+                      {eligSummary.deferred.length > 0 && !onlyEvidenceRemains && (
+                        <p className="text-xs leading-relaxed">
+                          Document requirements are not judged at this step. They do not block
+                          registration, but the claim cannot be approved until they are verified.
+                        </p>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {eligTraces.length > 0 && (
+                  <ul className="divide-y rounded-md border text-sm">
+                    {eligTraces.map((t) => {
+                      // A deferred rule is neither passed nor failed at this
+                      // step, so it must not be dressed as either (BUG-46).
+                      const isDeferred = deferredCodes.has(t.rule_code);
+                      const state = isDeferred ? 'DEFERRED' : t.result_state;
+                      const tone =
+                        state === 'PASS' ? 'text-emerald-700' :
+                        state === 'FAIL' ? 'text-destructive' :
+                        state === 'UNEVALUATED' ? 'text-amber-700' :
+                        'text-muted-foreground';
+                      const label =
+                        state === 'PASS' ? 'Met' :
+                        state === 'FAIL' ? 'Not met' :
+                        state === 'UNEVALUATED' ? 'Not checked' :
+                        state === 'DEFERRED' ? 'Required later' :
+                        state === 'OVERRIDDEN' ? 'Overridden' : 'Note';
+                      const Icon =
+                        state === 'PASS' ? CheckCircle2 :
+                        state === 'FAIL' ? AlertTriangle :
+                        state === 'UNEVALUATED' ? AlertCircle : FileText;
+                      return (
+                        <li key={t.rule_code} className="flex items-start gap-3 px-3 py-2">
+                          <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${tone}`} />
+                          {/* min-w-0 lets long requirement text wrap inside its
+                              own column instead of pushing the badge along. */}
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <p className="font-medium leading-snug">
+                              {t.requirement || t.rule_name || t.rule_code}
+                            </p>
+                            {t.detail && (
+                              <p className="text-xs text-muted-foreground leading-snug">{t.detail}</p>
+                            )}
+                            {t.reference && (
+                              <p className="text-[11px] text-muted-foreground/80 italic leading-snug">
+                                {t.reference}
+                              </p>
+                            )}
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={`shrink-0 text-[11px] font-medium ${tone}`}
+                          >
+                            {label}
+                          </Badge>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                {/* Rules loaded but not yet evaluated — never presented as passed. */}
+                {eligTraces.length === 0 && !eligEvaluating && eligRules.length > 0 && (
                   <ul className="space-y-1 text-sm">
                     {eligRules.map((r: any) => (
                       <li key={r.id} className="flex items-start gap-2">
-                        <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
+                        <AlertCircle className="h-3.5 w-3.5 mt-0.5 text-muted-foreground" />
                         <span>
                           <span className="font-medium">{r.rule_code ?? r.name}</span>
-                          {r.description ? ` — ${r.description}` : null}
+                          <span className="ml-2 text-xs text-muted-foreground">NOT CHECKED</span>
                         </span>
                       </li>
                     ))}

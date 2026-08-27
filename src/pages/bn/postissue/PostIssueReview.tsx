@@ -21,6 +21,7 @@ import { PostIssueTaskList } from '@/components/bn/postissue/PostIssueTaskList';
 import { PostIssueTaskDrawer } from '@/components/bn/postissue/PostIssueTaskDrawer';
 import { PostIssueFiltersBar } from '@/components/bn/postissue/PostIssueFiltersBar';
 import type { PostIssueFilters } from '@/services/bn/postIssueService';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 
 const STAT_CARDS = [
   { key: 'total', label: 'Total', icon: ListChecks, color: 'text-foreground' },
@@ -32,6 +33,9 @@ const STAT_CARDS = [
 ];
 
 export default function PostIssueReview() {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor } = useActorUserCode();
+
   const [filters, setFilters] = useState<PostIssueFilters>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -57,7 +61,7 @@ export default function PostIssueReview() {
     try {
       const result = await bulkMutation.mutateAsync({
         batchId: filters.batch_id,
-        userCode: 'CURRENT_USER',
+        userCode: actor(),
       });
       toast.success(`Completed: ${result.completed}, Failed: ${result.failed}`);
     } catch (err: any) {

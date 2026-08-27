@@ -18,6 +18,25 @@ import {
   type RuleVersionCompareResult,
 } from '@/services/bn/rulesAdminService';
 
+/**
+ * Every governance transition changes the same three things, so all three
+ * caches are refreshed together.
+ *
+ * Submit used to refresh only `rule-versions`, so Rule Version Governance
+ * showed the new status while the Product Editor — which reads
+ * `product-versions` — kept showing the old one. And `version-readiness` was
+ * refreshed only by Return to Draft, so the Readiness badge could still read
+ * "Ready to submit and publish" on a version that had already gone live.
+ *
+ * Note: a React Query cache is per browser tab. This keeps one tab consistent;
+ * a second tab still needs a refresh to see a change made in the first.
+ */
+function invalidateVersionCaches(qc: ReturnType<typeof useQueryClient>): void {
+  qc.invalidateQueries({ queryKey: ['bn', 'rule-versions'] });
+  qc.invalidateQueries({ queryKey: ['bn', 'product-versions'] });
+  qc.invalidateQueries({ queryKey: ['bn', 'version-readiness'] });
+}
+
 export function useBnRuleVersions(productId?: string) {
   return useQuery({
     queryKey: ['bn', 'rule-versions', productId],
@@ -33,7 +52,9 @@ export function useBnCloneVersion() {
       cloneVersionAsDraft(params.sourceVersionId, params.newLabel, params.changeNotes, params.userCode),
     onSuccess: () => {
       toast.success('Draft version created');
-      qc.invalidateQueries({ queryKey: ['bn', 'rule-versions'] });
+      // A clone adds a version row, so the Product Editor's version list must
+      // refresh too — otherwise the new draft is invisible until a page reload.
+      invalidateVersionCaches(qc);
     },
     onError: (err: any) => toast.error('Clone failed', { description: err.message }),
   });
@@ -56,7 +77,7 @@ export function useBnSubmitForApproval() {
     onSuccess: (result) => {
       if (result.success) {
         toast.success('Version submitted for approval');
-        qc.invalidateQueries({ queryKey: ['bn', 'rule-versions'] });
+        invalidateVersionCaches(qc);
       } else {
         toast.error('Submission failed', { description: result.error });
       }
@@ -72,8 +93,7 @@ export function useBnApproveVersion() {
     onSuccess: (result) => {
       if (result.success) {
         toast.success('Version approved');
-        qc.invalidateQueries({ queryKey: ['bn', 'rule-versions'] });
-        qc.invalidateQueries({ queryKey: ['bn', 'product-versions'] });
+        invalidateVersionCaches(qc);
       } else {
         toast.error('Approval failed', { description: result.error });
       }
@@ -89,8 +109,7 @@ export function useBnRejectVersion() {
     onSuccess: (result) => {
       if (result.success) {
         toast.success('Version returned to draft');
-        qc.invalidateQueries({ queryKey: ['bn', 'rule-versions'] });
-        qc.invalidateQueries({ queryKey: ['bn', 'product-versions'] });
+        invalidateVersionCaches(qc);
       } else {
         toast.error('Rejection failed', { description: result.error });
       }
@@ -110,9 +129,7 @@ export function useBnReturnToDraft() {
     onSuccess: (result) => {
       if (result.success) {
         toast.success('Version returned to draft — it can now be edited');
-        qc.invalidateQueries({ queryKey: ['bn', 'rule-versions'] });
-        qc.invalidateQueries({ queryKey: ['bn', 'product-versions'] });
-        qc.invalidateQueries({ queryKey: ['bn', 'version-readiness'] });
+        invalidateVersionCaches(qc);
       } else {
         toast.error('Could not return to draft', { description: result.error });
       }
@@ -130,8 +147,7 @@ export function useBnPublishVersion() {
     onSuccess: (result) => {
       if (result.success) {
         toast.success('Version published and active');
-        qc.invalidateQueries({ queryKey: ['bn', 'rule-versions'] });
-        qc.invalidateQueries({ queryKey: ['bn', 'product-versions'] });
+        invalidateVersionCaches(qc);
       } else {
         toast.error('Publish failed', { description: result.error });
       }

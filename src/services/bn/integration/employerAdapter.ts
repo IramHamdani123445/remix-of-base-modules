@@ -55,7 +55,10 @@ export const bnEmployerAdapter: IBnEmployerAdapter = {
     // ip_wages uses payer_id (not employer_reg_no) for the employer linkage.
     const { data, error } = await db
       .from('ip_wages')
-      .select('period, total_wages, payer_id')
+      // BUG-48 — `total_wages` does not exist on ip_wages; the wage figure is
+      // seven weekly columns. Naming it failed the whole query with 42703, so
+      // employment could never be verified.
+      .select(['period', 'payer_id', ...[1, 2, 3, 4, 5, 6, 7].map((i) => `wages_paid${i}`)].join(', '))
       .eq('ssn', ssn.trim())
       .eq('payer_id', regNo.trim())
       .order('period', { ascending: false })

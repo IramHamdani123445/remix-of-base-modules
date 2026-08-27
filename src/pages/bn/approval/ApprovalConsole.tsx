@@ -13,6 +13,7 @@ import React, { useState, useMemo } from 'react';
 import { BnStatCard, BnEmptyState } from '@/components/bn/shared';
 import { ClipboardCheck, Clock, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { showBlockerToast } from '@/lib/bn/showBlockerToast';
 import { useBnApprovalQueue, useExecuteApprovalAction, useBulkApproval } from '@/hooks/bn/useBnApprovalConsole';
 import { ApprovalQueueFilters } from '@/components/bn/approval/ApprovalQueueFilters';
 import { ApprovalQueueTable } from '@/components/bn/approval/ApprovalQueueTable';
@@ -31,7 +32,19 @@ export default function ApprovalConsole() {
 
   const { roles: authRoles } = useSupabaseAuth();
   const userRoles = (authRoles ?? []).map((r) => String(r));
-  const { userCode: _uc } = useUserCode(); const userCode = _uc ?? '';
+  // `?? ''` used to turn a still-loading profile into an empty user code, which
+  // then failed no check: maker-checker compared '' against the recommender and
+  // passed, and the approval was recorded with no approver name.
+  const { userCode: _uc, isLoading: userCodeLoading, error: userCodeError } = useUserCode();
+  const userCode = _uc ?? '';
+  const approvalsBlocked = userCodeLoading || !!userCodeError || !userCode;
+  const approvalsBlockedReason = userCodeLoading
+    ? 'Loading your profile — your user code has not arrived yet.'
+    : userCodeError
+      ? `Your profile could not be read: ${userCodeError}`
+      : !userCode
+        ? 'Your account has no user code recorded. Ask an administrator to set one.'
+        : null;
 
   // Stats
   const stats = useMemo(() => {
@@ -54,6 +67,10 @@ export default function ApprovalConsole() {
   }, [selectedIds, queue]);
 
   const handleAction = (action: string, narrative: string, reasonCodeId?: string) => {
+    if (approvalsBlocked) {
+      showBlockerToast(approvalsBlockedReason, { fallbackTitle: 'Cannot record this decision' });
+      return;
+    }
     if (selectedIds.size === 0) {
       toast.error('Select at least one case.');
       return;
@@ -67,12 +84,16 @@ export default function ApprovalConsole() {
           toast.success(`${action} completed. Status → ${res.newStatus}`);
           setSelectedIds(new Set());
         },
-        onError: (err: any) => toast.error(err.message),
+        onError: (err: any) => showBlockerToast(err, { fallbackTitle: 'Action failed' }),
       }
     );
   };
 
   const handleBulkApprove = (narrative: string) => {
+    if (approvalsBlocked) {
+      showBlockerToast(approvalsBlockedReason, { fallbackTitle: 'Cannot record these decisions' });
+      return;
+    }
     const ids = Array.from(selectedIds);
     bulkApprove.mutate(
       { claimIds: ids, narrative, performedBy: userCode },
@@ -80,11 +101,16 @@ export default function ApprovalConsole() {
         onSuccess: (res) => {
           toast.success(`Bulk approved: ${res.succeeded.length} succeeded, ${res.failed.length} failed.`);
           if (res.failed.length > 0) {
-            res.failed.forEach(f => toast.error(`${f.claimId.slice(0, 8)}: ${f.error}`));
+            // One notification per claim, each listing its own conditions.
+            res.failed.forEach(f =>
+              showBlockerToast(f.error, {
+                fallbackTitle: `Claim ${f.claimId.slice(0, 8)} was not approved`,
+              }),
+            );
           }
           setSelectedIds(new Set());
         },
-        onError: (err: any) => toast.error(err.message),
+        onError: (err: any) => showBlockerToast(err, { fallbackTitle: 'Action failed' }),
       }
     );
   };

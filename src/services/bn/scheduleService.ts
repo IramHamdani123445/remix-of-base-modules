@@ -616,7 +616,7 @@ export async function executeScheduleRowAction(params: ExecuteScheduleActionPara
     event_type: `SCHEDULE_${action}`,
     from_status: row.status,
     to_status: newStatus,
-    description: narrative || `Schedule action: ${action}`,
+    notes: narrative || `Schedule action: ${action}`,
     performed_by: performedBy,
     performed_at: now,
     metadata: {
@@ -670,7 +670,7 @@ export async function suspendFutureRows(entitlementId: string, performedBy: stri
     await db.from('bn_claim_event').insert({
       claim_id: rows[0].claim_id,
       event_type: 'SCHEDULE_FUTURE_SUSPENDED',
-      description: narrative,
+      notes: narrative,
       performed_by: performedBy,
       performed_at: now,
       metadata: {
@@ -759,7 +759,7 @@ export async function regenerateSchedule(
   await db.from('bn_claim_event').insert({
     claim_id: ent.claim_id,
     event_type: 'SCHEDULE_REGENERATED',
-    description: narrative,
+    notes: narrative,
     performed_by: performedBy,
     performed_at: now,
     metadata: {
@@ -834,7 +834,7 @@ export async function generateArrearsRows(
   await db.from('bn_claim_event').insert({
     claim_id: ent.claim_id,
     event_type: 'SCHEDULE_ARREARS_GENERATED',
-    description: narrative,
+    notes: narrative,
     performed_by: performedBy,
     performed_at: new Date().toISOString(),
     metadata: {

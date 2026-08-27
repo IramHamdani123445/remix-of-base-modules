@@ -28,12 +28,60 @@ import {
   type UnresolvedVariable,
 } from './variableResolverService';
 import { parseFormula, evaluateFormula } from '@/lib/bn/formulaParser';
+import { resolveField } from './eligibility/fieldResolver';
+import { resolveFact } from './eligibility/eligibilityFactResolver';
+
+export interface RealClaimContext {
+  ssn: string;
+  claimId?: string | null;
+  claimDate: string;
+  employerRegNo?: string | null;
+}
 
 export interface ProductCalculationContext {
   /** Values the resolver could not infer (claim-supplied, prior result, etc.). */
   inputs?: Record<string, number>;
   /** When true, missing variables are auto-filled with 0 / sample. Used by the simulator. */
   useSamples?: boolean;
+  /**
+   * A real claim to resolve FACT-sourced variables against. When present,
+   * a FACT variable is resolved from this claimant's actual data (via the
+   * same resolver Eligibility rules use) instead of the fact's registered
+   * sample value. Without this, every real claim run of this fallback was
+   * silently using placeholder numbers for every claimant, regardless of
+   * their real circumstances — see BUG log for the trace that found this.
+   */
+  claimContext?: RealClaimContext;
+}
+
+/** Resolve one FACT-sourced variable for a real claim. Returns null (not 0)
+ * when it genuinely cannot be resolved, so the caller can tell "no real
+ * value" apart from "the real value is zero". Exported so the Formula
+ * Bindings (v2) calculation path can reuse the same real resolution instead
+ * of re-implementing it. */
+export async function resolveRealFact(factKey: string, claim: RealClaimContext): Promise<number | null> {
+  // Eligibility rules and Calculation variables both draw from the same
+  // bn_eligibility_fact registry — eligibilityFactResolver is the real,
+  // per-claim resolver already proven correct for Eligibility.
+  try {
+    const r = await resolveFact(factKey, {
+      ssn: claim.ssn, claimId: claim.claimId ?? null, claimDate: claim.claimDate,
+      employerRegno: claim.employerRegNo ?? null,
+    });
+    const n = Number(r.value);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    // Not every fact_key in bn_eligibility_fact also exists in the older,
+    // hardcoded eligibility/fieldRegistry — try that resolver as a fallback
+    // before giving up.
+    try {
+      const r = await resolveField(factKey, { ssn: claim.ssn, claimId: claim.claimId ?? undefined, claimDate: claim.claimDate, employerRegNo: claim.employerRegNo ?? undefined });
+      const n = Number(r.value);
+      return Number.isFinite(n) ? n : null;
+    } catch {
+      return null;
+    }
+  }
 }
 
 export interface ProductCalculationTraceEntry {
@@ -72,6 +120,8 @@ export async function runProductCalculation(
   const trace: ProductCalculationTraceEntry[] = [];
   const warnings: string[] = [];
 
+  const errors: string[] = [];
+
   for (const v of variablesUsed) {
     const fromParam = config.parameters[v];
     if (fromParam !== undefined && fromParam !== null) {
@@ -87,11 +137,28 @@ export async function runProductCalculation(
       continue;
     }
     const resolved = resolver.get(v);
+
+    // A real claim is being calculated and this variable is a FACT — resolve
+    // it against this specific claimant's real data, the same way Eligibility
+    // rules already do, instead of the fact's registered sample value.
+    if (ctx.claimContext && resolved?.source === 'FACT') {
+      const real = await resolveRealFact(v, ctx.claimContext);
+      if (real !== null) {
+        evalCtx[v] = real;
+        trace.push({ variable: v, source: 'FACT', value: real, resolverPath: `FACT (real, SSN ${ctx.claimContext.ssn}):${v}` });
+        continue;
+      }
+      // Could not resolve this claimant's real value — fall through. Only a
+      // caller that explicitly opted into sample fallback (ctx.useSamples)
+      // may still use the sample below; a real claim run should not.
+    }
+
     if (resolved) {
       const n = resolved.sampleValue !== null && resolved.sampleValue !== undefined ? Number(resolved.sampleValue) : NaN;
-      if (Number.isFinite(n)) {
+      const samplesAllowedHere = ctx.useSamples || !ctx.claimContext;
+      if (Number.isFinite(n) && samplesAllowedHere) {
         evalCtx[v] = n;
-        trace.push({ variable: v, source: resolved.source, value: n, resolverPath: `${resolved.source}:${resolved.code}` });
+        trace.push({ variable: v, source: resolved.source, value: n, resolverPath: `${resolved.source}:${resolved.code}${ctx.claimContext ? ' (SAMPLE — could not resolve a real value)' : ''}` });
         continue;
       }
       if (ctx.useSamples) {
@@ -102,12 +169,11 @@ export async function runProductCalculation(
       }
     }
     trace.push({ variable: v, source: 'UNRESOLVED', value: null, resolverPath: 'unresolved' });
-    if (!ctx.useSamples) {
-      // record but don't blow up — let caller decide whether to proceed
+    if (ctx.claimContext && resolved?.source === 'FACT') {
+      errors.push(`Variable "${v}" is a real claim fact but could not be resolved for SSN ${ctx.claimContext.ssn} — the calculation cannot proceed with a placeholder value.`);
     }
   }
 
-  const errors: string[] = [];
   if (parsed.errors.length) errors.push(...parsed.errors);
   if (unresolved.length) errors.push(`Unresolved variables: ${unresolved.map((u) => u.variable).join(', ')}`);
 

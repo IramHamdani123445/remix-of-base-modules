@@ -6,6 +6,7 @@ import { getCurrentUserCode } from './audit/getCurrentUserCode';
 import { assertSafeToPublish } from './config/publishGateService';
 import { findUngovernedAttachedRules, activateAttachedRules } from './governance/ruleGovernanceService';
 import { registerProductRuleInCatalogue, type RegisterResult } from './governance/registerRuleInCatalogue';
+import { resolveRuleFieldKey, isInformationalRule } from './eligibility/ruleFieldMapping';
 
 const db = supabase as any;
 
@@ -291,6 +292,30 @@ export async function auditAttemptedActiveMutation(
  * its effective_to = newEffectiveFrom - 1 day when no end date is set.
  * Throws if overlap cannot be resolved.
  */
+/**
+ * BUG-31 — active rules on a version whose field cannot be resolved from any
+ * registry. Informational rules are exempt: they are declared advisory on
+ * purpose and never gate a claim.
+ */
+export async function findUnmappedEligibilityRules(
+  versionId: string,
+): Promise<{ rule_code: string; rule_name: string; rawKey: string | null }[]> {
+  const { data, error } = await db
+    .from('bn_eligibility_rule')
+    .select('rule_code, rule_name, fact_key, fail_action, rule_definition')
+    .eq('product_version_id', versionId)
+    .eq('is_active', true);
+  if (error) throw error;
+
+  const out: { rule_code: string; rule_name: string; rawKey: string | null }[] = [];
+  for (const rule of (data ?? []) as any[]) {
+    if (isInformationalRule(rule)) continue;
+    const { key, rawKey } = resolveRuleFieldKey(rule);
+    if (!key) out.push({ rule_code: rule.rule_code, rule_name: rule.rule_name, rawKey });
+  }
+  return out;
+}
+
 export async function publishProductVersion(
   versionId: string,
   newEffectiveFrom: string,
@@ -336,6 +361,24 @@ export async function publishProductVersion(
       );
     }
     throw new Error(`Publish blocked:\n• ${parts.join('\n• ')}`);
+  }
+
+  // ─── MAPPING GATE (BUG-31): every rule must be evaluable ───────────
+  // An unmapped rule cannot be compared against a claimant. Since BUG-29 made
+  // an unevaluable rule blocking rather than silently passing, publishing one
+  // means the product rejects every claimant. Catch it here instead.
+  const unmappedRules = await findUnmappedEligibilityRules(versionId);
+  if (unmappedRules.length > 0) {
+    const shown = unmappedRules.slice(0, 8)
+      .map(r => `${r.rule_code} (${r.rawKey ? `unknown field "${r.rawKey}"` : 'no field mapping'})`)
+      .join('; ');
+    throw new Error(
+      `Publish blocked: ${unmappedRules.length} eligibility rule(s) cannot be evaluated, ` +
+      `so this product would reject every claimant — ${shown}` +
+      `${unmappedRules.length > 8 ? ` (+${unmappedRules.length - 8} more)` : ''}. ` +
+      `Map each rule to a field in the eligibility field or fact registry, or mark it ` +
+      `informational (fail_action = INFO) if it is genuinely advisory.`,
+    );
   }
 
   const existingActive = (await fetchVersionsByProduct(version.product_id))

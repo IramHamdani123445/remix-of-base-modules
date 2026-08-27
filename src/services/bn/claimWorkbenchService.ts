@@ -149,6 +149,43 @@ export async function executeClaimAction(
   try {
     const sideEffect: Record<string, any> = {};
 
+    // ── 0. The transition itself must be legal (BUG-34) ──
+    // `fromStatus` and `toStatus` arrive from the caller and used to be trusted.
+    // bn_claim_transition_rule is the runtime source of truth for claim
+    // transitions — e.g. APPROVE is only DECISION → APPROVED — so an action
+    // that skips the chain (straight to APPROVE without calculation or
+    // recommendation) is refused here rather than relying on the UI to sequence
+    // it. The claim's stored status is used, not the caller's claim about it.
+    const { data: currentClaim, error: currentErr } = await db
+      .from('bn_claim')
+      .select('status')
+      .eq('id', claimId)
+      .maybeSingle();
+    if (currentErr) {
+      throw new Error(`Could not read the claim's current status: ${currentErr.message}`);
+    }
+    const actualFrom = (currentClaim as any)?.status ?? null;
+    if (!actualFrom) throw new Error('Claim not found.');
+
+    const { data: rules, error: ruleErr } = await db
+      .from('bn_claim_transition_rule')
+      .select('action_code, from_status, to_status')
+      .eq('action_code', action);
+    if (ruleErr) {
+      throw new Error(`Could not read transition rules: ${ruleErr.message}`);
+    }
+    const allowed: any[] = Array.isArray(rules) ? rules : [];
+    if (allowed.length === 0) {
+      throw new Error(`"${action}" is not a configured claim action.`);
+    }
+    if (!allowed.some((r) => String(r.from_status) === String(actualFrom))) {
+      const froms = [...new Set(allowed.map((r) => r.from_status))].join(', ');
+      throw new Error(
+        `Cannot ${action} a claim in status ${actualFrom}. ` +
+        `This action is only permitted from: ${froms}.`,
+      );
+    }
+
     // ── 1. Preconditions & side-effects BEFORE status change ──
     switch (action) {
       case 'CHECK_ELIGIBILITY': {
@@ -183,23 +220,29 @@ export async function executeClaimAction(
           decisionType: 'RECOMMENDATION',
           userCode,
           narrative,
+          fromStatus,
+          toStatus,
         });
         sideEffect.decisionId = dec.id;
         break;
       }
       case 'APPROVE': {
-        // Block approval when mandatory blocking evidence is still outstanding.
-        const { data: blocking } = await db
-          .from('bn_evidence_checklist')
-          .select('id, status')
-          .eq('claim_id', claimId)
-          .eq('is_blocking', true);
-        const unmet = (blocking || []).filter((r: any) =>
-          !['VERIFIED', 'WAIVED'].includes((r.status || '').toUpperCase())
+        // BUG-34 — approval creates the record the claimant is paid from, so
+        // every control is asserted here, in the service. The previous check
+        // looked only at blocking documents, discarded its own query error, and
+        // treated an empty checklist as satisfied.
+        const { checkApprovalPreconditions, describeApprovalBlockers } = await import(
+          './claims/approvalPreconditions'
         );
-        if (unmet.length > 0) {
-          throw new Error(`Cannot approve — ${unmet.length} mandatory document(s) still unverified.`);
+        const pre = await checkApprovalPreconditions(claimId, userCode, { reasonCode, narrative });
+        if (!pre.ok) {
+          // Named conditions, so the officer knows what to correct. Not a
+          // warning — approval does not proceed.
+          throw new Error(describeApprovalBlockers(pre.blockers));
         }
+        // Recorded so an audit can see WHICH controls were applied, and whether
+        // they came from the product's policy or the strict default.
+        sideEffect.approvalControls = pre.controls;
         const { createClaimDecision } = await import('./claimActionRunner');
         const dec = await createClaimDecision({
           claimId,
@@ -207,6 +250,8 @@ export async function executeClaimAction(
           userCode,
           narrative,
           reasonCode,
+          fromStatus,
+          toStatus,
         });
         sideEffect.decisionId = dec.id;
         break;
@@ -221,6 +266,8 @@ export async function executeClaimAction(
           userCode,
           narrative,
           reasonCode,
+          fromStatus,
+          toStatus,
         });
         sideEffect.decisionId = dec.id;
         break;
