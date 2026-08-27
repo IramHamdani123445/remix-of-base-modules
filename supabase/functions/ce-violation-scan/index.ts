@@ -243,10 +243,24 @@ Deno.serve(async (req) => {
     const triggeredBy: string = body.triggered_by || "SYSTEM";
     // Employers are scanned in slices so no single worker invocation exceeds
     // the edge CPU/wall-clock budget. Each slice chains the next one.
-    const batchSize: number = Math.max(50, Number(body.batch_size ?? 300));
+    // 300 employers per slice tripped "CPU Time exceeded" and killed the chain.
+    const batchSize: number = Math.max(25, Number(body.batch_size ?? 100));
     const continueRunId: string | null = body.continue_run_id || null;
     const employerOffset: number = Number(body.employer_offset ?? 0);
     const carry = body.carry ?? null;
+
+    // Cron / manual entry point that only revives stranded runs.
+    if (body.resume_only) {
+      await resumeStranded();
+      return new Response(JSON.stringify({ resumed: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    if (!continueRunId) {
+      await resumeStranded().catch(() => {});
+    }
+
 
     // ── Continuation invocation: reuse the existing run row, no idempotency ──
     if (continueRunId) {
