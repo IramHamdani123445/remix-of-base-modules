@@ -158,6 +158,7 @@ for (const entry of INTERNAL_AUDIT_TEMPLATE_ENTRIES) {
     '',
   );
 
+  // 1) Published template versions (draft → approved → published).
   for (const channel of CHANNELS) {
     if (!spec.channels.includes(channel)) continue;
     const variant = entry.variants[channel] as unknown as Record<string, string>;
@@ -180,14 +181,42 @@ for (const entry of INTERNAL_AUDIT_TEMPLATE_ENTRIES) {
       `     WHERE template_family_id = v_family AND channel = ${q(channel)} AND locale = ${q(LOCALE)};`,
       '    INSERT INTO public.omni_comms_template_version',
       '      (id, template_family_id, version_number, channel, locale, content, status, checksum,',
-      '       approved_at, approved_by, published_at, published_by, created_at, created_by,',
-      '       updated_at, updated_by, layout_selection_mode, layout_id, pinned_layout_version_id)',
+      '       created_at, created_by, updated_at, updated_by,',
+      '       layout_selection_mode, layout_id, pinned_layout_version_id)',
       `    VALUES (gen_random_uuid(), v_family, v_version, ${q(channel)}, ${q(LOCALE)},`,
-      `       ${q(JSON.stringify(variant))}::jsonb, 'published', ${q(variantChecksum)},`,
-      `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)}, now(), NULL, now(), ${q(ACTOR_ID)},`,
+      `       ${q(JSON.stringify(variant))}::jsonb, 'draft', ${q(variantChecksum)},`,
+      `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)},`,
       `       'pinned', ${q(cfg.layoutId)}, ${q(cfg.layoutVersionId)});`,
+      '    UPDATE public.omni_comms_template_version',
+      `       SET status = 'approved', approved_at = now(), approved_by = ${q(ACTOR_ID)},`,
+      `           updated_at = now(), updated_by = ${q(ACTOR_ID)}`,
+      '     WHERE template_family_id = v_family AND version_number = v_version',
+      `       AND channel = ${q(channel)} AND locale = ${q(LOCALE)};`,
+      '    UPDATE public.omni_comms_template_version',
+      `       SET status = 'published', published_at = now(), published_by = ${q(ACTOR_ID)},`,
+      `           updated_at = now(), updated_by = ${q(ACTOR_ID)}`,
+      '     WHERE template_family_id = v_family AND version_number = v_version',
+      `       AND channel = ${q(channel)} AND locale = ${q(LOCALE)};`,
       '  END IF;',
       '',
+    );
+  }
+
+  // 2) Activate the family once it carries published content.
+  lines.push(
+    '  UPDATE public.omni_comms_template_family',
+    `     SET status = 'active', activated_at = COALESCE(activated_at, now()),`,
+    `         activated_by = COALESCE(activated_by, ${q(ACTOR_ID)}),`,
+    `         updated_at = now(), updated_by = ${q(ACTOR_ID)}`,
+    `   WHERE id = v_family AND status = 'draft';`,
+    '',
+  );
+
+  // 3) Routes (insert draft, then activate).
+  for (const channel of CHANNELS) {
+    if (!spec.channels.includes(channel)) continue;
+    const cfg = CHANNEL_CONFIG[channel];
+    lines.push(
       `  -- Department-scoped ${channel} route.`,
       '  IF NOT EXISTS (SELECT 1 FROM public.omni_comms_event_route',
       `                  WHERE event_definition_id = v_event AND channel = ${q(channel)}`,
@@ -196,20 +225,22 @@ for (const entry of INTERNAL_AUDIT_TEMPLATE_ENTRIES) {
       '      (id, organization_id, department_id, event_definition_id, channel, is_required,',
       '       is_enabled, priority, template_family_id, sender_identity_id,',
       '       sender_resolution_policy, preference_policy, lifecycle_state, created_at,',
-      '       created_by, updated_at, updated_by, activated_at, activated_by)',
+      '       created_by, updated_at, updated_by)',
       `    VALUES (gen_random_uuid(), ${q(ORG_ID)}, ${q(DEPT_ID)}, v_event, ${q(channel)}, true, true,`,
-      `       ${cfg.priority}, v_family, ${q(cfg.senderIdentityId)}, 'explicit', 'honour', 'active',`,
-      `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)});`,
-      '  ELSE',
-      '    UPDATE public.omni_comms_event_route',
-      `       SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',`,
-      `           updated_at = now(), updated_by = ${q(ACTOR_ID)}`,
-      `     WHERE event_definition_id = v_event AND channel = ${q(channel)}`,
-      `       AND organization_id = ${q(ORG_ID)} AND department_id = ${q(DEPT_ID)};`,
+      `       ${cfg.priority}, v_family, ${q(cfg.senderIdentityId)}, 'explicit', 'honour', 'draft',`,
+      `       now(), ${q(ACTOR_ID)}, now(), ${q(ACTOR_ID)});`,
       '  END IF;',
+      '  UPDATE public.omni_comms_event_route',
+      `     SET template_family_id = v_family, is_enabled = true, lifecycle_state = 'active',`,
+      `         activated_at = COALESCE(activated_at, now()),`,
+      `         activated_by = COALESCE(activated_by, ${q(ACTOR_ID)}),`,
+      `         updated_at = now(), updated_by = ${q(ACTOR_ID)}`,
+      `   WHERE event_definition_id = v_event AND channel = ${q(channel)}`,
+      `     AND organization_id = ${q(ORG_ID)} AND department_id = ${q(DEPT_ID)};`,
       '',
     );
   }
+
 
   lines.push(
     '  -- Active INTERNAL_AUDIT producer binding (queued only).',
