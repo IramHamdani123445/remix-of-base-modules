@@ -188,14 +188,16 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
           <DataTable columns={columns} data={auditResponses} emptyMessage="No management responses submitted yet."
             renderActions={(row) => (
               <div className="flex gap-1">
-                {row.status === 'Submitted' && (
+                {!row.review_outcome && (
                   <>
-                    <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(row.id, 'Accepted')}>Accept</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(row.id, 'Rejected')}>Reject</Button>
+                    <Button size="sm" variant="outline" disabled={reviewResponse.isPending} onClick={() => handleReview(row.id, 'Accepted')}>Accept</Button>
+                    <Button size="sm" variant="outline" disabled={reviewResponse.isPending} onClick={() => handleReview(row.id, 'Revision Requested')}>Request revision</Button>
+                    <Button size="sm" variant="outline" disabled={reviewResponse.isPending} onClick={() => handleReview(row.id, 'Escalated')}>Escalate</Button>
                   </>
                 )}
               </div>
             )}
+
           />
         </CardContent></Card>
       )}
