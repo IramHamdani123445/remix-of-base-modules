@@ -31,6 +31,7 @@ import {
   AuditTimelineTab,
   AuditControlTestsTab,
   AuditFollowUpsTab,
+  AuditClosureTab,
 } from '@/components/audit/execution';
 
 // ===== Tab Badge =====
@@ -184,11 +185,9 @@ export default function EngagementDetail() {
     };
   }, [audit, departments, auditors, deptFunctions]);
 
-  const handleCloseAudit = () => {
-    if (!id) return;
-    transitionMutation.mutate({ engagementId: id, newStatus: 'Closed', notes: 'Audit closed' });
-    updateAudit.mutate({ id, status: 'Closed', closure_date: new Date().toISOString().split('T')[0], closure_notes: '' } as any);
-  };
+  // Closure is a governed server-side command — route the user to the Closure tab,
+  // where the closure gate is evaluated and the disposition is captured.
+  const handleCloseAudit = () => setActiveTab('closure');
 
   // Workspace counts for overview quick-jump
   const workspaceCounts = useMemo(() => ({
@@ -309,9 +308,14 @@ export default function EngagementDetail() {
             <TabSep />
 
             {/* === Output Group === */}
+
             <TabsTrigger value="timeline" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Clock className="h-3.5 w-3.5 mr-1.5" />Timeline
             </TabsTrigger>
+            <TabsTrigger value="closure" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <Shield className="h-3.5 w-3.5 mr-1.5" />Closure
+            </TabsTrigger>
+
 
             {/* === Report Center CTA === */}
             <Button
@@ -372,6 +376,10 @@ export default function EngagementDetail() {
 
           <TabsContent value="timeline">
             <AuditTimelineTab auditId={id!} departmentId={audit?.department_id} />
+          </TabsContent>
+
+          <TabsContent value="closure">
+            <AuditClosureTab auditId={id!} audit={audit} />
           </TabsContent>
         </Tabs>
       </AuditWorkspaceShell>
