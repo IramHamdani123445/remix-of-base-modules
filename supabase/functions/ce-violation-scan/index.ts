@@ -166,6 +166,73 @@ Deno.serve(async (req) => {
       console.error("watchdog sweep failed (non-fatal):", (wdErr as Error).message);
     }
 
+    // ── Resume sweep: a slice worker can be killed by the edge CPU budget
+    // ("CPU Time exceeded") after persisting its progress but before chaining
+    // the next slice, which left the run stuck on "Running" forever. Any run
+    // that reported progress but has not moved for 90s is re-chained from the
+    // last completed offset.
+    const resumeStranded = async () => {
+      const staleBefore = Date.now() - 90_000;
+      const { data: liveRuns } = await supabase
+        .from("ce_automation_runs")
+        .select("id, started_at, execution_log, parameters, is_dry_run")
+        .ilike("status", "running")
+        .gt("started_at", new Date(Date.now() - 30 * 60 * 1000).toISOString());
+
+      for (const run of liveRuns ?? []) {
+        const log: any = run.execution_log ?? {};
+        if (!log.in_progress) continue;
+        const beat = log.heartbeat_at ? new Date(log.heartbeat_at).getTime() : 0;
+        if (beat > staleBefore) continue;
+        const resumeCount = Number(log.resume_count ?? 0);
+        if (resumeCount > 200) continue;
+
+        const params: any = run.parameters ?? {};
+        await supabase
+          .from("ce_automation_runs")
+          .update({
+            execution_log: {
+              ...log,
+              resume_count: resumeCount + 1,
+              heartbeat_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", run.id);
+
+        const carryFromLog = {
+          total_employers_scanned: log.total_employers_scanned ?? 0,
+          violations_detected: log.violations_detected ?? 0,
+          violations_created: log.violations_created ?? 0,
+          violations_routed: log.violations_routed ?? 0,
+          violations_skipped_dedupe: log.violations_skipped_dedupe ?? 0,
+          violations_would_create: log.violations_would_create ?? 0,
+          by_rule: log.by_rule ?? [],
+          sample_violations: log.sample_violations ?? [],
+        };
+
+        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/ce-violation-scan`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({
+            continue_run_id: run.id,
+            employer_offset: log.employers_done ?? 0,
+            batch_size: Number(params.batch_size ?? 100),
+            carry: carryFromLog,
+            dry_run: run.is_dry_run ?? log.dry_run ?? false,
+            force: log.force ?? false,
+            as_of_date: params.as_of_date ?? new Date().toISOString().slice(0, 10),
+            employer_id: params.employer_id ?? null,
+            limit: params.limit ?? null,
+            triggered_by: "RESUME-WATCHDOG",
+          }),
+        }).catch((e) => console.error("resume chain failed:", (e as Error).message));
+      }
+    };
+
+
     const body = await req.json().catch(() => ({}));
     const dryRun: boolean = body.dry_run ?? false;
     const force: boolean = body.force ?? false;
@@ -176,10 +243,24 @@ Deno.serve(async (req) => {
     const triggeredBy: string = body.triggered_by || "SYSTEM";
     // Employers are scanned in slices so no single worker invocation exceeds
     // the edge CPU/wall-clock budget. Each slice chains the next one.
-    const batchSize: number = Math.max(50, Number(body.batch_size ?? 300));
+    // 300 employers per slice tripped "CPU Time exceeded" and killed the chain.
+    const batchSize: number = Math.max(25, Number(body.batch_size ?? 100));
     const continueRunId: string | null = body.continue_run_id || null;
     const employerOffset: number = Number(body.employer_offset ?? 0);
     const carry = body.carry ?? null;
+
+    // Cron / manual entry point that only revives stranded runs.
+    if (body.resume_only) {
+      await resumeStranded();
+      return new Response(JSON.stringify({ resumed: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+    if (!continueRunId) {
+      await resumeStranded().catch(() => {});
+    }
+
 
     // ── Continuation invocation: reuse the existing run row, no idempotency ──
     if (continueRunId) {
@@ -240,52 +321,65 @@ Deno.serve(async (req) => {
     // Idempotency check (skip if force=true or dry_run)
     const runKey = `VIOLATION-SCAN-${asOfDate}`;
 
-    if (!dryRun && !force) {
-      // Check for any existing run with same key (any status)
+    // A run that is still Running and was started recently is a LIVE run: a
+    // second "Run Detection Now" click must attach to it instead of deleting
+    // its row, which used to strand the first client polling a row that no
+    // longer existed (VIOLATION_DETECTION_007).
+    const liveCutoff = Date.now() - 30 * 60 * 1000;
+    const isLive = (r: any) =>
+      String(r.status || "").toLowerCase() === "running" &&
+      r.started_at && new Date(r.started_at).getTime() > liveCutoff;
+
+    if (!dryRun) {
       const { data: existingRuns } = await supabase
         .from("ce_automation_runs")
-        .select("id, status")
+        .select("id, status, started_at")
         .eq("idempotency_key", runKey);
 
       if (existingRuns && existingRuns.length > 0) {
-        const completedRun = existingRuns.find((r: any) => r.status === "Completed");
-        if (completedRun) {
+        const liveRun = existingRuns.find(isLive);
+        if (liveRun) {
           return new Response(
             JSON.stringify({
-              message: "Already completed for this date. Use force=true to re-run.",
-              run_id: completedRun.id,
+              run_id: liveRun.id,
+              status: "Running",
+              accepted: true,
+              attached: true,
               dry_run: false,
-              total_employers_scanned: 0,
-              rules_evaluated: 0,
-              violations_detected: 0,
-              violations_created: 0,
-              violations_skipped_dedupe: 0,
-              by_rule: [],
-              already_completed: true,
             }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 202 }
           );
         }
-        // Delete all non-completed runs (Failed, Running) to free the idempotency key
-        const idsToRemove = existingRuns.map((r: any) => r.id);
-        for (const rid of idsToRemove) {
-          await supabase.from("ce_automation_runs").delete().eq("id", rid);
-        }
-      }
-    }
 
-    // For force re-runs, clean up ALL existing records with same base key
-    if (force && !dryRun) {
-      const { data: existingForce } = await supabase
-        .from("ce_automation_runs")
-        .select("id")
-        .eq("idempotency_key", runKey);
-      if (existingForce && existingForce.length > 0) {
-        for (const r of existingForce) {
+        if (!force) {
+          const completedRun = existingRuns.find((r: any) => r.status === "Completed");
+          if (completedRun) {
+            return new Response(
+              JSON.stringify({
+                message: "Already completed for this date. Use force=true to re-run.",
+                run_id: completedRun.id,
+                dry_run: false,
+                total_employers_scanned: 0,
+                rules_evaluated: 0,
+                violations_detected: 0,
+                violations_created: 0,
+                violations_skipped_dedupe: 0,
+                by_rule: [],
+                already_completed: true,
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+            );
+          }
+        }
+
+        // Only stale/terminal runs are removed, freeing the idempotency key.
+        for (const r of existingRuns) {
+          if (isLive(r)) continue;
           await supabase.from("ce_automation_runs").delete().eq("id", r.id);
         }
       }
     }
+
 
     // Get the job record
     const { data: job } = await supabase
@@ -305,6 +399,14 @@ Deno.serve(async (req) => {
         triggered_by: triggeredBy,
         idempotency_key: idempKey,
         is_dry_run: dryRun,
+        execution_log: {
+          in_progress: true,
+          heartbeat_at: new Date().toISOString(),
+          employers_done: 0,
+          dry_run: dryRun,
+          force,
+        },
+
         parameters: { as_of_date: asOfDate, employer_id: employerFilter, force, limit: employerLimit, batch_size: batchSize },
       })
       .select("id")
@@ -1049,7 +1151,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     }
 
     const newViolations = detected.filter((d) => !d.skipped);
-    const skippedCount = detected.filter((d) => d.skipped).length;
+    let skippedCount = detected.filter((d) => d.skipped).length;
 
     // ── SSB penalty policy: enrich each detected row with principal/penalty/
     // interest/total using the active ce_compliance_policies row and each
@@ -1155,13 +1257,43 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           is_deleted: false,
         }));
 
-        const { data: inserted, error: insertError } = await supabase
+        let { data: inserted, error: insertError } = await supabase
           .from("ce_violations")
           .insert(rows)
           .select("id");
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          // A single conflicting row (active-violation dedupe index or a
+          // violation-number collision) must not abort the whole scan.
+          // Fall back to row-by-row inserts and skip only the conflicts.
+          const isConflict =
+            (insertError as any).code === "23505" ||
+            /duplicate key/i.test(insertError.message || "");
+          if (!isConflict) throw insertError;
+
+          const salvaged: any[] = [];
+          for (const row of rows) {
+            const { data: one, error: oneErr } = await supabase
+              .from("ce_violations")
+              .insert({ ...row, violation_number: generateViolationNumber() })
+              .select("id")
+              .maybeSingle();
+            if (oneErr) {
+              const dup =
+                (oneErr as any).code === "23505" ||
+                /duplicate key/i.test(oneErr.message || "");
+              if (dup) {
+                skippedCount += 1;
+                continue;
+              }
+              throw oneErr;
+            }
+            if (one) salvaged.push(one);
+          }
+          inserted = salvaged;
+        }
         insertedCount += inserted?.length || 0;
+
 
         // Auto-route the whole batch in a single database round trip.
         // Routing each violation individually meant tens of thousands of
@@ -1219,6 +1351,8 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           dry_run: dryRun,
           force,
           in_progress: true,
+          heartbeat_at: new Date().toISOString(),
+
           employers_total: totalEmployers,
           employers_done: sliceEnd,
           progress_percent: Math.round((sliceEnd / Math.max(1, totalEmployers)) * 100),
@@ -1228,31 +1362,50 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       .eq("id", runId);
 
     const nextUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ce-violation-scan`;
-    const res = await fetch(nextUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-      },
-      body: JSON.stringify({
-        continue_run_id: runId,
-        employer_offset: sliceEnd,
-        batch_size: batchSize,
-        carry: cumulative,
-        dry_run: dryRun,
-        force,
-        as_of_date: asOfDate,
-        employer_id: employerFilter,
-        limit: employerLimit,
-        triggered_by: triggeredBy,
-      }),
+    const nextBody = JSON.stringify({
+      continue_run_id: runId,
+      employer_offset: sliceEnd,
+      batch_size: batchSize,
+      carry: cumulative,
+      dry_run: dryRun,
+      force,
+      as_of_date: asOfDate,
+      employer_id: employerFilter,
+      limit: employerLimit,
+      triggered_by: triggeredBy,
     });
 
-    if (!res.ok) {
-      throw new Error(`Failed to chain next employer batch (HTTP ${res.status})`);
+    // The chain hop is the single point of failure for a long scan: a
+    // transient 503 from the edge runtime used to abandon the run mid-way and
+    // leave the UI waiting. Retry with bounded backoff before giving up.
+    let lastStatus = 0;
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
+      try {
+        const res = await fetch(nextUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: nextBody,
+        });
+        if (res.ok) return;
+        lastStatus = res.status;
+        // 4xx other than 429 will not succeed on retry.
+        if (res.status < 500 && res.status !== 429) break;
+      } catch (err) {
+        lastErr = err;
+      }
     }
-    return;
+    throw new Error(
+      `Failed to chain next employer batch after retries (HTTP ${lastStatus || "network"}${
+        lastErr ? `: ${(lastErr as Error).message}` : ""
+      })`,
+    );
   }
+
 
   // Update run record — final slice
   await supabase
