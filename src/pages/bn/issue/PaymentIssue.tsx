@@ -31,6 +31,7 @@ import { IssueActionBar } from '@/components/bn/issue/IssueActionBar';
 import type { IssueFilters } from '@/services/bn/paymentIssueService';
 
 import { formatNumber } from '@/lib/culture/culture';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 const STAT_CARDS = [
   { key: 'total', label: 'Total', icon: Banknote, color: 'text-foreground' },
   { key: 'pending', label: 'Pending', icon: Clock, color: 'text-amber-600' },
@@ -41,6 +42,9 @@ const STAT_CARDS = [
 ];
 
 export default function PaymentIssue() {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor } = useActorUserCode();
+
   const [filters, setFilters] = useState<IssueFilters>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -56,7 +60,7 @@ export default function PaymentIssue() {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     try {
-      const result = await executeMutation.mutateAsync({ issueIds: ids, userCode: 'CURRENT_USER' });
+      const result = await executeMutation.mutateAsync({ issueIds: ids, userCode: actor() });
       toast.success(`Issued: ${result.issued}, Failed: ${result.failed}`);
       setSelectedIds(new Set());
       setShowConfirm(false);

@@ -26,6 +26,7 @@ import {
   type GenerateScheduleParams,
   type BnPaymentScheduleRow,
 } from '@/services/bn/scheduleService';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 
 const db = supabase as any;
 
@@ -52,6 +53,9 @@ interface EntitlementOption {
 }
 
 export const ScheduleGenerationWizard: React.FC<Props> = ({ open, onClose, onGenerated, preselectedEntitlementId }) => {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor, userCode } = useActorUserCode();
+
   const [step, setStep] = useState<'select' | 'preview'>('select');
   const [entitlements, setEntitlements] = useState<EntitlementOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -81,9 +85,13 @@ export const ScheduleGenerationWizard: React.FC<Props> = ({ open, onClose, onGen
       totalEntitlement: selectedEnt.remaining_amount,
       maxPeriods,
       mode: 'INITIAL',
-      performedBy: 'CURRENT_USER',
+      // Preview only — nothing is written here, so this must not demand a real
+      // actor. `actor()` throws when the user code is unavailable, and this runs
+      // during render, so calling it here would crash the wizard rather than
+      // refuse a write. The saved rows carry the real actor (see handleGenerate).
+      performedBy: userCode ?? '',
     });
-  }, [selectedEnt, frequency, startDate, endDate, maxPeriods]);
+  }, [selectedEnt, frequency, startDate, endDate, maxPeriods, userCode]);
 
   const totalAmount = previewRows.reduce((s, r) => s + r.amount, 0);
 
@@ -166,7 +174,7 @@ export const ScheduleGenerationWizard: React.FC<Props> = ({ open, onClose, onGen
         claim_id: claimId,
         event_type: 'SCHEDULE_GENERATED',
         notes: narrative || 'Payment schedule generated',
-        performed_by: 'CURRENT_USER',
+        performed_by: actor('generate schedule'),
         performed_at: new Date().toISOString(),
         metadata: {
           entity_type: 'PAYMENT_SCHEDULE',

@@ -13,6 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Loader2, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { useUserCode } from '@/hooks/useUserCode';
+import { requireUserCode } from '@/lib/bn/requireUserCode';
 import { useUpdateEntitlementFields } from '@/hooks/bn/useBnEntitlement';
 import type { EntitlementWithContext } from '@/services/bn/entitlementService';
 
@@ -24,7 +26,9 @@ interface Props {
 
 export const RateAdjustmentDialog: React.FC<Props> = ({ open, onClose, entitlement }) => {
   const updateMutation = useUpdateEntitlementFields();
-  const [newWeeklyRate, setNewWeeklyRate] = useState(0);
+    const { userCode, isLoading: userCodeLoading, error: userCodeError } = useUserCode();
+
+const [newWeeklyRate, setNewWeeklyRate] = useState(0);
   const [newTotalEntitlement, setNewTotalEntitlement] = useState(0);
   const [narrative, setNarrative] = useState('');
 
@@ -56,8 +60,18 @@ export const RateAdjustmentDialog: React.FC<Props> = ({ open, onClose, entitleme
       updates.remaining_amount = Math.max(0, newRemaining);
     }
 
+    // A rate change moves money. It must be attributable, so a placeholder actor
+    // is refused rather than written (requireUserCode forbids 'CURRENT_USER').
+    let actor: string;
+    try {
+      actor = requireUserCode(userCode, 'adjust entitlement rate');
+    } catch (e: any) {
+      toast.error('Cannot record this adjustment', { description: e?.message });
+      return;
+    }
+
     updateMutation.mutate(
-      { entitlementId: entitlement.id, updates, narrative, performedBy: 'CURRENT_USER' },
+      { entitlementId: entitlement.id, updates, narrative, performedBy: actor },
       {
         onSuccess: () => {
           toast.success('Rate adjustment applied successfully');

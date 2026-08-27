@@ -20,6 +20,8 @@ import { Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { BnEntitlementType, BnPaymentFrequency } from '@/services/bn/entitlementService';
+import { useUserCode } from '@/hooks/useUserCode';
+import { requireUserCode } from '@/lib/bn/requireUserCode';
 
 const db = supabase as any;
 
@@ -34,6 +36,10 @@ interface ClaimCandidate {
   claim_number: string;
   ssn: string;
   status: string;
+  /** Carried through so the entitlement records which rules and figures it rests on. */
+  product_id: string | null;
+  product_version_id: string | null;
+  calculation_id: string | null;
   benefit_name: string | null;
   weekly_rate: number;
   monthly_rate: number | null;
@@ -45,6 +51,11 @@ interface ClaimCandidate {
 }
 
 export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
+  // 'CURRENT_USER' was written into entered_by, modified_by and performed_by.
+  // requireUserCode explicitly forbids that string — an audit row stamped with a
+  // placeholder is untraceable, which is what the guard exists to prevent.
+  const { userCode, isLoading: userCodeLoading, error: userCodeError } = useUserCode();
+
   const [step, setStep] = useState<'select' | 'configure'>('select');
   const [candidates, setCandidates] = useState<ClaimCandidate[]>([]);
   /** Set when the lookup itself failed, so the empty state can say so. */
@@ -100,9 +111,9 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
       const { data: claims, error: claimErr } = await db
         .from('bn_claim')
         .select(`
-          id, claim_number, ssn, status, claim_date, product_version_id,
+          id, claim_number, ssn, status, claim_date, product_id, product_version_id,
           bn_product(benefit_name),
-          bn_claim_calculation(weekly_rate, monthly_rate, lump_sum, calc_date)
+          bn_claim_calculation(id, weekly_rate, monthly_rate, lump_sum, calc_date)
         `)
         .in('status', POST_APPROVAL)
         .order('modified_at', { ascending: false })
@@ -149,6 +160,9 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
             claim_number: c.claim_number,
             ssn: c.ssn,
             status: c.status,
+            product_id: c.product_id ?? null,
+            product_version_id: c.product_version_id ?? null,
+            calculation_id: calc.id ?? null,
             benefit_name: c.bn_product?.benefit_name || null,
             weekly_rate: weekly,
             monthly_rate: monthly || null,
@@ -189,11 +203,19 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
     if (!selectedClaim || !effectiveFrom) return;
     setCreating(true);
     try {
+      // Fails loudly rather than stamping a placeholder onto an audit row.
+      const actor = requireUserCode(userCode, 'create entitlement');
       const now = new Date().toISOString();
       const entitlementData = {
         claim_id: selectedClaim.id,
         ssn: selectedClaim.ssn,
         claim_number: selectedClaim.claim_number,
+        // Which product rules and which calculation this entitlement rests on.
+        // Left null before, so a manually created entitlement could not be traced
+        // back to the version that produced its figures.
+        product_id: selectedClaim.product_id,
+        product_version_id: selectedClaim.product_version_id,
+        calculation_id: selectedClaim.calculation_id,
         entitlement_type: entitlementType,
         payment_frequency: paymentFrequency,
         weekly_rate: weeklyRate,
@@ -206,7 +228,7 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
         effective_to: effectiveTo?.toISOString().slice(0, 10) ?? null,
         status: 'DRAFT',
         override_applied: false,
-        entered_by: 'CURRENT_USER',
+        entered_by: actor,
         entered_at: now,
       };
 
@@ -219,7 +241,7 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
 
       // Update claim status
       await db.from('bn_claim')
-        .update({ status: 'AWARD_SETUP', modified_by: 'CURRENT_USER', modified_at: now })
+        .update({ status: 'AWARD_SETUP', modified_by: actor, modified_at: now })
         .eq('id', selectedClaim.id);
 
       // Audit event
@@ -227,7 +249,7 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
         claim_id: selectedClaim.id,
         event_type: 'ENTITLEMENT_CREATED',
         notes: narrative || 'Entitlement created from approved claim',
-        performed_by: 'CURRENT_USER',
+        performed_by: actor,
         performed_at: now,
         metadata: {
           entitlement_id: ent.id,
@@ -421,7 +443,24 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
             Cancel
           </Button>
           {step === 'configure' && (
-            <Button onClick={handleCreate} disabled={creating || !effectiveFrom || weeklyRate <= 0}>
+            <Button
+              onClick={handleCreate}
+              // Refused before the click rather than after, so the officer is not
+              // told "user_code is required" only once they have filled the form.
+              disabled={
+                creating || !effectiveFrom || weeklyRate <= 0 ||
+                userCodeLoading || !!userCodeError || !userCode
+              }
+              title={
+                userCodeLoading
+                  ? 'Loading your profile…'
+                  : userCodeError
+                    ? `Your profile could not be read: ${userCodeError}`
+                    : !userCode
+                      ? 'Your account has no user code — ask an administrator to set one'
+                      : undefined
+              }
+            >
               {creating && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               Create Entitlement
             </Button>

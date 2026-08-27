@@ -38,6 +38,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { formatDateForDisplay } from '@/lib/format-config';
 
 import { formatNumber } from '@/lib/culture/culture';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 const db = supabase as any;
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -222,6 +223,9 @@ function useRaiseException() {
 // ─── Component ──────────────────────────────────────────────────────
 
 export default function PaymentExceptions() {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor } = useActorUserCode();
+
   const [filters, setFilters] = useState<ExceptionFilters>({});
   const [selectedEx, setSelectedEx] = useState<PaymentException | null>(null);
   const [showResolve, setShowResolve] = useState(false);
@@ -261,7 +265,7 @@ export default function PaymentExceptions() {
         exceptionId: selectedEx.id,
         action: resolveAction,
         notes: resolveNotes,
-        userCode: 'CURRENT_USER',
+        userCode: actor(),
         requiresApproval,
       });
       toast.success(requiresApproval ? 'Sent for supervisor approval' : 'Exception resolved');
@@ -280,7 +284,7 @@ export default function PaymentExceptions() {
       await approveMut.mutateAsync({
         exceptionId: selectedEx.id,
         approved,
-        userCode: 'CURRENT_USER',
+        userCode: actor(),
       });
       toast.success(approved ? 'Exception approved' : 'Exception rejected');
       setShowApproval(false);
@@ -300,7 +304,7 @@ export default function PaymentExceptions() {
         claim_number: raiseClaim || undefined,
         related_cheque_no: raiseCheque || undefined,
         amount: raiseAmount ? parseFloat(raiseAmount) : undefined,
-        userCode: 'CURRENT_USER',
+        userCode: actor(),
       });
       toast.success('Exception raised');
       setShowRaise(false);

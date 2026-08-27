@@ -27,6 +27,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 import { formatDate, formatNumber } from '@/lib/culture/culture';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 const db = supabase as any;
 
 const STAT_CARDS = [
@@ -110,6 +111,9 @@ function useMarkStaleDated() {
 }
 
 export default function PostIssueEnhanced() {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor } = useActorUserCode();
+
   const [filters, setFilters] = useState<PostIssueFilters>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('tasks');
@@ -139,7 +143,7 @@ export default function PostIssueEnhanced() {
     try {
       const result = await bulkMutation.mutateAsync({
         batchId: filters.batch_id,
-        userCode: 'CURRENT_USER',
+        userCode: actor(),
       });
       toast.success(`Completed: ${result.completed}, Failed: ${result.failed}`);
     } catch (err: any) {
