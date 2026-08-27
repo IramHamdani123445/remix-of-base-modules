@@ -1766,6 +1766,7 @@ export const AppRoutes = () => {
       <Route path="/audit/audits" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_ENGAGEMENTS"><AuditEngagements /></AuditFeatureGate>} />
       <Route path="/audit/audits/:id" element={<EngagementDetail />} />
       <Route path="/audit/action-centre" element={<Suspense fallback={<div />}><AuditActionCentre /></Suspense>} />
+      <Route path="/audit/escalation-roles" element={<Suspense fallback={<div />}><AuditEscalationRoles /></Suspense>} />
       <Route path="/audit/action-center" element={<Navigate to="/audit/action-centre" replace />} />
       <Route path="/audit/actions" element={<Navigate to="/audit/action-centre?tab=register" replace />} />
       <Route path="/audit/follow-up-tracker" element={<Navigate to="/audit/action-centre?tab=followup" replace />} />
