@@ -97,6 +97,36 @@ export interface SendCommunicationCallerContext {
   entityId?: string | null;
 }
 
+/**
+ * Governed attachment reference (DEF-3).
+ *
+ * A business caller NEVER supplies bytes, a storage path, a bucket, a signed
+ * URL or a data URI. It supplies ONLY the identifier of an attachment that was
+ * previously registered through the governed registry
+ * (`omni_comms_register_attachment`), which validated the storage area, the
+ * content type, the size and the content checksum.
+ *
+ * The runtime pins the registered version (checksum + byte size + file name)
+ * onto the request, so the exact bytes that were approved are the exact bytes
+ * that can ever be delivered — a later overwrite of the storage object is
+ * detected at dispatch time and refused.
+ */
+export interface SendCommunicationAttachmentInput {
+  /** Identifier returned by the governed attachment registry. */
+  attachmentId: string;
+  /** `attachment` (default) or `inline`. */
+  disposition?: 'attachment' | 'inline';
+  /**
+   * When true, a channel that cannot carry the attachment BLOCKS the message
+   * instead of silently delivering an incomplete communication.
+   */
+  requiredForDelivery?: boolean;
+}
+
+/** Maximum governed attachments per request. Mirrors the DB bound. */
+export const OMNI_COMMS_MAX_ATTACHMENTS = 20;
+
+
 export interface SendCommunicationInput {
   eventCode: string;
   organizationId: string;
