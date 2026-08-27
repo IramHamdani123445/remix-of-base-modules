@@ -67,7 +67,11 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
       responsible_person: row.responsible_person || '',
       notes: row.notes || '',
     });
+    setEvidenceIds(Array.isArray(row.evidence_ids) ? row.evidence_ids : []);
   };
+
+  const toggleEvidence = (id: string) =>
+    setEvidenceIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const handleProgressSave = () => {
     if (!progressAction) return;
@@ -80,6 +84,11 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
       toast({ title: 'Validation', description: 'Closure evidence notes are required before verifying or closing an action.', variant: 'destructive' });
       return;
     }
+    const originalEvidence: string[] = Array.isArray(progressAction.evidence_ids) ? progressAction.evidence_ids : [];
+    const evidenceChanged =
+      originalEvidence.length !== evidenceIds.length ||
+      originalEvidence.some((id) => !evidenceIds.includes(id));
+
     update.mutate({
       id: progressAction.id,
       status: progressForm.status,
@@ -89,8 +98,20 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
       notes: progressForm.notes || null,
       updated_by: userCode || null,
       ...(closing ? { verified_by: userCode || null, verified_date: new Date().toISOString() } : {}),
-    } as any, { onSuccess: () => setProgressAction(null) });
+    } as any, {
+      onSuccess: () => {
+        if (evidenceChanged) {
+          linkEvidence.mutate(
+            { actionId: progressAction.id, evidenceIds },
+            { onSettled: () => setProgressAction(null) },
+          );
+        } else {
+          setProgressAction(null);
+        }
+      },
+    });
   };
+
 
   const handleCreate = () => {
     if (!form.finding_id || !form.action_description) {
