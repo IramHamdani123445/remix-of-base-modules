@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
+import { useSupabaseAuth } from '@/contexts/SupabaseAuthContext';
 import { fetchAllUserPermissions } from '@/lib/permissions/fetchAllUserPermissions';
 
 /**
@@ -72,7 +72,7 @@ export interface InternalAuditPermissionContext {
 }
 
 export function useInternalAuditPermissions(): InternalAuditPermissionContext {
-  const { user, roles, isAuthenticated, isLoading: authLoading } = useSupabaseAuth();
+  const { user, isAdmin, isAuthenticated, isLoading: authLoading } = useSupabaseAuth();
 
   const { data: rows = [], isLoading: permissionsLoading } = useQuery({
     queryKey: ['internal-audit-permissions', user?.id],
@@ -86,8 +86,6 @@ export function useInternalAuditPermissions(): InternalAuditPermissionContext {
   });
 
   return useMemo(() => {
-    const normalizedRoles = (roles || []).map((role) => String(role).toLowerCase());
-    const isAdmin = normalizedRoles.some((role) => role === 'admin' || role === 'application admin');
     const granted = new Set(rows.map((entry) => `${entry.module_name}:${entry.action_name}`));
     const isLoading = authLoading || permissionsLoading;
 
@@ -106,5 +104,5 @@ export function useInternalAuditPermissions(): InternalAuditPermissionContext {
     };
 
     return { isLoading, isAdmin, can, has };
-  }, [authLoading, isAuthenticated, permissionsLoading, roles, rows]);
+  }, [authLoading, isAdmin, isAuthenticated, permissionsLoading, rows]);
 }
