@@ -252,8 +252,17 @@ export function useRunComplianceJob() {
       }
     },
     onError: (error: any) => {
+      if (error?.name === RUN_RECORD_MISSING) {
+        toast.warning('Detection run superseded', { description: error.message, duration: 10000 });
+        return;
+      }
+      if (error?.name === RUN_STALLED) {
+        toast.error('Detection did not finish', { description: error.message, duration: 12000 });
+        return;
+      }
       toast.error('Job execution failed', { description: error.message });
     },
+
   });
 }
 
