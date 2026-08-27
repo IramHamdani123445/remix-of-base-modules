@@ -41,6 +41,8 @@ import {
 import {
   LEGACY_FACT_ALIASES,
   dedupeByRequirement,
+  isDeferredAtIntake,
+  isDocumentEvidenceFact,
   isInformationalRule,
   lookupField,
   requirementKey,
@@ -54,6 +56,8 @@ import {
 export {
   LEGACY_FACT_ALIASES,
   dedupeByRequirement,
+  isDeferredAtIntake,
+  isDocumentEvidenceFact,
   isInformationalRule,
   lookupField,
   requirementKey,
@@ -368,6 +372,19 @@ export async function evaluateEligibilityRule(
     rangeTo: ex.rangeTo ?? def.range_to,
   });
 
+  // BUG-49 — a rule the engine cannot apply is not a rule the claimant failed.
+  // An unimplemented operator used to return passed:false and be recorded as
+  // FAIL, so 55 of 68 active rules stated something untrue about every
+  // claimant. Unevaluated is blocking and visible; FAIL is a finding.
+  if (!informational && evalRes.evaluable === false) {
+    return unevaluated(rule, fieldKey, keySource, evalRes.reason, msgCtx, {
+      operator: ex.operator,
+      expected_value: ex.value,
+      source,
+      actual_value: actual,
+    });
+  }
+
   const outcome: RuleMessageOutcome = informational ? 'INFO' : evalRes.passed ? 'PASS' : 'FAIL';
   // The wording comes from the rule's own message_template / fail_message, with
   // its unit applied to both values, and its statutory citation attached.
@@ -458,9 +475,52 @@ export interface EligibilitySummary {
   satisfiedGroups: string[];
   /** Alternative-route requirements where no route succeeded. */
   unsatisfiedGroups: string[];
+  /**
+   * BUG-46 — rules whose evidence cannot exist yet, held back rather than
+   * failed. Only ever populated for `phase: 'INTAKE'`; empty at adjudication,
+   * where a missing document IS a reason to stop.
+   */
+  deferred: EligibilityRuleTrace[];
 }
 
-export function summariseEligibility(traces: EligibilityRuleTrace[]): EligibilitySummary {
+export interface SummariseOptions {
+  /**
+   * 'ADJUDICATION' (the default) judges every rule, documents included — the
+   * behaviour every existing caller relies on.
+   *
+   * 'INTAKE' is for the registration wizard, where the claim does not exist
+   * yet, so no document can be attached to it. Document rules move to
+   * `deferred` and take no part in the verdict.
+   */
+  phase?: 'INTAKE' | 'ADJUDICATION';
+}
+
+export function summariseEligibility(
+  traces: EligibilityRuleTrace[],
+  options: SummariseOptions = {},
+): EligibilitySummary {
+  // BUG-46 — at intake the claim has no id yet, so a document rule is not
+  // answerable, let alone failed. Held back here and judged at approval
+  // instead, where checkApprovalPreconditions refuses on DOCUMENTS_OUTSTANDING.
+  const deferred: EligibilityRuleTrace[] = [];
+  if (options.phase === 'INTAKE') {
+    const held: EligibilityRuleTrace[] = [];
+    for (const t of traces) {
+      if (isDeferredAtIntake({
+        rule_code: t.rule_code,
+        rule_name: t.rule_name,
+        rule_group: t.rule_group,
+        fact_key: t.field_key,
+        fail_action: t.fail_action,
+      })) {
+        deferred.push(t);
+      } else {
+        held.push(t);
+      }
+    }
+    traces = held;
+  }
+
   // BUG-32 — collapse each alternative group before judging anything.
   // A requirement with two lawful routes to satisfaction (the Maternity Grant's
   // "her contributions OR her insured husband's") is met when either route is
@@ -555,5 +615,6 @@ export function summariseEligibility(traces: EligibilityRuleTrace[]): Eligibilit
     overridden,
     satisfiedGroups,
     unsatisfiedGroups,
+    deferred,
   };
 }

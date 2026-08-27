@@ -91,14 +91,138 @@ async function loadEmployer(regno: string) {
   return data ?? null;
 }
 
+/* ─────────────── claim evidence (BUG-47) ───────────────
+ *
+ * Every document fact used to read `bn_claim_document`. Nothing writes to that
+ * table -- uploads go to `bn_claim_evidence` (evidenceService.ts:214), and
+ * `bn_claim_document` is empty. So a claimant could upload a certificate,
+ * the screen would say "Evidence Complete", and eligibility would still report
+ * "Medical certificate received: no", because the query looked somewhere else.
+ *
+ * The query was well formed and returned nothing, and "nothing" was reported
+ * as fact rather than as "I looked in the wrong place" -- the same defect as
+ * BUG-02/03/13/22/29/30, and the reason a query error now throws instead of
+ * resolving to false. The evaluator turns a throw into UNEVALUATED, which is
+ * blocking and visible; false would have been a silent finding against the
+ * claimant.
+ */
+
+/** Statuses on bn_claim_evidence that mean the document is on the claim. */
+const EVIDENCE_PRESENT_STATUS = new Set([
+  'RECEIVED', 'VERIFIED', 'ACCEPTED', 'FULFILLED', 'APPROVED',
+]);
+
+interface ClaimEvidenceRow {
+  document_type_code: string | null;
+  status: string | null;
+  requirement_id: string | null;
+  rejected_at: string | null;
+  waived_at: string | null;
+  verified_at: string | null;
+}
+
+/** Is this row evidence that the document is present? */
+function evidenceIsPresent(row: ClaimEvidenceRow): boolean {
+  // A rejected upload is not evidence of anything, whatever its status says.
+  if (row.rejected_at) return false;
+  // A waiver is a deliberate decision that the document is not required of
+  // this claimant, recorded by someone with the authority to make it.
+  if (row.waived_at) return true;
+  if (row.verified_at) return true;
+  const status = String(row.status ?? '').trim().toUpperCase();
+  return status !== '' && EVIDENCE_PRESENT_STATUS.has(status);
+}
+
+/**
+ * Every evidence row on the claim. Throws rather than returning [] on error,
+ * so a failed read can never be mistaken for "no documents".
+ */
+async function claimEvidenceRows(claimId: string): Promise<ClaimEvidenceRow[]> {
+  const { data, error } = await db
+    .from('bn_claim_evidence')
+    .select('document_type_code, status, requirement_id, rejected_at, waived_at, verified_at')
+    .eq('claim_id', claimId);
+  if (error) {
+    throw new Error(`bn_claim_evidence could not be read: ${error.message}`);
+  }
+  return Array.isArray(data) ? (data as ClaimEvidenceRow[]) : [];
+}
+
+/**
+ * Does the product name this document with its own code?
+ *
+ * The document catalogue (`bn_service_doc_type`) is the shared vocabulary --
+ * MEDICAL_CERT, DEATH_CERT, BIRTH_CERT. But a product may configure a
+ * requirement under a code of its own: MATERNITY_GRANT_TEST demands `MED-003`,
+ * which appears in no catalogue row, so no list of standard spellings can ever
+ * recognise it.
+ *
+ * Where that gap exists, the only statement the configuration supports is the
+ * stronger one: every mandatory document the product declares has been
+ * received. That can never let one document stand in for another -- a bank
+ * mandate cannot satisfy a medical certificate, because the medical
+ * certificate is itself one of the mandatory requirements that must be met.
+ *
+ * Applies ONLY when no mandatory requirement uses a catalogued code. A product
+ * speaking the shared vocabulary is judged by that vocabulary alone.
+ */
+async function productMandatoryEvidenceComplete(
+  claimId: string,
+  present: ClaimEvidenceRow[],
+): Promise<boolean> {
+  const { data: claim, error: claimErr } = await db
+    .from('bn_claim')
+    .select('product_version_id')
+    .eq('id', claimId)
+    .maybeSingle();
+  if (claimErr) throw new Error(`bn_claim could not be read: ${claimErr.message}`);
+  const versionId = (claim as any)?.product_version_id;
+  if (!versionId) return false;
+
+  const { data: reqs, error: reqErr } = await db
+    .from('bn_doc_requirement')
+    .select('document_type_code, requirement_level, is_active')
+    .eq('product_version_id', versionId)
+    .eq('is_active', true);
+  if (reqErr) throw new Error(`bn_doc_requirement could not be read: ${reqErr.message}`);
+
+  const mandatory = (Array.isArray(reqs) ? reqs : [])
+    .filter((r: any) => String(r.requirement_level ?? '').toUpperCase() === 'MANDATORY')
+    .map((r: any) => String(r.document_type_code ?? '').trim().toUpperCase())
+    .filter((c: string) => c !== '');
+  if (mandatory.length === 0) return false;
+
+  const { data: catalogue, error: catErr } = await db
+    .from('bn_service_doc_type')
+    .select('type_code');
+  if (catErr) throw new Error(`bn_service_doc_type could not be read: ${catErr.message}`);
+  const known = new Set(
+    (Array.isArray(catalogue) ? catalogue : [])
+      .map((r: any) => String(r.type_code ?? '').trim().toUpperCase()),
+  );
+  // No vocabulary gap -- the standard spellings govern, and this bridge is not
+  // the right instrument.
+  if (mandatory.some((c: string) => known.has(c))) return false;
+
+  const held = new Set(
+    present.map((r) => String(r.document_type_code ?? '').trim().toUpperCase()),
+  );
+  return mandatory.every((c: string) => held.has(c));
+}
+
+/**
+ * Is a document of one of these types present on the claim?
+ *
+ * `codes` are the catalogued spellings of one document. The product's own
+ * vocabulary is bridged separately, and only where it must be.
+ */
 async function hasClaimDocument(claimId: string, codes: string[]): Promise<boolean> {
-  const { data } = await db
-    .from('bn_claim_document')
-    .select('id, document_type_code')
-    .eq('claim_id', claimId)
-    .in('document_type_code', codes)
-    .limit(1);
-  return Array.isArray(data) && data.length > 0;
+  const present = (await claimEvidenceRows(claimId)).filter(evidenceIsPresent);
+  const wanted = new Set(codes.map((c) => c.trim().toUpperCase()));
+  if (present.some((r) => wanted.has(String(r.document_type_code ?? '').trim().toUpperCase()))) {
+    return true;
+  }
+  return productMandatoryEvidenceComplete(claimId, present);
 }
 
 /* ─────── window / deceased helpers used by the new resolvers ─────── */
@@ -108,13 +232,58 @@ function isoMinusDays(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-async function countPaidWeeksForSsn(ssn: string, fromIso: string | null, toIso: string | null): Promise<number> {
-  let q = db.from('ip_wages').select('id, period', { count: 'exact', head: false }).eq('ssn', ssn);
-  if (fromIso) q = q.gte('period', fromIso);
-  if (toIso) q = q.lte('period', toIso);
-  q = q.limit(2000);
-  const { data } = await q;
-  return Array.isArray(data) ? data.length : 0;
+/**
+ * Paid contribution weeks for an SSN, from a window cutoff to a date.
+ *
+ * BUG-48 — this used to run its own query, `select('id, period')`. ip_wages has
+ * no `id` column (its key is `audit_id`), so the query failed with 42703 every
+ * time; the error was discarded and 0 returned. Every window rule — "at least
+ * 26 paid weeks in the last 52" — was therefore judged against a phantom zero
+ * and failed against every claimant who had no snapshot.
+ *
+ * It also counted rows rather than paid weeks, so a credited week would have
+ * counted as paid even had the query worked. Both are avoided by using the one
+ * implementation that reads the real columns.
+ */
+async function paidWeeksForSsn(
+  ssn: string,
+  windowKey: string | null,
+  asOf: string,
+): Promise<number | null> {
+  const { computeContributionTotals } = await import('./contributionSnapshotService');
+  const totals = await computeContributionTotals(ssn, asOf);
+  if (!windowKey) return totals.paid;
+  const count = totals.windowCounts[windowKey];
+  return typeof count === 'number' ? count : null;
+}
+
+/**
+ * The claimant's contribution record, by SSN (BUG-48).
+ *
+ * Delegates to `computeContributionTotals` — the same arithmetic the claim
+ * snapshot is built from, over the same ip_wages columns. Two implementations
+ * of "how many weeks has she paid" is how the wizard came to show 9 paid weeks
+ * on its panel while the rule demanding 26 reported that it could not be
+ * evaluated at all.
+ *
+ * Returns null when there is nothing to ask about. A failed read throws, and
+ * the evaluator records UNEVALUATED — never 0, because "I could not look" and
+ * "she has none" are different answers and only one is a finding against her.
+ */
+async function contributionsBySsn(ctx: EligibilityContext) {
+  const ssn = (ctx.ssn ?? '').trim();
+  const asOf = ctx.claimDate ?? null;
+  if (!ssn || !asOf) return null;
+  const { computeContributionTotals } = await import('./contributionSnapshotService');
+  const totals = await computeContributionTotals(ssn, asOf);
+  return {
+    totalWeeks: totals.total,
+    paidWeeks: totals.paid,
+    creditedWeeks: totals.credited,
+    averageWeeklyWage: totals.avg,
+    lastPeriod: totals.maxP,
+    windowCounts: totals.windowCounts,
+  };
 }
 
 async function readWindow(
@@ -128,10 +297,10 @@ async function readWindow(
     const j = (s?.contribution_json as Record<string, unknown> | null) ?? null;
     if (j && typeof j[jsonKey] === 'number') return j[jsonKey] as number;
   }
-  // Live compute from ip_wages
+  // Live compute from ip_wages, through the same arithmetic the snapshot uses.
   if (!ctx.ssn || !ctx.claimDate) return null;
-  const from = isoMinusDays(ctx.claimDate, windowDays);
-  return countPaidWeeksForSsn(ctx.ssn, from, ctx.claimDate);
+  void windowDays; // the window is named by jsonKey; the day count is its mirror
+  return paidWeeksForSsn(ctx.ssn, jsonKey, ctx.claimDate);
 }
 
 async function resolveDeceasedSsn(ctx: EligibilityContext): Promise<string | null> {
@@ -160,13 +329,23 @@ async function deceasedWindowOrSnapshot(
   if (!ssn) return null;
   // No deceased snapshot table — compute live from ip_wages keyed by deceased SSN.
   const to = ctx.claimDate ?? new Date().toISOString().slice(0, 10);
-  const from = windowDays ? isoMinusDays(to, windowDays) : null;
-  const weeks = await countPaidWeeksForSsn(ssn, from, to);
-  // For `total` with no window we already returned all rows; that equals total weeks.
-  // For `paid` we also return distinct weeks (live computation = paid-only periods).
-  void kind;
-  return weeks;
+  const { computeContributionTotals } = await import('./contributionSnapshotService');
+  const totals = await computeContributionTotals(ssn, to);
+  if (windowDays === null) {
+    // Unwindowed: the whole record. `total` counts every week on record,
+    // `paid` only the weeks actually paid -- a distinction the previous
+    // implementation collapsed by counting rows for both.
+    return kind === 'total' ? totals.total : totals.paid;
+  }
+  // Name the window the snapshot already counted rather than recounting it.
+  // SNAPSHOT_WINDOW_DAYS is the one definition of what each key spans.
+  const { SNAPSHOT_WINDOW_DAYS } = await import('./contributionSnapshotService');
+  const key = Object.keys(totals.windowCounts).find(
+    (k) => SNAPSHOT_WINDOW_DAYS[k] === windowDays,
+  );
+  return key ? totals.windowCounts[key] : null;
 }
+
 
 
 const RESOLVERS: Record<string, ResolverFn> = {
@@ -192,29 +371,44 @@ const RESOLVERS: Record<string, ResolverFn> = {
     return 'ALIVE';
   },
 
-  // Contribution (snapshot-first, falls back to null when no snapshot yet)
+  // Contribution — snapshot first, then the claimant's own record by SSN.
+  //
+  // BUG-48 — each of these used to give up on `!ctx.claimId` and return null.
+  // At intake the claim does not exist yet, so the guard fired on every
+  // registration: every contribution rule came back UNEVALUATED, the verdict
+  // was NOT_DETERMINED, and no product carrying a contribution rule could be
+  // registered at all. The wizard was meanwhile displaying those very numbers
+  // in its own Contribution Window panel, read by SSN.
+  //
+  // Contributions belong to the person, not to the claim. The snapshot is
+  // preferred once it exists — it is what the claim was decided on and must not
+  // drift — but its absence is not ignorance.
   resolveContribTotalWeeks: async (ctx) => {
-    if (!ctx.claimId) return null;
-    const s = await loadContributionSnapshot(ctx.claimId);
-    return s?.total_weeks ?? null;
+    const s = ctx.claimId ? await loadContributionSnapshot(ctx.claimId) : null;
+    if (s?.total_weeks != null) return s.total_weeks;
+    const live = await contributionsBySsn(ctx);
+    return live ? live.totalWeeks : null;
   },
   resolveContribPaidWeeks: async (ctx) => {
-    if (!ctx.claimId) return null;
-    const s = await loadContributionSnapshot(ctx.claimId);
-    return s?.paid_weeks ?? null;
+    const s = ctx.claimId ? await loadContributionSnapshot(ctx.claimId) : null;
+    if (s?.paid_weeks != null) return s.paid_weeks;
+    const live = await contributionsBySsn(ctx);
+    return live ? live.paidWeeks : null;
   },
   resolveContribRecentWeeks: async (ctx) => {
-    if (!ctx.claimId) return null;
-    const s = await loadContributionSnapshot(ctx.claimId);
-    // Prefer an explicit `recent_weeks` key in contribution_json; otherwise null.
+    const s = ctx.claimId ? await loadContributionSnapshot(ctx.claimId) : null;
     const j = (s?.contribution_json as Record<string, unknown> | null) ?? null;
     if (j && typeof j['recent_weeks'] === 'number') return j['recent_weeks'];
-    return null;
+    // "Recent" is the product's own window; 52 weeks is the registry default
+    // the wizard's panel also uses.
+    const live = await contributionsBySsn(ctx);
+    return live ? live.totalWeeks : null;
   },
   resolveContribCreditedWeeks: async (ctx) => {
-    if (!ctx.claimId) return null;
-    const s = await loadContributionSnapshot(ctx.claimId);
-    return s?.credited_weeks ?? null;
+    const s = ctx.claimId ? await loadContributionSnapshot(ctx.claimId) : null;
+    if (s?.credited_weeks != null) return s.credited_weeks;
+    const live = await contributionsBySsn(ctx);
+    return live ? live.creditedWeeks : null;
   },
   resolveContribWeeksLast13: async (ctx) => readWindow(ctx, 'window_13', 13 * 7),
   resolveContribWeeksLast26: async (ctx) => readWindow(ctx, 'window_26', 26 * 7),
@@ -222,14 +416,16 @@ const RESOLVERS: Record<string, ResolverFn> = {
   resolveContribWeeksLast52: async (ctx) => readWindow(ctx, 'window_52', 52 * 7),
   resolveContribWeeksLast12Months: async (ctx) => readWindow(ctx, 'window_12m', 365),
   resolveContribAvgWage: async (ctx) => {
-    if (!ctx.claimId) return null;
-    const s = await loadContributionSnapshot(ctx.claimId);
-    return s?.average_weekly_wage ?? null;
+    const s = ctx.claimId ? await loadContributionSnapshot(ctx.claimId) : null;
+    if (s?.average_weekly_wage != null) return s.average_weekly_wage;
+    const live = await contributionsBySsn(ctx);
+    return live ? live.averageWeeklyWage : null;
   },
   resolveContribLastDate: async (ctx) => {
-    if (!ctx.claimId) return null;
-    const s = await loadContributionSnapshot(ctx.claimId);
-    return s?.period_to ?? null;
+    const s = ctx.claimId ? await loadContributionSnapshot(ctx.claimId) : null;
+    if (s?.period_to != null) return s.period_to;
+    const live = await contributionsBySsn(ctx);
+    return live ? live.lastPeriod : null;
   },
 
   // Deceased contributor (Funeral / Survivors). Snapshot is keyed by deceased SSN
@@ -404,18 +600,34 @@ const RESOLVERS: Record<string, ResolverFn> = {
 
   // Document status (vs existence). Returns the verification_status of the most recent document of the type.
   ...(() => {
+    // BUG-47 — this read `bn_claim_document` too, and its column names differ:
+    // bn_claim_evidence carries `status` / `entered_at`, not
+    // `verification_status` / `uploaded_at`. Selecting the absent columns would
+    // have failed the whole query (42703) even after the table was corrected.
     const make = (codes: string[]) => async (ctx: EligibilityContext) => {
       if (!ctx.claimId) return null;
-      const { data } = await db
-        .from('bn_claim_document')
-        .select('id, document_type_code, verification_status, uploaded_at')
-        .eq('claim_id', ctx.claimId)
-        .in('document_type_code', codes)
-        .order('uploaded_at', { ascending: false })
-        .limit(1);
-      if (!Array.isArray(data) || data.length === 0) return 'PENDING';
-      const s = String((data[0] as any).verification_status ?? '').toUpperCase();
-      return s || 'RECEIVED';
+      const wanted = new Set(codes.map((c) => c.trim().toUpperCase()));
+      const rows = await claimEvidenceRows(ctx.claimId);
+      const mine = rows.filter(
+        (r) => wanted.has(String(r.document_type_code ?? '').trim().toUpperCase()) && !r.rejected_at,
+      );
+      if (mine.length === 0) {
+        // The product may name the document with a code of its own (MED-003).
+        // Only when its whole mandatory set is in can a status be asserted.
+        const complete = await productMandatoryEvidenceComplete(
+          ctx.claimId,
+          rows.filter(evidenceIsPresent),
+        );
+        return complete ? 'VERIFIED' : 'PENDING';
+      }
+      // Verified beats received: a claim holding both an accepted copy and a
+      // superseded one has a verified document.
+      const verified = mine.find((r) => r.verified_at || r.waived_at);
+      const chosen = verified ?? mine[0];
+      const status = String(chosen.status ?? '').trim().toUpperCase();
+      if (chosen.waived_at) return 'WAIVED';
+      if (chosen.verified_at) return 'VERIFIED';
+      return status || 'RECEIVED';
     };
     return {
       resolveDocStatusMedicalCert: make(['MEDICAL_CERT', 'MED_CERT', 'MEDICAL_CERTIFICATE']),
@@ -854,15 +1066,18 @@ const RESOLVERS: Record<string, ResolverFn> = {
       return ctx.extras['funeral_invoice_amount'];
     }
     if (!ctx.claimId) return null;
-    const { data } = await db
-      .from('bn_claim_document')
-      .select('id, document_type_code, metadata, uploaded_at')
+    // BUG-47 — bn_claim_document is empty; the amount lives on the evidence row.
+    const { data, error } = await db
+      .from('bn_claim_evidence')
+      .select('document_type_code, metadata, entered_at, rejected_at')
       .eq('claim_id', ctx.claimId)
       .in('document_type_code', ['FUNERAL_INVOICE', 'FUN_INVOICE'])
-      .order('uploaded_at', { ascending: false })
-      .limit(1);
-    if (!Array.isArray(data) || data.length === 0) return null;
-    const meta = (data[0] as any).metadata ?? {};
+      .order('entered_at', { ascending: false })
+      .limit(5);
+    if (error) throw new Error(`bn_claim_evidence could not be read: ${error.message}`);
+    const usable = (Array.isArray(data) ? data : []).filter((r: any) => !r.rejected_at);
+    if (usable.length === 0) return null;
+    const meta = (usable[0] as any).metadata ?? {};
     const candidates = [meta.amount, meta.invoice_amount, meta.total];
     for (const v of candidates) {
       if (typeof v === 'number' && Number.isFinite(v)) return v;
@@ -898,8 +1113,8 @@ export async function resolveFact(
     return {
       fact_key: factKey,
       value,
-      source_table: 'bn_claim_document',
-      source_column: 'verification_status',
+      source_table: 'bn_claim_evidence',
+      source_column: 'status',
       resolved_at: new Date().toISOString(),
       reason,
     };

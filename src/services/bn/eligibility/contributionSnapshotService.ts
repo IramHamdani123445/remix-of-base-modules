@@ -42,12 +42,16 @@ async function loadClaim(claimId: string) {
 
 async function loadWages(ssn: string) {
   // Pull up to 2000 most-recent weeks. ip_wages is week-grained ("period").
-  const { data } = await db
+  const { data, error } = await db
     .from('ip_wages')
     .select('period, wages_paid1, wages_paid2, wages_paid3, wages_paid4, wages_paid5, wages_paid6, wages_paid7, paid_code1, paid_code2, paid_code3, paid_code4, paid_code5, paid_code6, paid_code7')
     .eq('ssn', ssn)
     .order('period', { ascending: false })
     .limit(2000);
+  // BUG-48 — the error was discarded and an empty array returned, so a failed
+  // read counted as "this claimant has no contributions" and failed every
+  // minimum-weeks rule against her.
+  if (error) throw new Error(`ip_wages could not be read: ${error.message}`);
   return (data as any[]) ?? [];
 }
 
@@ -73,6 +77,102 @@ function weekWage(row: any): number {
   let t = 0;
   for (let i = 1; i <= 7; i++) t += Number(row[`wages_paid${i}`] ?? 0);
   return t;
+}
+
+/**
+ * The windows the snapshot records, and the keys `contribution_json` carries.
+ *
+ * These are a storage contract, not a policy choice: `window_26` must remain
+ * the 26-week count because rules and snapshots already in the database read it
+ * by that name. A product wanting a different window states it on its own rule;
+ * it does not rename these.
+ */
+export const SNAPSHOT_WINDOW_DAYS: Record<string, number> = {
+  window_13: 13 * 7,
+  window_26: 26 * 7,
+  window_39: 39 * 7,
+  window_52: 52 * 7,
+  window_12m: 365,
+};
+
+export interface ContributionTotals {
+  total: number;
+  paid: number;
+  credited: number;
+  wageSum: number;
+  avg: number;
+  windowCounts: Record<string, number>;
+  minP: string | null;
+  maxP: string | null;
+}
+
+/**
+ * The claimant's contribution record, computed from ip_wages by SSN (BUG-48).
+ *
+ * Extracted from `ensureContributionSnapshot` so intake can use it. A claim is
+ * not needed to count a person's contribution weeks — contributions belong to
+ * the person — and at registration there is no claim yet. Every contribution
+ * fact used to give up at that point and report UNEVALUATED, which made any
+ * product carrying a contribution rule impossible to register.
+ *
+ * Deliberately the only implementation. ip_wages is week-grained with seven
+ * wage columns per row (`wages_paid1..7`) and seven codes (`paid_code1..7`);
+ * `wages`, `weeks`, `contributions` and `employer_reg_no` do not exist on it,
+ * and every reader that named them failed with 42703 and silently reported
+ * zero. Duplicating this arithmetic is how that happened.
+ */
+export async function computeContributionTotals(
+  ssn: string,
+  asOfDate: string,
+): Promise<ContributionTotals> {
+  const rows = await loadWages(ssn);
+  let paid = 0;
+  let credited = 0;
+  let total = 0;
+  let wageSum = 0;
+  let wageWeeks = 0;
+
+  const windowCutoffs: Record<string, string> = {};
+  const windowCounts: Record<string, number> = {};
+  for (const [key, days] of Object.entries(SNAPSHOT_WINDOW_DAYS)) {
+    windowCutoffs[key] = isoMinusDays(asOfDate, days);
+    windowCounts[key] = 0;
+  }
+
+  let minP: string | null = null;
+  let maxP: string | null = null;
+
+  for (const r of rows) {
+    const period: string = r.period;
+    if (!period) continue;
+    total += 1;
+    const isPaid = weekIsPaid(r);
+    if (isPaid) paid += 1;
+    else if (weekIsCredited(r)) credited += 1;
+    const w = weekWage(r);
+    if (w > 0) {
+      wageSum += w;
+      wageWeeks += 1;
+    }
+    if (!minP || period < minP) minP = period;
+    if (!maxP || period > maxP) maxP = period;
+    if (isPaid) {
+      for (const k of Object.keys(windowCutoffs)) {
+        if (period >= windowCutoffs[k] && period <= asOfDate) windowCounts[k] += 1;
+      }
+    }
+  }
+
+  return {
+    total,
+    paid,
+    credited,
+    wageSum,
+    avg: wageWeeks > 0 ? wageSum / wageWeeks : 0,
+    windowCounts,
+    minP,
+    maxP,
+  };
 }
 
 export async function ensureContributionSnapshot(
@@ -117,45 +217,8 @@ export async function ensureContributionSnapshot(
   }
 
   const claimDate = claim.claim_date ?? new Date().toISOString().slice(0, 10);
-  const rows = await loadWages(claim.ssn);
-  let paid = 0;
-  let credited = 0;
-  let total = 0;
-  let wageSum = 0;
-  let wageWeeks = 0;
-  const windowCutoffs: Record<string, string> = {
-    window_13: isoMinusDays(claimDate, 13 * 7),
-    window_26: isoMinusDays(claimDate, 26 * 7),
-    window_39: isoMinusDays(claimDate, 39 * 7),
-    window_52: isoMinusDays(claimDate, 52 * 7),
-    window_12m: isoMinusDays(claimDate, 365),
-  };
-  const windowCounts: Record<string, number> = { window_13: 0, window_26: 0, window_39: 0, window_52: 0, window_12m: 0 };
-  let minP: string | null = null;
-  let maxP: string | null = null;
-
-  for (const r of rows) {
-    const period: string = r.period;
-    if (!period) continue;
-    total += 1;
-    const isPaid = weekIsPaid(r);
-    if (isPaid) paid += 1;
-    else if (weekIsCredited(r)) credited += 1;
-    const w = weekWage(r);
-    if (w > 0) {
-      wageSum += w;
-      wageWeeks += 1;
-    }
-    if (!minP || period < minP) minP = period;
-    if (!maxP || period > maxP) maxP = period;
-    if (isPaid) {
-      for (const k of Object.keys(windowCutoffs)) {
-        if (period >= windowCutoffs[k] && period <= claimDate) windowCounts[k] += 1;
-      }
-    }
-  }
-
-  const avg = wageWeeks > 0 ? wageSum / wageWeeks : 0;
+  const totals = await computeContributionTotals(claim.ssn, claimDate);
+  const { paid, credited, total, wageSum, avg, windowCounts, minP, maxP } = totals;
   const contribJson = {
     ...windowCounts,
     recent_weeks: windowCounts.window_13,
