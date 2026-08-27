@@ -70329,7 +70329,7 @@ export type Database = {
         Row: {
           action_id: string
           approved_at: string
-          approved_by: string
+          approved_by: string | null
           created_at: string
           decided_at: string | null
           decided_by_profile: string | null
@@ -70350,7 +70350,7 @@ export type Database = {
         Insert: {
           action_id: string
           approved_at?: string
-          approved_by: string
+          approved_by?: string | null
           created_at?: string
           decided_at?: string | null
           decided_by_profile?: string | null
@@ -70371,7 +70371,7 @@ export type Database = {
         Update: {
           action_id?: string
           approved_at?: string
-          approved_by?: string
+          approved_by?: string | null
           created_at?: string
           decided_at?: string | null
           decided_by_profile?: string | null
@@ -124140,6 +124140,10 @@ export type Database = {
         Returns: Json
       }
       ia_evaluate_engagement_closure_v2: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
+      ia_evaluate_engagement_completeness: {
         Args: { p_engagement_id: string }
         Returns: Json
       }
