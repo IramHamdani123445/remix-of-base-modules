@@ -118,12 +118,21 @@ export async function deleteCountry(code: string): Promise<void> {
 
 /** Returns the number of active products bound to a country (for deactivation guard). */
 export async function countActiveProductsForCountry(code: string): Promise<number> {
+  // BUG-54: bn_product has no active flag at all; ACTIVE is a value of
+  // `status`. The filter failed with 42703 and the error was swallowed into a
+  // count of 0, so this guard, which exists to stop a country being deactivated
+  // while products still use it, always reported none.
   const { count, error } = await db
     .from('bn_product')
     .select('*', { count: 'exact', head: true })
     .eq('country_code', code)
-    .eq('is_active', true);
-  if (error) return 0;
+    .eq('status', 'ACTIVE');
+  if (error) {
+    throw new Error(
+      `The products bound to ${code} could not be counted (${error.message}). ` +
+      'Refusing to report zero, which would allow the country to be deactivated.',
+    );
+  }
   return count ?? 0;
 }
 
