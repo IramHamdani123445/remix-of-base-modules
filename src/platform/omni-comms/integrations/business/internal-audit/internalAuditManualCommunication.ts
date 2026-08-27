@@ -38,7 +38,7 @@ const IA_STAGE_REMINDER_EVENT_MAP: Record<string, string> = {
   QUERY_CYCLE: 'INTERNAL_AUDIT.REQUEST.REMINDER',
 };
 
-export type IaStageMode = 'initial' | 'reminder' | 'resend';
+export type IaStageMode = 'initial' | 'reminder' | 'reissue';
 
 export function resolveInternalAuditStageEvent(
   stageCode: string,
@@ -61,7 +61,7 @@ export interface InternalAuditStageCommunicationInput
  * Raise an operator-initiated Internal Audit communication obligation.
  *
  * `mode` only influences which catalogued event is chosen and the occurrence
- * key (so a reminder or a resend is a distinct, non-deduplicated obligation).
+ * key (so a reminder or a reissue is a distinct, non-deduplicated obligation).
  */
 export async function emitInternalAuditStageCommunication(
   input: InternalAuditStageCommunicationInput,
