@@ -601,7 +601,7 @@ export async function executePayableAction(params: ExecutePayableActionParams): 
     event_type: `PAYABLE_${action}`,
     from_status: instr.status,
     to_status: newStatus,
-    description: narrative || `Payable action: ${action}`,
+    notes: narrative || `Payable action: ${action}`,
     performed_by: performedBy,
     performed_at: now,
     metadata: {

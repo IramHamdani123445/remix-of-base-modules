@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Building2, FileText, Shield, DollarSign, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { fetchAdminKPIs, fetchFinancialSummary } from "@/services/dashboardDataService";
+import { DASHBOARD_QUERY_KEYS, fetchAdminKPIs, fetchFinancialSummary } from "@/services/dashboardDataService";
 
 const DASHBOARD_ROLES = new Set([
   'admin',
@@ -56,7 +56,7 @@ export const Dashboard = () => {
 const HRDashboard = () => {
   const navigate = useNavigate();
   const { data: kpis, isLoading } = useQuery({
-    queryKey: ['hr_dashboard_kpis'],
+    queryKey: DASHBOARD_QUERY_KEYS.adminKpis,
     queryFn: fetchAdminKPIs,
   });
 
@@ -111,7 +111,7 @@ const HRDashboard = () => {
 const FinancialDashboard = () => {
   const navigate = useNavigate();
   const { data, isLoading } = useQuery({
-    queryKey: ['financial_dashboard_summary'],
+    queryKey: DASHBOARD_QUERY_KEYS.financialSummary,
     queryFn: fetchFinancialSummary,
   });
 

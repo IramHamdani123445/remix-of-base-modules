@@ -83,6 +83,22 @@ class ViolationService {
     return (data || []).map(mapRow);
   }
 
+  /**
+   * Employer-scoped violation list. Used by employer-context screens so they
+   * never have to pull the full (very large) violation table client-side.
+   */
+  async getByEmployerId(employerId: string): Promise<Violation[]> {
+    const { data, error } = await supabase
+      .from('ce_violations')
+      .select(BASE_SELECT)
+      .eq('is_deleted', false)
+      .eq('employer_id', employerId)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    if (error) throw error;
+    return (data || []).map(mapRow);
+  }
+
   async getById(id: string): Promise<Violation | undefined> {
     const { data, error } = await supabase
       .from('ce_violations')
@@ -177,8 +193,9 @@ class ViolationService {
         assigned_to_user_id: request.assignedToUserId,
         due_date: request.dueDate,
         discovered_date: new Date().toISOString().slice(0, 10),
-        discovered_by: 'MANUAL',
-        source_type: 'MANUAL',
+        discovered_by: request.inspectionFindingId ? 'INSPECTION' : 'MANUAL',
+        source_type: request.inspectionFindingId ? 'INSPECTION_FINDING' : 'MANUAL',
+        source_finding_id: request.inspectionFindingId ?? null,
         created_by: 'SYSTEM',
         // Strong linkage (Phase 4)
         linked_evidence_ids: request.linkedEvidenceIds && request.linkedEvidenceIds.length

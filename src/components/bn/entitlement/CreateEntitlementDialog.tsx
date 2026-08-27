@@ -20,6 +20,8 @@ import { Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { BnEntitlementType, BnPaymentFrequency } from '@/services/bn/entitlementService';
+import { useUserCode } from '@/hooks/useUserCode';
+import { requireUserCode } from '@/lib/bn/requireUserCode';
 
 const db = supabase as any;
 
@@ -34,6 +36,10 @@ interface ClaimCandidate {
   claim_number: string;
   ssn: string;
   status: string;
+  /** Carried through so the entitlement records which rules and figures it rests on. */
+  product_id: string | null;
+  product_version_id: string | null;
+  calculation_id: string | null;
   benefit_name: string | null;
   weekly_rate: number;
   monthly_rate: number | null;
@@ -45,8 +51,15 @@ interface ClaimCandidate {
 }
 
 export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCreated }) => {
+  // 'CURRENT_USER' was written into entered_by, modified_by and performed_by.
+  // requireUserCode explicitly forbids that string — an audit row stamped with a
+  // placeholder is untraceable, which is what the guard exists to prevent.
+  const { userCode, isLoading: userCodeLoading, error: userCodeError } = useUserCode();
+
   const [step, setStep] = useState<'select' | 'configure'>('select');
   const [candidates, setCandidates] = useState<ClaimCandidate[]>([]);
+  /** Set when the lookup itself failed, so the empty state can say so. */
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState<ClaimCandidate | null>(null);
   const [creating, setCreating] = useState(false);
@@ -70,50 +83,107 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
     loadCandidates();
   }, [open]);
 
+  /**
+   * Claims that may have an entitlement created from them.
+   *
+   * An entitlement is the right to be paid, so it may only follow a decision
+   * that granted it. Eligibility for selection is therefore APPROVAL, not the
+   * claim's current status: a claim moves APPROVED → AWARD_SETUP →
+   * PAYMENT_QUEUE → IN_PAYMENT, so filtering on 'APPROVED' alone loses every
+   * claim that has moved on. SUSPENDED, CLOSED, DENIED and WITHDRAWN claims are
+   * excluded — a suspended claim must be reinstated and its existing
+   * entitlement resumed, never given a second one.
+   *
+   * The previous query also asked bn_claim_calculation for total_entitlement,
+   * duration_weeks, effective_from, effective_to and payment_frequency. None of
+   * those exist on that table — they are bn_entitlement columns. PostgREST
+   * rejects a select naming an unknown column, so the whole query failed; and
+   * because the error was discarded, the dialog reported "No approved claims
+   * without entitlements found" whether or not any existed.
+   */
   const loadCandidates = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
-      const { data: claims } = await db
+      // Statuses a claim can hold at or after approval.
+      const POST_APPROVAL = ['APPROVED', 'AWARD_SETUP', 'PAYMENT_QUEUE', 'IN_PAYMENT'];
+
+      const { data: claims, error: claimErr } = await db
         .from('bn_claim')
         .select(`
-          id, claim_number, ssn, status,
+          id, claim_number, ssn, status, claim_date, product_id, product_version_id,
           bn_product(benefit_name),
-          bn_claim_calculation(weekly_rate, monthly_rate, total_entitlement, duration_weeks, effective_from, effective_to, payment_frequency)
+          bn_claim_calculation(id, weekly_rate, monthly_rate, lump_sum, calc_date)
         `)
-        .in('status', ['APPROVED', 'AWARD_SETUP'])
+        .in('status', POST_APPROVAL)
         .order('modified_at', { ascending: false })
         .limit(100);
+      if (claimErr) throw claimErr;
 
-      // Filter out claims that already have entitlements
-      const { data: existingEnts } = await db
+      // Claims already holding an entitlement, in any live state.
+      const { data: existingEnts, error: entErr } = await db
         .from('bn_entitlement')
         .select('claim_id')
         .in('status', ['DRAFT', 'ACTIVE', 'SUSPENDED', 'REOPENED']);
+      if (entErr) throw entErr;
 
       const existingClaimIds = new Set((existingEnts ?? []).map((e: any) => e.claim_id));
 
-      const mapped = (claims ?? [])
+      // Duration and payment frequency are properties of the product version,
+      // not of the calculation — the calculation only produces rates.
+      const versionIds = Array.from(
+        new Set((claims ?? []).map((c: any) => c.product_version_id).filter(Boolean)),
+      );
+      const versionConfig = new Map<string, any>();
+      if (versionIds.length > 0) {
+        const { data: versions } = await db
+          .from('bn_product_version')
+          .select('id, payment_frequency, benefit_duration_type')
+          .in('id', versionIds);
+        (versions ?? []).forEach((v: any) => versionConfig.set(v.id, v));
+      }
+
+      const mapped: ClaimCandidate[] = (claims ?? [])
         .filter((c: any) => !existingClaimIds.has(c.id))
         .map((c: any) => {
-          const calc = c.bn_claim_calculation?.[0] || {};
+          // Newest calculation, not whichever row came back first.
+          const calcs = [...(c.bn_claim_calculation ?? [])].sort(
+            (a: any, b: any) => String(b.calc_date ?? '').localeCompare(String(a.calc_date ?? '')),
+          );
+          const calc = calcs[0] ?? {};
+          const cfg = versionConfig.get(c.product_version_id) ?? {};
+          const weekly = Number(calc.weekly_rate ?? 0);
+          const monthly = Number(calc.monthly_rate ?? 0);
+          const lump = Number(calc.lump_sum ?? 0);
           return {
             id: c.id,
             claim_number: c.claim_number,
             ssn: c.ssn,
             status: c.status,
+            product_id: c.product_id ?? null,
+            product_version_id: c.product_version_id ?? null,
+            calculation_id: calc.id ?? null,
             benefit_name: c.bn_product?.benefit_name || null,
-            weekly_rate: calc.weekly_rate ?? 0,
-            monthly_rate: calc.monthly_rate ?? null,
-            total_entitlement: calc.total_entitlement ?? 0,
-            duration_weeks: calc.duration_weeks ?? null,
-            effective_from: calc.effective_from ?? new Date().toISOString().slice(0, 10),
-            effective_to: calc.effective_to ?? null,
-            payment_frequency: calc.payment_frequency ?? 'WEEKLY',
+            weekly_rate: weekly,
+            monthly_rate: monthly || null,
+            // A lump sum IS the total. For a periodic benefit the total depends on
+            // duration, and no product-version column carries one
+            // (bn_product_version has benefit_duration_type but no week count),
+            // so it is left for the officer to set on the configure step rather
+            // than guessed here.
+            total_entitlement: lump > 0 ? lump : 0,
+            duration_weeks: null,
+            effective_from: c.claim_date ?? new Date().toISOString().slice(0, 10),
+            effective_to: null,
+            payment_frequency: cfg.payment_frequency ?? (lump > 0 ? 'ONE_TIME' : 'WEEKLY'),
           };
         });
       setCandidates(mapped);
-    } catch {
-      toast.error('Failed to load eligible claims');
+    } catch (e: any) {
+      // "Nothing found" and "could not look" must not read the same.
+      setCandidates([]);
+      setLoadError(e?.message ?? 'Unknown error');
+      toast.error('Could not load eligible claims', { description: e?.message });
     }
     setLoading(false);
   };
@@ -133,11 +203,19 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
     if (!selectedClaim || !effectiveFrom) return;
     setCreating(true);
     try {
+      // Fails loudly rather than stamping a placeholder onto an audit row.
+      const actor = requireUserCode(userCode, 'create entitlement');
       const now = new Date().toISOString();
       const entitlementData = {
         claim_id: selectedClaim.id,
         ssn: selectedClaim.ssn,
         claim_number: selectedClaim.claim_number,
+        // Which product rules and which calculation this entitlement rests on.
+        // Left null before, so a manually created entitlement could not be traced
+        // back to the version that produced its figures.
+        product_id: selectedClaim.product_id,
+        product_version_id: selectedClaim.product_version_id,
+        calculation_id: selectedClaim.calculation_id,
         entitlement_type: entitlementType,
         payment_frequency: paymentFrequency,
         weekly_rate: weeklyRate,
@@ -150,7 +228,7 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
         effective_to: effectiveTo?.toISOString().slice(0, 10) ?? null,
         status: 'DRAFT',
         override_applied: false,
-        entered_by: 'CURRENT_USER',
+        entered_by: actor,
         entered_at: now,
       };
 
@@ -163,15 +241,15 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
 
       // Update claim status
       await db.from('bn_claim')
-        .update({ status: 'AWARD_SETUP', modified_by: 'CURRENT_USER', modified_at: now })
+        .update({ status: 'AWARD_SETUP', modified_by: actor, modified_at: now })
         .eq('id', selectedClaim.id);
 
       // Audit event
       await db.from('bn_claim_event').insert({
         claim_id: selectedClaim.id,
         event_type: 'ENTITLEMENT_CREATED',
-        description: narrative || 'Entitlement created from approved claim',
-        performed_by: 'CURRENT_USER',
+        notes: narrative || 'Entitlement created from approved claim',
+        performed_by: actor,
         performed_at: now,
         metadata: {
           entitlement_id: ent.id,
@@ -214,7 +292,10 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
             ) : candidates.length === 0 ? (
               <div className="text-center py-8 text-sm text-muted-foreground">
                 <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-amber-500" />
-                No approved claims without entitlements found.
+                {loadError
+                  ? `The list of eligible claims could not be loaded: ${loadError}`
+                  : 'No approved claims without entitlements found. A claim must be approved, ' +
+                    'and not already hold an entitlement, to appear here.'}
               </div>
             ) : (
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
@@ -362,7 +443,24 @@ export const CreateEntitlementDialog: React.FC<Props> = ({ open, onClose, onCrea
             Cancel
           </Button>
           {step === 'configure' && (
-            <Button onClick={handleCreate} disabled={creating || !effectiveFrom || weeklyRate <= 0}>
+            <Button
+              onClick={handleCreate}
+              // Refused before the click rather than after, so the officer is not
+              // told "user_code is required" only once they have filled the form.
+              disabled={
+                creating || !effectiveFrom || weeklyRate <= 0 ||
+                userCodeLoading || !!userCodeError || !userCode
+              }
+              title={
+                userCodeLoading
+                  ? 'Loading your profile…'
+                  : userCodeError
+                    ? `Your profile could not be read: ${userCodeError}`
+                    : !userCode
+                      ? 'Your account has no user code — ask an administrator to set one'
+                      : undefined
+              }
+            >
               {creating && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}
               Create Entitlement
             </Button>

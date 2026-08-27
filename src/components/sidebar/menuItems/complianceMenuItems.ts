@@ -170,12 +170,15 @@ const inspections: SubItem = {
   requiresPermission: "manage_compliance",
   description: "Plans, assignments, field visits, and findings",
   subItems: filterEnabled<SubItem & { __feature?: string }>([
-    { title: "Inspection Plans", url: "/compliance/field/plan-builder", icon: Calendar, requiresPermission: "create_weekly_plan" },
-    { title: "Assigned Inspections", url: "/compliance/field/my-plans", icon: Calendar, requiresPermission: "manage_compliance" },
+    { title: "Weekly Plan Builder", url: "/compliance/field/plan-builder", icon: Calendar, requiresPermission: "create_weekly_plan" },
+    { title: "My Inspection Plans", url: "/compliance/field/my-plans", icon: Calendar, requiresPermission: "manage_compliance" },
+    { title: "Plan Approvals", url: "/compliance/field/pending-review", icon: ClipboardCheck, requiresPermission: "manage_compliance" },
+    { title: "Assigned Inspections", url: "/compliance/field/inspections", icon: ClipboardCheck, requiresPermission: "manage_compliance" },
     { title: "Field Visits", url: "/compliance/field/execution", icon: MapPin, requiresPermission: "conduct_inspections" },
     { title: "Inspection Findings", url: "/compliance/field/findings", icon: FileText, requiresPermission: "manage_compliance" },
     { title: "Evidence", url: "/compliance/inspections/evidence", icon: FolderOpen, requiresPermission: "manage_compliance", __feature: "inspections.evidence" },
     { title: "Convert Finding To Violation", url: "/compliance/inspections/convert-finding", icon: ArrowRightLeft, requiresPermission: "manage_compliance", __feature: "inspections.convertFinding" },
+
   ]),
 };
 

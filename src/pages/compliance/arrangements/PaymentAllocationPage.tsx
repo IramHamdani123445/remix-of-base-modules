@@ -19,6 +19,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { allocatePayment, DEFAULT_ALLOCATION_ORDER, type AllocationTarget } from '@/services/arrangementWorkflowService';
 import { useUserCode } from '@/hooks/useUserCode';
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
+import { fetchAllocationTrail } from '@/services/compliance/arrangementRegisterService';
+import { formatXCD } from '@/components/compliance/arrangements/arrangementFormat';
+import { formatDateForDisplay } from '@/lib/format-config';
 
 const MODULE = 'manage_compliance';
 
@@ -42,6 +45,15 @@ export default function PaymentAllocationPage() {
       return data || [];
     },
   });
+
+  // Canonical allocation trail (payment -> installment -> covered liability).
+  const { data: trail = [] } = useQuery({
+    queryKey: ['ce_v_arrangement_allocation_trail_all'],
+    queryFn: () => fetchAllocationTrail(),
+  });
+  const scopedTrail = employerId
+    ? trail.filter((t) => t.employer_id === employerId)
+    : trail;
 
   const move = (idx: number, dir: -1 | 1) => {
     const next = [...order];
@@ -145,6 +157,58 @@ export default function PaymentAllocationPage() {
                           <TableCell className="text-right">{Number(a.allocated_amount).toLocaleString('en-US', { style: 'currency', currency: 'XCD' })}</TableCell>
                           <TableCell className="text-xs">{a.allocation_mode}</TableCell>
                           <TableCell className="text-xs">{a.allocated_by}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="px-4 py-3 border-b text-sm font-semibold">
+                  Canonical allocation trail ({scopedTrail.length})
+                </div>
+                {scopedTrail.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    No canonical allocations recorded yet. Entries appear once a ledger payment is
+                    reconciled to an arrangement installment.
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Payment date</TableHead>
+                        <TableHead>Employer</TableHead>
+                        <TableHead>Arrangement</TableHead>
+                        <TableHead className="text-center">Installment</TableHead>
+                        <TableHead>Covered liability</TableHead>
+                        <TableHead className="text-right">Allocated</TableHead>
+                        <TableHead>State</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {scopedTrail.slice(0, 200).map((t) => (
+                        <TableRow key={t.allocation_id}>
+                          <TableCell className="text-xs whitespace-nowrap">
+                            {t.payment_date ? formatDateForDisplay(t.payment_date) : '—'}
+                          </TableCell>
+                          <TableCell className="text-xs">{t.employer_name || t.employer_id}</TableCell>
+                          <TableCell className="text-xs font-medium">{t.arrangement_number}</TableCell>
+                          <TableCell className="text-center text-xs">{t.installment_number ?? '—'}</TableCell>
+                          <TableCell className="text-xs">
+                            {t.is_unattributed ? 'Not attributable' : (t.liability_type || '—')}
+                            {t.source_reference_no && (
+                              <span className="block font-mono text-muted-foreground">{t.source_reference_no}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-medium">{formatXCD(t.allocation_amount)}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">
+                              {t.is_reversed ? 'Reversed' : t.is_unattributed ? 'Unattributed' : 'Allocated'}
+                            </Badge>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

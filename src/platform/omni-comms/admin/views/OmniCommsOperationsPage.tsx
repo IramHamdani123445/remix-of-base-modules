@@ -81,6 +81,7 @@ import PrinterStatusPanel from "./operations/PrinterStatusPanel";
 import PrintAuditPanel from "./operations/PrintAuditPanel";
 import EmailJourneyDetailPanel from "./operations/EmailJourneyDetailPanel";
 import ChannelActivityCards from "./operations/ChannelActivityCards";
+import WorkerHealthPanel from "./operations/WorkerHealthPanel";
 
 /** Normal-operator filter chips, expressed in business-event vocabulary. */
 const EVENT_FILTERS = [
@@ -367,7 +368,10 @@ export const OmniCommsOperationsPage: React.FC = () => {
         onRefresh={automation.refresh}
       />
 
+      <WorkerHealthPanel />
+
       <ChannelActivityCards rows={events?.items ?? []} loading={loading && !events} />
+
 
       <Card data-testid="omni-comms-needs-attention">
         <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">

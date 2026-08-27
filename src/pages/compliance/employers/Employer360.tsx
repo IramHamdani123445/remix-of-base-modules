@@ -11,10 +11,11 @@ import {
   Building2, FileText, Bell, ClipboardCheck, Shield, Clock, DollarSign,
   Users, AlertTriangle, Loader2, Eye, TrendingUp, Scale, ArrowLeft,
   Briefcase, MessageSquare, FolderOpen, Printer, Plus, Send, CalendarPlus,
-  ChevronUp, StickyNote, Gavel, History,
+  ChevronUp, StickyNote, Gavel, History, BookOpen,
 } from 'lucide-react';
 import { EmployerComplianceHistoryPanel } from '@/components/compliance/employer-history/EmployerComplianceHistoryPanel';
 import { PaymentHistoryGroupedTable } from './PaymentHistoryGroupedTable';
+import EmployerFinancialLedgerTab from './EmployerFinancialLedgerTab';
 import {
   fetchEmployerMaster, fetchEmployerFiling, fetchEmployerArrears, fetchEmployerPayments,
   fetchEmployerLegal, fetchEmployerWorkforce, fetchEmployerRisk, fetchEmployerViolations,
@@ -27,6 +28,13 @@ import {
 import {
   useEmployerStatement, useEmployerArrears as useLedgerArrears,
 } from '@/hooks/useComplianceLedger';
+import {
+  fetchEmployerExposure, fetchViolationFinancialsMap, formatComplianceCurrency,
+} from '@/services/complianceViolationAmountService';
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Info } from 'lucide-react';
+
 
 const RISK_BAND_COLORS: Record<string, string> = {
   LOW: 'bg-green-500/15 text-green-700',
@@ -57,10 +65,9 @@ const formatDate = (val: string | null) => {
   try { return new Date(val).toLocaleDateString('en-GB'); } catch { return val; }
 };
 
-const formatCurrency = (amt: number | null) => {
-  if (amt == null) return '—';
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'XCD', minimumFractionDigits: 2 }).format(amt);
-};
+// Shared compliance currency formatter — never re-implement locally.
+const formatCurrency = formatComplianceCurrency;
+
 
 export default function Employer360() {
   const { employerId } = useParams();
@@ -77,7 +84,20 @@ export default function Employer360() {
   const { data: legal } = useQuery({ queryKey: ['employer360_legal', employerId], queryFn: () => fetchEmployerLegal(employerId!), enabled: !!employerId });
   const { data: workforce } = useQuery({ queryKey: ['employer360_workforce', employerId], queryFn: () => fetchEmployerWorkforce(employerId!), enabled: !!employerId });
   const { data: risk } = useQuery({ queryKey: ['employer360_risk', employerId], queryFn: () => fetchEmployerRisk(employerId!), enabled: !!employerId });
-  const { data: violations = [] } = useQuery({ queryKey: ['employer360_violations', employerId], queryFn: () => fetchEmployerViolations(employerId!), enabled: !!employerId });
+  const { data: violationsPage } = useQuery({ queryKey: ['employer360_violations', employerId], queryFn: () => fetchEmployerViolations(employerId!), enabled: !!employerId });
+  const violations = violationsPage?.rows ?? [];
+  const violationTotal = violationsPage?.total ?? 0;
+  const violationsTruncated = violationsPage?.truncated ?? false;
+  // Canonical, non-double-counting enforcement exposure (open cases + open unlinked violations).
+  const { data: exposure } = useQuery({ queryKey: ['employer360_exposure', employerId], queryFn: () => fetchEmployerExposure(employerId!), enabled: !!employerId });
+  // Money for the listed violations comes from the shared read layer, never recomputed here.
+  const { data: violationFinancials = {} } = useQuery({
+    queryKey: ['employer360_violation_financials', employerId, violations.map((v: any) => v.id).join(',')],
+    queryFn: () => fetchViolationFinancialsMap(violations.map((v: any) => v.id)),
+    enabled: violations.length > 0,
+  });
+
+
   const { data: notices = [] } = useQuery({ queryKey: ['employer360_notices', employerId], queryFn: () => fetchEmployerNotices(employerId!), enabled: !!employerId });
   const { data: followUps = [] } = useQuery({ queryKey: ['employer360_followups', employerId], queryFn: () => fetchEmployerFollowUps(employerId!), enabled: !!employerId });
   const { data: timeline = [] } = useQuery({ queryKey: ['employer360_timeline', employerId], queryFn: () => fetchEmployerTimeline(employerId!), enabled: !!employerId });
@@ -107,18 +127,20 @@ export default function Employer360() {
     );
   }
 
-  const activeViolations = violations.filter((v: any) => !['RESOLVED', 'CLOSED', 'CANCELLED'].includes(v.status));
+  // Open-violation count comes from a real count query, not the loaded page.
+  const activeViolationCount = exposure?.open_violations ?? violationsPage?.openTotal ?? 0;
   const activeCases = cases.filter((c: any) => !['RESOLVED', 'CLOSED'].includes(c.status));
   const riskBand = risk?.override_band || risk?.risk_band || 'N/A';
   const totalLedgerArrears = ledgerArrears.reduce((sum, a) => sum + (a.net_balance || 0), 0);
   const activeArrangement = arrangements.find((a: any) => a.status === 'ACTIVE');
-  // Enforcement outstanding = sum of (total_amount − amount_collected − amount_waived) across open cases.
+  // Enforcement exposure is resolved server-side by fn_ce_employer_financial_exposure:
+  //   open case outstanding + open UNLINKED violation outstanding.
+  // A case-linked violation is counted exactly once, through its case.
   // This is distinct from C3 arrears (dues vs payments in cn_c3_reported / cn_payment).
-  const enforcementOutstanding = activeCases.reduce(
-    (sum: number, c: any) => sum + Math.max(Number(c.total_amount || 0) - Number(c.amount_collected || 0) - Number(c.amount_waived || 0), 0),
-    0,
-  );
+  const enforcementOutstanding = exposure?.enforcement_exposure ?? 0;
+  const openCaseCount = exposure?.open_cases ?? activeCases.length;
   const c3Outstanding = arrears?.total_outstanding ?? 0;
+
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -159,7 +181,7 @@ export default function Employer360() {
       />
 
       {/* Warning Banners */}
-      {(arrears?.has_arrears || enforcementOutstanding > 0 || activeViolations.length > 0 || legal?.has_active_legal) && (
+      {(arrears?.has_arrears || enforcementOutstanding > 0 || activeViolationCount > 0 || legal?.has_active_legal) && (
         <div className="space-y-2">
           {arrears?.has_arrears && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">
@@ -172,9 +194,28 @@ export default function Employer360() {
             <div className="flex items-center gap-2 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg text-sm text-orange-700">
               <Briefcase className="h-4 w-4" />
               <span className="font-medium">Enforcement outstanding: {formatCurrency(enforcementOutstanding)}</span>
-              <span className="text-xs text-muted-foreground">({activeCases.length} open case{activeCases.length === 1 ? '' : 's'})</span>
+              <span className="text-xs text-muted-foreground">
+                ({openCaseCount} open case{openCaseCount === 1 ? '' : 's'}
+                {(exposure?.open_unlinked_violations ?? 0) > 0 &&
+                  ` + ${exposure!.open_unlinked_violations} unlinked violation${exposure!.open_unlinked_violations === 1 ? '' : 's'}`})
+              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-sm text-xs">
+                    Enforcement exposure = outstanding on open cases ({formatCurrency(exposure?.case_outstanding ?? 0)})
+                    plus outstanding on open violations not linked to any case
+                    ({formatCurrency(exposure?.unlinked_violation_outstanding ?? 0)}).
+                    A violation attached to a case is counted once only, through its case roll-up.
+                    Collections and approved waivers are already deducted.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           )}
+
           {legal?.has_active_legal && (
             <div className="flex items-center gap-2 p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg text-sm text-orange-700">
               <Gavel className="h-4 w-4" />
@@ -190,8 +231,8 @@ export default function Employer360() {
           { label: 'Risk', content: <Badge className={`${RISK_BAND_COLORS[riskBand] || 'bg-muted text-muted-foreground'}`}>{riskBand}</Badge> },
           { label: 'C3 Arrears', content: <span className="text-xs font-bold text-destructive">{formatCurrency(c3Outstanding)}</span> },
           { label: 'Enforcement', content: <span className="text-xs font-bold text-orange-600">{formatCurrency(enforcementOutstanding)}</span> },
-          { label: 'Violations', content: <span className="text-xl font-bold">{activeViolations.length}</span> },
-          { label: 'Cases', content: <span className="text-xl font-bold">{activeCases.length}</span> },
+          { label: 'Violations', content: <span className="text-xl font-bold">{activeViolationCount}</span> },
+          { label: 'Cases', content: <span className="text-xl font-bold">{openCaseCount}</span> },
           { label: 'Missed Filings', content: <span className="text-xl font-bold">{filing?.missed_filings_12m ?? '—'}</span> },
           { label: 'Workforce', content: <span className="text-lg font-bold">{workforce?.registered_total ?? '—'}</span> },
           { label: 'Paid YTD', content: <span className="text-xs font-bold text-green-600">{formatCurrency(payments?.total_amount_12m ?? 0)}</span> },
@@ -211,10 +252,11 @@ export default function Employer360() {
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="overview"><Building2 className="h-3.5 w-3.5 mr-1" />Overview</TabsTrigger>
           <TabsTrigger value="financial"><DollarSign className="h-3.5 w-3.5 mr-1" />Financials</TabsTrigger>
-          <TabsTrigger value="violations"><AlertTriangle className="h-3.5 w-3.5 mr-1" />Violations ({violations.length})</TabsTrigger>
+          <TabsTrigger value="violations"><AlertTriangle className="h-3.5 w-3.5 mr-1" />Violations ({violationTotal})</TabsTrigger>
           <TabsTrigger value="cases"><Briefcase className="h-3.5 w-3.5 mr-1" />Cases ({cases.length})</TabsTrigger>
           <TabsTrigger value="payments"><DollarSign className="h-3.5 w-3.5 mr-1" />Payments</TabsTrigger>
           <TabsTrigger value="statement"><FileText className="h-3.5 w-3.5 mr-1" />Statement</TabsTrigger>
+          <TabsTrigger value="ledger"><BookOpen className="h-3.5 w-3.5 mr-1" />Ledger</TabsTrigger>
           <TabsTrigger value="communications"><MessageSquare className="h-3.5 w-3.5 mr-1" />Comms ({communications.length})</TabsTrigger>
           <TabsTrigger value="documents"><FolderOpen className="h-3.5 w-3.5 mr-1" />Docs ({documents.length})</TabsTrigger>
           <TabsTrigger value="timeline"><Clock className="h-3.5 w-3.5 mr-1" />Timeline</TabsTrigger>
@@ -371,29 +413,46 @@ export default function Employer360() {
         {/* ═══ VIOLATIONS TAB ═══ */}
         <TabsContent value="violations">
           <Card>
-            <CardHeader><CardTitle>Violations ({violations.length})</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle>Violations ({violationTotal})</CardTitle>
+              {violationsTruncated && (
+                <p className="text-xs text-muted-foreground">
+                  Showing the {violations.length} most recent of {violationTotal} violations.
+                  Open the Violations register for the full list.
+                </p>
+              )}
+            </CardHeader>
             <CardContent>
               {violations.length === 0 ? <div className="text-center py-8 text-muted-foreground">No violations on record</div> : (
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Violation #</TableHead><TableHead>Type</TableHead><TableHead>Status</TableHead>
-                      <TableHead>Priority</TableHead><TableHead>Amount</TableHead><TableHead>Created</TableHead><TableHead></TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead className="text-right">Gross</TableHead>
+                      <TableHead className="text-right">Waived</TableHead>
+                      <TableHead className="text-right">Outstanding</TableHead>
+                      <TableHead>Created</TableHead><TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {violations.map((v: any) => (
+                    {violations.map((v: any) => {
+                      const f = violationFinancials[v.id];
+                      return (
                       <TableRow key={v.id}>
                         <TableCell className="font-mono text-xs">{v.violation_number}</TableCell>
                         <TableCell className="text-xs">{v.ce_violation_types?.name || '—'}</TableCell>
                         <TableCell><Badge className={`text-xs ${STATUS_COLORS[v.status] || ''}`}>{v.status?.replace(/_/g, ' ')}</Badge></TableCell>
                         <TableCell className="text-xs">{v.priority}</TableCell>
-                        <TableCell className="text-xs">{formatCurrency(Number(v.total_amount) || 0)}</TableCell>
+                        <TableCell className="text-xs text-right">{formatCurrency(f?.gross ?? null)}</TableCell>
+                        <TableCell className="text-xs text-right">{formatCurrency(f?.waived ?? null)}</TableCell>
+                        <TableCell className="text-xs text-right font-medium">{formatCurrency(f?.outstanding ?? null)}</TableCell>
                         <TableCell className="text-xs">{formatDate(v.created_at)}</TableCell>
                         <TableCell><Button size="sm" variant="ghost" onClick={() => navigate(`/compliance/violations/${v.id}`)}><Eye className="h-3.5 w-3.5" /></Button></TableCell>
                       </TableRow>
-                    ))}
+                    );})}
                   </TableBody>
+
                 </Table>
               )}
             </CardContent>
@@ -570,6 +629,11 @@ export default function Employer360() {
               })()}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* ═══ LEDGER (PASSBOOK) TAB ═══ */}
+        <TabsContent value="ledger" className="space-y-4">
+          <EmployerFinancialLedgerTab employerId={employerId!} />
         </TabsContent>
 
         {/* ═══ COMMUNICATIONS TAB ═══ */}

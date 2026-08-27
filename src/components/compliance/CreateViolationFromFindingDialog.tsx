@@ -29,6 +29,7 @@ import { ViolationType } from '@/types/violation';
 import { violationService } from '@/services/violationService';
 import { inspectionService } from '@/services/inspectionService';
 import { fieldAuditService } from '@/services/fieldAuditService';
+import { findingDispositionService } from '@/services/compliance/findingDispositionService';
 import { employerPriorContextService, EmployerPriorContext } from '@/services/employerPriorContextService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -146,6 +147,8 @@ export function CreateViolationFromFindingDialog({
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
+      // Server-authoritative guard: classification + no prior conversion
+      await findingDispositionService.assertConvertible(finding.id);
       const newViolation = await violationService.create({
         employerId: isScouting ? undefined : (employerId || visit?.employerId),
         violationType: violationTypeCode,
@@ -182,9 +185,9 @@ export function CreateViolationFromFindingDialog({
       setSelectedEvidenceIds(new Set());
       setRelatedPriorViolationId('');
       setRelatedArrangementId('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      toast.error('Failed to create violation');
+      toast.error(err?.message ?? 'Failed to create violation');
     } finally {
       setSubmitting(false);
     }

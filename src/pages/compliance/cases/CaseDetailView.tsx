@@ -28,13 +28,19 @@ import {
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { fetchCaseById } from '@/services/complianceDataService';
 import { fetchCaseWaivedAmounts, computeOutstanding } from '@/services/complianceWaiverAmounts';
+import { fetchCaseFinancials, fetchViolationFinancialsMap } from '@/services/complianceViolationAmountService';
+
 
 import { caseViolationService } from '@/services/caseViolationService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ComplianceTimeline } from '@/components/compliance/ComplianceTimeline';
 import { AssignmentDialog } from '@/components/compliance/AssignmentDialog';
-import { ForwardToLegalDialog } from '@/components/compliance/ForwardToLegalDialog';
+import { CaseLegalEscalationPanel } from '@/components/compliance/CaseLegalEscalationPanel';
+import { CaseWaiversPanel } from '@/components/compliance/CaseWaiversPanel';
+import { fetchCaseLegalStatus } from '@/services/compliance/legalEscalationFlow';
+import { evaluateArrangementEligibility } from '@/services/compliance/paymentArrangementEligibility';
+
 import { UserCheck, Send } from 'lucide-react';
 import { useHasCapability } from '@/hooks/useHasCapability';
 import { useComplianceRole } from '@/hooks/useComplianceRole';
@@ -89,7 +95,7 @@ export default function CaseDetailView() {
   const [arrangementDialogOpen, setArrangementDialogOpen] = useState(false);
   const [waiverDialogOpen, setWaiverDialogOpen] = useState(false);
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
-  const [forwardLegalOpen, setForwardLegalOpen] = useState(false);
+  
   const [breakdownDialogOpen, setBreakdownDialogOpen] = useState(false);
   const [planningDialogOpen, setPlanningDialogOpen] = useState(false);
 
@@ -101,6 +107,7 @@ export default function CaseDetailView() {
   // Case ownership (re)assignment uses the shared capability model rather than
   // a raw role comparison, so Admin / legacy manage_compliance holders pass too.
   const canManageAssignments = useHasCapability(COMPLIANCE_CAPABILITIES.CASES_MANAGE);
+  const canCreateArrangement = useHasCapability(COMPLIANCE_CAPABILITIES.ENFORCEMENT_ARRANGEMENTS);
   const complianceRole = useComplianceRole();
 
   // Resolve the current user's officer identifiers (UUID + inspector codes) so
@@ -145,6 +152,18 @@ export default function CaseDetailView() {
     enabled: !!id,
   });
 
+  // Shared compliance read layer — single source of truth for case money.
+  const { data: caseFinancials } = useQuery({
+    queryKey: ['ce_case_financials', id],
+    queryFn: () => fetchCaseFinancials(id!),
+    enabled: !!id,
+  });
+  const { data: caseViolationFinancials = {} } = useQuery({
+    queryKey: ['ce_case_violation_financials', id, linkedViolations.map((v: any) => v.id).join(',')],
+    queryFn: () => fetchViolationFinancialsMap(linkedViolations.map((v: any) => v.id)),
+    enabled: linkedViolations.length > 0,
+  });
+
 
   const { data: caseHistory = [] } = useQuery({
     queryKey: ['ce_case_history', id],
@@ -187,6 +206,14 @@ export default function CaseDetailView() {
     },
     enabled: !!id,
   });
+
+  // Legal escalation status — the single tracked lifecycle for this case
+  const { data: legalStatus } = useQuery({
+    queryKey: ['ce_case_legal_status', id],
+    queryFn: () => fetchCaseLegalStatus(id!),
+    enabled: !!id,
+  });
+
 
   // Existing pending nomination (if any) for this case + officer
   const { data: existingNomination } = useQuery({
@@ -260,17 +287,36 @@ export default function CaseDetailView() {
   const caseIsClosed = ['RESOLVED', 'CLOSED', 'COMPLETED'].includes(c.status);
 
   // Waiver-adjusted financials (approved waivers reduce the balance on read).
-  const caseGrossTotal = Number(c.total_amount) || 0;
-  const caseCollected = Number(c.amount_collected) || 0;
-  const caseWaived = Math.max(
+  // Authoritative case money comes from ce_v_case_financials via the shared
+  // read layer; the raw columns are only a fallback while the query loads.
+  const caseGrossTotal = caseFinancials?.gross ?? (Number(c.total_amount) || 0);
+  const caseCollected = caseFinancials?.paid ?? (Number(c.amount_collected) || 0);
+  const caseWaived = caseFinancials?.waived ?? Math.max(
     Number(waivedAmounts?.caseTotal ?? 0),
     Number(c.amount_waived ?? 0),
   );
-  const caseOutstanding = computeOutstanding(caseGrossTotal, caseCollected, caseWaived);
+  const caseOutstanding = caseFinancials?.outstanding
+    ?? computeOutstanding(caseGrossTotal, caseCollected, caseWaived);
   const violationWaivedMap = waivedAmounts?.byViolation ?? {};
 
   const noticesFeatureEnabled = isComplianceFeatureEnabled('notices.generate');
   const arrangementsFeatureEnabled = isComplianceFeatureEnabled('arrangements.new');
+  const waiversFeatureEnabled = isComplianceFeatureEnabled('enforcement.waivers');
+
+  // Payment arrangement availability is evaluated from configured business
+  // state, and the reason is always shown to the user (never a silently
+  // disabled or hidden button).
+  const arrangementEligibility = evaluateArrangementEligibility({
+    caseStatus: c.status,
+    outstanding: caseOutstanding,
+    featureEnabled: arrangementsFeatureEnabled,
+    hasPermission: canCreateArrangement,
+    assignedOfficerId: (c as any).assigned_officer_id ?? null,
+    arrangements: caseArrangements as Array<{ status?: string | null }>,
+    legalStatus: legalStatus?.status ?? null,
+  });
+  const arrangementBlockedReason = arrangementEligibility.reasons.join(' ');
+
   const activeViolationCount = linkedViolations.filter(
     (v: any) => ['OPEN', 'IN_PROGRESS', 'UNDER_REVIEW', 'ESCALATED'].includes(v.status)
   ).length;
@@ -400,31 +446,20 @@ export default function CaseDetailView() {
                 <Scale className="h-4 w-4 mr-1" />Recommend Legal
               </PermissionButton>
             )}
-            {/* Forward to Legal — full 6-step wizard vs. quick hand-off */}
+            {/* Refer to Legal — single controlled entry point (wizard → pack → approval → Legal) */}
             {!caseIsClosed && !(c as any).lg_intake_id && !(c as any).legal_case_id &&
-              isComplianceFeatureEnabled('legal.handoff') && (
-              <div className="flex items-center gap-2">
-                <PermissionButton
-                  moduleName={COMPLIANCE_MODULE}
-                  actionName="edit"
-                  size="sm"
-                  title="Full 6-step referral: select items, review history and attach documents before sending to Legal. Wizard = full referral with item selection, history and documents."
-                  onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}
-                >
-                  <Scale className="h-4 w-4 mr-1" />Refer to Legal (Wizard)
-                </PermissionButton>
-                <PermissionButton
-                  moduleName={COMPLIANCE_MODULE}
-                  actionName="edit"
-                  size="sm"
-                  variant="outline"
-                  title="Fast hand-off: sends the whole case to Legal intake without item selection. Quick Forward = immediate hand-off of the whole case to Legal intake."
-                  onClick={() => setForwardLegalOpen(true)}
-                >
-                  <Send className="h-4 w-4 mr-1" />Quick Forward
-                </PermissionButton>
-              </div>
+              !legalStatus && isComplianceFeatureEnabled('legal.handoff') && (
+              <PermissionButton
+                moduleName={COMPLIANCE_MODULE}
+                actionName="edit"
+                size="sm"
+                title="Start the legal referral: select items, review history and attach documents. The referral is created as a draft and only reaches Legal after the legal pack is complete and approved."
+                onClick={() => navigate(`/compliance/cases/${c.id}/legal-referral`)}
+              >
+                <Scale className="h-4 w-4 mr-1" />Refer to Legal
+              </PermissionButton>
             )}
+
 
             {(c as any).lg_intake_id && !(c as any).legal_case_id && (
               <Button variant="outline" size="sm" onClick={() => navigate(`/legal/cases/intake/${(c as any).lg_intake_id}`)}>
@@ -448,22 +483,22 @@ export default function CaseDetailView() {
                 Cascade Resolve ({activeViolationCount})
               </PermissionButton>
             )}
-            {!['RESOLVED', 'CLOSED', 'COMPLETED', 'CSTG_PAYMENT_ARRANGEMENT_ACTIVE'].includes(c.status) &&
-              isComplianceFeatureEnabled('arrangements.new') &&
-              caseOutstanding > 0 && (
+            {/* Payment arrangement — always visible while the case is open so the
+                user can see WHY it is unavailable instead of hunting for it. */}
+            {!caseIsClosed && (
               <PermissionButton
                 moduleName={COMPLIANCE_MODULE}
                 actionName="create"
                 size="sm"
                 onClick={() => setArrangementDialogOpen(true)}
-                disabled={!(c as any).assigned_officer_id}
-                title={!(c as any).assigned_officer_id ? 'Assign an officer to this case before creating an arrangement' : undefined}
+                disabled={!arrangementEligibility.allowed}
+                title={arrangementBlockedReason || 'Agree instalment terms for the outstanding balance'}
               >
                 <HandshakeIcon className="h-4 w-4 mr-1" />
                 Create Payment Arrangement
               </PermissionButton>
             )}
-            {!caseIsClosed && isComplianceFeatureEnabled('enforcement.waivers') &&
+            {!caseIsClosed && waiversFeatureEnabled &&
               caseOutstanding > 0 && (
               <PermissionButton
                 moduleName={COMPLIANCE_MODULE}
@@ -625,7 +660,10 @@ export default function CaseDetailView() {
 
       </div>
 
+      <CaseLegalEscalationPanel status={legalStatus} />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
+
         <TabsList>
           <TabsTrigger value="violations">
             <Link2 className="h-4 w-4 mr-2" />Violations ({linkedViolations.length})
@@ -638,6 +676,11 @@ export default function CaseDetailView() {
           {arrangementsFeatureEnabled && (
             <TabsTrigger value="arrangements">
               <DollarSign className="h-4 w-4 mr-2" />Arrangements ({caseArrangements.length})
+            </TabsTrigger>
+          )}
+          {waiversFeatureEnabled && (
+            <TabsTrigger value="waivers">
+              <BadgePercent className="h-4 w-4 mr-2" />Waivers
             </TabsTrigger>
           )}
           <TabsTrigger value="documents">
@@ -673,6 +716,10 @@ export default function CaseDetailView() {
 
         <TabsContent value="inspections" className="space-y-4">
           <CaseInspectionsTab caseId={id!} employerId={c.employer_id} />
+        </TabsContent>
+
+        <TabsContent value="waivers" className="space-y-4">
+          <CaseWaiversPanel caseId={id!} />
         </TabsContent>
 
 
@@ -721,9 +768,10 @@ export default function CaseDetailView() {
                         </TableCell>
                         <TableCell>
                           {(() => {
-                            const gross = Number(v.total_amount) || 0;
-                            const vWaived = Number(violationWaivedMap[v.id] ?? 0);
-                            const net = computeOutstanding(gross, 0, vWaived);
+                            const vf = caseViolationFinancials[v.id];
+                            const gross = vf?.gross ?? (Number(v.total_amount) || 0);
+                            const vWaived = vf?.waived ?? Number(violationWaivedMap[v.id] ?? 0);
+                            const net = vf?.outstanding ?? computeOutstanding(gross, 0, vWaived);
                             return (
                               <div>
                                 <div>{formatCurrency(net)}</div>
@@ -810,20 +858,28 @@ export default function CaseDetailView() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Payment Arrangements</CardTitle>
-                {!caseIsClosed && arrangementsFeatureEnabled && caseOutstanding > 0 && (
+                {!caseIsClosed && (
                   <PermissionButton
                     moduleName={COMPLIANCE_MODULE}
                     actionName="create"
                     size="sm"
                     variant="outline"
                     onClick={() => setArrangementDialogOpen(true)}
-                    disabled={!(c as any).assigned_officer_id}
-                    title={!(c as any).assigned_officer_id ? 'Assign an officer to this case before creating an arrangement' : undefined}
+                    disabled={!arrangementEligibility.allowed}
+                    title={arrangementBlockedReason || undefined}
                   >
                     <HandshakeIcon className="h-4 w-4 mr-1" />New Arrangement
                   </PermissionButton>
                 )}
               </div>
+              {!arrangementEligibility.allowed && (
+                <div className="mt-3 rounded-md border border-amber-400 bg-amber-50 p-3 text-xs text-amber-900">
+                  <div className="font-medium">A new arrangement cannot be created right now because:</div>
+                  <ul className="mt-1 list-disc pl-4">
+                    {arrangementEligibility.reasons.map((r) => <li key={r}>{r}</li>)}
+                  </ul>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {caseArrangements.length === 0 ? (
@@ -972,7 +1028,13 @@ export default function CaseDetailView() {
           defaultAmount: caseOutstanding,
 
         }}
-        onCreated={() => queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] })}
+        onCreated={() => {
+          // Show the request immediately on the case so the officer can track it.
+          queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] });
+          queryClient.invalidateQueries({ queryKey: ['ce_case_waivers', id] });
+          setActiveTab('waivers');
+          toast.success('Waiver request created — track it on the Waivers tab');
+        }}
       />
 
       <AssignmentDialog
@@ -985,14 +1047,8 @@ export default function CaseDetailView() {
         onAssigned={() => queryClient.invalidateQueries({ queryKey: ['ce_case_detail', id] })}
       />
 
-      <ForwardToLegalDialog
-        open={forwardLegalOpen}
-        onOpenChange={setForwardLegalOpen}
-        ceCaseId={c.id}
-        ceCaseNumber={c.case_number}
-        outstandingAmount={caseOutstanding}
 
-      />
+
 
       <AddToInspectionPlanningDialog
         open={planningDialogOpen}

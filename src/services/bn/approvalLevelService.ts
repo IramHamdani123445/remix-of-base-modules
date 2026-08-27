@@ -148,12 +148,23 @@ export async function getTransitionSideEffect(params: {
   };
 }
 
-/** Assign the claim to a workbasket (idempotent — closes prior active row). */
+/**
+ * Assign the claim to a workbasket (idempotent — closes prior active row).
+ *
+ * `options.dueAt` sets the SLA deadline on the assignment. The escalation runner
+ * watches that column, so an assignment created without it can never be
+ * escalated — it simply sits in the queue (BUG-33 / BUG-24).
+ *
+ * `options.assignedTo` leaves the row unclaimed when null, which is what a
+ * queue assignment should be: visible to everyone holding the basket's role
+ * until an officer picks it.
+ */
 export async function assignClaimToWorkbasket(
   claimId: string,
   workbasketId: string,
   performedBy: string,
   _note?: string,
+  options?: { dueAt?: string | null; assignedTo?: string | null },
 ): Promise<void> {
   if (!workbasketId) return;
   await db
@@ -165,8 +176,9 @@ export async function assignClaimToWorkbasket(
   await db.from('bn_claim_queue_assignment').insert({
     claim_id: claimId,
     workbasket_id: workbasketId,
-    assigned_to: performedBy,
+    assigned_to: options && 'assignedTo' in options ? options.assignedTo : performedBy,
     assigned_at: new Date().toISOString(),
+    due_at: options?.dueAt ?? null,
     is_active: true,
   });
 }

@@ -13,9 +13,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Calendar, Loader2, Receipt } from 'lucide-react';
+import { Loader2, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { fetchInstallmentsDue } from '@/services/compliance/arrangementRegisterService';
+import { formatXCD, InstallmentStatusBadge } from '@/components/compliance/arrangements/arrangementFormat';
+import { formatDateForDisplay } from '@/lib/format-config';
 import { recordInstallmentPayment } from '@/services/arrangementWorkflowService';
 import { useUserCode } from '@/hooks/useUserCode';
 import { isComplianceFeatureEnabled } from '@/lib/compliance/featureToggles';
@@ -30,34 +32,23 @@ export default function InstallmentsDuePage() {
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
 
-  const today = new Date().toISOString().slice(0, 10);
-  const horizon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ['ce_installments_due'],
+    queryKey: ['ce_installments_due_operational'],
     enabled,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('ce_installments')
-        .select('*, ce_payment_arrangements!inner(id,arrangement_number,employer_id,employer_name,status)')
-        .in('status', ['PENDING', 'PLANNED', 'PARTIAL', 'OVERDUE'])
-        .lte('due_date', horizon)
-        .order('due_date', { ascending: true }).limit(500);
-      if (error) throw error;
-      return (data || []).filter((r: any) => r.ce_payment_arrangements?.status === 'ACTIVE');
-    },
+    queryFn: () => fetchInstallmentsDue(30),
   });
+
 
   const payMut = useMutation({
     mutationFn: () => recordInstallmentPayment({
-      installmentId: payDialog.id,
+      installmentId: payDialog.installment_id,
       amount: Number(amount),
       paymentReference: reference,
       userCode: userCode || 'system',
     }),
     onSuccess: () => {
       toast.success('Payment recorded');
-      qc.invalidateQueries({ queryKey: ['ce_installments_due'] });
+      qc.invalidateQueries({ queryKey: ['ce_installments_due_operational'] });
       setPayDialog(null); setAmount(''); setReference('');
     },
     onError: (e: any) => toast.error(e.message),
@@ -92,26 +83,32 @@ export default function InstallmentsDuePage() {
                     {rows.length === 0 && (
                       <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No installments due in horizon.</TableCell></TableRow>
                     )}
-                    {rows.map((r: any) => {
-                      const overdue = r.due_date < today;
-                      return (
-                        <TableRow key={r.id} className={overdue ? 'bg-destructive/5' : ''}>
-                          <TableCell className="text-xs">{r.due_date}</TableCell>
-                          <TableCell className="font-medium">{r.ce_payment_arrangements?.arrangement_number}</TableCell>
-                          <TableCell>{r.ce_payment_arrangements?.employer_name || r.ce_payment_arrangements?.employer_id}</TableCell>
-                          <TableCell>{r.installment_number}</TableCell>
-                          <TableCell className="text-right">{Number(r.amount).toLocaleString('en-US', { style: 'currency', currency: 'XCD' })}</TableCell>
-                          <TableCell className="text-right">{Number(r.paid_amount || 0).toLocaleString('en-US', { style: 'currency', currency: 'XCD' })}</TableCell>
-                          <TableCell><Badge variant="outline" className={overdue ? 'bg-destructive/10 text-destructive border-destructive/30' : ''}>{overdue ? 'OVERDUE' : r.status}</Badge></TableCell>
-                          <TableCell>
-                            <PermissionButton moduleName={MODULE} actionName="edit" size="sm" variant="outline"
-                              onClick={() => { setPayDialog(r); setAmount(String(Number(r.amount) - Number(r.paid_amount || 0))); }}>
-                              <Receipt className="h-4 w-4 mr-1" /> Record
-                            </PermissionButton>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {rows.map((r) => (
+                      <TableRow key={r.installment_id} className={r.effective_status === 'OVERDUE' ? 'bg-destructive/5' : ''}>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {r.due_date ? formatDateForDisplay(r.due_date) : '—'}
+                          {r.days_overdue > 0 && (
+                            <span className="block text-destructive">{r.days_overdue}d overdue</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">{r.arrangement_number}</TableCell>
+                        <TableCell>{r.employer_name || r.employer_id}</TableCell>
+                        <TableCell>{r.installment_number}</TableCell>
+                        <TableCell className="text-right">{formatXCD(r.scheduled_amount)}</TableCell>
+                        <TableCell className="text-right">{formatXCD(r.paid_amount)}</TableCell>
+                        <TableCell><InstallmentStatusBadge status={r.effective_status} /></TableCell>
+                        <TableCell>
+                          <PermissionButton moduleName={MODULE} actionName="edit" size="sm" variant="outline"
+                            onClick={() => {
+                              setPayDialog(r);
+                              setAmount(String(Number(r.outstanding_amount ?? 0)));
+                            }}>
+                            <Receipt className="h-4 w-4 mr-1" /> Record
+                          </PermissionButton>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+
                   </TableBody>
                 </Table>
               )}
@@ -126,7 +123,7 @@ export default function InstallmentsDuePage() {
             </DialogHeader>
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                {payDialog?.ce_payment_arrangements?.arrangement_number} — Installment #{payDialog?.installment_number}
+                {payDialog?.arrangement_number} — Installment #{payDialog?.installment_number}
               </p>
               <div>
                 <Label>Amount *</Label>

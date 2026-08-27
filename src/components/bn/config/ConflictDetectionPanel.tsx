@@ -32,7 +32,7 @@ export function ConflictDetectionPanel({ versionId, onJumpToTab, compact }: Prop
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between text-sm">
           <span className="flex items-center gap-2">
-            <ShieldAlert className="h-4 w-4" /> Cross-Tab Conflict Detection
+            <ShieldAlert className="h-4 w-4" /> Cross-Tab Consistency Checks
             {data && (
               <>
                 <Badge variant="destructive" className="text-[10px]">{data.errors} error</Badge>
@@ -53,8 +53,10 @@ export function ConflictDetectionPanel({ versionId, onJumpToTab, compact }: Prop
           <Alert>
             <CheckCircle2 className="h-4 w-4" />
             <AlertDescription className="text-xs">
-              No cross-tab conflicts detected. Configuration is internally consistent.
+              No cross-tab conflicts detected. This does not by itself mean the version can be
+              published — see Version Readiness above for publish eligibility.
             </AlertDescription>
+
           </Alert>
         ) : (
           <ul className="space-y-2 max-h-72 overflow-y-auto pr-1">

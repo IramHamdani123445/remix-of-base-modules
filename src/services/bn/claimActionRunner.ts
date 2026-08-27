@@ -18,9 +18,11 @@
  *    SUBMIT_DECISION / APPROVE / DENY actions.
  */
 import { supabase } from '@/integrations/supabase/client';
-import { resolveField } from '@/services/bn/eligibility/fieldResolver';
-import { evaluateOperator } from '@/services/bn/eligibility/operatorEvaluator';
-import { getFieldDef } from '@/services/bn/eligibility/fieldRegistry';
+import {
+  evaluateEligibilityRules,
+  summariseEligibility,
+  type EligibilityRuleTrace,
+} from '@/services/bn/eligibility/eligibilityEvaluator';
 import { runCalculationEngine } from '@/services/bn/calculationEngine';
 
 const db = supabase as any;
@@ -83,91 +85,12 @@ async function resolveEvaluationVersionId(claim: ClaimContext): Promise<string> 
 
 // ─── Eligibility ────────────────────────────────────────────────────
 
-export interface EligibilityRuleTrace {
-  rule_code: string;
-  rule_name: string;
-  rule_group: string | null;
-  field_key: string | null;
-  operator: string | null;
-  expected_value: unknown;
-  actual_value: unknown;
-  passed: boolean;
-  fail_action: 'REJECT' | 'WARN' | string;
-  source: string | null;
-  message: string;
-}
+export type { EligibilityRuleTrace } from '@/services/bn/eligibility/eligibilityEvaluator';
 
 export interface EligibilityRunResult {
   eligibilityId: string;
   overallResult: boolean;
   rules: EligibilityRuleTrace[];
-}
-
-/**
- * Extract the expected value from a rule.rule_definition for a known field_key.
- * Old/legacy rules use a wide variety of property names (employer_status,
- * person_status, min_age, max_age, min_weeks, max_report_days, required_value, ...).
- * Returns { value, operator, hint } — `hint` is set when the rule only carries
- * intent flags (no comparable value) so the runner can mark it INFO instead of FAIL.
- */
-function extractExpected(
-  fieldKey: string,
-  def: Record<string, any>,
-  defaultOp: string,
-): { value: unknown; operator: string; hint?: string } {
-  const op = def.operator || defaultOp;
-  // Direct value first
-  const direct = def.value ?? def.required_value ?? def.expected_value;
-  if (direct !== undefined && direct !== null) return { value: direct, operator: op };
-
-  switch (fieldKey) {
-    case 'employer.status': {
-      const v = def.employer_status ?? def.status ?? def.required_status;
-      if (v != null) return { value: v, operator: op || '==' };
-      if (def.requires_active_employer || def.requires_employer_verification) {
-        return { value: 'A', operator: '==' };
-      }
-      return { value: null, operator: op, hint: 'No expected employer status provided' };
-    }
-    case 'person.status': {
-      const v = def.person_status ?? def.status ?? def.required_status;
-      if (v != null) return { value: v, operator: op || '==' };
-      if (def.requires_active_employment || def.exclude_self_employed) {
-        return { value: null, operator: op, hint: 'Rule expresses intent only — no comparable value (treat as INFO).' };
-      }
-      return { value: null, operator: op, hint: 'No expected person status provided' };
-    }
-    case 'person.age_at_claim_date': {
-      if (def.min_age != null) return { value: def.min_age, operator: '>=' };
-      if (def.max_age != null) return { value: def.max_age, operator: '<=' };
-      return { value: null, operator: op, hint: 'No age threshold defined' };
-    }
-    case 'contribution.total_weeks':
-    case 'contribution.total_wages':
-    case 'contribution.avg_weekly_wage': {
-      const v = def.min_weeks ?? def.min_contributions_weeks ?? def.recent_contributions_weeks
-        ?? def.min_wages ?? def.min_value ?? def.threshold;
-      if (v != null) return { value: v, operator: op || '>=' };
-      return { value: null, operator: op, hint: 'No contribution threshold defined' };
-    }
-    case 'claim.claim_date': {
-      // Intent-only; date threshold checks (max_report_days etc.) need an incident date
-      // which isn't available on bn_claim today — surface as INFO rather than fail.
-      if (def.max_report_days != null || def.min_report_days != null) {
-        return { value: null, operator: op, hint: `Reporting window (${def.max_report_days ?? def.min_report_days} days) — incident date not yet captured; skipped.` };
-      }
-      return { value: null, operator: op, hint: 'No date threshold defined' };
-    }
-    case 'evidence.required_docs_complete':
-    case 'evidence.document_verified': {
-      return { value: true, operator: '==' };
-    }
-    case 'claim.has_duplicate_active_claim': {
-      return { value: false, operator: '==' };
-    }
-    default:
-      return { value: null, operator: op, hint: 'No expected value extracted' };
-  }
 }
 
 async function resolveEmployerForClaim(claim: ClaimContext): Promise<string | null> {
@@ -206,108 +129,10 @@ export async function runClaimEligibility(
     employerRegNo: resolvedEmployer ?? undefined,
   };
 
-  const traces: EligibilityRuleTrace[] = [];
-
-  for (const rule of rules ?? []) {
-    const def = (rule.rule_definition || {}) as Record<string, any>;
-    const fieldKey: string | null = def.field_key ?? null;
-
-    let actual: unknown = null;
-    let passed = false;
-    let message = '';
-    let source: string | null = null;
-    let operator: string = def.operator || '==';
-    let expected: unknown = null;
-
-    if (!fieldKey) {
-      traces.push({
-        rule_code: rule.rule_code,
-        rule_name: rule.rule_name,
-        rule_group: rule.rule_group,
-        field_key: null,
-        operator,
-        expected_value: null,
-        actual_value: null,
-        passed: true, // INFO — legacy definition, do not block
-        fail_action: 'INFO',
-        source: rule.data_source ?? null,
-        message: 'Legacy rule — no field_key; treated as INFO.',
-      });
-      continue;
-    }
-
-    try {
-      const fieldDef = getFieldDef(fieldKey);
-      if (!fieldDef) {
-        // Unknown field — INFO, do not block
-        traces.push({
-          rule_code: rule.rule_code, rule_name: rule.rule_name, rule_group: rule.rule_group,
-          field_key: fieldKey, operator, expected_value: null, actual_value: null,
-          passed: true, fail_action: 'INFO', source: null,
-          message: `Unknown field_key: ${fieldKey} (treated as INFO).`,
-        });
-        continue;
-      }
-
-      const ex = extractExpected(fieldKey, def, fieldDef.operators[0] ?? '==');
-      operator = ex.operator;
-      expected = ex.value;
-
-      const resolved = await resolveField(fieldKey, ctx, {
-        windowType: def.window_type,
-        windowFrom: def.window_from,
-        windowTo: def.window_to,
-        documentTypeCode: def.document_type_code,
-      });
-      actual = resolved.value;
-      source = resolved.sourceLabel;
-
-      if (ex.hint && (expected === null || expected === undefined)) {
-        // Intent-only or non-comparable rule — INFO, do not block
-        traces.push({
-          rule_code: rule.rule_code, rule_name: rule.rule_name, rule_group: rule.rule_group,
-          field_key: fieldKey, operator, expected_value: null, actual_value: actual,
-          passed: true, fail_action: 'INFO', source,
-          message: `${fieldDef.label}: ${ex.hint}`,
-        });
-        continue;
-      }
-
-      // Case-insensitive string normalisation for equality on enumerated codes
-      let actualForEval = actual;
-      let expectedForEval = expected;
-      if (fieldDef.valueType === 'string' && (operator === '==' || operator === '!=' || operator === 'IN')) {
-        if (typeof actual === 'string') actualForEval = actual.trim().toUpperCase();
-        if (typeof expected === 'string') expectedForEval = expected.trim().toUpperCase();
-      }
-
-      const evalRes = evaluateOperator(actualForEval, operator as any, expectedForEval, fieldDef.valueType, {
-        rangeFrom: def.range_from,
-        rangeTo: def.range_to,
-      });
-      passed = evalRes.passed;
-      message = passed
-        ? `${fieldDef.label}: ${evalRes.reason}`
-        : rule.fail_message || `${fieldDef.label}: ${evalRes.reason}`;
-    } catch (err: any) {
-      message = `Evaluation error: ${err?.message || err}`;
-      passed = false;
-    }
-
-    traces.push({
-      rule_code: rule.rule_code,
-      rule_name: rule.rule_name,
-      rule_group: rule.rule_group,
-      field_key: fieldKey,
-      operator,
-      expected_value: expected,
-      actual_value: actual,
-      passed,
-      fail_action: rule.fail_action,
-      source,
-      message,
-    });
-  }
+  // BUG-29 — evaluation is delegated to the shared evaluator so intake and the
+  // workbench cannot diverge, and so a rule that cannot be evaluated is recorded
+  // as UNEVALUATED (blocking) instead of being reported as passed.
+  const traces: EligibilityRuleTrace[] = await evaluateEligibilityRules(rules ?? [], ctx);
 
   // ─── Apply ACTIVE APPROVED eligibility overrides ───────────────────
   // Rule per spec: re-run evaluates every rule, but any failure that has an
@@ -352,7 +177,7 @@ export async function runClaimEligibility(
     }
   }
 
-  const overall = !traces.some((t) => !t.passed && t.fail_action === 'REJECT');
+  const overall = summariseEligibility(traces).overall;
 
   const { data: inserted, error: insErr } = await db
     .from('bn_claim_eligibility')
@@ -466,33 +291,92 @@ export async function runClaimCalculation(
 
 export type DecisionType = 'RECOMMENDATION' | 'APPROVED' | 'DENIED';
 
+/**
+ * `bn_claim_decision` action codes, taken from `bn_claim_transition_rule`,
+ * which is the runtime source of truth for claim transitions.
+ */
+const DECISION_ACTION_CODE: Record<DecisionType, string> = {
+  RECOMMENDATION: 'SUBMIT_DECISION',
+  APPROVED: 'APPROVE',
+  DENIED: 'DENY',
+};
+
+/**
+ * Writes the decision row.
+ *
+ * This used to insert `decision_type`, `decision_date`, `decision_narrative`,
+ * `reason_code`, `calculation_id`, `decided_by` and `entered_by` — none of
+ * which exist on bn_claim_decision. Every insert therefore threw, so no claim
+ * could be approved, denied, or submitted for decision at all. The real columns
+ * are action_code / from_status / to_status / performed_by / performed_at /
+ * narrative / reason_code_id, plus the snapshot columns below.
+ *
+ * The snapshots matter: they freeze WHICH eligibility result and WHICH
+ * calculation the decision was taken against, so a later re-run cannot change
+ * the basis of a decision already made.
+ */
 export async function createClaimDecision(args: {
   claimId: string;
   decisionType: DecisionType;
   userCode: string;
   narrative?: string;
   reasonCode?: string;
+  fromStatus?: string;
+  toStatus?: string;
 }): Promise<{ id: string }> {
-  // Find latest calculation for amount snapshot (best effort).
+  const actionCode = DECISION_ACTION_CODE[args.decisionType];
+
+  // Snapshot the evidence the decision rests on (best effort — the approval
+  // preconditions are what REFUSE a decision; this only records the basis).
   const { data: latestCalc } = await db
     .from('bn_claim_calculation')
-    .select('id, weekly_rate, monthly_rate, lump_sum')
+    .select('id')
     .eq('claim_id', args.claimId)
     .order('calc_date', { ascending: false })
     .limit(1)
+    .maybeSingle();
+
+  const { data: latestElig } = await db
+    .from('bn_claim_eligibility')
+    .select('id')
+    .eq('claim_id', args.claimId)
+    .order('check_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // reason_code_id is a foreign key; callers pass a human code, so resolve it.
+  // An unresolvable code is left null rather than failing the decision — the
+  // reason text is still carried in the narrative.
+  let reasonCodeId: string | null = null;
+  if (args.reasonCode) {
+    const { data: rc } = await db
+      .from('bn_reason_code')
+      .select('id')
+      .eq('reason_code', args.reasonCode)
+      .maybeSingle();
+    reasonCodeId = (rc as any)?.id ?? null;
+  }
+
+  const { data: claim } = await db
+    .from('bn_claim')
+    .select('status')
+    .eq('id', args.claimId)
     .maybeSingle();
 
   const { data, error } = await db
     .from('bn_claim_decision')
     .insert({
       claim_id: args.claimId,
-      decision_type: args.decisionType,
-      decision_date: new Date().toISOString(),
-      decision_narrative: args.narrative ?? null,
-      reason_code: args.reasonCode ?? null,
-      calculation_id: latestCalc?.id ?? null,
-      decided_by: args.userCode,
-      entered_by: args.userCode,
+      action_code: actionCode,
+      from_status: args.fromStatus ?? (claim as any)?.status ?? null,
+      to_status: args.toStatus ?? null,
+      narrative: args.narrative ?? null,
+      reason_code_id: reasonCodeId,
+      calculation_snapshot_id: latestCalc?.id ?? null,
+      eligibility_snapshot_id: latestElig?.id ?? null,
+      evidence_snapshot: {},
+      performed_by: args.userCode,
+      performed_at: new Date().toISOString(),
     })
     .select('id')
     .single();
@@ -512,9 +396,10 @@ export async function createClaimDecision(args: {
     performedBy: args.userCode,
     afterValue: {
       claim_id: args.claimId,
-      decision_type: args.decisionType,
-      reason_code: args.reasonCode ?? null,
-      calculation_id: latestCalc?.id ?? null,
+      action_code: actionCode,
+      reason_code_id: reasonCodeId,
+      calculation_snapshot_id: latestCalc?.id ?? null,
+      eligibility_snapshot_id: latestElig?.id ?? null,
     },
     notes: args.narrative ?? null,
     critical: true,

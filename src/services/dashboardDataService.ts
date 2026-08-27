@@ -1,5 +1,15 @@
 import { supabase } from '@/integrations/supabase/client';
 
+/** One cache identity per database view so every dashboard shares results. */
+export const DASHBOARD_QUERY_KEYS = {
+  adminKpis: ['dashboard-view', 'admin-kpis'] as const,
+  financialSummary: ['dashboard-view', 'financial-summary'] as const,
+  contributionTrend: ['dashboard-view', 'contribution-trend'] as const,
+  benefitsDistribution: ['dashboard-view', 'benefits-distribution'] as const,
+};
+
+const DASHBOARD_REQUEST_TIMEOUT_MS = 8_000;
+
 // ── Types ──
 
 export interface AdminKPIs {
@@ -122,7 +132,22 @@ export interface UpcomingInspection {
 // ── Helpers ──
 
 async function fetchView<T>(viewName: string): Promise<T[]> {
-  const { data, error } = await supabase.from(viewName as any).select('*');
+  const abortController = new AbortController();
+  const timeoutId = window.setTimeout(
+    () => abortController.abort(),
+    DASHBOARD_REQUEST_TIMEOUT_MS,
+  );
+  const { data, error } = await supabase
+    .from(viewName as any)
+    .select('*')
+    .abortSignal(abortController.signal)
+    .then((result) => {
+      window.clearTimeout(timeoutId);
+      return result;
+    }, (requestError) => {
+      window.clearTimeout(timeoutId);
+      throw requestError;
+    });
   if (error) throw error;
   return (data ?? []) as T[];
 }

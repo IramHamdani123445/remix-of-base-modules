@@ -212,68 +212,17 @@ export interface BreachDetectionResult {
 }
 
 export async function detectBreaches(opts: { graceDays?: number; maxMissed?: number; userCode: string }): Promise<BreachDetectionResult[]> {
-  const today = new Date().toISOString().slice(0, 10);
-  const results: BreachDetectionResult[] = [];
-
-  // Pull active arrangements with their thresholds
-  const { data: arrs } = await supabase
-    .from('ce_payment_arrangements').select('id, max_missed_before_breach, breach_detected')
-    .eq('status', 'ACTIVE');
-
-  for (const arr of (arrs as any[]) || []) {
-    if (arr.breach_detected) continue;
-    const maxMissed = opts.maxMissed ?? arr.max_missed_before_breach ?? 2;
-
-    const { data: insts } = await supabase
-      .from('ce_installments').select('*')
-      .eq('arrangement_id', arr.id);
-
-    const overdue = (insts || []).filter((i: any) =>
-      i.due_date < today &&
-      Number(i.paid_amount || 0) < Number(i.amount) &&
-      !['PAID', 'CANCELLED'].includes(i.status)
-    );
-
-    // Mark them OVERDUE
-    for (const o of overdue) {
-      await supabase.from('ce_installments').update({
-        status: Number(o.paid_amount || 0) > 0 ? 'PARTIAL' : 'OVERDUE',
-        is_overdue: true,
-        overdue_days: Math.max(0, Math.floor((Date.now() - new Date(o.due_date).getTime()) / 86400000)),
-      } as any).eq('id', o.id);
-    }
-
-    if (overdue.length >= maxMissed) {
-      const breachType: BreachDetectionResult['breachType'] =
-        overdue.length > maxMissed ? 'DEFAULTED' : 'MISSED';
-
-      const { data: b, error } = await supabase.from('ce_arrangement_breaches').insert({
-        arrangement_id: arr.id,
-        breach_type: breachType,
-        description: `${overdue.length} overdue installment(s) detected on ${today}`,
-        detected_by: opts.userCode,
-        created_by: opts.userCode,
-      } as any).select('id').single();
-      if (error) throw error;
-
-      await supabase.from('ce_payment_arrangements').update({
-        breach_detected: true,
-        breach_date: today,
-        breach_reason: `${overdue.length} overdue installment(s)`,
-        missed_payments: overdue.length,
-        updated_by: opts.userCode,
-        updated_at: new Date().toISOString(),
-      } as any).eq('id', arr.id);
-
-      results.push({
-        arrangementId: arr.id,
-        missedCount: overdue.length,
-        breachType,
-        description: `${overdue.length} overdue installment(s)`,
-        breachId: (b as any).id,
-      });
-    }
-  }
-
-  return results;
+  // Server-side, grace-aware, occurrence-linked detection (idempotent).
+  const { data, error } = await supabase.rpc('ce_detect_arrangement_breaches' as any, {
+    p_actor: opts.userCode,
+  } as any);
+  if (error) throw error;
+  const summary = (data as any) || {};
+  const created = Number(summary.new_occurrences || 0);
+  return Array.from({ length: created }, () => ({
+    arrangementId: '',
+    missedCount: 1,
+    breachType: 'MISSED' as const,
+    description: 'Missed installment breach occurrence recorded',
+  }));
 }

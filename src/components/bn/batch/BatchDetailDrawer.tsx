@@ -18,6 +18,7 @@ import { AddPayablesDialog } from '@/components/bn/batch/AddPayablesDialog';
 import { PaymentExecutionPanel } from '@/components/bn/batch/PaymentExecutionPanel';
 
 import { formatNumber } from '@/lib/culture/culture';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 const ACTION_CONFIG: Record<string, { label: string; icon: any; variant: any; requiresNarrative: boolean }> = {
   VALIDATE:  { label: 'Validate',  icon: CheckCircle2, variant: 'outline',     requiresNarrative: false },
   APPROVE:   { label: 'Approve',   icon: ShieldCheck,  variant: 'default',     requiresNarrative: true },
@@ -36,6 +37,9 @@ interface Props {
 }
 
 export const BatchDetailDrawer: React.FC<Props> = ({ batchId, open, onClose, onAction, isActing }) => {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor, userCode } = useActorUserCode();
+
   const { data: batch, isLoading: bLoading } = useBnBatchDetail(batchId || undefined);
   const { data: items = [], isLoading: iLoading } = useBnBatchItems(batchId || undefined);
   const [narrative, setNarrative] = useState('');
@@ -55,7 +59,7 @@ export const BatchDetailDrawer: React.FC<Props> = ({ batchId, open, onClose, onA
     await onAction({
       batchId: batchId!,
       action,
-      userCode: 'CURRENT_USER',
+      userCode: actor(),
       narrative: narrative.trim() || undefined,
     });
     setNarrative('');
@@ -65,7 +69,7 @@ export const BatchDetailDrawer: React.FC<Props> = ({ batchId, open, onClose, onA
     await onAction({
       batchId: batchId!,
       action: 'REMOVE_PAYABLE',
-      userCode: 'CURRENT_USER',
+      userCode: actor(),
       removeItemId: itemId,
       narrative: 'Removed from batch',
     });
@@ -75,7 +79,7 @@ export const BatchDetailDrawer: React.FC<Props> = ({ batchId, open, onClose, onA
     await onAction({
       batchId: batchId!,
       action: 'ADD_PAYABLES',
-      userCode: 'CURRENT_USER',
+      userCode: actor(),
       payableIds,
     });
     setShowAddPayables(false);
@@ -208,12 +212,15 @@ export const BatchDetailDrawer: React.FC<Props> = ({ batchId, open, onClose, onA
                 {/* EFT / Cheque execution controls (visible once batch is APPROVED or RELEASED) */}
                 {['APPROVED', 'RELEASED', 'PARTIALLY_ISSUED', 'ISSUED'].includes(batch.status) && (
                   <>
+                    {/* userCode here is display only, and falls back to the signed-in
+                        user rather than a placeholder, so the screen never shows
+                        'CURRENT_USER'. */}
                     <PaymentExecutionPanel
                       batchId={batch.id}
                       batchType={(batch as any).batch_type || batch.payment_method as any}
                       countryCode={'KN'}
                       bankAccountRef={(batch as any).bank_account_ref || batch.office_code || 'DEFAULT'}
-                      userCode={batch.created_by || 'CURRENT_USER'}
+                      userCode={batch.created_by || userCode || '—'}
                       canExecute={['APPROVED', 'RELEASED', 'PARTIALLY_ISSUED'].includes(batch.status)}
                     />
                     <Separator />

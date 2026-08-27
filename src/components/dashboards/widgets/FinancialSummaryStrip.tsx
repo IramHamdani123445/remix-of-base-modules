@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DollarSign, TrendingUp, TrendingDown, Wallet, Loader2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { fetchFinancialSummary } from '@/services/dashboardDataService';
+import { DASHBOARD_QUERY_KEYS, fetchFinancialSummary } from '@/services/dashboardDataService';
 
 function formatCurrency(val: number): string {
   const abs = Math.abs(val);
@@ -14,7 +14,7 @@ function formatCurrency(val: number): string {
 export function FinancialSummaryStrip() {
   const navigate = useNavigate();
   const { data, isLoading } = useQuery({
-    queryKey: ['dashboard_financial_summary'],
+    queryKey: DASHBOARD_QUERY_KEYS.financialSummary,
     queryFn: fetchFinancialSummary,
   });
 
