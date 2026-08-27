@@ -124153,6 +124153,9 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_f_bool: { Args: { f: Json; k: string }; Returns: boolean }
+      ia_f_txt: { Args: { f: Json; k: string }; Returns: string }
+      ia_f_uuid: { Args: { f: Json; k: string }; Returns: string }
       ia_fire_notification: {
         Args: {
           p_body?: string
@@ -124240,6 +124243,17 @@ export type Database = {
         Args: { p_created_by?: string; p_engagements: Json; p_plan_id: string }
         Returns: Json
       }
+      ia_q_action_centre_counts: { Args: { p_filters?: Json }; Returns: Json }
+      ia_q_closure_blockers: { Args: { p_filters?: Json }; Returns: Json }
+      ia_q_followup_queue: { Args: { p_filters?: Json }; Returns: Json }
+      ia_q_hia_attention: { Args: never; Returns: Json }
+      ia_q_management_actions: { Args: never; Returns: Json }
+      ia_q_my_audit_work: { Args: never; Returns: Json }
+      ia_q_plan_closure_readiness: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_q_qa_queue: { Args: never; Returns: Json }
       ia_recalculate_all_risks: {
         Args: { p_reason?: string; p_triggered_by?: string }
         Returns: number
@@ -124284,6 +124298,8 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_register_actions: { Args: { p_filters?: Json }; Returns: Json }
+      ia_register_findings: { Args: { p_filters?: Json }; Returns: Json }
       ia_resolve_engagement_risk: {
         Args: { p_department_id?: string; p_function_id?: string }
         Returns: Json
