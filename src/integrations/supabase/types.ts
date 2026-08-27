@@ -72760,6 +72760,48 @@ export type Database = {
           },
         ]
       }
+      ia_comms_pre_release_quarantine: {
+        Row: {
+          correlation_id: string | null
+          entity_id: string
+          entity_type: string
+          event_code: string
+          id: string
+          occurrence: string | null
+          outbox_id: string
+          previous_status: string
+          quarantined_at: string
+          reason_code: string
+          recipient_digest: Json
+        }
+        Insert: {
+          correlation_id?: string | null
+          entity_id: string
+          entity_type: string
+          event_code: string
+          id?: string
+          occurrence?: string | null
+          outbox_id: string
+          previous_status: string
+          quarantined_at?: string
+          reason_code?: string
+          recipient_digest: Json
+        }
+        Update: {
+          correlation_id?: string | null
+          entity_id?: string
+          entity_type?: string
+          event_code?: string
+          id?: string
+          occurrence?: string | null
+          outbox_id?: string
+          previous_status?: string
+          quarantined_at?: string
+          reason_code?: string
+          recipient_digest?: Json
+        }
+        Relationships: []
+      }
       ia_comms_reminder_policy: {
         Row: {
           created_at: string
@@ -124651,6 +124693,10 @@ export type Database = {
       }
       ia_comms_generate_reminders: {
         Args: { p_limit?: number; p_today?: string }
+        Returns: Json
+      }
+      ia_comms_priv_quarantine_pre_release_outbox: {
+        Args: { p_correlation_id?: string; p_reason_code?: string }
         Returns: Json
       }
       ia_comms_profile_fact: {
