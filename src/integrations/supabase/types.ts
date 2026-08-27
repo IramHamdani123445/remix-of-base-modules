@@ -124838,6 +124838,15 @@ export type Database = {
         Args: { p_effective_to?: string; p_id: string; p_reason?: string }
         Returns: Json
       }
+      ia_office_holder_valid_at: {
+        Args: {
+          p_as_of: string
+          p_from: string
+          p_status: string
+          p_to: string
+        }
+        Returns: boolean
+      }
       ia_persist_plan_engagements: {
         Args: { p_created_by?: string; p_engagements: Json; p_plan_id: string }
         Returns: Json
