@@ -12,6 +12,7 @@ import { useRecordCommunicationStage, useValidateTemplatePolicy, STAGE_LABELS } 
 import { useIADocumentTemplates } from '@/hooks/useAuditData';
 import { useDocumentRequests } from '@/hooks/useEngagementExecution';
 import { supabase } from '@/integrations/supabase/client';
+import { emitInternalAuditStageCommunication } from '@/platform/omni-comms/integrations/business/internal-audit/internalAuditManualCommunication';
 import { useToast } from '@/hooks/use-toast';
 import { formatDateForDisplay } from '@/lib/format-config';
 
