@@ -48,6 +48,7 @@ export default function AuditActionCentre() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedAction, setSelectedAction] = useState<any | null>(null);
   const [followUpTarget, setFollowUpTarget] = useState<any | null>(null);
+  const [printMode, setPrintMode] = useState<'list' | 'summary'>('list');
 
   const setTab = (value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -65,6 +66,39 @@ export default function AuditActionCentre() {
   const followUps = useIaFollowUpQueue(filters);
   const qaQueue = useIaQualityReviewQueue();
   const closure = useIaClosureBlockers(filters);
+
+  /* Unfiltered, server-scoped populations used only to build filter option lists. */
+  const scopeEngagements = useIaClosureBlockers({});
+  const scopeActions = useIaActionRegister({});
+
+  const auditOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    (scopeEngagements.data ?? []).forEach((e: any) => {
+      if (e.engagement_id) map.set(e.engagement_id, `${e.engagement_code || ''} ${e.engagement_name || ''}`.trim());
+    });
+    (scopeActions.data ?? []).forEach((a: any) => {
+      if (a.engagement_id && !map.has(a.engagement_id)) {
+        map.set(a.engagement_id, `${a.engagement_code || ''} ${a.engagement_name || ''}`.trim());
+      }
+    });
+    return Array.from(map, ([value, label]) => ({ value, label }));
+  }, [scopeEngagements.data, scopeActions.data]);
+
+  const ownerOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    (scopeActions.data ?? []).forEach((a: any) => {
+      if (a.responsible_profile_id) map.set(a.responsible_profile_id, a.action_owner || 'Unnamed owner');
+    });
+    return Array.from(map, ([value, label]) => ({ value, label }));
+  }, [scopeActions.data]);
+
+  const functionOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    (scopeEngagements.data ?? []).forEach((e: any) => {
+      if (e.function_id) map.set(e.function_id, e.function_name || 'Function');
+    });
+    return Array.from(map, ([value, label]) => ({ value, label }));
+  }, [scopeEngagements.data]);
 
   const recordOutcome = useIaFollowUpRecordOutcome();
   const [outcome, setOutcome] = useState('Implemented');
@@ -89,6 +123,35 @@ export default function AuditActionCentre() {
     [counts, myWork, management, attention, actions, findings, verification, followUps, qaQueue, closure]
       .forEach(q => q.refetch());
   };
+
+  const labelFor = (list: { value: string; label: string }[], value?: string | null) =>
+    list.find(o => o.value === value)?.label || value || '';
+
+  /** Human-readable description of the server filters actually applied to the population. */
+  const appliedFilters: AppliedFilter[] = useMemo(() => {
+    const out: AppliedFilter[] = [];
+    if (filters.plan_id) out.push({ label: 'Plan', value: labelFor((plans as any[]).map(p => ({ value: p.id, label: `${p.fiscal_year || ''} ${p.title || ''}`.trim() })), filters.plan_id) });
+    if (filters.engagement_id) out.push({ label: 'Audit', value: labelFor(auditOptions, filters.engagement_id) });
+    if (filters.department_id) out.push({ label: 'Department', value: labelFor((departments as any[]).map(d => ({ value: d.id, label: d.name })), filters.department_id) });
+    if (filters.function_id) out.push({ label: 'Function', value: labelFor(functionOptions, filters.function_id) });
+    if (filters.owner_profile_id) out.push({ label: 'Owner', value: labelFor(ownerOptions, filters.owner_profile_id) });
+    if (filters.severity) out.push({ label: 'Severity', value: filters.severity });
+    if (filters.high_critical) out.push({ label: 'Severity', value: 'High / Critical' });
+    if (filters.status) out.push({ label: 'Status', value: filters.status });
+    if (filters.due_from) out.push({ label: 'Due from', value: filters.due_from });
+    if (filters.due_to) out.push({ label: 'Due to', value: filters.due_to });
+    if (filters.overdue) out.push({ label: 'Overdue only', value: 'Yes' });
+    if (filters.due_soon) out.push({ label: 'Due in 14 days', value: 'Yes' });
+    if (filters.open_only) out.push({ label: 'Open only', value: 'Yes' });
+    if (filters.disputed) out.push({ label: 'Disputed', value: 'Yes' });
+    if (filters.response_outstanding) out.push({ label: 'Response outstanding', value: 'Yes' });
+    if (search.trim()) out.push({ label: 'Search', value: search.trim() });
+    return out;
+  }, [filters, search, plans, departments, auditOptions, ownerOptions, functionOptions]);
+
+  const printList = () => { setPrintMode('list'); setTimeout(() => window.print(), 50); };
+  const printSummary = () => { setPrintMode('summary'); setTimeout(() => window.print(), 50); };
+
 
   /* ---------------- Column definitions ---------------- */
 
