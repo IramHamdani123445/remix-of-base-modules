@@ -323,6 +323,7 @@ const MultiCurrencySettings = lazy(() => import('@/pages/finance/settings/MultiC
 const EmployerComplianceManagement = lazy(() => import('@/pages/compliance/employers/EmployerComplianceManagement'));
 const LegalProceedings = lazy(() => import('@/pages/compliance/legal/LegalProceedings'));
 const AuditManagement = lazy(() => import('@/pages/compliance/audit-planning/AuditManagement'));
+const AuditDetails = lazy(() => import('@/pages/compliance/audit-planning/AuditDetails'));
 const PenaltyManagement = lazy(() => import('@/pages/compliance/cases/PenaltyManagement'));
 const ComplianceAnalytics = lazy(() => import('@/pages/compliance/dashboards/ComplianceAnalytics'));
 const EmployerHierarchy = lazy(() => import('@/pages/compliance/employers/EmployerHierarchy'));
