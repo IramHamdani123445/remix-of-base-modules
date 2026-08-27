@@ -2,7 +2,8 @@
  * INTERNAL AUDIT — Annual plan distribution through governed Omni-Comms.
  *
  * DEF-2B. Plan distribution used to download the board-pack PDF into the
- * browser, base64 it and call `send-notification` directly, once per recipient.
+ * browser, base64 it and call the legacy notification edge function directly, once per
+ * recipient.
  * That path chose its own subject, HTML, sender and attachment bytes, and left
  * no governed delivery evidence.
  *
