@@ -403,23 +403,29 @@ BEGIN
   RAISE NOTICE 'WAVE 2 LIFECYCLE SUITE: all assertions passed (engagement %)', v_eng;
 
   -- ------------------------------------------------------------------
-  -- CLEANUP
+  -- CLEANUP — fixtures are tagged WAVE2_TEST. Recorded lifecycle events in
+  -- ia_audit_event are immutable by design and are intentionally retained.
+  -- The suite is designed to be run inside a transaction that is rolled back;
+  -- when the runner lacks delete privileges the rollback is the cleanup.
   -- ------------------------------------------------------------------
-  -- ia_audit_event is immutable by design: lifecycle events are retained.
-  DELETE FROM public.ia_report_versions WHERE report_id = v_report;
-  DELETE FROM public.ia_audit_reports WHERE id = v_report;
-  DELETE FROM public.ia_quality_reviews WHERE engagement_id = v_eng;
-  DELETE FROM public.ia_action_extensions WHERE action_id = v_action;
-  DELETE FROM public.ia_action_tracking WHERE id = v_action;
-  DELETE FROM public.ia_management_responses WHERE finding_id = v_find;
-  DELETE FROM public.ia_recommendations WHERE finding_id = v_find;
-  DELETE FROM public.ia_finding_severity_history WHERE finding_id = v_find;
-  DELETE FROM public.ia_findings WHERE id = v_find;
-  DELETE FROM public.ia_control_tests WHERE id = v_test;
-  DELETE FROM public.ia_working_papers WHERE id = v_wp;
-  DELETE FROM public.ia_evidence WHERE id = v_ev;
-  DELETE FROM public.ia_activities WHERE id = v_act;
-  DELETE FROM public.ia_communication_stages WHERE engagement_id = v_eng;
-  DELETE FROM public.ia_audit_engagements WHERE id = v_eng;
+  BEGIN
+    DELETE FROM public.ia_report_versions WHERE report_id = v_report;
+    DELETE FROM public.ia_audit_reports WHERE id = v_report;
+    DELETE FROM public.ia_quality_reviews WHERE engagement_id = v_eng;
+    DELETE FROM public.ia_action_extensions WHERE action_id = v_action;
+    DELETE FROM public.ia_action_tracking WHERE id = v_action;
+    DELETE FROM public.ia_management_responses WHERE finding_id = v_find;
+    DELETE FROM public.ia_recommendations WHERE finding_id = v_find;
+    DELETE FROM public.ia_finding_severity_history WHERE finding_id = v_find;
+    DELETE FROM public.ia_findings WHERE id = v_find;
+    DELETE FROM public.ia_control_tests WHERE id = v_test;
+    DELETE FROM public.ia_working_papers WHERE id = v_wp;
+    DELETE FROM public.ia_evidence WHERE id = v_ev;
+    DELETE FROM public.ia_activities WHERE id = v_act;
+    DELETE FROM public.ia_communication_stages WHERE engagement_id = v_eng;
+    DELETE FROM public.ia_audit_engagements WHERE id = v_eng;
+  EXCEPTION WHEN insufficient_privilege THEN
+    RAISE NOTICE 'WAVE2 CLEANUP SKIPPED (runner lacks delete rights) — roll back this transaction';
+  END;
 END;
 $$;

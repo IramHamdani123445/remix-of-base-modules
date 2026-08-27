@@ -6,7 +6,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle2, XCircle, Lock, Loader2, AlertTriangle } from 'lucide-react';
 import { useEngagementClosureGate, useCloseEngagement } from '@/hooks/useAuditClosureCommands';
+import { useEngagementClosureReadiness } from '@/hooks/useAuditLifecycleCommands';
 import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
+
 
 const RATINGS = ['Satisfactory', 'Needs Improvement', 'Unsatisfactory'];
 
@@ -17,7 +19,9 @@ interface Props {
 
 export function AuditClosureTab({ auditId, audit }: Props) {
   const { data: gate, isLoading } = useEngagementClosureGate(auditId);
+  const { data: readiness, isLoading: readinessLoading } = useEngagementClosureReadiness(auditId);
   const closeAudit = useCloseEngagement();
+
   const { can } = useInternalAuditPermissions();
   const canClose = can('close_department_audit');
 
@@ -95,6 +99,42 @@ export function AuditClosureTab({ auditId, audit }: Props) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Wave 2 — strict lifecycle readiness evaluated by the server */}
+      <Card className={readiness?.can_close ? 'border-primary/20' : 'border-destructive/30'}>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            {readiness?.can_close ? (
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            )}
+            Lifecycle Readiness
+            <Badge variant={readiness?.can_close ? 'outline' : 'destructive'} className="text-xs ml-auto">
+              {readinessLoading ? 'Checking…' : readiness?.can_close ? 'Ready' : 'Not ready'}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1.5">
+          {readinessLoading && (
+            <p className="text-xs text-muted-foreground flex items-center gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" /> Evaluating lifecycle gates...
+            </p>
+          )}
+          {!readinessLoading && (readiness?.reasons?.length ?? 0) === 0 && (
+            <p className="text-xs text-muted-foreground">
+              All lifecycle gates satisfied — fieldwork, findings, responses, report and quality review are complete.
+            </p>
+          )}
+          {(readiness?.reasons ?? []).map((reason, i) => (
+            <div key={i} className="flex items-start gap-2 text-xs text-destructive">
+              <XCircle className="h-3 w-3 shrink-0 mt-0.5" />
+              <span>{reason}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
 
       {!isClosed && (
         <Card>
