@@ -214,7 +214,7 @@ export default function EscalationRoles() {
         </TabsList>
 
         <TabsContent value="register" className="mt-4">
-          <DataTable data={holders} columns={holderColumns} loading={isLoading} emptyMessage="No office holders designated yet." />
+          <DataTable data={holders} columns={holderColumns} isLoading={isLoading} emptyMessage="No office holders designated yet." />
         </TabsContent>
 
         <TabsContent value="gaps" className="mt-4">
