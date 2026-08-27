@@ -90,7 +90,7 @@ export default function EmployerStatements() {
                     <div><p className="text-xs text-muted-foreground mb-1">Outstanding</p><p className="font-semibold text-destructive">{formatCurrency(statement.outstanding)}</p></div>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/compliance/employer-statement/${statement.employerId}`)}>View Full Statement</Button>
+                    <Button size="sm" variant="outline" onClick={() => navigate(`/compliance/field/employer-statement/${statement.employerId}`)}>View Full Statement</Button>
                     <Button size="sm" variant="outline" className="gap-2"><Download className="h-4 w-4" />Download PDF</Button>
                     <Button size="sm" variant="outline" className="gap-2"><Calendar className="h-4 w-4" />Generate As Of Date</Button>
                   </div>
