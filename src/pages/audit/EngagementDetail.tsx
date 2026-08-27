@@ -366,7 +366,7 @@ export default function EngagementDetail() {
           </TabsContent>
 
           <TabsContent value="actions">
-            <AuditActionsTab auditId={id!} audit={audit} auditFindings={auditFindings} auditActions={auditActions} auditResponses={auditResponses} onClose={handleCloseAudit} />
+            <AuditActionsTab auditId={id!} audit={audit} auditFindings={auditFindings} auditActions={auditActions} auditResponses={auditResponses} auditEvidence={auditEvidence} onClose={handleCloseAudit} />
           </TabsContent>
 
           <TabsContent value="follow-ups">
