@@ -36,12 +36,21 @@ interface AuditResponsesTabProps {
 }
 
 export function AuditResponsesTab({ auditId, auditFindings, auditResponses, departmentId, leadAuditorId }: AuditResponsesTabProps) {
-  const { create, update } = useIAManagementResponseMutations();
+  const recordResponse = useRecordManagementResponse();
+  const reviewResponse = useReviewManagementResponse();
   const { userCode } = useUserCode();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ finding_id: '', response_text: '', action_plan: '', target_date: '' });
+  const [form, setForm] = useState({
+    finding_id: '',
+    management_position: 'Accepted' as ManagementPosition,
+    response_text: '',
+    action_plan: '',
+    responsible_person: '',
+    target_date: '',
+    rejection_rationale: '',
+  });
   const [uploading, setUploading] = useState(false);
 
   const findingsWithoutResponse = auditFindings.filter(f => !auditResponses.find((r: any) => r.finding_id === f.id));
@@ -51,7 +60,12 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
       toast({ title: 'Validation', description: 'Finding and response text are required', variant: 'destructive' });
       return;
     }
-    let attachmentPath: string | null = null;
+    if (form.management_position === 'Rejected' && !form.rejection_rationale.trim()) {
+      toast({ title: 'Validation', description: 'A rejection rationale is required when the finding is rejected', variant: 'destructive' });
+      return;
+    }
+    // Supporting documents are stored in the audit bucket; the response record
+    // itself is written only by the governed command.
     const fileInput = fileInputRef.current;
     if (fileInput?.files?.[0]) {
       const file = fileInput.files[0];
@@ -64,27 +78,33 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
       const { error } = await supabase.storage.from('audit-attachments').upload(path, file);
       setUploading(false);
       if (error) { toast({ title: 'Upload Failed', variant: 'destructive' }); return; }
-      attachmentPath = path;
     }
-    create.mutate({
-      finding_id: form.finding_id, engagement_id: auditId,
-      response_text: form.response_text, action_plan: form.action_plan || null,
-      target_date: form.target_date || null, status: 'Submitted',
-      submitted_by: userCode || null, submitted_date: new Date().toISOString(),
-      supporting_docs: attachmentPath ? [attachmentPath] : null, created_by: userCode || null,
-    } as any, {
-      onSuccess: () => {
-        setShowForm(false);
-        setForm({ finding_id: '', response_text: '', action_plan: '', target_date: '' });
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        notifyManagementResponseSubmitted(form.finding_id, leadAuditorId);
+    recordResponse.mutate(
+      {
+        findingId: form.finding_id,
+        position: form.management_position,
+        responseText: form.response_text,
+        actionPlan: form.action_plan || null,
+        responsiblePerson: form.responsible_person || userCode || null,
+        targetDate: form.target_date || null,
+        rejectionRationale: form.rejection_rationale || null,
       },
-    });
+      {
+        onSuccess: () => {
+          const findingId = form.finding_id;
+          setShowForm(false);
+          setForm({ finding_id: '', management_position: 'Accepted', response_text: '', action_plan: '', responsible_person: '', target_date: '', rejection_rationale: '' });
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          notifyManagementResponseSubmitted(findingId, leadAuditorId);
+        },
+      },
+    );
   };
 
-  const handleUpdateStatus = (responseId: string, newStatus: string) => {
-    update.mutate({ id: responseId, status: newStatus, updated_by: userCode || null } as any);
+  const handleReview = (responseId: string, outcome: 'Accepted' | 'Escalated' | 'Revision Requested') => {
+    reviewResponse.mutate({ responseId, outcome });
   };
+
 
   const columns: DataTableColumn<any>[] = [
     { key: 'finding', header: 'Finding', render: (r) => {
