@@ -404,7 +404,7 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
               <div className="space-y-3">
                 <div className="space-y-1"><Label className="text-xs">Fact *</Label><FactSelect value={rule.fact_key} onValueChange={(v) => set({ fact_key: v, group_code: defaultGroupForFact(v) })} /></div>
                 {factDef && (
-                  <p className="text-[11px] text-muted-foreground">{factDef.description} · <span className="font-mono">{factDef.source_table}.{factDef.source_column}</span> · type: <Badge variant="outline" className="text-[10px]">{factDef.data_type}</Badge></p>
+                  <p className="text-[11px] text-muted-foreground">{(factDef as any).description} · <span className="font-mono">{factDef.source_table}.{(factDef as any).source_column}</span> · type: <Badge variant="outline" className="text-[10px]">{factDef.data_type}</Badge></p>
                 )}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -421,10 +421,10 @@ export function RuleWizardDialog({ open, onOpenChange, productVersionId, product
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent><SelectItem value="true">true</SelectItem><SelectItem value="false">false</SelectItem></SelectContent>
                       </Select>
-                    ) : factDef?.data_type === 'enum' && factDef.allowed_values ? (
+                    ) : factDef?.data_type === 'enum' && (factDef as any).allowed_values ? (
                       <Select value={String(def.value ?? '')} onValueChange={(v) => setDef({ value: v })}>
                         <SelectTrigger><SelectValue placeholder="Pick…" /></SelectTrigger>
-                        <SelectContent>{factDef.allowed_values.map((v) => <SelectItem key={String(v)} value={String(v)}>{String(v)}</SelectItem>)}</SelectContent>
+                        <SelectContent>{((factDef as any).allowed_values as any[]).map((v) => <SelectItem key={String(v)} value={String(v)}>{String(v)}</SelectItem>)}</SelectContent>
                       </Select>
                     ) : (
                       <Input type={factDef?.data_type === 'number' ? 'number' : factDef?.data_type === 'date' ? 'date' : 'text'} value={def.value ?? ''} onChange={(e) => setDef({ value: factDef?.data_type === 'number' ? Number(e.target.value) : e.target.value })} />
