@@ -88,8 +88,11 @@ export const RUN_STILL_PROGRESSING = 'RUN_STILL_PROGRESSING';
 export const RUN_RECORD_MISSING = 'RUN_RECORD_MISSING';
 export const RUN_STALLED = 'RUN_STALLED';
 
-/** No progress movement for this long => the worker is gone, not slow. */
-const STALL_TIMEOUT_MS = 4 * 60_000;
+/** No progress movement for this long => ask the server to revive the run. */
+const STALL_RESUME_MS = 90_000;
+/** No progress movement for this long despite resume attempts => give up. */
+const STALL_TIMEOUT_MS = 6 * 60_000;
+
 
 async function pollAutomationRun(
   runId: string,
