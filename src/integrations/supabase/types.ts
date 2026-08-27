@@ -124143,6 +124143,10 @@ export type Database = {
         Args: { p_engagement_id: string }
         Returns: Json
       }
+      ia_evaluate_engagement_completeness: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
       ia_evaluate_plan_closure: { Args: { p_plan_id: string }; Returns: Json }
       ia_extend_action_target: {
         Args: {
