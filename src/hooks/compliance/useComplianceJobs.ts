@@ -78,7 +78,19 @@ export const RUN_STILL_PROGRESSING = 'RUN_STILL_PROGRESSING';
  * `execution_log.progress_percent`; a run that is still making progress is
  * never treated as an error — the caller downgrades it to an informational
  * "still running in the background" message.
+ *
+ * VIOLATION_DETECTION_007: the poll used to spin forever when the run row
+ * vanished (a second click deleted the earlier Running row) or when the
+ * background worker was recycled mid-scan and stopped reporting progress.
+ * Both are now terminal, so the dialog can never sit in "Detection in
+ * progress…" indefinitely.
  */
+export const RUN_RECORD_MISSING = 'RUN_RECORD_MISSING';
+export const RUN_STALLED = 'RUN_STALLED';
+
+/** No progress movement for this long => the worker is gone, not slow. */
+const STALL_TIMEOUT_MS = 4 * 60_000;
+
 async function pollAutomationRun(
   runId: string,
   timeoutMs = 12 * 60_000,
@@ -86,26 +98,61 @@ async function pollAutomationRun(
 ): Promise<any> {
   const start = Date.now();
   let delay = 1500;
+  let missingPolls = 0;
+  let lastProgressKey = '';
+  let lastProgressAt = Date.now();
+
+  const fail = (name: string, message: string) => {
+    const err = new Error(message);
+    err.name = name;
+    return err;
+  };
+
   while (Date.now() - start < timeoutMs) {
     const { data, error } = await supabase
       .from('ce_automation_runs')
-      .select('id, status, execution_log, records_processed, records_affected, completed_at')
+      .select('id, status, execution_log, records_processed, records_affected, completed_at, error_message')
       .eq('id', runId)
       .maybeSingle();
     if (error) throw error;
-    if (data && data.status && data.status !== 'Running') {
-      return data;
+
+    if (!data) {
+      // The run row disappeared — another detection start superseded it.
+      missingPolls += 1;
+      if (missingPolls >= 3) {
+        throw fail(
+          RUN_RECORD_MISSING,
+          'This detection run was superseded by another run that was started afterwards. Start detection again to see its results.',
+        );
+      }
+    } else {
+      missingPolls = 0;
+      if (data.status && data.status !== 'Running') {
+        return data;
+      }
+      const log: any = data.execution_log || {};
+      const key = `${log.employers_done ?? ''}|${log.progress_percent ?? ''}|${data.records_processed ?? ''}`;
+      if (key !== lastProgressKey) {
+        lastProgressKey = key;
+        lastProgressAt = Date.now();
+      } else if (Date.now() - lastProgressAt > STALL_TIMEOUT_MS) {
+        throw fail(
+          RUN_STALLED,
+          'The detection worker stopped responding part-way through the scan. The run has been left for the watchdog to retire — please start detection again, or scope it to a single employer.',
+        );
+      }
+      if (onProgress && typeof log.progress_percent === 'number') {
+        onProgress(log.progress_percent, log.employers_done ?? 0, log.employers_total ?? 0);
+      }
     }
-    const log: any = data?.execution_log || {};
-    if (onProgress && typeof log.progress_percent === 'number') {
-      onProgress(log.progress_percent, log.employers_done ?? 0, log.employers_total ?? 0);
-    }
+
     await new Promise((r) => setTimeout(r, delay));
     delay = Math.min(delay + 500, 4000);
   }
   const err = new Error(RUN_STILL_PROGRESSING);
   err.name = RUN_STILL_PROGRESSING;
   throw err;
+
 }
 
 
