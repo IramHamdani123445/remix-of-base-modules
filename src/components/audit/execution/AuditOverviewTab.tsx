@@ -5,7 +5,7 @@ import { Briefcase, User, Shield, Calendar, Target, TrendingUp, AlertTriangle, C
 import { formatDateForDisplay } from '@/lib/format-config';
 import { LaunchReadinessPanel } from '@/components/audit/LaunchReadinessPanel';
 import { AuditNextActionsPanel, deriveNextActions } from '@/components/audit/workspace/AuditNextActionsPanel';
-import { Progress } from '@/components/ui/progress';
+import { AuditProgressPanel } from '@/components/audit/execution/AuditProgressPanel';
 
 function InfoRow({ label, value, highlight }: { label: string; value: any; highlight?: boolean }) {
   return (
