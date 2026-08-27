@@ -70,9 +70,10 @@ export default function FieldOperations() {
     }
   };
 
-  if (isLoading) {
+  if (isPending) {
     return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
+
 
   return (
     <div className="container mx-auto p-6 space-y-6">
