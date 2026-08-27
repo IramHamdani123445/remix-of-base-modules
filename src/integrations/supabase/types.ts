@@ -70331,12 +70331,20 @@ export type Database = {
           approved_at: string
           approved_by: string
           created_at: string
+          decided_at: string | null
+          decided_by_profile: string | null
+          decision_comments: string | null
           engagement_id: string | null
           id: string
           new_target_date: string
           previous_target_date: string | null
+          proposed_date: string | null
           reason: string
+          requested_at: string
           requested_by: string | null
+          requested_by_profile: string | null
+          sequence_no: number | null
+          status: string
           updated_at: string
         }
         Insert: {
@@ -70344,12 +70352,20 @@ export type Database = {
           approved_at?: string
           approved_by: string
           created_at?: string
+          decided_at?: string | null
+          decided_by_profile?: string | null
+          decision_comments?: string | null
           engagement_id?: string | null
           id?: string
           new_target_date: string
           previous_target_date?: string | null
+          proposed_date?: string | null
           reason: string
+          requested_at?: string
           requested_by?: string | null
+          requested_by_profile?: string | null
+          sequence_no?: number | null
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -70357,12 +70373,20 @@ export type Database = {
           approved_at?: string
           approved_by?: string
           created_at?: string
+          decided_at?: string | null
+          decided_by_profile?: string | null
+          decision_comments?: string | null
           engagement_id?: string | null
           id?: string
           new_target_date?: string
           previous_target_date?: string | null
+          proposed_date?: string | null
           reason?: string
+          requested_at?: string
           requested_by?: string | null
+          requested_by_profile?: string | null
+          sequence_no?: number | null
+          status?: string
           updated_at?: string
         }
         Relationships: [
@@ -70456,89 +70480,208 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_action_progress_log: {
+        Row: {
+          action_id: string
+          actor_label: string | null
+          actor_profile_id: string | null
+          created_at: string
+          engagement_id: string | null
+          entry_type: string
+          evidence_ids: string[] | null
+          id: string
+          note: string
+          progress_pct: number | null
+          updated_at: string
+        }
+        Insert: {
+          action_id: string
+          actor_label?: string | null
+          actor_profile_id?: string | null
+          created_at?: string
+          engagement_id?: string | null
+          entry_type?: string
+          evidence_ids?: string[] | null
+          id?: string
+          note: string
+          progress_pct?: number | null
+          updated_at?: string
+        }
+        Update: {
+          action_id?: string
+          actor_label?: string | null
+          actor_profile_id?: string | null
+          created_at?: string
+          engagement_id?: string | null
+          entry_type?: string
+          evidence_ids?: string[] | null
+          id?: string
+          note?: string
+          progress_pct?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_action_progress_log_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "ia_action_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_action_tracking: {
         Row: {
+          accountable_department_id: string | null
           action_description: string | null
+          action_ref: string | null
           action_status: string | null
+          annual_plan_id: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cancelled_reason: string | null
+          closure_date: string | null
           closure_notes: string | null
           closure_verified_at: string | null
           closure_verified_by: string | null
           created_at: string | null
           created_by: string | null
           current_target_date: string | null
+          department_id: string | null
           engagement_id: string | null
           evidence_ids: string[]
           evidence_of_implementation: string[] | null
           extension_count: number
           finding_id: string
+          function_id: string | null
           id: string
+          latest_update: string | null
+          latest_update_at: string | null
+          latest_update_by: string | null
+          lifecycle_status: string
+          management_completion_by: string | null
+          management_completion_date: string | null
           notes: string | null
           original_target_date: string | null
+          progress_pct: number
           recommendation_id: string | null
+          reopen_count: number
+          requires_ia_verification: boolean
           response_id: string | null
           responsible_person: string | null
+          responsible_profile_id: string | null
           status: string | null
           target_date: string | null
           updated_at: string | null
           updated_by: string | null
           verification_date: string | null
+          verification_notes: string | null
+          verification_status: string
+          verified_at: string | null
           verified_by: string | null
+          verified_by_profile: string | null
           verified_date: string | null
         }
         Insert: {
+          accountable_department_id?: string | null
           action_description?: string | null
+          action_ref?: string | null
           action_status?: string | null
+          annual_plan_id?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          closure_date?: string | null
           closure_notes?: string | null
           closure_verified_at?: string | null
           closure_verified_by?: string | null
           created_at?: string | null
           created_by?: string | null
           current_target_date?: string | null
+          department_id?: string | null
           engagement_id?: string | null
           evidence_ids?: string[]
           evidence_of_implementation?: string[] | null
           extension_count?: number
           finding_id: string
+          function_id?: string | null
           id?: string
+          latest_update?: string | null
+          latest_update_at?: string | null
+          latest_update_by?: string | null
+          lifecycle_status?: string
+          management_completion_by?: string | null
+          management_completion_date?: string | null
           notes?: string | null
           original_target_date?: string | null
+          progress_pct?: number
           recommendation_id?: string | null
+          reopen_count?: number
+          requires_ia_verification?: boolean
           response_id?: string | null
           responsible_person?: string | null
+          responsible_profile_id?: string | null
           status?: string | null
           target_date?: string | null
           updated_at?: string | null
           updated_by?: string | null
           verification_date?: string | null
+          verification_notes?: string | null
+          verification_status?: string
+          verified_at?: string | null
           verified_by?: string | null
+          verified_by_profile?: string | null
           verified_date?: string | null
         }
         Update: {
+          accountable_department_id?: string | null
           action_description?: string | null
+          action_ref?: string | null
           action_status?: string | null
+          annual_plan_id?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cancelled_reason?: string | null
+          closure_date?: string | null
           closure_notes?: string | null
           closure_verified_at?: string | null
           closure_verified_by?: string | null
           created_at?: string | null
           created_by?: string | null
           current_target_date?: string | null
+          department_id?: string | null
           engagement_id?: string | null
           evidence_ids?: string[]
           evidence_of_implementation?: string[] | null
           extension_count?: number
           finding_id?: string
+          function_id?: string | null
           id?: string
+          latest_update?: string | null
+          latest_update_at?: string | null
+          latest_update_by?: string | null
+          lifecycle_status?: string
+          management_completion_by?: string | null
+          management_completion_date?: string | null
           notes?: string | null
           original_target_date?: string | null
+          progress_pct?: number
           recommendation_id?: string | null
+          reopen_count?: number
+          requires_ia_verification?: boolean
           response_id?: string | null
           responsible_person?: string | null
+          responsible_profile_id?: string | null
           status?: string | null
           target_date?: string | null
           updated_at?: string | null
           updated_by?: string | null
           verification_date?: string | null
+          verification_notes?: string | null
+          verification_status?: string
+          verified_at?: string | null
           verified_by?: string | null
+          verified_by_profile?: string | null
           verified_date?: string | null
         }
         Relationships: [
@@ -74194,6 +74337,7 @@ export type Database = {
       }
       ia_follow_ups: {
         Row: {
+          action_id: string | null
           action_required: string
           activity_id: string | null
           annual_plan_id: string | null
@@ -74206,8 +74350,12 @@ export type Database = {
           due_date: string
           engagement_id: string | null
           finding_id: string | null
+          fiscal_year: string | null
           follow_up_type: string | null
           id: string
+          lifecycle_status: string
+          outcome: string | null
+          outcome_notes: string | null
           priority: string | null
           resolution: string | null
           resolved_date: string | null
@@ -74217,8 +74365,11 @@ export type Database = {
           status: string | null
           updated_at: string | null
           updated_by: string | null
+          verified_at: string | null
+          verified_by_profile: string | null
         }
         Insert: {
+          action_id?: string | null
           action_required: string
           activity_id?: string | null
           annual_plan_id?: string | null
@@ -74231,8 +74382,12 @@ export type Database = {
           due_date: string
           engagement_id?: string | null
           finding_id?: string | null
+          fiscal_year?: string | null
           follow_up_type?: string | null
           id?: string
+          lifecycle_status?: string
+          outcome?: string | null
+          outcome_notes?: string | null
           priority?: string | null
           resolution?: string | null
           resolved_date?: string | null
@@ -74242,8 +74397,11 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          verified_at?: string | null
+          verified_by_profile?: string | null
         }
         Update: {
+          action_id?: string | null
           action_required?: string
           activity_id?: string | null
           annual_plan_id?: string | null
@@ -74256,8 +74414,12 @@ export type Database = {
           due_date?: string
           engagement_id?: string | null
           finding_id?: string | null
+          fiscal_year?: string | null
           follow_up_type?: string | null
           id?: string
+          lifecycle_status?: string
+          outcome?: string | null
+          outcome_notes?: string | null
           priority?: string | null
           resolution?: string | null
           resolved_date?: string | null
@@ -74267,6 +74429,8 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          verified_at?: string | null
+          verified_by_profile?: string | null
         }
         Relationships: [
           {
@@ -123708,6 +123872,76 @@ export type Database = {
         }
         Returns: boolean
       }
+      ia_action_assign: {
+        Args: {
+          p_accountable_department_id?: string
+          p_action_id: string
+          p_description?: string
+          p_function_id?: string
+          p_responsible_profile_id: string
+          p_target_date?: string
+        }
+        Returns: Json
+      }
+      ia_action_can_manage: { Args: { p_action_id: string }; Returns: boolean }
+      ia_action_can_verify: { Args: { p_action_id: string }; Returns: boolean }
+      ia_action_cancel: {
+        Args: { p_action_id: string; p_reason: string }
+        Returns: Json
+      }
+      ia_action_close_v2: {
+        Args: { p_action_id: string; p_closure_notes: string }
+        Returns: Json
+      }
+      ia_action_decide_extension: {
+        Args: {
+          p_comments?: string
+          p_decision: string
+          p_extension_id: string
+        }
+        Returns: Json
+      }
+      ia_action_reject_verification: {
+        Args: {
+          p_action_id: string
+          p_reason: string
+          p_request_more_evidence?: boolean
+        }
+        Returns: Json
+      }
+      ia_action_reopen: {
+        Args: {
+          p_action_id: string
+          p_new_target_date?: string
+          p_reason: string
+        }
+        Returns: Json
+      }
+      ia_action_request_extension: {
+        Args: { p_action_id: string; p_proposed_date: string; p_reason: string }
+        Returns: Json
+      }
+      ia_action_start_verification: {
+        Args: { p_action_id: string }
+        Returns: Json
+      }
+      ia_action_submit_completion: {
+        Args: { p_action_id: string; p_evidence_ids?: string[]; p_note: string }
+        Returns: Json
+      }
+      ia_action_update_progress: {
+        Args: {
+          p_action_id: string
+          p_evidence_ids?: string[]
+          p_note: string
+          p_progress_pct: number
+        }
+        Returns: Json
+      }
+      ia_action_verify: {
+        Args: { p_action_id: string; p_notes: string }
+        Returns: Json
+      }
       ia_actor_can: {
         Args: { _action: string; _module: string }
         Returns: boolean
@@ -123919,6 +124153,9 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_f_bool: { Args: { f: Json; k: string }; Returns: boolean }
+      ia_f_txt: { Args: { f: Json; k: string }; Returns: string }
+      ia_f_uuid: { Args: { f: Json; k: string }; Returns: string }
       ia_fire_notification: {
         Args: {
           p_body?: string
@@ -123931,6 +124168,20 @@ export type Database = {
           p_recipient_email?: string
           p_recipient_user_id?: string
           p_subject?: string
+        }
+        Returns: Json
+      }
+      ia_followup_record_outcome: {
+        Args: { p_followup_id: string; p_notes?: string; p_outcome: string }
+        Returns: Json
+      }
+      ia_followup_schedule: {
+        Args: {
+          p_action_id: string
+          p_fiscal_year?: string
+          p_follow_up_type?: string
+          p_notes?: string
+          p_scheduled_date: string
         }
         Returns: Json
       }
@@ -123992,6 +124243,17 @@ export type Database = {
         Args: { p_created_by?: string; p_engagements: Json; p_plan_id: string }
         Returns: Json
       }
+      ia_q_action_centre_counts: { Args: { p_filters?: Json }; Returns: Json }
+      ia_q_closure_blockers: { Args: { p_filters?: Json }; Returns: Json }
+      ia_q_followup_queue: { Args: { p_filters?: Json }; Returns: Json }
+      ia_q_hia_attention: { Args: never; Returns: Json }
+      ia_q_management_actions: { Args: never; Returns: Json }
+      ia_q_my_audit_work: { Args: never; Returns: Json }
+      ia_q_plan_closure_readiness: {
+        Args: { p_plan_id: string }
+        Returns: Json
+      }
+      ia_q_qa_queue: { Args: never; Returns: Json }
       ia_recalculate_all_risks: {
         Args: { p_reason?: string; p_triggered_by?: string }
         Returns: number
@@ -124036,6 +124298,8 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_register_actions: { Args: { p_filters?: Json }; Returns: Json }
+      ia_register_findings: { Args: { p_filters?: Json }; Returns: Json }
       ia_resolve_engagement_risk: {
         Args: { p_department_id?: string; p_function_id?: string }
         Returns: Json
