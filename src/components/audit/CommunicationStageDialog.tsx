@@ -151,27 +151,38 @@ export function CommunicationStageDialog({ engagementId, engagementName, stageCo
     }
   }, [open, stageCode, matchingTemplate?.id, mergeData, mode]);
 
-  const sendActualEmail = async (subject: string, htmlBody: string, toEmail: string) => {
+  /**
+   * Wave 4 closure (DEF-2A): operator-initiated stage communications are
+   * raised as Omni-Comms obligations. This surface never contacts a provider,
+   * never chooses a template, sender or channel, and never sends directly.
+   */
+  const sendActualEmail = async (_subject: string, _htmlBody: string, toEmail: string) => {
     try {
       setIsSendingEmail(true);
-      const { data, error } = await supabase.functions.invoke('send-notification', {
-        body: {
-          recipient_email: toEmail,
-          subject,
-          body: `<div style="font-family: Arial, sans-serif; white-space: pre-wrap; line-height: 1.6;">${htmlBody.replace(/\n/g, '<br/>')}</div>`,
-          from_name: 'SSBM Internal Audit',
-          from_email: 'Audit@secureserve.biz',
+      const result = await emitInternalAuditStageCommunication({
+        stageCode,
+        mode,
+        entityId: engagementId,
+        recipientName: recipientName || 'Department Head',
+        recipientEmail: toEmail,
+        reference: engagementContext?.engagement_name || engagementName || engagementId,
+        values: {
+          engagementTitle: engagementContext?.engagement_name || engagementName || '',
+          requestSummary: messageContent,
+          departmentName: engagementContext?.department_name || '',
+          leadAuditor: engagementContext?.lead_auditor_name || '',
+          dueDate: engagementContext?.planned_end_date || '',
         },
       });
-      if (error) throw error;
-      return data;
-    } catch (err: any) {
-      console.error('Email send error:', err);
-      throw err;
+      if (result.outcome === 'blocked') {
+        return { success: false, message: result.blockers.join(', ') };
+      }
+      return { success: true, outcome: result.outcome, requestId: result.requestId };
     } finally {
       setIsSendingEmail(false);
     }
   };
+
 
   const handleSend = async () => {
     if (!recipientEmail) return;
