@@ -146,25 +146,34 @@ export function availableTransitions(
  * Rule operators exist in two spellings, and both are live data.
  *
  * `bn_eligibility_fact.allowed_operators` stores symbols — ["=", "!=", ">",
- * ">=", "<", "<=", "between"] — and the Rule Catalogue form sets the rule's
- * operator FROM that list when a fact is chosen. This gate only accepted the
- * word spelling, so it rejected the very value the form had just written:
- * 13 of the 68 catalogue rules could never pass technical review, whichever
- * operator the reviewer picked.
+ * ">=", "<", "<=", "between"] — and the Rule Catalogue form takes the rule's
+ * operator FROM that list, in the fact's own spelling. This gate accepted only
+ * the word spelling, so it rejected the very value the form had written: 13 of
+ * the 68 catalogue rules could never pass technical review.
  *
- * Both spellings are therefore accepted and normalised to one canonical form.
- * A spelling in neither table is still rejected — this widens the vocabulary,
- * it does not remove the check.
- */
-/**
+ * Both spellings are accepted and reconciled to one canonical form for the
+ * check. A spelling in neither vocabulary is still rejected — this widens the
+ * vocabulary, it does not remove the check. Display is not touched: the rule
+ * keeps the spelling its fact declares.
+ *
  * BUG-49 — the vocabulary used to be restated here, separately from the one
  * the runtime engine used, and the two disagreed: this gate accepted BOOLEAN
  * and GREATER_OR_EQUAL while the engine failed every rule that carried them.
  * There is now one definition, in `operatorEvaluator`, and it is the same one
  * the comparison is driven by. Re-exported so existing callers are unchanged.
+ *
+ * BUG-02 — imported, then exported. `export { x } from 'y'` forwards the name
+ * without binding it in this module, so `validateTechnical` below called an
+ * identifier that did not exist here and Pass Technical Review failed with
+ * "canonicalOperator is not defined". tsc did not catch it; only running the
+ * app did.
  */
-export { canonicalOperator } from '@/services/bn/eligibility/operatorEvaluator';
-import { CANONICAL_OPERATORS } from '@/services/bn/eligibility/operatorEvaluator';
+import {
+  CANONICAL_OPERATORS,
+  canonicalOperator,
+} from '@/services/bn/eligibility/operatorEvaluator';
+
+export { canonicalOperator };
 
 export async function validateTechnical(rule: RuleSnapshot): Promise<ValidationIssue[]> {
   const issues: ValidationIssue[] = [];
