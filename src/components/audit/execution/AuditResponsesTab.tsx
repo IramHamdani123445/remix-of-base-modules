@@ -95,8 +95,7 @@ export function AuditResponsesTab({ auditId, auditFindings, auditResponses, depa
     { key: 'attachment', header: 'Docs', render: (r) => {
       const docs = r.supporting_docs as string[] | null;
       if (!docs?.length) return <span className="text-muted-foreground text-xs">—</span>;
-      const { data } = supabase.storage.from('audit-attachments').getPublicUrl(docs[0]);
-      return <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => window.open(data?.publicUrl, '_blank')}><FileText className="h-3 w-3 mr-1" />View</Button>;
+      return <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => { void openAuditFile('audit-attachments', docs[0]); }}><FileText className="h-3 w-3 mr-1" />View</Button>;
     }},
   ];
 

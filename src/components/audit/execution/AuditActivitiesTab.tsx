@@ -70,8 +70,8 @@ function InlineEvidenceForm({ auditId, activityId, onClose }: { auditId: string;
       const { error } = await supabase.storage.from('audit-attachments').upload(path, file);
       setUploading(false);
       if (error) { toast({ title: 'Upload failed', variant: 'destructive' }); return; }
-      const { data: urlData } = supabase.storage.from('audit-attachments').getPublicUrl(path);
-      fileUrl = urlData?.publicUrl || path;
+      // Private bucket: persist the object path, resolve a signed URL on read.
+      fileUrl = path;
       fileName = file.name; fileType = file.type; fileSize = file.size;
     }
     create.mutate({

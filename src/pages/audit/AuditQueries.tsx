@@ -29,9 +29,9 @@ async function uploadFile(file: File, folder: string): Promise<string | null> {
   return path;
 }
 
-function getPublicUrl(path: string): string {
-  const { data } = supabase.storage.from('audit-attachments').getPublicUrl(path);
-  return data?.publicUrl || '#';
+async function openAttachment(path: string): Promise<void> {
+  const ok = await openAuditFile('audit-attachments', path);
+  if (!ok) toast({ title: 'Attachment unavailable', description: 'You do not have access to this file.', variant: 'destructive' });
 }
 
 export default function AuditQueries() {
@@ -123,7 +123,7 @@ export default function AuditQueries() {
     { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status || 'Pending'} /> },
     { key: 'attachment', header: 'Attachment', render: (r) => {
       if (!r.response_attachment) return <span className="text-muted-foreground text-xs">—</span>;
-      return <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => window.open(getPublicUrl(r.response_attachment), '_blank')}><FileText className="h-3 w-3 mr-1" />View</Button>;
+      return <Button variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => void openAttachment(r.response_attachment)}><FileText className="h-3 w-3 mr-1" />View</Button>;
     }},
   ];
 
@@ -218,7 +218,7 @@ export default function AuditQueries() {
             {viewItem.response_attachment && (
               <div className="border-t pt-3 mt-3">
                 <Label className="text-muted-foreground">Attached Document</Label>
-                <Button variant="link" className="p-0 h-auto text-sm" onClick={() => window.open(getPublicUrl(viewItem.response_attachment), '_blank')}>
+                <Button variant="link" className="p-0 h-auto text-sm" onClick={() => void openAttachment(viewItem.response_attachment)}>
                   <FileText className="h-4 w-4 mr-1" />View Attachment
                 </Button>
               </div>
