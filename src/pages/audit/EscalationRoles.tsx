@@ -153,7 +153,7 @@ export default function EscalationRoles() {
   return (
     <PageShell
       title="Escalation Roles"
-      description="Designate who holds the Head of Internal Audit and Department Head offices. Escalations are only sent to explicitly designated, currently serving office holders."
+      subtitle="Designate who holds the Head of Internal Audit and Department Head offices. Escalations are only sent to explicitly designated, currently serving office holders."
       actions={
         <Button onClick={() => setProposeOpen(true)}>
           <UserPlus className="mr-2 h-4 w-4" /> Propose designation
