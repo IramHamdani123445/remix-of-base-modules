@@ -275,14 +275,22 @@ export default function EngagementDetail() {
             <TabSep />
 
             {/* === Fieldwork Group === */}
+            <TabsTrigger value="programme" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <Network className="h-3.5 w-3.5 mr-1.5" />Programme / RCM
+            </TabsTrigger>
             <TabsTrigger value="activities" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />Activities
               <TabBadge count={auditActivities.length} />
+            </TabsTrigger>
+            <TabsTrigger value="control-tests" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />Control Tests
+              <TabBadge count={auditControlTests.length} />
             </TabsTrigger>
             <TabsTrigger value="evidence" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Paperclip className="h-3.5 w-3.5 mr-1.5" />Evidence
               <TabBadge count={auditEvidence.length} />
             </TabsTrigger>
+
             <TabsTrigger value="working-papers" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <FolderOpen className="h-3.5 w-3.5 mr-1.5" />Working Papers
               <TabBadge count={auditWorkingPapers.length} />
