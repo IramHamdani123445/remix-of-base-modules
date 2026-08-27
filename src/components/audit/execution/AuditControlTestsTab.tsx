@@ -171,6 +171,34 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
         </Card>
       )}
 
+      {/* Governed conclusion */}
+      {concludeRecord && (
+        <Card className="border-primary/40">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold">Conclude control test</p>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setConcludeRecord(null)}><X className="h-4 w-4" /></Button>
+            </div>
+            <div><Label>Result *</Label>
+              <Select value={concludeForm.result} onValueChange={v => setConcludeForm(f => ({ ...f, result: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{CONCLUSION_RESULTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Conclusion *</Label><Textarea rows={3} value={concludeForm.conclusion} onChange={e => setConcludeForm(f => ({ ...f, conclusion: e.target.value }))} placeholder="Basis for the conclusion reached on this control" /></div>
+            {concludeForm.result !== 'Effective' && (
+              <div><Label>Rationale if no finding is raised</Label><Textarea rows={2} value={concludeForm.no_finding_rationale} onChange={e => setConcludeForm(f => ({ ...f, no_finding_rationale: e.target.value }))} /></div>
+            )}
+            <div className="flex gap-2">
+              <Button onClick={submitConclusion} disabled={concludeCommand.isPending || !concludeForm.conclusion.trim()}>
+                {concludeCommand.isPending && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Conclude
+              </Button>
+              <Button variant="outline" onClick={() => setConcludeRecord(null)}>Cancel</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {tests.length === 0 && !formMode ? (
         <AuditEmptyState icon={Shield} title="No control tests recorded"
           description="Control tests evaluate the design and operating effectiveness of internal controls within the audit scope."
@@ -182,11 +210,15 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openView(row); }}><Eye className="h-3.5 w-3.5" /></Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit(row); }}><Edit className="h-3.5 w-3.5" /></Button>
+                {!isConcluded(row) && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Conclude test" onClick={(e) => { e.stopPropagation(); openConclude(row); }}><Gavel className="h-3.5 w-3.5" /></Button>
+                )}
               </div>
             )}
           />
         </CardContent></Card>
       )}
+
     </div>
   );
 }
