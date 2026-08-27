@@ -47,6 +47,7 @@ import {
   StickyNote, FlagTriangleRight, Inbox, ListChecks, Stethoscope, Banknote,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { showBlockerToast } from '@/lib/bn/showBlockerToast';
 
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { useBnProducts } from '@/hooks/bn/useBnProduct';
@@ -516,7 +517,13 @@ export default function ClaimRegistration() {
     const i = STEPS.findIndex(s => s.key === step);
     if (i < 0 || i === STEPS.length - 1) return;
     const block = canAdvanceFrom(step);
-    if (block) { toast.error(block); return; }
+    if (block) {
+      // A step may refuse for more than one reason, and an eligibility read
+      // error carries the database's own wording. Shown as a heading plus one
+      // line each rather than a single run-on title.
+      showBlockerToast(block, { fallbackTitle: 'Cannot continue yet' });
+      return;
+    }
     setStep(STEPS[i + 1].key);
   }
   function prevStep() {
