@@ -284,16 +284,32 @@ export default function AuditActionCentre() {
 
   const active = tabs.find(t => t.value === tab) ?? tabs[0];
 
-  const metrics = [
-    { label: 'Open findings', value: c.open_findings, tone: 'default', target: 'findings' },
-    { label: 'High / critical', value: c.high_findings, tone: 'danger', target: 'findings' },
-    { label: 'Responses outstanding', value: c.pending_management_responses, tone: 'warning', target: 'findings' },
-    { label: 'Open actions', value: c.open_actions, tone: 'default', target: 'register' },
-    { label: 'Overdue actions', value: c.overdue_actions, tone: 'danger', target: 'register' },
-    { label: 'Awaiting verification', value: c.verification_required, tone: 'warning', target: 'verification' },
-    { label: 'Follow-ups due', value: c.followups_due, tone: 'warning', target: 'followup' },
-    { label: 'Audits ready to close', value: c.audits_ready_for_closure, tone: 'success', target: 'closure' },
+  /**
+   * Metric tiles are drill-downs: clicking one applies the same server filter that
+   * produced the number and lands on the list that holds exactly that population.
+   */
+  const metrics: { label: string; value: any; tone: string; target: string; patch: IaFilters }[] = [
+    { label: 'Open findings', value: c.open_findings, tone: 'default', target: 'findings', patch: { open_only: true } },
+    { label: 'High / critical', value: c.high_findings, tone: 'danger', target: 'findings', patch: { open_only: true, high_critical: true } },
+    { label: 'Responses outstanding', value: c.pending_management_responses, tone: 'warning', target: 'findings', patch: { response_outstanding: true } },
+    { label: 'Open actions', value: c.open_actions, tone: 'default', target: 'register', patch: { open_only: true } },
+    { label: 'Overdue actions', value: c.overdue_actions, tone: 'danger', target: 'register', patch: { overdue: true } },
+    { label: 'Awaiting verification', value: c.verification_required, tone: 'warning', target: 'verification', patch: { status: 'Verification Required' } },
+    { label: 'Follow-ups due', value: c.followups_due, tone: 'warning', target: 'followup', patch: {} },
+    { label: 'Awaiting QA', value: c.audits_ready_for_qa, tone: 'warning', target: 'qa', patch: {} },
+    { label: 'Audits ready to close', value: c.audits_ready_for_closure, tone: 'success', target: 'closure', patch: {} },
+    { label: 'Closure blocked', value: c.audits_blocked_from_closure, tone: 'danger', target: 'closure', patch: {} },
   ];
+
+  const drillDown = (m: { target: string; patch: IaFilters }) => {
+    setSearch('');
+    setFilters(f => ({ ...f, ...m.patch }));
+    setTab(m.target);
+  };
+
+  const summaryAudit = filters.engagement_id
+    ? labelFor(auditOptions, filters.engagement_id)
+    : '';
 
   return (
     <PageShell
@@ -301,26 +317,59 @@ export default function AuditActionCentre() {
       subtitle="One operating surface for audit work queues, corrective actions, follow-up and closure readiness"
       breadcrumbs={[{ label: 'Internal Audit', href: '/audit/dashboard' }, { label: 'Action Centre' }]}
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 print:hidden">
           <Button variant="outline" size="sm" onClick={refreshAll} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-2" />Print
+          <Button variant="outline" size="sm" onClick={printList}>
+            <Printer className="h-4 w-4 mr-2" />Print / PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={printSummary}
+            disabled={!filters.engagement_id}
+            title={filters.engagement_id ? 'Print the audit action summary' : 'Select an audit in the filters first'}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />Audit action summary
           </Button>
           <ExportDropdown
             data={active.rows}
             columns={exportCols(active.cols)}
             fileName={`internal-audit-${active.value}`}
             title={`Internal Audit — ${active.label}`}
+            metadata={{
+              title: `Internal Audit — ${active.label}`,
+              generatedDate: new Date().toLocaleString(),
+              filtersApplied: appliedFilters,
+              totalRecords: active.rows.length,
+            }}
           />
         </div>
       }
     >
-      {/* Metrics — every number drills into the list behind it */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+      {/* Print / PDF output — full filtered population, no interactive chrome */}
+      {printMode === 'list' ? (
+        <ActionCentrePrintView
+          title={active.label}
+          columns={exportCols(active.cols)}
+          rows={active.rows}
+          filters={appliedFilters}
+        />
+      ) : (
+        <AuditActionSummaryPrintView
+          engagementLabel={summaryAudit}
+          findings={findings.data ?? []}
+          actions={actions.data ?? []}
+          followUps={followUps.data ?? []}
+        />
+      )}
+
+      <div className="space-y-4 print:hidden">
+      {/* Metrics — every number drills into the exact population behind it */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {metrics.map(m => (
-          <button key={m.label} onClick={() => setTab(m.target)} className="text-left">
+          <button key={m.label} onClick={() => drillDown(m)} className="text-left">
             <Card className="hover:border-primary/50 transition-colors h-full">
               <CardContent className="p-3">
                 <p className="text-[11px] text-muted-foreground leading-tight">{m.label}</p>
@@ -334,6 +383,7 @@ export default function AuditActionCentre() {
           </button>
         ))}
       </div>
+
 
       {/* Filter contract shared by every register and queue */}
       <Card>
