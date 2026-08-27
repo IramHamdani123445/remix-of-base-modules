@@ -90,6 +90,21 @@ export async function runRenderStage(
 
   const persisted = (persistData ?? {}) as { status?: string; held_job_count?: number };
 
+  // DEF-3 — apply the governed attachment channel policy to every persisted
+  // message. Channels that cannot carry an attachment DROP it; an attachment
+  // marked required for delivery BLOCKS the message instead of quietly
+  // delivering an incomplete communication.
+  const attachmentBlockers: string[] = [];
+  const { data: attData, error: attErr } = await admin.rpc(
+    "omni_comms_priv_resolve_request_attachments",
+    { p_request_id: requestId },
+  );
+  if (attErr) throw new RenderStageError("attachment_resolution_failed");
+  const attachmentOutcome = (attData ?? {}) as { ok?: boolean; code?: string };
+  if (attachmentOutcome.ok === false) {
+    attachmentBlockers.push(attachmentOutcome.code ?? "attachment_required_unsupported");
+  }
+
   // Re-read the persisted messages through the canonical projection so the
   // fresh response carries real message ids and held dispatch-job ids, and is
   // byte-comparable with the replay response.
@@ -103,7 +118,7 @@ export async function runRenderStage(
   return {
     status: persisted.status ?? outcome.finalStatus,
     messages,
-    blockers: outcome.requestBlockers,
+    blockers: [...outcome.requestBlockers, ...attachmentBlockers],
     heldJobCount: persisted.held_job_count ?? outcome.jobs.length,
     renderedCount: outcome.messages.filter((m) => m.status === "rendered").length,
     blockedCount: outcome.messages.filter((m) => m.status === "blocked").length,
