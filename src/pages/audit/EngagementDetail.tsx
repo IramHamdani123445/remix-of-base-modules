@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Briefcase, Loader2, AlertTriangle, ClipboardCheck,
   FileText, MessageSquare, CheckCircle, BarChart3, Clock, Shield, ListChecks, Eye,
-  Paperclip, FolderOpen, Search, ArrowRight
+  Paperclip, FolderOpen, Search, ArrowRight, Network, ShieldCheck, BadgeCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,7 +32,10 @@ import {
   AuditControlTestsTab,
   AuditFollowUpsTab,
   AuditClosureTab,
+  AuditProgrammeRcmTab,
+  AuditQualityReviewTab,
 } from '@/components/audit/execution';
+
 
 // ===== Tab Badge =====
 function TabBadge({ count, variant = 'default' }: { count: number; variant?: 'default' | 'warning' | 'danger' | 'success' }) {
@@ -272,14 +275,22 @@ export default function EngagementDetail() {
             <TabSep />
 
             {/* === Fieldwork Group === */}
+            <TabsTrigger value="programme" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <Network className="h-3.5 w-3.5 mr-1.5" />Programme / RCM
+            </TabsTrigger>
             <TabsTrigger value="activities" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" />Activities
               <TabBadge count={auditActivities.length} />
+            </TabsTrigger>
+            <TabsTrigger value="control-tests" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />Control Tests
+              <TabBadge count={auditControlTests.length} />
             </TabsTrigger>
             <TabsTrigger value="evidence" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Paperclip className="h-3.5 w-3.5 mr-1.5" />Evidence
               <TabBadge count={auditEvidence.length} />
             </TabsTrigger>
+
             <TabsTrigger value="working-papers" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <FolderOpen className="h-3.5 w-3.5 mr-1.5" />Working Papers
               <TabBadge count={auditWorkingPapers.length} />
@@ -308,10 +319,13 @@ export default function EngagementDetail() {
             <TabSep />
 
             {/* === Output Group === */}
-
+            <TabsTrigger value="quality-review" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+              <BadgeCheck className="h-3.5 w-3.5 mr-1.5" />Quality Review
+            </TabsTrigger>
             <TabsTrigger value="timeline" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Clock className="h-3.5 w-3.5 mr-1.5" />Timeline
             </TabsTrigger>
+
             <TabsTrigger value="closure" className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
               <Shield className="h-3.5 w-3.5 mr-1.5" />Closure
             </TabsTrigger>
@@ -345,9 +359,18 @@ export default function EngagementDetail() {
             <AuditPreparationTab auditId={id!} audit={audit} engagementContext={engagementContext} />
           </TabsContent>
 
+          <TabsContent value="programme">
+            <AuditProgrammeRcmTab auditId={id!} departmentId={audit?.department_id} functionId={(audit as any)?.function_id} />
+          </TabsContent>
+
           <TabsContent value="activities">
             <AuditActivitiesTab auditId={id!} auditors={auditors} />
           </TabsContent>
+
+          <TabsContent value="control-tests">
+            <AuditControlTestsTab auditId={id!} />
+          </TabsContent>
+
 
           <TabsContent value="evidence">
             <AuditEvidenceTab auditId={id!} auditFindings={auditFindings} auditActivities={auditActivities} />
@@ -374,9 +397,14 @@ export default function EngagementDetail() {
           </TabsContent>
 
 
+          <TabsContent value="quality-review">
+            <AuditQualityReviewTab auditId={id!} />
+          </TabsContent>
+
           <TabsContent value="timeline">
             <AuditTimelineTab auditId={id!} departmentId={audit?.department_id} />
           </TabsContent>
+
 
           <TabsContent value="closure">
             <AuditClosureTab auditId={id!} audit={audit} />
