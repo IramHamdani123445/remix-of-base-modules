@@ -72,9 +72,8 @@ describe('refreshCoordinator', () => {
     const p2 = runRefreshOnce();
     const p3 = runRefreshOnce();
 
-    // performRefresh first awaits the non-destructive current-token check.
-    await Promise.resolve();
-    await Promise.resolve();
+    // performRefresh first awaits the bounded non-destructive session check.
+    await vi.waitUntil(() => refreshSessionMock.mock.calls.length === 1);
     expect(refreshSessionMock).toHaveBeenCalledTimes(1);
     resolveInner({ data: { session: okSession() }, error: null });
 
@@ -141,6 +140,20 @@ describe('refreshCoordinator', () => {
     const result = await runRefreshOnce();
     expect(result.session).toBeNull();
     expect(result.error).toContain('fetch failed');
+  });
+
+  it('settles with an error when refreshSession never responds', async () => {
+    vi.useFakeTimers();
+    refreshSessionMock.mockImplementationOnce(() => new Promise(() => {}));
+
+    const resultPromise = runRefreshOnce();
+    await vi.advanceTimersByTimeAsync(8_000);
+    const result = await resultPromise;
+
+    expect(result.session).toBeNull();
+    expect(result.expired).toBeUndefined();
+    expect(result.error).toBe('refresh_session_timeout');
+    vi.useRealTimers();
   });
 
   it('test reset hook clears in-flight state', async () => {

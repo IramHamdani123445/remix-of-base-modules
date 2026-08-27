@@ -31,7 +31,19 @@ export default function ApprovalConsole() {
 
   const { roles: authRoles } = useSupabaseAuth();
   const userRoles = (authRoles ?? []).map((r) => String(r));
-  const { userCode: _uc } = useUserCode(); const userCode = _uc ?? '';
+  // `?? ''` used to turn a still-loading profile into an empty user code, which
+  // then failed no check: maker-checker compared '' against the recommender and
+  // passed, and the approval was recorded with no approver name.
+  const { userCode: _uc, isLoading: userCodeLoading, error: userCodeError } = useUserCode();
+  const userCode = _uc ?? '';
+  const approvalsBlocked = userCodeLoading || !!userCodeError || !userCode;
+  const approvalsBlockedReason = userCodeLoading
+    ? 'Loading your profile — your user code has not arrived yet.'
+    : userCodeError
+      ? `Your profile could not be read: ${userCodeError}`
+      : !userCode
+        ? 'Your account has no user code recorded. Ask an administrator to set one.'
+        : null;
 
   // Stats
   const stats = useMemo(() => {
@@ -54,6 +66,10 @@ export default function ApprovalConsole() {
   }, [selectedIds, queue]);
 
   const handleAction = (action: string, narrative: string, reasonCodeId?: string) => {
+    if (approvalsBlocked) {
+      toast.error('Cannot record this decision', { description: approvalsBlockedReason! });
+      return;
+    }
     if (selectedIds.size === 0) {
       toast.error('Select at least one case.');
       return;
@@ -73,6 +89,10 @@ export default function ApprovalConsole() {
   };
 
   const handleBulkApprove = (narrative: string) => {
+    if (approvalsBlocked) {
+      toast.error('Cannot record these decisions', { description: approvalsBlockedReason! });
+      return;
+    }
     const ids = Array.from(selectedIds);
     bulkApprove.mutate(
       { claimIds: ids, narrative, performedBy: userCode },

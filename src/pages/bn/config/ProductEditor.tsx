@@ -35,8 +35,15 @@ import { CommunicationsTab } from '@/components/bn/config/CommunicationsTab';
 import { ProductOmniCommsPanel } from '@/components/bn/config/ProductOmniCommsPanel';
 import { resolveOrganizationContext } from '@/lib/org/organizationContextResolver';
 import { ReadOnlyVersionBanner } from '@/components/bn/smart';
+import { useQuery } from '@tanstack/react-query';
+import { assertVersionReadiness } from '@/services/bn/rulesAdminService';
+import { useBnReturnToDraft } from '@/hooks/bn/useBnRulesAdmin';
+import { useUserCode } from '@/hooks/useUserCode';
+
 import { VisualBuilderTab } from '@/components/bn/config/VisualBuilderTab';
 import { ConflictDetectionPanel } from '@/components/bn/config/ConflictDetectionPanel';
+import { VersionReadinessPanel } from '@/components/bn/config/VersionReadinessPanel';
+
 import { BnPlatformConsumptionPanel } from '@/components/bn/config/BnPlatformConsumptionPanel';
 
 const statusBadge: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -69,6 +76,16 @@ export default function ProductEditor() {
     return live.length ? Math.max(...live) : null;
   }, [versions]);
 
+  /** Highest APPROVED (awaiting publish) version number, or null. */
+  const approvedVersionNumber = useMemo(() => {
+    const approved = (versions as any[])
+      .filter(v => String(v.status).toUpperCase() === 'APPROVED')
+      .map(v => Number(v.version_number))
+      .filter(n => Number.isFinite(n));
+    return approved.length ? Math.max(...approved) : null;
+  }, [versions]);
+
+
   
   const createMutation = useCreateBnProduct();
   const updateMutation = useUpdateBnProduct();
@@ -79,15 +96,20 @@ export default function ProductEditor() {
     branch: 'GENERAL', payment_type: 'PERIODIC', country_code: '', status: 'DRAFT', sort_order: 0,
   });
   const [selectedVersionId, setSelectedVersionId] = useState<string | undefined>();
+  const [activeTab, setActiveTab] = useState('definition');
+
   const [omniCommsOrganizationId, setOmniCommsOrganizationId] = useState<string | null>(null);
 
   /**
-   * Active when a version is live; otherwise the product's own status. Display
-   * only — the Status dropdown keeps the stored value, because it writes, and
-   * showing a derived value in a field that saves would push ACTIVE into
-   * bn_product.status on the next unrelated edit.
+   * Product status derived from its versions: Active when a version is live,
+   * Approved when one is approved and awaiting publish, otherwise the stored
+   * value. The Status control renders this and is read-only when derived, so
+   * the field can never contradict the versions.
    */
-  const effectiveProductStatus = liveVersionNumber !== null ? 'ACTIVE' : form.status;
+  const derivedProductStatus =
+    liveVersionNumber !== null ? 'ACTIVE' : approvedVersionNumber !== null ? 'APPROVED' : null;
+  const effectiveProductStatus = derivedProductStatus ?? form.status;
+
 
   useEffect(() => {
     let cancelled = false;
@@ -173,7 +195,11 @@ export default function ProductEditor() {
     const resolvedBranchName = form.branch_id
       ? (branches as any[]).find(b => b.id === form.branch_id)?.branch_name ?? 'GENERAL'
       : 'GENERAL';
-    const payload = { ...form, branch: resolvedBranchName };
+    // A product with a live version is Active by definition — never let an
+    // unrelated edit write a stale DRAFT back over it.
+    const resolvedStatus = liveVersionNumber !== null ? 'ACTIVE' : form.status;
+    const payload = { ...form, branch: resolvedBranchName, status: resolvedStatus };
+
     try {
       if (isNew) {
         const created = await createMutation.mutateAsync(payload);
@@ -203,6 +229,33 @@ export default function ProductEditor() {
   const isEditableVersion = activeVersion?.status === 'DRAFT';
   const copyRulesMutation = useCopyBnVersionRules();
   const cloneToDraftMutation = useCloneBnVersionToDraft();
+  const returnToDraftMutation = useBnReturnToDraft();
+
+  // Readiness for the selected version — only meaningful while it is locked
+  // awaiting approval or approved but unpublishable.
+  const readinessRelevant = activeVersion?.status === 'PENDING_APPROVAL' || activeVersion?.status === 'APPROVED';
+  const { data: readinessReport } = useQuery({
+    queryKey: ['bn', 'version-readiness', selectedVersionId],
+    queryFn: () => assertVersionReadiness(selectedVersionId!),
+    enabled: !!selectedVersionId && readinessRelevant,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const blockingIssues = readinessRelevant && readinessReport && !readinessReport.ok
+    ? readinessReport.errors
+    : [];
+
+  const { userCode } = useUserCode();
+  const handleReturnToDraft = () => {
+    if (!activeVersion) return;
+    returnToDraftMutation.mutate({
+      versionId: activeVersion.id,
+      userCode: userCode || 'system',
+      reason: 'Returned for correction of blocking configuration issues',
+    });
+  };
+
+
 
   const [guard, setGuard] = useState<{ open: boolean; intent: 'EDIT' | 'DELETE' }>({ open: false, intent: 'EDIT' });
 
@@ -361,6 +414,10 @@ export default function ProductEditor() {
           draftActionLabel="modify eligibility, calculation, documents, workflow or any assembly tab"
           onCreateDraft={activeVersion.status !== 'DRAFT' ? handleCloneToDraft : undefined}
           creatingDraft={cloneToDraftMutation.isPending}
+          blockingIssues={blockingIssues}
+          onReturnToDraft={handleReturnToDraft}
+          returningToDraft={returnToDraftMutation.isPending}
+
         />
       )}
 
@@ -376,14 +433,18 @@ export default function ProductEditor() {
       />
 
       {!isNew && selectedVersionId && (
-        <ConflictDetectionPanel versionId={selectedVersionId} compact />
+        <>
+          <VersionReadinessPanel versionId={selectedVersionId} onJumpToTab={setActiveTab} />
+          <ConflictDetectionPanel versionId={selectedVersionId} compact onJumpToTab={setActiveTab} />
+        </>
       )}
+
 
       {/* Commented per manager request — display-only panel, not consumed by any claim/product-creation logic. {!isNew && <BnPlatformConsumptionPanel />} */}
 
 
       {/* Tabs */}
-      <Tabs defaultValue="definition" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="definition">Definition</TabsTrigger>
           <TabsTrigger value="builder" disabled={isNew}>Visual Builder</TabsTrigger>
@@ -475,22 +536,32 @@ export default function ProductEditor() {
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={form.status || 'DRAFT'} onValueChange={v => updateField('status', v)}>
+                {/* Derived from the versions when one is live or approved — the
+                    field is then read-only so it can never contradict them. */}
+                <Select
+                  value={effectiveProductStatus || 'DRAFT'}
+                  onValueChange={v => updateField('status', v)}
+                  disabled={derivedProductStatus !== null}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {Object.entries(BN_PRODUCT_STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                {/* Explains the difference between this field and the badge
-                    above, so the mismatch does not look like a fault and nobody
-                    sets ACTIVE by hand to "correct" it. */}
-                {liveVersionNumber !== null && form.status !== 'ACTIVE' && (
+                {derivedProductStatus === 'ACTIVE' && (
                   <p className="text-xs text-muted-foreground">
-                    This product is already live on <span className="font-medium">v{liveVersionNumber}</span>.
-                    A product becomes Active by publishing a version — you do not need to set it here.
+                    This product is live on <span className="font-medium">v{liveVersionNumber}</span>.
+                    A product becomes Active by publishing a version — it cannot be set here.
+                  </p>
+                )}
+                {derivedProductStatus === 'APPROVED' && (
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-medium">v{approvedVersionNumber}</span> is approved and awaiting publish
+                    in Rule Version Governance. The product becomes Active when it is published.
                   </p>
                 )}
               </div>
+
               <div className="space-y-2">
                 <Label>Sort Order</Label>
                 <Input type="number" value={form.sort_order ?? 0} onChange={e => updateField('sort_order', parseInt(e.target.value) || 0)} />

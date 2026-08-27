@@ -129,18 +129,22 @@ export async function createArrangement(input: CreateCoreArrangementInput): Prom
   const totalArranged = round2(input.items.reduce((s, it) => s + Number(it.arranged_amount || 0), 0));
   if (totalArranged <= 0) throw new Error("Total arranged amount must be greater than zero.");
 
-  // Block duplicate active arrangement for same debtor unless superseding
+  // Block any non-completed arrangement for the same debtor unless superseding.
+  // The database trigger trg_core_single_open_arrangement is authoritative; this is pre-flight UX.
   if (!input.superseded_from_arrangement_id) {
-    const { data: existingActive } = await sb
+    const { data: terminal } = await sb.rpc("ce_arrangement_terminal_statuses");
+    const terminalStatuses: string[] = (terminal as string[]) ?? ["COMPLETED", "CANCELLED", "SUPERSEDED"];
+    const { data: existingOpen } = await sb
       .from("core_payment_arrangement")
-      .select("id, arrangement_no")
+      .select("id, arrangement_no, status")
       .eq("debtor_id", input.debtor_id)
       .eq("debtor_type", input.debtor_type ?? "EMPLOYER")
-      .eq("status", "ACTIVE")
+      .not("status", "in", `(${terminalStatuses.join(",")})`)
+      .limit(1)
       .maybeSingle();
-    if (existingActive) {
+    if (existingOpen) {
       throw new Error(
-        `Debtor already has an active arrangement (${existingActive.arrangement_no}). Supersede it before creating a new one.`,
+        `Debtor already has a non-completed arrangement (${existingOpen.arrangement_no} — ${existingOpen.status}). Complete, cancel or supersede it before creating a new one.`,
       );
     }
   }

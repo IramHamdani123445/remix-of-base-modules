@@ -545,7 +545,7 @@ export async function executeDeterminationAction(params: ExecuteDeterminationPar
       event_type: `DETERMINATION_${action}`,
       from_status: claim.status,
       to_status: newStatus,
-      description: narrative || `Determination action: ${action}`,
+      notes: narrative || `Determination action: ${action}`,
       performed_by: performedBy,
       performed_at: new Date().toISOString(),
     });
@@ -564,7 +564,7 @@ export async function executeDeterminationAction(params: ExecuteDeterminationPar
     await db.from('bn_claim_event').insert({
       claim_id: claimId,
       event_type: `DETERMINATION_${action}`,
-      description: narrative || `Determination action: ${action}`,
+      notes: narrative || `Determination action: ${action}`,
       performed_by: performedBy,
       performed_at: new Date().toISOString(),
     });

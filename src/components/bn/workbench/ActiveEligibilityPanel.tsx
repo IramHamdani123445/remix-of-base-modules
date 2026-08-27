@@ -84,7 +84,9 @@ export const ActiveEligibilityPanel: React.FC<Props> = ({
       toast.success(
         res.overallResult
           ? `Eligibility passed (${res.rules.length} rules)`
-          : `Eligibility failed (${res.rules.filter((r) => !r.passed).length} of ${res.rules.length} rules)`,
+          : `${res.rules.filter((r) => r.result_state === 'FAIL').length} failed, ` +
+            `${res.rules.filter((r) => r.result_state === 'UNEVALUATED').length} could not be evaluated ` +
+            `(of ${res.rules.length} rules)`,
       );
       qc.invalidateQueries({ queryKey: ['bn', 'claim-eligibility', claimId] });
       qc.invalidateQueries({ queryKey: ['bn', 'claim-events', claimId] });
@@ -115,11 +117,29 @@ export const ActiveEligibilityPanel: React.FC<Props> = ({
 
   const passed = latest.overall_result || latest.override_applied;
   const rules: any[] = Array.isArray(latest.rule_results) ? latest.rule_results : [];
+
+  // BUG-30 — three outcomes, not two. A verdict derived only from "did anything
+  // fail" reported PASSED for a claim where nothing was ever compared. The
+  // coverage count is shown next to the verdict so the strength of the result is
+  // visible at a glance.
+  const unevaluatedCount = rules.filter((r: any) => r.result_state === 'UNEVALUATED').length;
+  const failedCount = rules.filter(
+    (r: any) => r.result_state === 'FAIL' || (!r.passed && r.result_state !== 'UNEVALUATED'),
+  ).length;
+  const evaluatedCount = rules.filter((r: any) =>
+    r.result_state === 'PASS' || r.result_state === 'FAIL' || r.result_state === 'OVERRIDDEN' ||
+    // Rows persisted before BUG-29: a real comparison always recorded a field.
+    (r.result_state === undefined && r.field_key),
+  ).length;
+  const coverageLabel = `${evaluatedCount} of ${rules.length} rule${rules.length === 1 ? '' : 's'} evaluated`;
+  const determined = failedCount > 0 || (unevaluatedCount === 0 && evaluatedCount > 0);
   const overallLabel = latest.override_applied
     ? 'PASSED WITH OVERRIDE'
-    : passed
-      ? 'PASSED'
-      : 'FAILED';
+    : !determined
+      ? 'COULD NOT BE DETERMINED'
+      : passed
+        ? 'PASSED'
+        : 'FAILED';
 
   return (
     <div className="space-y-4">
@@ -127,12 +147,17 @@ export const ActiveEligibilityPanel: React.FC<Props> = ({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle className="text-base font-medium flex items-center gap-2">
-              {passed ? (
-                <CheckCircle2 className={`h-5 w-5 ${latest.override_applied ? 'text-amber-600' : 'text-emerald-600'}`} />
+              {latest.override_applied ? (
+                <CheckCircle2 className="h-5 w-5 text-amber-600" />
+              ) : !determined ? (
+                <AlertCircle className="h-5 w-5 text-amber-600" />
+              ) : passed ? (
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
               ) : (
                 <XCircle className="h-5 w-5 text-destructive" />
               )}
               Eligibility {overallLabel}
+              <span className="text-xs font-normal text-muted-foreground">— {coverageLabel}</span>
               <Badge variant="outline" className="ml-2 text-xs font-mono">
                 {formatDateForDisplay(latest.check_date)}
               </Badge>
@@ -184,6 +209,8 @@ export const ActiveEligibilityPanel: React.FC<Props> = ({
                         <TableCell>
                           {isOverridden ? (
                             <ShieldAlert className="h-4 w-4 text-amber-600" />
+                          ) : r.result_state === 'UNEVALUATED' ? (
+                            <AlertCircle className="h-4 w-4 text-amber-600" title={r.unevaluated_reason ?? 'Could not be evaluated'} />
                           ) : r.passed ? (
                             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                           ) : r.fail_action === 'WARN' ? (
@@ -193,15 +220,19 @@ export const ActiveEligibilityPanel: React.FC<Props> = ({
                           )}
                         </TableCell>
                         <TableCell className="font-medium">
-                          <div className="text-sm">{r.rule_name}</div>
+                          {/* The requirement is the rule's own configured wording. */}
+                          <div className="text-sm">{r.requirement || r.rule_name}</div>
                           <div className="text-xs text-muted-foreground font-mono">{r.rule_code}</div>
+                          {r.reference && (
+                            <div className="text-[11px] text-muted-foreground/80 italic">{r.reference}</div>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs font-mono">{r.field_key ?? '—'}</TableCell>
                         <TableCell className="text-xs">{formatVal(r.actual_value)}</TableCell>
                         <TableCell className="text-xs font-mono">{r.operator ?? '—'}</TableCell>
                         <TableCell className="text-xs">{formatVal(r.expected_value)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{r.source ?? '—'}</TableCell>
-                        <TableCell className="text-xs">{r.message}</TableCell>
+                        <TableCell className="text-xs">{r.detail ?? r.message}</TableCell>
                         <TableCell className="text-right">
                           {showOverride && (
                             <Button size="sm" variant="outline" className="h-7 text-xs"

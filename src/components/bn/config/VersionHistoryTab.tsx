@@ -7,13 +7,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CheckCircle, XCircle, Clock, Send, Copy, Loader2, Info } from 'lucide-react';
+import { Plus, CheckCircle, XCircle, Clock, Send, Copy, Loader2, Info, ShieldCheck, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUpdateBnProductVersion, useCopyBnVersionRules, usePublishBnProductVersion, useRetireBnProductVersion } from '@/hooks/bn/useBnProduct';
+import { useUpdateBnProductVersion, useCopyBnVersionRules, useRetireBnProductVersion } from '@/hooks/bn/useBnProduct';
 import { useCreateBnVersionApproval } from '@/hooks/bn/useBnConfig';
 import { BN_PRODUCT_STATUS_LABELS } from '@/types/bn';
 import type { BnProductVersion, BnProductStatus } from '@/types/bn';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { useUserCode } from '@/hooks/useUserCode';
 
@@ -26,17 +27,19 @@ interface Props {
 const statusIcons: Record<string, React.ReactNode> = {
   DRAFT: <Clock className="h-4 w-4 text-muted-foreground" />,
   PENDING_APPROVAL: <Send className="h-4 w-4 text-amber-500" />,
+  APPROVED: <ShieldCheck className="h-4 w-4 text-blue-500" />,
   ACTIVE: <CheckCircle className="h-4 w-4 text-green-500" />,
   SUSPENDED: <XCircle className="h-4 w-4 text-destructive" />,
   ARCHIVED: <XCircle className="h-4 w-4 text-muted-foreground" />,
 };
+
+const GOVERNANCE_PATH = '/bn/config/rules-admin';
 
 export function VersionHistoryTab({ productId, versions, onCreateVersion }: Props) {
   const { toast } = useToast();
   const updateVersionMutation = useUpdateBnProductVersion();
   const createApprovalMutation = useCreateBnVersionApproval();
   const copyRulesMutation = useCopyBnVersionRules();
-  const publishMutation = usePublishBnProductVersion();
   const retireMutation = useRetireBnProductVersion();
   const { userCode } = useUserCode();
   const [approvalDialog, setApprovalDialog] = useState<{ versionId: string; action: string } | null>(null);
@@ -54,21 +57,16 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
     return null;
   };
 
+  // Approve / Reject / Publish are NOT available here — Rule Version Governance
+  // is the single approval authority. This screen only submits drafts and
+  // retires closed active versions.
   const handleStatusAction = async (versionId: string, action: string, toStatus: string) => {
     try {
       setLifecycleError(null);
-      if (action === 'REJECT' && !comments.trim()) {
-        toast({ title: 'Validation', description: 'Comments are required when rejecting.', variant: 'destructive' });
-        return;
-      }
       const fromStatus = versions.find(v => v.id === versionId)?.status;
       const version = versions.find(v => v.id === versionId);
 
-      if (action === 'APPROVE') {
-        // Publish path — auto-closes prior ACTIVE version
-        const effFrom = version?.effective_from || new Date().toISOString().slice(0, 10);
-        await publishMutation.mutateAsync({ versionId, effectiveFrom: effFrom });
-      } else if (action === 'RETIRE') {
+      if (action === 'RETIRE') {
         if (version) {
           const reason = retireBlockReason(version);
           if (reason) throw new Error(reason);
@@ -78,7 +76,7 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
         await updateVersionMutation.mutateAsync({ id: versionId, updates: { status: toStatus } as any });
       }
       await createApprovalMutation.mutateAsync({ product_version_id: versionId, action, from_status: fromStatus, to_status: toStatus, comments, performed_by: userCode || 'system' });
-      toast({ title: 'Success', description: `Version ${action.toLowerCase()}d.` });
+      toast({ title: 'Success', description: action === 'RETIRE' ? 'Version retired.' : 'Version submitted for approval.' });
       setApprovalDialog(null);
       setComments('');
     } catch (err: any) {
@@ -116,7 +114,7 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Version History</CardTitle>
-            <CardDescription>Effective-dated versions with DRAFT → PENDING_APPROVAL → ACTIVE lifecycle. Overlapping date ranges are blocked.</CardDescription>
+            <CardDescription>Effective-dated versions with DRAFT → PENDING&nbsp;APPROVAL → APPROVED → ACTIVE lifecycle. Overlapping date ranges are blocked.</CardDescription>
           </div>
           <Button onClick={onCreateVersion} className="gap-2"><Plus className="h-4 w-4" /> New Version</Button>
         </CardHeader>
@@ -131,7 +129,9 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs">
-              Correct flow: create or copy into a DRAFT, submit it for approval, approve it to publish as ACTIVE, then the old active version is closed automatically to the day before the new effective date. Manual retire is only for an already closed/replaced active version.
+              Create or copy into a DRAFT here and submit it for approval. <strong>Approval and publishing happen in Rule Version Governance</strong> — that screen is the single approval authority and enforces maker-checker. Once published, the version becomes ACTIVE, the previous active version is closed to the day before the new effective date, and the product becomes available for claim registration. Manual retire here is only for an already closed or replaced active version.
+              {' '}
+              <Link to={GOVERNANCE_PATH} className="underline underline-offset-2 font-medium">Open Rule Version Governance</Link>
             </AlertDescription>
           </Alert>
           {versions.length === 0 ? (
@@ -167,11 +167,15 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
                             </Button>
                           </>
                         )}
-                        {v.status === 'PENDING_APPROVAL' && (
-                          <>
-                            <Button variant="default" size="sm" onClick={() => setApprovalDialog({ versionId: v.id, action: 'APPROVE' })}>Approve</Button>
-                            <Button variant="destructive" size="sm" onClick={() => setApprovalDialog({ versionId: v.id, action: 'REJECT' })}>Reject</Button>
-                          </>
+                        {(v.status === 'PENDING_APPROVAL' || v.status === 'APPROVED') && (
+                          <Button asChild variant="outline" size="sm" className="gap-1.5">
+                            <Link to={GOVERNANCE_PATH} title={v.status === 'APPROVED'
+                              ? 'Approved — publish it in Rule Version Governance'
+                              : 'Approve or reject this version in Rule Version Governance'}>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              {v.status === 'APPROVED' ? 'Publish in Governance' : 'Review in Governance'}
+                            </Link>
+                          </Button>
                         )}
                         {v.status === 'ACTIVE' && (
                           <Button
@@ -195,28 +199,33 @@ export function VersionHistoryTab({ productId, versions, onCreateVersion }: Prop
       {/* Status Action Dialog */}
       <Dialog open={!!approvalDialog} onOpenChange={() => setApprovalDialog(null)}>
         <DialogContent>
-          <DialogHeader><DialogTitle>{approvalDialog?.action === 'SUBMIT' ? 'Submit for Approval' : approvalDialog?.action === 'APPROVE' ? 'Approve Version' : approvalDialog?.action === 'REJECT' ? 'Reject Version' : 'Retire Version'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{approvalDialog?.action === 'SUBMIT' ? 'Submit for Approval' : 'Retire Version'}</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            {approvalDialog?.action === 'SUBMIT' && (
+              <p className="text-sm text-muted-foreground">
+                The version moves to Pending Approval. Approval and publishing are then completed in Rule Version Governance by a different user.
+              </p>
+            )}
             <div className="space-y-2">
-              <Label>Comments {approvalDialog?.action === 'REJECT' ? '*' : '(optional)'}</Label>
+              <Label>Comments (optional)</Label>
               <Textarea value={comments} onChange={e => setComments(e.target.value)} rows={3} placeholder="Reason or notes..." />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setApprovalDialog(null)}>Cancel</Button>
             <Button
-              variant={approvalDialog?.action === 'REJECT' ? 'destructive' : 'default'}
               onClick={() => {
                 if (!approvalDialog) return;
-                const statusMap: Record<string, string> = { SUBMIT: 'PENDING_APPROVAL', APPROVE: 'ACTIVE', REJECT: 'DRAFT', RETIRE: 'ARCHIVED' };
+                const statusMap: Record<string, string> = { SUBMIT: 'PENDING_APPROVAL', RETIRE: 'ARCHIVED' };
                 handleStatusAction(approvalDialog.versionId, approvalDialog.action, statusMap[approvalDialog.action]);
               }}
             >
-              {approvalDialog?.action === 'SUBMIT' ? 'Submit' : approvalDialog?.action === 'APPROVE' ? 'Approve' : approvalDialog?.action === 'REJECT' ? 'Reject' : 'Retire'}
+              {approvalDialog?.action === 'SUBMIT' ? 'Submit' : 'Retire'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
 
       {/* Copy Rules Dialog */}
       <Dialog open={!!copyDialog} onOpenChange={() => { setCopyDialog(null); setCopySourceId(''); }}>

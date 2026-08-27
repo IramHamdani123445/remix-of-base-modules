@@ -1,0 +1,215 @@
+/**
+ * Which workbasket does a newly submitted claim belong in? (BUG-33)
+ *
+ * A claim's routing is a property of its PRODUCT, not of the claim — the same
+ * place its workflow comes from. So the workbasket is derived from the product
+ * version's own workflow template rather than chosen here:
+ *
+ *   claim.product_version_id + channel
+ *     → bn_product_version_workflow  (channel → default → legacy version-level)
+ *     → bn_workflow_template.steps_config[0]      e.g. { step: "INTAKE", role: "CLERK" }
+ *     → bn_workbasket WHERE assigned_role matches that step's role
+ *
+ * The template's first step is read even when the template is not executable
+ * (`is_executable = false`, `workflow_definition_id = NULL`). Nothing here runs
+ * a workflow — it only asks the product who should own the claim first, and the
+ * template answers that correctly whether or not the engine can drive it.
+ *
+ * `steps_config[0].sla_days` also gives the assignment a `due_at`, without which
+ * the escalation runner has nothing to watch.
+ */
+import { supabase } from '@/integrations/supabase/client';
+import { resolveProductWorkflow } from '@/services/bn/workflow/resolveProductWorkflow';
+
+const db = supabase as any;
+
+export type WorkbasketResolutionSource =
+  | 'WORKFLOW_FIRST_STEP'
+  | 'NONE';
+
+export interface ResolvedClaimWorkbasket {
+  workbasketId: string | null;
+  workbasketName: string | null;
+  source: WorkbasketResolutionSource;
+  /** First step of the product's workflow, e.g. "INTAKE". */
+  stepName: string | null;
+  /** Role named on that step, e.g. "CLERK". */
+  stepRole: string | null;
+  /** Basket role the step role mapped to, e.g. "BN_INTAKE_OFFICER". */
+  basketRole: string | null;
+  slaDays: number | null;
+  /** assigned_at + slaDays, for the escalation runner. Null when no SLA. */
+  dueAt: string | null;
+  /** Why nothing was resolved. Null on success. */
+  reason: string | null;
+}
+
+const NONE = (reason: string): ResolvedClaimWorkbasket => ({
+  workbasketId: null,
+  workbasketName: null,
+  source: 'NONE',
+  stepName: null,
+  stepRole: null,
+  basketRole: null,
+  slaDays: null,
+  dueAt: null,
+  reason,
+});
+
+/**
+ * Workflow steps name a generic role ("CLERK"); workbaskets name a BN role
+ * ("BN_INTAKE_OFFICER"). The two vocabularies were authored separately, so the
+ * link has to be stated explicitly.
+ *
+ * Deliberately narrow. A step role with no confident basket equivalent is left
+ * unmapped and reported, rather than routed to an approximate basket — a claim
+ * sitting in the wrong officer's queue is worse than one reported as unrouted.
+ * `SYSTEM` steps have no human queue by definition; `INSPECTOR` and
+ * `MEDICAL_BOARD` have no basket in the catalogue at all.
+ *
+ * In practice every seeded template starts at INTAKE / CLERK, so the first
+ * entry carries almost all real traffic.
+ */
+export const STEP_ROLE_TO_BASKET_ROLE: Record<string, string> = {
+  CLERK: 'BN_INTAKE_OFFICER',
+  OFFICER: 'BN_ELIGIBILITY_OFFICER',
+  SUPERVISOR: 'BN_SUPERVISOR',
+  MANAGER: 'BN_MANAGER',
+  FINANCE: 'BN_PAYMENT_OFFICER',
+};
+
+interface StepConfig {
+  step?: string;
+  role?: string;
+  sla_days?: number;
+}
+
+/** First step of a template's `steps_config`, tolerating the shapes seen in data. */
+export function firstStep(stepsConfig: unknown): StepConfig | null {
+  if (Array.isArray(stepsConfig) && stepsConfig.length > 0) {
+    const s = stepsConfig[0];
+    return s && typeof s === 'object' ? (s as StepConfig) : null;
+  }
+  // Some templates store { steps: [...] } rather than a bare array.
+  if (stepsConfig && typeof stepsConfig === 'object') {
+    const inner = (stepsConfig as Record<string, unknown>).steps;
+    if (Array.isArray(inner) && inner.length > 0) {
+      const s = inner[0];
+      return s && typeof s === 'object' ? (s as StepConfig) : null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Maps a workflow step role onto a workbasket role. A role that already looks
+ * like a basket role is used as-is, so a template authored against the BN
+ * vocabulary needs no table entry.
+ */
+export function basketRoleForStepRole(stepRole: string | null | undefined): string | null {
+  const role = String(stepRole ?? '').trim().toUpperCase();
+  if (!role) return null;
+  if (role.startsWith('BN_')) return role;
+  return STEP_ROLE_TO_BASKET_ROLE[role] ?? null;
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(iso);
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
+export async function resolveClaimWorkbasket(params: {
+  productVersionId: string | null;
+  channelCode: string | null;
+  /** Restricts the basket search to a product category when the product sets one. */
+  productCategory?: string | null;
+  assignedAt?: string;
+}): Promise<ResolvedClaimWorkbasket> {
+  const { productVersionId, channelCode } = params;
+  if (!productVersionId) return NONE('claim has no product version');
+
+  const resolved = await resolveProductWorkflow(productVersionId, channelCode);
+  if (!resolved.workflowTemplateId) {
+    return NONE(
+      'no workflow template is mapped to this product version and channel, ' +
+      'so the product does not say which queue a new claim belongs in',
+    );
+  }
+
+  const { data: template, error: templateError } = await db
+    .from('bn_workflow_template')
+    .select('id, template_code, steps_config, is_executable')
+    .eq('id', resolved.workflowTemplateId)
+    .maybeSingle();
+  if (templateError) return NONE(`could not read workflow template — ${templateError.message}`);
+  if (!template) return NONE('the mapped workflow template no longer exists');
+
+  const step = firstStep((template as any).steps_config);
+  if (!step) {
+    return NONE(
+      `workflow template ${(template as any).template_code} has no steps configured, ` +
+      'so it does not name a first owner',
+    );
+  }
+
+  const stepName = step.step ?? null;
+  const stepRole = step.role ?? null;
+  const basketRole = basketRoleForStepRole(stepRole);
+  if (!basketRole) {
+    return {
+      ...NONE(
+        `the first workflow step (${stepName ?? 'unnamed'}) is assigned to role ` +
+        `"${stepRole ?? 'none'}", which has no matching workbasket role`,
+      ),
+      stepName,
+      stepRole,
+    };
+  }
+
+  // Prefer a basket restricted to this product's category, then a general one.
+  const { data: baskets, error: basketError } = await db
+    .from('bn_workbasket')
+    .select('id, basket_code, basket_name, assigned_role, product_category')
+    .eq('assigned_role', basketRole)
+    .eq('is_active', true);
+  if (basketError) return NONE(`could not read workbaskets — ${basketError.message}`);
+
+  const candidates: any[] = Array.isArray(baskets) ? baskets : [];
+  if (candidates.length === 0) {
+    return {
+      ...NONE(`no active workbasket is assigned to role "${basketRole}"`),
+      stepName,
+      stepRole,
+      basketRole,
+    };
+  }
+
+  const category = (params.productCategory ?? '').trim().toUpperCase();
+  const byCategory = category
+    ? candidates.filter((b) => String(b.product_category ?? '').toUpperCase() === category)
+    : [];
+  const general = candidates.filter((b) => !b.product_category);
+  // Deterministic pick: category-specific first, then general, then lowest code.
+  const pool = byCategory.length > 0 ? byCategory : general.length > 0 ? general : candidates;
+  const basket = [...pool].sort((a, b) =>
+    String(a.basket_code).localeCompare(String(b.basket_code)),
+  )[0];
+
+  const slaDays = typeof step.sla_days === 'number' && Number.isFinite(step.sla_days)
+    ? step.sla_days
+    : null;
+  const assignedAt = params.assignedAt ?? new Date().toISOString();
+
+  return {
+    workbasketId: basket.id,
+    workbasketName: basket.basket_name ?? basket.basket_code ?? null,
+    source: 'WORKFLOW_FIRST_STEP',
+    stepName,
+    stepRole,
+    basketRole,
+    slaDays,
+    dueAt: slaDays !== null ? addDays(assignedAt, slaDays) : null,
+    reason: null,
+  };
+}

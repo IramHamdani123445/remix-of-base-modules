@@ -302,23 +302,48 @@ export async function executeApprovalAction(params: ExecuteApprovalParams): Prom
     .single();
   if (claimErr || !claim) throw new Error('Claim not found');
 
-  // Maker-checker enforcement (non-admin)
-  if (actionDef.preconditions.includes('maker_checker') && claim.entered_by === performedBy) {
-    // Check if user is admin — admins are exempt
-    const { data: roleData } = await db
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', performedBy);
-    const isAdmin = (roleData ?? []).some((r: any) => r.role === 'admin');
-    if (!isAdmin) {
-      // Log blocked attempt
+  // ─── Approval preconditions ────────────────────────────────────────
+  // APPROVE declares four preconditions — has_calculation,
+  // has_eligibility_pass, evidence_complete, maker_checker — but only
+  // maker-checker was enforced, and it compared `entered_by`, i.e. whoever
+  // REGISTERED the claim rather than whoever recommended it. So a clerk could
+  // register, an officer recommend, and that same officer approve.
+  //
+  // The other three were computed for the queue's badges and never checked, so
+  // this console approved claims with outstanding documents, no passing
+  // eligibility and no calculation — the same claims the Claim Workbench
+  // refuses. Both paths now use one shared gate.
+  if (action === 'APPROVE' || action === 'OVERRIDE') {
+    const { checkApprovalPreconditions, describeApprovalBlockers } = await import(
+      './claims/approvalPreconditions'
+    );
+    const pre = await checkApprovalPreconditions(claimId, performedBy, {
+      reasonCode: reasonCodeId ?? null,
+      narrative: narrative ?? null,
+    });
+    if (!pre.ok) {
+      // Recorded so a refused approval is visible on the claim, as the previous
+      // maker-checker block did.
       await db.from('bn_claim_event').insert({
         claim_id: claimId,
-        event_type: 'MAKER_CHECKER_BLOCKED',
-        description: `User ${performedBy} blocked from ${action} — maker-checker violation`,
+        event_type: 'APPROVAL_BLOCKED',
+        notes:
+          `User ${performedBy} blocked from ${action} — ` +
+          pre.blockers.map(b => b.code).join(', '),
         performed_by: performedBy,
       });
-      throw new Error('Maker-checker violation: You cannot approve your own submission.');
+      throw new Error(describeApprovalBlockers(pre.blockers));
+    }
+    // Self-approval that was permitted rather than absent: record WHY, so an
+    // audit can see that separation of duties was waived and on what grounds.
+    if (pre.selfApprovalReason) {
+      await db.from('bn_claim_event').insert({
+        claim_id: claimId,
+        event_type: 'SELF_APPROVAL_PERMITTED',
+        notes:
+          `${performedBy} approved a claim they recommended — permitted: ${pre.selfApprovalReason}`,
+        performed_by: performedBy,
+      });
     }
   }
 
@@ -359,7 +384,7 @@ export async function executeApprovalAction(params: ExecuteApprovalParams): Prom
     event_type: `APPROVAL_${action}`,
     from_status: claim.status,
     to_status: newStatus,
-    description: narrative || `Approval action: ${action}`,
+    notes: narrative || `Approval action: ${action}`,
     performed_by: performedBy,
     metadata: { reason_code_id: reasonCodeId },
   });

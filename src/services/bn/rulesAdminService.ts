@@ -39,12 +39,53 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { runCalculationEngine } from './calculationEngine';
+import { assertSafeToPublish, type PublishGateReport } from './config/publishGateService';
+import { assertBnConfigApprovePermission } from './bnConfigPermissions';
 
 const db = supabase as any;
 
+// ─── Readiness gate ────────────────────────────────────────────────
+// One gate for the whole approval chain. Submit, approve and publish all run
+// the same checks so a version can never reach APPROVED in a state that the
+// publish step will refuse — which left approvers holding a version they had
+// no way to fix from the Governance screen.
+
+export async function assertVersionReadiness(versionId: string): Promise<PublishGateReport> {
+  return assertSafeToPublish(versionId);
+}
+
+function formatGateErrors(action: string, errors: string[]): string {
+  return `This version cannot be ${action} until the following are resolved:\n• ${errors.join('\n• ')}`;
+}
+
+
 // ─── Types ─────────────────────────────────────────────────────────
 
-export type RuleVersionStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'PUBLISHED' | 'RETIRED' | 'REJECTED';
+/**
+ * Canonical version lifecycle — one vocabulary for the whole platform:
+ *
+ *   DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVED
+ *
+ * Reject returns the version to DRAFT. APPROVED is only ever set by the system
+ * once the last configured approval level has signed. The earlier
+ * PENDING_REVIEW / PUBLISHED / RETIRED names, and the lowercase variants this
+ * file used to write, are legacy and are mapped on read.
+ */
+export type RuleVersionStatus =
+  | 'DRAFT'
+  | 'PENDING_APPROVAL'
+  | 'APPROVED'
+  | 'ACTIVE'
+  | 'ARCHIVED';
+
+/** Canonical statuses, in lifecycle order. */
+export const RULE_VERSION_STATUSES: RuleVersionStatus[] = [
+  'DRAFT',
+  'PENDING_APPROVAL',
+  'APPROVED',
+  'ACTIVE',
+  'ARCHIVED',
+];
 
 export interface RuleVersionSummary {
   id: string;
@@ -195,16 +236,27 @@ async function countRulesByVersion(
   return counts;
 }
 
-function mapVersionStatus(status: string): RuleVersionStatus {
+/**
+ * Map any stored value — canonical, legacy or lowercase — onto the canonical
+ * lifecycle. Kept on the read path because legacy rows may survive until the
+ * Phase 1 migration has run everywhere.
+ */
+export function mapVersionStatus(status: string): RuleVersionStatus {
   const map: Record<string, RuleVersionStatus> = {
     draft: 'DRAFT',
-    pending: 'PENDING_REVIEW',
-    pending_review: 'PENDING_REVIEW',
+    pending: 'PENDING_APPROVAL',
+    pending_review: 'PENDING_APPROVAL',
+    pending_approval: 'PENDING_APPROVAL',
+    in_review: 'PENDING_APPROVAL',
     approved: 'APPROVED',
-    active: 'PUBLISHED',
-    published: 'PUBLISHED',
-    retired: 'RETIRED',
-    rejected: 'REJECTED',
+    active: 'ACTIVE',
+    published: 'ACTIVE',
+    retired: 'ARCHIVED',
+    archived: 'ARCHIVED',
+    superseded: 'ARCHIVED',
+    // A rejected version is returned to DRAFT — rejection is an event in the
+    // approval history, not a resting state of the version.
+    rejected: 'DRAFT',
   };
   return map[status?.toLowerCase()] || 'DRAFT';
 }
@@ -235,18 +287,22 @@ export async function cloneVersionAsDraft(
     .single();
   const nextVersion = (maxRow?.version_number || 0) + 1;
 
-  // 3. Create new version
+  // 3. Create new version.
+  //     version_label / effective_date / expiry_date / change_notes do not
+  //     exist on this table (BUG-08). The real columns are effective_from /
+  //     effective_to, and the label plus the change notes are folded into the
+  //     description, which is what the list screen reads back.
+  const description = [newLabel, changeNotes].filter(Boolean).join(' — ') || null;
   const { data: newVer, error: newErr } = await db
     .from('bn_product_version')
     .insert({
       product_id: source.product_id,
       version_number: nextVersion,
-      version_label: newLabel,
-      status: 'draft',
+      status: 'DRAFT',
       country_code: source.country_code,
-      effective_date: null,
-      expiry_date: null,
-      change_notes: changeNotes,
+      effective_from: null,
+      effective_to: null,
+      description,
       entered_by: userCode,
       entered_at: new Date().toISOString(),
     })
@@ -373,12 +429,15 @@ export async function submitVersionForApproval(
   versionId: string,
   userCode: string
 ): Promise<{ success: boolean; workflowInstanceId?: string; error?: string }> {
-  // Validate version is DRAFT
+  // Validate version is DRAFT (comparison is on the canonical value, so a
+  // legacy lowercase row is normalised first rather than silently refused).
   const { data: ver } = await db.from('bn_product_version').select('status, product_id, version_number').eq('id', versionId).single();
   if (!ver) return { success: false, error: 'Version not found' };
-  if (ver.status !== 'draft') return { success: false, error: `Cannot submit version in ${ver.status} status` };
+  if (mapVersionStatus(ver.status) !== 'DRAFT') {
+    return { success: false, error: `Cannot submit version in ${ver.status} status` };
+  }
 
-  // Validate at least one rule exists
+  // Validate at least one rule exists (cheap first check)
   const [elig, calc, time] = await Promise.all([
     countRulesByVersion('bn_eligibility_rule', [versionId]),
     countRulesByVersion('bn_calculation_rule', [versionId]),
@@ -387,9 +446,16 @@ export async function submitVersionForApproval(
   const totalRules = (elig.get(versionId) ?? 0) + (calc.get(versionId) ?? 0) + (time.get(versionId) ?? 0);
   if (totalRules === 0) return { success: false, error: 'Version must have at least one rule before submission' };
 
+  // Full readiness gate — the same one publish uses. Submitting an
+  // unpublishable version only pushes the failure to the last step, where the
+  // approver has no way to fix it.
+  const gate = await assertVersionReadiness(versionId);
+  if (!gate.ok) return { success: false, error: formatGateErrors('submitted for approval', gate.errors) };
+
+
   // Update status
   await db.from('bn_product_version')
-    .update({ status: 'pending', modified_by: userCode, modified_at: new Date().toISOString() })
+    .update({ status: 'PENDING_APPROVAL', modified_by: userCode, modified_at: new Date().toISOString() })
     .eq('id', versionId);
 
   // Try to start workflow
@@ -437,7 +503,7 @@ export async function submitVersionForApproval(
 
   await logRuleAudit('RULE_VERSION_SUBMITTED', 'bn_product_version', versionId, {
     from_status: 'DRAFT',
-    to_status: 'PENDING_REVIEW',
+    to_status: 'PENDING_APPROVAL',
     workflow_instance_id: workflowInstanceId,
   }, userCode);
 
@@ -451,18 +517,32 @@ export async function approveVersion(
   approverCode: string,
   comments?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // Approval is a granted right, not a side effect of holding edit.
+  const denied = await assertBnConfigApprovePermission();
+  if (denied) return { success: false, error: denied };
+
   const { data: ver } = await db.from('bn_product_version').select('status, entered_by').eq('id', versionId).single();
   if (!ver) return { success: false, error: 'Version not found' };
-  if (ver.status !== 'pending') return { success: false, error: `Cannot approve version in ${ver.status} status` };
+  if (mapVersionStatus(ver.status) !== 'PENDING_APPROVAL') {
+    return { success: false, error: `Cannot approve version in ${ver.status} status` };
+  }
 
   // Maker-checker: approver must differ from author
   if (ver.entered_by === approverCode) {
     return { success: false, error: 'Maker-checker violation: approver cannot be the same as the author' };
   }
 
+
+  // Configuration can change between submission and approval, so the gate is
+  // re-run here rather than trusted from submit time.
+  const gate = await assertVersionReadiness(versionId);
+  if (!gate.ok) return { success: false, error: formatGateErrors('approved', gate.errors) };
+
+
+
   await db.from('bn_product_version')
     .update({
-      status: 'approved',
+      status: 'APPROVED',
       modified_by: approverCode,
       modified_at: new Date().toISOString(),
     })
@@ -483,16 +563,23 @@ export async function rejectVersion(
   rejectorCode: string,
   reason: string
 ): Promise<{ success: boolean; error?: string }> {
-  const { data: ver } = await db.from('bn_product_version').select('status').eq('id', versionId).single();
+  const denied = await assertBnConfigApprovePermission();
+  if (denied) return { success: false, error: denied };
+
+  const { data: ver } = await db.from('bn_product_version').select('status, description').eq('id', versionId).single();
   if (!ver) return { success: false, error: 'Version not found' };
-  if (ver.status !== 'pending') return { success: false, error: `Cannot reject version in ${ver.status} status` };
+  if (mapVersionStatus(ver.status) !== 'PENDING_APPROVAL') {
+    return { success: false, error: `Cannot reject version in ${ver.status} status` };
+  }
 
   await db.from('bn_product_version')
     .update({
-      status: 'draft', // Return to draft for revision
+      status: 'DRAFT', // Return to draft for revision
       modified_by: rejectorCode,
       modified_at: new Date().toISOString(),
-      change_notes: `REJECTED: ${reason}`,
+      // No change_notes column exists; the rejection reason is appended to the
+      // description, which is what the Versions list reads back.
+      description: `${ver.description ? `${ver.description}\n` : ''}REJECTED: ${reason}`,
     })
     .eq('id', versionId);
 
@@ -504,6 +591,60 @@ export async function rejectVersion(
   return { success: true };
 }
 
+// ─── Return Version to Draft ───────────────────────────────────────
+
+/**
+ * Unlock a version that cannot move forward.
+ *
+ * A version that reached PENDING_APPROVAL or APPROVED with blocking readiness
+ * issues used to be a dead end: publish refused it, and every Product Editor
+ * tab is read-only outside DRAFT, so there was no way to fix what publish was
+ * complaining about. Reject only accepts PENDING_APPROVAL, so an APPROVED
+ * version had no exit at all.
+ *
+ * Returning to DRAFT is the exit. ACTIVE versions are deliberately excluded —
+ * a live version is never edited in place; it is cloned to a new draft.
+ */
+export async function returnVersionToDraft(
+  versionId: string,
+  userCode: string,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!reason?.trim()) return { success: false, error: 'A reason is required to return a version to draft' };
+
+  const { data: ver } = await db.from('bn_product_version').select('status, description').eq('id', versionId).single();
+  if (!ver) return { success: false, error: 'Version not found' };
+
+  const status = mapVersionStatus(ver.status);
+  if (status !== 'PENDING_APPROVAL' && status !== 'APPROVED') {
+    return {
+      success: false,
+      error: status === 'ACTIVE'
+        ? 'A live version cannot be returned to draft — clone it to a new draft version instead'
+        : `Cannot return a version in ${ver.status} status to draft`,
+    };
+  }
+
+  await db.from('bn_product_version')
+    .update({
+      status: 'DRAFT',
+      modified_by: userCode,
+      modified_at: new Date().toISOString(),
+      description: `${ver.description ? `${ver.description}\n` : ''}RETURNED TO DRAFT: ${reason}`,
+    })
+    .eq('id', versionId);
+
+  await logRuleAudit('RULE_VERSION_RETURNED_TO_DRAFT', 'bn_product_version', versionId, {
+    returned_by: userCode,
+    previous_status: status,
+    reason,
+  }, userCode);
+
+  return { success: true };
+}
+
+
+
 // ─── Publish Version ───────────────────────────────────────────────
 
 export async function publishVersion(
@@ -511,66 +652,48 @@ export async function publishVersion(
   effectiveDate: string,
   publisherCode: string
 ): Promise<{ success: boolean; error?: string }> {
+  const denied = await assertBnConfigApprovePermission();
+  if (denied) return { success: false, error: denied };
+
   const { data: ver } = await db.from('bn_product_version')
     .select('status, product_id, version_number')
     .eq('id', versionId)
     .single();
   if (!ver) return { success: false, error: 'Version not found' };
-  if (!['approved'].includes(ver.status)) {
+  if (mapVersionStatus(ver.status) !== 'APPROVED') {
     return { success: false, error: `Only APPROVED versions can be published (current: ${ver.status})` };
   }
 
-  // Block publish on ERROR-level cross-tab conflicts
+  // The readiness gate reports every blocking item by name. The previous
+  // generic "cross-tab conflicts contain ERROR-level issues" message named
+  // nothing, so the operator had no way to know what to fix.
+  const gate = await assertVersionReadiness(versionId);
+  if (!gate.ok) return { success: false, error: formatGateErrors('published', gate.errors) };
+
+
+  // Delegate the actual publish to the single canonical routine used by the
+  // Product Editor. Governance previously ran its own partial update, which
+  // skipped the Configuration Validation gate, the catalogue-rule governance
+  // gate and — critically — the promotion of bn_product to ACTIVE. A product
+  // published only from Governance therefore never became selectable in Claim
+  // Registration. One routine now serves both entry points.
+  const { publishProductVersion } = await import('@/services/bn/productService');
   try {
-    const { hasBlockingConflicts } = await import('@/services/bn/config/conflictDetectionService');
-    if (await hasBlockingConflicts(versionId)) {
-      return { success: false, error: 'Cross-tab conflicts contain ERROR-level issues. Resolve them on the Product Editor before publishing.' };
-    }
-  } catch { /* non-fatal */ }
-
-  // Retire current active version for this product (no overlapping active)
-  const { data: currentActive } = await db
-    .from('bn_product_version')
-    .select('id')
-    .eq('product_id', ver.product_id)
-    .eq('status', 'active')
-    .limit(1)
-    .maybeSingle();
-
-  if (currentActive) {
-    await db.from('bn_product_version')
-      .update({
-        status: 'retired',
-        expiry_date: effectiveDate,
-        modified_by: publisherCode,
-        modified_at: new Date().toISOString(),
-      })
-      .eq('id', currentActive.id);
-
-    await logRuleAudit('RULE_VERSION_RETIRED', 'bn_product_version', currentActive.id, {
-      retired_by: publisherCode,
-      superseded_by: versionId,
-    }, publisherCode);
+    await publishProductVersion(versionId, effectiveDate);
+  } catch (err: any) {
+    return { success: false, error: err?.message || 'Publish failed' };
   }
-
-  // Publish new version
-  await db.from('bn_product_version')
-    .update({
-      status: 'active',
-      effective_date: effectiveDate,
-      modified_by: publisherCode,
-      modified_at: new Date().toISOString(),
-    })
-    .eq('id', versionId);
 
   await logRuleAudit('RULE_VERSION_PUBLISHED', 'bn_product_version', versionId, {
     published_by: publisherCode,
     effective_date: effectiveDate,
-    supersedes: currentActive?.id,
+    product_id: ver.product_id,
+    version_number: ver.version_number,
   }, publisherCode);
 
   return { success: true };
 }
+
 
 // ─── Simulate Version ──────────────────────────────────────────────
 

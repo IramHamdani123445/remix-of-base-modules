@@ -18,6 +18,7 @@ import PaymentHierarchyHealth from '@/components/bn/product/PaymentHierarchyHeal
 const statusVariant: Record<BnProductStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   DRAFT: 'secondary',
   PENDING_APPROVAL: 'outline',
+  APPROVED: 'outline',
   ACTIVE: 'default',
   SUSPENDED: 'destructive',
   ARCHIVED: 'outline',

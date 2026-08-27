@@ -16,6 +16,7 @@ import {
 } from '@/types/centralPaymentArrangement';
 import { getCurrentUserCode } from '@/hooks/useUserCode';
 import { isComplianceDbFlagEnabled } from '@/lib/compliance/featureToggles';
+import { assertNoOpenArrangement, translateArrangementCreationError } from '@/services/compliance/arrangementConcurrencyService';
 
 function assertArrangementEnabled() {
   if (!isComplianceDbFlagEnabled('compliance.payment.arrangement')) {
@@ -116,17 +117,8 @@ class CentralPaymentArrangementService {
       throw new Error(`Arranged amount (${request.totalDebtFromCase}) exceeds case outstanding balance (${caseOutstanding})`);
     }
 
-    // 2. Check for existing active arrangement on this employer
-    const { data: existing } = await supabase
-      .from('ce_payment_arrangements')
-      .select('id')
-      .eq('employer_id', request.employerId)
-      .eq('status', 'ACTIVE')
-      .maybeSingle();
-
-    if (existing) {
-      throw new Error('This employer already has an active payment arrangement. Please supersede or complete the existing arrangement first.');
-    }
+    // 2. Concurrent-arrangement protection (pre-flight; database trigger is authoritative)
+    await assertNoOpenArrangement(request.employerId);
 
     // 3. Generate arrangement number
     const year = new Date().getFullYear();
@@ -165,7 +157,7 @@ class CentralPaymentArrangementService {
       .select('*')
       .single();
 
-    if (arrErr) throw arrErr;
+    if (arrErr) throw await translateArrangementCreationError(arrErr, request.employerId);
 
     // 6. Generate installment rows in ce_installments
     const installmentRows = [];
@@ -328,17 +320,8 @@ class CentralPaymentArrangementService {
     const installmentAmount = totalArrangedAmount / numInstallments;
     const endDate = request.plannedEndDate ?? calculateDueDate(request.startDate, numInstallments - 1, request.frequency ?? 'MONTHLY');
 
-    // Check for existing active arrangement
-    const { data: existing } = await supabase
-      .from('ce_payment_arrangements')
-      .select('id')
-      .eq('employer_id', request.employerId)
-      .eq('status', 'ACTIVE')
-      .maybeSingle();
-
-    if (existing) {
-      throw new Error('This employer already has an active payment arrangement. Please supersede or complete the existing arrangement first.');
-    }
+    // Concurrent-arrangement protection (pre-flight; database trigger is authoritative)
+    await assertNoOpenArrangement(request.employerId);
 
     const year = new Date().getFullYear();
     const { count } = await supabase.from('ce_payment_arrangements').select('id', { count: 'exact', head: true });

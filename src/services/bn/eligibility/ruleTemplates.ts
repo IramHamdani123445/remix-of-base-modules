@@ -125,8 +125,13 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
   },
   {
     template_code: 'MUST_BE_FEMALE',
-    label: 'Must Be Female',
-    description: 'Used by maternity products.',
+    label: 'Claimant Must Be Female',
+    // BUG-32 — the claimant is the woman for BOTH maternity products. SSB pays
+    // the Maternity Grant on the insured husband's CONTRIBUTIONS, but the woman
+    // is still the claimant, so this rule belongs on the Grant as well as the
+    // Allowance. The husband's record is expressed by the contribution rules,
+    // not by relaxing this one.
+    description: 'Only a female member may claim a maternity benefit or grant.',
     fact_key: 'person.gender',
     operator: '=',
     default_value: 'F',

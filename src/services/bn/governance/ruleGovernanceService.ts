@@ -15,6 +15,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { writeBnAudit } from '@/services/bn/audit/bnAuditService';
+import { lookupField } from '@/services/bn/eligibility/ruleFieldMapping';
 
 const db = supabase as any;
 
@@ -141,11 +142,56 @@ export function availableTransitions(
 
 // ─────────────── Validation gates ───────────────
 
-const ALLOWED_OPERATORS = new Set([
+/**
+ * Rule operators exist in two spellings, and both are live data.
+ *
+ * `bn_eligibility_fact.allowed_operators` stores symbols — ["=", "!=", ">",
+ * ">=", "<", "<=", "between"] — and the Rule Catalogue form sets the rule's
+ * operator FROM that list when a fact is chosen. This gate only accepted the
+ * word spelling, so it rejected the very value the form had just written:
+ * 13 of the 68 catalogue rules could never pass technical review, whichever
+ * operator the reviewer picked.
+ *
+ * Both spellings are therefore accepted and normalised to one canonical form.
+ * A spelling in neither table is still rejected — this widens the vocabulary,
+ * it does not remove the check.
+ */
+const CANONICAL_OPERATORS = new Set([
   'EQUALS','NOT_EQUALS','GREATER_THAN','GREATER_OR_EQUAL',
   'LESS_THAN','LESS_OR_EQUAL','BETWEEN','IN','NOT_IN',
   'BOOLEAN','EXISTS','CONTAINS',
 ]);
+
+/** Symbol spelling → canonical word spelling. */
+const OPERATOR_SYNONYMS: Record<string, string> = {
+  '=': 'EQUALS',
+  '==': 'EQUALS',
+  '!=': 'NOT_EQUALS',
+  '<>': 'NOT_EQUALS',
+  '>': 'GREATER_THAN',
+  '>=': 'GREATER_OR_EQUAL',
+  '<': 'LESS_THAN',
+  '<=': 'LESS_OR_EQUAL',
+  BETWEEN: 'BETWEEN',
+  IN: 'IN',
+  NOT_IN: 'NOT_IN',
+  EXISTS: 'EXISTS',
+  BOOLEAN: 'BOOLEAN',
+  CONTAINS: 'CONTAINS',
+};
+
+/**
+ * The canonical form of an operator, whichever spelling was stored.
+ * Returns null when the value is in neither vocabulary.
+ */
+export function canonicalOperator(raw: string | null | undefined): string | null {
+  const v = String(raw ?? '').trim();
+  if (!v) return null;
+  const upper = v.toUpperCase();
+  if (CANONICAL_OPERATORS.has(upper)) return upper;
+  // Symbols must not be upper-cased before lookup; words may be.
+  return OPERATOR_SYNONYMS[v] ?? OPERATOR_SYNONYMS[upper] ?? null;
+}
 
 export async function validateTechnical(rule: RuleSnapshot): Promise<ValidationIssue[]> {
   const issues: ValidationIssue[] = [];
@@ -153,11 +199,33 @@ export async function validateTechnical(rule: RuleSnapshot): Promise<ValidationI
   if (!rule.fact_key) {
     issues.push({ code: 'FACT_MISSING', message: 'Rule has no fact_key', severity: 'error' });
   } else {
-    const { data: fact } = await db.from('bn_eligibility_fact')
+    // A fact is registered in either of two places: the bn_eligibility_fact
+    // table, or the application's own field/fact registries. Checking only the
+    // table reported "not registered" for facts the evaluator resolves fine.
+    const inCodeRegistry = lookupField(rule.fact_key) !== undefined;
+
+    const { data: fact, error: factError } = await db.from('bn_eligibility_fact')
       .select('fact_key, implementation_status').eq('fact_key', rule.fact_key).maybeSingle();
-    if (!fact) {
-      issues.push({ code: 'FACT_NOT_REGISTERED',
-        message: `Fact "${rule.fact_key}" is not registered`, severity: 'error' });
+
+    if (factError) {
+      // The error used to be discarded, so an unreadable table was reported as
+      // an unregistered fact — a false accusation against a valid rule.
+      if (!inCodeRegistry) {
+        issues.push({
+          code: 'FACT_UNVERIFIABLE',
+          message:
+            `Could not check whether fact "${rule.fact_key}" is registered ` +
+            `(${factError.message}). Retry, or confirm the fact registry is readable.`,
+          severity: 'error',
+        });
+      }
+      // Present in the code registry — the table read failing does not make the
+      // rule invalid, so nothing is raised.
+    } else if (!fact) {
+      if (!inCodeRegistry) {
+        issues.push({ code: 'FACT_NOT_REGISTERED',
+          message: `Fact "${rule.fact_key}" is not registered`, severity: 'error' });
+      }
     } else if (fact.implementation_status === 'NOT_IMPLEMENTED') {
       issues.push({ code: 'FACT_NOT_IMPLEMENTED',
         message: `Fact "${rule.fact_key}" is not implemented`, severity: 'error' });
@@ -167,13 +235,20 @@ export async function validateTechnical(rule: RuleSnapshot): Promise<ValidationI
     }
   }
 
-  if (!rule.operator || !ALLOWED_OPERATORS.has(rule.operator)) {
-    issues.push({ code: 'OPERATOR_INVALID',
-      message: `Operator "${rule.operator}" is not allowed`, severity: 'error' });
+  const canonical = canonicalOperator(rule.operator);
+  if (!canonical) {
+    issues.push({
+      code: 'OPERATOR_INVALID',
+      message:
+        `Operator "${rule.operator}" is not recognised. Use one of: ` +
+        [...CANONICAL_OPERATORS].join(', ') + ' (or the symbol form =, !=, >, >=, <, <=).',
+      severity: 'error',
+    });
   }
 
-  // Value presence check by operator
-  const op = rule.operator;
+  // Value presence checks run against the canonical form, so a rule stored with
+  // the symbol spelling gets the same value validation as the word spelling.
+  const op = canonical ?? '';
   if (op === 'BETWEEN' && (rule.value_from == null || rule.value_to == null)) {
     issues.push({ code: 'VALUE_RANGE_MISSING',
       message: 'BETWEEN requires both value_from and value_to', severity: 'error' });

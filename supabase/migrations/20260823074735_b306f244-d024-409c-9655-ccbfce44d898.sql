@@ -1,0 +1,1 @@
+ALTER VIEW public.ce_v_arrangement_breach_occurrence SET (security_invoker = on);

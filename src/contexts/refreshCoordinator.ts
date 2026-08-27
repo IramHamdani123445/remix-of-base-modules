@@ -23,6 +23,23 @@ export interface RefreshResult {
 }
 
 let inflight: Promise<RefreshResult> | null = null;
+const AUTH_OPERATION_TIMEOUT_MS = 8_000;
+
+async function withAuthTimeout<T>(operation: string, request: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () => reject(new Error(`${operation}_timeout`)),
+      AUTH_OPERATION_TIMEOUT_MS,
+    );
+  });
+
+  try {
+    return await Promise.race([request, timeout]);
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+}
 
 async function performRefresh(forceRefresh: boolean): Promise<RefreshResult> {
   try {
@@ -32,17 +49,23 @@ async function performRefresh(forceRefresh: boolean): Promise<RefreshResult> {
     // refreshSession in that state may emit SIGNED_OUT and clear the session.
     let currentSession = getPersistedSessionSnapshot();
     if (!currentSession) {
-      const current = await supabase.auth.getSession();
+      const current = await withAuthTimeout('get_session', supabase.auth.getSession());
       currentSession = current.data.session;
     }
     if (!forceRefresh && currentSession?.access_token) {
-      const validated = await supabase.auth.getUser(currentSession.access_token);
+      const validated = await withAuthTimeout(
+        'get_user',
+        supabase.auth.getUser(currentSession.access_token),
+      );
       if (!validated.error && validated.data.user) {
         return { session: currentSession };
       }
     }
 
-    const { data, error } = await supabase.auth.refreshSession();
+    const { data, error } = await withAuthTimeout(
+      'refresh_session',
+      supabase.auth.refreshSession(),
+    );
     if (error) {
       const msg = error.message || 'refresh_failed';
       // Supabase surfaces expired / invalid refresh tokens with specific keywords.
