@@ -1271,31 +1271,50 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
       .eq("id", runId);
 
     const nextUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/ce-violation-scan`;
-    const res = await fetch(nextUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
-      },
-      body: JSON.stringify({
-        continue_run_id: runId,
-        employer_offset: sliceEnd,
-        batch_size: batchSize,
-        carry: cumulative,
-        dry_run: dryRun,
-        force,
-        as_of_date: asOfDate,
-        employer_id: employerFilter,
-        limit: employerLimit,
-        triggered_by: triggeredBy,
-      }),
+    const nextBody = JSON.stringify({
+      continue_run_id: runId,
+      employer_offset: sliceEnd,
+      batch_size: batchSize,
+      carry: cumulative,
+      dry_run: dryRun,
+      force,
+      as_of_date: asOfDate,
+      employer_id: employerFilter,
+      limit: employerLimit,
+      triggered_by: triggeredBy,
     });
 
-    if (!res.ok) {
-      throw new Error(`Failed to chain next employer batch (HTTP ${res.status})`);
+    // The chain hop is the single point of failure for a long scan: a
+    // transient 503 from the edge runtime used to abandon the run mid-way and
+    // leave the UI waiting. Retry with bounded backoff before giving up.
+    let lastStatus = 0;
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
+      try {
+        const res = await fetch(nextUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: nextBody,
+        });
+        if (res.ok) return;
+        lastStatus = res.status;
+        // 4xx other than 429 will not succeed on retry.
+        if (res.status < 500 && res.status !== 429) break;
+      } catch (err) {
+        lastErr = err;
+      }
     }
-    return;
+    throw new Error(
+      `Failed to chain next employer batch after retries (HTTP ${lastStatus || "network"}${
+        lastErr ? `: ${(lastErr as Error).message}` : ""
+      })`,
+    );
   }
+
 
   // Update run record — final slice
   await supabase
