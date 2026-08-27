@@ -153,7 +153,7 @@ export default function EscalationRoles() {
   return (
     <PageShell
       title="Escalation Roles"
-      description="Designate who holds the Head of Internal Audit and Department Head offices. Escalations are only sent to explicitly designated, currently serving office holders."
+      subtitle="Designate who holds the Head of Internal Audit and Department Head offices. Escalations are only sent to explicitly designated, currently serving office holders."
       actions={
         <Button onClick={() => setProposeOpen(true)}>
           <UserPlus className="mr-2 h-4 w-4" /> Propose designation
@@ -214,7 +214,7 @@ export default function EscalationRoles() {
         </TabsList>
 
         <TabsContent value="register" className="mt-4">
-          <DataTable data={holders} columns={holderColumns} loading={isLoading} emptyMessage="No office holders designated yet." />
+          <DataTable data={holders} columns={holderColumns} isLoading={isLoading} emptyMessage="No office holders designated yet." />
         </TabsContent>
 
         <TabsContent value="gaps" className="mt-4">
