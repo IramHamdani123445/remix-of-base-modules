@@ -166,6 +166,73 @@ Deno.serve(async (req) => {
       console.error("watchdog sweep failed (non-fatal):", (wdErr as Error).message);
     }
 
+    // ── Resume sweep: a slice worker can be killed by the edge CPU budget
+    // ("CPU Time exceeded") after persisting its progress but before chaining
+    // the next slice, which left the run stuck on "Running" forever. Any run
+    // that reported progress but has not moved for 90s is re-chained from the
+    // last completed offset.
+    const resumeStranded = async () => {
+      const staleBefore = Date.now() - 90_000;
+      const { data: liveRuns } = await supabase
+        .from("ce_automation_runs")
+        .select("id, started_at, execution_log, parameters, is_dry_run")
+        .ilike("status", "running")
+        .gt("started_at", new Date(Date.now() - 30 * 60 * 1000).toISOString());
+
+      for (const run of liveRuns ?? []) {
+        const log: any = run.execution_log ?? {};
+        if (!log.in_progress) continue;
+        const beat = log.heartbeat_at ? new Date(log.heartbeat_at).getTime() : 0;
+        if (beat > staleBefore) continue;
+        const resumeCount = Number(log.resume_count ?? 0);
+        if (resumeCount > 200) continue;
+
+        const params: any = run.parameters ?? {};
+        await supabase
+          .from("ce_automation_runs")
+          .update({
+            execution_log: {
+              ...log,
+              resume_count: resumeCount + 1,
+              heartbeat_at: new Date().toISOString(),
+            },
+          })
+          .eq("id", run.id);
+
+        const carryFromLog = {
+          total_employers_scanned: log.total_employers_scanned ?? 0,
+          violations_detected: log.violations_detected ?? 0,
+          violations_created: log.violations_created ?? 0,
+          violations_routed: log.violations_routed ?? 0,
+          violations_skipped_dedupe: log.violations_skipped_dedupe ?? 0,
+          violations_would_create: log.violations_would_create ?? 0,
+          by_rule: log.by_rule ?? [],
+          sample_violations: log.sample_violations ?? [],
+        };
+
+        await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/ce-violation-scan`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({
+            continue_run_id: run.id,
+            employer_offset: log.employers_done ?? 0,
+            batch_size: Number(params.batch_size ?? 100),
+            carry: carryFromLog,
+            dry_run: run.is_dry_run ?? log.dry_run ?? false,
+            force: log.force ?? false,
+            as_of_date: params.as_of_date ?? new Date().toISOString().slice(0, 10),
+            employer_id: params.employer_id ?? null,
+            limit: params.limit ?? null,
+            triggered_by: "RESUME-WATCHDOG",
+          }),
+        }).catch((e) => console.error("resume chain failed:", (e as Error).message));
+      }
+    };
+
+
     const body = await req.json().catch(() => ({}));
     const dryRun: boolean = body.dry_run ?? false;
     const force: boolean = body.force ?? false;
