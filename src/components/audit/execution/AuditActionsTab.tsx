@@ -140,6 +140,15 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
     { key: 'action_description', header: 'Action', render: (r) => <span className="text-sm max-w-[200px] truncate block">{r.action_description || '—'}</span> },
     { key: 'responsible_person', header: 'Assigned To', render: (r) => <span className="text-xs">{r.responsible_person || '—'}</span> },
     { key: 'target_date', header: 'Due Date', render: (r) => r.target_date ? formatDateForDisplay(r.target_date) : '—' },
+    { key: 'documents', header: 'Documents', render: (r) => {
+      const count = Array.isArray(r.evidence_ids) ? r.evidence_ids.length : 0;
+      return (
+        <span className={`text-xs flex items-center gap-1 ${count > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+          <Paperclip className="h-3.5 w-3.5" />{count}
+        </span>
+      );
+    }},
+
     { key: 'status', header: 'Status', render: (r) => (
       <div className="flex items-center gap-1">
         <StatusBadge status={r.status || 'Open'} />
