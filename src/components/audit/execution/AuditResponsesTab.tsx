@@ -9,13 +9,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, MessageSquare, FileText, Loader2 } from 'lucide-react';
 import { StatusBadge, DataTable } from '@/components/common';
 import type { DataTableColumn } from '@/components/common';
-import { useIAManagementResponseMutations } from '@/hooks/useAuditData';
 import { AuditEmptyState } from '@/components/audit/workspace/AuditEmptyState';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { useUserCode } from '@/hooks/useUserCode';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { notifyManagementResponseSubmitted } from '@/services/auditNotificationService';
+import {
+  useRecordManagementResponse,
+  useReviewManagementResponse,
+  type ManagementPosition,
+} from '@/hooks/useAuditLifecycleCommands';
+
+const POSITIONS: ManagementPosition[] = ['Accepted', 'Partially Accepted', 'Rejected'];
+
 
 const ALLOWED_FILE_TYPES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/png', 'image/jpeg'];
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
