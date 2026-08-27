@@ -15,6 +15,8 @@ import { formatDateForDisplay } from '@/lib/format-config';
 import { useUserCode } from '@/hooks/useUserCode';
 import { useToast } from '@/hooks/use-toast';
 import { notifyActionAssigned } from '@/services/auditNotificationService';
+import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface AuditActionsTabProps {
   auditId: string;
@@ -25,13 +27,20 @@ interface AuditActionsTabProps {
   onClose: () => void;
 }
 
+const ACTION_STATUSES = ['Open', 'In Progress', 'Completed', 'Verified', 'Closed'];
+
 export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, auditResponses, onClose }: AuditActionsTabProps) {
-  const { create } = useIAActionTrackingMutations();
+  const { create, update } = useIAActionTrackingMutations();
   const { userCode } = useUserCode();
   const { toast } = useToast();
+  const { can } = useInternalAuditPermissions();
+  const canProgress = can('progress_audit_actions');
+  const canCloseActions = can('close_audit_actions');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ finding_id: '', action_description: '', responsible_person: '', target_date: '' });
   const [closureNotes, setClosureNotes] = useState(audit?.closure_notes || '');
+  const [progressAction, setProgressAction] = useState<any>(null);
+  const [progressForm, setProgressForm] = useState({ status: 'Open', target_date: '', responsible_person: '', notes: '' });
 
   const isOverdue = (action: any) => {
     if (!action.target_date) return false;
@@ -42,6 +51,39 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
   const overdueCount = auditActions.filter(isOverdue).length;
   const openFindingsCount = auditFindings.filter((f: any) => !['Closed', 'Resolved'].includes(f.status || '')).length;
   const isClosed = audit?.status === 'Closed' || audit?.execution_status === 'Closed';
+
+  const openProgress = (row: any) => {
+    setProgressAction(row);
+    setProgressForm({
+      status: row.status || 'Open',
+      target_date: row.target_date || '',
+      responsible_person: row.responsible_person || '',
+      notes: row.notes || '',
+    });
+  };
+
+  const handleProgressSave = () => {
+    if (!progressAction) return;
+    const closing = ['Verified', 'Closed'].includes(progressForm.status);
+    if (closing && !canCloseActions) {
+      toast({ title: 'Not permitted', description: 'You do not have permission to close or verify audit actions.', variant: 'destructive' });
+      return;
+    }
+    if (closing && !progressForm.notes.trim()) {
+      toast({ title: 'Validation', description: 'Closure evidence notes are required before verifying or closing an action.', variant: 'destructive' });
+      return;
+    }
+    update.mutate({
+      id: progressAction.id,
+      status: progressForm.status,
+      action_status: progressForm.status,
+      target_date: progressForm.target_date || null,
+      responsible_person: progressForm.responsible_person || null,
+      notes: progressForm.notes || null,
+      updated_by: userCode || null,
+      ...(closing ? { verified_by: userCode || null, verified_date: new Date().toISOString() } : {}),
+    } as any, { onSuccess: () => setProgressAction(null) });
+  };
 
   const handleCreate = () => {
     if (!form.finding_id || !form.action_description) {
@@ -76,7 +118,13 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
         {isOverdue(r) && <StatusBadge status="Overdue" />}
       </div>
     )},
+    { key: 'row_actions', header: 'Update', render: (r) => (
+      <Button size="sm" variant="outline" disabled={!canProgress || isClosed} onClick={() => openProgress(r)}>
+        Update
+      </Button>
+    )},
   ];
+
 
   return (
     <div className="space-y-5">
@@ -133,6 +181,33 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
           />
         </CardContent></Card>
       )}
+
+      <Dialog open={!!progressAction} onOpenChange={(open) => !open && setProgressAction(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Update Corrective Action</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Status</Label>
+              <Select value={progressForm.status} onValueChange={(v) => setProgressForm((f) => ({ ...f, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{ACTION_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Assigned To</Label><Input value={progressForm.responsible_person} onChange={(e) => setProgressForm((f) => ({ ...f, responsible_person: e.target.value }))} /></div>
+              <div><Label>Revised Due Date</Label><Input type="date" value={progressForm.target_date} onChange={(e) => setProgressForm((f) => ({ ...f, target_date: e.target.value }))} /></div>
+            </div>
+            <div>
+              <Label>Progress / Evidence Notes{['Verified', 'Closed'].includes(progressForm.status) ? ' *' : ''}</Label>
+              <Textarea rows={3} value={progressForm.notes} onChange={(e) => setProgressForm((f) => ({ ...f, notes: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProgressAction(null)}>Cancel</Button>
+            <Button onClick={handleProgressSave} disabled={update.isPending}>Save Update</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Closure Section */}
       <AuditReadinessPanel

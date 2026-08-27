@@ -76253,8 +76253,10 @@ export type Database = {
           control_effectiveness: string | null
           created_at: string
           created_by: string | null
+          department_id: string | null
           due_date: string | null
           fiscal_year: string | null
+          function_id: string | null
           id: string
           inherent_impact: number | null
           inherent_likelihood: number | null
@@ -76288,8 +76290,10 @@ export type Database = {
           control_effectiveness?: string | null
           created_at?: string
           created_by?: string | null
+          department_id?: string | null
           due_date?: string | null
           fiscal_year?: string | null
+          function_id?: string | null
           id?: string
           inherent_impact?: number | null
           inherent_likelihood?: number | null
@@ -76323,8 +76327,10 @@ export type Database = {
           control_effectiveness?: string | null
           created_at?: string
           created_by?: string | null
+          department_id?: string | null
           due_date?: string | null
           fiscal_year?: string | null
+          function_id?: string | null
           id?: string
           inherent_impact?: number | null
           inherent_likelihood?: number | null
@@ -76355,10 +76361,24 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "ia_risk_register_audit_universe_id_fkey"
-            columns: ["audit_universe_id"]
+            foreignKeyName: "ia_risk_register_department_id_fkey"
+            columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "ia_audit_universe"
+            referencedRelation: "ia_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_risk_register_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "v_ia_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_risk_register_function_id_fkey"
+            columns: ["function_id"]
+            isOneToOne: false
+            referencedRelation: "ia_department_functions"
             referencedColumns: ["id"]
           },
           {

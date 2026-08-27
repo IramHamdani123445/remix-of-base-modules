@@ -16,17 +16,17 @@ import { calculateScore, getRiskRating } from '@/lib/audit/riskEngine';
 import { useRiskRatingCalculator } from '@/hooks/useRiskConfig';
 
 // ============= RISK REGISTER =============
-export function useRiskRegister(filters?: { audit_universe_id?: string; status?: string; category?: string }) {
+export function useRiskRegister(filters?: { department_id?: string; status?: string; category?: string }) {
   return useQuery({
     queryKey: ['ia_risk_register', filters],
     queryFn: async () => {
       let query = supabase
         .from('ia_risk_register' as any)
-        .select('*, ia_audit_universe!left(entity_name, entity_type, entity_code)')
+        .select('*, ia_departments!left(id, name, office_code)')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
-      if (filters?.audit_universe_id) query = query.eq('audit_universe_id', filters.audit_universe_id);
+      if (filters?.department_id) query = query.eq('department_id', filters.department_id);
       if (filters?.status) query = query.eq('status', filters.status);
       if (filters?.category) query = query.eq('risk_category', filters.category);
 
@@ -366,21 +366,21 @@ export function useRiskReviewMutations() {
 }
 
 // ============= DUPLICATE CHECK =============
-export function useDuplicateRiskCheck(auditUniverseId?: string, riskTitle?: string, riskCategory?: string) {
+export function useDuplicateRiskCheck(departmentId?: string, riskTitle?: string, riskCategory?: string) {
   return useQuery({
-    queryKey: ['ia_risk_register_dupes', auditUniverseId, riskTitle, riskCategory],
+    queryKey: ['ia_risk_register_dupes', departmentId, riskTitle, riskCategory],
     queryFn: async () => {
-      if (!auditUniverseId || !riskTitle || riskTitle.length < 3) return [];
+      if (!departmentId || !riskTitle || riskTitle.length < 3) return [];
       const { data, error } = await supabase
         .from('ia_risk_register' as any)
         .select('id, risk_title, risk_category, status, inherent_risk_score')
-        .eq('audit_universe_id', auditUniverseId)
+        .eq('department_id', departmentId)
         .eq('is_active', true)
         .ilike('risk_title', `%${riskTitle}%`);
       if (error) throw error;
       return (data || []) as any[];
     },
-    enabled: !!auditUniverseId && !!riskTitle && riskTitle.length >= 3,
+    enabled: !!departmentId && !!riskTitle && riskTitle.length >= 3,
   });
 }
 
