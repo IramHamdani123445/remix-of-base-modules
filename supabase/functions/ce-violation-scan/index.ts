@@ -1062,7 +1062,7 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
     }
 
     const newViolations = detected.filter((d) => !d.skipped);
-    const skippedCount = detected.filter((d) => d.skipped).length;
+    let skippedCount = detected.filter((d) => d.skipped).length;
 
     // ── SSB penalty policy: enrich each detected row with principal/penalty/
     // interest/total using the active ce_compliance_policies row and each
