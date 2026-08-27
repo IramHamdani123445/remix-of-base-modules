@@ -304,7 +304,7 @@ export const RISK_REGISTER_SCHEMA: ModuleSchema = {
   exportTitle: 'Risk Register',
   fields: [
     { key: 'risk_title', label: 'Risk Title', required: true, type: 'string', showInTable: true, showInExport: true, sortOrder: 1 },
-    { key: 'entity_name', label: 'Entity', type: 'string', showInTable: true, showInExport: true, sortOrder: 2 },
+    { key: 'entity_name', label: 'Department', type: 'string', showInTable: true, showInExport: true, sortOrder: 2 },
     { key: 'risk_category', label: 'Category', type: 'string', showInTable: true, showInExport: true, sortOrder: 3 },
     { key: 'inherent_risk_score', label: 'Inherent Score', type: 'number', showInTable: true, showInExport: true, sortOrder: 4 },
     { key: 'inherent_risk_level', label: 'Inherent Level', type: 'string', showInTable: true, showInExport: true, sortOrder: 5 },
