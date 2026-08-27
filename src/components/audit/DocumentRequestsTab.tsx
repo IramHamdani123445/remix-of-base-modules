@@ -125,27 +125,25 @@ export function DocumentRequestsTab({ engagementId, departmentId, engagementName
 
   const sendAllReceivedNotification = async () => {
     if (!defaultEmail) return;
-    try {
-      await supabase.functions.invoke('send-notification', {
-        body: {
-          recipient_email: defaultEmail,
-          subject: `All Documents Received — ${engagementName || 'Audit Engagement'}`,
-          body: `
-            <div style="font-family: Arial, sans-serif; color: #1f2937; line-height: 1.6;">
-              <p>Dear ${defaultHead || 'Department Head'},</p>
-              <p>We are pleased to confirm that <strong>all requested documents</strong> for the audit engagement — <strong>${engagementName || 'Internal Audit'}</strong> — have been received by the Internal Audit team.</p>
-              <p>Thank you for your prompt cooperation and support.</p>
-              <p style="margin-top: 24px;">Regards,<br/><strong>SSBM Internal Audit</strong></p>
-            </div>`,
-          from_name: 'SSBM Internal Audit',
-          from_email: 'Audit@secureserve.biz',
-        },
-      });
-      toast({ title: 'All Documents Received', description: 'Confirmation notification sent to Department Head.' });
-    } catch (err) {
-      console.error('Failed to send completion notification:', err);
+    const result = await emitInternalAuditCommunication({
+      eventCode: 'INTERNAL_AUDIT.REQUEST.FULFILLED',
+      entityId: engagementId,
+      occurrence: `fulfilled:${new Date().toISOString().slice(0, 10)}`,
+      recipientName: defaultHead || 'Department Head',
+      recipientEmail: defaultEmail,
+      reference: engagementName || engagementId,
+      values: {
+        engagementTitle: engagementName || '',
+        requestSummary: 'All requested documents have been received by the Internal Audit team.',
+      },
+    });
+    if (result.outcome === 'blocked') {
+      console.error('Failed to raise completion communication:', result.blockers);
+      return;
     }
+    toast({ title: 'All Documents Received', description: 'Confirmation notification raised for the Department Head.' });
   };
+
 
   // Email send logic
   const openEmailDialog = () => {
