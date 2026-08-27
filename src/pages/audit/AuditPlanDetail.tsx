@@ -197,7 +197,12 @@ export default function AuditPlanDetail() {
           <TabsTrigger value="approval">Approval & Amendments</TabsTrigger>
           <TabsTrigger value="boardpack">Board Pack</TabsTrigger>
           <TabsTrigger value="distribution">Distribution</TabsTrigger>
+          <TabsTrigger value="closure">Closure</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="closure">
+          <PlanClosurePanel planId={id!} plan={plan} />
+        </TabsContent>
 
         {/* Overview Tab */}
         <TabsContent value="overview">
