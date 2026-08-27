@@ -146,11 +146,10 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Control Reference</Label><Input value={form.rcm_control_id} onChange={e => setForm(f => ({ ...f, rcm_control_id: e.target.value }))} disabled={formMode === 'view'} placeholder="Control ID from RCM" /></div>
               <div><Label>Test Result</Label>
-                <Select value={form.result} onValueChange={v => setForm(f => ({ ...f, result: v }))} disabled={formMode === 'view'}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{TEST_RESULTS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                </Select>
+                <Input value={editRecord?.result || 'Not Tested'} disabled readOnly />
+                <p className="mt-1 text-[11px] text-muted-foreground">Set by the governed “Conclude test” command.</p>
               </div>
+
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Sample Size</Label><Input type="number" value={form.sample_size} onChange={e => setForm(f => ({ ...f, sample_size: e.target.value }))} disabled={formMode === 'view'} /></div>
