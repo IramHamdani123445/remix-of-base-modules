@@ -181,7 +181,11 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
         </div>
       </div>
 
+      {/* Recommendations awaiting conversion into actions */}
+      <RecommendationActionCards auditId={auditId} auditActions={auditActions} disabled={isClosed} />
+
       {/* Actions Table */}
+
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">{auditActions.length} action(s)</p>
         <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="h-4 w-4 mr-1" />New Action</Button>
