@@ -14,7 +14,7 @@
  * this component pulls the right policy, uses master-data selectors for
  * bank/branch/method, and persists via paymentProfileService.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -136,6 +136,51 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
   }
   function updateAddr(k: keyof NonNullable<BnPaymentProfileDraft['postal_address_snapshot']>, v: string) {
     setDraft((d) => ({ ...d, postal_address_snapshot: { ...(d.postal_address_snapshot ?? {}), [k]: v } }));
+  }
+
+  // Guards against a stale response overwriting a newer method switch.
+  const methodSwitchToken = useRef(0);
+
+  /**
+   * Bank/account fields on screen belong to whichever profile is currently
+   * loaded — never to the method the officer just picked. Re-fetch (or
+   * clear) them on every method change so a switch to a different method
+   * can't silently keep a prior method's account number attached.
+   */
+  async function handleMethodChange(newMethod: BnPaymentMethod) {
+    const token = ++methodSwitchToken.current;
+    setDraft((d) => ({
+      ...d,
+      payment_method: newMethod,
+      bank_name: null,
+      bank_code: null,
+      branch_name: null,
+      branch_code: null,
+      account_number_masked: null,
+      account_holder_name: null,
+      account_holder_relationship: null,
+      account_type: null,
+    }));
+    setRawAccount('');
+
+    const prof = await getActiveProfile(personSsn, {
+      payeeId, method: newMethod, currency: draft.payment_currency ?? 'XCD',
+    });
+    if (token !== methodSwitchToken.current) return; // a newer switch already landed
+    setActive(prof);
+    if (prof) {
+      setDraft((d) => ({
+        ...d,
+        bank_name: prof.bank_name ?? null,
+        bank_code: prof.bank_code ?? null,
+        branch_name: prof.branch_name ?? null,
+        branch_code: prof.branch_code ?? null,
+        account_number_masked: prof.account_number_masked ?? null,
+        account_holder_name: prof.account_holder_name ?? null,
+        account_holder_relationship: prof.account_holder_relationship ?? null,
+        account_type: prof.account_type ?? null,
+      }));
+    }
   }
 
   async function handleSubmit() {
@@ -268,7 +313,7 @@ export default function PaymentDetailsSection(props: PaymentDetailsSectionProps)
                 <Label>Payment method</Label>
                 <PaymentMethodSelector
                   value={draft.payment_method}
-                  onChange={(m) => update('payment_method', m)}
+                  onChange={handleMethodChange}
                   allowedMethods={allowedMethods}
                 />
               </div>
