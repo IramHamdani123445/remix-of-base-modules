@@ -402,6 +402,81 @@ async function runFormulaEngine(
   timelineRules: BnTimelineRule[],
   addTrace: Function
 ): Promise<BnFormulaResult> {
+  // Formula Bindings ("Formula Bindings" tab, bn_product_formula_binding) take
+  // top precedence when configured — it is the more capable, more explicit
+  // system (multi-stage, versioned, rate-table aware). If a version has any
+  // active bindings, use them; otherwise fall through unchanged to the
+  // Legacy calculation rule / single-formula-assignment path below, so every
+  // product that only ever used those keeps working exactly as before.
+  let bindings: Array<{ id: string }> = [];
+  try {
+    const { loadProductBindings } = await import('./calc/runProductCalculationV2');
+    bindings = await loadProductBindings(input.productVersionId);
+  } catch {
+    // Could not even check whether bindings exist — fall through to Legacy
+    // rather than blocking calculation entirely over a transient failure.
+    bindings = [];
+  }
+
+  if (bindings.length) {
+    try {
+      const { buildRealCalculationContext, runProductCalculationV2 } =
+        await import('./calc/runProductCalculationV2');
+      const ctx = await buildRealCalculationContext(
+        bindings.map(b => b.id),
+        { ssn: input.ssn, claimId: input.claimId, claimDate: input.claimDate },
+      );
+      const result = await runProductCalculationV2({
+        productId: input.productId,
+        productVersionId: input.productVersionId,
+        claimId: input.claimId,
+        runMode: 'PRODUCTION',
+        context: ctx,
+        writeTrace: true,
+      });
+      const failed = result.bindings.filter(b => b.status === 'ERROR');
+      if (result.finalAmount != null && failed.length === 0) {
+        addTrace('FORMULA', 'FORMULA_BINDING', 'Applied the product\'s Formula Bindings configuration', {
+          bindingsRun: result.bindings.length,
+          finalAmount: result.finalAmount,
+        });
+        const amount = result.finalAmount;
+        return {
+          ...emptyFormulaResult(),
+          calcType: 'FORMULA_BINDING',
+          formulaExpression: result.bindings.map(b => b.formula_code).join(' -> '),
+          steps: result.bindings.map((b, i) => ({
+            stepNumber: i + 1,
+            description: `${b.calculation_stage}/${b.sequence_no}: ${b.formula_code}`,
+            formula: b.formula_code,
+            inputs: (result.finalScope ?? {}) as Record<string, number>,
+            result: Number(b.rounded_output ?? b.raw_output ?? 0),
+          })),
+          rawResult: amount,
+          afterMinMax: amount,
+          afterRounding: amount,
+          finalWeeklyRate: amount,
+          finalMonthlyRate: amount,
+        };
+      }
+      // Bindings exist but could not produce a real amount for this claimant —
+      // say so, rather than silently falling through to a different, older
+      // configuration the user may not know still exists on this product.
+      addTrace('FORMULA', 'FORMULA_BINDING_FAILED',
+        'Formula Bindings are configured for this product but could not produce an amount for this claimant', {
+          severity: 'ERROR',
+          errors: failed.map(b => b.error),
+        });
+      return emptyFormulaResult();
+    } catch (e: any) {
+      // Bindings exist (we confirmed that above) but something broke while
+      // running them — a hard stop, not a fall-through to a different,
+      // possibly stale configuration the user may not realize still exists.
+      addTrace('FORMULA', 'FORMULA_BINDING_FAILED', e?.message ?? 'Formula Bindings run failed', { severity: 'ERROR' });
+      return emptyFormulaResult();
+    }
+  }
+
   const primaryRule = calcRules.find(r => r.is_active) || calcRules[0];
   if (!primaryRule) {
     // No bn_calculation_rule — but that table is the legacy path (the Product
@@ -415,9 +490,14 @@ async function runFormulaEngine(
     // perfectly good. SKN-MAT-GRANT, for instance, resolves to 1500.
     try {
       const { runProductCalculation } = await import('./runProductCalculation');
-      // useSamples: this engine is also used by the Simulator, where a missing
-      // claim-supplied input should show a sample rather than abort.
-      const configured = await runProductCalculation(input.productVersionId, { useSamples: true });
+      // A real claim (not the Simulator) must resolve FACT variables from
+      // this actual claimant's data — passing claimContext makes that happen.
+      // useSamples is deliberately NOT set here: for a real claim, a fact
+      // that cannot be resolved for real must surface as an error, not
+      // silently fall back to a placeholder number for every claimant alike.
+      const configured = await runProductCalculation(input.productVersionId, {
+        claimContext: { ssn: input.ssn, claimId: input.claimId, claimDate: input.claimDate },
+      });
       const amount = Number(configured.finalValue ?? configured.rawValue ?? 0);
       if (Number.isFinite(amount) && amount !== 0) {
         addTrace('FORMULA', 'FORMULA_CONFIGURED', 'Applied the product\'s configured formula', {

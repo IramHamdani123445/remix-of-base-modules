@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Play, Save, FlaskConical } from 'lucide-react';
 import { useRunCalculation, useBnSimulationPresets, useSaveSimulationPreset } from '@/hooks/bn/useBnCalcEngine';
 import { useBnProducts, useBnProductVersions } from '@/hooks/bn/useBnProduct';
-import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
+import { useUserCode } from '@/hooks/useUserCode';
 import CalcResultSummary from './CalcResultSummary';
 import CalcTraceViewer from './CalcTraceViewer';
 import type { BnCalcEngineInput, BnCalcEngineOutput, BnCalcRunMode } from '@/types/bnCalcEngine';
@@ -28,27 +28,23 @@ export default function CalcSimulationPanel() {
   const runCalc = useRunCalculation();
   const { data: presets } = useBnSimulationPresets(productId || undefined);
   const savePreset = useSaveSimulationPreset();
+  const { userCode, isLoading: userCodeLoading } = useUserCode();
 
   const handleRun = async () => {
     if (!ssn || !productId || !versionId) {
       toast.error('Please fill SSN, Product, and Version');
       return;
     }
+    // Still loading: the Run button is disabled for this case (see below) — stay silent
+    // rather than showing an error for a value that just hasn't arrived yet.
+    if (userCodeLoading) return;
+    // The engine stamps every run with the actor for audit and refuses to
+    // run without one (requireUserCode in runCalculationEngine).
+    if (!userCode) {
+      toast.error('Your account has no user code recorded. Please contact an administrator.');
+      return;
+    }
     try {
-      // The engine stamps every run with the actor for audit and refuses to
-      // run without one (requireUserCode in runCalculationEngine). This panel
-      // never supplied it, so every Run failed with
-      //   Cannot perform "runCalculationEngine" — authenticated user_code is required
-      // regardless of who was signed in. Read from the session rather than the
-      // auth context, so it does not depend on the profile having loaded.
-      const userCode = await getCurrentUserCode();
-      if (!userCode) {
-        toast.error('Cannot run the simulation', {
-          description: 'Your user code could not be read from the session. Sign out and in again.',
-        });
-        return;
-      }
-
       const product = (products ?? []).find((p: any) => p.id === productId);
 
       const input: BnCalcEngineInput = {
@@ -142,8 +138,13 @@ export default function CalcSimulationPanel() {
               <Input type="date" value={claimDate} onChange={e => setClaimDate(e.target.value)} />
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleRun} disabled={runCalc.isPending} className="flex-1">
-                {runCalc.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Play className="h-4 w-4 mr-1" />}
+              <Button
+                onClick={handleRun}
+                disabled={runCalc.isPending || userCodeLoading}
+                title={userCodeLoading ? 'Loading your user profile…' : undefined}
+                className="flex-1"
+              >
+                {(runCalc.isPending || userCodeLoading) ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Play className="h-4 w-4 mr-1" />}
                 Run
               </Button>
               {result && (

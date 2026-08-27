@@ -59,6 +59,7 @@ export const NextStepGuidance: React.FC<Props> = ({
   // fetched asynchronously, so acting on `!userCode` alone reports a missing
   // user code while it is merely still loading.
   const { userCode, isLoading: userCodeLoading, error: userCodeError } = useUserCode();
+  const { userCode, isLoading: userCodeLoading } = useUserCode();
 
   const { data: downstream } = useQuery({
     queryKey: ['bn', 'next-step-downstream', claimId, status],
@@ -153,7 +154,7 @@ export const NextStepGuidance: React.FC<Props> = ({
         body: 'Send this claim to the decision queue for approval.',
         actionLabel: 'Submit for Decision',
         onAction: () => { if (guard()) submitMut.mutate(); },
-        pending: submitMut.isPending,
+        pending: submitMut.isPending || userCodeLoading,
       };
     }
 
@@ -164,7 +165,7 @@ export const NextStepGuidance: React.FC<Props> = ({
         body: 'Approve, deny or send back. Approval auto-creates the entitlement or payable.',
         actionLabel: 'Approve Claim',
         onAction: () => { if (guard()) approveMut.mutate(); },
-        pending: approveMut.isPending,
+        pending: approveMut.isPending || userCodeLoading,
       };
     }
 
@@ -175,7 +176,7 @@ export const NextStepGuidance: React.FC<Props> = ({
         body: 'Generate the entitlement / payable record so the claim can be paid.',
         actionLabel: 'Generate Payable',
         onAction: () => { if (guard()) generateMut.mutate(); },
-        pending: generateMut.isPending,
+        pending: generateMut.isPending || userCodeLoading,
       };
     }
 
@@ -208,7 +209,7 @@ export const NextStepGuidance: React.FC<Props> = ({
     }
 
     return null;
-  }, [status, hasEligibilityPass, hasCalculation, downstream, submitMut.isPending, approveMut.isPending, generateMut.isPending]);
+  }, [status, hasEligibilityPass, hasCalculation, downstream, submitMut.isPending, approveMut.isPending, generateMut.isPending, userCodeLoading]);
 
   if (!step) return null;
 
