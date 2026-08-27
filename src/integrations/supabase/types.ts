@@ -70413,10 +70413,12 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           engagement_id: string | null
+          evidence_ids: string[]
           evidence_of_implementation: string[] | null
           finding_id: string
           id: string
           notes: string | null
+          recommendation_id: string | null
           response_id: string | null
           responsible_person: string | null
           status: string | null
@@ -70433,10 +70435,12 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
+          evidence_ids?: string[]
           evidence_of_implementation?: string[] | null
           finding_id: string
           id?: string
           notes?: string | null
+          recommendation_id?: string | null
           response_id?: string | null
           responsible_person?: string | null
           status?: string | null
@@ -70453,10 +70457,12 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
+          evidence_ids?: string[]
           evidence_of_implementation?: string[] | null
           finding_id?: string
           id?: string
           notes?: string | null
+          recommendation_id?: string | null
           response_id?: string | null
           responsible_person?: string | null
           status?: string | null
@@ -70480,6 +70486,13 @@ export type Database = {
             columns: ["finding_id"]
             isOneToOne: false
             referencedRelation: "ia_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_action_tracking_recommendation_id_fkey"
+            columns: ["recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "ia_recommendations"
             referencedColumns: ["id"]
           },
           {
@@ -123420,6 +123433,14 @@ export type Database = {
         Args: { p_created_by?: string; p_plan_id: string }
         Returns: Json
       }
+      ia_create_action_from_recommendation: {
+        Args: {
+          p_recommendation_id: string
+          p_responsible_person?: string
+          p_target_date?: string
+        }
+        Returns: Json
+      }
       ia_create_plan_header: {
         Args: {
           p_created_by?: string
@@ -123433,6 +123454,10 @@ export type Database = {
       }
       ia_detect_material_plan_changes: {
         Args: { p_plan_id: string; p_proposed_changes: Json }
+        Returns: Json
+      }
+      ia_engagement_progress: {
+        Args: { p_engagement_id: string }
         Returns: Json
       }
       ia_evaluate_engagement_closure: {
@@ -123478,6 +123503,10 @@ export type Database = {
       }
       ia_launch_engagement: {
         Args: { p_engagement_id: string; p_launched_by?: string }
+        Returns: Json
+      }
+      ia_link_action_evidence: {
+        Args: { p_action_id: string; p_evidence_ids: string[] }
         Returns: Json
       }
       ia_persist_plan_engagements: {
