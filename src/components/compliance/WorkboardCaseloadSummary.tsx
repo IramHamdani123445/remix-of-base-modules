@@ -32,12 +32,16 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 export function WorkboardCaseloadSummary({ inspectorId }: WorkboardCaseloadSummaryProps) {
-  const { userId } = useUserCode();
-  // Use explicit prop if provided, otherwise scope to logged-in user
-  const effectiveInspectorId = inspectorId || userId || undefined;
+  const { userId, userCode } = useUserCode();
+  // Assignment columns hold either the auth user id or the staff user_code,
+  // so scope on every identity the signed-in user answers to.
+  const identities = inspectorId
+    ? [inspectorId]
+    : ([userId, userCode].filter(Boolean) as string[]);
+  const scopeKey = identities.join('|');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['workboard_caseload', effectiveInspectorId],
+    queryKey: ['workboard_caseload', scopeKey],
     queryFn: async (): Promise<CaseloadData> => {
       // Fetch active violations (assigned or all)
       let query = supabase
@@ -46,9 +50,8 @@ export function WorkboardCaseloadSummary({ inspectorId }: WorkboardCaseloadSumma
         .eq('is_deleted', false)
         .not('status', 'in', '("CLOSED","CANCELLED")');
 
-      if (effectiveInspectorId) {
-        query = query.eq('assigned_to_user_id', effectiveInspectorId);
-      }
+      if (identities.length === 1) query = query.eq('assigned_to_user_id', identities[0]);
+      else if (identities.length > 1) query = query.in('assigned_to_user_id', identities);
 
       const { data: rows, error } = await query;
       if (error) throw error;
@@ -66,9 +69,8 @@ export function WorkboardCaseloadSummary({ inspectorId }: WorkboardCaseloadSumma
         .select('id', { count: 'exact', head: true })
         .eq('status', 'OVERDUE');
 
-      if (effectiveInspectorId) {
-        overdueQuery = overdueQuery.eq('assigned_to_user_id', effectiveInspectorId);
-      }
+      if (identities.length === 1) overdueQuery = overdueQuery.eq('assigned_to_user_id', identities[0]);
+      else if (identities.length > 1) overdueQuery = overdueQuery.in('assigned_to_user_id', identities);
 
       const { count: overdueFollowUps } = await overdueQuery;
 
@@ -77,7 +79,7 @@ export function WorkboardCaseloadSummary({ inspectorId }: WorkboardCaseloadSumma
       return { byStatus, byPriority, total: rows?.length || 0 };
     },
     staleTime: 30000,
-    enabled: !!effectiveInspectorId || !inspectorId, // allow global mode if no prop
+    enabled: identities.length > 0 || !inspectorId, // allow global mode if no prop
   });
 
   if (isLoading) {
