@@ -22,6 +22,8 @@ import { INTERNAL_AUDIT_TEMPLATE_ENTRIES } from '../../src/platform/omni-comms/i
 const ORG_ID = '69afc88b-da5c-4f41-a1e7-199e1ee1d416';
 const DEPT_ID = 'c28f40f8-00db-4766-b211-5bda5dd641a9';
 const ACTOR_ID = '08655ffc-6bb2-4eea-bc5b-502c52cdcf85';
+/** Separation of duties: published content must be approved by a second person. */
+const APPROVER_ID = '62c928c3-cd5e-421f-a010-50f9123fff70';
 const LOCALE = 'en-US';
 
 const CHANNELS = ['email', 'in_app'] as const;
@@ -101,6 +103,7 @@ for (const entry of INTERNAL_AUDIT_TEMPLATE_ENTRIES) {
 
   const payload = {
     actorId: ACTOR_ID,
+    approverId: APPROVER_ID,
     organizationId: ORG_ID,
     departmentId: DEPT_ID,
     locale: LOCALE,
