@@ -32,7 +32,10 @@ import {
   AuditControlTestsTab,
   AuditFollowUpsTab,
   AuditClosureTab,
+  AuditProgrammeRcmTab,
+  AuditQualityReviewTab,
 } from '@/components/audit/execution';
+
 
 // ===== Tab Badge =====
 function TabBadge({ count, variant = 'default' }: { count: number; variant?: 'default' | 'warning' | 'danger' | 'success' }) {
