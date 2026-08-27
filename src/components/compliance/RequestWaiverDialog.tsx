@@ -32,7 +32,7 @@ interface Props {
 export default function RequestWaiverDialog({ open, onClose, onCreated, context }: Props) {
   const { userCode } = useUserCode();
   const [ruleId, setRuleId] = useState<string>('');
-  const [type, setType] = useState<WaiverType>('PARTIAL');
+  const [type, setType] = useState<WaiverType>('PENALTY');
   const [amount, setAmount] = useState<number>(context.defaultAmount ?? 0);
   const [reason, setReason] = useState<string>('');
   const [justification, setJustification] = useState<string>('');
@@ -107,7 +107,8 @@ export default function RequestWaiverDialog({ open, onClose, onCreated, context 
                 <SelectContent>
                   {/* Principal (contribution) waivers are policy-controlled: they are only
                       available by selecting an enabled PRINCIPAL waiver rule above. */}
-                  {['PENALTY', 'INTEREST', 'FULL', 'PARTIAL'].map((t) =>
+                  {/* FULL / PARTIAL are obsolete waiver types and are no longer selectable. */}
+                  {['PENALTY', 'INTEREST'].map((t) =>
                     <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
