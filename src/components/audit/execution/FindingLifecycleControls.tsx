@@ -22,7 +22,6 @@ import { formatDateForDisplay } from '@/lib/format-config';
 type TransitionTarget = Exclude<FindingLifecycleStatus, 'Draft'>;
 
 const NEXT_STATUSES: Record<string, TransitionTarget[]> = {
-
   Draft: ['Under Review', 'Withdrawn'],
   'Under Review': ['Confirmed', 'Withdrawn'],
   Confirmed: ['Released', 'Withdrawn'],
@@ -44,12 +43,12 @@ export function FindingLifecycleControls({ finding }: Props) {
   const changeSeverity = useChangeFindingSeverity();
   const { data: history = [] } = useFindingSeverityHistory(finding?.id);
 
-  const [pending, setPending] = React.useState<FindingLifecycleStatus | null>(null);
+  const [pending, setPending] = React.useState<TransitionTarget | null>(null);
   const [reason, setReason] = React.useState('');
   const [severity, setSeverity] = React.useState('');
   const [severityReason, setSeverityReason] = React.useState('');
 
-  const options = NEXT_STATUSES[current] ?? [];
+  const options: TransitionTarget[] = NEXT_STATUSES[current] ?? [];
 
   const submitTransition = () => {
     if (!pending) return;
