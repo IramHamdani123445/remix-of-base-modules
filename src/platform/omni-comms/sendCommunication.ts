@@ -147,7 +147,13 @@ export interface SendCommunicationInput {
     productId?: string | null;
     recipientRoles?: string[];
   };
+  /**
+   * Governed attachment references (identifiers only — never bytes, never a
+   * storage location). Order is the delivery order.
+   */
+  attachments?: SendCommunicationAttachmentInput[];
 }
+
 
 
 /** Default caller-module used when callerContext.moduleCode is omitted. */
