@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Briefcase, Loader2, AlertTriangle, ClipboardCheck,
   FileText, MessageSquare, CheckCircle, BarChart3, Clock, Shield, ListChecks, Eye,
-  Paperclip, FolderOpen, Search, ArrowRight
+  Paperclip, FolderOpen, Search, ArrowRight, Network, ShieldCheck, BadgeCheck
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
