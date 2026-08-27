@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CheckCircle, Lock, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, CheckCircle, Lock, Clock, AlertTriangle, Paperclip } from 'lucide-react';
 import { StatusBadge, DataTable } from '@/components/common';
 import type { DataTableColumn } from '@/components/common';
 import { useIAActionTrackingMutations } from '@/hooks/useAuditData';
@@ -17,6 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { notifyActionAssigned } from '@/services/auditNotificationService';
 import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RecommendationActionCards } from '@/components/audit/execution/RecommendationActionCards';
+import { useLinkActionEvidence } from '@/hooks/useAuditPhase3';
 
 interface AuditActionsTabProps {
   auditId: string;
@@ -24,16 +27,18 @@ interface AuditActionsTabProps {
   auditFindings: any[];
   auditActions: any[];
   auditResponses: any[];
+  auditEvidence?: any[];
   onClose: () => void;
 }
 
 const ACTION_STATUSES = ['Open', 'In Progress', 'Completed', 'Verified', 'Closed'];
 
-export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, auditResponses, onClose }: AuditActionsTabProps) {
+export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, auditResponses, auditEvidence = [], onClose }: AuditActionsTabProps) {
   const { create, update } = useIAActionTrackingMutations();
   const { userCode } = useUserCode();
   const { toast } = useToast();
   const { can } = useInternalAuditPermissions();
+  const linkEvidence = useLinkActionEvidence();
   const canProgress = can('progress_audit_actions');
   const canCloseActions = can('close_audit_actions');
   const [showForm, setShowForm] = useState(false);
@@ -41,6 +46,8 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
   const [closureNotes, setClosureNotes] = useState(audit?.closure_notes || '');
   const [progressAction, setProgressAction] = useState<any>(null);
   const [progressForm, setProgressForm] = useState({ status: 'Open', target_date: '', responsible_person: '', notes: '' });
+  const [evidenceIds, setEvidenceIds] = useState<string[]>([]);
+
 
   const isOverdue = (action: any) => {
     if (!action.target_date) return false;
@@ -60,7 +67,11 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
       responsible_person: row.responsible_person || '',
       notes: row.notes || '',
     });
+    setEvidenceIds(Array.isArray(row.evidence_ids) ? row.evidence_ids : []);
   };
+
+  const toggleEvidence = (id: string) =>
+    setEvidenceIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   const handleProgressSave = () => {
     if (!progressAction) return;
@@ -73,6 +84,11 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
       toast({ title: 'Validation', description: 'Closure evidence notes are required before verifying or closing an action.', variant: 'destructive' });
       return;
     }
+    const originalEvidence: string[] = Array.isArray(progressAction.evidence_ids) ? progressAction.evidence_ids : [];
+    const evidenceChanged =
+      originalEvidence.length !== evidenceIds.length ||
+      originalEvidence.some((id) => !evidenceIds.includes(id));
+
     update.mutate({
       id: progressAction.id,
       status: progressForm.status,
@@ -82,8 +98,20 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
       notes: progressForm.notes || null,
       updated_by: userCode || null,
       ...(closing ? { verified_by: userCode || null, verified_date: new Date().toISOString() } : {}),
-    } as any, { onSuccess: () => setProgressAction(null) });
+    } as any, {
+      onSuccess: () => {
+        if (evidenceChanged) {
+          linkEvidence.mutate(
+            { actionId: progressAction.id, evidenceIds },
+            { onSettled: () => setProgressAction(null) },
+          );
+        } else {
+          setProgressAction(null);
+        }
+      },
+    });
   };
+
 
   const handleCreate = () => {
     if (!form.finding_id || !form.action_description) {
@@ -112,6 +140,15 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
     { key: 'action_description', header: 'Action', render: (r) => <span className="text-sm max-w-[200px] truncate block">{r.action_description || '—'}</span> },
     { key: 'responsible_person', header: 'Assigned To', render: (r) => <span className="text-xs">{r.responsible_person || '—'}</span> },
     { key: 'target_date', header: 'Due Date', render: (r) => r.target_date ? formatDateForDisplay(r.target_date) : '—' },
+    { key: 'documents', header: 'Documents', render: (r) => {
+      const count = Array.isArray(r.evidence_ids) ? r.evidence_ids.length : 0;
+      return (
+        <span className={`text-xs flex items-center gap-1 ${count > 0 ? 'text-primary' : 'text-muted-foreground'}`}>
+          <Paperclip className="h-3.5 w-3.5" />{count}
+        </span>
+      );
+    }},
+
     { key: 'status', header: 'Status', render: (r) => (
       <div className="flex items-center gap-1">
         <StatusBadge status={r.status || 'Open'} />
@@ -144,7 +181,11 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
         </div>
       </div>
 
+      {/* Recommendations awaiting conversion into actions */}
+      <RecommendationActionCards auditId={auditId} auditActions={auditActions} disabled={isClosed} />
+
       {/* Actions Table */}
+
       <div className="flex justify-between items-center">
         <p className="text-sm text-muted-foreground">{auditActions.length} action(s)</p>
         <Button size="sm" onClick={() => setShowForm(!showForm)}><Plus className="h-4 w-4 mr-1" />New Action</Button>
@@ -201,6 +242,22 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
               <Label>Progress / Evidence Notes{['Verified', 'Closed'].includes(progressForm.status) ? ' *' : ''}</Label>
               <Textarea rows={3} value={progressForm.notes} onChange={(e) => setProgressForm((f) => ({ ...f, notes: e.target.value }))} />
             </div>
+            <div>
+              <Label className="flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" />Linked Documents</Label>
+              {auditEvidence.length === 0 ? (
+                <p className="text-xs text-muted-foreground mt-1">No documents uploaded for this audit yet.</p>
+              ) : (
+                <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-border/60 divide-y divide-border/40">
+                  {auditEvidence.map((ev: any) => (
+                    <label key={ev.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-muted/40">
+                      <Checkbox checked={evidenceIds.includes(ev.id)} onCheckedChange={() => toggleEvidence(ev.id)} />
+                      <span className="text-xs truncate">{ev.file_name || ev.description || ev.evidence_id || ev.id.slice(0, 8)}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setProgressAction(null)}>Cancel</Button>
