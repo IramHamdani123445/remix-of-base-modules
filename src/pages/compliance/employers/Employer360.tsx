@@ -23,7 +23,7 @@ import {
 } from '@/services/employer360Service';
 import {
   fetchEmployerCases, fetchEmployerPaymentHistory, fetchEmployerCommunications,
-  fetchEmployerDocuments, fetchEmployerArrangements,
+  fetchEmployerDocuments, fetchEmployerArrangements, fetchEmployerBreaches,
 } from '@/services/employer360ExtendedService';
 import {
   useEmployerStatement, useEmployerArrears as useLedgerArrears,
