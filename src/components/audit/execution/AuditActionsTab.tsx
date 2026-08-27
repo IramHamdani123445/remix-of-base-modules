@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, CheckCircle, Lock, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, CheckCircle, Lock, Clock, AlertTriangle, Paperclip } from 'lucide-react';
 import { StatusBadge, DataTable } from '@/components/common';
 import type { DataTableColumn } from '@/components/common';
 import { useIAActionTrackingMutations } from '@/hooks/useAuditData';
@@ -17,6 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { notifyActionAssigned } from '@/services/auditNotificationService';
 import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RecommendationActionCards } from '@/components/audit/execution/RecommendationActionCards';
+import { useLinkActionEvidence } from '@/hooks/useAuditPhase3';
 
 interface AuditActionsTabProps {
   auditId: string;
@@ -24,16 +27,18 @@ interface AuditActionsTabProps {
   auditFindings: any[];
   auditActions: any[];
   auditResponses: any[];
+  auditEvidence?: any[];
   onClose: () => void;
 }
 
 const ACTION_STATUSES = ['Open', 'In Progress', 'Completed', 'Verified', 'Closed'];
 
-export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, auditResponses, onClose }: AuditActionsTabProps) {
+export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, auditResponses, auditEvidence = [], onClose }: AuditActionsTabProps) {
   const { create, update } = useIAActionTrackingMutations();
   const { userCode } = useUserCode();
   const { toast } = useToast();
   const { can } = useInternalAuditPermissions();
+  const linkEvidence = useLinkActionEvidence();
   const canProgress = can('progress_audit_actions');
   const canCloseActions = can('close_audit_actions');
   const [showForm, setShowForm] = useState(false);
@@ -41,6 +46,8 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
   const [closureNotes, setClosureNotes] = useState(audit?.closure_notes || '');
   const [progressAction, setProgressAction] = useState<any>(null);
   const [progressForm, setProgressForm] = useState({ status: 'Open', target_date: '', responsible_person: '', notes: '' });
+  const [evidenceIds, setEvidenceIds] = useState<string[]>([]);
+
 
   const isOverdue = (action: any) => {
     if (!action.target_date) return false;
