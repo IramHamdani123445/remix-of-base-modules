@@ -207,7 +207,33 @@ export function validateSendCommunicationInput(
   ) {
     blockers.push('payload_invalid');
   }
+  if (input.attachments !== undefined && input.attachments !== null) {
+    if (!Array.isArray(input.attachments)) {
+      blockers.push('attachments_invalid');
+    } else if (input.attachments.length > OMNI_COMMS_MAX_ATTACHMENTS) {
+      blockers.push('attachment_limit_exceeded');
+    } else {
+      const seen = new Set<string>();
+      for (const a of input.attachments) {
+        if (!a || typeof a !== 'object' || typeof a.attachmentId !== 'string' || !UUID_LIKE.test(a.attachmentId)) {
+          blockers.push('attachment_reference_invalid');
+          break;
+        }
+        const key = a.attachmentId.toLowerCase();
+        if (seen.has(key)) {
+          blockers.push('attachment_duplicate');
+          break;
+        }
+        seen.add(key);
+        if (a.disposition !== undefined && a.disposition !== 'attachment' && a.disposition !== 'inline') {
+          blockers.push('attachment_disposition_invalid');
+          break;
+        }
+      }
+    }
+  }
   return blockers;
+
 }
 
 /**
