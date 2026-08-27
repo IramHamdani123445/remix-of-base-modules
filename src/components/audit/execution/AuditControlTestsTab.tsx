@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, Eye, Edit, Shield, X } from 'lucide-react';
+import { Plus, Loader2, Eye, Edit, Shield, X, Gavel } from 'lucide-react';
 import { StatusBadge, DataTable } from '@/components/common';
 import type { DataTableColumn } from '@/components/common';
 import { useEngagementControlTests } from '@/hooks/useEngagementData';
@@ -15,8 +15,11 @@ import { useUserCode } from '@/hooks/useUserCode';
 import { supabase } from '@/integrations/supabase/client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { useConcludeControlTest } from '@/hooks/useAuditLifecycleCommands';
 
 const TEST_RESULTS = ['Effective', 'Partially Effective', 'Ineffective', 'Not Tested'];
+const CONCLUSION_RESULTS = ['Effective', 'Partially Effective', 'Ineffective'];
+
 
 const emptyForm = {
   rcm_control_id: '', sample_size: '', exceptions_found: '', result: 'Not Tested',
