@@ -359,9 +359,18 @@ export default function EngagementDetail() {
             <AuditPreparationTab auditId={id!} audit={audit} engagementContext={engagementContext} />
           </TabsContent>
 
+          <TabsContent value="programme">
+            <AuditProgrammeRcmTab auditId={id!} departmentId={audit?.department_id} functionId={(audit as any)?.function_id} />
+          </TabsContent>
+
           <TabsContent value="activities">
             <AuditActivitiesTab auditId={id!} auditors={auditors} />
           </TabsContent>
+
+          <TabsContent value="control-tests">
+            <AuditControlTestsTab auditId={id!} />
+          </TabsContent>
+
 
           <TabsContent value="evidence">
             <AuditEvidenceTab auditId={id!} auditFindings={auditFindings} auditActivities={auditActivities} />
