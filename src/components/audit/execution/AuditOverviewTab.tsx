@@ -54,16 +54,6 @@ export function AuditOverviewTab({
   getDeptName, getFunctionName, getAuditorName, getPlanTitle,
   workspaceCounts, onNavigateTab,
 }: AuditOverviewTabProps) {
-  const totalSteps = 6;
-  let completedSteps = 0;
-  if (['Fieldwork In Progress', 'Findings Drafting', 'Management Response Pending', 'Final Report Issued', 'Follow-up Monitoring', 'Closed'].includes(execStatus)) completedSteps++;
-  if (['Findings Drafting', 'Management Response Pending', 'Final Report Issued', 'Follow-up Monitoring', 'Closed'].includes(execStatus)) completedSteps++;
-  if (auditFindings.length > 0) completedSteps++;
-  if (auditResponses.length > 0) completedSteps++;
-  if (auditActions.length > 0) completedSteps++;
-  if (['Final Report Issued', 'Closed'].includes(execStatus)) completedSteps++;
-  const progressPct = Math.round((completedSteps / totalSteps) * 100);
-
   const sourceLabel = audit?.engagement_type === 'Ad Hoc' ? 'Ad Hoc Audit' :
     audit?.engagement_type === 'Supplementary' ? 'Supplementary Plan' :
     audit?.annual_plan_id ? 'Annual Plan' : 'Ad Hoc Audit';
@@ -73,16 +63,12 @@ export function AuditOverviewTab({
   return (
     <div className="grid gap-5 md:grid-cols-3">
       <div className="md:col-span-2 space-y-4">
-        {/* Progress Summary */}
-        <Card className="border-primary/20 bg-primary/[0.02]">
+        {/* Server-derived lifecycle progress */}
+        <AuditProgressPanel auditId={auditId} />
+
+        {/* Headline counters */}
+        <Card>
           <CardContent className="pt-5 pb-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />Audit Progress
-              </h3>
-              <span className="text-xs font-bold text-primary">{progressPct}%</span>
-            </div>
-            <Progress value={progressPct} className="h-2 mb-4" />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <MiniStat icon={AlertTriangle} label="Findings" value={auditFindings.length} color="text-amber-600" />
               <MiniStat icon={MessageSquare} label="Responses" value={`${auditResponses.length}/${auditFindings.length}`} color="text-blue-600" />
@@ -91,6 +77,7 @@ export function AuditOverviewTab({
             </div>
           </CardContent>
         </Card>
+
 
         {/* Quick Jump Cards */}
         {workspaceCounts && (
