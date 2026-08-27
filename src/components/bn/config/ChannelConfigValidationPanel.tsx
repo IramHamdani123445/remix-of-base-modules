@@ -116,7 +116,17 @@ export function ChannelConfigValidationPanel({ productVersionId }: Props) {
           if (items.length === 0) return null;
           return (
             <div key={r.channelConfigId} className="rounded border p-2 space-y-1.5">
-              <div className="text-xs font-medium">{r.channelCode} channel</div>
+              <div className="text-xs font-medium flex items-center gap-2">
+                {r.channelCode} channel
+                {/* A disabled channel accepts no applications, so its findings
+                    are shown for information only (BUG-54). Saying so on the
+                    row stops an administrator chasing a fault that is not one. */}
+                {r.channelEnabled === false && (
+                  <span className="rounded-full border px-1.5 py-0 text-[10px] font-normal text-muted-foreground">
+                    disabled
+                  </span>
+                )}
+              </div>
               {items.map((it, i) => <IssueLine key={i} issue={it} />)}
             </div>
           );
