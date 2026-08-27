@@ -406,6 +406,53 @@ export default function Employer360() {
               </CardContent>
             </Card>
           )}
+          {/* Breach Monitoring — arrangement breaches recorded for this employer */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Shield className="h-4 w-4" />Breach Monitoring ({breaches.length})
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/compliance/arrangements/breach-monitoring')}>
+                Open Register
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {breaches.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No arrangement breaches recorded for this employer.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Breach</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Missed</TableHead>
+                      <TableHead className="text-center">Consecutive</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Detection</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {breaches.map((b: any) => (
+                      <TableRow key={b.id}>
+                        <TableCell className="font-mono text-xs">{b.breach_id}</TableCell>
+                        <TableCell>{b.breach_type}</TableCell>
+                        <TableCell>{formatDate(b.breach_date)}</TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(b.missed_amount)}</TableCell>
+                        <TableCell className="text-center">{b.consecutive_misses ?? 0}x</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={b.status === 'Active' ? 'destructive' : b.status === 'Resolved' ? 'default' : 'secondary'} className="text-[10px]">{b.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-[10px]">{b.auto_detected ? 'Auto' : 'Manual'}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
           <Button variant="outline" onClick={() => navigate(`/compliance/field/employer-statement/${employerId}`)}>
             <FileText className="h-4 w-4 mr-2" />View Full Financial Statement
           </Button>
