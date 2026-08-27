@@ -184,11 +184,9 @@ export default function EngagementDetail() {
     };
   }, [audit, departments, auditors, deptFunctions]);
 
-  const handleCloseAudit = () => {
-    if (!id) return;
-    transitionMutation.mutate({ engagementId: id, newStatus: 'Closed', notes: 'Audit closed' });
-    updateAudit.mutate({ id, status: 'Closed', closure_date: new Date().toISOString().split('T')[0], closure_notes: '' } as any);
-  };
+  // Closure is a governed server-side command — route the user to the Closure tab,
+  // where the closure gate is evaluated and the disposition is captured.
+  const handleCloseAudit = () => setActiveTab('closure');
 
   // Workspace counts for overview quick-jump
   const workspaceCounts = useMemo(() => ({
