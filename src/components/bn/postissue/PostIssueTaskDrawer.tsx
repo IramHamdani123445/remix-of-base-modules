@@ -19,6 +19,7 @@ import {
 import { formatDateForDisplay } from '@/lib/format-config';
 
 import { formatNumber } from '@/lib/culture/culture';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 const TYPE_LABELS: Record<string, string> = {
   CL_HEAD_UPDATE: 'Update Claim Header',
   CLAIM_CLOSURE: 'Claim Closure',
@@ -52,6 +53,9 @@ interface Props {
 }
 
 export const PostIssueTaskDrawer: React.FC<Props> = ({ taskId, open, onClose, onAction, isActing }) => {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor } = useActorUserCode();
+
   const { data: task, isLoading } = useBnPostIssueTaskDetail(taskId || undefined);
   const [reason, setReason] = useState('');
 
@@ -63,7 +67,7 @@ export const PostIssueTaskDrawer: React.FC<Props> = ({ taskId, open, onClose, on
     await onAction({
       taskId: taskId!,
       action,
-      userCode: 'CURRENT_USER',
+      userCode: actor(),
       reason: reason.trim() || undefined,
     });
     setReason('');

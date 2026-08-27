@@ -19,6 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useExecuteBatchAction } from '@/hooks/bn/useBnBatchOperations';
 import type { BatchPaymentMethod } from '@/services/bn/batchOperationsService';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 
 const db = supabase as any;
 
@@ -30,6 +31,9 @@ interface Props {
 }
 
 export const AssignToBatchDialog: React.FC<Props> = ({ open, onClose, payableIds, onAssigned }) => {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor } = useActorUserCode();
+
   const [mode, setMode] = useState<'existing' | 'new'>('existing');
   const [selectedBatchId, setSelectedBatchId] = useState('');
   const [newBatchMethod, setNewBatchMethod] = useState<BatchPaymentMethod>('MIXED');
@@ -56,7 +60,7 @@ export const AssignToBatchDialog: React.FC<Props> = ({ open, onClose, payableIds
         // Create batch first, then add payables
         const result = await executeMutation.mutateAsync({
           action: 'CREATE',
-          userCode: 'CURRENT_USER',
+          userCode: actor(),
           batchDate: new Date().toISOString().slice(0, 10),
           paymentMethod: newBatchMethod,
           officeCode: newBatchOffice,
@@ -66,7 +70,7 @@ export const AssignToBatchDialog: React.FC<Props> = ({ open, onClose, payableIds
         await executeMutation.mutateAsync({
           batchId: result.id,
           action: 'ADD_PAYABLES',
-          userCode: 'CURRENT_USER',
+          userCode: actor(),
           payableIds,
         });
       } else {
@@ -77,7 +81,7 @@ export const AssignToBatchDialog: React.FC<Props> = ({ open, onClose, payableIds
         await executeMutation.mutateAsync({
           batchId: selectedBatchId,
           action: 'ADD_PAYABLES',
-          userCode: 'CURRENT_USER',
+          userCode: actor(),
           payableIds,
         });
       }
