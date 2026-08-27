@@ -4,7 +4,7 @@
  *
  * Operator-initiated Internal Audit communications (communication stage
  * dialogs, document-request emails, ad-hoc notification triggers) used to call
- * `send-notification` or `ia_fire_notification` directly. That bypassed every
+ * the legacy notification edge function or RPC directly. That bypassed every
  * Omni-Comms governance control: template resolution, branding, sender
  * identity, release control, delivery evidence and retry.
  *
