@@ -120,6 +120,10 @@ export interface InspectionFinding {
   evidenceIds?: string[];
   isViolationCreated: boolean;
   violationId?: string;
+  /** Classification of the finding (see findingDispositionService). */
+  disposition?: 'PENDING_REVIEW' | 'INFORMATIONAL' | 'FLAG_FOR_REVIEW' | 'VIOLATION_CANDIDATE' | 'CONVERTED';
+  reviewNotes?: string;
+  reviewedBy?: string;
   createdAt: string;
   createdByUserId: string;
   createdByName?: string;

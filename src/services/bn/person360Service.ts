@@ -133,9 +133,11 @@ export async function getPersonEntitlements(ssn: string): Promise<Person360Entit
       status: e.status,
       payment_frequency: e.payment_frequency,
     }));
-  } catch {
-    // Table may not exist yet
-    return [];
+  } catch (e: any) {
+    // An empty list means "this person has no entitlements". A failed read
+    // means we do not know — and on a screen about someone's benefit
+    // entitlements the two must not look the same.
+    throw new Error(`Could not read entitlements for ${ssn.trim()}: ${e?.message ?? e}`);
   }
 }
 
@@ -151,53 +153,78 @@ export interface Person360Disbursement {
   period_to?: string;
   status: string;
   batch_no?: string;
+  /** From cl_head, so a person with several legacy claims can be told apart. */
+  benefit_type?: string;
 }
 
+/**
+ * Outbound benefit payments for a person.
+ *
+ * `cl_cheques` has no `ssn` column — it is keyed by `claim_number` — so the
+ * person is reached through `cl_head.insured_ssn`. The previous query filtered
+ * `cl_cheques.ssn` and ordered by `payment_date`, neither of which exists, and
+ * its column mapping named seven fields that are all spelled differently in the
+ * table (cheque_no/cheque_number, amount/payment_amount, and so on).
+ *
+ * Because the whole thing sat in a `try { } catch { }` whose comment read
+ * "table may not exist yet", the resulting error was read as an absent table
+ * and the function silently returned `bn_payment_instruction` rows instead. So
+ * the tab showed payables labelled as disbursements, and the real cheques —
+ * which are present — never appeared.
+ */
 export async function getPersonDisbursements(ssn: string): Promise<Person360Disbursement[]> {
-  try {
-    const { data, error } = await db
-      .from('cl_cheques')
-      .select('*')
-      .eq('ssn', ssn.trim())
-      .order('payment_date', { ascending: false });
+  const trimmed = ssn.trim();
 
-    if (error) throw error;
-    return (data ?? []).map((d: any) => ({
-      cheque_no: d.cheque_no,
-      claim_no: d.claim_no,
-      amount: d.amount,
-      currency: d.currency || 'XCD',
-      payment_date: d.payment_date,
-      payment_method: d.payment_method,
-      period_from: d.period_from,
-      period_to: d.period_to,
-      status: d.status,
-      batch_no: d.batch_no,
-    }));
-  } catch {
-    // Table may not exist yet — fall back to bn_payment_instruction
-    return getPersonPayablesFallback(ssn);
+  // 1. The person's legacy claim numbers, which is what cheques are keyed by.
+  const { data: heads, error: headErr } = await db
+    .from('cl_head')
+    .select('claim_number, benefit_type')
+    .eq('insured_ssn', trimmed);
+
+  if (headErr) {
+    // A failure to read is NOT the same as "this person has no cheques", and it
+    // must not be answered with a different table's rows.
+    throw new Error(`Could not read legacy claims for ${trimmed}: ${headErr.message}`);
   }
-}
 
-// Fallback: bn_payment_instruction (pre-cl_cheques migration)
-async function getPersonPayablesFallback(ssn: string): Promise<Person360Disbursement[]> {
+  const claimNumbers = (heads ?? [])
+    .map((h: any) => h.claim_number)
+    .filter((c: any): c is string => !!c);
+  if (claimNumbers.length === 0) return [];
+
+  const benefitTypeByClaim = new Map<string, string>(
+    (heads ?? []).map((h: any) => [h.claim_number, h.benefit_type]),
+  );
+
+  // 2. The cheques themselves, using the column names the table actually has.
   const { data, error } = await db
-    .from('bn_payment_instruction')
-    .select('*')
-    .eq('ssn', ssn.trim())
-    .eq('status', 'PAID')
-    .order('paid_date', { ascending: false });
+    .from('cl_cheques')
+    .select(
+      'claim_number, cheque_number, payment_amount, cheque_status, cheque_type, ' +
+      'date_of_issue, date_period_start, date_period_end, batch_number',
+    )
+    .in('claim_number', claimNumbers)
+    .order('date_of_issue', { ascending: false });
 
-  if (error) return [];
-  return (data ?? []).map((p: any) => ({
-    cheque_no: p.payment_reference || p.id,
-    claim_no: p.claim_id || '—',
-    amount: p.amount,
-    currency: p.currency || 'XCD',
-    payment_date: p.paid_date || p.due_date,
-    payment_method: p.payment_method || 'EFT',
-    status: 'ISSUED',
+  if (error) {
+    throw new Error(`Could not read benefit cheques for ${trimmed}: ${error.message}`);
+  }
+
+  return (data ?? []).map((d: any) => ({
+    cheque_no: String(d.cheque_number ?? '').trim() || '—',
+    claim_no: d.claim_number ?? '—',
+    amount: Number(d.payment_amount ?? 0),
+    // cl_cheques carries no currency column; benefit payments are XCD.
+    currency: 'XCD',
+    payment_date: d.date_of_issue,
+    // `cheque_type` is the instrument (M = cheque run, etc), the nearest thing
+    // the table holds to a payment method.
+    payment_method: d.cheque_type ?? '—',
+    period_from: d.date_period_start ?? undefined,
+    period_to: d.date_period_end ?? undefined,
+    status: d.cheque_status ?? '—',
+    batch_no: d.batch_number ?? undefined,
+    benefit_type: benefitTypeByClaim.get(d.claim_number) ?? undefined,
   }));
 }
 

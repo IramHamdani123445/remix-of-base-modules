@@ -24,7 +24,12 @@ import {
 } from '@/services/bn/eligibility/fieldRegistry';
 import { resolveField, type ResolvedValue } from '@/services/bn/eligibility/fieldResolver';
 import { evaluateOperator } from '@/services/bn/eligibility/operatorEvaluator';
-import { RULE_GROUPS, defaultGroupForFact } from '@/services/bn/eligibility/eligibilityFactRegistry';
+import {
+  RULE_GROUPS,
+  defaultGroupForFact,
+  ELIGIBILITY_FACTS,
+} from '@/services/bn/eligibility/eligibilityFactRegistry';
+import { lookupField, type KnownField } from '@/services/bn/eligibility/ruleFieldMapping';
 import { RULE_TEMPLATES, type RuleTemplate } from '@/services/bn/eligibility/ruleTemplates';
 import { RuleWizardDialog } from './RuleWizardDialog';
 import { CataloguePickerDialog } from './CataloguePickerDialog';
@@ -71,7 +76,44 @@ export function EligibilityRulesTab({ versionId, isReadOnly, versionStatus, prod
   if (!versionId) return <Card><CardContent className="py-8 text-center text-muted-foreground">Select or create a product version first.</CardContent></Card>;
 
   const def = (editing.rule_definition || {}) as Record<string, any>;
-  const fieldDef = getFieldDef(def.field_key);
+
+  /**
+   * One descriptor for a field from either catalogue, so every control below
+   * works the same whether the key came from the field registry or the fact
+   * registry.
+   */
+  const fieldDef = useMemo(() => {
+    const key: string | undefined = def.field_key || (editing.fact_key ?? undefined);
+    if (!key) return undefined;
+    const fromFields = getFieldDef(key);
+    if (fromFields) {
+      return {
+        key,
+        label: fromFields.label,
+        valueType: fromFields.valueType,
+        helpText: fromFields.helpText,
+        dataSource: fromFields.dataSource,
+        operators: fromFields.operators as EligibilityOperator[],
+        supportsWindow: !!fromFields.supportsWindow,
+        supportsDocumentType: !!fromFields.supportsDocumentType,
+        registry: 'field' as const,
+      };
+    }
+    const known = lookupField(key);
+    if (!known) return undefined;
+    const fact = ELIGIBILITY_FACTS.find((f) => f.fact_key === key);
+    return {
+      key,
+      label: known.label,
+      valueType: known.valueType,
+      helpText: fact?.description ?? 'Resolved from the eligibility fact registry.',
+      dataSource: fact ? `${fact.source_table}.${fact.source_column}` : 'bn_claim_document.verification_status',
+      operators: (['>=', '>', '<=', '<', '==', '!=', 'IN', 'BETWEEN'] as EligibilityOperator[]),
+      supportsWindow: false,
+      supportsDocumentType: false,
+      registry: 'fact' as const,
+    };
+  }, [def.field_key, editing.fact_key]);
 
   const openNew = () => {
     setEditing({ ...emptyRule, product_version_id: versionId });
@@ -90,6 +132,8 @@ export function EligibilityRulesTab({ versionId, isReadOnly, versionStatus, prod
 
   const onFieldKeyChange = (key: string) => {
     const fd = getFieldDef(key);
+    const known = lookupField(key);
+    const valueType = fd?.valueType ?? known?.valueType;
     setEditing(prev => ({
       ...prev,
       rule_definition: {
@@ -97,8 +141,10 @@ export function EligibilityRulesTab({ versionId, isReadOnly, versionStatus, prod
         field_key: key,
         operator: fd?.operators[0] ?? '==',
         // Reset value when valueType changes
-        value: fd?.valueType === 'boolean' ? true : '',
+        value: valueType === 'boolean' ? true : '',
       },
+      // Leave data_source empty for a fact — the registry documents its own
+      // source, and a stale free-text value is the BUG-31 mismatch defect.
       data_source: fd?.dataSource ?? '',
       rule_type: fd ? mapCategoryToRuleType(fd.category) : prev.rule_type,
       fact_key: key,
@@ -133,6 +179,17 @@ export function EligibilityRulesTab({ versionId, isReadOnly, versionStatus, prod
     if (!def.field_key) {
       toast({ title: 'Validation', description: 'Please choose a field from the catalogue.', variant: 'destructive' }); return;
     }
+    // BUG-31/32 — refuse to save a rule the engine could never evaluate. This
+    // is the same check the publish gate applies, brought forward to the point
+    // the rule is written.
+    if (!lookupField(def.field_key)) {
+      toast({
+        title: 'Field not in either catalogue',
+        description: `"${def.field_key}" is in neither the field registry nor the fact registry, so this rule could never be evaluated and would block every claim. Choose a field from the list.`,
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       await upsertMutation.mutateAsync(editing);
       toast({ title: 'Saved', description: 'Eligibility rule saved.' });
@@ -154,15 +211,31 @@ export function EligibilityRulesTab({ versionId, isReadOnly, versionStatus, prod
     setPreviewBusy(true);
     setPreviewResult(null);
     try {
-      const resolved = await resolveField(def.field_key, {
-        ssn: previewSsn.trim(),
-        claimDate: previewDate,
-      }, {
-        windowType: def.window_type,
-        windowFrom: def.window_from,
-        windowTo: def.window_to,
-        documentTypeCode: def.document_type_code,
-      });
+      let resolved: ResolvedValue;
+      if (fieldDef.registry === 'field') {
+        resolved = await resolveField(def.field_key, {
+          ssn: previewSsn.trim(),
+          claimDate: previewDate,
+        }, {
+          windowType: def.window_type,
+          windowFrom: def.window_from,
+          windowTo: def.window_to,
+          documentTypeCode: def.document_type_code,
+        });
+      } else {
+        const { resolveFact } = await import('@/services/bn/eligibility/eligibilityFactResolver');
+        const r = await resolveFact(def.field_key, {
+          ssn: previewSsn.trim(),
+          claimDate: previewDate,
+        });
+        resolved = {
+          fieldKey: r.fact_key,
+          resolver: r.fact_key,
+          value: r.value,
+          sourceLabel: `${r.source_table}.${r.source_column}`,
+          notes: r.reason,
+        };
+      }
       const ev = evaluateOperator(resolved.value, def.operator, def.value, fieldDef.valueType, {
         rangeFrom: def.range_from,
         rangeTo: def.range_to,
@@ -175,14 +248,28 @@ export function EligibilityRulesTab({ versionId, isReadOnly, versionStatus, prod
     }
   };
 
+  /**
+   * BUG-32 — the field list must cover BOTH catalogues.
+   *
+   * This dropdown offered only the 13 keys in the field registry, so rules on
+   * facts such as `person.gender` or `spouse.contribution.total_weeks` could
+   * not be created here at all — which is why the maternity gender rule had to
+   * be written outside the application, or not at all.
+   */
   const groupedFields = useMemo(() => {
-    const map = new Map<string, typeof ELIGIBILITY_FIELD_REGISTRY>();
+    const map = new Map<string, { key: string; label: string; helpText: string }[]>();
+    const push = (category: string, entry: { key: string; label: string; helpText: string }) => {
+      const arr = map.get(category) || [];
+      if (!arr.some((e) => e.key === entry.key)) arr.push(entry);
+      map.set(category, arr);
+    };
     for (const f of ELIGIBILITY_FIELD_REGISTRY) {
-      const arr = map.get(f.category) || [];
-      arr.push(f);
-      map.set(f.category, arr);
+      push(f.category, { key: f.key, label: f.label, helpText: f.helpText });
     }
-    return Array.from(map.entries());
+    for (const f of ELIGIBILITY_FACTS) {
+      push(f.category, { key: f.fact_key, label: f.label, helpText: f.description });
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, []);
 
   return (
@@ -453,6 +540,29 @@ export function EligibilityRulesTab({ versionId, isReadOnly, versionStatus, prod
 
 
             <div className="col-span-2 space-y-2"><Label>Fail Message</Label><Textarea value={editing.fail_message || ''} onChange={e => updateEditing('fail_message', e.target.value)} rows={2} placeholder="Message shown when rule fails" /></div>
+
+            {/* BUG-32 — alternative routes to one statutory requirement. */}
+            <div className="col-span-2 space-y-1">
+              <Label>Alternative group (optional)</Label>
+              <Input
+                value={def.alternative_group ?? ''}
+                onChange={e => updateDefinition('alternative_group', e.target.value.trim() || undefined)}
+                placeholder="e.g. MATG_CONTRIB_BASIS"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use when a requirement can be met in more than one way. Rules sharing a
+                group are satisfied when <strong>any one</strong> of them passes, instead of
+                all of them. Example: the Maternity Grant qualifies on the claimant&rsquo;s own
+                contributions <em>or</em> on those of her insured husband — give both rules the
+                same group. Leave blank for a rule that must pass on its own.
+              </p>
+              {def.alternative_group && (
+                <p className="text-xs text-amber-600">
+                  {rules.filter(r => ((r.rule_definition || {}) as any).alternative_group === def.alternative_group && r.id !== editing.id).length}
+                  {' '}other rule(s) already share this group.
+                </p>
+              )}
+            </div>
             <div className="space-y-2"><Label>Sort Order</Label><Input type="number" value={editing.sort_order ?? 0} onChange={e => updateEditing('sort_order', parseInt(e.target.value) || 0)} /></div>
             <div className="flex items-center gap-2 pt-6"><Switch checked={editing.is_active ?? true} onCheckedChange={v => updateEditing('is_active', v)} /><Label>Active</Label></div>
 

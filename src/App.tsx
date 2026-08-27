@@ -61,7 +61,13 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: false, // do not reload everything when user switches tabs
       refetchOnReconnect: false,   // do not reload everything on network blip
       refetchOnMount: false,       // re-render uses cache; explicit invalidation refetches
-      retry: 1,
+      // Retrying broad reads during a backend slowdown amplifies connection
+      // pressure and can starve authentication. Mutations already never retry.
+      retry: (failureCount, error) => {
+        const status = Number((error as { status?: unknown } | null)?.status ?? 0);
+        return failureCount < 1 && status !== 401 && status !== 403;
+      },
+      retryDelay: 2_000,
     },
     mutations: {
       retry: 0,

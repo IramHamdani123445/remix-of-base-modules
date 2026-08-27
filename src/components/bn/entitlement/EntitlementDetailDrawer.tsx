@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, DollarSign, Calendar, Clock, ShieldCheck, AlertTriangle, History } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { formatDateForDisplay } from '@/lib/format-config';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -51,7 +52,10 @@ export const EntitlementDetailDrawer: React.FC<Props> = ({
   userRoles = ['admin', 'supervisor'],
   userCode = 'SYSTEM',
 }) => {
-  const { data: ent, isLoading } = useBnEntitlementDetail(entitlementId || undefined);
+  // `error` matters here: without it a failed load rendered nothing but the
+  // drawer title, and this drawer is the only route to Suspend, Terminate and
+  // Cancel — so the whole entitlement lifecycle looked simply absent.
+  const { data: ent, isLoading, error: loadError } = useBnEntitlementDetail(entitlementId || undefined);
   const { data: events = [] } = useBnEntitlementEvents(entitlementId || undefined);
   const executeAction = useExecuteEntitlementAction();
 
@@ -106,6 +110,27 @@ export const EntitlementDetailDrawer: React.FC<Props> = ({
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
+          )}
+
+          {!isLoading && loadError && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Could not load this entitlement</AlertTitle>
+              <AlertDescription>
+                {(loadError as any)?.message ?? String(loadError)}
+                {' '}No action can be taken until it loads.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {!isLoading && !loadError && !ent && (
+            <Alert className="mt-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Entitlement not found</AlertTitle>
+              <AlertDescription>
+                This entitlement no longer exists, or you do not have access to it.
+              </AlertDescription>
+            </Alert>
           )}
 
           {ent && (

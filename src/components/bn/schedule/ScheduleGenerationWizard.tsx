@@ -165,7 +165,7 @@ export const ScheduleGenerationWizard: React.FC<Props> = ({ open, onClose, onGen
       await db.from('bn_claim_event').insert({
         claim_id: claimId,
         event_type: 'SCHEDULE_GENERATED',
-        description: narrative || 'Payment schedule generated',
+        notes: narrative || 'Payment schedule generated',
         performed_by: 'CURRENT_USER',
         performed_at: new Date().toISOString(),
         metadata: {

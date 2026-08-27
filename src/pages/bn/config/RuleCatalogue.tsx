@@ -31,6 +31,7 @@ import {
   validateRuleCatalogue,
   type RuleCatalogueItem, type RuleCatalogueInput, type FailAction,
 } from '@/services/bn/ruleCatalogueService';
+import { canonicalOperator } from '@/services/bn/governance/ruleGovernanceService';
 import { statusBadgeVariant, sourceTypeBadgeVariant, describeFactSource, type EligibilityFact } from '@/services/bn/eligibilityFactService';
 import { getCurrentUserCode } from '@/services/bn/audit/getCurrentUserCode';
 import { OverviewTab } from '@/components/bn/ruleCatalogue/OverviewTab';
@@ -241,6 +242,30 @@ export default function RuleCatalogue() {
     if (!userCode) { toast.error('Authenticated user_code required'); return; }
     await toggle.mutateAsync({ id: r.id, isActive: !r.is_active, userCode });
   };
+
+  /**
+   * One operator vocabulary, whatever spelling the fact registry happens to use.
+   *
+   * `bn_eligibility_fact.allowed_operators` is inconsistent in the data: 53
+   * facts store symbols ("=", ">"), 2 store words ("EQUALS"), and 20 store an
+   * empty list. Offering those values raw meant the same field showed a
+   * different vocabulary depending on which fact was chosen, and wrote a value
+   * the technical review gate then rejected.
+   *
+   * The fact still decides WHICH operators are permitted; only the spelling is
+   * normalised. A fact that lists none permits all of them.
+   */
+  const operatorOptions = useMemo(() => {
+    const allowed = selectedFact?.allowed_operators;
+    if (!Array.isArray(allowed) || allowed.length === 0) return [...RULE_OPERATORS];
+    const canonical = new Set(
+      allowed.map(o => canonicalOperator(o)).filter((o): o is string => !!o),
+    );
+    const restricted = RULE_OPERATORS.filter(o => canonical.has(o));
+    // A fact whose list canonicalises to nothing must not leave an empty
+    // dropdown with no operator selectable.
+    return restricted.length > 0 ? restricted : [...RULE_OPERATORS];
+  }, [selectedFact]);
 
   const isBetween = editing.operator === 'BETWEEN';
   const isList = editing.operator === 'IN' || editing.operator === 'NOT_IN';
@@ -485,9 +510,17 @@ export default function RuleCatalogue() {
                     ...prev,
                     fact_key: v,
                     category: f?.category ?? prev.category,
-                    operator: f && f.allowed_operators?.length && !f.allowed_operators.includes(prev.operator)
-                      ? f.allowed_operators[0]
-                      : prev.operator,
+                    // Keep the current operator when the new fact still permits
+                    // it; otherwise take that fact's first permitted operator —
+                    // in canonical spelling, so the gate accepts what is saved.
+                    operator: (() => {
+                      const allowed = (f?.allowed_operators ?? [])
+                        .map(o => canonicalOperator(o))
+                        .filter((o): o is string => !!o);
+                      if (allowed.length === 0) return canonicalOperator(prev.operator) ?? prev.operator;
+                      const current = canonicalOperator(prev.operator);
+                      return current && allowed.includes(current) ? current : allowed[0];
+                    })(),
                   }));
                 }}>
                 <SelectTrigger><SelectValue placeholder="Pick a fact from the Facts registry" /></SelectTrigger>
@@ -535,7 +568,7 @@ export default function RuleCatalogue() {
               <Select value={editing.operator} onValueChange={v => setEditing({ ...editing, operator: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {(selectedFact?.allowed_operators?.length ? selectedFact.allowed_operators : RULE_OPERATORS).map(o =>
+                  {operatorOptions.map(o =>
                     <SelectItem key={o} value={o}>{o}</SelectItem>)}
                 </SelectContent>
               </Select>

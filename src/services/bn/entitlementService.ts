@@ -306,13 +306,21 @@ export async function fetchEntitlements(filters: EntitlementFilters = {}): Promi
 
 // ─── Fetch Single Entitlement ───────────────────────────────────────
 
+/**
+ * Note the column names: `bn_entitlement` has `entered_at`, but
+ * `bn_payment_instruction` does not — it has `created_at`. Asking the embedded
+ * select for `entered_at` made PostgREST reject the whole query, so the
+ * Entitlement Detail drawer rendered empty. That drawer is the only place
+ * ENTITLEMENT_ACTIONS is used, so Suspend, Terminate and Cancel were all
+ * unreachable while it failed.
+ */
 export async function fetchEntitlementDetail(entitlementId: string): Promise<EntitlementWithContext | null> {
   const { data, error } = await db
     .from('bn_entitlement')
     .select(`
       *,
       bn_claim(claim_number, ssn, status, priority, bn_product(benefit_name, category)),
-      bn_payment_instruction(id, status, amount, instruction_type, entered_at)
+      bn_payment_instruction(id, status, amount, instruction_type, created_at)
     `)
     .eq('id', entitlementId)
     .single();
@@ -438,7 +446,7 @@ export async function executeEntitlementAction(params: ExecuteEntitlementActionP
     event_type: `ENTITLEMENT_${action}`,
     from_status: ent.status,
     to_status: newStatus,
-    description: narrative || `Entitlement action: ${action}`,
+    notes: narrative || `Entitlement action: ${action}`,
     performed_by: performedBy,
     performed_at: now,
     metadata: {
@@ -533,7 +541,7 @@ export async function updateEntitlementFields(params: UpdateEntitlementParams): 
   await db.from('bn_claim_event').insert({
     claim_id: current.claim_id,
     event_type: 'ENTITLEMENT_UPDATED',
-    description: narrative,
+    notes: narrative,
     performed_by: performedBy,
     performed_at: now,
     metadata: {

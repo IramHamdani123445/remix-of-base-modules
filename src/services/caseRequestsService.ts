@@ -31,7 +31,10 @@ export async function listCaseRequests(
   status: CaseRequestStatus = 'PENDING'
 ): Promise<CaseRequestRow[]> {
   const { data, error } = await (supabase.from(TABLE) as any)
-    .select('*, ce_cases!ce_case_requests_case_id_fkey(case_number, employer_name)')
+    .select(
+      '*, ce_cases!ce_case_requests_case_id_fkey(case_number, employer_name), ' +
+      'target:ce_cases!ce_case_requests_target_case_id_fkey(case_number, employer_name)'
+    )
     .eq('request_type', type)
     .eq('status', status)
     .order('requested_at', { ascending: false })
@@ -41,8 +44,10 @@ export async function listCaseRequests(
     ...r,
     case_number: r.ce_cases?.case_number,
     employer_name: r.ce_cases?.employer_name,
+    target_case_number: r.target?.case_number,
   }));
 }
+
 
 export async function createCaseRequest(input: {
   caseId: string;
@@ -132,11 +137,14 @@ export async function reviewCaseRequest(input: {
       notes: `Merged: ${req.reason}`,
     });
     if (!r.success) throw new Error(r.error || 'Failed to merge case');
-    await supabase.from('ce_cases').update({
-      is_merged: true,
-      merged_into_case_id: req.target_case_id,
-      closed_date: today,
-      closure_reason: `Merged: ${req.reason}`,
-    } as any).eq('id', req.case_id);
+    // Move violations / notices / actions onto the surviving case, recompute
+    // financial roll-ups on both sides and write the permanent merge history
+    // entry — all inside one server-side transaction.
+    const { error: mergeErr } = await (supabase as any).rpc('ce_apply_case_merge', {
+      p_request_id: req.id,
+      p_actor: input.reviewedBy,
+    });
+    if (mergeErr) throw new Error(mergeErr.message || 'Failed to apply case merge');
   }
+
 }

@@ -1,0 +1,12 @@
+ANALYZE pg_catalog.pg_class;
+ANALYZE pg_catalog.pg_attribute;
+ANALYZE pg_catalog.pg_proc;
+ANALYZE pg_catalog.pg_type;
+ANALYZE pg_catalog.pg_constraint;
+ANALYZE pg_catalog.pg_depend;
+ANALYZE pg_catalog.pg_namespace;
+ANALYZE pg_catalog.pg_index;
+ANALYZE pg_catalog.pg_rewrite;
+ANALYZE pg_catalog.pg_description;
+ANALYZE pg_catalog.pg_attrdef;
+ANALYZE pg_catalog.pg_inherits;
