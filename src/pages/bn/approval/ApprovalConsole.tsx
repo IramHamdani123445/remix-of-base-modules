@@ -13,6 +13,7 @@ import React, { useState, useMemo } from 'react';
 import { BnStatCard, BnEmptyState } from '@/components/bn/shared';
 import { ClipboardCheck, Clock, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { showBlockerToast } from '@/lib/bn/showBlockerToast';
 import { useBnApprovalQueue, useExecuteApprovalAction, useBulkApproval } from '@/hooks/bn/useBnApprovalConsole';
 import { ApprovalQueueFilters } from '@/components/bn/approval/ApprovalQueueFilters';
 import { ApprovalQueueTable } from '@/components/bn/approval/ApprovalQueueTable';
@@ -67,7 +68,7 @@ export default function ApprovalConsole() {
 
   const handleAction = (action: string, narrative: string, reasonCodeId?: string) => {
     if (approvalsBlocked) {
-      toast.error('Cannot record this decision', { description: approvalsBlockedReason! });
+      showBlockerToast(approvalsBlockedReason, { fallbackTitle: 'Cannot record this decision' });
       return;
     }
     if (selectedIds.size === 0) {
@@ -83,14 +84,14 @@ export default function ApprovalConsole() {
           toast.success(`${action} completed. Status → ${res.newStatus}`);
           setSelectedIds(new Set());
         },
-        onError: (err: any) => toast.error(err.message),
+        onError: (err: any) => showBlockerToast(err, { fallbackTitle: 'Action failed' }),
       }
     );
   };
 
   const handleBulkApprove = (narrative: string) => {
     if (approvalsBlocked) {
-      toast.error('Cannot record these decisions', { description: approvalsBlockedReason! });
+      showBlockerToast(approvalsBlockedReason, { fallbackTitle: 'Cannot record these decisions' });
       return;
     }
     const ids = Array.from(selectedIds);
@@ -100,11 +101,16 @@ export default function ApprovalConsole() {
         onSuccess: (res) => {
           toast.success(`Bulk approved: ${res.succeeded.length} succeeded, ${res.failed.length} failed.`);
           if (res.failed.length > 0) {
-            res.failed.forEach(f => toast.error(`${f.claimId.slice(0, 8)}: ${f.error}`));
+            // One notification per claim, each listing its own conditions.
+            res.failed.forEach(f =>
+              showBlockerToast(f.error, {
+                fallbackTitle: `Claim ${f.claimId.slice(0, 8)} was not approved`,
+              }),
+            );
           }
           setSelectedIds(new Set());
         },
-        onError: (err: any) => toast.error(err.message),
+        onError: (err: any) => showBlockerToast(err, { fallbackTitle: 'Action failed' }),
       }
     );
   };
