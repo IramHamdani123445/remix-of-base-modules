@@ -118,6 +118,12 @@ const SAMPLE_VALUES: Record<string, string> = {
   submittedOn: '14 August 2026',
   approvedOn: '18 August 2026',
   approvedBy: 'Head of Internal Audit',
+  planTitle: 'Annual Internal Audit Plan 2026',
+  distributionPurpose: 'Official final distribution',
+  artifactName: 'Internal-Audit-Plan-2026-v2.pdf',
+  artifactVersion: '2',
+  distributedOn: '19 August 2026',
+
   decidedOn: '19 August 2026',
   decisionReason: 'Coverage of the payments cycle was insufficient',
   requestedOn: '20 August 2026',

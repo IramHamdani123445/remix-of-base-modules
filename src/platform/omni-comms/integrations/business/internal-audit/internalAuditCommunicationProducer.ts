@@ -40,6 +40,13 @@ export interface InternalAuditCommunicationInput {
   recipientEmail?: string | null;
   /** Recipient identity for in-app delivery, when the recipient is staff. */
   recipientUserId?: string | null;
+  /**
+   * Recipient audience. Internal Audit recipients are normally internal staff,
+   * so this defaults to `internal`. Board / committee / oversight recipients
+   * who sit outside the organisation are declared `external`.
+   */
+  audience?: 'external' | 'internal';
+
   /** Business facts for the event's declared token vocabulary. */
   values?: Record<string, unknown>;
   /**
@@ -100,7 +107,7 @@ export async function emitInternalAuditCommunication(
     reference: input.recipientUserId ?? input.reference,
     displayName: input.recipientName,
     email: input.recipientEmail ?? null,
-    audience: 'internal',
+    audience: input.audience === 'external' ? 'external' : 'internal',
   };
 
   return emitConfiguredBusinessEvent({
