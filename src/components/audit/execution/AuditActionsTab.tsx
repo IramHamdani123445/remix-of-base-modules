@@ -242,6 +242,22 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
               <Label>Progress / Evidence Notes{['Verified', 'Closed'].includes(progressForm.status) ? ' *' : ''}</Label>
               <Textarea rows={3} value={progressForm.notes} onChange={(e) => setProgressForm((f) => ({ ...f, notes: e.target.value }))} />
             </div>
+            <div>
+              <Label className="flex items-center gap-1"><Paperclip className="h-3.5 w-3.5" />Linked Documents</Label>
+              {auditEvidence.length === 0 ? (
+                <p className="text-xs text-muted-foreground mt-1">No documents uploaded for this audit yet.</p>
+              ) : (
+                <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-border/60 divide-y divide-border/40">
+                  {auditEvidence.map((ev: any) => (
+                    <label key={ev.id} className="flex items-center gap-2 p-2 cursor-pointer hover:bg-muted/40">
+                      <Checkbox checked={evidenceIds.includes(ev.id)} onCheckedChange={() => toggleEvidence(ev.id)} />
+                      <span className="text-xs truncate">{ev.file_name || ev.description || ev.evidence_id || ev.id.slice(0, 8)}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setProgressAction(null)}>Cancel</Button>
