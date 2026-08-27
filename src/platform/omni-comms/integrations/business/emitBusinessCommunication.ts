@@ -169,6 +169,7 @@ export async function emitBusinessCommunication(
       correlationId: input.correlationId ?? null,
       requestedChannels: input.requestedChannels,
       payload: input.payload,
+      attachments: input.attachments,
       resolutionContext: input.resolutionContext
         ? {
             productId: input.resolutionContext.productId ?? null,

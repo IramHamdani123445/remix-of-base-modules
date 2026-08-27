@@ -104,6 +104,8 @@ export interface ConfiguredBusinessEventInput {
   recipients: Record<string, ConfiguredBusinessEventRecipient>;
   /** Business facts matching the published event contract. */
   data: Record<string, unknown>;
+  /** Governed attachment references (ids from the attachment registry). */
+  attachments?: import('../../sendCommunication').SendCommunicationAttachmentInput[];
   correlationId?: string | null;
 }
 
@@ -261,6 +263,8 @@ export async function emitConfiguredBusinessEvent(
     // Production business communications are always queued.
     mode: 'queued',
     idempotencyKeyOverride,
+    // Governed attachment references travel unchanged to the façade.
+    attachments: input.attachments,
     // No channel is requested. The Hub — Communication Actions, channel
     // options, delivery policy and product configuration — is the single
     // authority that decides which legs are produced. A business caller that

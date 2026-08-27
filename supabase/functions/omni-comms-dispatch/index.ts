@@ -47,6 +47,80 @@ import { sendFcmPush, type PushDeviceTarget } from "../_shared/omni-comms/fcmPus
 import { sendOutboundWebhook } from "../_shared/omni-comms/outboundWebhookAdapter.ts";
 import { sendTwilioVoice } from "../_shared/omni-comms/twilioVoiceAdapter.ts";
 
+// ── DEF-3 — governed attachment resolution (Email only) ─────────────────────
+// The dispatcher fetches ONLY what the governed manifest names, and refuses to
+// contact the provider when the stored bytes no longer match the checksum and
+// size that were pinned onto the request. A later overwrite of the storage
+// object can therefore never be delivered under an approved identity.
+interface ResolvedAttachment {
+  filename: string;
+  contentBase64: string;
+  contentType: string;
+  checksum: string;
+  byteSize: number;
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function base64FromBytes(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+async function resolveGovernedAttachments(
+  // deno-lint-ignore no-explicit-any
+  service: any,
+  messageId: string,
+): Promise<
+  { ok: true; attachments: ResolvedAttachment[] } | { ok: false; code: string; detail: string }
+> {
+  const { data, error } = await service.rpc(
+    "omni_comms_priv_dispatch_attachment_manifest",
+    { p_message_id: messageId },
+  );
+  if (error) {
+    return { ok: false, code: "attachment_manifest_unavailable", detail: "The governed attachment manifest could not be read." };
+  }
+  const manifest = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+  const resolved: ResolvedAttachment[] = [];
+  for (const entry of manifest) {
+    const bucket = String(entry.storage_bucket ?? "");
+    const path = String(entry.storage_path ?? "");
+    const checksum = String(entry.checksum_sha256 ?? "");
+    const byteSize = Number(entry.byte_size ?? 0);
+    if (!bucket || !path || !/^[0-9a-f]{64}$/.test(checksum)) {
+      return { ok: false, code: "attachment_manifest_invalid", detail: "A manifest entry is not addressable." };
+    }
+    const download = await service.storage.from(bucket).download(path);
+    if (download.error || !download.data) {
+      return { ok: false, code: "attachment_unavailable", detail: "A governed attachment could not be retrieved." };
+    }
+    const bytes = new Uint8Array(await download.data.arrayBuffer());
+    if (bytes.byteLength !== byteSize || (await sha256Hex(bytes)) !== checksum) {
+      return { ok: false, code: "attachment_integrity_failed", detail: "The stored bytes no longer match the approved attachment." };
+    }
+    resolved.push({
+      filename: String(entry.file_name ?? "attachment"),
+      contentBase64: base64FromBytes(bytes),
+      contentType: String(entry.content_type ?? "application/octet-stream"),
+      checksum,
+      byteSize,
+    });
+  }
+  return { ok: true, attachments: resolved };
+}
+
+
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -351,6 +425,39 @@ Deno.serve(async (req) => {
       })).filter((d) => d.token !== "")
       : [];
 
+    // Email is the only channel the governed policy allows to carry
+    // attachments; every other claim resolves to an empty manifest.
+    let governedAttachments: ResolvedAttachment[] = [];
+    if (claimChannel === DISPATCHABLE_CHANNEL && claim.message_id) {
+      const attachmentResolution = await resolveGovernedAttachments(
+        service,
+        String(claim.message_id),
+      );
+      if (!attachmentResolution.ok) {
+        const attachmentFailure = await service.rpc("omni_comms_priv_dispatch_attempt_complete", {
+          p_attempt_id: attemptId,
+          p_claim_token: claimToken,
+          p_status: "rejected",
+          p_provider_message_id: null,
+          p_provider_status_code: null,
+          p_provider_response: { category: "pre_dispatch_guard", channel: claimChannel },
+          p_error_code: attachmentResolution.code,
+          p_error_detail: attachmentResolution.detail,
+        });
+        results.push({
+          attempt_id: attemptId,
+          channel: claimChannel,
+          attempt_number: claim.attempt_number ?? null,
+          outcome: "blocked",
+          result_code: attachmentResolution.code,
+          provider_contacted: false,
+          recorded: !attachmentFailure.error,
+        });
+        continue;
+      }
+      governedAttachments = attachmentResolution.attachments;
+    }
+
     const providerPayload = claimChannel === "whatsapp"
       ? {
         from: String(claim.from_number ?? ""),
@@ -411,6 +518,15 @@ Deno.serve(async (req) => {
         subject: String(claim.subject ?? ""),
         text: String(claim.text_body ?? ""),
         html: (claim.html_body as string | null) ?? null,
+        // Attachment IDENTITY (never the bytes) is fingerprinted, so a retry
+        // that would carry different files under the same idempotency identity
+        // is refused before the provider is contacted.
+        attachments: governedAttachments.map((a) => ({
+          filename: a.filename,
+          contentType: a.contentType,
+          byteSize: a.byteSize,
+          checksum: a.checksum,
+        })),
       };
 
 
@@ -629,6 +745,13 @@ Deno.serve(async (req) => {
       : await sendResendEmail({
         secretRef: String(claim.secret_ref ?? ""),
         ...(providerPayload as Record<string, unknown>),
+        // The fingerprinted shape carries attachment identity only; the bytes
+        // are supplied here, after the integrity check passed.
+        attachments: governedAttachments.map((a) => ({
+          filename: a.filename,
+          contentBase64: a.contentBase64,
+          contentType: a.contentType,
+        })),
         // Deterministic: identical on every safe retry of this message.
         idempotencyKey: String(claim.provider_idempotency_key ?? ""),
         // Strict single-source credential resolution: the account's explicitly

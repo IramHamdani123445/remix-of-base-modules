@@ -27,6 +27,13 @@ export interface CanonicalRecipient {
   postalAddress: string | null;
 }
 
+export interface CanonicalAttachment {
+  /** Governed attachment registry identifier (lowercased UUID). */
+  attachmentId: string;
+  disposition: string;
+  requiredForDelivery: boolean;
+}
+
 export interface CanonicalCallerContext {
   moduleCode: string | null;
   entityType: string | null;
@@ -42,6 +49,8 @@ export interface CanonicalRequest {
   recipients: CanonicalRecipient[];
   payload: Record<string, unknown>;
   callerContext: CanonicalCallerContext;
+  /** Governed attachment references pinned to this request (DEF-3). */
+  attachments: CanonicalAttachment[];
   /**
    * Immutable business resolution context (product, offered recipient roles).
    * Business meaning only — never configuration decisions, never secrets.
@@ -230,6 +239,60 @@ function detectCycle(v: unknown, seen: WeakSet<object>): void {
 }
 
 // deno-lint-ignore no-explicit-any
+
+const MAX_ATTACHMENTS = 20;
+
+/**
+ * Canonicalises governed attachment references. Bytes, buckets, paths and
+ * URLs are NOT part of the public contract and are rejected here — a caller
+ * may only name an attachment the governed registry already validated.
+ */
+export function canonicalizeAttachments(
+  raw: unknown,
+): CanonicalAttachment[] {
+  if (raw === null || raw === undefined) return [];
+  if (!Array.isArray(raw)) {
+    throw new CanonicalizationError('attachments_invalid');
+  }
+  if (raw.length > MAX_ATTACHMENTS) {
+    throw new CanonicalizationError('attachment_limit_exceeded');
+  }
+  const seen = new Set<string>();
+  const out: CanonicalAttachment[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new CanonicalizationError('attachment_reference_invalid');
+    }
+    const e = entry as Record<string, unknown>;
+    for (const forbidden of ['bytes', 'content', 'data', 'url', 'signedUrl', 'storagePath', 'bucket']) {
+      if (e[forbidden] !== undefined) {
+        throw new CanonicalizationError('attachment_inline_content_forbidden');
+      }
+    }
+    const id = typeof e.attachmentId === 'string' ? e.attachmentId.trim() : '';
+    if (!UUID_RE.test(id)) {
+      throw new CanonicalizationError('attachment_reference_invalid');
+    }
+    const key = id.toLowerCase();
+    if (seen.has(key)) {
+      throw new CanonicalizationError('attachment_duplicate');
+    }
+    seen.add(key);
+    const disposition = e.disposition === undefined || e.disposition === null
+      ? 'attachment'
+      : String(e.disposition);
+    if (disposition !== 'attachment' && disposition !== 'inline') {
+      throw new CanonicalizationError('attachment_disposition_invalid');
+    }
+    out.push({
+      attachmentId: key,
+      disposition,
+      requiredForDelivery: e.requiredForDelivery === true,
+    });
+  }
+  return out;
+}
+
 export function canonicalizeRequest(input: any): CanonicalRequest {
   if (!input || typeof input !== "object") {
     throw new CanonicalizationError("invalid_input", "input_not_object");
@@ -299,6 +362,10 @@ export function canonicalizeRequest(input: any): CanonicalRequest {
     recipientRoles: normalizedRoles,
   };
 
+  const attachments = canonicalizeAttachments(
+    (input as { attachments?: unknown }).attachments ?? null,
+  );
+
   const canonical: CanonicalRequest = {
     eventCode,
     organizationId,
@@ -309,6 +376,7 @@ export function canonicalizeRequest(input: any): CanonicalRequest {
     payload,
     callerContext,
     businessContext,
+    attachments,
   };
 
   const bytes = new TextEncoder().encode(JSON.stringify(payload)).byteLength;
@@ -347,6 +415,16 @@ export function canonicalJsonString(c: CanonicalRequest): string {
     }),
     requestedChannels: c.requestedChannels,
   } as Record<string, unknown>;
+  // Fingerprint continuity: the attachments key is hashed ONLY when governed
+  // attachments were actually supplied, so every pre-DEF-3 request keeps its
+  // original idempotency fingerprint and replays safely.
+  if ((c.attachments?.length ?? 0) > 0) {
+    (stable as Record<string, unknown>).attachments = c.attachments.map((a) => ({
+      attachmentId: a.attachmentId,
+      disposition: a.disposition,
+      requiredForDelivery: a.requiredForDelivery,
+    }));
+  }
   const bc = c.businessContext;
   if (bc && (bc.productId || (bc.recipientRoles?.length ?? 0) > 0)) {
     (stable as Record<string, unknown>).businessContext = {

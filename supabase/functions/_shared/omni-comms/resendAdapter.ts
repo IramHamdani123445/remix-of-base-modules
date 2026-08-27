@@ -49,6 +49,19 @@ export interface ResendSendInput {
    * precedence between stores.
    */
   readonly storageMode?: string | null;
+  /**
+   * Governed attachments resolved and integrity-verified by the dispatcher
+   * BEFORE this adapter is reached. The adapter never fetches a file, never
+   * resolves a storage path and never accepts a URL.
+   */
+  readonly attachments?: readonly ResendAttachment[] | null;
+}
+
+export interface ResendAttachment {
+  readonly filename: string;
+  /** Base64 of the exact bytes whose checksum matched the governed register. */
+  readonly contentBase64: string;
+  readonly contentType: string;
 }
 
 
@@ -295,6 +308,15 @@ export async function sendResendEmail(
         text: input.text,
         ...(input.html ? { html: input.html } : {}),
         ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+        ...(input.attachments && input.attachments.length > 0
+          ? {
+            attachments: input.attachments.map((a) => ({
+              filename: a.filename,
+              content: a.contentBase64,
+              content_type: a.contentType,
+            })),
+          }
+          : {}),
       }),
     });
 

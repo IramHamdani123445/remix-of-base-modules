@@ -576,6 +576,38 @@ Deno.serve(async (req: Request) => {
 
   if (!row?.request_id) return blocked(input, "runtime_persistence_failed");
 
+  // 3b. DEF-3 — pin governed attachments onto the accepted request.
+  //     The caller only names registry identifiers; the checksum, byte size and
+  //     file name are pinned server-side from the governed register, so the
+  //     approved bytes are the only bytes that can ever be delivered. The RPC is
+  //     replay-safe: an already-pinned request keeps its original manifest.
+  if (canonical.attachments.length > 0) {
+    const { data: attachData, error: attachErr } = await admin.rpc(
+      "omni_comms_priv_attach_request_attachments",
+      {
+        p_request_id: row.request_id,
+        p_organization_id: canonical.organizationId,
+        p_attachments: canonical.attachments.map((a) => ({
+          attachment_id: a.attachmentId,
+          disposition: a.disposition,
+          required_for_delivery: a.requiredForDelivery,
+        })),
+      },
+    );
+    const attachResult = (attachData ?? {}) as { ok?: boolean; code?: string };
+    if (attachErr || attachResult.ok !== true) {
+      const attachCode = attachErr
+        ? mapRpcErrorToCode(attachErr)
+        : (attachResult.code ?? "attachment_not_available");
+      await abandonAbortedRequest(
+        admin, userId, row.request_id, canonical.organizationId, attachCode,
+      );
+      return blocked(input, attachCode);
+    }
+  }
+
+
+
   // 4. Replay path: load persisted resolution + return.
   if (row.replayed === true) {
     const { data: loaded, error: loadErr } = await admin.rpc(
