@@ -18,6 +18,7 @@ import { PlanAmendmentHistory } from '@/components/audit/PlanAmendmentHistory';
 import { PlanApprovalBanner } from '@/components/audit/PlanApprovalBanner';
 import { PlanSubmissionReadiness } from '@/components/audit/PlanSubmissionReadiness';
 import { PlanRevisionDialog } from '@/components/audit/PlanRevisionDialog';
+import { PlanClosurePanel } from '@/components/audit/PlanClosurePanel';
 import { BoardPackTab } from '@/components/audit/BoardPackTab';
 import { PlanDistributionTab } from '@/components/audit/PlanDistributionTab';
 import { CoverageRiskTab } from '@/components/audit/CoverageRiskTab';
