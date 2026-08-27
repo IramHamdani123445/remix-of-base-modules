@@ -122,22 +122,27 @@ export function useFireNotification() {
       body?: string;
       metadata?: Record<string, any>;
     }) => {
-      const { data, error } = await supabase.rpc('ia_fire_notification' as any, {
-        p_event_code: params.eventCode,
-        p_engagement_id: params.engagementId || null,
-        p_plan_id: params.planId || null,
-        p_entity_type: params.entityType || null,
-        p_entity_id: params.entityId || null,
-        p_recipient_user_id: params.recipientUserId || null,
-        p_recipient_email: params.recipientEmail || null,
-        p_subject: params.subject || null,
-        p_body: params.body || null,
-        p_metadata: params.metadata || {},
+      // Wave 4 closure (DEF-2A): fired notifications are raised as governed
+      // Omni-Comms obligations, never through the legacy direct-send RPC.
+      const result = await emitInternalAuditCommunication({
+        eventCode: params.eventCode,
+        entityId: params.entityId || params.engagementId || params.planId || '',
+        recipientName: params.metadata?.recipient_name || 'Recipient',
+        recipientEmail: params.recipientEmail || null,
+        recipientUserId: params.recipientUserId || null,
+        reference:
+          params.metadata?.reference ||
+          params.entityId ||
+          params.engagementId ||
+          params.planId ||
+          '',
+        values: { ...(params.metadata ?? {}) },
       });
-      if (error) throw error;
-      const result = data as any;
-      if (!result?.success) throw new Error(result?.error || 'Failed to fire notification');
+      if (result.outcome === 'blocked') {
+        throw new Error(result.blockers.join(', ') || 'Failed to raise notification');
+      }
       return result;
+
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ia_auto_notification_log'] });
