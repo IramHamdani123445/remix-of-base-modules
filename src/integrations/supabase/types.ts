@@ -124148,6 +124148,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_comms_generate_reminders: {
+        Args: { p_limit?: number; p_today?: string }
+        Returns: Json
+      }
       ia_comms_profile_fact: {
         Args: { p_fallback_name?: string; p_profile_id: string; p_role: string }
         Returns: Json
