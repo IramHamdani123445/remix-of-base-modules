@@ -59,7 +59,6 @@ export const NextStepGuidance: React.FC<Props> = ({
   // fetched asynchronously, so acting on `!userCode` alone reports a missing
   // user code while it is merely still loading.
   const { userCode, isLoading: userCodeLoading, error: userCodeError } = useUserCode();
-  const { userCode, isLoading: userCodeLoading } = useUserCode();
 
   const { data: downstream } = useQuery({
     queryKey: ['bn', 'next-step-downstream', claimId, status],

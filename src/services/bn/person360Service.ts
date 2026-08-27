@@ -276,22 +276,30 @@ export interface Person360Employer {
 }
 
 export async function getPersonEmployers(ssn: string): Promise<Person360Employer[]> {
-  // Get distinct employers from ip_wages
+  // BUG-48 — this selected `employer_reg_no`, `wages` and `weeks`. None exists
+  // on ip_wages, so the query failed with 42703 and the Employers tab showed
+  // the error instead of the claimant's employment history. The employer is
+  // `payer_id`, and wages are seven weekly columns per row.
+  const wageCols = [1, 2, 3, 4, 5, 6, 7].map((i) => `wages_paid${i}`);
+  const codeCols = [1, 2, 3, 4, 5, 6, 7].map((i) => `paid_code${i}`);
   const { data, error } = await db
     .from('ip_wages')
-    .select('employer_reg_no, wages, weeks, period')
+    .select(['payer_id', 'period', ...wageCols, ...codeCols].join(', '))
     .eq('ssn', ssn.trim())
     .order('period', { ascending: false });
 
   if (error) throw error;
 
   const byEmployer: Record<string, { totalWages: number; totalWeeks: number; lastPeriod: string }> = {};
-  for (const row of data ?? []) {
-    const key = row.employer_reg_no;
+  for (const row of (data ?? []) as any[]) {
+    const key = row.payer_id;
     if (!key) continue;
     if (!byEmployer[key]) byEmployer[key] = { totalWages: 0, totalWeeks: 0, lastPeriod: row.period };
-    byEmployer[key].totalWages += row.wages ?? 0;
-    byEmployer[key].totalWeeks += row.weeks ?? 0;
+    const wages = wageCols.reduce((sum, c) => sum + Number(row[c] ?? 0), 0);
+    const hasCode = codeCols.some((c) => String(row[c] ?? '').trim() !== '');
+    byEmployer[key].totalWages += wages;
+    // One row is one week of cover when it carries wages or a contribution code.
+    byEmployer[key].totalWeeks += wages > 0 || hasCode ? 1 : 0;
   }
 
   const results: Person360Employer[] = [];

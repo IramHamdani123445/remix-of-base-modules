@@ -24,6 +24,26 @@ import {
 
 const db = supabase as any;
 
+/**
+ * A document named the way an officer would name it.
+ *
+ * Prefers the requirement's own description, then its document type code
+ * rendered readably (MEDICAL_CERT → "Medical cert"), and only falls back to a
+ * row id when the requirement itself could not be read — at which point the id
+ * is the only true thing left to say.
+ */
+function documentLabel(row: any): string {
+  const req = row?.bn_doc_requirement ?? null;
+  const described = String(req?.description ?? '').trim();
+  if (described) return described;
+  const code = String(req?.document_type_code ?? '').trim();
+  if (code) {
+    const words = code.replace(/[_-]+/g, ' ').toLowerCase().trim();
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  }
+  return `document ${String(row?.requirement_id ?? row?.id ?? 'unknown').slice(0, 8)}`;
+}
+
 export interface ApprovalBlocker {
   code:
     | 'DOCUMENTS_OUTSTANDING'
@@ -119,9 +139,12 @@ export async function checkApprovalPreconditions(
   // ── 1. mandatory documents ──────────────────────────────────────────
   // A failed query used to yield `(blocking || [])` → zero unmet → approved.
   // An unreadable checklist is now a refusal.
+  // The requirement is embedded so a blocker can name the document rather than
+  // its row id. `bn_evidence_checklist` carries no readable label of its own,
+  // and an officer told "874bede8-2dd0-44b5…" has been told nothing.
   const { data: blocking, error: blockingError } = await db
     .from('bn_evidence_checklist')
-    .select('id, status, requirement_id')
+    .select('id, status, requirement_id, bn_doc_requirement(document_type_code, description)')
     .eq('claim_id', claimId)
     .eq('is_blocking', true);
   if (blockingError) {
@@ -148,17 +171,20 @@ export async function checkApprovalPreconditions(
       blockers.push({
         code: 'DOCUMENT_WAIVER_NOT_PERMITTED',
         message:
-          `${waivedButNotPermitted.length} document(s) are marked waived, but this product's ` +
-          'approval policy states they cannot be waived. They must be verified.',
+          `${waivedButNotPermitted.map(documentLabel).join(', ')} ` +
+          `${waivedButNotPermitted.length === 1 ? 'is' : 'are'} waived, but this product does not ` +
+          'permit waivers. They must be verified.',
       });
     }
     if (unmet.length > 0) {
-      const codes = unmet.map((r) => r.requirement_id ?? r.id).slice(0, 5).join(', ');
+      const names = unmet.map(documentLabel);
+      const shown = names.slice(0, 4).join(', ');
+      const rest = names.length - 4;
       blockers.push({
         code: 'DOCUMENTS_OUTSTANDING',
         message:
-          `${unmet.length} mandatory document(s) are neither verified nor formally waived: ${codes}` +
-          `${unmet.length > 5 ? ' (and more)' : ''}. Verify or waive them before approving.`,
+          `${shown}${rest > 0 ? ` and ${rest} more` : ''} ` +
+          `${names.length === 1 ? 'is' : 'are'} not verified. Verify or waive on the Documents tab.`,
       });
     }
   }
@@ -325,12 +351,30 @@ export async function checkApprovalPreconditions(
   return { ok: blockers.length === 0, blockers, controls, selfApprovalReason };
 }
 
-/** One refusal sentence naming every failed condition, for the officer. */
+/**
+ * The refusal, for the officer.
+ *
+ * First line is a heading and nothing else; the rest is one bullet per failed
+ * condition. Callers show the first line as the notification's title and the
+ * remainder as its body — the whole string used to be handed over as a title,
+ * which rendered as an unreadable paragraph with the numbering run together and
+ * document row ids in the middle of it.
+ */
 export function describeApprovalBlockers(blockers: ApprovalBlocker[]): string {
   if (blockers.length === 0) return '';
-  const lines = blockers.map((b, i) => `${i + 1}. ${b.message}`);
-  return (
-    `Cannot approve — ${blockers.length} condition${blockers.length === 1 ? '' : 's'} not met:\n` +
-    lines.join('\n')
-  );
+  const heading =
+    blockers.length === 1
+      ? 'Approval blocked — 1 check failed'
+      : `Approval blocked — ${blockers.length} checks failed`;
+  return [heading, ...blockers.map((b) => `• ${b.message}`)].join('\n');
+}
+
+/** The heading alone — for a notification title, or a button tooltip. */
+export function approvalBlockerTitle(blockers: ApprovalBlocker[]): string {
+  return describeApprovalBlockers(blockers).split('\n')[0] ?? '';
+}
+
+/** The bullets alone — for a notification body. */
+export function approvalBlockerDetail(blockers: ApprovalBlocker[]): string {
+  return describeApprovalBlockers(blockers).split('\n').slice(1).join('\n');
 }
