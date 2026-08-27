@@ -70325,6 +70325,56 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_action_extensions: {
+        Row: {
+          action_id: string
+          approved_at: string
+          approved_by: string
+          created_at: string
+          engagement_id: string | null
+          id: string
+          new_target_date: string
+          previous_target_date: string | null
+          reason: string
+          requested_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_id: string
+          approved_at?: string
+          approved_by: string
+          created_at?: string
+          engagement_id?: string | null
+          id?: string
+          new_target_date: string
+          previous_target_date?: string | null
+          reason: string
+          requested_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_id?: string
+          approved_at?: string
+          approved_by?: string
+          created_at?: string
+          engagement_id?: string | null
+          id?: string
+          new_target_date?: string
+          previous_target_date?: string | null
+          reason?: string
+          requested_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_action_extensions_action_id_fkey"
+            columns: ["action_id"]
+            isOneToOne: false
+            referencedRelation: "ia_action_tracking"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_action_plan_milestones: {
         Row: {
           action_id: string | null
@@ -70410,14 +70460,20 @@ export type Database = {
         Row: {
           action_description: string | null
           action_status: string | null
+          closure_notes: string | null
+          closure_verified_at: string | null
+          closure_verified_by: string | null
           created_at: string | null
           created_by: string | null
+          current_target_date: string | null
           engagement_id: string | null
           evidence_ids: string[]
           evidence_of_implementation: string[] | null
+          extension_count: number
           finding_id: string
           id: string
           notes: string | null
+          original_target_date: string | null
           recommendation_id: string | null
           response_id: string | null
           responsible_person: string | null
@@ -70432,14 +70488,20 @@ export type Database = {
         Insert: {
           action_description?: string | null
           action_status?: string | null
+          closure_notes?: string | null
+          closure_verified_at?: string | null
+          closure_verified_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          current_target_date?: string | null
           engagement_id?: string | null
           evidence_ids?: string[]
           evidence_of_implementation?: string[] | null
+          extension_count?: number
           finding_id: string
           id?: string
           notes?: string | null
+          original_target_date?: string | null
           recommendation_id?: string | null
           response_id?: string | null
           responsible_person?: string | null
@@ -70454,14 +70516,20 @@ export type Database = {
         Update: {
           action_description?: string | null
           action_status?: string | null
+          closure_notes?: string | null
+          closure_verified_at?: string | null
+          closure_verified_by?: string | null
           created_at?: string | null
           created_by?: string | null
+          current_target_date?: string | null
           engagement_id?: string | null
           evidence_ids?: string[]
           evidence_of_implementation?: string[] | null
+          extension_count?: number
           finding_id?: string
           id?: string
           notes?: string | null
+          original_target_date?: string | null
           recommendation_id?: string | null
           response_id?: string | null
           responsible_person?: string | null
@@ -70509,10 +70577,14 @@ export type Database = {
           activity_type: string | null
           actual_date_from: string | null
           actual_date_to: string | null
+          actual_hours: number | null
           annual_plan_id: string | null
           assigned_auditor_ids: string[] | null
           auditor_id: string | null
           auditor_name: string | null
+          completed_at: string | null
+          completed_by: string | null
+          completion_notes: string | null
           control_area: string | null
           created_at: string | null
           created_by: string | null
@@ -70525,9 +70597,13 @@ export type Database = {
           id: string
           location: string | null
           name: string
+          owner_auditor_id: string | null
           planned_date_from: string | null
           planned_date_to: string | null
+          planned_hours: number | null
           priority: string | null
+          review_status: string
+          reviewer_auditor_id: string | null
           start_date: string | null
           status: string | null
           title: string | null
@@ -70538,10 +70614,14 @@ export type Database = {
           activity_type?: string | null
           actual_date_from?: string | null
           actual_date_to?: string | null
+          actual_hours?: number | null
           annual_plan_id?: string | null
           assigned_auditor_ids?: string[] | null
           auditor_id?: string | null
           auditor_name?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_notes?: string | null
           control_area?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -70554,9 +70634,13 @@ export type Database = {
           id?: string
           location?: string | null
           name: string
+          owner_auditor_id?: string | null
           planned_date_from?: string | null
           planned_date_to?: string | null
+          planned_hours?: number | null
           priority?: string | null
+          review_status?: string
+          reviewer_auditor_id?: string | null
           start_date?: string | null
           status?: string | null
           title?: string | null
@@ -70567,10 +70651,14 @@ export type Database = {
           activity_type?: string | null
           actual_date_from?: string | null
           actual_date_to?: string | null
+          actual_hours?: number | null
           annual_plan_id?: string | null
           assigned_auditor_ids?: string[] | null
           auditor_id?: string | null
           auditor_name?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_notes?: string | null
           control_area?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -70583,9 +70671,13 @@ export type Database = {
           id?: string
           location?: string | null
           name?: string
+          owner_auditor_id?: string | null
           planned_date_from?: string | null
           planned_date_to?: string | null
+          planned_hours?: number | null
           priority?: string | null
+          review_status?: string
+          reviewer_auditor_id?: string | null
           start_date?: string | null
           status?: string | null
           title?: string | null
@@ -71171,6 +71263,10 @@ export type Database = {
           objectives: string | null
           planned_end_date: string | null
           planned_start_date: string | null
+          preparation_completed_at: string | null
+          preparation_completed_by: string | null
+          preparation_notes: string | null
+          preparation_status: string
           primary_auditee_contact_id: string | null
           quarter: string | null
           reviewer_id: string | null
@@ -71235,6 +71331,10 @@ export type Database = {
           objectives?: string | null
           planned_end_date?: string | null
           planned_start_date?: string | null
+          preparation_completed_at?: string | null
+          preparation_completed_by?: string | null
+          preparation_notes?: string | null
+          preparation_status?: string
           primary_auditee_contact_id?: string | null
           quarter?: string | null
           reviewer_id?: string | null
@@ -71299,6 +71399,10 @@ export type Database = {
           objectives?: string | null
           planned_end_date?: string | null
           planned_start_date?: string | null
+          preparation_completed_at?: string | null
+          preparation_completed_by?: string | null
+          preparation_notes?: string | null
+          preparation_status?: string
           primary_auditee_contact_id?: string | null
           quarter?: string | null
           reviewer_id?: string | null
@@ -71748,6 +71852,7 @@ export type Database = {
           conclusion: string | null
           created_at: string | null
           created_by: string | null
+          current_version_number: number
           department_id: string | null
           distribution_list: string | null
           engagement_id: string | null
@@ -71766,6 +71871,7 @@ export type Database = {
           period: string | null
           plan_id: string | null
           prepared_by: string | null
+          qa_review_id: string | null
           recommendations: string | null
           report_number: string | null
           report_type: string
@@ -71787,6 +71893,7 @@ export type Database = {
           conclusion?: string | null
           created_at?: string | null
           created_by?: string | null
+          current_version_number?: number
           department_id?: string | null
           distribution_list?: string | null
           engagement_id?: string | null
@@ -71805,6 +71912,7 @@ export type Database = {
           period?: string | null
           plan_id?: string | null
           prepared_by?: string | null
+          qa_review_id?: string | null
           recommendations?: string | null
           report_number?: string | null
           report_type?: string
@@ -71826,6 +71934,7 @@ export type Database = {
           conclusion?: string | null
           created_at?: string | null
           created_by?: string | null
+          current_version_number?: number
           department_id?: string | null
           distribution_list?: string | null
           engagement_id?: string | null
@@ -71844,6 +71953,7 @@ export type Database = {
           period?: string | null
           plan_id?: string | null
           prepared_by?: string | null
+          qa_review_id?: string | null
           recommendations?: string | null
           report_number?: string | null
           report_type?: string
@@ -72796,6 +72906,9 @@ export type Database = {
       }
       ia_control_tests: {
         Row: {
+          concluded_at: string | null
+          concluded_by: string | null
+          conclusion: string | null
           created_at: string | null
           created_by: string | null
           engagement_id: string | null
@@ -72803,18 +72916,23 @@ export type Database = {
           id: string
           is_active: boolean | null
           linked_evidence_ids: Json | null
+          no_finding_rationale: string | null
           rcm_control_id: string | null
           remarks: string | null
           result: string | null
           reviewed_at: string | null
           reviewer_id: string | null
           sample_size: number | null
+          status: string
           test_date: string | null
           tested_by: string | null
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
+          concluded_at?: string | null
+          concluded_by?: string | null
+          conclusion?: string | null
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
@@ -72822,18 +72940,23 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           linked_evidence_ids?: Json | null
+          no_finding_rationale?: string | null
           rcm_control_id?: string | null
           remarks?: string | null
           result?: string | null
           reviewed_at?: string | null
           reviewer_id?: string | null
           sample_size?: number | null
+          status?: string
           test_date?: string | null
           tested_by?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
+          concluded_at?: string | null
+          concluded_by?: string | null
+          conclusion?: string | null
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
@@ -72841,12 +72964,14 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           linked_evidence_ids?: Json | null
+          no_finding_rationale?: string | null
           rcm_control_id?: string | null
           remarks?: string | null
           result?: string | null
           reviewed_at?: string | null
           reviewer_id?: string | null
           sample_size?: number | null
+          status?: string
           test_date?: string | null
           tested_by?: string | null
           updated_at?: string | null
@@ -73835,6 +73960,53 @@ export type Database = {
         }
         Relationships: []
       }
+      ia_finding_severity_history: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          created_at: string
+          engagement_id: string | null
+          finding_id: string
+          id: string
+          new_severity: string
+          old_severity: string | null
+          reason: string
+          updated_at: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          created_at?: string
+          engagement_id?: string | null
+          finding_id: string
+          id?: string
+          new_severity: string
+          old_severity?: string | null
+          reason: string
+          updated_at?: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          created_at?: string
+          engagement_id?: string | null
+          finding_id?: string
+          id?: string
+          new_severity?: string
+          old_severity?: string | null
+          reason?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_finding_severity_history_finding_id_fkey"
+            columns: ["finding_id"]
+            isOneToOne: false
+            referencedRelation: "ia_findings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ia_findings: {
         Row: {
           activity_id: string | null
@@ -73842,6 +74014,9 @@ export type Database = {
           cause: string | null
           checklist_id: string | null
           condition: string | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          control_test_id: string | null
           corrective_action_description: string | null
           created_at: string | null
           created_by: string | null
@@ -73857,16 +74032,25 @@ export type Database = {
           function_area: string | null
           id: string
           impact_area: string | null
+          lifecycle_status: string
           owner_role: string | null
           preventive_action: string | null
           recommendation: string | null
+          released_at: string | null
+          released_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           risk_rating: string | null
           root_cause_category: string | null
+          severity: string | null
           status: string | null
           submitted_for_response_date: string | null
           title: string
           updated_at: string | null
           updated_by: string | null
+          withdrawn_at: string | null
+          withdrawn_by: string | null
+          withdrawn_reason: string | null
         }
         Insert: {
           activity_id?: string | null
@@ -73874,6 +74058,9 @@ export type Database = {
           cause?: string | null
           checklist_id?: string | null
           condition?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          control_test_id?: string | null
           corrective_action_description?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -73889,16 +74076,25 @@ export type Database = {
           function_area?: string | null
           id?: string
           impact_area?: string | null
+          lifecycle_status?: string
           owner_role?: string | null
           preventive_action?: string | null
           recommendation?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           risk_rating?: string | null
           root_cause_category?: string | null
+          severity?: string | null
           status?: string | null
           submitted_for_response_date?: string | null
           title: string
           updated_at?: string | null
           updated_by?: string | null
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_reason?: string | null
         }
         Update: {
           activity_id?: string | null
@@ -73906,6 +74102,9 @@ export type Database = {
           cause?: string | null
           checklist_id?: string | null
           condition?: string | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          control_test_id?: string | null
           corrective_action_description?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -73921,16 +74120,25 @@ export type Database = {
           function_area?: string | null
           id?: string
           impact_area?: string | null
+          lifecycle_status?: string
           owner_role?: string | null
           preventive_action?: string | null
           recommendation?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           risk_rating?: string | null
           root_cause_category?: string | null
+          severity?: string | null
           status?: string | null
           submitted_for_response_date?: string | null
           title?: string
           updated_at?: string | null
           updated_by?: string | null
+          withdrawn_at?: string | null
+          withdrawn_by?: string | null
+          withdrawn_reason?: string | null
         }
         Relationships: [
           {
@@ -74231,6 +74439,7 @@ export type Database = {
       }
       ia_management_responses: {
         Row: {
+          accepted_at: string | null
           action_plan: string | null
           created_at: string | null
           created_by: string | null
@@ -74240,10 +74449,15 @@ export type Database = {
           id: string
           is_overdue: boolean | null
           last_reminder_date: string | null
+          management_position: string | null
           official_target_date: string | null
+          rejection_rationale: string | null
           reminder_sent: boolean | null
           response_text: string | null
           responsible_person: string | null
+          review_outcome: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           status: string | null
           submitted_by: string | null
           submitted_date: string | null
@@ -74253,6 +74467,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          accepted_at?: string | null
           action_plan?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -74262,10 +74477,15 @@ export type Database = {
           id?: string
           is_overdue?: boolean | null
           last_reminder_date?: string | null
+          management_position?: string | null
           official_target_date?: string | null
+          rejection_rationale?: string | null
           reminder_sent?: boolean | null
           response_text?: string | null
           responsible_person?: string | null
+          review_outcome?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
           submitted_by?: string | null
           submitted_date?: string | null
@@ -74275,6 +74495,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          accepted_at?: string | null
           action_plan?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -74284,10 +74505,15 @@ export type Database = {
           id?: string
           is_overdue?: boolean | null
           last_reminder_date?: string | null
+          management_position?: string | null
           official_target_date?: string | null
+          rejection_rationale?: string | null
           reminder_sent?: boolean | null
           response_text?: string | null
           responsible_person?: string | null
+          review_outcome?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           status?: string | null
           submitted_by?: string | null
           submitted_date?: string | null
@@ -75393,6 +75619,8 @@ export type Database = {
       ia_quality_reviews: {
         Row: {
           checklist_results: Json | null
+          cleared_at: string | null
+          cleared_by: string | null
           created_at: string | null
           created_by: string | null
           engagement_id: string | null
@@ -75405,11 +75633,15 @@ export type Database = {
           review_date: string | null
           review_type: string | null
           reviewer_id: string | null
+          rework_notes: string | null
+          status: string
           updated_at: string | null
           updated_by: string | null
         }
         Insert: {
           checklist_results?: Json | null
+          cleared_at?: string | null
+          cleared_by?: string | null
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
@@ -75422,11 +75654,15 @@ export type Database = {
           review_date?: string | null
           review_type?: string | null
           reviewer_id?: string | null
+          rework_notes?: string | null
+          status?: string
           updated_at?: string | null
           updated_by?: string | null
         }
         Update: {
           checklist_results?: Json | null
+          cleared_at?: string | null
+          cleared_by?: string | null
           created_at?: string | null
           created_by?: string | null
           engagement_id?: string | null
@@ -75439,6 +75675,8 @@ export type Database = {
           review_date?: string | null
           review_type?: string | null
           reviewer_id?: string | null
+          rework_notes?: string | null
+          status?: string
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -75730,6 +75968,71 @@ export type Database = {
             columns: ["finding_id"]
             isOneToOne: false
             referencedRelation: "ia_findings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ia_report_versions: {
+        Row: {
+          change_summary: string | null
+          content: Json
+          content_hash: string | null
+          created_at: string
+          created_by: string | null
+          engagement_id: string | null
+          id: string
+          is_issued: boolean
+          issued_at: string | null
+          issued_by: string | null
+          report_id: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+          version_label: string | null
+          version_number: number
+        }
+        Insert: {
+          change_summary?: string | null
+          content?: Json
+          content_hash?: string | null
+          created_at?: string
+          created_by?: string | null
+          engagement_id?: string | null
+          id?: string
+          is_issued?: boolean
+          issued_at?: string | null
+          issued_by?: string | null
+          report_id: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_label?: string | null
+          version_number: number
+        }
+        Update: {
+          change_summary?: string | null
+          content?: Json
+          content_hash?: string | null
+          created_at?: string
+          created_by?: string | null
+          engagement_id?: string | null
+          id?: string
+          is_issued?: boolean
+          issued_at?: string | null
+          issued_by?: string | null
+          report_id?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+          version_label?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_report_versions_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "ia_audit_reports"
             referencedColumns: ["id"]
           },
         ]
@@ -123431,6 +123734,16 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_assign_activity: {
+        Args: {
+          p_activity_id: string
+          p_owner_auditor_id: string
+          p_planned_hours?: number
+          p_reviewer_auditor_id?: string
+        }
+        Returns: Json
+      }
+      ia_auditor_profile: { Args: { _auditor_id: string }; Returns: string }
       ia_build_followup_carry_forward: {
         Args: {
           p_carried_by?: string
@@ -123438,6 +123751,10 @@ export type Database = {
           p_target_fiscal_year: string
         }
         Returns: Json
+      }
+      ia_can_access_audit_object: {
+        Args: { _name: string; _write: boolean }
+        Returns: boolean
       }
       ia_can_access_engagement: {
         Args: { _engagement_id: string }
@@ -123461,6 +123778,10 @@ export type Database = {
         Args: { p_plan_id: string }
         Returns: Json
       }
+      ia_change_finding_severity: {
+        Args: { p_finding_id: string; p_new_severity: string; p_reason: string }
+        Returns: Json
+      }
       ia_check_data_readiness: { Args: { p_plan_id?: string }; Returns: Json }
       ia_check_engagement_completeness: {
         Args: { p_engagement_id: string }
@@ -123471,6 +123792,14 @@ export type Database = {
         Returns: Json
       }
       ia_check_overdue_actions: { Args: never; Returns: Json }
+      ia_close_action: {
+        Args: {
+          p_action_id: string
+          p_closure_notes: string
+          p_evidence_ids?: string[]
+        }
+        Returns: Json
+      }
       ia_close_annual_plan: {
         Args: { p_dispositions?: Json; p_notes?: string; p_plan_id: string }
         Returns: Json
@@ -123484,11 +123813,49 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_cmd_guard: {
+        Args: { _action: string; _engagement: string; _module: string }
+        Returns: boolean
+      }
+      ia_cmd_guard_elevated: {
+        Args: { _action: string; _engagement: string; _module: string }
+        Returns: boolean
+      }
+      ia_complete_activity: {
+        Args: {
+          p_activity_id: string
+          p_actual_hours?: number
+          p_notes?: string
+        }
+        Returns: Json
+      }
+      ia_complete_preparation: {
+        Args: { p_engagement_id: string; p_notes?: string }
+        Returns: Json
+      }
       ia_compute_engagement_priority_score: {
         Args: {
           p_department_id?: string
           p_function_id?: string
           p_plan_id?: string
+        }
+        Returns: Json
+      }
+      ia_conclude_control_test: {
+        Args: {
+          p_conclusion: string
+          p_no_finding_rationale?: string
+          p_result: string
+          p_test_id: string
+        }
+        Returns: Json
+      }
+      ia_conclude_quality_review: {
+        Args: {
+          p_notes?: string
+          p_outcome: string
+          p_quality_rating?: string
+          p_review_id: string
         }
         Returns: Json
       }
@@ -123515,6 +123882,15 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_create_report_version: {
+        Args: {
+          p_change_summary?: string
+          p_content?: Json
+          p_report_id: string
+          p_version_label?: string
+        }
+        Returns: Json
+      }
       ia_current_auditor_id: { Args: never; Returns: string }
       ia_current_profile_id: { Args: never; Returns: string }
       ia_detect_material_plan_changes: {
@@ -123529,7 +123905,20 @@ export type Database = {
         Args: { p_engagement_id: string }
         Returns: Json
       }
+      ia_evaluate_engagement_closure_v2: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
       ia_evaluate_plan_closure: { Args: { p_plan_id: string }; Returns: Json }
+      ia_extend_action_target: {
+        Args: {
+          p_action_id: string
+          p_approved_by?: string
+          p_new_target_date: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       ia_fire_notification: {
         Args: {
           p_body?: string
@@ -123572,6 +123961,10 @@ export type Database = {
         Returns: boolean
       }
       ia_is_ia_user: { Args: never; Returns: boolean }
+      ia_issue_report: {
+        Args: { p_notes?: string; p_report_id: string }
+        Returns: Json
+      }
       ia_launch_engagement: {
         Args: { p_engagement_id: string; p_launched_by?: string }
         Returns: Json
@@ -123631,6 +124024,18 @@ export type Database = {
             }
             Returns: Json
           }
+      ia_record_management_response: {
+        Args: {
+          p_action_plan?: string
+          p_finding_id: string
+          p_management_position: string
+          p_rejection_rationale?: string
+          p_response_text: string
+          p_responsible_person?: string
+          p_target_date?: string
+        }
+        Returns: Json
+      }
       ia_resolve_engagement_risk: {
         Args: { p_department_id?: string; p_function_id?: string }
         Returns: Json
@@ -123647,6 +124052,18 @@ export type Database = {
           p_plan_id?: string
           p_scenario_id?: string
         }
+        Returns: Json
+      }
+      ia_respondent_writable_class: {
+        Args: { _class: string }
+        Returns: boolean
+      }
+      ia_review_activity: {
+        Args: { p_activity_id: string; p_notes?: string; p_outcome: string }
+        Returns: Json
+      }
+      ia_review_management_response: {
+        Args: { p_notes?: string; p_outcome: string; p_response_id: string }
         Returns: Json
       }
       ia_seed_ssb_audit_reference_data: {
@@ -123669,12 +124086,26 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_start_quality_review: {
+        Args: { p_engagement_id: string; p_review_type?: string }
+        Returns: Json
+      }
+      ia_storage_class: { Args: { _name: string }; Returns: string }
+      ia_storage_engagement: { Args: { _name: string }; Returns: string }
       ia_transition_execution_status: {
         Args: {
           p_engagement_id: string
           p_new_status: string
           p_notes?: string
           p_performed_by?: string
+        }
+        Returns: Json
+      }
+      ia_transition_finding: {
+        Args: {
+          p_finding_id: string
+          p_reason?: string
+          p_target_status: string
         }
         Returns: Json
       }
