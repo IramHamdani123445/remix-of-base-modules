@@ -29,6 +29,11 @@ export interface ChannelValidationResult {
   errors: ChannelValidationIssue[];
   warnings: ChannelValidationIssue[];
   infos: ChannelValidationIssue[];
+  /**
+   * False when the channel accepts no applications (BUG-54). Its findings are
+   * reported as information rather than as faults, and the screen can say so.
+   */
+  channelEnabled?: boolean;
 }
 
 function push(
@@ -82,11 +87,21 @@ export async function validateProductChannelConfig(
 
   if (paymentVisible) {
     // At least one bank must exist for EFT-capable countries; we only assert that the master is not empty.
-    const { count: bankCount } = await db
+    // BUG-54: filtered on `is_active`. bn_bank_master's column is `active`,
+    // so the query failed with 42703, the count came back undefined, and the
+    // screen reported "no active banks exist" to a Board that has them.
+    const { count: bankCount, error: bankError } = await db
       .from('bn_bank_master')
       .select('id', { count: 'exact', head: true })
-      .eq('is_active', true);
-    if (!bankCount || bankCount === 0) {
+      .eq('active', true);
+    if (bankError) {
+      push(bucket, {
+        code: 'BANK_MASTER_UNREADABLE',
+        severity: 'WARN',
+        message: `The bank register could not be read (${bankError.message}).`,
+        fixHint: 'A system fault, not a configuration gap. Report it rather than editing configuration.',
+      });
+    } else if (!bankCount || bankCount === 0) {
       push(bucket, {
         code: 'NO_BANK_MASTER',
         severity: 'WARN',
@@ -95,11 +110,22 @@ export async function validateProductChannelConfig(
       });
     }
 
-    const { count: methodCount } = await db
+    // BUG-54: the same fault. bn_payment_method's column is `active`, and
+    // three methods are active in live data (EFT, CHEQUE, CASH_PICKUP). The
+    // screen reported none, which is worse than silence: it sends an
+    // administrator to repair configuration that was never broken.
+    const { count: methodCount, error: methodError } = await db
       .from('bn_payment_method')
       .select('id', { count: 'exact', head: true })
-      .eq('is_active', true);
-    if (!methodCount || methodCount === 0) {
+      .eq('active', true);
+    if (methodError) {
+      push(bucket, {
+        code: 'PAYMENT_METHODS_UNREADABLE',
+        severity: 'WARN',
+        message: `The payment method register could not be read (${methodError.message}).`,
+        fixHint: 'A system fault, not a configuration gap. Report it rather than editing configuration.',
+      });
+    } else if (!methodCount || methodCount === 0) {
       push(bucket, {
         code: 'NO_PAYMENT_METHODS',
         severity: 'ERROR',
@@ -222,15 +248,54 @@ export async function validateProductChannelConfig(
   };
 }
 
+/**
+ * BUG-54: every channel row was judged as though it were live.
+ *
+ * A disabled channel accepts no applications, so "no workflow is wired to it"
+ * is not a fault; it is the reason it is disabled. Reported as an ERROR it
+ * buried the real faults in noise, and made disabling a channel pointless.
+ *
+ * The findings are still produced, because an administrator about to enable a
+ * channel needs to know what is missing before they do. They are reported as
+ * information and labelled, so nothing is hidden and nothing is overstated.
+ */
 export async function validateAllChannelConfigs(productVersionId: string): Promise<ChannelValidationResult[]> {
   const { data, error } = await db
     .from('bn_product_channel_config')
-    .select('id')
+    .select('id, channel_code, is_enabled')
     .eq('product_version_id', productVersionId);
   if (error) throw error;
   const out: ChannelValidationResult[] = [];
   for (const row of data ?? []) {
-    out.push(await validateProductChannelConfig(row.id));
+    const result = await validateProductChannelConfig(row.id);
+    out.push(
+      row.is_enabled === false
+        ? asDisabledChannel(result)
+        : { ...result, channelEnabled: true },
+    );
   }
   return out;
+}
+
+/**
+ * Recasts a disabled channel's findings as information.
+ *
+ * Nothing is dropped: every issue keeps its code, message and fix hint, so the
+ * list still says what would need doing before the channel is enabled. Only the
+ * severity changes, and each message says why.
+ */
+function asDisabledChannel(result: ChannelValidationResult): ChannelValidationResult {
+  const note = (i: ChannelValidationIssue): ChannelValidationIssue => ({
+    ...i,
+    severity: 'INFO',
+    message: `${i.message} (channel is disabled, not blocking)`,
+  });
+  return {
+    ...result,
+    ok: true,
+    channelEnabled: false,
+    errors: [],
+    warnings: [],
+    infos: [...result.errors.map(note), ...result.warnings.map(note), ...result.infos],
+  };
 }

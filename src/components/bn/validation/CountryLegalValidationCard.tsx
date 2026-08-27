@@ -42,30 +42,65 @@ async function runChecks(): Promise<Finding[]> {
   const legalMap = new Map<string, any>((legalRefs || []).map((r: any) => [r.id, r]));
 
   // 2. Active products
-  const { data: products } = await db
+  //
+  // BUG-54: this named `product_code`, `product_name` and `is_active`. None of
+  // the three exists on bn_product, which carries `benefit_code`,
+  // `benefit_name` and `status`. PostgREST rejected the whole query with 42703,
+  // `products` came back null, and the loop below ran over nothing, so this
+  // check reported a clean bill of health for 30 active products it never read.
+  const { data: products, error: productError } = await db
     .from('bn_product')
-    .select('id, product_code, product_name, country_code, is_active')
-    .eq('is_active', true);
+    .select('id, benefit_code, benefit_name, country_code, status')
+    .eq('status', 'ACTIVE');
+  if (productError) {
+    findings.push({
+      severity: 'error',
+      category: 'country',
+      message: `Active products could not be read (${productError.message}), so their country bindings were not checked`,
+      entity: 'bn_product',
+    });
+  }
   for (const p of products || []) {
     if (!p.country_code) {
-      findings.push({ severity: 'error', category: 'country', message: 'Active product has no country', entity: `${p.product_code} — ${p.product_name}` });
+      findings.push({ severity: 'error', category: 'country', message: 'Active product has no country', entity: `${p.benefit_code} — ${p.benefit_name}` });
       continue;
     }
     const c = countryMap.get(p.country_code);
     if (!c) {
-      findings.push({ severity: 'error', category: 'country', message: `Active product references unknown country "${p.country_code}"`, entity: p.product_code });
+      findings.push({ severity: 'error', category: 'country', message: `Active product references unknown country "${p.country_code}"`, entity: p.benefit_code });
     } else if (!c.is_active) {
-      findings.push({ severity: 'warning', category: 'country', message: `Active product uses inactive country "${c.country_name}"`, entity: p.product_code });
+      findings.push({ severity: 'warning', category: 'country', message: `Active product uses inactive country "${c.country_name}"`, entity: p.benefit_code });
     }
   }
 
   // 3. Inactive/superseded legal refs used by active config
-  const checkLegalCol = async (table: string, codeCol: string) => {
-    const { data } = await db
+  /**
+   * BUG-54: this filtered every table on `is_active`, but only two of the four
+   * have it. bn_product and bn_rate_table carry `status`, so their queries
+   * failed with 42703 -- and the `catch {}` at the call site swallowed the
+   * failure, so those two tables were never checked and nothing said so.
+   *
+   * Each table now names its own active filter.
+   */
+  const checkLegalCol = async (
+    table: string,
+    codeCol: string,
+    activeFilter: { column: string; value: unknown },
+  ) => {
+    const { data, error } = await db
       .from(table)
       .select(`id, ${codeCol}, legal_reference_id`)
-      .eq('is_active', true)
+      .eq(activeFilter.column, activeFilter.value)
       .not('legal_reference_id', 'is', null);
+    if (error) {
+      findings.push({
+        severity: 'error',
+        category: 'legal',
+        message: `${table} could not be read (${error.message}), so its legal references were not checked`,
+        entity: table,
+      });
+      return;
+    }
     for (const row of (data || []) as any[]) {
       const ref = legalMap.get(row.legal_reference_id);
       if (!ref) {
@@ -90,13 +125,27 @@ async function runChecks(): Promise<Finding[]> {
     }
   };
   // Only call for tables that exist + have those columns; wrap each in try
-  for (const [table, code] of [
-    ['bn_product', 'product_code'],
-    ['bn_eligibility_rule', 'rule_code'],
-    ['bn_formula_template', 'template_code'],
-    ['bn_rate_table', 'table_code'],
-  ] as const) {
-    try { await checkLegalCol(table, code); } catch { /* column may not exist on table; ignore */ }
+  // Each entry names the table, its code column, and how that table says
+  // "active" -- two of the four use `status`, not `is_active` (BUG-54).
+  const legalTables = [
+    { table: 'bn_product', code: 'benefit_code', active: { column: 'status', value: 'ACTIVE' } },
+    { table: 'bn_eligibility_rule', code: 'rule_code', active: { column: 'is_active', value: true } },
+    { table: 'bn_formula_template', code: 'template_code', active: { column: 'is_active', value: true } },
+    { table: 'bn_rate_table', code: 'table_code', active: { column: 'status', value: 'ACTIVE' } },
+  ] as const;
+  for (const t of legalTables) {
+    // A thrown error is reported rather than ignored: a check that could not
+    // run must not read as a check that found nothing.
+    try {
+      await checkLegalCol(t.table, t.code, t.active);
+    } catch (e: any) {
+      findings.push({
+        severity: 'error',
+        category: 'legal',
+        message: `${t.table} could not be checked (${e?.message ?? 'unknown error'})`,
+        entity: t.table,
+      });
+    }
   }
 
   // 4. Communication templates — token registry resolution

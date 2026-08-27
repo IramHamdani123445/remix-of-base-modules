@@ -977,14 +977,23 @@ const RESOLVERS: Record<string, ResolverFn> = {
   },
   resolvePaymentBankDetailsValid: async (ctx) => {
     if (!ctx.ssn) return false;
-    const { data } = await db
+    // BUG-54: named `is_verified` and `is_active`. bn_payment_profile carries
+    // `verification_status` and `active`, so the select failed with 42703, data
+    // came back null, and the guard below returned false. This fact reported
+    // "bank details are not valid" for every claimant, including those with a
+    // verified profile. award360SummaryService already uses the right spelling.
+    const { data, error } = await db
       .from('bn_payment_profile')
-      .select('id, is_verified, is_active')
+      .select('id, verification_status, active')
       .eq('ssn', ctx.ssn)
-      .eq('is_active', true)
+      .eq('active', true)
       .limit(5);
+    // A read that did not happen is not evidence that the details are invalid.
+    if (error) throw new Error(`bn_payment_profile could not be read: ${error.message}`);
     if (!Array.isArray(data)) return false;
-    return data.some((r: any) => r.is_verified === true);
+    return data.some(
+      (r: any) => String(r.verification_status ?? '').toUpperCase() === 'VERIFIED',
+    );
   },
   resolveMeansTestResult: async (_ctx) => {
     // NOT_IMPLEMENTED — backing table to be introduced
