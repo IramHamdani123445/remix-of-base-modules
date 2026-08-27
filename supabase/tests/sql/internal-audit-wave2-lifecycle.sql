@@ -116,10 +116,10 @@ BEGIN
   -- ==================================================================
   -- W2-06  Activity completes once evidence + working paper exist
   -- ==================================================================
-  INSERT INTO public.ia_evidence(engagement_id, activity_id, file_name, description, created_by)
-  VALUES (v_eng, v_act, 'wave2-test.pdf', 'WAVE2_TEST evidence', 'WAVE2_TEST') RETURNING id INTO v_ev;
-  INSERT INTO public.ia_working_papers(engagement_id, activity_id, title, status, created_by)
-  VALUES (v_eng, v_act, 'WAVE2_TEST working paper', 'Draft', 'WAVE2_TEST') RETURNING id INTO v_wp;
+  INSERT INTO public.ia_evidence(evidence_id, engagement_id, activity_id, file_name, description, created_by)
+  VALUES ('WAVE2-EV-001', v_eng, v_act, 'wave2-test.pdf', 'WAVE2_TEST evidence', 'WAVE2_TEST') RETURNING id INTO v_ev;
+  INSERT INTO public.ia_working_papers(working_paper_id, engagement_id, activity_id, title, status, created_by)
+  VALUES ('WAVE2-WP-001', v_eng, v_act, 'WAVE2_TEST working paper', 'Draft', 'WAVE2_TEST') RETURNING id INTO v_wp;
 
   r := public.ia_complete_activity(v_act, 8, 'fieldwork done');
   IF NOT COALESCE((r->>'success')::boolean, false) THEN
@@ -158,9 +158,9 @@ BEGIN
   -- ==================================================================
   -- W2-10  Finding severity change requires a reason
   -- ==================================================================
-  INSERT INTO public.ia_findings(engagement_id, control_test_id, title, condition, criteria, cause, effect,
+  INSERT INTO public.ia_findings(finding_id, engagement_id, control_test_id, title, condition, criteria, cause, effect,
                                  risk_rating, severity, lifecycle_status, created_by)
-  VALUES (v_eng, v_test, 'WAVE2_TEST Finding', 'Condition', 'Criteria', 'Cause', 'Effect',
+  VALUES ('WAVE2-FND-001', v_eng, v_test, 'WAVE2_TEST Finding', 'Condition', 'Criteria', 'Cause', 'Effect',
           'Medium', 'Medium', 'Draft', 'WAVE2_TEST_AUTHOR') RETURNING id INTO v_find;
 
   r := public.ia_change_finding_severity(v_find, 'High', '');
