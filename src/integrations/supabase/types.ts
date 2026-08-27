@@ -70679,6 +70679,7 @@ export type Database = {
           buffer_pct: number | null
           closed_by: string | null
           closed_date: string | null
+          closure_summary: Json | null
           committee_email_proof_url: string | null
           committee_minutes_url: string | null
           committee_noted: boolean | null
@@ -70752,6 +70753,7 @@ export type Database = {
           buffer_pct?: number | null
           closed_by?: string | null
           closed_date?: string | null
+          closure_summary?: Json | null
           committee_email_proof_url?: string | null
           committee_minutes_url?: string | null
           committee_noted?: boolean | null
@@ -70825,6 +70827,7 @@ export type Database = {
           buffer_pct?: number | null
           closed_by?: string | null
           closed_date?: string | null
+          closure_summary?: Json | null
           committee_email_proof_url?: string | null
           committee_minutes_url?: string | null
           committee_noted?: boolean | null
@@ -123335,6 +123338,11 @@ export type Database = {
         }
         Returns: boolean
       }
+      ia_actor_can: {
+        Args: { _action: string; _module: string }
+        Returns: boolean
+      }
+      ia_actor_label: { Args: never; Returns: string }
       ia_apply_manual_override: {
         Args: {
           p_candidate_id?: string
@@ -123387,6 +123395,19 @@ export type Database = {
         Returns: Json
       }
       ia_check_overdue_actions: { Args: never; Returns: Json }
+      ia_close_annual_plan: {
+        Args: { p_dispositions?: Json; p_notes?: string; p_plan_id: string }
+        Returns: Json
+      }
+      ia_close_engagement: {
+        Args: {
+          p_disposition?: string
+          p_engagement_id: string
+          p_final_rating?: string
+          p_notes?: string
+        }
+        Returns: Json
+      }
       ia_compute_engagement_priority_score: {
         Args: {
           p_department_id?: string
@@ -123414,6 +123435,11 @@ export type Database = {
         Args: { p_plan_id: string; p_proposed_changes: Json }
         Returns: Json
       }
+      ia_evaluate_engagement_closure: {
+        Args: { p_engagement_id: string }
+        Returns: Json
+      }
+      ia_evaluate_plan_closure: { Args: { p_plan_id: string }; Returns: Json }
       ia_fire_notification: {
         Args: {
           p_body?: string
