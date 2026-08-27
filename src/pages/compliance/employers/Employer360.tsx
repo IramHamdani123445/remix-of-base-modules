@@ -108,6 +108,7 @@ export default function Employer360() {
   const { data: communications = [] } = useQuery({ queryKey: ['employer360_comms', employerId], queryFn: () => fetchEmployerCommunications(employerId!), enabled: !!employerId });
   const { data: documents = [] } = useQuery({ queryKey: ['employer360_docs', employerId], queryFn: () => fetchEmployerDocuments(employerId!), enabled: !!employerId });
   const { data: arrangements = [] } = useQuery({ queryKey: ['employer360_arrangements', employerId], queryFn: () => fetchEmployerArrangements(employerId!), enabled: !!employerId });
+  const { data: breaches = [] } = useQuery({ queryKey: ['employer360_breaches', employerId], queryFn: () => fetchEmployerBreaches(employerId!), enabled: !!employerId });
 
   // ── Ledger statement for embedded view ──
   const { data: ledgerStatement = [] } = useEmployerStatement(employerId);
