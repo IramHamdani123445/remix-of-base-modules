@@ -38,6 +38,10 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
   const [formMode, setFormMode] = useState<'create' | 'edit' | 'view' | null>(null);
   const [editRecord, setEditRecord] = useState<any>(null);
   const [form, setForm] = useState(emptyForm);
+  const concludeCommand = useConcludeControlTest();
+  const [concludeRecord, setConcludeRecord] = useState<any>(null);
+  const [concludeForm, setConcludeForm] = useState({ result: 'Effective', conclusion: '', no_finding_rationale: '' });
+
 
   const createMutation = useMutation({
     mutationFn: async (t: any) => { const { data, error } = await supabase.from('ia_control_tests' as any).insert(t).select().single(); if (error) throw error; return data; },
