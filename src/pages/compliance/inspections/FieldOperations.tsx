@@ -91,10 +91,12 @@ export default function FieldOperations() {
       <Card>
         <CardHeader><CardTitle>Field Activities</CardTitle></CardHeader>
         <CardContent>
-          <div className="flex gap-4 mb-6">
-            <div className="flex-1"><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by employer or case number..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" /></div></div>
+          <div className="flex gap-4 mb-6 items-center">
+            <SearchBar value={searchTerm} onChange={setSearchTerm} placeholder="Search by employer or case number..." />
+            {isFetching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             <Button variant="outline" className="gap-2"><Filter className="h-4 w-4" />Filters</Button>
           </div>
+
 
           {activities.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">No field activities found</div>
