@@ -31,6 +31,7 @@ import {
   AuditTimelineTab,
   AuditControlTestsTab,
   AuditFollowUpsTab,
+  AuditClosureTab,
 } from '@/components/audit/execution';
 
 // ===== Tab Badge =====
