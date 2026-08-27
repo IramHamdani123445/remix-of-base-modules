@@ -81,8 +81,8 @@ BEGIN
   -- ==================================================================
   -- W2-02  Preparation completes once notification is recorded
   -- ==================================================================
-  INSERT INTO public.ia_communication_stages(engagement_id, stage_code, delivery_status, created_by)
-  VALUES (v_eng, 'ENGAGEMENT_NOTIFICATION', 'Sent', 'WAVE2_TEST');
+  INSERT INTO public.ia_communication_stages(engagement_id, stage_code, stage_order, delivery_status, created_by)
+  VALUES (v_eng, 'ENGAGEMENT_NOTIFICATION', 1, 'Sent', 'WAVE2_TEST');
 
   r := public.ia_complete_preparation(v_eng, 'notification issued');
   IF NOT COALESCE((r->>'success')::boolean, false) THEN
@@ -354,9 +354,9 @@ BEGIN
   -- ==================================================================
   -- W2-28  Report issues once the gate is satisfied; version is frozen
   -- ==================================================================
-  INSERT INTO public.ia_communication_stages(engagement_id, stage_code, delivery_status, created_by)
-  VALUES (v_eng, 'DRAFT_FINDING_DISCUSSION', 'Sent', 'WAVE2_TEST'),
-         (v_eng, 'EXIT_MEETING', 'Sent', 'WAVE2_TEST');
+  INSERT INTO public.ia_communication_stages(engagement_id, stage_code, stage_order, delivery_status, created_by)
+  VALUES (v_eng, 'DRAFT_FINDING_DISCUSSION', 2, 'Sent', 'WAVE2_TEST'),
+         (v_eng, 'EXIT_MEETING', 3, 'Sent', 'WAVE2_TEST');
 
   r := public.ia_issue_report(v_report, 'final issue');
   IF NOT COALESCE((r->>'success')::boolean, false) THEN
