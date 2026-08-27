@@ -72760,6 +72760,87 @@ export type Database = {
           },
         ]
       }
+      ia_comms_reminder_policy: {
+        Row: {
+          created_at: string
+          days_relative_to_due: number
+          escalation_roles: string[]
+          event_code: string
+          id: string
+          is_active: boolean
+          label: string
+          obligation_kind: string
+          occurrence_key: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days_relative_to_due: number
+          escalation_roles?: string[]
+          event_code: string
+          id?: string
+          is_active?: boolean
+          label: string
+          obligation_kind: string
+          occurrence_key: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days_relative_to_due?: number
+          escalation_roles?: string[]
+          event_code?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          obligation_kind?: string
+          occurrence_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ia_comms_reminder_run_log: {
+        Row: {
+          entity_id: string
+          entity_type: string
+          event_code: string
+          event_outbox_id: string | null
+          id: string
+          obligation_kind: string
+          occurrence: string
+          outcome: string
+          reason: string | null
+          recipient_profile_id: string | null
+          run_at: string
+        }
+        Insert: {
+          entity_id: string
+          entity_type: string
+          event_code: string
+          event_outbox_id?: string | null
+          id?: string
+          obligation_kind: string
+          occurrence: string
+          outcome: string
+          reason?: string | null
+          recipient_profile_id?: string | null
+          run_at?: string
+        }
+        Update: {
+          entity_id?: string
+          entity_type?: string
+          event_code?: string
+          event_outbox_id?: string | null
+          id?: string
+          obligation_kind?: string
+          occurrence?: string
+          outcome?: string
+          reason?: string | null
+          recipient_profile_id?: string | null
+          run_at?: string
+        }
+        Relationships: []
+      }
       ia_communication_stages: {
         Row: {
           acknowledged_at: string | null
@@ -124054,6 +124135,26 @@ export type Database = {
       ia_cmd_guard_elevated: {
         Args: { _action: string; _engagement: string; _module: string }
         Returns: boolean
+      }
+      ia_comms_emit: {
+        Args: {
+          p_correlation_id?: string
+          p_entity_id: string
+          p_entity_type: string
+          p_event_code: string
+          p_occurrence: string
+          p_payload: Json
+          p_recipient_facts: Json
+        }
+        Returns: Json
+      }
+      ia_comms_generate_reminders: {
+        Args: { p_limit?: number; p_today?: string }
+        Returns: Json
+      }
+      ia_comms_profile_fact: {
+        Args: { p_fallback_name?: string; p_profile_id: string; p_role: string }
+        Returns: Json
       }
       ia_complete_activity: {
         Args: {
