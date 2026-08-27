@@ -9,9 +9,10 @@ import { MapPin, Clock, Camera, FileText, CheckCircle2, AlertCircle, Search, Fil
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { fetchFieldActivities } from "@/services/complianceDataService";
 import { supabase } from "@/integrations/supabase/client";
+import { SearchBar } from "@/components/common/SearchBar";
 
 export default function FieldOperations() {
   const { toast } = useToast();
@@ -24,10 +25,12 @@ export default function FieldOperations() {
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [checkedInActivities, setCheckedInActivities] = useState<Set<string>>(new Set());
 
-  const { data: activities = [], isLoading } = useQuery({
+  const { data: activities = [], isPending, isFetching } = useQuery({
     queryKey: ['ce_field_activities', statusFilter, searchTerm],
     queryFn: () => fetchFieldActivities({ status: statusFilter, search: searchTerm || undefined }),
+    placeholderData: keepPreviousData,
   });
+
 
   const getStatusColor = (status: string) => {
     switch (status) {
