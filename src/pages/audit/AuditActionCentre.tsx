@@ -410,6 +410,14 @@ export default function AuditActionCentre() {
               onClick={() => setFilters(f => ({ ...f, open_only: !f.open_only }))}>
               Open only
             </Button>
+            <Button variant={filters.high_critical ? 'default' : 'outline'} size="sm"
+              onClick={() => setFilters(f => ({ ...f, high_critical: !f.high_critical }))}>
+              High / critical
+            </Button>
+            <Button variant={filters.disputed ? 'default' : 'outline'} size="sm"
+              onClick={() => setFilters(f => ({ ...f, disputed: !f.disputed }))}>
+              Disputed
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => { setFilters({}); setSearch(''); }}>Clear</Button>
           </div>
 
@@ -417,12 +425,20 @@ export default function AuditActionCentre() {
             <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
               <FilterSelect label="Annual plan" value={filters.plan_id} onChange={v => setFilters(f => ({ ...f, plan_id: v }))}
                 options={(plans as any[]).map(p => ({ value: p.id, label: `${p.fiscal_year || ''} ${p.title || ''}`.trim() }))} />
+              <FilterSelect label="Audit" value={filters.engagement_id} onChange={v => setFilters(f => ({ ...f, engagement_id: v }))}
+                options={auditOptions} />
               <FilterSelect label="Department" value={filters.department_id} onChange={v => setFilters(f => ({ ...f, department_id: v }))}
                 options={(departments as any[]).map(d => ({ value: d.id, label: d.name }))} />
+              <FilterSelect label="Function area" value={filters.function_id} onChange={v => setFilters(f => ({ ...f, function_id: v }))}
+                options={functionOptions} />
+              <FilterSelect label="Action owner" value={filters.owner_profile_id} onChange={v => setFilters(f => ({ ...f, owner_profile_id: v }))}
+                options={ownerOptions} />
               <FilterSelect label="Severity" value={filters.severity} onChange={v => setFilters(f => ({ ...f, severity: v }))}
                 options={SEVERITIES.map(s => ({ value: s, label: s }))} />
               <FilterSelect label="Action status" value={filters.status} onChange={v => setFilters(f => ({ ...f, status: v }))}
                 options={ACTION_STATUSES.map(s => ({ value: s, label: s }))} />
+              <FilterSelect label="Finding status" value={filters.finding_status} onChange={v => setFilters(f => ({ ...f, finding_status: v }))}
+                options={FINDING_STATUSES.map(s => ({ value: s, label: s }))} />
               <div>
                 <Label className="text-[11px] text-muted-foreground">Due from</Label>
                 <Input type="date" className="h-9" value={filters.due_from || ''} onChange={e => setFilters(f => ({ ...f, due_from: e.target.value }))} />
@@ -433,6 +449,7 @@ export default function AuditActionCentre() {
               </div>
             </div>
           )}
+
         </CardContent>
       </Card>
 
