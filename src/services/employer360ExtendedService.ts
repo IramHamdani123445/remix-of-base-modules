@@ -164,3 +164,17 @@ export async function fetchEmployerArrangements(employerId: string) {
   if (error) throw error;
   return data ?? [];
 }
+
+// ── Breach monitoring (arrangement breaches for this employer) ──
+// ce_breach_monitoring is keyed by reg_no, which is the same registration
+// number Employer 360 routes on.
+export async function fetchEmployerBreaches(employerId: string) {
+  const { data, error } = await supabase
+    .from('ce_breach_monitoring')
+    .select('id, breach_id, breach_type, breach_date, missed_amount, consecutive_misses, status, auto_detected')
+    .eq('reg_no', employerId)
+    .order('breach_date', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data ?? [];
+}
