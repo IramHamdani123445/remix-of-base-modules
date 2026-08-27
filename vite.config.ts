@@ -15,6 +15,17 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
   resolve: {
     alias: {
+      // Mirror mode: point every backend import at the target project client.
+      // Active only for `vite --mode mirror`; normal builds are unaffected.
+      // Must precede the generic "@" alias so the more specific key wins.
+      ...(mode === 'mirror'
+        ? {
+            "@/integrations/supabase/client": path.resolve(
+              __dirname,
+              "./src/integrations/supabase/mirrorClient.ts",
+            ),
+          }
+        : {}),
       "@": path.resolve(__dirname, "./src"),
     },
   },

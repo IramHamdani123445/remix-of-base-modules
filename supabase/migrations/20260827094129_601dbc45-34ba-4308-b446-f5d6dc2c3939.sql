@@ -1,0 +1,12 @@
+REVOKE EXECUTE ON FUNCTION public.ia_actor_can(text, text) FROM public, anon;
+REVOKE EXECUTE ON FUNCTION public.ia_actor_label() FROM public, anon;
+REVOKE EXECUTE ON FUNCTION public.ia_evaluate_engagement_closure(uuid) FROM public, anon;
+REVOKE EXECUTE ON FUNCTION public.ia_close_engagement(uuid, text, text, text) FROM public, anon;
+REVOKE EXECUTE ON FUNCTION public.ia_evaluate_plan_closure(uuid) FROM public, anon;
+REVOKE EXECUTE ON FUNCTION public.ia_close_annual_plan(uuid, jsonb, text) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.ia_actor_can(text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.ia_actor_label() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.ia_evaluate_engagement_closure(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.ia_close_engagement(uuid, text, text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.ia_evaluate_plan_closure(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.ia_close_annual_plan(uuid, jsonb, text) TO authenticated;

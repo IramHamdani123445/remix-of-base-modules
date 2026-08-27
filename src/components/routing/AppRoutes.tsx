@@ -1,9 +1,16 @@
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 
+// Legacy /audit/engagements/:id — keep deep links alive on the canonical spine.
+const AuditEngagementIdRedirect = () => {
+  const { id } = useParams();
+  return <Navigate to={id ? `/audit/audits/${id}` : '/audit/audits'} replace />;
+};
+
 const LegalAdvancedMatterRedirect = () => {
   const { id } = useParams();
   return <Navigate to={`/legal/lg/cases/${id ?? ''}`} replace />;
 };
+
 
 // Legacy /legal/cases/:id (SSBCaseView, mock-context) — redirect to canonical
 // LgCaseDetail on the real lg_case tables.
@@ -377,6 +384,7 @@ const EntitySummary = lazy(() => import('@/pages/audit/EntitySummary'));
 const RiskMatrix = lazy(() => import('@/pages/audit/RiskMatrix'));
 const AuditEngagements = lazy(() => import('@/pages/audit/AuditEngagements'));
 const EngagementDetail = lazy(() => import('@/pages/audit/EngagementDetail'));
+const AuditActionCentre = lazy(() => import('@/pages/audit/AuditActionCentre'));
 const PlanApproval = lazy(() => import('@/pages/audit/PlanApproval'));
 const AuditConfig = lazy(() => import('@/pages/audit/AuditConfig'));
 const RiskSettings = lazy(() => import('@/pages/audit/RiskSettings'));
@@ -487,6 +495,7 @@ const FieldSecurity = lazy(() => import('@/pages/admin/data-access/FieldSecurity
 const RoleDataPolicies = lazy(() => import('@/pages/admin/data-access/RoleDataPolicies'));
 const UserDataOverrides = lazy(() => import('@/pages/admin/data-access/UserDataOverrides'));
 const PolicyTestConsole = lazy(() => import('@/pages/admin/data-access/PolicyTestConsole'));
+const MirrorStatus = lazy(() => import('@/pages/admin/MirrorStatus'));
 
 // System Cleanup
 const SystemCleanupDashboard = lazy(() => import('@/pages/admin/system-cleanup/SystemCleanupDashboard'));
@@ -1750,6 +1759,10 @@ export const AppRoutes = () => {
       <Route path="/audit/audit-plans/:id" element={<Suspense fallback={<div>Loading...</div>}><AuditPlanDetail /></Suspense>} />
       <Route path="/audit/audits" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_ENGAGEMENTS"><AuditEngagements /></AuditFeatureGate>} />
       <Route path="/audit/audits/:id" element={<EngagementDetail />} />
+      <Route path="/audit/action-centre" element={<Suspense fallback={<div />}><AuditActionCentre /></Suspense>} />
+      <Route path="/audit/action-center" element={<Navigate to="/audit/action-centre" replace />} />
+      <Route path="/audit/actions" element={<Navigate to="/audit/action-centre?tab=register" replace />} />
+      <Route path="/audit/follow-up-tracker" element={<Navigate to="/audit/action-centre?tab=followup" replace />} />
       <Route path="/audit/audit-reports" element={<AuditFeatureGate featureFlag="FEATURE_AUDIT_REPORTS"><AuditReports /></AuditFeatureGate>} />
       <Route path="/audit/report-builder" element={<Suspense fallback={<div>Loading...</div>}><AuditReportBuilder /></Suspense>} />
       <Route path="/audit/plan-approval" element={<PlanApproval />} />
@@ -1766,7 +1779,8 @@ export const AppRoutes = () => {
 
       {/* Legacy redirects */}
       <Route path="/audit/engagements" element={<Navigate to="/audit/audits" replace />} />
-      <Route path="/audit/engagements/:id" element={<Navigate to="/audit/audits" replace />} />
+      <Route path="/audit/engagements/:id" element={<AuditEngagementIdRedirect />} />
+
       <Route path="/audit/plans" element={<Navigate to="/audit/audit-plans" replace />} />
       <Route path="/audit/reports" element={<Navigate to="/audit/audit-reports" replace />} />
 
@@ -2983,6 +2997,7 @@ export const AppRoutes = () => {
       <Route path="/admin/data-access/role-policies" element={<RoleDataPolicies />} />
       <Route path="/admin/data-access/user-overrides" element={<UserDataOverrides />} />
       <Route path="/admin/data-access/test-console" element={<PolicyTestConsole />} />
+      <Route path="/admin/mirror-status" element={<MirrorStatus />} />
 
       {/* System Cleanup & Refactoring */}
       <Route path="/admin/system-cleanup" element={<SystemCleanupDashboard />} />
