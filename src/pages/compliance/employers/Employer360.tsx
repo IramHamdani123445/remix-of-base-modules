@@ -412,7 +412,7 @@ export default function Employer360() {
               <CardTitle className="text-sm flex items-center gap-2">
                 <Shield className="h-4 w-4" />Breach Monitoring ({breaches.length})
               </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/compliance/arrangements/breach-monitoring')}>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/compliance/enforcement/breaches')}>
                 Open Register
               </Button>
             </CardHeader>
