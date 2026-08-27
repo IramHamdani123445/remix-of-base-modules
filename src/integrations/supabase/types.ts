@@ -101096,6 +101096,36 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_environment_marker_event: {
+        Row: {
+          actor_id: string | null
+          correlation_id: string | null
+          from_state: Json | null
+          id: string
+          occurred_at: string
+          reason: string | null
+          to_state: Json
+        }
+        Insert: {
+          actor_id?: string | null
+          correlation_id?: string | null
+          from_state?: Json | null
+          id?: string
+          occurred_at?: string
+          reason?: string | null
+          to_state: Json
+        }
+        Update: {
+          actor_id?: string | null
+          correlation_id?: string | null
+          from_state?: Json | null
+          id?: string
+          occurred_at?: string
+          reason?: string | null
+          to_state?: Json
+        }
+        Relationships: []
+      }
       platform_worker_command_backup: {
         Row: {
           captured_at: string
@@ -129138,6 +129168,22 @@ export type Database = {
             }
             Returns: Json
           }
+      platform_environment_consistency: {
+        Args: { p_expected_project_ref?: string }
+        Returns: Json
+      }
+      platform_environment_marker_configure: {
+        Args: {
+          p_actor_id: string
+          p_allows_controlled_test_activation: boolean
+          p_correlation_id?: string
+          p_environment_kind: string
+          p_environment_label: string
+          p_project_ref: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
       platform_purge_cron_run_details: {
         Args: { p_keep_runs?: number; p_max_rows?: number }
         Returns: number
