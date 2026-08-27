@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, HandshakeIcon, AlertCircle } from 'lucide-react';
 import { centralPaymentArrangementService } from '@/services/centralPaymentArrangementService';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  fetchBlockingArrangement,
+  isConcurrentArrangementError,
+  translateArrangementCreationError,
+  type BlockingArrangement,
+} from '@/services/compliance/arrangementConcurrencyService';
 
 interface CasePaymentArrangementDialogProps {
   open: boolean;
@@ -38,6 +45,7 @@ export function CasePaymentArrangementDialog({
   assignedOfficerName,
 }: CasePaymentArrangementDialogProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const outstandingAmount = totalAmount - amountCollected;
 
   const [form, setForm] = useState({
@@ -50,6 +58,20 @@ export function CasePaymentArrangementDialog({
     notes: '',
   });
   const [creating, setCreating] = useState(false);
+  const [serverBlocking, setServerBlocking] = useState<BlockingArrangement | null>(null);
+
+  // Concurrent-arrangement protection: pre-flight lookup (the database trigger is authoritative).
+  const { data: preflightBlocking } = useQuery({
+    queryKey: ['ce_arrangement_blocking', employerId],
+    queryFn: () => fetchBlockingArrangement(employerId),
+    enabled: open && !!employerId,
+  });
+  const blocking = serverBlocking ?? preflightBlocking ?? null;
+
+  const goToBlockingArrangement = () => {
+    onOpenChange(false);
+    navigate(`/compliance/enforcement/arrangements?arr=${encodeURIComponent(blocking?.id ?? '')}`);
+  };
 
   const arrangedNum = Number(form.arrangedAmount) || 0;
   const downPaymentNum = Number(form.downPayment) || 0;
@@ -91,6 +113,13 @@ export function CasePaymentArrangementDialog({
       return;
     }
 
+    if (blocking) {
+      toast.error('An open payment arrangement already exists', {
+        description: `${blocking.arrangement_number} (${blocking.status}) must be completed, cancelled or superseded first.`,
+      });
+      return;
+    }
+
     setCreating(true);
     try {
       await centralPaymentArrangementService.createArrangementFromCase({
@@ -112,8 +141,14 @@ export function CasePaymentArrangementDialog({
       queryClient.invalidateQueries({ queryKey: ['ce_case_history', caseId] });
       queryClient.invalidateQueries({ queryKey: ['ce_payment_arrangements'] });
       onOpenChange(false);
-    } catch (err: any) {
-      toast.error('Failed to create arrangement', { description: err.message });
+    } catch (rawErr: any) {
+      const err = await translateArrangementCreationError(rawErr, employerId);
+      if (isConcurrentArrangementError(err)) {
+        setServerBlocking((err as any).blocking ?? null);
+        toast.error('An open payment arrangement already exists', { description: err.message });
+      } else {
+        toast.error('Failed to create arrangement', { description: err.message });
+      }
     } finally {
       setCreating(false);
     }
@@ -132,6 +167,23 @@ export function CasePaymentArrangementDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {blocking && (
+          <div className="flex gap-2 items-start rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium text-destructive">An open payment arrangement already exists</p>
+              <p className="text-muted-foreground">
+                {employerName || employerId} already has arrangement{' '}
+                <span className="font-medium">{blocking.arrangement_number}</span> in status{' '}
+                <span className="font-medium">{blocking.status}</span>. Only one non-completed arrangement is
+                allowed per employer — complete, cancel or supersede it before creating another.
+              </p>
+              <Button variant="link" className="h-auto p-0 text-sm" onClick={goToBlockingArrangement}>
+                Open existing arrangement
+              </Button>
+            </div>
+          </div>
+        )}
         {!officerAssigned && (
           <div className="flex gap-2 items-start rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
             <AlertCircle className="h-4 w-4 mt-0.5 text-destructive shrink-0" />
@@ -294,7 +346,7 @@ export function CasePaymentArrangementDialog({
 
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={creating || !officerAssigned}>
+              <Button onClick={handleCreate} disabled={creating || !officerAssigned || !!blocking}>
                 {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <HandshakeIcon className="h-4 w-4 mr-2" />}
                 Create Arrangement
               </Button>

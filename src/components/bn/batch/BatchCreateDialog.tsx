@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker } from '@/components/ui/date-picker';
 import { Loader2 } from 'lucide-react';
 import type { ExecuteBatchActionParams, BatchPaymentMethod } from '@/services/bn/batchOperationsService';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 
 interface Props {
   open: boolean;
@@ -19,6 +20,9 @@ interface Props {
 }
 
 export const BatchCreateDialog: React.FC<Props> = ({ open, onClose, onAction, isActing }) => {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor } = useActorUserCode();
+
   const [batchDate, setBatchDate] = useState<Date | undefined>(new Date());
   const [officeCode, setOfficeCode] = useState('HQ');
   const [paymentMethod, setPaymentMethod] = useState<BatchPaymentMethod>('MIXED');
@@ -28,7 +32,7 @@ export const BatchCreateDialog: React.FC<Props> = ({ open, onClose, onAction, is
     if (!batchDate) return;
     await onAction({
       action: 'CREATE',
-      userCode: 'CURRENT_USER',
+      userCode: actor(),
       batchDate: batchDate.toISOString().slice(0, 10),
       officeCode,
       paymentMethod,

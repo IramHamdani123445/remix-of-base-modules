@@ -118,7 +118,7 @@ const LegalDashboard = () => {
             <Scale className="h-4 w-4 mr-1" />Recommendations
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate('/compliance/enforcement/legal-queue')}>
-            <Scale className="h-4 w-4 mr-1" />Legal Queue
+            <Scale className="h-4 w-4 mr-1" />Referral Approval
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate('/compliance/enforcement/notices')}>
             <FileText className="h-4 w-4 mr-1" />Notices

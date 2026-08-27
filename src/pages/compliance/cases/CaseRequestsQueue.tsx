@@ -115,7 +115,16 @@ const CaseRequestsQueue = ({ title, description, icon, type, featureKey }: Props
                           <TableRow key={r.id}>
                             <TableCell className="font-mono text-xs">{r.case_number}</TableCell>
                             <TableCell>{r.employer_name}</TableCell>
-                            {type === 'MERGE' && <TableCell className="font-mono text-xs">{r.target_case_id?.slice(0, 8) || '—'}</TableCell>}
+                            {type === 'MERGE' && (
+                              <TableCell className="text-xs">
+                                {r.target_case_number ? (
+                                  <span className="font-mono">{r.target_case_number}</span>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+                            )}
+
                             <TableCell className="max-w-xs"><span className="line-clamp-2 text-sm">{r.reason}</span></TableCell>
                             <TableCell className="text-xs">{r.requested_by}</TableCell>
                             <TableCell className="text-xs">{new Date(r.requested_at).toLocaleString()}</TableCell>

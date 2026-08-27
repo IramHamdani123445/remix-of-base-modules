@@ -1,6 +1,34 @@
 // Medical Benefit Setup — domain types
+
+/**
+ * Provider category used to work out how much is reimbursed.
+ *
+ * These three values are the ones the database accepts:
+ *   jurisdiction_level TEXT NOT NULL
+ *     CHECK (jurisdiction_level IN ('LOCAL','REGIONAL','INTERNATIONAL'))
+ * on bn_medical_claim_expense, and with 'ANY' added on
+ * bn_medical_reimbursement_limit.
+ *
+ * NOT the same thing as `MedicalLocationCode`, which is WHERE treatment
+ * happened. Offering location codes in a jurisdiction field made every save
+ * fail the check constraint (BUG-37), so keep the two apart.
+ */
 export type JurisdictionLevel = 'LOCAL' | 'REGIONAL' | 'INTERNATIONAL';
 export type JurisdictionLevelExt = JurisdictionLevel | 'ANY';
+
+/** The three accepted values, in the order they should be offered. */
+export const JURISDICTION_LEVELS: readonly JurisdictionLevel[] = [
+  'LOCAL',
+  'REGIONAL',
+  'INTERNATIONAL',
+] as const;
+
+/** Officer-facing labels. Kept beside the values so they cannot drift apart. */
+export const JURISDICTION_LEVEL_LABELS: Record<JurisdictionLevel, string> = {
+  LOCAL: 'Local',
+  REGIONAL: 'Regional',
+  INTERNATIONAL: 'International',
+};
 export type AvailabilityStatus = 'AVAILABLE' | 'LIMITED' | 'NOT_AVAILABLE';
 export type CapType = 'PER_CLAIM' | 'PER_PROCEDURE' | 'PER_EXPENSE' | 'ANNUAL' | 'LIFETIME';
 
@@ -73,6 +101,12 @@ export interface BnMedicalExpenseType {
   description?: string | null;
 }
 
+/**
+ * WHERE treatment took place. A place, not a reimbursement category — see
+ * `JurisdictionLevel`. The authoritative list is the `bn_medical_location_type`
+ * registry (LOCAL_SK, CARIBBEAN, INTERNATIONAL); this union is the legacy
+ * spelling still used by the Reimbursement Limits screen.
+ */
 export type MedicalLocationCode =
   | 'LOCAL_ST_KITTS' | 'NEVIS' | 'CARIBBEAN' | 'INTERNATIONAL' | 'ANY';
 

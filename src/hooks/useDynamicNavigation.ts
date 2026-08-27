@@ -316,7 +316,7 @@ function groupInternalAuditNavigation(items: MenuItem[]): MenuItem[] {
 }
 
 export function useDynamicNavigation() {
-  const { user, isAdmin, isAuthReady, isAuthenticated } = useSupabaseAuth();
+  const { user, isAdmin, isAuthenticated } = useSupabaseAuth();
 
   const {
     data: menuItems = [],
@@ -325,14 +325,37 @@ export function useDynamicNavigation() {
     error,
     refetch
   } = useQuery({
+    // Navigation is identity-scoped, not refresh-state-scoped. Including the
+    // transient auth status here created a new cache entry and repeated this
+    // expensive RPC for every AUTHENTICATED -> REFRESHING -> AUTHENTICATED cycle.
     queryKey: ['dynamic-navigation', user?.id],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!user?.id) return [];
 
       const startTime = performance.now();
-      
-      const { data, error } = await supabase
-        .rpc('get_user_accessible_modules' as any, { _user_id: user.id });
+      const requestController = new AbortController();
+      const timeoutId = window.setTimeout(() => requestController.abort(), 8_000);
+      const cancelRequest = () => requestController.abort();
+      signal.addEventListener('abort', cancelRequest, { once: true });
+
+      let data: unknown;
+      let error: { code?: string; message: string; details?: string; hint?: string } | null;
+
+      try {
+        const result = await supabase
+          .rpc('get_user_accessible_modules' as any, { _user_id: user.id })
+          .abortSignal(requestController.signal);
+        data = result.data;
+        error = result.error;
+      } catch (requestError) {
+        if (requestController.signal.aborted && !signal.aborted) {
+          throw new Error('NAVIGATION_TIMEOUT: Menu request did not respond.');
+        }
+        throw requestError;
+      } finally {
+        window.clearTimeout(timeoutId);
+        signal.removeEventListener('abort', cancelRequest);
+      }
 
       const executionTime = Math.round(performance.now() - startTime);
 
@@ -387,9 +410,13 @@ export function useDynamicNavigation() {
 
       return groupInternalAuditNavigation(buildMenuTree(modulesData));
     },
-    enabled: isAuthReady && isAuthenticated && !!user?.id,
+    // Keep the user's cached/available navigation usable during a transient
+    // token refresh. The RPC still validates the bearer token server-side.
+    enabled: isAuthenticated && !!user?.id,
     staleTime: 5 * 60 * 1000,
-    retry: 2,
+    retry: (failureCount, queryError) =>
+      !String(queryError instanceof Error ? queryError.message : queryError).includes('NAVIGATION_TIMEOUT')
+      && failureCount < 2,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     refetchOnWindowFocus: false,
   });

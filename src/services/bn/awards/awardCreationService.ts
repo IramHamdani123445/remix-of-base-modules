@@ -203,7 +203,7 @@ export async function createAwardOnApproval(
   await db.from('bn_claim_event').insert({
     claim_id: claimId,
     event_type: 'AWARD_CREATED',
-    description: `Award ${awardNumber} created on approval`,
+    notes: `Award ${awardNumber} created on approval`,
     performed_by: performedBy,
     performed_at: new Date().toISOString(),
   } as any).then(() => undefined, () => undefined);

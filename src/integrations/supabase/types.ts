@@ -33099,6 +33099,7 @@ export type Database = {
       }
       ce_arrangement_breaches: {
         Row: {
+          amount_outstanding_at_breach: number | null
           arrangement_id: string | null
           breach_type: string | null
           created_at: string
@@ -33106,7 +33107,12 @@ export type Database = {
           description: string | null
           detected_at: string | null
           detected_by: string | null
+          due_date_at_breach: string | null
+          grace_days_at_breach: number | null
           id: string
+          installment_id: string | null
+          installment_number: number | null
+          occurrence_key: string | null
           resolution: string | null
           resolution_notes: string | null
           resolved_at: string | null
@@ -33115,6 +33121,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          amount_outstanding_at_breach?: number | null
           arrangement_id?: string | null
           breach_type?: string | null
           created_at?: string
@@ -33122,7 +33129,12 @@ export type Database = {
           description?: string | null
           detected_at?: string | null
           detected_by?: string | null
+          due_date_at_breach?: string | null
+          grace_days_at_breach?: number | null
           id?: string
+          installment_id?: string | null
+          installment_number?: number | null
+          occurrence_key?: string | null
           resolution?: string | null
           resolution_notes?: string | null
           resolved_at?: string | null
@@ -33131,6 +33143,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          amount_outstanding_at_breach?: number | null
           arrangement_id?: string | null
           breach_type?: string | null
           created_at?: string
@@ -33138,7 +33151,12 @@ export type Database = {
           description?: string | null
           detected_at?: string | null
           detected_by?: string | null
+          due_date_at_breach?: string | null
+          grace_days_at_breach?: number | null
           id?: string
+          installment_id?: string | null
+          installment_number?: number | null
+          occurrence_key?: string | null
           resolution?: string | null
           resolution_notes?: string | null
           resolved_at?: string | null
@@ -33162,6 +33180,27 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_installment_operational"
+            referencedColumns: ["installment_id"]
+          },
+          {
             foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
             columns: ["arrangement_id"]
             isOneToOne: false
@@ -33173,6 +33212,13 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -35754,6 +35800,13 @@ export type Database = {
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ce_case_actions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
         ]
       }
       ce_case_assignments: {
@@ -35812,6 +35865,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_assignments_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
         ]
       }
@@ -35915,6 +35975,34 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_case_correspondence_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_correspondence_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_case_correspondence_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_correspondence_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ce_case_correspondence_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
@@ -35993,6 +36081,34 @@ export type Database = {
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_documents_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_case_documents_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_documents_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -36163,11 +36279,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_case_history_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "fk_ce_case_history_case"
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_history_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
         ]
       }
@@ -36235,11 +36365,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_case_merge_history_source_case_id_fkey"
+            columns: ["source_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "ce_case_merge_history_target_case_id_fkey"
             columns: ["target_case_id"]
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_merge_history_target_case_id_fkey"
+            columns: ["target_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
         ]
       }
@@ -36352,6 +36496,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
           {
             foreignKeyName: "ce_case_notices_notice_id_fkey"
@@ -36548,6 +36699,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_case_recommendations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "ce_case_recommendations_employer_snapshot_id_fkey"
             columns: ["employer_snapshot_id"]
             isOneToOne: false
@@ -36671,11 +36829,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_case_requests_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "ce_case_requests_target_case_id_fkey"
             columns: ["target_case_id"]
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_requests_target_case_id_fkey"
+            columns: ["target_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
         ]
       }
@@ -36747,6 +36919,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_risk_snapshots_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
           {
             foreignKeyName: "ce_case_risk_snapshots_employer_snapshot_id_fkey"
@@ -36902,6 +37081,34 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_case_violations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_case_violations_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_case_violations_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_case_violations_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ce_case_violations_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
@@ -36913,6 +37120,34 @@ export type Database = {
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_violations_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_violations_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_violations_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_case_violations_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -37086,6 +37321,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_cases_merged_into_case_id_fkey"
+            columns: ["merged_into_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
         ]
       }
@@ -38036,16 +38278,22 @@ export type Database = {
       }
       ce_employer_financial_ledger: {
         Row: {
+          arrangement_id: string | null
+          case_id: string | null
           credit_amount: number
           debit_amount: number
           description: string
+          effective_date: string | null
           employer_id: string
           employer_name: string | null
           entry_type: Database["public"]["Enums"]["ce_ledger_entry_type"]
           fund_type: Database["public"]["Enums"]["ce_fund_type"]
           id: string
           idempotency_key: string
+          installment_id: string | null
           job_run_id: string | null
+          notes: string | null
+          payment_reference: string | null
           period: string
           posted_at: string
           posted_by: string
@@ -38058,18 +38306,25 @@ export type Database = {
           source_system: string | null
           status: Database["public"]["Enums"]["ce_ledger_status"]
           territory: string | null
+          violation_id: string | null
         }
         Insert: {
+          arrangement_id?: string | null
+          case_id?: string | null
           credit_amount?: number
           debit_amount?: number
           description: string
+          effective_date?: string | null
           employer_id: string
           employer_name?: string | null
           entry_type: Database["public"]["Enums"]["ce_ledger_entry_type"]
           fund_type: Database["public"]["Enums"]["ce_fund_type"]
           id?: string
           idempotency_key: string
+          installment_id?: string | null
           job_run_id?: string | null
+          notes?: string | null
+          payment_reference?: string | null
           period: string
           posted_at?: string
           posted_by: string
@@ -38082,18 +38337,25 @@ export type Database = {
           source_system?: string | null
           status?: Database["public"]["Enums"]["ce_ledger_status"]
           territory?: string | null
+          violation_id?: string | null
         }
         Update: {
+          arrangement_id?: string | null
+          case_id?: string | null
           credit_amount?: number
           debit_amount?: number
           description?: string
+          effective_date?: string | null
           employer_id?: string
           employer_name?: string | null
           entry_type?: Database["public"]["Enums"]["ce_ledger_entry_type"]
           fund_type?: Database["public"]["Enums"]["ce_fund_type"]
           id?: string
           idempotency_key?: string
+          installment_id?: string | null
           job_run_id?: string | null
+          notes?: string | null
+          payment_reference?: string | null
           period?: string
           posted_at?: string
           posted_by?: string
@@ -38106,6 +38368,7 @@ export type Database = {
           source_system?: string | null
           status?: Database["public"]["Enums"]["ce_ledger_status"]
           territory?: string | null
+          violation_id?: string | null
         }
         Relationships: [
           {
@@ -38937,6 +39200,27 @@ export type Database = {
             foreignKeyName: "ce_escalation_log_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_escalation_log_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_escalation_log_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_escalation_log_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -38980,6 +39264,27 @@ export type Database = {
           violation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ce_escalation_prerequisites_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_escalation_prerequisites_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_escalation_prerequisites_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ce_escalation_prerequisites_violation_id_fkey"
             columns: ["violation_id"]
@@ -39145,6 +39450,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_field_activities_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "ce_field_activities_plan_id_fkey"
             columns: ["plan_id"]
             isOneToOne: false
@@ -39300,6 +39612,27 @@ export type Database = {
             columns: ["finding_id"]
             isOneToOne: false
             referencedRelation: "ce_inspection_findings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_follow_up_actions_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_follow_up_actions_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_follow_up_actions_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -39557,10 +39890,14 @@ export type Database = {
       }
       ce_inspection_findings: {
         Row: {
+          candidate_violation_type_id: string | null
           category: string | null
+          converted_at: string | null
+          converted_by: string | null
           created_at: string | null
           created_by: string | null
           description: string
+          disposition: string
           evidence_documents: Json | null
           explanation_if_no_violation: string | null
           finding_type: string | null
@@ -39569,6 +39906,9 @@ export type Database = {
           id: string
           inspection_id: string | null
           recommended_action: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           severity: string | null
           title: string | null
           updated_at: string | null
@@ -39577,10 +39917,14 @@ export type Database = {
           violation_id: string | null
         }
         Insert: {
+          candidate_violation_type_id?: string | null
           category?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
           created_at?: string | null
           created_by?: string | null
           description: string
+          disposition?: string
           evidence_documents?: Json | null
           explanation_if_no_violation?: string | null
           finding_type?: string | null
@@ -39589,6 +39933,9 @@ export type Database = {
           id?: string
           inspection_id?: string | null
           recommended_action?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           severity?: string | null
           title?: string | null
           updated_at?: string | null
@@ -39597,10 +39944,14 @@ export type Database = {
           violation_id?: string | null
         }
         Update: {
+          candidate_violation_type_id?: string | null
           category?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string
+          disposition?: string
           evidence_documents?: Json | null
           explanation_if_no_violation?: string | null
           finding_type?: string | null
@@ -39609,6 +39960,9 @@ export type Database = {
           id?: string
           inspection_id?: string | null
           recommended_action?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           severity?: string | null
           title?: string | null
           updated_at?: string | null
@@ -39617,6 +39971,13 @@ export type Database = {
           violation_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ce_inspection_findings_candidate_violation_type_id_fkey"
+            columns: ["candidate_violation_type_id"]
+            isOneToOne: false
+            referencedRelation: "ce_violation_types"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ce_inspection_findings_inspection_id_fkey"
             columns: ["inspection_id"]
@@ -39630,6 +39991,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_visit_execution_metrics"
             referencedColumns: ["inspection_id"]
+          },
+          {
+            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_inspection_findings_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "ce_inspection_findings_violation_id_fkey"
@@ -39651,6 +40033,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_v_visit_execution_metrics"
             referencedColumns: ["inspection_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_inspection_findings_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_inspection_findings_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_inspection_findings_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "fk_ce_inspection_findings_violation"
@@ -39895,6 +40298,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_inspections_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
           {
             foreignKeyName: "ce_inspections_plan_item_id_fkey"
@@ -40193,6 +40603,13 @@ export type Database = {
             referencedColumns: ["arrangement_id"]
           },
           {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
             foreignKeyName: "fk_ce_installments_arrangement"
             columns: ["arrangement_id"]
             isOneToOne: false
@@ -40204,6 +40621,13 @@ export type Database = {
             columns: ["arrangement_id"]
             isOneToOne: false
             referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
             referencedColumns: ["arrangement_id"]
           },
         ]
@@ -40601,11 +41025,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_legal_escalations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "fk_ce_legal_escalations_case"
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_legal_escalations_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
         ]
       }
@@ -40929,6 +41367,12 @@ export type Database = {
         Row: {
           accepted_by: string | null
           accepted_date: string | null
+          approval_notes: string | null
+          approval_requested_at: string | null
+          approval_requested_by: string | null
+          approval_workflow_definition_id: string | null
+          approved_at: string | null
+          approved_by: string | null
           audit_findings: string | null
           compliance_history: string | null
           contact_attempts: string | null
@@ -40936,6 +41380,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           created_by_name: string | null
+          created_via: string | null
           documents_count: number
           employer_id: string
           employer_name: string
@@ -40950,6 +41395,7 @@ export type Database = {
           lg_intake_id: string | null
           lg_intake_no: string | null
           notices_sent: number | null
+          pack_completed_at: string | null
           payment_plan_history: string | null
           period_from: string | null
           period_to: string | null
@@ -40963,6 +41409,9 @@ export type Database = {
           rejected_by: string | null
           rejected_date: string | null
           rejection_reason: string | null
+          return_reason: string | null
+          returned_at: string | null
+          returned_by: string | null
           source_case_id: string | null
           source_module: string | null
           source_record_id: string | null
@@ -40979,6 +41428,12 @@ export type Database = {
         Insert: {
           accepted_by?: string | null
           accepted_date?: string | null
+          approval_notes?: string | null
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approval_workflow_definition_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           audit_findings?: string | null
           compliance_history?: string | null
           contact_attempts?: string | null
@@ -40986,6 +41441,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_name?: string | null
+          created_via?: string | null
           documents_count?: number
           employer_id: string
           employer_name: string
@@ -41000,6 +41456,7 @@ export type Database = {
           lg_intake_id?: string | null
           lg_intake_no?: string | null
           notices_sent?: number | null
+          pack_completed_at?: string | null
           payment_plan_history?: string | null
           period_from?: string | null
           period_to?: string | null
@@ -41013,6 +41470,9 @@ export type Database = {
           rejected_by?: string | null
           rejected_date?: string | null
           rejection_reason?: string | null
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
           source_case_id?: string | null
           source_module?: string | null
           source_record_id?: string | null
@@ -41029,6 +41489,12 @@ export type Database = {
         Update: {
           accepted_by?: string | null
           accepted_date?: string | null
+          approval_notes?: string | null
+          approval_requested_at?: string | null
+          approval_requested_by?: string | null
+          approval_workflow_definition_id?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           audit_findings?: string | null
           compliance_history?: string | null
           contact_attempts?: string | null
@@ -41036,6 +41502,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           created_by_name?: string | null
+          created_via?: string | null
           documents_count?: number
           employer_id?: string
           employer_name?: string
@@ -41050,6 +41517,7 @@ export type Database = {
           lg_intake_id?: string | null
           lg_intake_no?: string | null
           notices_sent?: number | null
+          pack_completed_at?: string | null
           payment_plan_history?: string | null
           period_from?: string | null
           period_to?: string | null
@@ -41063,6 +41531,9 @@ export type Database = {
           rejected_by?: string | null
           rejected_date?: string | null
           rejection_reason?: string | null
+          return_reason?: string | null
+          returned_at?: string | null
+          returned_by?: string | null
           source_case_id?: string | null
           source_module?: string | null
           source_record_id?: string | null
@@ -41475,10 +41946,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_notice_responses_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "ce_notice_responses_notice_id_fkey"
             columns: ["notice_id"]
             isOneToOne: false
             referencedRelation: "ce_notices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notice_responses_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_notice_responses_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notice_responses_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -41668,6 +42167,34 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_notices_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_notices_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ce_notices_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
@@ -41679,6 +42206,34 @@ export type Database = {
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_notices_violation"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -42272,11 +42827,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
             foreignKeyName: "fk_ce_payment_arrangements_case"
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
         ]
       }
@@ -42480,6 +43049,27 @@ export type Database = {
             foreignKeyName: "ce_penalty_calculations_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_penalty_calculations_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_penalty_calculations_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_penalty_calculations_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -42593,6 +43183,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ce_cases"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_planned_visits_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
           },
           {
             foreignKeyName: "ce_planned_visits_plan_id_fkey"
@@ -44058,6 +44655,27 @@ export type Database = {
             foreignKeyName: "ce_scouting_leads_linked_violation_id_fkey"
             columns: ["linked_violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_scouting_leads_linked_violation_id_fkey"
+            columns: ["linked_violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_scouting_leads_linked_violation_id_fkey"
+            columns: ["linked_violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_scouting_leads_linked_violation_id_fkey"
+            columns: ["linked_violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -44284,6 +44902,27 @@ export type Database = {
             foreignKeyName: "ce_violation_assignments_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_violation_assignments_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violation_assignments_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violation_assignments_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -44441,6 +45080,34 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_violation_grouping_decisions_target_case_id_fkey"
+            columns: ["target_case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_violation_grouping_decisions_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_violation_grouping_decisions_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violation_grouping_decisions_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ce_violation_grouping_decisions_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
@@ -44485,6 +45152,27 @@ export type Database = {
             foreignKeyName: "ce_violation_history_violation_id_fkey"
             columns: ["violation_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_violation_history_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violation_history_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violation_history_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
             referencedColumns: ["id"]
           },
@@ -44523,20 +45211,60 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_violation_routing_backfill_log: {
+        Row: {
+          batch_no: number
+          batch_size: number
+          failed: number
+          finished_at: string
+          id: string
+          remaining: number
+          routed: number
+          run_key: string
+          started_at: string
+        }
+        Insert: {
+          batch_no: number
+          batch_size: number
+          failed?: number
+          finished_at?: string
+          id?: string
+          remaining?: number
+          routed?: number
+          run_key: string
+          started_at?: string
+        }
+        Update: {
+          batch_no?: number
+          batch_size?: number
+          failed?: number
+          finished_at?: string
+          id?: string
+          remaining?: number
+          routed?: number
+          run_key?: string
+          started_at?: string
+        }
+        Relationships: []
+      }
       ce_violation_types: {
         Row: {
           applicable_funds: string[] | null
           auto_detect: boolean | null
           category: string | null
           code: string
+          conversion_policy: string
           created_at: string | null
           created_by: string | null
           description: string | null
           fund_type: string | null
           grace_period_days: number | null
           id: string
+          inspection_eligible: boolean
           is_active: boolean | null
+          maker_checker_required: boolean
           name: string
+          requires_supervisor_review: boolean
           severity_default: string | null
           sort_order: number | null
           updated_at: string | null
@@ -44547,14 +45275,18 @@ export type Database = {
           auto_detect?: boolean | null
           category?: string | null
           code: string
+          conversion_policy?: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           fund_type?: string | null
           grace_period_days?: number | null
           id?: string
+          inspection_eligible?: boolean
           is_active?: boolean | null
+          maker_checker_required?: boolean
           name: string
+          requires_supervisor_review?: boolean
           severity_default?: string | null
           sort_order?: number | null
           updated_at?: string | null
@@ -44565,14 +45297,18 @@ export type Database = {
           auto_detect?: boolean | null
           category?: string | null
           code?: string
+          conversion_policy?: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           fund_type?: string | null
           grace_period_days?: number | null
           id?: string
+          inspection_eligible?: boolean
           is_active?: boolean | null
+          maker_checker_required?: boolean
           name?: string
+          requires_supervisor_review?: boolean
           severity_default?: string | null
           sort_order?: number | null
           updated_at?: string | null
@@ -44633,6 +45369,7 @@ export type Database = {
           resolved_at: string | null
           resolved_by: string | null
           severity: string | null
+          source_finding_id: string | null
           source_rule_id: string | null
           source_type: string | null
           split_from_id: string | null
@@ -44702,6 +45439,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
+          source_finding_id?: string | null
           source_rule_id?: string | null
           source_type?: string | null
           split_from_id?: string | null
@@ -44771,6 +45509,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by?: string | null
           severity?: string | null
+          source_finding_id?: string | null
           source_rule_id?: string | null
           source_type?: string | null
           split_from_id?: string | null
@@ -44818,10 +45557,59 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ce_violations_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_violations_duplicate_of_id_fkey"
+            columns: ["duplicate_of_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_violations_duplicate_of_id_fkey"
+            columns: ["duplicate_of_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_duplicate_of_id_fkey"
+            columns: ["duplicate_of_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ce_violations_duplicate_of_id_fkey"
             columns: ["duplicate_of_id"]
             isOneToOne: false
             referencedRelation: "ce_violations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_duplicate_of_violation_id_fkey"
+            columns: ["duplicate_of_violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_violations_duplicate_of_violation_id_fkey"
+            columns: ["duplicate_of_violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_duplicate_of_violation_id_fkey"
+            columns: ["duplicate_of_violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -44835,7 +45623,49 @@ export type Database = {
             foreignKeyName: "ce_violations_merged_into_id_fkey"
             columns: ["merged_into_id"]
             isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_violations_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_merged_into_id_fkey"
+            columns: ["merged_into_id"]
+            isOneToOne: false
             referencedRelation: "ce_violations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_split_from_id_fkey"
+            columns: ["split_from_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_violations_split_from_id_fkey"
+            columns: ["split_from_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_split_from_id_fkey"
+            columns: ["split_from_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -45086,6 +45916,34 @@ export type Database = {
             columns: ["case_id"]
             isOneToOne: false
             referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_financials"
+            referencedColumns: ["violation_id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_ownership"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_waivers_violation_id_fkey"
+            columns: ["violation_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_violation_routing_eligibility"
             referencedColumns: ["id"]
           },
           {
@@ -62151,49 +63009,77 @@ export type Database = {
         Row: {
           allocated_to_item_id: string | null
           allocation_amount: number
+          allocation_key: string | null
           allocation_order: number
+          allocation_policy: string | null
           amount_received: number
           arrangement_id: string
           created_at: string
           created_by: string | null
+          fund_type: string | null
           id: string
           installment_id: string | null
+          is_reversed: boolean
+          ledger_entry_id: string | null
           payment_date: string
           receipt_id: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
           source_module: string | null
           source_record_id: string | null
         }
         Insert: {
           allocated_to_item_id?: string | null
           allocation_amount?: number
+          allocation_key?: string | null
           allocation_order?: number
+          allocation_policy?: string | null
           amount_received?: number
           arrangement_id: string
           created_at?: string
           created_by?: string | null
+          fund_type?: string | null
           id?: string
           installment_id?: string | null
+          is_reversed?: boolean
+          ledger_entry_id?: string | null
           payment_date: string
           receipt_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
           source_module?: string | null
           source_record_id?: string | null
         }
         Update: {
           allocated_to_item_id?: string | null
           allocation_amount?: number
+          allocation_key?: string | null
           allocation_order?: number
+          allocation_policy?: string | null
           amount_received?: number
           arrangement_id?: string
           created_at?: string
           created_by?: string | null
+          fund_type?: string | null
           id?: string
           installment_id?: string | null
+          is_reversed?: boolean
+          ledger_entry_id?: string | null
           payment_date?: string
           receipt_id?: string | null
+          reversal_reason?: string | null
+          reversed_at?: string | null
           source_module?: string | null
           source_record_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "core_payment_allocation_allocated_to_item_id_fkey"
+            columns: ["allocated_to_item_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_allocation_trail"
+            referencedColumns: ["item_id"]
+          },
           {
             foreignKeyName: "core_payment_allocation_allocated_to_item_id_fkey"
             columns: ["allocated_to_item_id"]
@@ -62274,6 +63160,8 @@ export type Database = {
           approved_by: string | null
           arrangement_no: string
           arrangement_type: string
+          coverage_notes: string | null
+          coverage_status: string | null
           created_at: string
           created_by: string | null
           debtor_id: string
@@ -62304,6 +63192,8 @@ export type Database = {
           approved_by?: string | null
           arrangement_no: string
           arrangement_type?: string
+          coverage_notes?: string | null
+          coverage_status?: string | null
           created_at?: string
           created_by?: string | null
           debtor_id: string
@@ -62334,6 +63224,8 @@ export type Database = {
           approved_by?: string | null
           arrangement_no?: string
           arrangement_type?: string
+          coverage_notes?: string | null
+          coverage_status?: string | null
           created_at?: string
           created_by?: string | null
           debtor_id?: string
@@ -62396,8 +63288,10 @@ export type Database = {
           arrangement_id: string
           benefit_claim_id: string | null
           compliance_case_id: string | null
-          cost_amount: number
+          cost_amount: number | null
           court_proceeding_id: string | null
+          coverage_confidence: string | null
+          coverage_evidence: Json | null
           created_at: string
           created_by: string | null
           finance_debt_id: string | null
@@ -62408,10 +63302,11 @@ export type Database = {
           notes: string | null
           outstanding_amount: number
           paid_amount: number
-          penalty_amount: number
+          penalty_amount: number | null
           period_from: string | null
           period_to: string | null
-          principal_amount: number
+          principal_amount: number | null
+          reconstruction_key: string | null
           source_module: string
           source_record_id: string
           source_record_type: string
@@ -62424,8 +63319,10 @@ export type Database = {
           arrangement_id: string
           benefit_claim_id?: string | null
           compliance_case_id?: string | null
-          cost_amount?: number
+          cost_amount?: number | null
           court_proceeding_id?: string | null
+          coverage_confidence?: string | null
+          coverage_evidence?: Json | null
           created_at?: string
           created_by?: string | null
           finance_debt_id?: string | null
@@ -62436,10 +63333,11 @@ export type Database = {
           notes?: string | null
           outstanding_amount?: number
           paid_amount?: number
-          penalty_amount?: number
+          penalty_amount?: number | null
           period_from?: string | null
           period_to?: string | null
-          principal_amount?: number
+          principal_amount?: number | null
+          reconstruction_key?: string | null
           source_module: string
           source_record_id: string
           source_record_type: string
@@ -62452,8 +63350,10 @@ export type Database = {
           arrangement_id?: string
           benefit_claim_id?: string | null
           compliance_case_id?: string | null
-          cost_amount?: number
+          cost_amount?: number | null
           court_proceeding_id?: string | null
+          coverage_confidence?: string | null
+          coverage_evidence?: Json | null
           created_at?: string
           created_by?: string | null
           finance_debt_id?: string | null
@@ -62464,10 +63364,11 @@ export type Database = {
           notes?: string | null
           outstanding_amount?: number
           paid_amount?: number
-          penalty_amount?: number
+          penalty_amount?: number | null
           period_from?: string | null
           period_to?: string | null
-          principal_amount?: number
+          principal_amount?: number | null
+          reconstruction_key?: string | null
           source_module?: string
           source_record_id?: string
           source_record_type?: string
@@ -62548,6 +63449,8 @@ export type Database = {
           due_date: string
           id: string
           installment_no: number
+          legacy_ce_installment_id: string | null
+          legacy_source_system: string | null
           notes: string | null
           paid_amount: number
           paid_date: string | null
@@ -62562,6 +63465,8 @@ export type Database = {
           due_date: string
           id?: string
           installment_no: number
+          legacy_ce_installment_id?: string | null
+          legacy_source_system?: string | null
           notes?: string | null
           paid_amount?: number
           paid_date?: string | null
@@ -62576,6 +63481,8 @@ export type Database = {
           due_date?: string
           id?: string
           installment_no?: number
+          legacy_ce_installment_id?: string | null
+          legacy_source_system?: string | null
           notes?: string | null
           paid_amount?: number
           paid_date?: string | null
@@ -99105,6 +100012,72 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_worker_command_backup: {
+        Row: {
+          captured_at: string
+          id: string
+          jobid: number
+          jobname: string
+          prior_command: string
+          prior_schedule: string
+        }
+        Insert: {
+          captured_at?: string
+          id?: string
+          jobid: number
+          jobname: string
+          prior_command: string
+          prior_schedule: string
+        }
+        Update: {
+          captured_at?: string
+          id?: string
+          jobid?: number
+          jobname?: string
+          prior_command?: string
+          prior_schedule?: string
+        }
+        Relationships: []
+      }
+      platform_worker_lease: {
+        Row: {
+          created_at: string
+          last_finished_at: string | null
+          last_outcome: string | null
+          last_started_at: string | null
+          lease_seconds: number
+          leased_until: string
+          run_count: number
+          skipped_count: number
+          updated_at: string
+          worker_name: string
+        }
+        Insert: {
+          created_at?: string
+          last_finished_at?: string | null
+          last_outcome?: string | null
+          last_started_at?: string | null
+          lease_seconds?: number
+          leased_until?: string
+          run_count?: number
+          skipped_count?: number
+          updated_at?: string
+          worker_name: string
+        }
+        Update: {
+          created_at?: string
+          last_finished_at?: string | null
+          last_outcome?: string | null
+          last_started_at?: string | null
+          lease_seconds?: number
+          leased_until?: string
+          run_count?: number
+          skipped_count?: number
+          updated_at?: string
+          worker_name?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -111870,6 +112843,128 @@ export type Database = {
         }
         Relationships: []
       }
+      ce_v_arrangement_allocation_trail: {
+        Row: {
+          allocation_amount: number | null
+          allocation_id: string | null
+          allocation_key: string | null
+          allocation_order: number | null
+          allocation_policy: string | null
+          amount_received: number | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          created_at: string | null
+          employer_id: string | null
+          employer_name: string | null
+          fund_type: string | null
+          installment_due_date: string | null
+          installment_id: string | null
+          installment_number: number | null
+          is_reversed: boolean | null
+          is_unattributed: boolean | null
+          item_id: string | null
+          ledger_credit_amount: number | null
+          ledger_entry_id: string | null
+          ledger_payment_reference: string | null
+          ledger_posted_at: string | null
+          ledger_status: Database["public"]["Enums"]["ce_ledger_status"] | null
+          liability_type: string | null
+          payment_date: string | null
+          period_from: string | null
+          period_to: string | null
+          receipt_id: string | null
+          reversal_reason: string | null
+          reversed_at: string | null
+          source_reference_no: string | null
+        }
+        Relationships: []
+      }
+      ce_v_arrangement_breach_occurrence: {
+        Row: {
+          amount_outstanding_at_breach: number | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          arrangement_status: string | null
+          breach_id: string | null
+          breach_type: string | null
+          description: string | null
+          detected_at: string | null
+          detected_by: string | null
+          due_date: string | null
+          employer_id: string | null
+          employer_name: string | null
+          grace_days_at_breach: number | null
+          installment_amount: number | null
+          installment_id: string | null
+          installment_number: number | null
+          installment_paid_amount: number | null
+          installment_status: string | null
+          is_cured: boolean | null
+          occurrence_key: string | null
+          resolution: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_arrangement_breaches_installment_id_fkey"
+            columns: ["installment_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_installment_operational"
+            referencedColumns: ["installment_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_arrangement_breaches_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+        ]
+      }
       ce_v_arrangement_health: {
         Row: {
           arrangement_id: string | null
@@ -111881,6 +112976,7 @@ export type Database = {
           max_missed_before_breach: number | null
           missed_payments: number | null
           next_due_date: string | null
+          overdue_installment_count: number | null
           regno: string | null
           status: string | null
           total_debt: number | null
@@ -111888,6 +112984,171 @@ export type Database = {
           unresolved_breach_count: number | null
         }
         Relationships: []
+      }
+      ce_v_arrangement_installment_operational: {
+        Row: {
+          allocated_amount: number | null
+          allocation_count: number | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          arrangement_status: string | null
+          case_id: string | null
+          days_overdue: number | null
+          days_until_due: number | null
+          due_date: string | null
+          effective_status: string | null
+          employer_id: string | null
+          employer_name: string | null
+          grace_days: number | null
+          installment_id: string | null
+          installment_number: number | null
+          outstanding_amount: number | null
+          paid_amount: number | null
+          paid_date: string | null
+          payment_reference: string | null
+          scheduled_amount: number | null
+          stored_status: string | null
+          unattributed_amount: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_installments_arrangement_id_fkey"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_payment_arrangements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_health"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_installments_arrangement"
+            columns: ["arrangement_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_arrangement_register"
+            referencedColumns: ["arrangement_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+        ]
+      }
+      ce_v_arrangement_register: {
+        Row: {
+          arrangement_default_violation_id: string | null
+          arrangement_default_violation_number: string | null
+          arrangement_id: string | null
+          arrangement_number: string | null
+          breach_count: number | null
+          breach_detected: boolean | null
+          case_id: string | null
+          created_at: string | null
+          employer_id: string | null
+          employer_name: string | null
+          end_date: string | null
+          frequency: string | null
+          health_status: string | null
+          installment_amount: number | null
+          installments_paid: number | null
+          installments_partial: number | null
+          installments_total: number | null
+          last_breach_at: string | null
+          max_missed_before_breach: number | null
+          missed_payments: number | null
+          next_due_date: string | null
+          next_installment_amount: number | null
+          next_installment_number: number | null
+          number_of_installments: number | null
+          outstanding: number | null
+          overdue_count: number | null
+          past_due_amount: number | null
+          start_date: string | null
+          status: string | null
+          total_arranged: number | null
+          total_paid: number | null
+          unattributed_amount: number | null
+          unresolved_breach_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_payment_arrangements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_ce_payment_arrangements_case"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "ce_v_case_financials"
+            referencedColumns: ["case_id"]
+          },
+        ]
       }
       ce_v_c3_aggregate_stats: {
         Row: {
@@ -111928,6 +113189,24 @@ export type Database = {
           ss_dues: number | null
           ss_penalty: number | null
           total_amount: number | null
+        }
+        Relationships: []
+      }
+      ce_v_case_financials: {
+        Row: {
+          case_id: string | null
+          case_number: string | null
+          employer_id: string | null
+          fund_type: string | null
+          gross: number | null
+          interest: number | null
+          is_open: boolean | null
+          outstanding: number | null
+          paid: number | null
+          penalty: number | null
+          principal: number | null
+          status: string | null
+          waived: number | null
         }
         Relationships: []
       }
@@ -112208,6 +113487,87 @@ export type Database = {
           reference_type: string | null
         }
         Relationships: []
+      }
+      ce_v_violation_financials: {
+        Row: {
+          case_id: string | null
+          employer_id: string | null
+          fund_type: string | null
+          gross: number | null
+          interest: number | null
+          is_case_linked: boolean | null
+          is_open: boolean | null
+          outstanding: number | null
+          paid: number | null
+          penalty: number | null
+          principal: number | null
+          status: string | null
+          violation_id: string | null
+          violation_number: string | null
+          waived: number | null
+        }
+        Relationships: []
+      }
+      ce_v_violation_ownership: {
+        Row: {
+          assigned_at: string | null
+          assigned_queue_id: string | null
+          assigned_to_name: string | null
+          assigned_to_user_id: string | null
+          assignment_method: string | null
+          created_at: string | null
+          employer_id: string | null
+          employer_name: string | null
+          id: string | null
+          ownership_state: string | null
+          priority: string | null
+          queue_code: string | null
+          queue_type: string | null
+          status: string | null
+          total_amount: number | null
+          violation_number: string | null
+          zone_code: string | null
+          zone_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_violations_assigned_queue_id_fkey"
+            columns: ["assigned_queue_id"]
+            isOneToOne: false
+            referencedRelation: "ce_assignment_queues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ce_violations_zone_id_fkey"
+            columns: ["zone_id"]
+            isOneToOne: false
+            referencedRelation: "ce_zones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ce_v_violation_routing_eligibility: {
+        Row: {
+          assigned_queue_id: string | null
+          assigned_to_user_id: string | null
+          assignment_method: string | null
+          eligibility: string | null
+          employer_id: string | null
+          id: string | null
+          office_code: string | null
+          status: string | null
+          village_code: string | null
+          violation_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ce_violations_assigned_queue_id_fkey"
+            columns: ["assigned_queue_id"]
+            isOneToOne: false
+            referencedRelation: "ce_assignment_queues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ce_v_violation_trends: {
         Row: {
@@ -118694,6 +120054,10 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_apply_case_merge: {
+        Args: { p_actor?: string; p_request_id: string }
+        Returns: Json
+      }
       ce_apply_status_transition: {
         Args: {
           p_action_code: string
@@ -118704,6 +120068,17 @@ export type Database = {
         }
         Returns: Json
       }
+      ce_arrangement_blocking_lookup: {
+        Args: { p_employer_id: string }
+        Returns: {
+          arrangement_number: string
+          case_id: string
+          id: string
+          status: string
+        }[]
+      }
+      ce_arrangement_grace_days: { Args: never; Returns: number }
+      ce_arrangement_terminal_statuses: { Args: never; Returns: string[] }
       ce_batch_recompute_compliance: {
         Args: {
           p_employer_ids?: string[]
@@ -118761,6 +120136,103 @@ export type Database = {
           p_trigger_type?: string
         }
         Returns: string
+      }
+      ce_detect_arrangement_breaches: {
+        Args: { p_actor?: string }
+        Returns: Json
+      }
+      ce_e2e__activate: {
+        Args: { p_actor: string; p_arr_id: string; p_items: Json }
+        Returns: undefined
+      }
+      ce_e2e__mk_arrangement: {
+        Args: {
+          p_actor: string
+          p_amounts: number[]
+          p_arrno: string
+          p_emp: string
+          p_empname: string
+          p_key: string
+          p_offsets: number[]
+        }
+        Returns: string
+      }
+      ce_e2e__pay: {
+        Args: {
+          p_actor: string
+          p_amount: number
+          p_arr_id: string
+          p_emp: string
+          p_empname: string
+          p_fund: Database["public"]["Enums"]["ce_fund_type"]
+          p_key: string
+        }
+        Returns: string
+      }
+      ce_e2e_provision_payment_arrangement_fixtures: {
+        Args: { p_actor?: string }
+        Returns: Json
+      }
+      ce_employer_ledger_entry_detail: {
+        Args: { p_entry_id: string }
+        Returns: Json
+      }
+      ce_employer_ledger_page: {
+        Args: {
+          p_arrangement_id?: string
+          p_direction?: string
+          p_employer_id: string
+          p_entry_type?: string
+          p_from_date?: string
+          p_fund_type?: string
+          p_limit?: number
+          p_offset?: number
+          p_period?: string
+          p_reference?: string
+          p_source_system?: string
+          p_to_date?: string
+        }
+        Returns: {
+          arrangement_id: string
+          case_id: string
+          credit_amount: number
+          debit_amount: number
+          description: string
+          effective_date: string
+          entry_id: string
+          entry_type: string
+          fund_type: string
+          installment_id: string
+          payment_reference: string
+          period: string
+          posted_at: string
+          posted_by: string
+          reference_id: string
+          reference_type: string
+          reversal_of_id: string
+          reversal_reason: string
+          reversed_by_entry_id: string
+          running_balance_fund: number
+          running_balance_total: number
+          source_pk: string
+          source_system: string
+          status: string
+          total_count: number
+          violation_id: string
+        }[]
+      }
+      ce_employer_ledger_reconcile: {
+        Args: { p_employer_id: string }
+        Returns: Json
+      }
+      ce_employer_ledger_summary: {
+        Args: {
+          p_employer_id: string
+          p_from_date?: string
+          p_fund_type?: string
+          p_to_date?: string
+        }
+        Returns: Json
       }
       ce_evaluate_arrangement_breaches: {
         Args: { p_actor?: string; p_as_of_date?: string; p_grace_days?: number }
@@ -120006,6 +121478,56 @@ export type Database = {
         }
         Returns: string
       }
+      core_arrangement_add_item: {
+        Args: {
+          p_actor?: string
+          p_arranged_amount: number
+          p_arrangement_id: string
+          p_cost?: number
+          p_liability_type: string
+          p_penalty?: number
+          p_period_from?: string
+          p_period_to?: string
+          p_principal?: number
+          p_source_module?: string
+          p_source_record_id?: string
+          p_source_record_type?: string
+          p_source_reference_no?: string
+        }
+        Returns: string
+      }
+      core_arrangement_detail: {
+        Args: { p_arrangement_id: string }
+        Returns: Json
+      }
+      core_arrangement_detail_by_legacy: {
+        Args: { p_legacy_id: string }
+        Returns: Json
+      }
+      core_arrangement_liability_coverage: {
+        Args: { p_employer_id: string }
+        Returns: Json
+      }
+      core_arrangement_set_status: {
+        Args: {
+          p_actor?: string
+          p_arrangement_id: string
+          p_new_status: string
+        }
+        Returns: Json
+      }
+      core_arrangement_validate_coverage: {
+        Args: { p_arrangement_id: string }
+        Returns: Json
+      }
+      core_arrangement_verify_invariants: {
+        Args: { p_arrangement_id: string }
+        Returns: Json
+      }
+      core_backfill_ce_arrangements: {
+        Args: { p_actor?: string; p_dry_run?: boolean }
+        Returns: Json
+      }
       core_comm_asset_get: { Args: { p_id: string }; Returns: Json }
       core_comm_asset_list_active: {
         Args: { p_asset_type?: string; p_organization_id: string }
@@ -120138,6 +121660,18 @@ export type Database = {
         }
         Returns: undefined
       }
+      core_map_ce_arrangement_status: {
+        Args: { p_status: string }
+        Returns: string
+      }
+      core_map_ce_installment_status: {
+        Args: { p_status: string }
+        Returns: string
+      }
+      core_map_ledger_fund_to_liability: {
+        Args: { p_fund: string }
+        Returns: string
+      }
       core_preview_next_number: {
         Args: {
           p_branch_code?: string
@@ -120151,6 +121685,15 @@ export type Database = {
       core_priv_verify_department_ownership: {
         Args: { p_department_id: string; p_organization_id: string }
         Returns: undefined
+      }
+      core_record_ledger_allocation: {
+        Args: {
+          p_actor?: string
+          p_amount: number
+          p_ce_installment_id: string
+          p_ledger_entry_id: string
+        }
+        Returns: number
       }
       core_record_number_override: {
         Args: {
@@ -120765,6 +122308,19 @@ export type Database = {
         Args: { p_violation_id: string }
         Returns: Json
       }
+      fn_ce_employer_financial_exposure: {
+        Args: { p_employer_id: string }
+        Returns: Json
+      }
+      fn_ce_finding_conversion_policy: {
+        Args: { p_violation_type_id: string }
+        Returns: {
+          conversion_policy: string
+          inspection_eligible: boolean
+          maker_checker_required: boolean
+          requires_supervisor_review: boolean
+        }[]
+      }
       fn_ce_generate_legal_recommendations: {
         Args: { p_created_by?: string }
         Returns: number
@@ -120780,6 +122336,10 @@ export type Database = {
       fn_ce_recalc_audit_priority_for_employer: {
         Args: { p_employer_id: string; p_policy_id?: string }
         Returns: Json
+      }
+      fn_ce_recalc_case_financials: {
+        Args: { p_case_id: string }
+        Returns: undefined
       }
       fn_ce_recalculate_case_severity: {
         Args: { p_case_id: string }
@@ -120809,11 +122369,24 @@ export type Database = {
           zone_name: string
         }[]
       }
+      fn_ce_route_unassigned_backfill: {
+        Args: {
+          p_batch_size?: number
+          p_max_batches?: number
+          p_run_key?: string
+        }
+        Returns: Json
+      }
+      fn_ce_route_unassigned_violations: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
       fn_ce_route_violation: { Args: { p_violation_id: string }; Returns: Json }
       fn_ce_route_violations_bulk: {
         Args: { p_violation_ids: string[] }
         Returns: number
       }
+      fn_ce_routing_backfill_stats: { Args: never; Returns: Json }
       fn_ce_run_audit_priority_refresh: {
         Args: {
           p_batch_size?: number
@@ -120909,6 +122482,7 @@ export type Database = {
         Args: { p_actor: string; p_keep_id: string; p_root_id: string }
         Returns: undefined
       }
+      fn_ce_unassigned_violation_count: { Args: never; Returns: number }
       fn_ia_department_label: { Args: { p_id: string }; Returns: string }
       gen_lg_hearing_number: { Args: never; Returns: string }
       generate_application_id: { Args: never; Returns: string }
@@ -124494,7 +126068,24 @@ export type Database = {
         Args: { p_value: number }
         Returns: string
       }
+      omni_comms_priv_inbound_voice_section: {
+        Args: {
+          p_section: string
+          p_subject_key: string
+          p_subject_kind: string
+        }
+        Returns: string
+      }
       omni_comms_priv_inbound_voice_step: {
+        Args: {
+          p_call_sid: string
+          p_digits?: string
+          p_from?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      omni_comms_priv_inbound_voice_step_core: {
         Args: {
           p_call_sid: string
           p_digits?: string
@@ -125972,6 +127563,18 @@ export type Database = {
             }
             Returns: Json
           }
+      platform_purge_cron_run_details: {
+        Args: { p_keep_runs?: number; p_max_rows?: number }
+        Returns: number
+      }
+      platform_release_worker: {
+        Args: { p_outcome?: string; p_worker: string }
+        Returns: undefined
+      }
+      platform_try_lease_worker: {
+        Args: { p_lease_seconds?: number; p_worker: string }
+        Returns: boolean
+      }
       prepare_comm_hub_preview: { Args: { p_payload: Json }; Returns: Json }
       preview_payment_allocation: {
         Args: {

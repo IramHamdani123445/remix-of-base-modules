@@ -2,6 +2,9 @@
  * Rules Administration — Version governance, compare, simulate, approve, publish
  */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
+
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,12 +18,14 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
   BookOpen, Copy, CheckCircle, XCircle, Send, Eye, Play,
-  GitCompare, Search, Plus, ArrowRight, Shield, Clock, AlertTriangle,
+  GitCompare, Search, Plus, ArrowRight, Shield, Clock, AlertTriangle, Undo2,
 } from 'lucide-react';
 import { PermissionWrapper } from '@/components/ui/permission-wrapper';
 import { PageHeader } from '@/components/common/PageHeader';
 import { BnStatusBadge, BnEmptyState, BnScreenRoleBanner } from '@/components/bn/shared';
 import { useUserCode } from '@/hooks/useUserCode';
+import { useActionPermissions } from '@/hooks/useActionPermission';
+import { BN_CONFIG_MODULE, BN_CONFIG_APPROVE_ACTION } from '@/services/bn/bnConfigPermissions';
 import { useBnProducts } from '@/hooks/bn/useBnProduct';
 import {
   useBnRuleVersions,
@@ -30,21 +35,104 @@ import {
   useBnApproveVersion,
   useBnRejectVersion,
   useBnPublishVersion,
+  useBnReturnToDraft,
+
 } from '@/hooks/bn/useBnRulesAdmin';
 
-import type { RuleVersionSummary } from '@/services/bn/rulesAdminService';
+import { RULE_VERSION_STATUSES, assertVersionReadiness, type RuleVersionSummary } from '@/services/bn/rulesAdminService';
 
+// Canonical lifecycle: DRAFT -> PENDING_APPROVAL -> APPROVED -> ACTIVE -> ARCHIVED
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-muted text-muted-foreground',
-  PENDING_REVIEW: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+  PENDING_APPROVAL: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   APPROVED: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  PUBLISHED: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  RETIRED: 'bg-secondary text-secondary-foreground',
-  REJECTED: 'bg-destructive/10 text-destructive',
+  ACTIVE: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+  ARCHIVED: 'bg-secondary text-secondary-foreground',
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Draft',
+  PENDING_APPROVAL: 'Pending Approval',
+  APPROVED: 'Approved',
+  ACTIVE: 'Active',
+  ARCHIVED: 'Archived',
+};
+
+/**
+ * Per-row readiness. The governance registry used to expose Submit / Approve /
+ * Publish with no indication of whether the version could actually pass the
+ * gate, so failures only surfaced at the final click with an opaque message.
+ * Each actionable row now runs the same gate the service runs and names its
+ * blocking issues up front.
+ */
+function useVersionReadiness(versions: RuleVersionSummary[]) {
+  const actionable = versions.filter((v) => v.status !== 'ACTIVE' && v.status !== 'ARCHIVED');
+  const results = useQueries({
+    queries: actionable.map((v) => ({
+      queryKey: ['bn', 'version-readiness', v.id],
+      queryFn: () => assertVersionReadiness(v.id),
+      staleTime: 60_000,
+      retry: false,
+    })),
+  });
+  const map = new Map<string, { loading: boolean; ok: boolean; errors: string[] }>();
+  actionable.forEach((v, i) => {
+    const r = results[i];
+    map.set(v.id, {
+      loading: r.isLoading,
+      ok: !!r.data?.ok,
+      errors: r.data?.errors ?? [],
+    });
+  });
+  return map;
+}
+
+function ReadinessCell({
+  state,
+  productId,
+  versionId,
+}: {
+  state?: { loading: boolean; ok: boolean; errors: string[] };
+  productId: string;
+  versionId?: string;
+}) {
+  if (!state) return <span className="text-muted-foreground text-xs">—</span>;
+  if (state.loading) return <span className="text-muted-foreground text-xs">Checking…</span>;
+  if (state.ok) {
+    return (
+      <Badge variant="outline" className="text-green-600 border-green-300">
+        <CheckCircle className="h-3 w-3 mr-1" /> Ready to publish
+      </Badge>
+    );
+  }
+  const href = versionId
+    ? `/bn/config/products/${productId}?versionId=${versionId}`
+    : `/bn/config/products/${productId}`;
+  return (
+    <Link to={href} onClick={(e) => e.stopPropagation()} className="block max-w-[16rem]">
+      <Badge
+        variant="outline"
+        className="text-destructive border-destructive/40 hover:bg-destructive/10"
+        title={state.errors.join('\n')}
+      >
+        <AlertTriangle className="h-3 w-3 mr-1" />
+        {state.errors.length} blocking issue{state.errors.length === 1 ? '' : 's'}
+      </Badge>
+      <span className="mt-1 block truncate text-[10px] text-muted-foreground" title={state.errors.join('\n')}>
+        {state.errors[0]}
+      </span>
+    </Link>
+  );
+}
+
+
 export default function RulesAdministration() {
+
   const { userCode } = useUserCode();
+  // Approving, rejecting and publishing require the explicit
+  // `bn_configuration.approve` right — edit alone is authoring only.
+  const { can: canBnConfig } = useActionPermissions(BN_CONFIG_MODULE);
+  const canApprove = canBnConfig(BN_CONFIG_APPROVE_ACTION);
   const { data: products = [] } = useBnProducts();
   const [productFilter, setProductFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -56,7 +144,7 @@ export default function RulesAdministration() {
   const [cloneLabel, setCloneLabel] = useState('');
   const [cloneNotes, setCloneNotes] = useState('');
   const [showActionSheet, setShowActionSheet] = useState(false);
-  const [actionType, setActionType] = useState<'approve' | 'reject' | 'publish' | null>(null);
+  const [actionType, setActionType] = useState<'approve' | 'reject' | 'publish' | 'return' | null>(null);
   const [actionComments, setActionComments] = useState('');
   const [effectiveDate, setEffectiveDate] = useState('');
 
@@ -68,11 +156,16 @@ export default function RulesAdministration() {
   const approveMutation = useBnApproveVersion();
   const rejectMutation = useBnRejectVersion();
   const publishMutation = useBnPublishVersion();
+  const returnMutation = useBnReturnToDraft();
+
 
   const { data: compareResult } = useBnCompareVersions(
     compareBaseId || undefined,
     compareTargetId || undefined
   );
+
+  const readiness = useVersionReadiness(versions);
+
 
   const filtered = versions.filter((v) => {
     if (statusFilter !== 'all' && v.status !== statusFilter) return false;
@@ -106,7 +199,14 @@ export default function RulesAdministration() {
       rejectMutation.mutate({ versionId: selectedVersion.id, rejectorCode: userCode || 'system', reason: actionComments });
     } else if (actionType === 'publish') {
       publishMutation.mutate({ versionId: selectedVersion.id, effectiveDate, publisherCode: userCode || 'system' });
+    } else if (actionType === 'return') {
+      returnMutation.mutate({
+        versionId: selectedVersion.id,
+        userCode: userCode || 'system',
+        reason: actionComments || 'Returned for correction of blocking issues',
+      });
     }
+
     setShowActionSheet(false);
     setActionType(null);
     setActionComments('');
@@ -130,6 +230,18 @@ export default function RulesAdministration() {
           role="governance"
           description="Governance only — review, compare, approve, publish, retire and roll back product rule versions. Eligibility, calculation, documents, workflow and timelines are edited inside Product Catalog against a specific draft version."
         />
+
+        {!canApprove && (
+          <Alert>
+            <Shield className="h-4 w-4" />
+            <AlertTitle>Read-only governance access</AlertTitle>
+            <AlertDescription>
+              You can review, compare and submit versions, but approving, rejecting and
+              publishing require the Benefits Configuration <strong>Approve</strong> permission.
+              Ask an approver role (for example BN_CONFIG_ADMIN) to action versions awaiting a decision.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs defaultValue="versions" className="w-full">
           <TabsList>
@@ -167,26 +279,25 @@ export default function RulesAdministration() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
-                  <SelectItem value="APPROVED">Approved</SelectItem>
-                  <SelectItem value="PUBLISHED">Published</SelectItem>
-                  <SelectItem value="RETIRED">Retired</SelectItem>
+                  {RULE_VERSION_STATUSES.map(s => (
+                    <SelectItem key={s} value={s}>{STATUS_LABELS[s]}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {(['DRAFT', 'PENDING_REVIEW', 'APPROVED', 'PUBLISHED', 'RETIRED'] as const).map(s => (
+              {RULE_VERSION_STATUSES.map(s => (
                 <Card key={s} className="cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all" onClick={() => setStatusFilter(s)}>
                   <CardContent className="p-3 text-center">
                     <div className="text-2xl font-bold">{versions.filter(v => v.status === s).length}</div>
-                    <div className="text-xs text-muted-foreground">{s.replace('_', ' ')}</div>
+                    <div className="text-xs text-muted-foreground">{STATUS_LABELS[s]}</div>
                   </CardContent>
                 </Card>
               ))}
             </div>
+
 
             {/* Version Table */}
             <Card>
@@ -203,7 +314,9 @@ export default function RulesAdministration() {
                         <TableHead className="text-center">Rules</TableHead>
                         <TableHead>Effective</TableHead>
                         <TableHead>Author</TableHead>
+                        <TableHead>Readiness</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
+
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -216,7 +329,7 @@ export default function RulesAdministration() {
                           </TableCell>
                           <TableCell>
                             <Badge className={STATUS_COLORS[v.status] || ''} variant="secondary">
-                              {v.status.replace('_', ' ')}
+                              {STATUS_LABELS[v.status] || v.status.replace('_', ' ')}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
@@ -228,11 +341,20 @@ export default function RulesAdministration() {
                           </TableCell>
                           <TableCell className="text-sm">{v.effectiveDate || '—'}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{v.enteredBy || '—'}</TableCell>
+                          <TableCell>
+                            <ReadinessCell state={readiness.get(v.id)} productId={v.productId} versionId={v.id} />
+                          </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               {v.status === 'DRAFT' && (
                                 <>
-                                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); handleSubmit(v.id); }}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={readiness.get(v.id)?.ok === false}
+                                    title={readiness.get(v.id)?.ok === false ? readiness.get(v.id)!.errors.join('\n') : undefined}
+                                    onClick={(e) => { e.stopPropagation(); handleSubmit(v.id); }}
+                                  >
                                     <Send className="h-3 w-3 mr-1" /> Submit
                                   </Button>
                                   <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setSelectedVersion(v); setShowCloneDialog(true); }}>
@@ -240,11 +362,23 @@ export default function RulesAdministration() {
                                   </Button>
                                 </>
                               )}
-                              {v.status === 'PENDING_REVIEW' && (
+                              {v.status === 'PENDING_APPROVAL' && !canApprove && (
+                                <Badge variant="outline" className="text-muted-foreground" title="Requires the Benefits Configuration 'Approve' permission">
+                                  <Clock className="h-3 w-3 mr-1" /> Awaiting approver
+                                </Badge>
+                              )}
+                              {v.status === 'PENDING_APPROVAL' && canApprove && (
                                 <>
-                                  <Button size="sm" variant="outline" className="text-green-600" onClick={(e) => {
-                                    e.stopPropagation(); setSelectedVersion(v); setActionType('approve'); setShowActionSheet(true);
-                                  }}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-green-600"
+                                    disabled={readiness.get(v.id)?.ok === false}
+                                    title={readiness.get(v.id)?.ok === false ? readiness.get(v.id)!.errors.join('\n') : undefined}
+                                    onClick={(e) => {
+                                      e.stopPropagation(); setSelectedVersion(v); setActionType('approve'); setShowActionSheet(true);
+                                    }}
+                                  >
                                     <CheckCircle className="h-3 w-3 mr-1" /> Approve
                                   </Button>
                                   <Button size="sm" variant="outline" className="text-destructive" onClick={(e) => {
@@ -254,16 +388,42 @@ export default function RulesAdministration() {
                                   </Button>
                                 </>
                               )}
-                              {v.status === 'APPROVED' && (
-                                <Button size="sm" variant="default" onClick={(e) => {
-                                  e.stopPropagation(); setSelectedVersion(v); setActionType('publish'); setShowActionSheet(true);
-                                }}>
-                                  <ArrowRight className="h-3 w-3 mr-1" /> Publish
+                              {(v.status === 'PENDING_APPROVAL' || v.status === 'APPROVED') && (
+                                <Button
+                                  size="sm"
+                                  variant={readiness.get(v.id)?.ok === false ? 'default' : 'ghost'}
+                                  title="Unlock this version for editing on the Product Editor"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); setSelectedVersion(v); setActionType('return'); setShowActionSheet(true);
+                                  }}
+                                >
+                                  <Undo2 className="h-3 w-3 mr-1" />
+                                  {readiness.get(v.id)?.ok === false ? 'Return to Draft & Fix' : 'Return to Draft'}
                                 </Button>
                               )}
-                              {v.status === 'PUBLISHED' && (
+                              {v.status === 'APPROVED' && !canApprove && (
+                                <Badge variant="outline" className="text-muted-foreground" title="Requires the Benefits Configuration 'Approve' permission">
+                                  <Clock className="h-3 w-3 mr-1" /> Awaiting publisher
+                                </Badge>
+                              )}
+                              {v.status === 'APPROVED' && canApprove && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  disabled={readiness.get(v.id)?.ok === false}
+                                  title={readiness.get(v.id)?.ok === false ? readiness.get(v.id)!.errors.join('\n') : undefined}
+                                  onClick={(e) => {
+                                    e.stopPropagation(); setSelectedVersion(v); setActionType('publish'); setShowActionSheet(true);
+                                  }}
+                                >
+                                  <ArrowRight className="h-3 w-3 mr-1" /> Publish
+                                </Button>
+
+                              )}
+                              {v.status === 'ACTIVE' && (
                                 <Badge variant="outline" className="text-green-600 border-green-300"><Shield className="h-3 w-3 mr-1" /> Active</Badge>
                               )}
+
                             </div>
                           </TableCell>
                         </TableRow>
@@ -389,18 +549,37 @@ export default function RulesAdministration() {
 
         {/* ── Action Sheet (Approve/Reject/Publish) ─────────────── */}
         <Sheet open={showActionSheet} onOpenChange={setShowActionSheet}>
-          <SheetContent>
-            <SheetHeader>
+          <SheetContent className="flex flex-col max-h-screen overflow-hidden">
+            <SheetHeader className="shrink-0">
               <SheetTitle>
                 {actionType === 'approve' && 'Approve Version'}
                 {actionType === 'reject' && 'Reject Version'}
                 {actionType === 'publish' && 'Publish Version'}
+                {actionType === 'return' && 'Return Version to Draft'}
               </SheetTitle>
               <SheetDescription>
                 {selectedVersion?.productName} — {selectedVersion?.versionLabel}
               </SheetDescription>
             </SheetHeader>
-            <div className="space-y-4 mt-6">
+            <div className="space-y-4 mt-6 flex-1 min-h-0 overflow-y-auto pr-1">
+
+              {actionType === 'return' && (
+                <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>This unlocks the version for editing</AlertTitle>
+                  <AlertDescription className="space-y-2">
+                    <p>
+                      The version goes back to Draft so the blocking issues can be corrected on the
+                      Product Editor. It must be submitted and approved again afterwards.
+                    </p>
+                    {(readiness.get(selectedVersion?.id ?? '')?.errors ?? []).length > 0 && (
+                      <ul className="list-disc pl-4 text-xs">
+                        {readiness.get(selectedVersion!.id)!.errors.map((e, i) => <li key={i}>{e}</li>)}
+                      </ul>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
               {actionType === 'publish' && (
                 <div>
                   <label className="text-sm font-medium">Effective Date *</label>
@@ -410,16 +589,19 @@ export default function RulesAdministration() {
               )}
               <div>
                 <label className="text-sm font-medium">
-                  {actionType === 'reject' ? 'Rejection Reason *' : 'Comments'}
+                  {actionType === 'reject' ? 'Rejection Reason *' : actionType === 'return' ? 'Reason *' : 'Comments'}
                 </label>
                 <Textarea value={actionComments} onChange={(e) => setActionComments(e.target.value)} rows={3} placeholder={
-                  actionType === 'reject' ? 'Explain what needs to be revised...' : 'Optional comments...'
+                  actionType === 'reject' ? 'Explain what needs to be revised...'
+                    : actionType === 'return' ? 'What needs to be corrected before this can be approved?'
+                    : 'Optional comments...'
                 } />
               </div>
               <Button
                 onClick={handleAction}
                 disabled={
                   (actionType === 'reject' && !actionComments) ||
+                  (actionType === 'return' && !actionComments) ||
                   (actionType === 'publish' && !effectiveDate)
                 }
                 variant={actionType === 'reject' ? 'destructive' : 'default'}
@@ -428,7 +610,9 @@ export default function RulesAdministration() {
                 {actionType === 'approve' && <><CheckCircle className="h-4 w-4 mr-2" /> Approve</>}
                 {actionType === 'reject' && <><XCircle className="h-4 w-4 mr-2" /> Reject & Return to Draft</>}
                 {actionType === 'publish' && <><ArrowRight className="h-4 w-4 mr-2" /> Publish & Activate</>}
+                {actionType === 'return' && <><Undo2 className="h-4 w-4 mr-2" /> Return to Draft</>}
               </Button>
+
             </div>
           </SheetContent>
         </Sheet>

@@ -54,17 +54,19 @@ export const CaseRequestActions = ({ caseId, caseStatus, caseNumber }: Props) =>
     queryKey: ['ce-case-merge-candidates', debouncedSearch, caseId],
     enabled: open === 'MERGE' && debouncedSearch.length >= 2,
     queryFn: async () => {
-      const term = debouncedSearch.replace(/[%,]/g, '');
-      const { data, error } = await supabase
-        .from('ce_cases')
-        .select('id, case_number, employer_name, status')
-        .or(`case_number.ilike.%${term}%,employer_name.ilike.%${term}%`)
-        .neq('id', caseId)
-        .limit(20);
+      // Permission-enforced, server-side candidate search. Excludes the current
+      // case, deleted/merged cases and already-closed cases so an operator can
+      // never pick an incompatible merge target (and never types a UUID).
+      const { data, error } = await (supabase as any).rpc('ce_search_merge_candidates', {
+        p_case_id: caseId,
+        p_search: debouncedSearch,
+        p_limit: 20,
+      });
       if (error) throw error;
       return (data ?? []) as Array<{ id: string; case_number: string; employer_name: string | null; status: string }>;
     },
   });
+
 
 
   // Resolve the workflow mapping when the closure dialog opens so we can
