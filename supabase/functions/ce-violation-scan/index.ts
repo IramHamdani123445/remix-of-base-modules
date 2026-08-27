@@ -1168,13 +1168,43 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           is_deleted: false,
         }));
 
-        const { data: inserted, error: insertError } = await supabase
+        let { data: inserted, error: insertError } = await supabase
           .from("ce_violations")
           .insert(rows)
           .select("id");
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          // A single conflicting row (active-violation dedupe index or a
+          // violation-number collision) must not abort the whole scan.
+          // Fall back to row-by-row inserts and skip only the conflicts.
+          const isConflict =
+            (insertError as any).code === "23505" ||
+            /duplicate key/i.test(insertError.message || "");
+          if (!isConflict) throw insertError;
+
+          const salvaged: any[] = [];
+          for (const row of rows) {
+            const { data: one, error: oneErr } = await supabase
+              .from("ce_violations")
+              .insert({ ...row, violation_number: generateViolationNumber() })
+              .select("id")
+              .maybeSingle();
+            if (oneErr) {
+              const dup =
+                (oneErr as any).code === "23505" ||
+                /duplicate key/i.test(oneErr.message || "");
+              if (dup) {
+                skippedCount += 1;
+                continue;
+              }
+              throw oneErr;
+            }
+            if (one) salvaged.push(one);
+          }
+          inserted = salvaged;
+        }
         insertedCount += inserted?.length || 0;
+
 
         // Auto-route the whole batch in a single database round trip.
         // Routing each violation individually meant tens of thousands of
