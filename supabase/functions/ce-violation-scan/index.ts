@@ -1343,6 +1343,8 @@ async function executeScan(args: ExecuteScanArgs): Promise<void> {
           dry_run: dryRun,
           force,
           in_progress: true,
+          heartbeat_at: new Date().toISOString(),
+
           employers_total: totalEmployers,
           employers_done: sliceEnd,
           progress_percent: Math.round((sliceEnd / Math.max(1, totalEmployers)) * 100),
