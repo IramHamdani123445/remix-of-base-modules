@@ -104,6 +104,8 @@ async function pollAutomationRun(
   let missingPolls = 0;
   let lastProgressKey = '';
   let lastProgressAt = Date.now();
+  let resumeRequestedAt = 0;
+
 
   const fail = (name: string, message: string) => {
     const err = new Error(message);
