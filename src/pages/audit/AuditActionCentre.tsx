@@ -23,12 +23,17 @@ import {
   useIaActionCentreCounts, useIaFollowUpRecordOutcome, normalizeAuditLink,
   type IaFilters,
 } from '@/hooks/useAuditActionCentre';
+import {
+  ActionCentrePrintView, AuditActionSummaryPrintView, type AppliedFilter,
+} from '@/components/audit/actions/ActionCentrePrintView';
 
 const SEVERITIES = ['Critical', 'High', 'Medium', 'Low'];
 const ACTION_STATUSES = [
   'Open', 'Assigned', 'In Progress', 'Completed by Management',
   'Verification Required', 'In Verification', 'Returned', 'Verified', 'Closed', 'Cancelled',
 ];
+const FINDING_STATUSES = ['Draft', 'Under Review', 'Confirmed', 'Released', 'Responded', 'Closed'];
+
 
 export default function AuditActionCentre() {
   const navigate = useNavigate();
