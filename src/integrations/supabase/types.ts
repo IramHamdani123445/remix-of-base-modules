@@ -127685,6 +127685,10 @@ export type Database = {
         }
         Returns: number
       }
+      omni_comms_priv_seed_internal_audit_event: {
+        Args: { p: Json }
+        Returns: Json
+      }
       omni_comms_priv_send_communication: {
         Args: {
           p_actor_id: string
