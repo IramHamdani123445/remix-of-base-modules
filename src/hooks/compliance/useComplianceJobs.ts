@@ -138,12 +138,25 @@ async function pollAutomationRun(
       if (key !== lastProgressKey) {
         lastProgressKey = key;
         lastProgressAt = Date.now();
+        resumeRequestedAt = 0;
       } else if (Date.now() - lastProgressAt > STALL_TIMEOUT_MS) {
         throw fail(
           RUN_STALLED,
-          'The detection worker stopped responding part-way through the scan. The run has been left for the watchdog to retire — please start detection again, or scope it to a single employer.',
+          'The detection worker stopped responding part-way through the scan and could not be revived. Please start detection again, or scope it to a single employer.',
         );
+      } else if (
+        Date.now() - lastProgressAt > STALL_RESUME_MS &&
+        Date.now() - resumeRequestedAt > STALL_RESUME_MS
+      ) {
+        // A slice worker can be killed by the edge CPU budget after saving its
+        // progress but before chaining the next slice. Ask the server-side
+        // watchdog to re-chain from the last completed offset.
+        resumeRequestedAt = Date.now();
+        supabase.functions
+          .invoke('ce-violation-scan', { body: { resume_only: true } })
+          .catch(() => {});
       }
+
       if (onProgress && typeof log.progress_percent === 'number') {
         onProgress(log.progress_percent, log.employers_done ?? 0, log.employers_total ?? 0);
       }
