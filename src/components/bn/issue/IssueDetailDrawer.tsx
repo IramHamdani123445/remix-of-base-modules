@@ -20,6 +20,7 @@ import { formatDateForDisplay } from '@/lib/format-config';
 import { toast } from 'sonner';
 
 import { formatNumber } from '@/lib/culture/culture';
+import { useActorUserCode } from '@/hooks/bn/useActorUserCode';
 const ACTION_CONFIG: Record<string, { label: string; icon: any; variant: any; requiresReason: boolean }> = {
   ISSUE:      { label: 'Issue Now',    icon: Zap,        variant: 'default',     requiresReason: false },
   VOID:       { label: 'Void',         icon: XCircle,    variant: 'destructive', requiresReason: true },
@@ -44,6 +45,9 @@ interface Props {
 }
 
 export const IssueDetailDrawer: React.FC<Props> = ({ issueId, open, onClose, onAction, isActing }) => {
+  // Writes must name a person, never the 'CURRENT_USER' placeholder.
+  const { actor } = useActorUserCode();
+
   const { data: record, isLoading } = useBnIssueRecordDetail(issueId || undefined);
   const [reason, setReason] = useState('');
   const releaseHolding = useReleaseHolding();
@@ -54,7 +58,7 @@ export const IssueDetailDrawer: React.FC<Props> = ({ issueId, open, onClose, onA
   const handleAction = async (action: IssueAction) => {
     const cfg = ACTION_CONFIG[action];
     if (cfg?.requiresReason && !reason.trim()) return;
-    await onAction({ issueId: issueId!, action, userCode: 'CURRENT_USER', reason: reason.trim() || undefined });
+    await onAction({ issueId: issueId!, action, userCode: actor(), reason: reason.trim() || undefined });
     setReason('');
   };
 
@@ -62,7 +66,7 @@ export const IssueDetailDrawer: React.FC<Props> = ({ issueId, open, onClose, onA
     try {
       await releaseHolding.mutateAsync({
         issueId: issueId!,
-        userCode: 'CURRENT_USER',
+        userCode: actor(),
         reason: reason.trim() || undefined,
       });
       toast.success('Holding payment released to cl_cheques');
