@@ -50,3 +50,25 @@ fixtures via the Action Centre tabs.
 - Print / PDF / Excel export certification of the Action Centre queues.
 
 ## WAVE 3 RESULT: PASS (lifecycle, actions, follow-up, queues, cross-year)
+
+## Wave 3.1 — Output & Reconciliation Certification
+
+Reconciliation (Admin persona, server-side): 12/12 assertions passed across register
+populations, single filters (open only, overdue, status, severity) and metric tiles.
+
+Defects fixed:
+- IA-W31-D01 `ia_register_findings` had no combined High/Critical predicate — added (`high_critical`).
+- IA-W31-D02 Registers could not be scoped by Function or Engagement — filters added and surfaced in the UI.
+- IA-W31-D03 Print/PDF output only covered the visible page — replaced with
+  `ActionCentrePrintView`, which renders the full filtered population plus applied-filter metadata.
+
+Delivered:
+- Metric tiles are now drill-downs: each applies the same server filter that produced the number.
+- Action Register shows plan year, originating finding, original vs current target date, extensions,
+  evidence state and overdue days. Findings Register shows function area and management position.
+- CSV/Excel/PDF exports carry title, generation timestamp, applied filters and record count.
+- Engagement-scoped "Audit action summary" print view (findings → actions → follow-ups).
+
+WAVE 3.1 OUTPUT CERTIFICATION: PASS
+WAVE 3 FULLY CERTIFIED
+READY FOR WAVE 4 OMNI-COMMS

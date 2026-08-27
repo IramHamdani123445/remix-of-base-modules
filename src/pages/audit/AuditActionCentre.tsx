@@ -23,12 +23,17 @@ import {
   useIaActionCentreCounts, useIaFollowUpRecordOutcome, normalizeAuditLink,
   type IaFilters,
 } from '@/hooks/useAuditActionCentre';
+import {
+  ActionCentrePrintView, AuditActionSummaryPrintView, type AppliedFilter,
+} from '@/components/audit/actions/ActionCentrePrintView';
 
 const SEVERITIES = ['Critical', 'High', 'Medium', 'Low'];
 const ACTION_STATUSES = [
   'Open', 'Assigned', 'In Progress', 'Completed by Management',
   'Verification Required', 'In Verification', 'Returned', 'Verified', 'Closed', 'Cancelled',
 ];
+const FINDING_STATUSES = ['Draft', 'Under Review', 'Confirmed', 'Released', 'Responded', 'Closed'];
+
 
 export default function AuditActionCentre() {
   const navigate = useNavigate();
@@ -43,6 +48,7 @@ export default function AuditActionCentre() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedAction, setSelectedAction] = useState<any | null>(null);
   const [followUpTarget, setFollowUpTarget] = useState<any | null>(null);
+  const [printMode, setPrintMode] = useState<'list' | 'summary'>('list');
 
   const setTab = (value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -60,6 +66,39 @@ export default function AuditActionCentre() {
   const followUps = useIaFollowUpQueue(filters);
   const qaQueue = useIaQualityReviewQueue();
   const closure = useIaClosureBlockers(filters);
+
+  /* Unfiltered, server-scoped populations used only to build filter option lists. */
+  const scopeEngagements = useIaClosureBlockers({});
+  const scopeActions = useIaActionRegister({});
+
+  const auditOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    (scopeEngagements.data ?? []).forEach((e: any) => {
+      if (e.engagement_id) map.set(e.engagement_id, `${e.engagement_code || ''} ${e.engagement_name || ''}`.trim());
+    });
+    (scopeActions.data ?? []).forEach((a: any) => {
+      if (a.engagement_id && !map.has(a.engagement_id)) {
+        map.set(a.engagement_id, `${a.engagement_code || ''} ${a.engagement_name || ''}`.trim());
+      }
+    });
+    return Array.from(map, ([value, label]) => ({ value, label }));
+  }, [scopeEngagements.data, scopeActions.data]);
+
+  const ownerOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    (scopeActions.data ?? []).forEach((a: any) => {
+      if (a.responsible_profile_id) map.set(a.responsible_profile_id, a.action_owner || 'Unnamed owner');
+    });
+    return Array.from(map, ([value, label]) => ({ value, label }));
+  }, [scopeActions.data]);
+
+  const functionOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    (scopeEngagements.data ?? []).forEach((e: any) => {
+      if (e.function_id) map.set(e.function_id, e.function_name || 'Function');
+    });
+    return Array.from(map, ([value, label]) => ({ value, label }));
+  }, [scopeEngagements.data]);
 
   const recordOutcome = useIaFollowUpRecordOutcome();
   const [outcome, setOutcome] = useState('Implemented');
@@ -84,6 +123,35 @@ export default function AuditActionCentre() {
     [counts, myWork, management, attention, actions, findings, verification, followUps, qaQueue, closure]
       .forEach(q => q.refetch());
   };
+
+  const labelFor = (list: { value: string; label: string }[], value?: string | null) =>
+    list.find(o => o.value === value)?.label || value || '';
+
+  /** Human-readable description of the server filters actually applied to the population. */
+  const appliedFilters: AppliedFilter[] = useMemo(() => {
+    const out: AppliedFilter[] = [];
+    if (filters.plan_id) out.push({ label: 'Plan', value: labelFor((plans as any[]).map(p => ({ value: p.id, label: `${p.fiscal_year || ''} ${p.title || ''}`.trim() })), filters.plan_id) });
+    if (filters.engagement_id) out.push({ label: 'Audit', value: labelFor(auditOptions, filters.engagement_id) });
+    if (filters.department_id) out.push({ label: 'Department', value: labelFor((departments as any[]).map(d => ({ value: d.id, label: d.name })), filters.department_id) });
+    if (filters.function_id) out.push({ label: 'Function', value: labelFor(functionOptions, filters.function_id) });
+    if (filters.owner_profile_id) out.push({ label: 'Owner', value: labelFor(ownerOptions, filters.owner_profile_id) });
+    if (filters.severity) out.push({ label: 'Severity', value: filters.severity });
+    if (filters.high_critical) out.push({ label: 'Severity', value: 'High / Critical' });
+    if (filters.status) out.push({ label: 'Status', value: filters.status });
+    if (filters.due_from) out.push({ label: 'Due from', value: filters.due_from });
+    if (filters.due_to) out.push({ label: 'Due to', value: filters.due_to });
+    if (filters.overdue) out.push({ label: 'Overdue only', value: 'Yes' });
+    if (filters.due_soon) out.push({ label: 'Due in 14 days', value: 'Yes' });
+    if (filters.open_only) out.push({ label: 'Open only', value: 'Yes' });
+    if (filters.disputed) out.push({ label: 'Disputed', value: 'Yes' });
+    if (filters.response_outstanding) out.push({ label: 'Response outstanding', value: 'Yes' });
+    if (search.trim()) out.push({ label: 'Search', value: search.trim() });
+    return out;
+  }, [filters, search, plans, departments, auditOptions, ownerOptions, functionOptions]);
+
+  const printList = () => { setPrintMode('list'); setTimeout(() => window.print(), 50); };
+  const printSummary = () => { setPrintMode('summary'); setTimeout(() => window.print(), 50); };
+
 
   /* ---------------- Column definitions ---------------- */
 
@@ -123,15 +191,18 @@ export default function AuditActionCentre() {
     { key: 'action_ref', header: 'Action', render: r => <span className="font-mono text-xs">{r.action_ref || '—'}</span> },
     { key: 'action_description', header: 'Description', render: r => <span className="line-clamp-2 max-w-[280px]">{r.action_description}</span> },
     { key: 'engagement_code', header: 'Audit' },
+    { key: 'plan_fiscal_year', header: 'Plan year' },
     { key: 'department_name', header: 'Department' },
+    { key: 'finding_title', header: 'Finding' },
     { key: 'finding_severity', header: 'Severity', render: r => (r.finding_severity ? <StatusBadge status={r.finding_severity} /> : '—') },
     { key: 'action_owner', header: 'Owner' },
-    { key: 'current_target_date', header: 'Target', render: r => formatDateForDisplay(r.current_target_date) },
+    { key: 'original_target_date', header: 'Original target', render: r => formatDateForDisplay(r.original_target_date) },
+    { key: 'current_target_date', header: 'Current target', render: r => formatDateForDisplay(r.current_target_date) },
     { key: 'extension_count', header: 'Ext.', render: r => String(r.extension_count ?? 0) },
     { key: 'progress_pct', header: 'Progress', render: r => `${r.progress_pct ?? 0}%` },
     { key: 'evidence_state', header: 'Evidence' },
     { key: 'lifecycle_status', header: 'Status', render: r => <StatusBadge status={r.lifecycle_status || 'Open'} /> },
-    { key: 'overdue_days', header: 'Overdue', render: r => overdueCell(r.overdue_days) },
+    { key: 'overdue_days', header: 'Overdue days', render: r => overdueCell(r.overdue_days) },
   ];
 
   const findingColumns: DataTableColumn<any>[] = [
@@ -139,9 +210,12 @@ export default function AuditActionCentre() {
     { key: 'title', header: 'Title', render: r => <span className="line-clamp-2 max-w-[280px]">{r.title}</span> },
     { key: 'engagement_code', header: 'Audit' },
     { key: 'department_name', header: 'Department' },
+    { key: 'function_name', header: 'Function' },
     { key: 'severity', header: 'Severity', render: r => (r.severity ? <StatusBadge status={r.severity} /> : '—') },
+    { key: 'management_position', header: 'Management position', render: r => r.management_position || '—' },
     { key: 'lifecycle_status', header: 'Status', render: r => <StatusBadge status={r.lifecycle_status || 'Draft'} /> },
     { key: 'response_status', header: 'Response', render: r => (r.response_outstanding ? <span className="text-destructive text-xs font-semibold">Outstanding</span> : (r.management_position || r.response_status || '—')) },
+
     { key: 'open_action_count', header: 'Open actions', render: r => `${r.open_action_count ?? 0} / ${r.action_count ?? 0}` },
     { key: 'overdue_action_count', header: 'Overdue actions', render: r => overdueCell(r.overdue_action_count) },
     { key: 'reported_date', header: 'Reported', render: r => formatDateForDisplay(r.reported_date) },
@@ -210,16 +284,32 @@ export default function AuditActionCentre() {
 
   const active = tabs.find(t => t.value === tab) ?? tabs[0];
 
-  const metrics = [
-    { label: 'Open findings', value: c.open_findings, tone: 'default', target: 'findings' },
-    { label: 'High / critical', value: c.high_findings, tone: 'danger', target: 'findings' },
-    { label: 'Responses outstanding', value: c.pending_management_responses, tone: 'warning', target: 'findings' },
-    { label: 'Open actions', value: c.open_actions, tone: 'default', target: 'register' },
-    { label: 'Overdue actions', value: c.overdue_actions, tone: 'danger', target: 'register' },
-    { label: 'Awaiting verification', value: c.verification_required, tone: 'warning', target: 'verification' },
-    { label: 'Follow-ups due', value: c.followups_due, tone: 'warning', target: 'followup' },
-    { label: 'Audits ready to close', value: c.audits_ready_for_closure, tone: 'success', target: 'closure' },
+  /**
+   * Metric tiles are drill-downs: clicking one applies the same server filter that
+   * produced the number and lands on the list that holds exactly that population.
+   */
+  const metrics: { label: string; value: any; tone: string; target: string; patch: IaFilters }[] = [
+    { label: 'Open findings', value: c.open_findings, tone: 'default', target: 'findings', patch: { open_only: true } },
+    { label: 'High / critical', value: c.high_findings, tone: 'danger', target: 'findings', patch: { open_only: true, high_critical: true } },
+    { label: 'Responses outstanding', value: c.pending_management_responses, tone: 'warning', target: 'findings', patch: { response_outstanding: true } },
+    { label: 'Open actions', value: c.open_actions, tone: 'default', target: 'register', patch: { open_only: true } },
+    { label: 'Overdue actions', value: c.overdue_actions, tone: 'danger', target: 'register', patch: { overdue: true } },
+    { label: 'Awaiting verification', value: c.verification_required, tone: 'warning', target: 'verification', patch: { status: 'Verification Required' } },
+    { label: 'Follow-ups due', value: c.followups_due, tone: 'warning', target: 'followup', patch: {} },
+    { label: 'Awaiting QA', value: c.audits_ready_for_qa, tone: 'warning', target: 'qa', patch: {} },
+    { label: 'Audits ready to close', value: c.audits_ready_for_closure, tone: 'success', target: 'closure', patch: {} },
+    { label: 'Closure blocked', value: c.audits_blocked_from_closure, tone: 'danger', target: 'closure', patch: {} },
   ];
+
+  const drillDown = (m: { target: string; patch: IaFilters }) => {
+    setSearch('');
+    setFilters(f => ({ ...f, ...m.patch }));
+    setTab(m.target);
+  };
+
+  const summaryAudit = filters.engagement_id
+    ? labelFor(auditOptions, filters.engagement_id)
+    : '';
 
   return (
     <PageShell
@@ -227,26 +317,59 @@ export default function AuditActionCentre() {
       subtitle="One operating surface for audit work queues, corrective actions, follow-up and closure readiness"
       breadcrumbs={[{ label: 'Internal Audit', href: '/audit/dashboard' }, { label: 'Action Centre' }]}
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 print:hidden">
           <Button variant="outline" size="sm" onClick={refreshAll} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />Refresh
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-2" />Print
+          <Button variant="outline" size="sm" onClick={printList}>
+            <Printer className="h-4 w-4 mr-2" />Print / PDF
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={printSummary}
+            disabled={!filters.engagement_id}
+            title={filters.engagement_id ? 'Print the audit action summary' : 'Select an audit in the filters first'}
+          >
+            <ClipboardList className="h-4 w-4 mr-2" />Audit action summary
           </Button>
           <ExportDropdown
             data={active.rows}
             columns={exportCols(active.cols)}
             fileName={`internal-audit-${active.value}`}
             title={`Internal Audit — ${active.label}`}
+            metadata={{
+              title: `Internal Audit — ${active.label}`,
+              generatedDate: new Date().toLocaleString(),
+              filtersApplied: appliedFilters,
+              totalRecords: active.rows.length,
+            }}
           />
         </div>
       }
     >
-      {/* Metrics — every number drills into the list behind it */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+      {/* Print / PDF output — full filtered population, no interactive chrome */}
+      {printMode === 'list' ? (
+        <ActionCentrePrintView
+          title={active.label}
+          columns={exportCols(active.cols)}
+          rows={active.rows}
+          filters={appliedFilters}
+        />
+      ) : (
+        <AuditActionSummaryPrintView
+          engagementLabel={summaryAudit}
+          findings={findings.data ?? []}
+          actions={actions.data ?? []}
+          followUps={followUps.data ?? []}
+        />
+      )}
+
+      <div className="space-y-4 print:hidden">
+      {/* Metrics — every number drills into the exact population behind it */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {metrics.map(m => (
-          <button key={m.label} onClick={() => setTab(m.target)} className="text-left">
+          <button key={m.label} onClick={() => drillDown(m)} className="text-left">
             <Card className="hover:border-primary/50 transition-colors h-full">
               <CardContent className="p-3">
                 <p className="text-[11px] text-muted-foreground leading-tight">{m.label}</p>
@@ -260,6 +383,7 @@ export default function AuditActionCentre() {
           </button>
         ))}
       </div>
+
 
       {/* Filter contract shared by every register and queue */}
       <Card>
@@ -286,6 +410,14 @@ export default function AuditActionCentre() {
               onClick={() => setFilters(f => ({ ...f, open_only: !f.open_only }))}>
               Open only
             </Button>
+            <Button variant={filters.high_critical ? 'default' : 'outline'} size="sm"
+              onClick={() => setFilters(f => ({ ...f, high_critical: !f.high_critical }))}>
+              High / critical
+            </Button>
+            <Button variant={filters.disputed ? 'default' : 'outline'} size="sm"
+              onClick={() => setFilters(f => ({ ...f, disputed: !f.disputed }))}>
+              Disputed
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => { setFilters({}); setSearch(''); }}>Clear</Button>
           </div>
 
@@ -293,12 +425,20 @@ export default function AuditActionCentre() {
             <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
               <FilterSelect label="Annual plan" value={filters.plan_id} onChange={v => setFilters(f => ({ ...f, plan_id: v }))}
                 options={(plans as any[]).map(p => ({ value: p.id, label: `${p.fiscal_year || ''} ${p.title || ''}`.trim() }))} />
+              <FilterSelect label="Audit" value={filters.engagement_id} onChange={v => setFilters(f => ({ ...f, engagement_id: v }))}
+                options={auditOptions} />
               <FilterSelect label="Department" value={filters.department_id} onChange={v => setFilters(f => ({ ...f, department_id: v }))}
                 options={(departments as any[]).map(d => ({ value: d.id, label: d.name }))} />
+              <FilterSelect label="Function area" value={filters.function_id} onChange={v => setFilters(f => ({ ...f, function_id: v }))}
+                options={functionOptions} />
+              <FilterSelect label="Action owner" value={filters.owner_profile_id} onChange={v => setFilters(f => ({ ...f, owner_profile_id: v }))}
+                options={ownerOptions} />
               <FilterSelect label="Severity" value={filters.severity} onChange={v => setFilters(f => ({ ...f, severity: v }))}
                 options={SEVERITIES.map(s => ({ value: s, label: s }))} />
               <FilterSelect label="Action status" value={filters.status} onChange={v => setFilters(f => ({ ...f, status: v }))}
                 options={ACTION_STATUSES.map(s => ({ value: s, label: s }))} />
+              <FilterSelect label="Finding status" value={filters.finding_status} onChange={v => setFilters(f => ({ ...f, finding_status: v }))}
+                options={FINDING_STATUSES.map(s => ({ value: s, label: s }))} />
               <div>
                 <Label className="text-[11px] text-muted-foreground">Due from</Label>
                 <Input type="date" className="h-9" value={filters.due_from || ''} onChange={e => setFilters(f => ({ ...f, due_from: e.target.value }))} />
@@ -309,6 +449,7 @@ export default function AuditActionCentre() {
               </div>
             </div>
           )}
+
         </CardContent>
       </Card>
 
@@ -341,6 +482,9 @@ export default function AuditActionCentre() {
           </TabsContent>
         ))}
       </Tabs>
+      </div>
+
+
 
       <ActionLifecycleDialog
         action={selectedAction}
