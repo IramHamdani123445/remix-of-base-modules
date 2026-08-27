@@ -19,7 +19,10 @@ import { formatDateForDisplay } from '@/lib/format-config';
  * the UI. Every change is issued as a server command that enforces the allowed
  * transition, segregation of duties and immutable event logging.
  */
-const NEXT_STATUSES: Record<string, FindingLifecycleStatus[]> = {
+type TransitionTarget = Exclude<FindingLifecycleStatus, 'Draft'>;
+
+const NEXT_STATUSES: Record<string, TransitionTarget[]> = {
+
   Draft: ['Under Review', 'Withdrawn'],
   'Under Review': ['Confirmed', 'Withdrawn'],
   Confirmed: ['Released', 'Withdrawn'],
