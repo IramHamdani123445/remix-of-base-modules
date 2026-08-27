@@ -323,6 +323,7 @@ const MultiCurrencySettings = lazy(() => import('@/pages/finance/settings/MultiC
 const EmployerComplianceManagement = lazy(() => import('@/pages/compliance/employers/EmployerComplianceManagement'));
 const LegalProceedings = lazy(() => import('@/pages/compliance/legal/LegalProceedings'));
 const AuditManagement = lazy(() => import('@/pages/compliance/audit-planning/AuditManagement'));
+const AuditDetails = lazy(() => import('@/pages/compliance/audit-planning/AuditDetails'));
 const PenaltyManagement = lazy(() => import('@/pages/compliance/cases/PenaltyManagement'));
 const ComplianceAnalytics = lazy(() => import('@/pages/compliance/dashboards/ComplianceAnalytics'));
 const EmployerHierarchy = lazy(() => import('@/pages/compliance/employers/EmployerHierarchy'));
@@ -1509,6 +1510,10 @@ export const AppRoutes = () => {
       <Route path="/compliance/employers/hierarchy" element={<EmployerHierarchy />} />
       <Route path="/compliance/employers/financial-statement/:employerId" element={<EmployerFinancialStatement />} />
       <Route path="/compliance/field/audit-management" element={<AuditManagement />} />
+      {/* Audit Management "View" links here; the route only existed in the
+          nested compliance router, so the app router returned 404. */}
+      <Route path="/compliance/field/audit/:id" element={<AuditDetails />} />
+      <Route path="/compliance/field/audit/:id/*" element={<AuditDetails />} />
       <Route path="/compliance/field/weekly-report" element={<WeeklyReportSubmission />} />
       <Route path="/compliance/field/weekly-reports" element={<WeeklyReports />} />
       <Route path="/compliance/field/all-reports" element={<AllWeeklyReports />} />
