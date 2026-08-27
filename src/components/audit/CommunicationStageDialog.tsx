@@ -162,7 +162,8 @@ export function CommunicationStageDialog({ engagementId, engagementName, stageCo
       setIsSendingEmail(true);
       const result = await emitInternalAuditStageCommunication({
         stageCode,
-        mode,
+        mode: mode === 'reminder' ? 'reminder' : mode === 'initial' ? 'initial' : 'reissue',
+
         entityId: engagementId,
         recipientName: recipientName || 'Department Head',
         recipientEmail: toEmail,
