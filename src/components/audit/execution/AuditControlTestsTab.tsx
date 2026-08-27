@@ -69,20 +69,42 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
   const openView = (r: any) => { openEdit(r); setFormMode('view'); };
 
   const handleSave = () => {
+    // `result`/`conclusion` are lifecycle outcomes owned by the governed
+    // `ia_conclude_control_test` command — never written directly from the UI.
     const payload = {
       engagement_id: auditId, rcm_control_id: form.rcm_control_id || null,
       sample_size: form.sample_size ? parseInt(form.sample_size) : null,
       exceptions_found: form.exceptions_found ? parseInt(form.exceptions_found) : null,
-      result: form.result, remarks: form.remarks || null,
+      remarks: form.remarks || null,
       test_date: form.test_date || null, tested_by: form.tested_by || null,
       reviewer_id: form.reviewed_by || null,
     };
     if (formMode === 'create') {
-      createMutation.mutate({ ...payload, created_by: userCode || null });
+      createMutation.mutate({ ...payload, result: 'Not Tested', status: 'Draft', created_by: userCode || null });
     } else if (formMode === 'edit' && editRecord) {
       updateMutation.mutate({ id: editRecord.id, ...payload, updated_by: userCode || null });
     }
   };
+
+  const openConclude = (r: any) => {
+    setConcludeRecord(r);
+    setConcludeForm({ result: 'Effective', conclusion: '', no_finding_rationale: '' });
+  };
+
+  const submitConclusion = () => {
+    if (!concludeRecord) return;
+    concludeCommand.mutate(
+      {
+        testId: concludeRecord.id,
+        result: concludeForm.result,
+        conclusion: concludeForm.conclusion,
+        noFindingRationale: concludeForm.no_finding_rationale || null,
+      },
+      { onSuccess: () => setConcludeRecord(null) },
+    );
+  };
+
+  const isConcluded = (r: any) => !!r.concluded_at || r.status === 'Concluded';
 
   const resultColor = (result: string) => {
     if (result === 'Effective') return 'text-primary';
@@ -96,8 +118,10 @@ export function AuditControlTestsTab({ auditId }: AuditControlTestsTabProps) {
     { key: 'sample_size', header: 'Sample Size', render: (r) => <span className="text-sm">{r.sample_size ?? '—'}</span> },
     { key: 'exceptions_found', header: 'Exceptions', render: (r) => <span className={`text-sm font-medium ${(r.exceptions_found || 0) > 0 ? 'text-destructive' : ''}`}>{r.exceptions_found ?? '—'}</span> },
     { key: 'result', header: 'Result', render: (r) => <span className={`text-sm font-medium ${resultColor(r.result || '')}`}>{r.result || '—'}</span> },
+    { key: 'status', header: 'Stage', render: (r) => <StatusBadge status={isConcluded(r) ? 'Concluded' : (r.status || 'Draft')} /> },
     { key: 'tested_by', header: 'Tested By', render: (r) => <span className="text-xs">{r.tested_by || '—'}</span> },
     { key: 'test_date', header: 'Date', render: (r) => r.test_date ? formatDateForDisplay(r.test_date) : '—' },
+
   ];
 
   if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>;
