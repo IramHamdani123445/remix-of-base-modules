@@ -72801,6 +72801,8 @@ export type Database = {
       }
       ia_comms_reminder_run_log: {
         Row: {
+          department_id: string | null
+          engagement_id: string | null
           entity_id: string
           entity_type: string
           event_code: string
@@ -72809,11 +72811,18 @@ export type Database = {
           obligation_kind: string
           occurrence: string
           outcome: string
+          policy_id: string | null
           reason: string | null
           recipient_profile_id: string | null
+          required_role: string | null
+          resolution_source: string | null
           run_at: string
+          run_id: string | null
+          run_outcome: string | null
         }
         Insert: {
+          department_id?: string | null
+          engagement_id?: string | null
           entity_id: string
           entity_type: string
           event_code: string
@@ -72822,11 +72831,18 @@ export type Database = {
           obligation_kind: string
           occurrence: string
           outcome: string
+          policy_id?: string | null
           reason?: string | null
           recipient_profile_id?: string | null
+          required_role?: string | null
+          resolution_source?: string | null
           run_at?: string
+          run_id?: string | null
+          run_outcome?: string | null
         }
         Update: {
+          department_id?: string | null
+          engagement_id?: string | null
           entity_id?: string
           entity_type?: string
           event_code?: string
@@ -72835,9 +72851,14 @@ export type Database = {
           obligation_kind?: string
           occurrence?: string
           outcome?: string
+          policy_id?: string | null
           reason?: string | null
           recipient_profile_id?: string | null
+          required_role?: string | null
+          resolution_source?: string | null
           run_at?: string
+          run_id?: string | null
+          run_outcome?: string | null
         }
         Relationships: []
       }
@@ -74033,6 +74054,27 @@ export type Database = {
           },
         ]
       }
+      ia_escalation_cert_log: {
+        Row: {
+          created_at: string
+          detail: Json
+          id: string
+          scenario: string
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          scenario: string
+        }
+        Update: {
+          created_at?: string
+          detail?: Json
+          id?: string
+          scenario?: string
+        }
+        Relationships: []
+      }
       ia_escalation_rules: {
         Row: {
           action_type: string | null
@@ -74991,6 +75033,118 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ia_office_holder: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          department_id: string | null
+          effective_from: string
+          effective_to: string | null
+          fixture_tag: string | null
+          function_code: string
+          id: string
+          is_certification_fixture: boolean
+          is_primary: boolean
+          profile_id: string
+          reason: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          scope_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          department_id?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          fixture_tag?: string | null
+          function_code: string
+          id?: string
+          is_certification_fixture?: boolean
+          is_primary?: boolean
+          profile_id: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scope_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          department_id?: string | null
+          effective_from?: string
+          effective_to?: string | null
+          fixture_tag?: string | null
+          function_code?: string
+          id?: string
+          is_certification_fixture?: boolean
+          is_primary?: boolean
+          profile_id?: string
+          reason?: string | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          scope_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ia_office_holder_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "ia_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "v_ia_departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "ce_inspector_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "core_user_profiles_v"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "core_user_profiles_v"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "ia_office_holder_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ia_org_document_foundation: {
         Row: {
@@ -124375,6 +124529,7 @@ export type Database = {
         Args: { p_engagement_id: string }
         Returns: Json
       }
+      ia_can_configure_office_holders: { Args: never; Returns: boolean }
       ia_can_issue_report: { Args: { p_report_id: string }; Returns: Json }
       ia_can_read_all: { Args: never; Returns: boolean }
       ia_can_start_engagement: {
@@ -124439,6 +124594,22 @@ export type Database = {
           p_recipient_facts: Json
         }
         Returns: Json
+      }
+      ia_comms_emit_role: {
+        Args: {
+          p_action_id: string
+          p_as_of: string
+          p_department_id: string
+          p_engagement_id: string
+          p_entity_id: string
+          p_entity_type: string
+          p_obligation_kind: string
+          p_payload: Json
+          p_policy: Database["public"]["Tables"]["ia_comms_reminder_policy"]["Row"]
+          p_role: string
+          p_run_id: string
+        }
+        Returns: string
       }
       ia_comms_escalation_fact: {
         Args: {
@@ -124645,6 +124816,37 @@ export type Database = {
         }
         Returns: string
       }
+      ia_office_holder_approve: {
+        Args: { p_id: string; p_reason?: string }
+        Returns: Json
+      }
+      ia_office_holder_health: { Args: { p_as_of?: string }; Returns: Json }
+      ia_office_holder_propose: {
+        Args: {
+          p_department_id?: string
+          p_effective_from?: string
+          p_effective_to?: string
+          p_fixture_tag?: string
+          p_function_code: string
+          p_is_primary?: boolean
+          p_profile_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      ia_office_holder_revoke: {
+        Args: { p_effective_to?: string; p_id: string; p_reason?: string }
+        Returns: Json
+      }
+      ia_office_holder_valid_at: {
+        Args: {
+          p_as_of: string
+          p_from: string
+          p_status: string
+          p_to: string
+        }
+        Returns: boolean
+      }
       ia_persist_plan_engagements: {
         Args: { p_created_by?: string; p_engagements: Json; p_plan_id: string }
         Returns: Json
@@ -124708,6 +124910,16 @@ export type Database = {
       ia_register_findings: { Args: { p_filters?: Json }; Returns: Json }
       ia_resolve_engagement_risk: {
         Args: { p_department_id?: string; p_function_id?: string }
+        Returns: Json
+      }
+      ia_resolve_escalation_recipient: {
+        Args: {
+          p_action_id?: string
+          p_as_of?: string
+          p_department_id?: string
+          p_engagement_id?: string
+          p_role: string
+        }
         Returns: Json
       }
       ia_resolve_last_audit_date: {
