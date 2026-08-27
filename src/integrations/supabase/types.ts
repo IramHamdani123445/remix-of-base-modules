@@ -128014,6 +128014,10 @@ export type Database = {
         Args: { p_organization_id: string; p_recipient_id: string }
         Returns: Json
       }
+      omni_comms_priv_resolve_request_attachments: {
+        Args: { p_request_id: string }
+        Returns: Json
+      }
       omni_comms_priv_resolve_webhook_signing_secret: {
         Args: { p_adapter_key?: string }
         Returns: string
