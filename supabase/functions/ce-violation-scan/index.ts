@@ -399,6 +399,14 @@ Deno.serve(async (req) => {
         triggered_by: triggeredBy,
         idempotency_key: idempKey,
         is_dry_run: dryRun,
+        execution_log: {
+          in_progress: true,
+          heartbeat_at: new Date().toISOString(),
+          employers_done: 0,
+          dry_run: dryRun,
+          force,
+        },
+
         parameters: { as_of_date: asOfDate, employer_id: employerFilter, force, limit: employerLimit, batch_size: batchSize },
       })
       .select("id")
