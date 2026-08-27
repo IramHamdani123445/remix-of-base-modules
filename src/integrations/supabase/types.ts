@@ -71337,6 +71337,60 @@ export type Database = {
           },
         ]
       }
+      ia_audit_event: {
+        Row: {
+          actor_label: string | null
+          actor_profile_id: string | null
+          annual_plan_id: string | null
+          correlation_id: string | null
+          created_at: string
+          engagement_id: string | null
+          entity_id: string | null
+          entity_type: string
+          event_code: string
+          id: string
+          new_value: Json | null
+          occurred_at: string
+          old_value: Json | null
+          reason: string | null
+          source_command: string
+        }
+        Insert: {
+          actor_label?: string | null
+          actor_profile_id?: string | null
+          annual_plan_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          engagement_id?: string | null
+          entity_id?: string | null
+          entity_type: string
+          event_code: string
+          id?: string
+          new_value?: Json | null
+          occurred_at?: string
+          old_value?: Json | null
+          reason?: string | null
+          source_command: string
+        }
+        Update: {
+          actor_label?: string | null
+          actor_profile_id?: string | null
+          annual_plan_id?: string | null
+          correlation_id?: string | null
+          created_at?: string
+          engagement_id?: string | null
+          entity_id?: string | null
+          entity_type?: string
+          event_code?: string
+          id?: string
+          new_value?: Json | null
+          occurred_at?: string
+          old_value?: Json | null
+          reason?: string | null
+          source_command?: string
+        }
+        Relationships: []
+      }
       ia_audit_plan_functions: {
         Row: {
           created_at: string | null
@@ -123385,11 +123439,20 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_can_access_engagement: {
+        Args: { _engagement_id: string }
+        Returns: boolean
+      }
+      ia_can_access_engagement_internal: {
+        Args: { _engagement_id: string }
+        Returns: boolean
+      }
       ia_can_close_engagement: {
         Args: { p_engagement_id: string }
         Returns: Json
       }
       ia_can_issue_report: { Args: { p_report_id: string }; Returns: Json }
+      ia_can_read_all: { Args: never; Returns: boolean }
       ia_can_start_engagement: {
         Args: { p_engagement_id: string }
         Returns: Json
@@ -123452,6 +123515,8 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_current_auditor_id: { Args: never; Returns: string }
+      ia_current_profile_id: { Args: never; Returns: string }
       ia_detect_material_plan_changes: {
         Args: { p_plan_id: string; p_proposed_changes: Json }
         Returns: Json
@@ -123501,6 +123566,12 @@ export type Database = {
         }
         Returns: Json
       }
+      ia_has: { Args: { _action: string; _module: string }; Returns: boolean }
+      ia_is_department_respondent: {
+        Args: { _department_id: string }
+        Returns: boolean
+      }
+      ia_is_ia_user: { Args: never; Returns: boolean }
       ia_launch_engagement: {
         Args: { p_engagement_id: string; p_launched_by?: string }
         Returns: Json
@@ -123508,6 +123579,21 @@ export type Database = {
       ia_link_action_evidence: {
         Args: { p_action_id: string; p_evidence_ids: string[] }
         Returns: Json
+      }
+      ia_log_event: {
+        Args: {
+          _annual_plan_id?: string
+          _correlation_id?: string
+          _engagement_id?: string
+          _entity_id: string
+          _entity_type: string
+          _event_code: string
+          _new?: Json
+          _old?: Json
+          _reason?: string
+          _source_command?: string
+        }
+        Returns: string
       }
       ia_persist_plan_engagements: {
         Args: { p_created_by?: string; p_engagements: Json; p_plan_id: string }
