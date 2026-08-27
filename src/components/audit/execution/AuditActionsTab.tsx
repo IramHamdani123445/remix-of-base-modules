@@ -15,6 +15,8 @@ import { formatDateForDisplay } from '@/lib/format-config';
 import { useUserCode } from '@/hooks/useUserCode';
 import { useToast } from '@/hooks/use-toast';
 import { notifyActionAssigned } from '@/services/auditNotificationService';
+import { useInternalAuditPermissions } from '@/hooks/useInternalAuditPermissions';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface AuditActionsTabProps {
   auditId: string;
@@ -179,6 +181,33 @@ export function AuditActionsTab({ auditId, audit, auditFindings, auditActions, a
           />
         </CardContent></Card>
       )}
+
+      <Dialog open={!!progressAction} onOpenChange={(open) => !open && setProgressAction(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Update Corrective Action</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Status</Label>
+              <Select value={progressForm.status} onValueChange={(v) => setProgressForm((f) => ({ ...f, status: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{ACTION_STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Assigned To</Label><Input value={progressForm.responsible_person} onChange={(e) => setProgressForm((f) => ({ ...f, responsible_person: e.target.value }))} /></div>
+              <div><Label>Revised Due Date</Label><Input type="date" value={progressForm.target_date} onChange={(e) => setProgressForm((f) => ({ ...f, target_date: e.target.value }))} /></div>
+            </div>
+            <div>
+              <Label>Progress / Evidence Notes{['Verified', 'Closed'].includes(progressForm.status) ? ' *' : ''}</Label>
+              <Textarea rows={3} value={progressForm.notes} onChange={(e) => setProgressForm((f) => ({ ...f, notes: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProgressAction(null)}>Cancel</Button>
+            <Button onClick={handleProgressSave} disabled={update.isPending}>Save Update</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Closure Section */}
       <AuditReadinessPanel
