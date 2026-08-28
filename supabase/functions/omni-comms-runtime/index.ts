@@ -61,22 +61,24 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const OMNI_COMMS_DEFAULT_CALLER_MODULE = "OMNI_COMMS_DIRECT";
 const BUILD_TAG = "omni-comms-runtime@2c-iii-auth";
-// Source revision this deployment was built from. Set as a function secret at
-// deploy time. `OMNI_COMMS_DEPLOYED_REVISION` is the SINGLE platform-wide
-// deployment identity — the dispatcher and the release-control boundary read
-// exactly the same secret, so all three surfaces report one revision and the
-// certification comparison can never disagree with itself. The historic
-// `OMNI_COMMS_EDGE_REVISION` remains a fallback only. When absent, shortened
-// or malformed the deployment is UNVERIFIED and is never treated as certified.
-// DEF-13: when the platform stamp is absent or malformed the deployment falls
-// back to the COMMITTED build artifact — a content hash of every runtime,
-// dispatcher and shared adapter source file — so a deployed function can
-// always state exactly which build is running.
+// DEF-13 — deployment identity truth.
+//
+// The COMMITTED BUILD ARTIFACT is the default deployment truth: a content hash
+// of every runtime, dispatcher and shared adapter source file, so a deployed
+// function can always state exactly which build is running.
+//
+// `OMNI_COMMS_DEPLOYED_REVISION` may only ever be injected by deployment
+// automation as part of the same immutable deployment; it must never be a
+// manually maintained long-lived secret. When present it must equal the build
+// revision — otherwise `revisionStale` is true and certification fails.
+//
+// The historic `OMNI_COMMS_EDGE_REVISION` fallback is REMOVED: a long-lived
+// legacy stamp could survive a code change and silently mask a build mismatch.
 
 const REVISION_REPORT = resolveDeployedRevision(
-  ((Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "").trim() ||
-    (Deno.env.get("OMNI_COMMS_EDGE_REVISION") ?? "").trim()) || undefined,
+  (Deno.env.get("OMNI_COMMS_DEPLOYED_REVISION") ?? "").trim() || undefined,
 );
+
 const DEPLOYED_REVISION = REVISION_REPORT.revision;
 const REVISION_VERIFIED = REVISION_REPORT.revisionVerified;
 
