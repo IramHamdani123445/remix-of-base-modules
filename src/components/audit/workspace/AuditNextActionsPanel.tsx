@@ -66,14 +66,20 @@ export function AuditNextActionsPanel({ actions, title = 'Recommended Actions', 
 }
 
 // Helper to derive recommended actions from audit state
+export interface NextActionEntitlements {
+  /** Gate for lifecycle-changing recommendations (launch / close). */
+  canLaunch?: boolean;
+  canClose?: boolean;
+}
+
 export function deriveNextActions(audit: any, counts: {
   findings: number; openFindings: number; responses: number;
   actions: number; overdueActions: number;
-}): NextAction[] {
+}, entitlements: NextActionEntitlements = { canLaunch: true, canClose: true }): NextAction[] {
   const execStatus = audit?.execution_status || 'Planned';
   const actions: NextAction[] = [];
 
-  if (execStatus === 'Planned' || execStatus === 'Ready for Launch') {
+  if (entitlements.canLaunch !== false && (execStatus === 'Planned' || execStatus === 'Ready for Launch')) {
     actions.push({
       label: 'Launch Audit',
       description: 'Verify readiness and begin audit execution',
@@ -113,7 +119,7 @@ export function deriveNextActions(audit: any, counts: {
       variant: 'destructive',
     });
   }
-  if (execStatus === 'Follow-up Monitoring' && counts.openFindings === 0) {
+  if (entitlements.canClose !== false && execStatus === 'Follow-up Monitoring' && counts.openFindings === 0) {
     actions.push({
       label: 'Close Audit',
       description: 'All findings resolved — ready for closure',
