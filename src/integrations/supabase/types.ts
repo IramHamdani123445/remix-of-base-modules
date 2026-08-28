@@ -125038,9 +125038,9 @@ export type Database = {
           p_entity_id: string
           p_entity_type: string
           p_event_code: string
-          p_occurrence: string
-          p_payload: Json
-          p_recipient_facts: Json
+          p_occurrence?: string
+          p_payload?: Json
+          p_recipient_facts?: Json
         }
         Returns: Json
       }
